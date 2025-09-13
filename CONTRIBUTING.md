@@ -31,6 +31,9 @@ _Smaller, focused PRs are easier to review and merge._
 - Include as much detail as possible (steps to reproduce, logs, etc.)
 - Search existing issues first to avoid duplicates
 
+## License of Contributions (Inbound = Outbound)
+By contributing, you agree that your contributions are licensed under the same license as this repository (MIT).
+
 ## Questions?
 
 If you have questions, feel free to:
