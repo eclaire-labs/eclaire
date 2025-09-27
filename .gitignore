@@ -1,0 +1,68 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build output
+dist/
+.next/
+
+# Environment variables
+.env
+.env.dev
+.env.prod
+.env.local
+.env.*.local
+
+# TypeScript cache
+*.tsbuildinfo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code local settings
+.claude/
+
+# Security files
+*.key
+*.pem
+*.cert
+*.crt
+.secrets/
+
+# Test coverage
+coverage/
+.nyc_output
+
+# Overmind socket files
+.overmind*.sock
+
+# Centralized data directory
+data/
+
+# Build-generated versions.json files (root versions.json is the source of truth)
+apps/*/versions.json
+
+# Local model configuration (use models.json.example as template)
+config/models.json
+
+.build_number
+build-info.json
+
+backups/
+local/
+
+# Monorepo tools
+.turbo/
+turbo/
+.cache/
