@@ -1,0 +1,43 @@
+# Build output
+dist/
+build/
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+.nyc_output
+
+# Environment variables
+.env
+.env.dev
+.env.prod
+.env.local
+.env.*.local
+
+# Upload directories
+uploads/
+temp/
+
+# Cache
+.cache/
+
+# Sensitive configuration
+src/config/models.json
+
+# Generated files
+tool-signatures.json

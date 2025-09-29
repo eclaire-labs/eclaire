@@ -1,0 +1,60 @@
+{
+  "name": "@eclaire/model-cli",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Eclaire AI Model Management CLI",
+  "main": "dist/main.js",
+  "type": "module",
+  "packageManager": "npm@11.5.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eclaire-labs/eclaire.git",
+    "directory": "tools/model-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/eclaire-labs/eclaire/issues"
+  },
+  "homepage": "https://eclaire.co/",
+  "bin": {
+    "model-cli": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx main.ts",
+    "test": "node test.js",
+    "link": "npm link",
+    "unlink": "npm unlink -g model-cli"
+  },
+  "keywords": [
+    "ai",
+    "models",
+    "cli",
+    "huggingface",
+    "openrouter",
+    "management"
+  ],
+  "author": "Eclaire Labs",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "1.7.7",
+    "boxen": "7.1.1",
+    "chalk": "5.3.0",
+    "cli-table3": "^0.6.5",
+    "commander": "12.1.0",
+    "inquirer": "10.2.2",
+    "ora": "8.1.0"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/boxen": "^2.1.0",
+    "@types/commander": "^2.12.0",
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^24.0.0",
+    "@types/ora": "^3.1.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

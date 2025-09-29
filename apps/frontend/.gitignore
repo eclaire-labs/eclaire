@@ -1,0 +1,29 @@
+# Next.js specific
+.next/
+out/
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing
+coverage/
+.nyc_output
+
+# Environment variables
+.env
+.env.dev
+.env.prod
+.env.local
+.env.*.local
+
+# PWA
+public/sw.js
+public/workbox-*.js
+
+# Build artifacts
+dist/
+
+# Docker build context
+CHANGELOG.md

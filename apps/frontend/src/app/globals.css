@@ -1,0 +1,269 @@
+/* ———————————————————————————————————————————
+   imports FIRST (per CSS spec)
+——————————————————————————————————————————— */
+@import url("highlight.js/styles/github.css") (prefers-color-scheme: light);
+@import url("highlight.js/styles/github-dark.css") (prefers-color-scheme: dark);
+
+/* tailwind layers */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* base font */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* utilities you already had */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .line-clamp-1,
+  .line-clamp-2,
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+  }
+  .line-clamp-1 {
+    -webkit-line-clamp: 1;
+  }
+  .line-clamp-2 {
+    -webkit-line-clamp: 2;
+  }
+  .line-clamp-3 {
+    -webkit-line-clamp: 3;
+  }
+
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .safe-area-pt {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+  .mobile-viewport {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* Brand text that should remain readable on dark UIs */
+  .text-brand-on-dark {
+    color: hsl(var(--brand-on-dark));
+  }
+}
+
+@layer base {
+  :root {
+    /* Brand identity center: #7141F0 (HSL ≈ 257 85% 60%) */
+    --brand: 257 85% 60%;
+
+    /* Brand ramp (tints/shades) — includes the deeper primary surface (#6138CE) */
+    --brand-50: 257 100% 97%;
+    --brand-100: 257 95% 92%;
+    --brand-200: 257 90% 85%;
+    --brand-300: 257 88% 76%;
+    --brand-400: 257 86% 68%;
+    --brand-500: var(--brand); /* #7141F0 */
+    --brand-600: 256 61% 51%; /* #6138CE → AAA with white */
+    --brand-700: 256 60% 44%;
+    --brand-800: 256 55% 36%;
+    --brand-900: 256 50% 28%;
+    --brand-950: 256 45% 20%;
+
+    /* Accent family options (keep your toggles) */
+    --accent-lavender: var(--brand-300);
+    --accent-teal: 176 48% 44%; /* #3BA7A0 */
+    --accent-gold: 37 91% 55%; /* #F5A623 */
+
+    /* Neutrals & surfaces (light) */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+
+    /* Primary = deep brand surface for buttons/CTAs */
+    --primary: var(--brand-600); /* #6138CE */
+    --primary-foreground: 0 0% 98%; /* white text on primary */
+    --ring: var(--brand-600);
+
+    /* Links/hero accents on light */
+    --accent: var(--brand-500); /* #7141F0 */
+    --accent-foreground: 0 0% 98%;
+
+    /* Neutral containers / support */
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --muted-foreground-strong: 0 0% 40%; /* #666 - 5.5:1 contrast for better readability */
+    --accent-foreground-strong: 0 0% 3.9%;
+
+    /* Brand-tinted hover background (more noticeable than gray) */
+    --hover-bg: 257 61% 94%; /* ~#EEEAF6 (brand-600 @ 8% over #FAFAFA) */
+
+    /* System */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+
+    /* Charts – brand-first */
+    --chart-1: var(--brand-500); /* #7141F0 */
+    --chart-2: 257 85% 72%; /* #9C7AF4 */
+    --chart-3: 256 61% 51%; /* #6138CE */
+    --chart-4: 330 70% 60%; /* magenta/pink */
+    --chart-5: 0 75% 55%; /* red */
+
+    --radius: 0.5rem;
+
+    /* Sidebar (light) */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: var(--brand-600);
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: var(--brand-600);
+
+    /* Sidebar active states */
+    --sidebar-active-bg: var(--brand-600);
+    --sidebar-active-bg-opacity: 10%;
+    --sidebar-active-text: var(--brand-700);
+  }
+
+  /* dark mode */
+  .dark {
+    /* Keep brand consistent; choose a lighter on-dark text tint */
+    --brand: 257 85% 60%; /* #7141F0 */
+
+    /* Lighter brand for on-dark text */
+    --brand-on-dark: 256 86% 70%; /* #9470F4 */
+    /* If you ever want extra pop on very dark surfaces:
+       --brand-on-dark-strong: 257 85% 72%;  #9C7AF4 */
+
+    /* Neutrals & surfaces (dark tuned to #111827) */
+    --background: 221 39% 11%; /* #111827 */
+    --foreground: 220 13% 91%; /* #E5E7EB */
+    --card: 221 39% 13%;
+    --card-foreground: 220 13% 91%;
+    --popover: 221 39% 13%;
+    --popover-foreground: 220 13% 91%;
+
+    /* Primary = deep brand surface for buttons/CTAs (still AAA with white) */
+    --primary: var(--brand-600); /* #6138CE */
+    --primary-foreground: 0 0% 100%;
+    --ring: var(--brand-500); /* slightly lighter ring in dark */
+
+    /* Links on dark: default to the lighter brand tint */
+    --accent: var(--brand-on-dark); /* #9470F4 */
+    --accent-foreground: 0 0% 100%;
+
+    /* Neutral containers in dark */
+    --secondary: 221 39% 18%;
+    --secondary-foreground: 220 13% 91%;
+    --muted: 221 39% 18%;
+    --muted-foreground: 220 5% 65%;
+    --muted-foreground-strong: 220 5% 60%; /* Slightly stronger for dark mode readability */
+
+    /* Brand-tinted hover background for dark mode */
+    --hover-bg: 233 28% 22%; /* ~#282946 (brand-300 @ 15% over #111827) */
+
+    /* System */
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 221 39% 20%;
+    --input: 221 39% 18%;
+
+    /* Charts – brand-first */
+    --chart-1: var(--brand-500); /* #7141F0 */
+    --chart-2: 257 85% 72%; /* #9C7AF4 */
+    --chart-3: 256 61% 51%; /* #6138CE */
+    --chart-4: 330 70% 60%;
+    --chart-5: 0 75% 55%;
+
+    /* Sidebar (dark) */
+    --sidebar-background: 221 39% 12%;
+    --sidebar-foreground: 220 13% 91%;
+    --sidebar-primary: var(--brand-400);
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 221 39% 16%;
+    --sidebar-accent-foreground: 220 13% 91%;
+    --sidebar-border: 221 39% 16%;
+    --sidebar-ring: var(--brand-500);
+
+    /* Sidebar active state colors for dark mode */
+    --sidebar-active-bg: var(--brand-300);
+    --sidebar-active-bg-opacity: 15%;
+    --sidebar-active-text: var(--brand-300);
+  }
+}
+
+/* apply base tokens */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* optional: quick theme toggles for the "secondary brand" (accent) */
+.theme-lavender {
+  --accent: var(--accent-lavender);
+}
+.theme-teal {
+  --accent: var(--accent-teal);
+}
+.theme-gold {
+  --accent: var(--accent-gold);
+}
+
+/* Assistant Overlay Animations (kept from your original) */
+@keyframes ripple-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.8);
+    opacity: 0;
+  }
+}
+@keyframes float-up {
+  0% {
+    bottom: 10px;
+    opacity: 0;
+    transform: translateX(0) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: translateX(5px) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateX(-5px) scale(1);
+  }
+  100% {
+    bottom: 60px;
+    opacity: 0;
+    transform: translateX(0) scale(0.5);
+  }
+}
+@keyframes gentle-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.02);
+  }
+}

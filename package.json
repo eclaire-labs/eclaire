@@ -1,0 +1,39 @@
+{
+  "name": "@eclaire/monorepo",
+  "version": "0.3.0",
+  "private": true,
+  "packageManager": "npm@11.5.1",
+  "license": "MIT",
+  "description": "Eclaire - AI-powered productivity platform",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eclaire-labs/eclaire.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eclaire-labs/eclaire/issues"
+  },
+  "homepage": "https://eclaire.co/",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "setup:dev": "node scripts/setup.js dev",
+    "setup:dev:yes": "node scripts/setup.js dev --yes",
+    "setup:prod": "node scripts/setup.js prod",
+    "setup:prod:yes": "node scripts/setup.js prod --yes",
+    "setup:check": "node scripts/setup.js dev --skip-db --skip-models",
+    "setup:clean": "node scripts/setup-clean.js",
+    "dev": "npm run dev:backend & npm run dev:frontend & npm run dev:workers",
+    "dev:backend": "cd apps/backend && npm run dev",
+    "dev:frontend": "cd apps/frontend && npm run dev",
+    "dev:workers": "cd apps/workers && npm run dev",
+    "build": "cd apps/backend && npm run build && cd ../frontend && npm run build && cd ../workers && npm run build",
+    "docs:build": "cd web && npm run build",
+    "docs:dev": "cd web && npm run dev",
+    "docs:preview": "cd web && npm run preview",
+    "test": "cd apps/backend && npm run test && cd ../frontend && npm run test && cd ../workers && npm run test",
+    "lint": "cd apps/backend && npm run lint && cd ../frontend && npm run lint && cd ../workers && npm run lint",
+    "format": "cd apps/backend && npm run format && cd ../frontend && npm run format && cd ../workers && npm run format"
+  }
+}

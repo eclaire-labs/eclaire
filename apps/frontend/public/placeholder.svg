@@ -1,0 +1,7 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#f3f4f6"/>
+  <path d="M175 120h50v60h-50z" fill="#d1d5db"/>
+  <circle cx="190" cy="140" r="8" fill="#d1d5db"/>
+  <path d="m170 170 20-20 10 10 20-20 10 10v20h-60z" fill="#d1d5db"/>
+  <text x="200" y="200" text-anchor="middle" fill="#6b7280" font-family="Arial, sans-serif" font-size="14">Image failed to load</text>
+</svg>

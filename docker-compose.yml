@@ -1,0 +1,93 @@
+services:
+  # Backend API Service
+  backend:
+    image: eclaire-backend:latest
+    container_name: eclaire-backend
+    # Remove external port exposure - backend is now internal only
+    expose:
+      - "3001"
+    env_file:
+      - ./apps/backend/.env.prod  # Use production env file
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+      - REDIS_URL=redis://eclaire-redis:6379
+    volumes:
+      # Mount shared data directory for persistence
+      - ./data:/app/data
+      # Mount configuration directory
+      - ./config:/app/config
+      # Ensure logs directory is available
+      - ./data/logs:/app/data/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+    restart: unless-stopped
+
+  # Frontend Next.js Service
+  frontend:
+    image: eclaire-frontend:latest
+    container_name: eclaire-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./apps/frontend/.env.prod  # Use production env file
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - BACKEND_URL=http://eclaire-backend:3001
+    depends_on:
+      - backend
+    volumes:
+      # Mount logs directory for frontend logging
+      - ./data/logs:/app/data/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+    restart: unless-stopped
+
+  # Background Workers Service
+  workers:
+    image: eclaire-workers:latest
+    container_name: eclaire-workers
+    env_file:
+      - ./apps/workers/.env.prod  # Use production env file
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://eclaire-redis:6379
+      - BACKEND_URL=http://eclaire-backend:3001
+      - OLLAMA_API_URL=http://host.docker.internal:11435/api/generate
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # For external services
+    depends_on:
+      - backend
+    volumes:
+      # Mount shared data directory
+      - ./data:/app/data
+      # Mount browser data directory
+      - ./data/browser-data:/app/browser-data
+      # Mount configuration directory
+      - ./config:/app/config
+      # Ensure logs directory is available
+      - ./data/logs:/app/data/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+    restart: unless-stopped
+
+# External network created by pm2.deps.config.js services
+networks:
+  default:
+    name: eclaire-net
+    external: true

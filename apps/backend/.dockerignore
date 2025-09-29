@@ -1,0 +1,83 @@
+# Node modules and dependencies
+node_modules
+npm-debug.log*
+
+# Development files
+.env.local
+.env.development
+.env.test
+.env.dev
+.env.prod
+
+# Build outputs (will be rebuilt inside container)
+dist
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Package manager files (will be regenerated)
+yarn.lock
+pnpm-lock.yaml
+
+# Coverage directory used by tools like istanbul
+coverage
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+src/tests
+**/*.test.ts
+**/*.spec.ts
+jest.config.js
+vitest.config.ts
+
+# Documentation
+*.md
+README.md
+
+# Database files (will be created fresh in container)
+*.db
+*.db-journal
+
+# Temporary files
+tmp
+temp
+
+# Docker and deployment files
+docker-build.sh
+Dockerfile.*
+docker-compose.yaml
+docker-compose.yml
+
+# Generated files
+tool-signatures.json
+*.tsbuildinfo
+
+# Other
+.nyc_output

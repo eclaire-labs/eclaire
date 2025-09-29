@@ -1,0 +1,123 @@
+graph TB
+    %% Users
+    User[👤 User]
+    
+    %% Frontend Layer
+    subgraph "Frontend Layer"
+        Frontend[🌐 Next.js Frontend<br/>Port 3000<br/>React, Tailwind, Radix UI]
+    end
+    
+    %% Backend Layer  
+    subgraph "Backend Layer"
+        Backend[⚙️ Node.js Backend API<br/>Port 3001<br/>Hono, Zod, Better Auth]
+    end
+    
+    %% Workers Layer
+    subgraph "Workers Layer"
+        Workers[🔄 Background Workers<br/>Node.js + BullMQ<br/>Job Processing]
+        
+        subgraph "Worker Jobs"
+            BookmarkJob[📎 Bookmark Processor]
+            ImageJob[🖼️ Image Processor]  
+            DocJob[📄 Document Processor]
+            NoteJob[📝 Note Processor]
+            TaskJob[✅ Task Processor]
+            TaskExecJob[🤖 Task Execution Processor]
+        end
+    end
+    
+    %% Data Layer
+    subgraph "Data Layer"
+        subgraph "Redis Cluster"
+            Redis[📦 Redis<br/>Port 6379<br/>Caching & Queues]
+            
+            subgraph "BullMQ Queues"
+                BookmarkQ["📎 bookmark-processing"]
+                ImageQ["🖼️ image-processing"] 
+                DocQ["📄 document-processing"]
+                NoteQ["📝 note-processing"]
+                TaskQ["✅ task-processing"]
+                TaskExecQ["🤖 task-execution-processing"]
+            end
+        end
+        
+        Postgres[(🗄️ PostgreSQL<br/>Port 5432<br/>Primary Database<br/>Drizzle ORM)]
+    end
+    
+    %% External Services
+    subgraph "AI & External Services"
+        LlamaCppBackend[🧠 llama-server<br/>Port 11434<br/>Local AI Models<br/>qwen3-14b]
+        LlamaCppWorkers[🧠 llama-server<br/>Port 11435<br/>Local AI Models<br/>Gemma-3-4b-it]
+        Docling[📑 Docling<br/>Port 5001<br/>Document Processing<br/>PDF, RTF, etc.]
+        ExtAPIs[🌐 External APIs<br/>Twitter, GitHub, Reddit<br/>Rate Limited]
+    end
+    
+    %% File System
+    subgraph "Storage"
+        DataVol[📁 ./data Volume<br/>Persistent Storage<br/>Config, Logs, Files]
+        BrowserData[🌐 ./data/browser-data<br/>Playwright Cache]
+    end
+    
+    %% User Interactions
+    User --> Frontend
+    
+    %% Frontend to Backend
+    Frontend -->|HTTP REST API<br/>WebSocket/SSE Streaming<br/>Authentication| Backend
+    
+    %% Backend to Data Layer
+    Backend -->|SQL Queries<br/>Drizzle ORM| Postgres
+    Backend -->|Job Enqueuing<br/>Caching| Redis
+    Backend -->|Auth Sessions<br/>Better Auth| Postgres
+    Backend -->|AI Inference<br/>OpenAI Compatible| LlamaCppBackend
+    
+    %% Workers Communication
+    Backend -->|Enqueue Jobs| BookmarkQ
+    Backend -->|Enqueue Jobs| ImageQ
+    Backend -->|Enqueue Jobs| DocQ
+    Backend -->|Enqueue Jobs| NoteQ
+    Backend -->|Enqueue Jobs| TaskQ
+    Backend -->|Enqueue Jobs| TaskExecQ
+    
+    %% Queue Processing
+    BookmarkQ -->|Process| BookmarkJob
+    ImageQ -->|Process| ImageJob
+    DocQ -->|Process| DocJob
+    NoteQ -->|Process| NoteJob
+    TaskQ -->|Process| TaskJob
+    TaskExecQ -->|Process| TaskExecJob
+    
+    %% Worker Jobs to Workers
+    BookmarkJob --> Workers
+    ImageJob --> Workers
+    DocJob --> Workers
+    NoteJob --> Workers
+    TaskJob --> Workers
+    TaskExecJob --> Workers
+    
+    %% Workers to External Services
+    Workers -->|HTTP Requests<br/>Rate Limited| ExtAPIs
+    Workers -->|AI Inference<br/>OpenAI Compatible| LlamaCppWorkers
+    Workers -->|Document Conversion<br/>HTTP API| Docling
+    Workers -->|Database Updates<br/>Job Results| Postgres
+    Workers -->|Progress Updates<br/>Job Status| Redis
+    
+    %% Storage Access
+    Workers -->|File I/O<br/>Screenshots, PDFs| DataVol
+    Workers -->|Browser Cache<br/>Playwright Data| BrowserData
+    Backend -->|Config Files<br/>models.json| DataVol
+    Backend -->|Logs, Uploads| DataVol
+    
+    %% Styling
+    classDef frontend fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+    classDef backend fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef workers fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef data fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef external fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef storage fill:#f1f8e9,stroke:#689f38,stroke-width:2px
+    
+    class Frontend frontend
+    class Backend backend
+    class Workers,BookmarkJob,ImageJob,DocJob,NoteJob,TaskJob,TaskExecJob workers
+    class Redis,Postgres,BookmarkQ,ImageQ,DocQ,NoteQ,TaskQ,TaskExecQ data
+    class LlamaCppBackend,LlamaCppWorkers,Docling,ExtAPIs external
+    class DataVol,BrowserData storage

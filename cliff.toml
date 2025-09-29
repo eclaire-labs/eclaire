@@ -1,0 +1,101 @@
+# git-cliff configuration for Eclaire
+# ========================================
+# Generates changelogs from Conventional Commits without emojis.
+# - Headings: Features / Bug Fixes / Performance / Documentation / Styling / Refactoring / Testing /
+#             Build System / CI/CD / Dependencies / Security / Reverts / Maintenance / BREAKING CHANGES
+# - Bullets:  "- **scope**: message (short SHA link)"
+#
+# Usage examples:
+#   git-cliff --tag v0.3.1 --prepend CHANGELOG.md
+#   git-cliff --unreleased --prepend CHANGELOG.md
+#
+# Tip: the "repo" variable in the header is used to build commit links below.
+
+[changelog]
+header = """
+# Eclaire Changelog
+
+{% set repo = "https://github.com/eclaire-labs/eclaire" %}
+
+> Note  
+> Versions 0.1.x–0.2.x were released internally before this codebase was published to GitHub.
+> Public releases begin at v0.3.0.
+"""
+
+body = """
+{% if version -%}
+## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{%- else -%}
+## [Unreleased]
+{%- endif %}
+
+{%- for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}
+{%- for commit in commits %}
+- {%- if commit.scope %} **{{ commit.scope }}**: {% endif -%}{{ commit.message | trim }} ([{{ commit.id | truncate(length=7, end="") }}]({{ repo }}/commit/{{ commit.id }}))
+{%- endfor %}
+
+{%- endfor %}
+"""
+
+trim = true
+footer = ""
+
+[git]
+# Grouping rules (ordered by priority). No emojis.
+commit_parsers = [
+  # Breaking changes (highest priority)
+  { body = ".*BREAKING CHANGE.*",         group = "BREAKING CHANGES" },
+  { message = "^feat.*!:",                group = "BREAKING CHANGES" },
+  { message = "^fix.*!:",                 group = "BREAKING CHANGES" },
+
+  # Features / Fixes / etc.
+  { message = "^feat",                    group = "Features" },
+  { message = "^fix",                     group = "Bug Fixes" },
+  { message = "^perf",                    group = "Performance" },
+  { message = "^docs",                    group = "Documentation" },
+  { message = "^style",                   group = "Styling" },
+  { message = "^refactor",                group = "Refactoring" },
+  { message = "^test",                    group = "Testing" },
+
+  # Build & CI
+  { message = "^build",                   group = "Build System" },
+  { message = "^ci",                      group = "CI/CD" },
+
+  # Dependencies
+  { message = "^deps",                    group = "Dependencies" },
+  { message = "^(chore\\(deps\\)|chore\\(dependencies\\))", group = "Dependencies" },
+
+  # Security
+  { message = "^security",                group = "Security" },
+
+  # Reverts
+  { message = "^revert",                  group = "Reverts" },
+
+  # Maintenance (catch-all)
+  { message = "^chore",                   group = "Maintenance" },
+]
+
+# Keep any BREAKING CHANGES even if they'd be filtered otherwise
+protect_breaking_commits = true
+
+# Filter out noise commits
+filter_commits = true
+commit_filters = [
+  { pattern = "^Merge .*",                           skip = true },
+  { pattern = "^chore\\(release\\): bump version.*", skip = true },
+  { pattern = "^chore\\(deps-dev\\):",               skip = true },
+  { pattern = "^wip:",                               skip = true },
+  { pattern = "^WIP:",                               skip = true },
+  { pattern = "^fixup!",                             skip = true },
+  { pattern = "^squash!",                            skip = true },
+]
+
+# Sorting & parsing options
+sort_commits = "oldest"
+tag_pattern = "v[0-9]*"
+ignore_merge_commits = false
+conventional_commits = true
+split_commits = false
+limit_commits = 0
+skip_tags = ""

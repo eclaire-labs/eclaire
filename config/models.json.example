@@ -1,0 +1,288 @@
+{
+  "activeModels": {
+    "workers": "llamacpp-gemma-3-4b-it-qat-gguf-q4-k-xl",
+    "backend": "llamacpp-qwen3-14b-gguf-q4-k-xl"
+  },
+  "models": [
+    {
+      "id": "llamacpp-qwen3-14b-gguf-q4-k-xl",
+      "modelFullName": "unsloth/Qwen3-14B-GGUF:Q4_K_XL",
+      "provider": "llamacpp",
+      "modelShortName": "qwen3-14b-gguf-q4_k_xl",
+      "modelUrl": "https://huggingface.co/unsloth/qwen3-14b-gguf",
+      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "choosable",
+          "control": {
+            "type": "prompt_prefix",
+            "on": "",
+            "off": "/no_think"
+          }
+        }
+      },
+      "contexts": [
+        "backend"
+      ],
+      "description": "text-generation with tags: transformers, gguf, qwen3, text-generation, qwen (GGUF format with 26 quantization options) (Q4_K_XL quantization, 8.5 GB)",
+      "metadata": {
+        "url": "https://huggingface.co/unsloth/qwen3-14b-gguf",
+        "apiEndpoint": "https://api-inference.huggingface.co/models/unsloth/qwen3-14b-gguf",
+        "apiModelId": "unsloth/qwen3-14b-gguf",
+        "isGGUF": true,
+        "selectedQuantization": {
+          "filename": "Qwen3-14B-UD-Q4_K_XL.gguf",
+          "size": 9159818624,
+          "quantization": "Q4_K_XL",
+          "sizeFormatted": "8.5 GB"
+        }
+      }
+    },
+    {
+      "id": "llamacpp-gemma-3-4b-it-qat-gguf-q4-k-xl",
+      "modelFullName": "unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL",
+      "provider": "llamacpp",
+      "modelShortName": "gemma-3-4b-it-qat-gguf-q4_k_xl",
+      "modelUrl": "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF",
+      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "never"
+        }
+      },
+      "contexts": [
+        "workers"
+      ],
+      "description": "image-text-to-text with tags: transformers, gguf, gemma3, image-text-to-text, unsloth (GGUF format with 29 quantization options) (Q4_K_XL quantization, 2.4 GB)",
+      "metadata": {
+        "url": "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF",
+        "apiEndpoint": "https://api-inference.huggingface.co/models/unsloth/gemma-3-4b-it-qat-GGUF",
+        "apiModelId": "unsloth/gemma-3-4b-it-qat-GGUF",
+        "isGGUF": true,
+        "selectedQuantization": {
+          "filename": "gemma-3-4b-it-qat-UD-Q4_K_XL.gguf",
+          "size": 2537530496,
+          "quantization": "Q4_K_XL",
+          "sizeFormatted": "2.4 GB"
+        }
+      }
+    },
+    {
+      "id": "lm-studio-gemma-3-27b-it-qat-gguf-q4-0",
+      "modelFullName": "lmstudio-community/gemma-3-27B-it-qat-GGUF:Q4_0",
+      "provider": "lm-studio",
+      "modelShortName": "gemma-3-27b-it-qat-gguf-q4_0",
+      "modelUrl": "https://huggingface.co/lmstudio-community/gemma-3-27B-it-qat-GGUF",
+      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "never"
+        }
+      },
+      "contexts": [
+        "backend",
+        "workers"
+      ],
+      "description": "image-text-to-text with tags: gguf, image-text-to-text, base_model:google/gemma-3-27b-it, base_model:quantized:google/gemma-3-27b-it, license:gemma (GGUF format with 2 quantization options) (Q4_0 quantization, 14.5 GB)",
+      "metadata": {
+        "url": "https://huggingface.co/lmstudio-community/gemma-3-27B-it-qat-GGUF",
+        "apiEndpoint": "https://api-inference.huggingface.co/models/lmstudio-community/gemma-3-27B-it-qat-GGUF",
+        "apiModelId": "lmstudio-community/gemma-3-27B-it-qat-GGUF",
+        "isGGUF": true,
+        "selectedQuantization": {
+          "filename": "gemma-3-27B-it-QAT-Q4_0.gguf",
+          "size": 15567396544,
+          "quantization": "Q4_0",
+          "sizeFormatted": "14.5 GB"
+        }
+      }
+    },
+    {
+      "id": "mlx_lm-qwen3-30b-a3b-4bit-dwq-10072025",
+      "modelFullName": "mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
+      "provider": "mlx_lm",
+      "modelShortName": "qwen3-30b-a3b-4bit-dwq-10072025",
+      "modelUrl": "https://huggingface.co/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
+      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "never"
+        }
+      },
+      "contexts": [
+        "backend"
+      ],
+      "description": "text-generation with tags: mlx, safetensors, qwen3_moe, text-generation, conversational",
+      "metadata": {
+        "url": "https://huggingface.co/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
+        "apiEndpoint": "https://api-inference.huggingface.co/models/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
+        "apiModelId": "mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
+        "isGGUF": false
+      }
+    },
+    {
+      "id": "ollama_gemma3-27b-it-qat",
+      "provider": "ollama",
+      "modelShortName": "gemma3:27b-it-qat",
+      "modelFullName": "gemma3:27b-it-qat",
+      "modelUrl": "https://ollama.com/library/gemma3:27b",
+      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "never"
+        }
+      },
+      "contexts": [
+        "backend",
+        "workers"
+      ],
+      "description": "Multimodel model by Google, for processing text and images."
+    },
+    {
+      "id": "proxy-qwen3-14b",
+      "modelFullName": "qwen/qwen3-14b",
+      "provider": "proxy",
+      "modelShortName": "qwen3-14b",
+      "modelUrl": "https://openrouter.ai/models/qwen/qwen3-14b",
+      "providerUrl": "${AI_PROXY_PROVIDER_URL}",
+      "apiKey": "${AI_PROXY_API_KEY}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "choosable",
+          "control": {
+            "type": "prompt_prefix",
+            "on": "",
+            "off": "/no_think"
+          }
+        }
+      },
+      "contexts": [
+        "backend"
+      ],
+      "maxTokens": 40960,
+      "description": "Qwen3-14B is a dense 14.8B parameter causal language model from the Qwen3 series, designed for both complex reasoning and efficient dialogue. It supports seamless switching between a \"thinking\" mode for tasks like math, programming, and logical inference, and a \"non-thinking\" mode for general-purpose conversation. The model is fine-tuned for instruction-following, agent tool use, creative writing, and multilingual tasks across 100+ languages and dialects. It natively handles 32K token contexts and can extend to 131K tokens using YaRN-based scaling. (Pricing: $0.04/$0.14 per 1M tokens) | Context: 40,960 tokens",
+      "metadata": {
+        "url": "https://openrouter.ai/models/qwen/qwen3-14b",
+        "apiEndpoint": "https://openrouter.ai/api/v1/chat/completions",
+        "apiModelId": "qwen/qwen3-14b",
+        "pricing": {
+          "prompt": "0.00000004",
+          "completion": "0.00000014",
+          "promptPer1M": 0.04,
+          "completionPer1M": 0.14
+        },
+        "architecture": {
+          "modality": "text->text",
+          "input_modalities": [
+            "text"
+          ],
+          "output_modalities": [
+            "text"
+          ],
+          "tokenizer": "Qwen3",
+          "instruct_type": "qwen3"
+        },
+        "modality": "text->text"
+      }
+    },
+    {
+      "id": "proxy-gpt-5-mini",
+      "modelFullName": "openai/gpt-5-mini",
+      "provider": "proxy",
+      "modelShortName": "gpt-5-mini",
+      "modelUrl": "https://openrouter.ai/models/openai/gpt-5-mini",
+      "providerUrl": "${AI_PROXY_PROVIDER_URL}",
+      "apiKey": "${AI_PROXY_API_KEY}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "never"
+        }
+      },
+      "contexts": [
+        "backend",
+        "workers"
+      ],
+      "maxTokens": 400000,
+      "description": "GPT-5 Mini is a compact version of GPT-5, designed to handle lighter-weight reasoning tasks. It provides the same instruction-following and safety-tuning benefits as GPT-5, but with reduced latency and cost. GPT-5 Mini is the successor to OpenAI's o4-mini model. (Pricing: $0.25/$2.00 per 1M tokens) | Context: 400,000 tokens",
+      "metadata": {
+        "url": "https://openrouter.ai/models/openai/gpt-5-mini",
+        "apiEndpoint": "https://openrouter.ai/api/v1/chat/completions",
+        "apiModelId": "openai/gpt-5-mini",
+        "pricing": {
+          "prompt": "0.00000025",
+          "completion": "0.000002",
+          "promptPer1M": 0.25,
+          "completionPer1M": 2
+        },
+        "architecture": {
+          "modality": "text+image->text",
+          "input_modalities": [
+            "text",
+            "image",
+            "file"
+          ],
+          "output_modalities": [
+            "text"
+          ],
+          "tokenizer": "GPT",
+          "instruct_type": null
+        },
+        "modality": "text,image,file->text"
+      }
+    },
+    {
+      "id": "proxy-gemini-2-5-flash",
+      "modelFullName": "google/gemini-2.5-flash",
+      "provider": "proxy",
+      "modelShortName": "gemini-2.5-flash",
+      "modelUrl": "https://openrouter.ai/models/google/gemini-2.5-flash",
+      "providerUrl": "${AI_PROXY_PROVIDER_URL}",
+      "apiKey": "${AI_PROXY_API_KEY}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "never"
+        }
+      },
+      "contexts": [
+        "backend",
+        "workers"
+      ],
+      "maxTokens": 1048576,
+      "description": "Gemini 2.5 Flash is Google's state-of-the-art workhorse model, specifically designed for advanced reasoning, coding, mathematics, and scientific tasks. It includes built-in \"thinking\" capabilities, enabling it to provide responses with greater accuracy and nuanced context handling. \n\nAdditionally, Gemini 2.5 Flash is configurable through the \"max tokens for reasoning\" parameter, as described in the documentation (https://openrouter.ai/docs/use-cases/reasoning-tokens#max-tokens-for-reasoning). (Pricing: $0.30/$2.50 per 1M tokens) | Context: 1,048,576 tokens",
+      "metadata": {
+        "url": "https://openrouter.ai/models/google/gemini-2.5-flash",
+        "apiEndpoint": "https://openrouter.ai/api/v1/chat/completions",
+        "apiModelId": "google/gemini-2.5-flash",
+        "pricing": {
+          "prompt": "0.0000003",
+          "completion": "0.0000025",
+          "promptPer1M": 0.3,
+          "completionPer1M": 2.5
+        },
+        "architecture": {
+          "modality": "text+image->text",
+          "input_modalities": [
+            "file",
+            "image",
+            "text",
+            "audio"
+          ],
+          "output_modalities": [
+            "text"
+          ],
+          "tokenizer": "Gemini",
+          "instruct_type": null
+        },
+        "modality": "file,image,text,audio->text"
+      }
+    }
+  ]
+}

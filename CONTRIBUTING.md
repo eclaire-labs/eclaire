@@ -1,6 +1,6 @@
 # Contribution Guide
 
-Thank you for your interest in contributing to Eclaire! We welcome contributions from everyone.
+Thank you for your interest in contributing! We're looking for people interested in the vision of Eclaire and willing to help. Have a look at the [Roadmap](README.md#roadmap), [GitHub Issues](https://github.com/eclaire-labs/eclaire/issues), or feel free to suggest features or fixes. There are areas for improvement across the whole stack. We're also open to integrating or partnering with other open source projects that are building pieces that can augment, complement, or replace some of the existing building blocks in Eclaire.
 
 ## Code Style
 
