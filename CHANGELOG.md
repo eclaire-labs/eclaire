@@ -1,6 +1,6 @@
 # Eclaire Changelog
 
-## [0.3.0] - 2025-09-28
+## [0.3.0] - 2025-09-29
 ### Features
 - **repo**: publish core application (backend, frontend, workers) to a public repository
 - **ui**: new logo and refreshed theme with light/dark support
