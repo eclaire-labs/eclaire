@@ -316,68 +316,6 @@ The system automatically creates all required data directories when services sta
 ## Contributing
 We 💙 contributions! Please read the Contributing Guide.
 
-## Troubleshooting
-
-### Setup Issues
-
-**"tsx: command not found" during database migration**
-- Ensure npm dependencies are installed: `cd apps/backend && npm install`
-- Run setup again: `npm run setup:dev`
-
-**Models downloading slowly or failing**
-- Check model download progress: `pm2 logs llama_backend --lines 100`
-- Models are large (3-8GB) and may take 5-10 minutes on first download
-- Ensure stable internet connection
-- Try restarting PM2: `pm2 restart llama_backend`
-
-**Database connection errors**
-- Check if PostgreSQL is running: `pm2 logs postgres --lines 50`
-- Restart dependencies: `pm2 restart pm2.deps.config.js`
-- Check Docker containers: `docker ps`
-
-**PM2 not found**
-- Install PM2 globally: `npm install -g pm2`
-- Run setup again: `npm run setup:dev`
-
-**Permission errors with Docker**
-- Ensure Docker is running and you have permissions
-- On Linux, you may need to add your user to the docker group
-- Try running setup with `sudo` if necessary (not recommended for regular use)
-
-**npm warning "Unknown env config"**
-- To use non-interactive mode with npm, pass arguments after `--`:
-  ```bash
-  npm run setup:dev -- --yes
-  ```
-- Or use the dedicated non-interactive script:
-  ```bash
-  npm run setup:dev:yes
-  ```
-
-### Runtime Issues
-
-**Frontend won't load (localhost:3000)**
-- Check if backend is running: `curl http://localhost:3001/health`
-- Check frontend dev server: `cd apps/frontend && npm run dev`
-- Verify all dependencies are installed: `npm run setup:check`
-
-**AI responses not working**
-- Check if AI models are running: `pm2 logs llama_backend --lines 100`
-- Verify models finished downloading (no "downloading" messages in logs)
-- Check model configuration in `config/models.json`
-
-**Memory issues**
-- AI models require significant RAM (8GB+ recommended)
-- Consider using smaller models in `config/models.json`
-- Monitor system resources: `pm2 monit`
-
-### Getting Help
-
-For additional issues:
-- Check the logs: `pm2 logs --lines 100`
-- Review the error messages in setup output
-- Open an issue on GitHub with detailed error information
-
 ## Security
 See [SECURITY.md](./SECURITY.md) for our policy.
 
