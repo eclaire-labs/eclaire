@@ -14,6 +14,19 @@
   <a href="./LICENSE"><img alt="License" src="https://img.shields.io/github/license/eclaire-labs/eclaire"></a>
   <a href="https://github.com/eclaire-labs/eclaire/releases"><img alt="Release" src="https://img.shields.io/github/v/release/eclaire-labs/eclaire?sort=semver"></a>
   <a href="https://eclaire.co/docs"><img alt="Docs" src="https://img.shields.io/badge/docs-eclaire.co%2Fdocs-informational"></a>
+  <a href="https://youtu.be/JiBnoTmev0w"><img alt="Watch demo" src="https://img.shields.io/badge/Watch%20demo-YouTube-red?logo=youtube"></a>
+</p>
+
+<p align="center" id="demo">
+  <a href="https://youtu.be/JiBnoTmev0w" target="_blank" rel="noopener">
+    <img
+      src="https://github.com/eclaire-labs/eclaire/releases/download/media/eclaire-demo-preview.gif"
+      alt="Eclaire demo preview (click to watch on YouTube)"
+      width="900"
+    />
+  </a>
+  <br/>
+  <sub><em>Click to watch on YouTube</em></sub>
 </p>
 
 <p align="center">
