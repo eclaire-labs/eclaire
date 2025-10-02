@@ -36,7 +36,7 @@
   "author": "Eclaire Labs",
   "license": "MIT",
   "dependencies": {
-    "axios": "1.7.7",
+    "axios": "1.12.2",
     "boxen": "7.1.1",
     "chalk": "5.3.0",
     "cli-table3": "^0.6.5",
