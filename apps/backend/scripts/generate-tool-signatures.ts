@@ -47,7 +47,12 @@ async function generateToolSignatures() {
       const returnType = match[4]?.trim();
 
       if (!comment || !functionName || !params || !returnType) {
-        console.warn('Skipping incomplete match:', { comment, functionName, params, returnType });
+        console.warn("Skipping incomplete match:", {
+          comment,
+          functionName,
+          params,
+          returnType,
+        });
         continue;
       }
 

@@ -1767,7 +1767,9 @@ export async function getPhotoStreamDetailsForViewing(
 
   // If the photo has failed processing and has no storageId, return a specific error
   if (processingStatus === "failed" && !photoMeta.storageId) {
-    throw createNotFoundError("Photo processing failed and file is not available.");
+    throw createNotFoundError(
+      "Photo processing failed and file is not available.",
+    );
   }
 
   const originalMimeType = photoMeta.mimeType || "application/octet-stream";

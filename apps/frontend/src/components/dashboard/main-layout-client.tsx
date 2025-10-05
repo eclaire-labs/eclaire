@@ -28,7 +28,6 @@ import {
   useTransition,
 } from "react";
 import { flushSync } from "react-dom";
-import packageJson from "../../../package.json";
 import { GlobalAssistant } from "@/components/assistant/global-assistant";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
@@ -69,6 +68,7 @@ import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvide
 import type { Bookmark as BookmarkType } from "@/types/bookmark";
 import type { AssetReference, ContentLink, Message } from "@/types/message";
 import { convertToToolCallSummary } from "@/types/message";
+import packageJson from "../../../package.json";
 
 function convertBackendMessage(msg: BackendMessage): Message {
   console.log("🔄 Converting backend message:", {

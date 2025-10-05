@@ -29,7 +29,6 @@ const logger = createChildLogger("bookmark-processor");
 // Validate API credentials on startup
 validateApiCredentials();
 
-
 /**
  * Regular bookmark processing handler using the new reporter pattern.
  */
@@ -58,10 +57,13 @@ async function processRegularBookmarkJob(
     try {
       logger.debug({ bookmarkId }, "Attempting to launch browser context...");
       context = await withTimeout(
-        chromium.launchPersistentContext(process.env.BROWSER_DATA_DIR || "./browser-data", {
-          headless: true,
-          viewport: null,
-        }),
+        chromium.launchPersistentContext(
+          process.env.BROWSER_DATA_DIR || "./browser-data",
+          {
+            headless: true,
+            viewport: null,
+          },
+        ),
         config.timeouts.browserContext,
         "Browser context setup",
       );
@@ -443,7 +445,6 @@ async function processRegularBookmarkJob(
     logger.debug({ bookmarkId }, "Cleanup phase completed.");
   }
 }
-
 
 // --- MAIN JOB PROCESSOR ---
 

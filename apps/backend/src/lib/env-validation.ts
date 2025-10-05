@@ -6,7 +6,11 @@ export function validateRequiredEnvVars() {
   const allowDevKeys = process.env.ALLOW_DEV_KEYS === "true";
 
   // Validate presence of all required variables
-  const required = ["BETTER_AUTH_SECRET", "MASTER_ENCRYPTION_KEY", "API_KEY_HMAC_KEY_V1"];
+  const required = [
+    "BETTER_AUTH_SECRET",
+    "MASTER_ENCRYPTION_KEY",
+    "API_KEY_HMAC_KEY_V1",
+  ];
   const missing = required.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {
@@ -31,7 +35,10 @@ export function validateRequiredEnvVars() {
       const normalizedValue = value.toLowerCase();
 
       // Check for known dev patterns
-      if (normalizedValue.includes("devonly") || normalizedValue.includes("123456789abcdef")) {
+      if (
+        normalizedValue.includes("devonly") ||
+        normalizedValue.includes("123456789abcdef")
+      ) {
         insecureVars.push(key);
       }
 
@@ -40,7 +47,9 @@ export function validateRequiredEnvVars() {
         case "MASTER_ENCRYPTION_KEY":
           // Must be exactly 64 hex characters (32 bytes for AES-256)
           if (value.length !== 64 || !/^[0-9a-fA-F]{64}$/.test(value)) {
-            invalidLengthVars.push(`${key} (must be exactly 64 hex characters)`);
+            invalidLengthVars.push(
+              `${key} (must be exactly 64 hex characters)`,
+            );
           }
           break;
         case "BETTER_AUTH_SECRET":

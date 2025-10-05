@@ -1,5 +1,5 @@
 // Load environment variables before anything else
-import '../src/lib/env-loader';
+import "../src/lib/env-loader";
 
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -31,7 +31,7 @@ async function main() {
       try {
         const result = await client`SELECT count(*) FROM users`;
         console.log("✅ Database appears to be migrated (users table exists)");
-        console.log(`   Users count: ${result[0]?.count ?? 'unknown'}`);
+        console.log(`   Users count: ${result[0]?.count ?? "unknown"}`);
       } catch (error) {
         console.log(
           "❌ Database appears to need migration (users table missing)",
@@ -46,15 +46,11 @@ async function main() {
       console.log("🚀 Running database migrations...");
 
       if (!forceFlag && process.env.NODE_ENV === "production") {
-        console.log(
-          "⚠️  Running migrations in PRODUCTION environment.",
-        );
+        console.log("⚠️  Running migrations in PRODUCTION environment.");
         console.log(
           "   This will apply all pending migrations to the database.",
         );
-        console.log(
-          "   Make sure you have a backup before proceeding.",
-        );
+        console.log("   Make sure you have a backup before proceeding.");
         console.log("");
         console.log("❌ Production mode requires --force flag for safety");
         process.exit(1);

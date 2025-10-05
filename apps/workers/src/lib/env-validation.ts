@@ -30,8 +30,10 @@ export function validateRequiredEnvVars() {
       const normalizedValue = value.toLowerCase();
 
       // Check for known dev patterns
-      if (normalizedValue.includes("devonly") ||
-          normalizedValue.includes("123456789abcdef")) {
+      if (
+        normalizedValue.includes("devonly") ||
+        normalizedValue.includes("123456789abcdef")
+      ) {
         insecureVars.push(key);
       }
     }

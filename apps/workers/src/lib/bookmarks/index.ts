@@ -14,10 +14,7 @@ export interface BookmarkJobData {
   userId: string;
 }
 
-export type BookmarkHandlerType =
-  | "regular"
-  | "github"
-  | "reddit";
+export type BookmarkHandlerType = "regular" | "github" | "reddit";
 
 export interface BookmarkArtifacts {
   normalizedUrl: string;
@@ -90,27 +87,42 @@ export function validateApiCredentials(): void {
   console.log("\n=== API Credentials Status ===");
 
   if (hasGitHub) {
-    console.log("✅ GitHub API token found - enhanced GitHub repository processing available");
+    console.log(
+      "✅ GitHub API token found - enhanced GitHub repository processing available",
+    );
   } else {
-    console.log("⚠️  No GitHub API token found - using unauthenticated requests (limited to ~60 requests/hour)");
-    console.log("   Set GITHUB_TOKEN environment variable for enhanced GitHub features");
+    console.log(
+      "⚠️  No GitHub API token found - using unauthenticated requests (limited to ~60 requests/hour)",
+    );
+    console.log(
+      "   Set GITHUB_TOKEN environment variable for enhanced GitHub features",
+    );
   }
 
   if (hasReddit) {
-    console.log("✅ Reddit API credentials found - enhanced Reddit post processing available");
+    console.log(
+      "✅ Reddit API credentials found - enhanced Reddit post processing available",
+    );
   } else {
-    console.log("⚠️  No Reddit API credentials found - Reddit posts will be processed as regular web pages");
-    console.log("   Set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET environment variables for enhanced Reddit features");
+    console.log(
+      "⚠️  No Reddit API credentials found - Reddit posts will be processed as regular web pages",
+    );
+    console.log(
+      "   Set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET environment variables for enhanced Reddit features",
+    );
   }
 
   console.log("==============================\n");
 
   // Log to structured logger as well
   const logger = require("../logger").createChildLogger("api-credentials");
-  logger.info({
-    github: hasGitHub,
-    reddit: hasReddit
-  }, "API credential availability check");
+  logger.info(
+    {
+      github: hasGitHub,
+      reddit: hasReddit,
+    },
+    "API credential availability check",
+  );
 }
 
 /**

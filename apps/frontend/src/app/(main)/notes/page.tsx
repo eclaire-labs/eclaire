@@ -21,12 +21,7 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useRouter } from "next/navigation";
-import React, {
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";

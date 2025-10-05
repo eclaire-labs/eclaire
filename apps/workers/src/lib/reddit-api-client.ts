@@ -555,7 +555,8 @@ export class RedditApiClient {
       if (!this.hasCredentials()) {
         return {
           success: false,
-          error: "Reddit API credentials not available. Please set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET environment variables.",
+          error:
+            "Reddit API credentials not available. Please set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET environment variables.",
         };
       }
 

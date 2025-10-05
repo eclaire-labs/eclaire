@@ -1400,14 +1400,20 @@ async function queueRetryJob(
         );
 
         // Queue document processing job (matches normal flow in documents.ts)
-        const documentProcessingQueue = getQueue(QueueNames.DOCUMENT_PROCESSING);
+        const documentProcessingQueue = getQueue(
+          QueueNames.DOCUMENT_PROCESSING,
+        );
         if (documentProcessingQueue) {
           await documentProcessingQueue.add("processDocument", {
             documentId: assetId,
             storageId: document.storageId,
-            mimeType: document.originalMimeType || document.mimeType || "application/pdf",
+            mimeType:
+              document.originalMimeType ||
+              document.mimeType ||
+              "application/pdf",
             userId: userId,
-            originalFilename: document.originalFilename || `document-${assetId}`,
+            originalFilename:
+              document.originalFilename || `document-${assetId}`,
           });
           logger.info(
             { assetId, userId },

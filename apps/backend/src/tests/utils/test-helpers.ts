@@ -1,9 +1,12 @@
 export const BASE_URL = "http://localhost:3001/api";
-export const TEST_API_KEY = "sk-demouserkey0001-testSecretDemoUser12345678901234";
-export const TEST_API_KEY_2 = "sk-demouserkey0002-testSecretDemoUser22345678901234";
+export const TEST_API_KEY =
+  "sk-demouserkey0001-testSecretDemoUser12345678901234";
+export const TEST_API_KEY_2 =
+  "sk-demouserkey0002-testSecretDemoUser22345678901234";
 export const DEMO_EMAIL = "demo@example.com";
 export const DEMO_PASSWORD = "Demo@123";
-export const DEMO_API_KEY = "sk-demouserkey0001-testSecretDemoUser12345678901234";
+export const DEMO_API_KEY =
+  "sk-demouserkey0001-testSecretDemoUser12345678901234";
 
 export const VERBOSE = process.env.VERBOSE === "true" || false;
 

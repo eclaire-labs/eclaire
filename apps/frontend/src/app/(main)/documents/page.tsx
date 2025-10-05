@@ -78,11 +78,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useToast } from "@/hooks/use-toast";
 import { useViewPreferences } from "@/hooks/use-view-preferences";
-import {
-  apiFetch,
-  setFlagColor,
-  togglePin,
-} from "@/lib/frontend-api";
+import { apiFetch, setFlagColor, togglePin } from "@/lib/frontend-api";
 import type { Document } from "@/types/document";
 
 // --- Type Definitions ---

@@ -1002,13 +1002,16 @@ export default function BookmarkDetailPage() {
                     <div className="flex items-center gap-3 mt-1">
                       {bookmark.rawMetadata.twitter.author_profile_image ? (
                         <img
-                          src={bookmark.rawMetadata.twitter.author_profile_image}
+                          src={
+                            bookmark.rawMetadata.twitter.author_profile_image
+                          }
                           alt={bookmark.rawMetadata.twitter.author_name}
                           className="h-8 w-8 rounded-full"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = "none";
-                            const fallback = target.nextElementSibling as HTMLElement;
+                            const fallback =
+                              target.nextElementSibling as HTMLElement;
                             if (fallback) fallback.style.display = "flex";
                           }}
                         />
@@ -1016,7 +1019,10 @@ export default function BookmarkDetailPage() {
                       <div
                         className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center"
                         style={{
-                          display: bookmark.rawMetadata.twitter.author_profile_image ? "none" : "flex"
+                          display: bookmark.rawMetadata.twitter
+                            .author_profile_image
+                            ? "none"
+                            : "flex",
                         }}
                       >
                         <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />

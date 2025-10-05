@@ -1,12 +1,12 @@
 // Load environment variables before anything else
-import '../src/lib/env-loader';
+import "../src/lib/env-loader";
 
 import { hashPassword } from "better-auth/crypto";
+import { randomBytes } from "crypto";
 import type { InferInsertModel } from "drizzle-orm";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { v4 as uuid } from "uuid";
-import { randomBytes } from "crypto";
 import { getDatabaseUrl } from "../src/db/config";
 import * as schema from "../src/db/schema";
 import { hmacBase64 } from "../src/lib/api-key-security";
@@ -19,7 +19,10 @@ type InsertApiKey = InferInsertModel<typeof schema.apiKeys>;
 type Database = PostgresJsDatabase<typeof schema>;
 
 // --- Helper Functions ---
-function computeApiKeyHash(fullKey: string): { keyHash: string; hashVersion: number } {
+function computeApiKeyHash(fullKey: string): {
+  keyHash: string;
+  hashVersion: number;
+} {
   // Use the HMAC key from environment
   const pepperKey = process.env.API_KEY_HMAC_KEY_V1;
   const allowDevKeys = process.env.ALLOW_DEV_KEYS === "true";
@@ -31,7 +34,9 @@ function computeApiKeyHash(fullKey: string): { keyHash: string; hashVersion: num
   // Check for dev-only patterns
   if (pepperKey.toLowerCase().startsWith("devonly")) {
     if (!allowDevKeys) {
-      throw new Error("API_KEY_HMAC_KEY_V1 contains dev-only pattern. Set ALLOW_DEV_KEYS=true to allow this in development.");
+      throw new Error(
+        "API_KEY_HMAC_KEY_V1 contains dev-only pattern. Set ALLOW_DEV_KEYS=true to allow this in development.",
+      );
     }
     console.warn("⚠️  Using dev-only HMAC key (ALLOW_DEV_KEYS is true)");
   }
@@ -42,19 +47,23 @@ function computeApiKeyHash(fullKey: string): { keyHash: string; hashVersion: num
 }
 
 // Generate secure API key for production
-function generateSecureApiKey(): { fullKey: string; keyId: string; keySuffix: string } {
-  const keyId = randomBytes(8).toString('hex').substring(0, 15).toUpperCase();
-  const secret = randomBytes(16).toString('hex');
+function generateSecureApiKey(): {
+  fullKey: string;
+  keyId: string;
+  keySuffix: string;
+} {
+  const keyId = randomBytes(8).toString("hex").substring(0, 15).toUpperCase();
+  const secret = randomBytes(16).toString("hex");
   const fullKey = `sk-${keyId}-${secret}`;
   const keySuffix = secret.substring(secret.length - 4);
   return { fullKey, keyId, keySuffix };
 }
 
 // Check if running in production mode based on seed type
-const isProductionSeed = process.argv.includes('--essential') && (
-  process.env.NODE_ENV === 'production' ||
-  process.env.GENERATE_SECURE_KEYS === 'true'
-);
+const isProductionSeed =
+  process.argv.includes("--essential") &&
+  (process.env.NODE_ENV === "production" ||
+    process.env.GENERATE_SECURE_KEYS === "true");
 
 // --- Fixed Test API Keys (Development/Testing Only) ---
 // These values are pre-calculated and NEVER change
@@ -262,8 +271,12 @@ async function main() {
 
     // Essential API keys (worker and AI assistant)
     // Use real secure keys for production, fixed keys for dev/demo
-    workerKey = isProductionSeed ? generateSecureApiKey() : FIXED_TEST_KEYS.worker;
-    aiAssistantKey = isProductionSeed ? generateSecureApiKey() : FIXED_TEST_KEYS.aiAssistant;
+    workerKey = isProductionSeed
+      ? generateSecureApiKey()
+      : FIXED_TEST_KEYS.worker;
+    aiAssistantKey = isProductionSeed
+      ? generateSecureApiKey()
+      : FIXED_TEST_KEYS.aiAssistant;
 
     const workerHash = computeApiKeyHash(workerKey.fullKey);
     const aiAssistantHash = computeApiKeyHash(aiAssistantKey.fullKey);
@@ -340,7 +353,9 @@ async function main() {
 
     console.log("--- Service Accounts ---");
     if (isProductionSeed) {
-      console.log(`  ⚠️  IMPORTANT: Save these API keys securely - they won't be shown again!`);
+      console.log(
+        `  ⚠️  IMPORTANT: Save these API keys securely - they won't be shown again!`,
+      );
     }
     console.log(`  Worker API Key: ${workerKey.fullKey}`);
     console.log(`  AI Assistant API Key: ${aiAssistantKey.fullKey}`);

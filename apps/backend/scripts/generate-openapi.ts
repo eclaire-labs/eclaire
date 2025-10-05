@@ -86,10 +86,7 @@ async function main() {
   const json = JSON.stringify(spec, null, 2);
 
   // Write to backend dist directory - keep the spec where it's generated
-  const outputPath = resolve(
-    __dirname,
-    "../dist/openapi.json",
-  );
+  const outputPath = resolve(__dirname, "../dist/openapi.json");
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, json, "utf8");
 

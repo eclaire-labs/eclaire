@@ -347,8 +347,6 @@ app.route("/api/prompt", promptRoutes);
 app.route("/api/processing-status", processingStatusRoutes);
 app.route("/api/processing-events", processingEventsRoutes);
 
-
-
 // Start the server
 const start = async () => {
   try {

@@ -75,19 +75,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  TooltipProvider,
-} from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useBookmarks } from "@/hooks/use-bookmarks";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useToast } from "@/hooks/use-toast";
 import { useViewPreferences } from "@/hooks/use-view-preferences";
-import {
-  getAbsoluteApiUrl,
-  setFlagColor,
-  togglePin,
-} from "@/lib/frontend-api";
+import { getAbsoluteApiUrl, setFlagColor, togglePin } from "@/lib/frontend-api";
 import type { Bookmark } from "@/types/bookmark";
 
 // Helper function to format dates (handles both Unix timestamps and ISO strings)

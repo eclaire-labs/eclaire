@@ -4,7 +4,8 @@ const isProd = process.env.NODE_ENV === "production";
 
 const base = {
   service: "eclaire-workers",
-  version: process.env.APP_VERSION || process.env.npm_package_version || "0.1.0",
+  version:
+    process.env.APP_VERSION || process.env.npm_package_version || "0.1.0",
   environment: process.env.NODE_ENV || "development",
 };
 

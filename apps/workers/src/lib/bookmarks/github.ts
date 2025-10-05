@@ -61,10 +61,13 @@ export async function processGitHubBookmark(
     await reporter.updateStage("content_extraction", "processing", 0);
 
     // Standard browser-based content extraction
-    context = await chromium.launchPersistentContext(process.env.BROWSER_DATA_DIR || "./browser-data", {
-      headless: true,
-      viewport: null,
-    });
+    context = await chromium.launchPersistentContext(
+      process.env.BROWSER_DATA_DIR || "./browser-data",
+      {
+        headless: true,
+        viewport: null,
+      },
+    );
     const page = await context.newPage();
 
     // Navigate to the URL with fallback strategies for slow-loading pages

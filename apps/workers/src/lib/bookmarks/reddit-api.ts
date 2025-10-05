@@ -140,10 +140,13 @@ export async function processRedditApiBookmark(
     logger.info({ bookmarkId }, "Generating screenshots and PDFs");
 
     // Launch browser context
-    context = await chromium.launchPersistentContext(process.env.BROWSER_DATA_DIR || "./browser-data", {
-      headless: true,
-      viewport: null,
-    });
+    context = await chromium.launchPersistentContext(
+      process.env.BROWSER_DATA_DIR || "./browser-data",
+      {
+        headless: true,
+        viewport: null,
+      },
+    );
     const page = await context.newPage();
 
     // Create a data URL for the HTML content (no-comments version for screenshots)

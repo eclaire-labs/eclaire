@@ -5,15 +5,15 @@ import { validateRequiredEnvVars } from "./lib/env-validation";
 // Validate required environment variables before starting
 validateRequiredEnvVars();
 
-import fs from "fs";
-import path from "path";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { HonoAdapter } from "@bull-board/hono";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { type Job, Worker } from "bullmq";
+import fs from "fs";
 import { Hono } from "hono";
+import path from "path";
 import { config } from "./config";
 import processBookmarkJob from "./jobs/bookmarkProcessor";
 import { processDocumentJob } from "./jobs/documentProcessor";
@@ -44,8 +44,11 @@ try {
   logger.info({ browserDataDir }, "Browser data directory ensured");
 } catch (error) {
   logger.error(
-    { browserDataDir, error: error instanceof Error ? error.message : "Unknown error" },
-    "Failed to create browser data directory"
+    {
+      browserDataDir,
+      error: error instanceof Error ? error.message : "Unknown error",
+    },
+    "Failed to create browser data directory",
   );
   process.exit(1);
 }

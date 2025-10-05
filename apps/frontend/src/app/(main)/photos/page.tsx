@@ -1265,13 +1265,20 @@ export default function PhotosPage() {
                 {/* Added padding-right for scrollbar */}
                 <div className="md:col-span-2 aspect-video overflow-hidden rounded-md bg-muted flex items-center justify-center">
                   <img
-                    src={selectedPhoto.processingStatus === "failed" ? "/placeholder.svg" : selectedPhoto.imageUrl}
+                    src={
+                      selectedPhoto.processingStatus === "failed"
+                        ? "/placeholder.svg"
+                        : selectedPhoto.imageUrl
+                    }
                     alt={selectedPhoto.title}
                     className="object-contain max-w-full max-h-[70vh]"
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
                       // Prevent infinite error loops by tracking retry count
-                      const retryCount = parseInt(img.dataset.retryCount || "0", 10);
+                      const retryCount = parseInt(
+                        img.dataset.retryCount || "0",
+                        10,
+                      );
                       if (retryCount < 1) {
                         img.dataset.retryCount = String(retryCount + 1);
                         img.src = "/placeholder.svg";
@@ -1671,13 +1678,20 @@ export default function PhotosPage() {
             {photoToDelete && (
               <div className="my-4 flex justify-center">
                 <img
-                  src={photoToDelete.processingStatus === "failed" ? "/placeholder.svg" : photoToDelete.imageUrl}
+                  src={
+                    photoToDelete.processingStatus === "failed"
+                      ? "/placeholder.svg"
+                      : photoToDelete.imageUrl
+                  }
                   alt="Thumbnail"
                   className="max-h-24 rounded border bg-muted"
                   onError={(e) => {
                     const img = e.target as HTMLImageElement;
                     // Prevent infinite error loops by tracking retry count
-                    const retryCount = parseInt(img.dataset.retryCount || "0", 10);
+                    const retryCount = parseInt(
+                      img.dataset.retryCount || "0",
+                      10,
+                    );
                     if (retryCount < 1) {
                       img.dataset.retryCount = String(retryCount + 1);
                       img.src = "/placeholder.svg";
@@ -1956,7 +1970,8 @@ function PhotoTileItem({
   );
   const displayDate = formatDate(photo.dateTaken ?? photo.createdAt);
   // Don't load image for failed photos to prevent infinite error loops
-  const imgSrc = photo.processingStatus === "failed" ? "/placeholder.svg" : photo.imageUrl;
+  const imgSrc =
+    photo.processingStatus === "failed" ? "/placeholder.svg" : photo.imageUrl;
 
   return (
     <Card
@@ -2166,7 +2181,10 @@ function ListView({
             photo.locationCountryName,
           );
           // Don't load image for failed photos to prevent infinite error loops
-          const imgSrc = photo.processingStatus === "failed" ? "/placeholder.svg" : photo.imageUrl;
+          const imgSrc =
+            photo.processingStatus === "failed"
+              ? "/placeholder.svg"
+              : photo.imageUrl;
           const isFocused = index === focusedIndex;
 
           return (
@@ -2188,7 +2206,10 @@ function ListView({
                   onError={(e) => {
                     const img = e.target as HTMLImageElement;
                     // Prevent infinite error loops by tracking retry count
-                    const retryCount = parseInt(img.dataset.retryCount || "0", 10);
+                    const retryCount = parseInt(
+                      img.dataset.retryCount || "0",
+                      10,
+                    );
                     if (retryCount < 1) {
                       img.dataset.retryCount = String(retryCount + 1);
                       img.src = "/placeholder.svg";
@@ -2348,7 +2369,10 @@ function GalleryView({
   if (!currentPhoto) return null; // Should not happen if index is valid
 
   // Don't load image for failed photos to prevent infinite error loops
-  const imgSrc = currentPhoto.processingStatus === "failed" ? "/placeholder.svg" : currentPhoto.imageUrl;
+  const imgSrc =
+    currentPhoto.processingStatus === "failed"
+      ? "/placeholder.svg"
+      : currentPhoto.imageUrl;
 
   // Touch/swipe navigation state
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(
@@ -2518,7 +2542,10 @@ function GalleryView({
             {thumbIndices.map((idx) => {
               const thumbPhoto = photos[idx];
               // Don't load image for failed photos to prevent infinite error loops
-              const thumbSrc = thumbPhoto.processingStatus === "failed" ? "/placeholder.svg" : thumbPhoto.imageUrl;
+              const thumbSrc =
+                thumbPhoto.processingStatus === "failed"
+                  ? "/placeholder.svg"
+                  : thumbPhoto.imageUrl;
               return (
                 <div
                   key={thumbPhoto.id}
@@ -2536,7 +2563,10 @@ function GalleryView({
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
                       // Prevent infinite error loops by tracking retry count
-                      const retryCount = parseInt(img.dataset.retryCount || "0", 10);
+                      const retryCount = parseInt(
+                        img.dataset.retryCount || "0",
+                        10,
+                      );
                       if (retryCount < 1) {
                         img.dataset.retryCount = String(retryCount + 1);
                         img.src = "/placeholder.svg";

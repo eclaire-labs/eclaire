@@ -119,8 +119,9 @@ function loadModelConfiguration(): ModelsConfiguration {
     logger.info(
       {
         modelsCount: config.models.length,
-        modelsList: config.models
-          .map((m) => `${m.provider}:${m.modelShortName}`),
+        modelsList: config.models.map(
+          (m) => `${m.provider}:${m.modelShortName}`,
+        ),
       },
       "Model configuration loaded successfully",
     );
@@ -149,10 +150,13 @@ export function getActiveModelForContext(
     }
 
     const activeModelId = config.activeModels[context];
-    const model = config.models.find(m => m.id === activeModelId);
+    const model = config.models.find((m) => m.id === activeModelId);
 
     if (!model) {
-      logger.warn({ context, activeModelId }, "Active model ID not found in models list");
+      logger.warn(
+        { context, activeModelId },
+        "Active model ID not found in models list",
+      );
       return null;
     }
 
@@ -534,7 +538,6 @@ function validateAIConfig(
       `Model configuration not found for provider '${providerName}' and model '${modelShortName}'. Check your models.json configuration.`,
     );
   }
-
 
   const configSource = overrides ? "overrides" : "activeModel";
   logger.info(

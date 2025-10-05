@@ -124,8 +124,9 @@ function loadModelConfiguration(): ModelsConfiguration {
     logger.info(
       {
         modelsCount: config.models.length,
-        modelsList: config.models
-          .map((m) => `${m.provider}:${m.modelShortName}`),
+        modelsList: config.models.map(
+          (m) => `${m.provider}:${m.modelShortName}`,
+        ),
       },
       "Worker model configuration loaded successfully",
     );
@@ -152,10 +153,13 @@ export function getActiveModelForWorkers(): ModelConfig | null {
     }
 
     const activeModelId = config.activeModels.workers;
-    const model = config.models.find(m => m.id === activeModelId);
+    const model = config.models.find((m) => m.id === activeModelId);
 
     if (!model) {
-      logger.warn({ activeModelId }, "Active model ID not found in models list");
+      logger.warn(
+        { activeModelId },
+        "Active model ID not found in models list",
+      );
       return null;
     }
 
@@ -445,7 +449,6 @@ function validateWorkerAIConfig(): AIProvider {
       `Worker model configuration not found for provider '${providerName}' and model '${modelShortName}'. Check your models.json configuration.`,
     );
   }
-
 
   logger.info(
     {

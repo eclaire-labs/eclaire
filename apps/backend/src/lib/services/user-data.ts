@@ -475,14 +475,14 @@ export async function getActivityTimeline(userId: string, days: number = 30) {
       const dateStr = date.toISOString().split("T")[0];
       if (dateStr) {
         activityMap.set(dateStr, {
-        date: dateStr,
-        bookmarks: 0,
-        documents: 0,
-        photos: 0,
-        notes: 0,
-        tasks: 0,
-        total: 0,
-      });
+          date: dateStr,
+          bookmarks: 0,
+          documents: 0,
+          photos: 0,
+          notes: 0,
+          tasks: 0,
+          total: 0,
+        });
       }
     }
 
