@@ -477,7 +477,7 @@ async function handleStaleJob(
       const errorMessage = `Job timed out after ${Math.round(staleTimeMs / 1000)}s and was cleaned up by the rate limiter (domain: ${domain})`;
 
       // Use the job's own methods to fail it in BullMQ
-      await job.moveToFailed({ message: errorMessage }, "stale_job_cleanup");
+      await job.moveToFailed(new Error(errorMessage), "stale_job_cleanup");
 
       logger.info(
         { jobId, domain, staleTimeMs },
