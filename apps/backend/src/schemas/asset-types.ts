@@ -1,4 +1,4 @@
-import { z } from "zod";
+import z from "zod/v4";
 import { ASSET_COLLECTION_TYPE } from "../types/assets";
 
 // Shared asset type schema - single source of truth

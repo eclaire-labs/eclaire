@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi/zod";
-import { z } from "zod";
+import { validator as zValidator } from "hono-openapi";
+import z from "zod/v4";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
 import { createChildLogger } from "@/lib/logger";
 // Import services
@@ -206,7 +206,7 @@ notificationsRoutes.post(
           {
             error: "Invalid request data",
             message: "Request validation failed",
-            details: error.errors,
+            details: error.issues,
           },
           400,
         );

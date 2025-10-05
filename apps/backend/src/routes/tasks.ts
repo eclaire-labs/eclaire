@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi/zod";
-import { z } from "zod";
+import { validator as zValidator } from "hono-openapi";
+import z from "zod/v4";
 import { db } from "@/db";
 import { tasks } from "@/db/schema";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
@@ -136,7 +136,7 @@ tasksRoutes.get("/", describeRoute(getTasksRouteDescription), async (c) => {
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid search parameters", details: error.errors },
+          { error: "Invalid search parameters", details: error.issues },
           400,
         );
       }
@@ -199,7 +199,7 @@ tasksRoutes.post(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid request data", details: error.errors },
+          { error: "Invalid request data", details: error.issues },
           400,
         );
       }
@@ -362,14 +362,14 @@ tasksRoutes.patch(
             taskId: id,
             userId,
             body,
-            validationErrors: validationResult.error.errors,
+            validationErrors: validationResult.error.issues,
           },
           "Task PATCH validation failed",
         );
         return c.json(
           {
             error: "Invalid request data",
-            details: validationResult.error.errors,
+            details: validationResult.error.issues,
           },
           400,
         );
@@ -499,7 +499,7 @@ tasksRoutes.patch(
   zValidator(
     "json",
     z.object({
-      reviewStatus: z.enum(["pending", "accepted", "rejected"]).openapi({
+      reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
         description: "New review status for the task",
         examples: ["accepted", "rejected"],
       }),
@@ -547,7 +547,7 @@ tasksRoutes.patch(
       flagColor: z
         .enum(["red", "yellow", "orange", "green", "blue"])
         .nullable()
-        .openapi({
+        .meta({
           description: "Flag color for the task (null to remove flag)",
           examples: ["red", "green", null],
         }),
@@ -592,7 +592,7 @@ tasksRoutes.patch(
   zValidator(
     "json",
     z.object({
-      isPinned: z.boolean().openapi({
+      isPinned: z.boolean().meta({
         description: "Whether to pin or unpin the task",
         examples: [true, false],
       }),
@@ -637,10 +637,10 @@ tasksRoutes.put(
   zValidator(
     "json",
     z.object({
-      lastRunAt: z.string().optional().openapi({
+      lastRunAt: z.string().optional().meta({
         description: "ISO 8601 timestamp when task execution started",
       }),
-      nextRunAt: z.string().nullable().optional().openapi({
+      nextRunAt: z.string().nullable().optional().meta({
         description:
           "ISO 8601 timestamp for next scheduled run (for recurring tasks)",
       }),
@@ -755,13 +755,13 @@ tasksRoutes.put(
   zValidator(
     "json",
     z.object({
-      status: z.enum(["not-started", "in-progress", "completed"]).openapi({
+      status: z.enum(["not-started", "in-progress", "completed"]).meta({
         description: "New task status",
       }),
-      assignedAssistantId: z.string().openapi({
+      assignedAssistantId: z.string().meta({
         description: "ID of the assistant assigned to this task",
       }),
-      completedAt: z.string().optional().openapi({
+      completedAt: z.string().optional().meta({
         description:
           "ISO 8601 timestamp when task was completed (for completed status)",
       }),
@@ -858,7 +858,7 @@ tasksRoutes.post(
   zValidator(
     "json",
     z.object({
-      content: z.string().min(1).openapi({
+      content: z.string().min(1).meta({
         description: "Comment content",
         example: "This task is completed and tested successfully.",
       }),
@@ -906,7 +906,7 @@ tasksRoutes.put(
   zValidator(
     "json",
     z.object({
-      content: z.string().min(1).openapi({
+      content: z.string().min(1).meta({
         description: "Updated comment content",
         example: "This task is completed and tested successfully (updated).",
       }),

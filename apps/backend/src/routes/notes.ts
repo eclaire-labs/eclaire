@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi/zod";
-import { z } from "zod";
+import { validator as zValidator } from "hono-openapi";
+import z from "zod/v4";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
 import {
   countNotes,
@@ -168,7 +168,7 @@ notesRoutes.get("/", describeRoute(getNotesRouteDescription), async (c) => {
 
     if (error instanceof z.ZodError) {
       return c.json(
-        { error: "Invalid query parameters", details: error.errors },
+        { error: "Invalid query parameters", details: error.issues },
         400,
       );
     }
@@ -228,7 +228,7 @@ notesRoutes.post(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid input data", details: error.errors },
+          { error: "Invalid input data", details: error.issues },
           400,
         );
       }
@@ -374,7 +374,7 @@ notesRoutes.post(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid file metadata", details: error.errors },
+          { error: "Invalid file metadata", details: error.issues },
           400,
         );
       }
@@ -470,7 +470,7 @@ notesRoutes.put(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid input data", details: error.errors },
+          { error: "Invalid input data", details: error.issues },
           400,
         );
       }
@@ -524,7 +524,7 @@ notesRoutes.patch(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid input data", details: error.errors },
+          { error: "Invalid input data", details: error.issues },
           400,
         );
       }
@@ -607,7 +607,7 @@ notesRoutes.patch(
   zValidator(
     "json",
     z.object({
-      reviewStatus: z.enum(["pending", "accepted", "rejected"]).openapi({
+      reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
         description: "New review status for the note",
         examples: ["accepted", "rejected"],
       }),
@@ -658,7 +658,7 @@ notesRoutes.patch(
       flagColor: z
         .enum(["red", "yellow", "orange", "green", "blue"])
         .nullable()
-        .openapi({
+        .meta({
           description: "Flag color for the note (null to remove flag)",
           examples: ["red", "green", null],
         }),
@@ -706,7 +706,7 @@ notesRoutes.patch(
   zValidator(
     "json",
     z.object({
-      isPinned: z.boolean().openapi({
+      isPinned: z.boolean().meta({
         description: "Whether to pin or unpin the note",
         examples: [true, false],
       }),

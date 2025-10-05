@@ -1,6 +1,6 @@
 {
   "name": "@eclaire/backend",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "packageManager": "npm@11.6.1",
   "license": "MIT",
@@ -19,7 +19,8 @@
   },
   "scripts": {
     "dev": "NODE_ENV=development tsx watch src/index.ts",
-    "build": "[ -f ./versions.json ] || cp ../../versions.json ./versions.json; tsc && tsc-alias && npm run generate:tool-signatures && npm run generate:openapi",
+    "build": "[ -f ./versions.json ] || cp ../../versions.json ./versions.json; tsc && tsc-alias && npm run generate:tool-signatures",
+    "build:with-docs": "npm run build && npm run generate:openapi",
     "start": "NODE_ENV=production node dist/src/index.js",
     "lint": "biome lint ./",
     "format": "biome format --write ./",
@@ -68,6 +69,7 @@
   },
   "dependencies": {
     "@hono/node-server": "1.19.5",
+    "@hono/standard-validator": "^0.1.5",
     "axios": "1.12.2",
     "bcrypt": "6.0.0",
     "better-auth": "1.3.26",
@@ -78,7 +80,7 @@
     "exifr": "7.1.3",
     "file-type": "21.0.0",
     "hono": "4.9.9",
-    "hono-openapi": "0.4.8",
+    "hono-openapi": "1.1.0",
     "ioredis": "5.8.0",
     "is-url": "1.2.4",
     "jsonwebtoken": "9.0.2",
@@ -94,8 +96,7 @@
     "tiktoken": "1.0.22",
     "tsx": "4.20.6",
     "uuid": "11.1.0",
-    "zod": "3.25.57",
-    "zod-openapi": "4.2.4"
+    "zod": "4.1.11"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.5",

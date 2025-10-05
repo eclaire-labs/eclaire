@@ -1,5 +1,5 @@
 // schemas/prompt-stream-params.ts
-import { z } from "zod";
+import z from "zod/v4";
 import { PromptRequestSchema } from "./prompt-params";
 
 // Stream-specific request schema (inherits from base prompt request)

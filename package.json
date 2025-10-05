@@ -29,9 +29,6 @@
     "dev:frontend": "cd apps/frontend && npm run dev",
     "dev:workers": "cd apps/workers && npm run dev",
     "build": "cd apps/backend && npm run build && cd ../frontend && npm run build && cd ../workers && npm run build",
-    "docs:build": "cd web && npm run build",
-    "docs:dev": "cd web && npm run dev",
-    "docs:preview": "cd web && npm run preview",
     "test": "cd apps/backend && npm run test && cd ../frontend && npm run test && cd ../workers && npm run test",
     "lint": "cd apps/backend && npm run lint && cd ../frontend && npm run lint && cd ../workers && npm run lint",
     "format": "cd apps/backend && npm run format && cd ../frontend && npm run format && cd ../workers && npm run format"

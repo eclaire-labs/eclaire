@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { z } from "zod";
+import z from "zod/v4";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
 import {
   countHistory,
@@ -98,7 +98,7 @@ historyRoutes.get("/", describeRoute(getHistoryRouteDescription), async (c) => {
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid filter parameters", details: error.errors },
+          { error: "Invalid filter parameters", details: error.issues },
           400,
         );
       }

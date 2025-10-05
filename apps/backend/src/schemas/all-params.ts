@@ -1,6 +1,5 @@
 // schemas/all-params.ts
-import { z } from "zod";
-import "zod-openapi/extend";
+import z from "zod/v4";
 
 // Search query parameters schema
 export const SearchQuerySchema = z
@@ -8,7 +7,7 @@ export const SearchQuerySchema = z
     text: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Search text to find across all content types. Searches titles, descriptions, and content.",
         examples: ["machine learning", "API documentation best practices"],
@@ -17,7 +16,7 @@ export const SearchQuerySchema = z
     tags: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Comma-separated list of tags to filter by",
         examples: ["work,important", "personal"],
       }),
@@ -25,7 +24,7 @@ export const SearchQuerySchema = z
     startDate: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Filter items created on or after this date (ISO 8601 format)",
         examples: ["2024-01-01", "2024-06-01T00:00:00Z"],
@@ -34,7 +33,7 @@ export const SearchQuerySchema = z
     endDate: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Filter items created on or before this date (ISO 8601 format)",
         examples: ["2024-12-31", "2024-06-30T23:59:59Z"],
@@ -43,7 +42,7 @@ export const SearchQuerySchema = z
     dueStatus: z
       .enum(["all", "due_now", "overdue", "due_today"])
       .optional()
-      .openapi({
+      .meta({
         description:
           "Filter items by due date status. 'due_now' includes both overdue and due today",
         examples: ["due_now", "overdue", "due_today"],
@@ -54,7 +53,7 @@ export const SearchQuerySchema = z
       .min(1)
       .max(9999)
       .default(50)
-      .openapi({
+      .meta({
         description: "Maximum number of results to return",
         examples: [20, 50, 100, 9999],
       }),
@@ -63,12 +62,12 @@ export const SearchQuerySchema = z
       .number()
       .min(0)
       .default(0)
-      .openapi({
+      .meta({
         description: "Number of results to skip for pagination",
         examples: [0, 50, 100],
       }),
   })
-  .openapi({ ref: "SearchQuery" });
+  .meta({ ref: "SearchQuery" });
 
 // Create metadata schema
 export const CreateMetadataSchema = z
@@ -76,7 +75,7 @@ export const CreateMetadataSchema = z
     assetType: z
       .enum(["bookmark", "note", "photo", "document", "task"])
       .optional()
-      .openapi({
+      .meta({
         description:
           "Explicitly specify the type of content to create. If not provided, type will be auto-detected based on content.",
         examples: ["bookmark", "note", "photo", "document", "task"],
@@ -85,7 +84,7 @@ export const CreateMetadataSchema = z
     title: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Custom title for the content",
         examples: ["My Important Document", "Meeting Notes"],
       }),
@@ -93,7 +92,7 @@ export const CreateMetadataSchema = z
     description: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Description or summary of the content",
         examples: ["Notes from the quarterly planning meeting"],
       }),
@@ -101,7 +100,7 @@ export const CreateMetadataSchema = z
     tags: z
       .array(z.string())
       .optional()
-      .openapi({
+      .meta({
         description: "Array of tags to associate with the content",
         examples: [
           ["work", "important"],
@@ -113,7 +112,7 @@ export const CreateMetadataSchema = z
       .string()
       .url()
       .optional()
-      .openapi({
+      .meta({
         description:
           "URL for bookmark content or source URL for other content types",
         examples: ["https://example.com", "https://docs.example.com/api"],
@@ -122,9 +121,9 @@ export const CreateMetadataSchema = z
     originalFilename: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Original filename when uploading files",
         examples: ["document.pdf", "photo.jpg"],
       }),
   })
-  .openapi({ ref: "CreateMetadata" });
+  .meta({ ref: "CreateMetadata" });

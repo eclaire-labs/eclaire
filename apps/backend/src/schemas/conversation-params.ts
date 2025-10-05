@@ -1,5 +1,5 @@
 // schemas/conversation-params.ts
-import { z } from "zod";
+import z from "zod/v4";
 
 // Schema for creating a new conversation
 export const CreateConversationSchema = z.object({

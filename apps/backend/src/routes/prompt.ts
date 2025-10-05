@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { z } from "zod";
+import z from "zod/v4";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
 import { isValidConversationId } from "@/lib/id-generator";
 import { recordHistory } from "@/lib/services/history";
@@ -340,7 +340,7 @@ promptRoutes.post("/", describeRoute(postPromptRouteDescription), async (c) => {
         {
           error: "Invalid request format",
           message: "Request body validation failed",
-          details: error.errors,
+          details: error.issues,
         },
         400,
       );
@@ -769,7 +769,7 @@ promptRoutes.post(
           {
             error: "Invalid request format",
             message: "Streaming request body validation failed",
-            details: error.errors,
+            details: error.issues,
           },
           400,
         );

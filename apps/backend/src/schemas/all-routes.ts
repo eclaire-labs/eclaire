@@ -1,5 +1,5 @@
 // schemas/all-routes.ts
-import { resolver } from "hono-openapi/zod";
+import { resolver } from "hono-openapi";
 import { SearchQuerySchema } from "./all-params";
 import {
   CreatedItemSchema,

@@ -1,4 +1,4 @@
-import { resolver } from "hono-openapi/zod";
+import { resolver } from "hono-openapi";
 import { ErrorResponseSchema, UnauthorizedSchema } from "./all-responses";
 
 // GET /api/processing-events/stream - Stream processing events

@@ -1,5 +1,5 @@
 // schemas/prompt-responses.ts
-import { z } from "zod";
+import z from "zod/v4";
 import { TraceSchema } from "./prompt-params";
 
 // Tool call summary schema for user visibility
@@ -9,7 +9,7 @@ export const ToolCallSummarySchema = z.object({
   success: z.boolean(),
   error: z.string().optional(),
   // Arguments and results are optional and may be sanitized for privacy
-  arguments: z.record(z.any()).optional(),
+  arguments: z.record(z.string(), z.any()).optional(),
   resultSummary: z.string().optional(), // Human-readable summary of the result
 });
 
@@ -34,7 +34,7 @@ export const ImagePromptResponseSchema = BasePromptResponseSchema.extend({
   type: z.literal("image_response"),
   imageUrl: z.string(),
   description: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 // Error response with AI processing details

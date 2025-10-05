@@ -25,7 +25,6 @@ import "../src/lib/env-loader";
 // ---------------------------------------------------------------------------
 import { Hono } from "hono";
 import { getOpenAPIDocument } from "../src/lib/openapi-config";
-import { closeQueues } from "../src/lib/queues";
 import { allRoutes } from "../src/routes/all";
 import { bookmarksRoutes } from "../src/routes/bookmarks";
 import { conversationsRoutes } from "../src/routes/conversations";
@@ -93,7 +92,9 @@ async function main() {
   console.log(`✅ OpenAPI spec written to ${outputPath}`);
 
   // Gracefully close any Redis/BullMQ connections that may have been opened
+  // Import closeQueues only when needed to avoid initializing Redis during build
   try {
+    const { closeQueues } = await import("../src/lib/queues");
     await closeQueues();
   } catch (err) {
     console.warn("⚠️  Failed to close queues cleanly:", err);
@@ -103,8 +104,14 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error("❌ Failed to generate OpenAPI spec:", err);
   // Attempt to close queues before exiting with error
-  closeQueues().finally(() => process.exit(1));
+  try {
+    const { closeQueues } = await import("../src/lib/queues");
+    await closeQueues();
+  } catch {
+    // Ignore cleanup errors during error handling
+  }
+  process.exit(1);
 });

@@ -2,8 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi/zod";
-import { z } from "zod";
+import { validator as zValidator } from "hono-openapi";
+import z from "zod/v4";
 import { db } from "@/db";
 import { photos } from "@/db/schema";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
@@ -122,7 +122,7 @@ photosRoutes.get("/", describeRoute(getPhotosRouteDescription), async (c) => {
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid search parameters", details: error.errors },
+          { error: "Invalid search parameters", details: error.issues },
           400,
         );
       }
@@ -225,7 +225,7 @@ photosRoutes.post("/", describeRoute(postPhotosRouteDescription), async (c) => {
 
     if (error instanceof z.ZodError) {
       return c.json(
-        { error: "Invalid metadata format", details: error.errors },
+        { error: "Invalid metadata format", details: error.issues },
         400,
       );
     }
@@ -331,7 +331,7 @@ photosRoutes.put(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid request data", details: error.errors },
+          { error: "Invalid request data", details: error.issues },
           400,
         );
       }
@@ -392,7 +392,7 @@ photosRoutes.patch(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid request data", details: error.errors },
+          { error: "Invalid request data", details: error.issues },
           400,
         );
       }
@@ -948,7 +948,7 @@ photosRoutes.patch(
   zValidator(
     "json",
     z.object({
-      reviewStatus: z.enum(["pending", "accepted", "rejected"]).openapi({
+      reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
         description: "New review status for the photo",
         examples: ["accepted", "rejected"],
       }),
@@ -1000,7 +1000,7 @@ photosRoutes.patch(
       flagColor: z
         .enum(["red", "yellow", "orange", "green", "blue"])
         .nullable()
-        .openapi({
+        .meta({
           description: "Flag color for the photo (null to remove flag)",
           examples: ["red", "green", null],
         }),
@@ -1049,7 +1049,7 @@ photosRoutes.patch(
   zValidator(
     "json",
     z.object({
-      isPinned: z.boolean().openapi({
+      isPinned: z.boolean().meta({
         description: "Whether to pin or unpin the photo",
         examples: [true, false],
       }),

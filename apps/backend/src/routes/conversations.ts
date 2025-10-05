@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { z } from "zod";
+import z from "zod/v4";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
 import { isValidConversationId } from "@/lib/id-generator";
 import { createChildLogger } from "@/lib/logger";
@@ -84,7 +84,7 @@ conversationsRoutes.post(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid request format", details: error.errors },
+          { error: "Invalid request format", details: error.issues },
           400,
         );
       }
@@ -262,7 +262,7 @@ conversationsRoutes.put(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid request format", details: error.errors },
+          { error: "Invalid request format", details: error.issues },
           400,
         );
       }

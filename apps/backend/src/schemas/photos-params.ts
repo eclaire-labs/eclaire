@@ -1,6 +1,5 @@
 // schemas/photos-params.ts
-import { z } from "zod";
-import "zod-openapi/extend";
+import z from "zod/v4";
 
 // Full photo metadata schema for updates
 export const PhotoSchema = z
@@ -8,7 +7,7 @@ export const PhotoSchema = z
     title: z
       .string()
       .min(1, "Title is required")
-      .openapi({
+      .meta({
         description: "Title of the photo",
         examples: [
           "Sunset at the Beach",
@@ -21,7 +20,7 @@ export const PhotoSchema = z
       .string()
       .nullable()
       .optional()
-      .openapi({
+      .meta({
         description: "Optional description or notes about the photo",
         examples: ["Beautiful sunset captured during our beach vacation", null],
       }),
@@ -29,7 +28,7 @@ export const PhotoSchema = z
     tags: z
       .array(z.string())
       .default([])
-      .openapi({
+      .meta({
         description: "Array of tags to categorize the photo",
         examples: [
           ["nature", "sunset", "beach"],
@@ -41,7 +40,7 @@ export const PhotoSchema = z
     reviewStatus: z
       .enum(["pending", "accepted", "rejected"])
       .default("pending")
-      .openapi({
+      .meta({
         description: "Review status of the photo",
         examples: ["pending", "accepted", "rejected"],
       }),
@@ -49,7 +48,7 @@ export const PhotoSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .optional()
-      .openapi({
+      .meta({
         description: "Flag color for the photo (optional)",
         examples: ["red", "green", "blue"],
       }),
@@ -57,7 +56,7 @@ export const PhotoSchema = z
     isPinned: z
       .boolean()
       .default(false)
-      .openapi({
+      .meta({
         description: "Whether the photo is pinned",
         examples: [true, false],
       }),
@@ -66,7 +65,7 @@ export const PhotoSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the photo in ISO 8601 format",
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
@@ -75,7 +74,7 @@ export const PhotoSchema = z
       .string()
       .nullable()
       .optional()
-      .openapi({
+      .meta({
         description: "Device ID associated with the photo",
         examples: ["iphone-12-pro", "camera-001", null],
       }),
@@ -84,12 +83,12 @@ export const PhotoSchema = z
       .boolean()
       .optional()
       .default(true)
-      .openapi({
+      .meta({
         description: "Whether background processing is enabled for this photo",
         examples: [true, false],
       }),
   })
-  .openapi({
+  .meta({
     ref: "PhotoRequest",
     description: "Complete photo metadata for creation or full update",
   });
@@ -101,7 +100,7 @@ export const PartialPhotoSchema = z
       .string()
       .min(1, "Title is required")
       .optional()
-      .openapi({
+      .meta({
         description: "Title of the photo",
         examples: ["Updated Photo Title"],
       }),
@@ -110,7 +109,7 @@ export const PartialPhotoSchema = z
       .string()
       .nullable()
       .optional()
-      .openapi({
+      .meta({
         description: "Optional description or notes about the photo",
         examples: ["Updated description", null],
       }),
@@ -118,7 +117,7 @@ export const PartialPhotoSchema = z
     tags: z
       .array(z.string())
       .optional()
-      .openapi({
+      .meta({
         description: "Array of tags to categorize the photo",
         examples: [["updated", "tags"]],
       }),
@@ -126,7 +125,7 @@ export const PartialPhotoSchema = z
     reviewStatus: z
       .enum(["pending", "accepted", "rejected"])
       .optional()
-      .openapi({
+      .meta({
         description: "Review status of the photo",
         examples: ["pending", "accepted", "rejected"],
       }),
@@ -134,7 +133,7 @@ export const PartialPhotoSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .optional()
-      .openapi({
+      .meta({
         description: "Flag color for the photo (optional)",
         examples: ["red", "green", "blue"],
       }),
@@ -142,7 +141,7 @@ export const PartialPhotoSchema = z
     isPinned: z
       .boolean()
       .optional()
-      .openapi({
+      .meta({
         description: "Whether the photo is pinned",
         examples: [true, false],
       }),
@@ -151,7 +150,7 @@ export const PartialPhotoSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the photo in ISO 8601 format",
         examples: ["2025-07-01T10:00:00Z", null],
       }),
@@ -160,7 +159,7 @@ export const PartialPhotoSchema = z
       .string()
       .nullable()
       .optional()
-      .openapi({
+      .meta({
         description: "Device ID associated with the photo",
         examples: ["iphone-12-pro", "camera-001", null],
       }),
@@ -168,12 +167,12 @@ export const PartialPhotoSchema = z
     enabled: z
       .boolean()
       .optional()
-      .openapi({
+      .meta({
         description: "Whether background processing is enabled for this photo",
         examples: [true, false],
       }),
   })
-  .openapi({
+  .meta({
     ref: "PartialPhotoRequest",
     description: "Partial photo metadata for updates",
   });
@@ -184,7 +183,7 @@ export const PhotoMetadataSchema = z
     title: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Title of the photo (will default to filename if not provided)",
         examples: ["My Photo Title"],
@@ -194,7 +193,7 @@ export const PhotoMetadataSchema = z
       .string()
       .nullable()
       .optional()
-      .openapi({
+      .meta({
         description: "Optional description or notes about the photo",
         examples: ["A beautiful landscape photo"],
       }),
@@ -202,7 +201,7 @@ export const PhotoMetadataSchema = z
     tags: z
       .array(z.string())
       .optional()
-      .openapi({
+      .meta({
         description: "Array of tags to categorize the photo",
         examples: [["landscape", "nature"]],
       }),
@@ -210,7 +209,7 @@ export const PhotoMetadataSchema = z
     originalFilename: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Original filename of the uploaded photo",
         examples: ["IMG_1234.jpg", "vacation-photo.png"],
       }),
@@ -219,7 +218,7 @@ export const PhotoMetadataSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the photo in ISO 8601 format",
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
@@ -228,7 +227,7 @@ export const PhotoMetadataSchema = z
       .string()
       .nullable()
       .optional()
-      .openapi({
+      .meta({
         description: "Device ID associated with the photo",
         examples: ["iphone-12-pro", "camera-001", null],
       }),
@@ -236,7 +235,7 @@ export const PhotoMetadataSchema = z
     reviewStatus: z
       .enum(["pending", "accepted", "rejected"])
       .optional()
-      .openapi({
+      .meta({
         description: "Review status of the photo",
         examples: ["pending", "accepted", "rejected"],
       }),
@@ -245,7 +244,7 @@ export const PhotoMetadataSchema = z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .nullable()
       .optional()
-      .openapi({
+      .meta({
         description: "Flag color for the photo (optional)",
         examples: ["red", "green", "blue", null],
       }),
@@ -253,7 +252,7 @@ export const PhotoMetadataSchema = z
     isPinned: z
       .boolean()
       .optional()
-      .openapi({
+      .meta({
         description: "Whether the photo is pinned",
         examples: [true, false],
       }),
@@ -262,12 +261,12 @@ export const PhotoMetadataSchema = z
       .boolean()
       .optional()
       .default(true)
-      .openapi({
+      .meta({
         description: "Whether background processing is enabled for this photo",
         examples: [true, false],
       }),
   })
-  .openapi({
+  .meta({
     ref: "PhotoMetadata",
     description: "Metadata for photo upload via multipart form",
   });
@@ -278,7 +277,7 @@ export const PhotoSearchParamsSchema = z
     text: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Text search across photo titles and descriptions",
         examples: ["sunset", "vacation photos"],
       }),
@@ -286,7 +285,7 @@ export const PhotoSearchParamsSchema = z
     tags: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Comma-separated list of tags to filter by",
         examples: ["nature,landscape", "family,vacation"],
       }),
@@ -294,7 +293,7 @@ export const PhotoSearchParamsSchema = z
     startDate: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Start date for filtering photos (YYYY-MM-DD format)",
         examples: ["2024-01-01"],
       }),
@@ -302,7 +301,7 @@ export const PhotoSearchParamsSchema = z
     endDate: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "End date for filtering photos (YYYY-MM-DD format)",
         examples: ["2024-12-31"],
       }),
@@ -310,7 +309,7 @@ export const PhotoSearchParamsSchema = z
     locationCity: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Filter photos by city name",
         examples: ["New York", "San Francisco", "London"],
       }),
@@ -319,7 +318,7 @@ export const PhotoSearchParamsSchema = z
       .enum(["createdAt", "dateTaken"])
       .optional()
       .default("createdAt")
-      .openapi({
+      .meta({
         description: "Which date field to use for date range filtering",
         examples: ["createdAt", "dateTaken"],
       }),
@@ -327,7 +326,7 @@ export const PhotoSearchParamsSchema = z
     dueDateStart: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Start date for due date filtering (YYYY-MM-DD format)",
         examples: ["2024-01-01"],
       }),
@@ -335,7 +334,7 @@ export const PhotoSearchParamsSchema = z
     dueDateEnd: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "End date for due date filtering (YYYY-MM-DD format)",
         examples: ["2024-12-31"],
       }),
@@ -343,7 +342,7 @@ export const PhotoSearchParamsSchema = z
     deviceId: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Filter photos by device ID",
         examples: ["iphone-12-pro", "camera-001"],
       }),
@@ -353,12 +352,12 @@ export const PhotoSearchParamsSchema = z
       .min(1)
       .optional()
       .default(50)
-      .openapi({
+      .meta({
         description: "Maximum number of photos to return",
         examples: [25, 50, 100, 9999],
       }),
   })
-  .openapi({
+  .meta({
     ref: "PhotoSearchParams",
     description: "Search and filter parameters for photos",
   });
@@ -366,31 +365,31 @@ export const PhotoSearchParamsSchema = z
 // Path parameters
 export const PhotoIdParam = z
   .object({
-    id: z.string().openapi({
+    id: z.string().meta({
       description: "Unique identifier of the photo",
       examples: ["clxyz789def", "photo_67890"],
     }),
   })
-  .openapi({
+  .meta({
     ref: "PhotoIdParam",
   });
 
 // Form data schema for file uploads
 export const PhotoUploadSchema = z
   .object({
-    content: z.any().openapi({
+    content: z.any().meta({
       description: "Photo file content",
       type: "string",
       format: "binary",
     }),
-    metadata: z.string().openapi({
+    metadata: z.string().meta({
       description: "JSON string containing photo metadata",
       examples: [
         '{"title": "My Photo", "tags": ["nature", "landscape"], "deviceId": "iphone-12-pro", "reviewStatus": "pending"}',
       ],
     }),
   })
-  .openapi({
+  .meta({
     ref: "PhotoUpload",
     description: "Multipart form data for photo upload",
   });

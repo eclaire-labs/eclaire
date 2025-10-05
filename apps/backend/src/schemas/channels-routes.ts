@@ -1,7 +1,7 @@
 // schemas/channels-routes.ts
 
-import { resolver } from "hono-openapi/zod";
-import { z } from "zod";
+import { resolver } from "hono-openapi";
+import z from "zod/v4";
 import {
   ErrorResponseSchema,
   UnauthorizedSchema,

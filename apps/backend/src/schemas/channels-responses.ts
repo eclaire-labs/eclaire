@@ -1,4 +1,4 @@
-import { z } from "zod";
+import z from "zod/v4";
 import {
   ChannelCapabilitySchema,
   ChannelPlatformSchema,
@@ -72,7 +72,7 @@ export const ChannelNotFoundSchema = z
     error: z.string(),
     message: z.string(),
   })
-  .openapi({
+  .meta({
     ref: "ChannelNotFound",
     description: "Channel not found error response",
   });

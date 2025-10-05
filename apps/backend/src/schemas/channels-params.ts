@@ -1,10 +1,9 @@
-import { z } from "zod";
-import "zod-openapi/extend";
+import z from "zod/v4";
 
 // Channel platform types
 export const ChannelPlatformSchema = z
   .enum(["telegram", "slack", "whatsapp", "email"])
-  .openapi({
+  .meta({
     description: "Platform type for the communication channel",
     examples: ["telegram", "slack", "email"],
   });
@@ -12,7 +11,7 @@ export const ChannelPlatformSchema = z
 // Channel capability types
 export const ChannelCapabilitySchema = z
   .enum(["notification", "chat", "bidirectional"])
-  .openapi({
+  .meta({
     description: "Capability type of the channel",
     examples: ["notification", "chat", "bidirectional"],
   });
@@ -23,19 +22,19 @@ export const TelegramConfigSchema = z
     chat_identifier: z
       .string()
       .min(1, "Chat identifier is required")
-      .openapi({
+      .meta({
         description: "Telegram chat identifier (chat ID or username)",
         examples: ["-1001234567890", "@mychannel", "123456789"],
       }),
     bot_token: z
       .string()
       .min(1, "Bot token is required")
-      .openapi({
+      .meta({
         description: "Telegram bot token for authentication",
         examples: ["1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"],
       }),
   })
-  .openapi({
+  .meta({
     description: "Configuration for Telegram channels",
   });
 
@@ -46,7 +45,7 @@ export const CreateChannelSchema = z
       .string()
       .min(1, "Channel name is required")
       .max(255, "Channel name too long")
-      .openapi({
+      .meta({
         description: "Display name for the channel",
         examples: [
           "My Telegram Channel",
@@ -59,7 +58,7 @@ export const CreateChannelSchema = z
     config: z
       .object({})
       .passthrough()
-      .openapi({
+      .meta({
         description:
           "Platform-specific configuration (validated separately based on platform)",
         examples: [
@@ -68,7 +67,7 @@ export const CreateChannelSchema = z
         ],
       }),
   })
-  .openapi({
+  .meta({
     ref: "CreateChannelRequest",
     description: "Request data for creating a new communication channel",
   });
@@ -81,7 +80,7 @@ export const UpdateChannelSchema = z
       .min(1, "Channel name is required")
       .max(255, "Channel name too long")
       .optional()
-      .openapi({
+      .meta({
         description: "Updated display name for the channel",
         examples: ["Updated Channel Name"],
       }),
@@ -90,7 +89,7 @@ export const UpdateChannelSchema = z
       .object({})
       .passthrough()
       .optional()
-      .openapi({
+      .meta({
         description: "Updated platform-specific configuration",
         examples: [
           { chat_identifier: "-1001234567890", bot_token: "1234567890:ABC" },
@@ -99,14 +98,14 @@ export const UpdateChannelSchema = z
     isActive: z
       .boolean()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Whether the channel is active and should receive notifications",
         examples: [true, false],
       }),
   })
   .strict()
-  .openapi({
+  .meta({
     ref: "UpdateChannelRequest",
     description: "Request data for updating an existing communication channel",
   });
@@ -117,12 +116,12 @@ export const ChannelIdParamSchema = z
     id: z
       .string()
       .min(1, "Channel ID is required")
-      .openapi({
+      .meta({
         description: "Unique identifier of the channel",
         examples: ["ch-abc123def", "channel-456"],
       }),
   })
-  .openapi({
+  .meta({
     ref: "ChannelIdParam",
     description: "Path parameter for channel ID",
   });
@@ -133,7 +132,7 @@ export const SendNotificationSchema = z
     message: z
       .string()
       .min(1, "Message is required")
-      .openapi({
+      .meta({
         description: "The notification message to send",
         examples: [
           "System alert: High CPU usage detected",
@@ -145,14 +144,14 @@ export const SendNotificationSchema = z
       .enum(["info", "warning", "error", "critical"])
       .optional()
       .default("info")
-      .openapi({
+      .meta({
         description: "Severity level of the notification",
         examples: ["info", "warning", "error", "critical"],
       }),
     targetChannels: z
       .array(z.string())
       .optional()
-      .openapi({
+      .meta({
         description:
           "Array of channel IDs to send notification to. If not provided, sends to all notification-capable channels",
         examples: [["ch-abc123", "ch-def456"]],
@@ -162,7 +161,7 @@ export const SendNotificationSchema = z
         parseMode: z
           .enum(["HTML", "Markdown", "MarkdownV2"])
           .optional()
-          .openapi({
+          .meta({
             description:
               "Parse mode for message formatting (Telegram-specific)",
             examples: ["HTML", "Markdown"],
@@ -170,18 +169,18 @@ export const SendNotificationSchema = z
         disableWebPagePreview: z
           .boolean()
           .optional()
-          .openapi({
+          .meta({
             description:
               "Disable web page previews in the message (Telegram-specific)",
             examples: [true, false],
           }),
       })
       .optional()
-      .openapi({
+      .meta({
         description: "Platform-specific options for the notification",
       }),
   })
-  .openapi({
+  .meta({
     ref: "SendNotificationRequest",
     description:
       "Request data for sending a notification to communication channels",

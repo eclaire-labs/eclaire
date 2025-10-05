@@ -1,6 +1,5 @@
 // schemas/bookmarks-params.ts
-import { z } from "zod";
-import "zod-openapi/extend";
+import z from "zod/v4";
 
 // Full bookmark creation/update schema
 export const BookmarkSchema = z
@@ -8,7 +7,7 @@ export const BookmarkSchema = z
     title: z
       .string()
       .min(1, "Title is required")
-      .openapi({
+      .meta({
         description: "Title of the bookmark",
         examples: [
           "OpenAI API Documentation",
@@ -19,7 +18,7 @@ export const BookmarkSchema = z
     url: z
       .string()
       .url("Valid URL is required")
-      .openapi({
+      .meta({
         description: "URL of the bookmarked page",
         examples: [
           "https://docs.openai.com/api",
@@ -31,7 +30,7 @@ export const BookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Optional description or notes about the bookmark",
         examples: [
           "Comprehensive guide to using the OpenAI API",
@@ -44,7 +43,7 @@ export const BookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Author of the bookmarked page",
         examples: ["John Doe", "OpenAI Team", null],
       }),
@@ -53,7 +52,7 @@ export const BookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Language of the bookmarked page",
         examples: ["en", "es", "fr", null],
       }),
@@ -61,7 +60,7 @@ export const BookmarkSchema = z
     tags: z
       .array(z.string())
       .default([])
-      .openapi({
+      .meta({
         description: "Array of tags to categorize the bookmark",
         examples: [
           ["programming", "api"],
@@ -72,7 +71,7 @@ export const BookmarkSchema = z
     reviewStatus: z
       .enum(["pending", "accepted", "rejected"])
       .default("pending")
-      .openapi({
+      .meta({
         description: "Review status of the bookmark",
         examples: ["pending", "accepted", "rejected"],
       }),
@@ -80,7 +79,7 @@ export const BookmarkSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .optional()
-      .openapi({
+      .meta({
         description: "Flag color for the bookmark (optional)",
         examples: ["red", "green", "blue"],
       }),
@@ -88,7 +87,7 @@ export const BookmarkSchema = z
     isPinned: z
       .boolean()
       .default(false)
-      .openapi({
+      .meta({
         description: "Whether the bookmark is pinned",
         examples: [true, false],
       }),
@@ -97,7 +96,7 @@ export const BookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the bookmark in ISO 8601 format",
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
@@ -106,7 +105,7 @@ export const BookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "MIME type of the bookmarked content",
         examples: ["text/html", "application/pdf", null],
       }),
@@ -115,7 +114,7 @@ export const BookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "HTTP ETag header from the bookmarked page",
         examples: ['W/"123456"', '"abc123"', null],
       }),
@@ -124,7 +123,7 @@ export const BookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "HTTP Last-Modified header from the bookmarked page",
         examples: ["Tue, 15 Nov 2023 12:00:00 GMT", null],
       }),
@@ -133,13 +132,13 @@ export const BookmarkSchema = z
       .boolean()
       .optional()
       .default(true)
-      .openapi({
+      .meta({
         description:
           "Whether background processing is enabled for this bookmark",
         examples: [true, false],
       }),
   })
-  .openapi({
+  .meta({
     ref: "BookmarkRequest",
     description: "Complete bookmark data for creation or full update",
   });
@@ -151,7 +150,7 @@ export const PartialBookmarkSchema = z
       .string()
       .min(1, "Title is required")
       .optional()
-      .openapi({
+      .meta({
         description: "Title of the bookmark",
         examples: ["Updated Title"],
       }),
@@ -160,7 +159,7 @@ export const PartialBookmarkSchema = z
       .string()
       .url("Valid URL is required")
       .optional()
-      .openapi({
+      .meta({
         description: "URL of the bookmarked page",
         examples: ["https://updated-url.com"],
       }),
@@ -169,7 +168,7 @@ export const PartialBookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Optional description or notes about the bookmark",
         examples: ["Updated description", null],
       }),
@@ -178,7 +177,7 @@ export const PartialBookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Author of the bookmarked page",
         examples: ["Updated Author", null],
       }),
@@ -187,7 +186,7 @@ export const PartialBookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Language of the bookmarked page",
         examples: ["en", "es", null],
       }),
@@ -195,7 +194,7 @@ export const PartialBookmarkSchema = z
     tags: z
       .array(z.string())
       .optional()
-      .openapi({
+      .meta({
         description: "Array of tags to categorize the bookmark",
         examples: [["updated", "tags"]],
       }),
@@ -203,7 +202,7 @@ export const PartialBookmarkSchema = z
     reviewStatus: z
       .enum(["pending", "accepted", "rejected"])
       .optional()
-      .openapi({
+      .meta({
         description: "Review status of the bookmark",
         examples: ["pending", "accepted", "rejected"],
       }),
@@ -211,7 +210,7 @@ export const PartialBookmarkSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .optional()
-      .openapi({
+      .meta({
         description: "Flag color for the bookmark (optional)",
         examples: ["red", "green", "blue"],
       }),
@@ -219,7 +218,7 @@ export const PartialBookmarkSchema = z
     isPinned: z
       .boolean()
       .optional()
-      .openapi({
+      .meta({
         description: "Whether the bookmark is pinned",
         examples: [true, false],
       }),
@@ -228,7 +227,7 @@ export const PartialBookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the bookmark in ISO 8601 format",
         examples: ["2025-07-01T10:00:00Z", null],
       }),
@@ -237,7 +236,7 @@ export const PartialBookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "MIME type of the bookmarked content",
         examples: ["text/html", "application/pdf", null],
       }),
@@ -246,7 +245,7 @@ export const PartialBookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "HTTP ETag header from the bookmarked page",
         examples: ['W/"123456"', '"abc123"', null],
       }),
@@ -255,7 +254,7 @@ export const PartialBookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "HTTP Last-Modified header from the bookmarked page",
         examples: ["Tue, 15 Nov 2023 12:00:00 GMT", null],
       }),
@@ -263,13 +262,13 @@ export const PartialBookmarkSchema = z
     enabled: z
       .boolean()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Whether background processing is enabled for this bookmark",
         examples: [true, false],
       }),
   })
-  .openapi({
+  .meta({
     ref: "PartialBookmarkRequest",
     description: "Partial bookmark data for updates",
   });
@@ -280,7 +279,7 @@ export const CreateBookmarkSchema = z
     url: z
       .string()
       .url("Valid URL is required")
-      .openapi({
+      .meta({
         description: "URL of the page to bookmark",
         examples: ["https://example.com", "https://docs.example.com/api"],
       }),
@@ -288,7 +287,7 @@ export const CreateBookmarkSchema = z
     title: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Optional title for the bookmark (will be auto-extracted if not provided)",
         examples: ["My Custom Title", "Important Documentation"],
@@ -298,7 +297,7 @@ export const CreateBookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Optional description for the bookmark",
         examples: [
           "A useful resource for learning",
@@ -310,7 +309,7 @@ export const CreateBookmarkSchema = z
     tags: z
       .array(z.string())
       .default([])
-      .openapi({
+      .meta({
         description: "Optional tags to categorize the bookmark",
         examples: [
           ["work", "documentation"],
@@ -319,9 +318,9 @@ export const CreateBookmarkSchema = z
       }),
 
     metadata: z
-      .record(z.any())
+      .record(z.string(), z.any())
       .optional()
-      .openapi({
+      .meta({
         description: "Optional additional metadata for the bookmark",
         examples: [{ source: "browser-extension", priority: "high" }],
       }),
@@ -329,7 +328,7 @@ export const CreateBookmarkSchema = z
     reviewStatus: z
       .enum(["pending", "accepted", "rejected"])
       .default("pending")
-      .openapi({
+      .meta({
         description: "Review status of the bookmark",
         examples: ["pending", "accepted", "rejected"],
       }),
@@ -337,7 +336,7 @@ export const CreateBookmarkSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .optional()
-      .openapi({
+      .meta({
         description: "Flag color for the bookmark (optional)",
         examples: ["red", "green", "blue"],
       }),
@@ -345,7 +344,7 @@ export const CreateBookmarkSchema = z
     isPinned: z
       .boolean()
       .default(false)
-      .openapi({
+      .meta({
         description: "Whether the bookmark is pinned",
         examples: [true, false],
       }),
@@ -354,7 +353,7 @@ export const CreateBookmarkSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the bookmark in ISO 8601 format",
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
@@ -363,13 +362,13 @@ export const CreateBookmarkSchema = z
       .boolean()
       .optional()
       .default(true)
-      .openapi({
+      .meta({
         description:
           "Whether background processing is enabled for this bookmark",
         examples: [true, false],
       }),
   })
-  .openapi({
+  .meta({
     ref: "CreateBookmarkRequest",
     description:
       "Data required to create a new bookmark with flat structure for core properties",
@@ -378,9 +377,9 @@ export const CreateBookmarkSchema = z
 // Path parameters
 export const BookmarkIdParam = z
   .object({
-    id: z.string().openapi({
+    id: z.string().meta({
       description: "Unique identifier of the bookmark",
       examples: ["clxyz123abc", "bookmark_12345"],
     }),
   })
-  .openapi({ ref: "BookmarkIdParam" });
+  .meta({ ref: "BookmarkIdParam" });

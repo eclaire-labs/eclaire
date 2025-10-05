@@ -1,6 +1,5 @@
 // schemas/notes-params.ts
-import { z } from "zod";
-import "zod-openapi/extend";
+import z from "zod/v4";
 
 // Full note creation/update schema
 export const NoteSchema = z
@@ -8,7 +7,7 @@ export const NoteSchema = z
     title: z
       .string()
       .min(1, "Title is required")
-      .openapi({
+      .meta({
         description: "Title of the note",
         examples: [
           "Meeting Notes - Q1 Planning",
@@ -20,7 +19,7 @@ export const NoteSchema = z
     content: z
       .string()
       .default("")
-      .openapi({
+      .meta({
         description: "Main content of the note (optional)",
         examples: [
           "# Meeting Notes\n\nDiscussed the Q1 roadmap and key priorities...",
@@ -32,7 +31,7 @@ export const NoteSchema = z
     tags: z
       .array(z.string())
       .default([])
-      .openapi({
+      .meta({
         description: "Array of tags to categorize the note",
         examples: [
           ["work", "meeting"],
@@ -44,7 +43,7 @@ export const NoteSchema = z
     deviceName: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Name of the device that created this note",
         examples: ["iPhone", "MacBook Pro", "Android Phone"],
       }),
@@ -52,7 +51,7 @@ export const NoteSchema = z
     deviceModel: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Model of the device that created this note",
         examples: ["iPhone 15 Pro", "MacBook Pro M2", "Samsung Galaxy S24"],
       }),
@@ -61,7 +60,7 @@ export const NoteSchema = z
       .boolean()
       .optional()
       .default(true)
-      .openapi({
+      .meta({
         description: "Whether background processing is enabled for this note",
         examples: [true, false],
       }),
@@ -69,7 +68,7 @@ export const NoteSchema = z
     reviewStatus: z
       .enum(["pending", "accepted", "rejected"])
       .default("pending")
-      .openapi({
+      .meta({
         description: "Review status of the note",
         examples: ["pending", "accepted", "rejected"],
       }),
@@ -77,7 +76,7 @@ export const NoteSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .optional()
-      .openapi({
+      .meta({
         description: "Flag color for the note (optional)",
         examples: ["red", "green", "blue"],
       }),
@@ -85,7 +84,7 @@ export const NoteSchema = z
     isPinned: z
       .boolean()
       .default(false)
-      .openapi({
+      .meta({
         description: "Whether the note is pinned",
         examples: [true, false],
       }),
@@ -94,12 +93,12 @@ export const NoteSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the note in ISO 8601 format",
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
   })
-  .openapi({
+  .meta({
     ref: "NoteRequest",
     description: "Complete note data for creation or full update",
   });
@@ -111,7 +110,7 @@ export const PartialNoteSchema = z
       .string()
       .min(1, "Title is required")
       .optional()
-      .openapi({
+      .meta({
         description: "Title of the note",
         examples: ["Updated Meeting Notes"],
       }),
@@ -119,7 +118,7 @@ export const PartialNoteSchema = z
     content: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Main content of the note (optional)",
         examples: ["Updated content with new information...", ""],
       }),
@@ -127,7 +126,7 @@ export const PartialNoteSchema = z
     tags: z
       .array(z.string())
       .optional()
-      .openapi({
+      .meta({
         description: "Array of tags to categorize the note",
         examples: [["updated", "tags"]],
       }),
@@ -135,7 +134,7 @@ export const PartialNoteSchema = z
     deviceName: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Name of the device that created this note",
         examples: ["iPhone", "MacBook Pro", "Android Phone"],
       }),
@@ -143,7 +142,7 @@ export const PartialNoteSchema = z
     deviceModel: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Model of the device that created this note",
         examples: ["iPhone 15 Pro", "MacBook Pro M2", "Samsung Galaxy S24"],
       }),
@@ -152,7 +151,7 @@ export const PartialNoteSchema = z
       .boolean()
       .optional()
       .default(true)
-      .openapi({
+      .meta({
         description: "Whether background processing is enabled for this note",
         examples: [true, false],
       }),
@@ -160,7 +159,7 @@ export const PartialNoteSchema = z
     reviewStatus: z
       .enum(["pending", "accepted", "rejected"])
       .optional()
-      .openapi({
+      .meta({
         description: "Review status of the note",
         examples: ["pending", "accepted", "rejected"],
       }),
@@ -168,7 +167,7 @@ export const PartialNoteSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .optional()
-      .openapi({
+      .meta({
         description: "Flag color for the note (optional)",
         examples: ["red", "green", "blue"],
       }),
@@ -176,7 +175,7 @@ export const PartialNoteSchema = z
     isPinned: z
       .boolean()
       .optional()
-      .openapi({
+      .meta({
         description: "Whether the note is pinned",
         examples: [true, false],
       }),
@@ -185,12 +184,12 @@ export const PartialNoteSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the note in ISO 8601 format",
         examples: ["2025-07-01T10:00:00Z", null],
       }),
   })
-  .openapi({
+  .meta({
     ref: "PartialNoteRequest",
     description: "Partial note data for updates",
   });
@@ -201,7 +200,7 @@ export const NoteMetadataSchema = z
     title: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description:
           'Optional title for the note (will default to "Untitled Note" if not provided)',
         examples: ["Uploaded Document Notes", "File Analysis"],
@@ -210,7 +209,7 @@ export const NoteMetadataSchema = z
     tags: z
       .array(z.string())
       .optional()
-      .openapi({
+      .meta({
         description: "Optional array of tags to categorize the note",
         examples: [
           ["upload", "document"],
@@ -222,7 +221,7 @@ export const NoteMetadataSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the note in ISO 8601 format",
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
@@ -231,12 +230,12 @@ export const NoteMetadataSchema = z
       .boolean()
       .optional()
       .default(true)
-      .openapi({
+      .meta({
         description: "Whether background processing is enabled for this note",
         examples: [true, false],
       }),
   })
-  .openapi({
+  .meta({
     ref: "NoteMetadata",
     description: "Metadata for multipart form note creation",
   });
@@ -247,7 +246,7 @@ export const NoteSearchSchema = z
     text: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Search text to find in note titles and content",
         examples: ["meeting", "research ideas", "Q1 planning"],
       }),
@@ -255,7 +254,7 @@ export const NoteSearchSchema = z
     tags: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Comma-separated list of tags to filter by",
         examples: ["work,meeting", "personal", "research,ideas"],
       }),
@@ -264,7 +263,7 @@ export const NoteSearchSchema = z
       .string()
       .datetime()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Filter notes created on or after this date (ISO 8601 format)",
         examples: ["2024-01-01T00:00:00Z"],
@@ -274,7 +273,7 @@ export const NoteSearchSchema = z
       .string()
       .datetime()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Filter notes created on or before this date (ISO 8601 format)",
         examples: ["2024-12-31T23:59:59Z"],
@@ -284,7 +283,7 @@ export const NoteSearchSchema = z
       .string()
       .datetime()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Filter notes with due dates on or after this date (ISO 8601 format)",
         examples: ["2024-01-01T00:00:00Z"],
@@ -294,33 +293,33 @@ export const NoteSearchSchema = z
       .string()
       .datetime()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Filter notes with due dates on or before this date (ISO 8601 format)",
         examples: ["2024-12-31T23:59:59Z"],
       }),
 
     limit: z
-      .string()
-      .regex(/^\d+$/, "Limit must be a positive number")
-      .transform(Number)
-      .default("50")
-      .openapi({
+      .coerce.number()
+      .int()
+      .positive()
+      .default(50)
+      .meta({
         description: "Maximum number of results to return",
         examples: ["10", "50", "100"],
       }),
 
     offset: z
-      .string()
-      .regex(/^\d+$/, "Offset must be a non-negative number")
-      .transform(Number)
-      .default("0")
-      .openapi({
+      .coerce.number()
+      .int()
+      .nonnegative()
+      .default(0)
+      .meta({
         description: "Number of results to skip (for pagination)",
         examples: ["0", "10", "50"],
       }),
   })
-  .openapi({
+  .meta({
     ref: "NoteSearchParams",
     description: "Query parameters for searching and filtering notes",
   });
@@ -328,12 +327,12 @@ export const NoteSearchSchema = z
 // Path parameters
 export const NoteIdParam = z
   .object({
-    id: z.string().openapi({
+    id: z.string().meta({
       description: "Unique identifier of the note",
       examples: ["clxyz123abc", "note_12345"],
     }),
   })
-  .openapi({
+  .meta({
     ref: "NoteIdParam",
     description: "Path parameter for note ID",
   });
@@ -341,12 +340,12 @@ export const NoteIdParam = z
 // Request schema for review status update
 export const NoteReviewUpdateSchema = z
   .object({
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).openapi({
+    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
       description: "New review status for the note",
       examples: ["accepted", "rejected"],
     }),
   })
-  .openapi({ ref: "NoteReviewUpdate" });
+  .meta({ ref: "NoteReviewUpdate" });
 
 // Request schema for flag color update
 export const NoteFlagUpdateSchema = z
@@ -354,19 +353,19 @@ export const NoteFlagUpdateSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .nullable()
-      .openapi({
+      .meta({
         description: "Flag color for the note (null to remove flag)",
         examples: ["red", "green", null],
       }),
   })
-  .openapi({ ref: "NoteFlagUpdate" });
+  .meta({ ref: "NoteFlagUpdate" });
 
 // Request schema for pin status update
 export const NotePinUpdateSchema = z
   .object({
-    isPinned: z.boolean().openapi({
+    isPinned: z.boolean().meta({
       description: "Whether to pin or unpin the note",
       examples: [true, false],
     }),
   })
-  .openapi({ ref: "NotePinUpdate" });
+  .meta({ ref: "NotePinUpdate" });

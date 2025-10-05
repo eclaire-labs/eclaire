@@ -1,5 +1,5 @@
 // schemas/notes-routes.ts
-import { resolver } from "hono-openapi/zod";
+import { resolver } from "hono-openapi";
 import {
   ErrorResponseSchema,
   UnauthorizedSchema,

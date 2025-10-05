@@ -1,5 +1,5 @@
 // schemas/history-params.ts
-import { z } from "zod";
+import z from "zod/v4";
 
 // Define action types for history records
 export const HistoryActionSchema = z.enum([

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import z from "zod/v4";
 import { Button } from "@/components/ui/button";
 import {
   Form,

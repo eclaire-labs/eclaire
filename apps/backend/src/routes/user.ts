@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi/zod";
+import { validator as zValidator } from "hono-openapi";
 import path from "path";
 import sharp from "sharp";
 import { db } from "@/db";
@@ -126,7 +126,7 @@ userRoutes.patch(
         return c.json(
           {
             error: "Invalid data",
-            details: validationResult.error.errors,
+            details: validationResult.error.issues,
           },
           400,
         );

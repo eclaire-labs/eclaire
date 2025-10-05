@@ -1,5 +1,5 @@
 // schemas/conversation-responses.ts
-import { z } from "zod";
+import z from "zod/v4";
 
 // Base response schema
 export const BaseConversationResponseSchema = z.object({
@@ -12,7 +12,7 @@ export const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string(),
   thinkingContent: z.string().nullable().optional(),
-  createdAt: z.string().or(z.date()),
+  createdAt: z.string(),
   metadata: z.any().optional(),
 });
 
@@ -21,9 +21,9 @@ export const ConversationSummarySchema = z.object({
   id: z.string(),
   userId: z.string(),
   title: z.string(),
-  createdAt: z.string().or(z.date()),
-  updatedAt: z.string().or(z.date()),
-  lastMessageAt: z.string().or(z.date()).nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  lastMessageAt: z.string().nullable(),
   messageCount: z.number(),
 });
 

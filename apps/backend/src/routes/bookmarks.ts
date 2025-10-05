@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi/zod";
+import { validator as zValidator } from "hono-openapi";
 import isUrl from "is-url";
-import { z } from "zod";
+import z from "zod/v4";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
 import {
   type BookmarkAssetType,
@@ -138,7 +138,7 @@ bookmarksRoutes.post(
       logger.error("Error creating bookmark:", error);
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid request data", details: error.errors },
+          { error: "Invalid request data", details: error.issues },
           400,
         );
       }
@@ -216,7 +216,7 @@ bookmarksRoutes.put(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid request data", details: error.errors },
+          { error: "Invalid request data", details: error.issues },
           400,
         );
       }
@@ -261,7 +261,7 @@ bookmarksRoutes.patch(
 
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid request data", details: error.errors },
+          { error: "Invalid request data", details: error.issues },
           400,
         );
       }
@@ -453,7 +453,7 @@ bookmarksRoutes.patch(
   zValidator(
     "json",
     z.object({
-      reviewStatus: z.enum(["pending", "accepted", "rejected"]).openapi({
+      reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
         description: "New review status for the bookmark",
         examples: ["accepted", "rejected"],
       }),
@@ -505,7 +505,7 @@ bookmarksRoutes.patch(
       flagColor: z
         .enum(["red", "yellow", "orange", "green", "blue"])
         .nullable()
-        .openapi({
+        .meta({
           description: "Flag color for the bookmark (null to remove flag)",
           examples: ["red", "green", null],
         }),
@@ -550,7 +550,7 @@ bookmarksRoutes.patch(
   zValidator(
     "json",
     z.object({
-      isPinned: z.boolean().openapi({
+      isPinned: z.boolean().meta({
         description: "Whether to pin or unpin the bookmark",
         examples: [true, false],
       }),

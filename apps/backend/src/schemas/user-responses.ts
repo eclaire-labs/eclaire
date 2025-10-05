@@ -1,4 +1,4 @@
-import { z } from "zod";
+import z from "zod/v4";
 
 // Full user profile response (for authenticated user)
 export const UserProfileResponseSchema = z.object({

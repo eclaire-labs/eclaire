@@ -1,5 +1,5 @@
 // schemas/prompt-params.ts
-import { z } from "zod";
+import z from "zod/v4";
 
 // Content data schema for file/data uploads
 export const ContentDataSchema = z.object({
@@ -59,7 +59,7 @@ export const PromptRequestSchema = z.object({
 // Tool call schema for AI function calls
 export const ToolCallSchema = z.object({
   functionName: z.string(),
-  arguments: z.record(z.any()),
+  arguments: z.record(z.string(), z.any()),
 });
 
 // Tool result schema
@@ -102,7 +102,7 @@ export const SearchArgsSchema = z.object({
 export const TraceAICallSchema = z.object({
   callIndex: z.number(),
   timestamp: z.string(),
-  requestBody: z.record(z.any()),
+  requestBody: z.record(z.string(), z.any()),
   responseBody: z
     .object({
       rawSSEResponse: z.string().optional(), // Raw SSE buffer for streaming responses
@@ -123,7 +123,7 @@ export const TraceToolCallSchema = z.object({
   callIndex: z.number(),
   timestamp: z.string(),
   functionName: z.string(),
-  arguments: z.record(z.any()),
+  arguments: z.record(z.string(), z.any()),
   result: z.any(),
   error: z.string().optional(),
   durationMs: z.number(),
@@ -146,12 +146,12 @@ export const TraceSummarySchema = z.object({
 
 export const TraceSchema = z.object({
   enabled: z.boolean(),
-  requestBody: z.record(z.any()),
+  requestBody: z.record(z.string(), z.any()),
   context: TraceContextSchema,
   aiCalls: z.array(TraceAICallSchema),
   toolCalls: z.array(TraceToolCallSchema),
   summary: TraceSummarySchema,
-  responseBody: z.record(z.any()), // Response before trace is added
+  responseBody: z.record(z.string(), z.any()), // Response before trace is added
 });
 
 // TypeScript types

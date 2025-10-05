@@ -1,7 +1,7 @@
 // schemas/tasks-routes.ts
 
-import { resolver } from "hono-openapi/zod";
-import { z } from "zod";
+import { resolver } from "hono-openapi";
+import z from "zod/v4";
 import {
   ErrorResponseSchema,
   UnauthorizedSchema,
@@ -348,21 +348,21 @@ export const patchTaskRouteDescription = {
 // Response schema for successful task deletion
 export const TaskDeleteSuccessSchema = z
   .object({
-    message: z.string().openapi({
+    message: z.string().meta({
       description: "Success message confirming task deletion",
     }),
   })
-  .openapi({ ref: "TaskDeleteSuccess" });
+  .meta({ ref: "TaskDeleteSuccess" });
 
 // Request schema for review status update
 export const TaskReviewUpdateSchema = z
   .object({
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).openapi({
+    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
       description: "New review status for the task",
       examples: ["accepted", "rejected"],
     }),
   })
-  .openapi({ ref: "TaskReviewUpdate" });
+  .meta({ ref: "TaskReviewUpdate" });
 
 // Request schema for flag color update
 export const TaskFlagUpdateSchema = z
@@ -370,22 +370,22 @@ export const TaskFlagUpdateSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .nullable()
-      .openapi({
+      .meta({
         description: "Flag color for the task (null to remove flag)",
         examples: ["red", "green", null],
       }),
   })
-  .openapi({ ref: "TaskFlagUpdate" });
+  .meta({ ref: "TaskFlagUpdate" });
 
 // Request schema for pin status update
 export const TaskPinUpdateSchema = z
   .object({
-    isPinned: z.boolean().openapi({
+    isPinned: z.boolean().meta({
       description: "Whether to pin or unpin the task",
       examples: [true, false],
     }),
   })
-  .openapi({ ref: "TaskPinUpdate" });
+  .meta({ ref: "TaskPinUpdate" });
 
 // DELETE /api/tasks/:id - Delete a task
 export const deleteTaskRouteDescription = {

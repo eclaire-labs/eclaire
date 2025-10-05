@@ -1,6 +1,6 @@
 {
   "name": "@eclaire/workers",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "packageManager": "npm@11.6.1",
   "license": "MIT",

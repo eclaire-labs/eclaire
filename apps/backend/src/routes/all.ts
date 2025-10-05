@@ -2,9 +2,9 @@ import { fileTypeFromBuffer } from "file-type";
 // routes/all.ts
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi/zod";
+import { validator as zValidator } from "hono-openapi";
 import isUrl from "is-url";
-import { z } from "zod";
+import z from "zod/v4";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
 // Import search service functions
 import { countAllEntries, findAllEntries } from "@/lib/services/all";
@@ -107,7 +107,7 @@ allRoutes.get(
       );
       if (error instanceof z.ZodError) {
         return c.json(
-          { error: "Invalid search parameters", details: error.errors },
+          { error: "Invalid search parameters", details: error.issues },
           400,
         );
       }
@@ -484,7 +484,7 @@ allRoutes.post("/", describeRoute(postAllRouteDescription), async (c) => {
     );
     if (error instanceof z.ZodError) {
       return c.json(
-        { error: "Invalid metadata format", details: error.errors },
+        { error: "Invalid metadata format", details: error.issues },
         400,
       );
     }

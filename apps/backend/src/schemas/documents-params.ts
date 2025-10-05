@@ -1,6 +1,5 @@
 // schemas/documents-params.ts
-import { z } from "zod";
-import "zod-openapi/extend";
+import z from "zod/v4";
 
 // Full document update schema
 export const DocumentSchema = z
@@ -8,7 +7,7 @@ export const DocumentSchema = z
     title: z
       .string()
       .min(1, "Title is required")
-      .openapi({
+      .meta({
         description: "Title of the document",
         examples: [
           "Annual Report 2024",
@@ -21,7 +20,7 @@ export const DocumentSchema = z
       .string()
       .nullable()
       .optional()
-      .openapi({
+      .meta({
         description: "Optional description or notes about the document",
         examples: [
           "Quarterly financial report with charts and analysis",
@@ -32,7 +31,7 @@ export const DocumentSchema = z
     tags: z
       .array(z.string())
       .default([])
-      .openapi({
+      .meta({
         description: "Array of tags to categorize the document",
         examples: [
           ["finance", "report"],
@@ -43,7 +42,7 @@ export const DocumentSchema = z
     reviewStatus: z
       .enum(["pending", "accepted", "rejected"])
       .default("pending")
-      .openapi({
+      .meta({
         description: "Review status of the document",
         examples: ["pending", "accepted", "rejected"],
       }),
@@ -51,7 +50,7 @@ export const DocumentSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .optional()
-      .openapi({
+      .meta({
         description: "Flag color for the document (optional)",
         examples: ["red", "green", "blue"],
       }),
@@ -59,7 +58,7 @@ export const DocumentSchema = z
     isPinned: z
       .boolean()
       .default(false)
-      .openapi({
+      .meta({
         description: "Whether the document is pinned",
         examples: [true, false],
       }),
@@ -68,7 +67,7 @@ export const DocumentSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the document in ISO 8601 format",
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
@@ -77,13 +76,13 @@ export const DocumentSchema = z
       .boolean()
       .optional()
       .default(true)
-      .openapi({
+      .meta({
         description:
           "Whether background processing is enabled for this document",
         examples: [true, false],
       }),
   })
-  .openapi({
+  .meta({
     ref: "DocumentRequest",
     description: "Complete document metadata for full update",
   });
@@ -95,7 +94,7 @@ export const PartialDocumentSchema = z
       .string()
       .min(1, "Title is required")
       .optional()
-      .openapi({
+      .meta({
         description: "Title of the document",
         examples: ["Updated Document Title"],
       }),
@@ -104,7 +103,7 @@ export const PartialDocumentSchema = z
       .string()
       .nullable()
       .optional()
-      .openapi({
+      .meta({
         description: "Optional description or notes about the document",
         examples: ["Updated description with new information"],
       }),
@@ -112,7 +111,7 @@ export const PartialDocumentSchema = z
     tags: z
       .array(z.string())
       .optional()
-      .openapi({
+      .meta({
         description: "Array of tags to categorize the document",
         examples: [["updated", "reviewed"]],
       }),
@@ -120,7 +119,7 @@ export const PartialDocumentSchema = z
     reviewStatus: z
       .enum(["pending", "accepted", "rejected"])
       .optional()
-      .openapi({
+      .meta({
         description: "Review status of the document",
         examples: ["pending", "accepted", "rejected"],
       }),
@@ -128,7 +127,7 @@ export const PartialDocumentSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .optional()
-      .openapi({
+      .meta({
         description: "Flag color for the document (optional)",
         examples: ["red", "green", "blue"],
       }),
@@ -136,7 +135,7 @@ export const PartialDocumentSchema = z
     isPinned: z
       .boolean()
       .optional()
-      .openapi({
+      .meta({
         description: "Whether the document is pinned",
         examples: [true, false],
       }),
@@ -145,7 +144,7 @@ export const PartialDocumentSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the document in ISO 8601 format",
         examples: ["2025-07-01T10:00:00Z", null],
       }),
@@ -153,13 +152,13 @@ export const PartialDocumentSchema = z
     enabled: z
       .boolean()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Whether background processing is enabled for this document",
         examples: [true, false],
       }),
   })
-  .openapi({
+  .meta({
     ref: "PartialDocumentRequest",
     description: "Partial document metadata for updates",
   });
@@ -170,7 +169,7 @@ export const DocumentMetadataSchema = z
     title: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Title of the document (defaults to filename if not provided)",
         examples: ["Custom Document Title"],
@@ -180,7 +179,7 @@ export const DocumentMetadataSchema = z
       .string()
       .nullable()
       .optional()
-      .openapi({
+      .meta({
         description: "Optional description or notes about the document",
         examples: ["Important document containing project specifications"],
       }),
@@ -188,7 +187,7 @@ export const DocumentMetadataSchema = z
     tags: z
       .array(z.string())
       .optional()
-      .openapi({
+      .meta({
         description: "Array of tags to categorize the document",
         examples: [["work", "important", "project"]],
       }),
@@ -196,7 +195,7 @@ export const DocumentMetadataSchema = z
     originalFilename: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Original filename of the uploaded document",
         examples: ["report.pdf", "proposal.docx"],
       }),
@@ -205,7 +204,7 @@ export const DocumentMetadataSchema = z
       .string()
       .optional()
       .nullable()
-      .openapi({
+      .meta({
         description: "Due date for the document in ISO 8601 format",
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
@@ -214,13 +213,13 @@ export const DocumentMetadataSchema = z
       .boolean()
       .optional()
       .default(true)
-      .openapi({
+      .meta({
         description:
           "Whether background processing is enabled for this document",
         examples: [true, false],
       }),
   })
-  .openapi({
+  .meta({
     ref: "DocumentMetadata",
     description:
       "Metadata for document creation (used in multipart form uploads)",
@@ -232,7 +231,7 @@ export const DocumentSearchParamsSchema = z
     text: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Text to search for in document title, description, or content",
         examples: ["quarterly report", "project proposal"],
@@ -241,7 +240,7 @@ export const DocumentSearchParamsSchema = z
     tags: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Comma-separated list of tags to filter by",
         examples: ["finance,report", "project,draft"],
       }),
@@ -249,7 +248,7 @@ export const DocumentSearchParamsSchema = z
     startDate: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Start date for filtering documents (YYYY-MM-DD format)",
         examples: ["2024-01-01", "2024-06-01"],
         format: "date",
@@ -258,7 +257,7 @@ export const DocumentSearchParamsSchema = z
     endDate: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "End date for filtering documents (YYYY-MM-DD format)",
         examples: ["2024-12-31", "2024-06-30"],
         format: "date",
@@ -270,7 +269,7 @@ export const DocumentSearchParamsSchema = z
       .max(10000)
       .optional()
       .default(50)
-      .openapi({
+      .meta({
         description: "Maximum number of documents to return",
         examples: [10, 25, 50, 9999],
         minimum: 1,
@@ -280,7 +279,7 @@ export const DocumentSearchParamsSchema = z
     dueDateStart: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "Start date for filtering by due date (YYYY-MM-DD format)",
         examples: ["2024-01-01", "2024-06-01"],
         format: "date",
@@ -289,7 +288,7 @@ export const DocumentSearchParamsSchema = z
     dueDateEnd: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description: "End date for filtering by due date (YYYY-MM-DD format)",
         examples: ["2024-12-31", "2024-06-30"],
         format: "date",
@@ -306,7 +305,7 @@ export const DocumentSearchParamsSchema = z
       ])
       .optional()
       .default("createdAt")
-      .openapi({
+      .meta({
         description: "Field to sort documents by",
         examples: ["createdAt", "title", "fileSize"],
       }),
@@ -315,7 +314,7 @@ export const DocumentSearchParamsSchema = z
       .enum(["asc", "desc"])
       .optional()
       .default("desc")
-      .openapi({
+      .meta({
         description: "Sort direction",
         examples: ["asc", "desc"],
       }),
@@ -323,13 +322,13 @@ export const DocumentSearchParamsSchema = z
     fileTypes: z
       .string()
       .optional()
-      .openapi({
+      .meta({
         description:
           "Comma-separated list of file types/MIME types to filter by",
         examples: ["application/pdf", "image/jpeg,image/png"],
       }),
   })
-  .openapi({
+  .meta({
     ref: "DocumentSearchParams",
     description: "Search and filter parameters for documents",
   });
@@ -337,12 +336,12 @@ export const DocumentSearchParamsSchema = z
 // Specialized update schemas
 export const DocumentReviewUpdateSchema = z
   .object({
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).openapi({
+    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
       description: "New review status for the document",
       examples: ["accepted", "rejected"],
     }),
   })
-  .openapi({
+  .meta({
     ref: "DocumentReviewUpdate",
     description: "Schema for updating document review status",
   });
@@ -352,24 +351,24 @@ export const DocumentFlagUpdateSchema = z
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .nullable()
-      .openapi({
+      .meta({
         description: "Flag color for the document (null to remove flag)",
         examples: ["red", "green", null],
       }),
   })
-  .openapi({
+  .meta({
     ref: "DocumentFlagUpdate",
     description: "Schema for updating document flag color",
   });
 
 export const DocumentPinUpdateSchema = z
   .object({
-    isPinned: z.boolean().openapi({
+    isPinned: z.boolean().meta({
       description: "Whether to pin or unpin the document",
       examples: [true, false],
     }),
   })
-  .openapi({
+  .meta({
     ref: "DocumentPinUpdate",
     description: "Schema for updating document pin status",
   });
@@ -377,12 +376,12 @@ export const DocumentPinUpdateSchema = z
 // Path parameters
 export const DocumentIdParam = z
   .object({
-    id: z.string().openapi({
+    id: z.string().meta({
       description: "Unique identifier of the document",
       examples: ["clxyz123abc", "doc_12345"],
     }),
   })
-  .openapi({
+  .meta({
     ref: "DocumentIdParam",
     description: "Document ID path parameter",
   });
