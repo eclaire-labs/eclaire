@@ -1,4 +1,4 @@
-name: CI Staging (Manual Only)
+name: CI Staging (Manual Only) 
 
 on:
   workflow_dispatch:
