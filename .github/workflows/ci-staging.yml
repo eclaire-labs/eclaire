@@ -76,10 +76,9 @@ jobs:
           file: ./apps/${{ matrix.service }}/Dockerfile
           push: ${{ inputs.push_images }}
           platforms: ${{ inputs.platforms }}
-          # CI-only tags; no semver/public tags in staging
           tags: |
-            ${{ env.REGISTRY }}/${{ env[format('IMAGE_{0}', upper(matrix.service))] }}:ci-${{ steps.ver.outputs.refsafe }}-${{ steps.ver.outputs.hash }}
-            ${{ env.REGISTRY }}/${{ env[format('IMAGE_{0}', upper(matrix.service))] }}:ci-${{ steps.ver.outputs.refsafe }}-run${{ github.run_number }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/eclaire-${{ matrix.service }}:ci-${{ steps.ver.outputs.refsafe }}-${{ steps.ver.outputs.hash }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/eclaire-${{ matrix.service }}:ci-${{ steps.ver.outputs.refsafe }}-run${{ github.run_number }}
           labels: |
             org.opencontainers.image.title=Eclaire-${{ matrix.service }}
             org.opencontainers.image.version=${{ steps.ver.outputs.full }}
