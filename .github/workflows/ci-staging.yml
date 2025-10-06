@@ -56,6 +56,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Copy CHANGELOG to frontend build context
+        if: matrix.service == 'frontend'
+        run: cp -f CHANGELOG.md apps/frontend/CHANGELOG.md
+
       - name: Compute version
         id: ver
         run: |
