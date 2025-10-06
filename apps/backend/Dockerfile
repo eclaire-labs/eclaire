@@ -42,9 +42,6 @@ ENV APP_VERSION=${APP_VERSION} \
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 
-# Copy versions.json for OpenAPI config
-COPY versions.json ./versions.json
-
 # Copy the rest and build
 COPY . .
 # If you generate code (e.g., drizzle generate/prisma generate), do it here before build
