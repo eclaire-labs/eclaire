@@ -1,16 +1,114 @@
 name: CI Staging (Manual Only)
+
 on:
   workflow_dispatch:
     inputs:
-      info:
-        description: "This is a stub on main. Switch 'Use workflow from' to feature/ci-staging."
-        required: false
+      push_images:
+        description: "Push images to GHCR?"
+        type: boolean
+        default: true
+      platforms:
+        description: "Platforms (comma-separated)"
         type: string
+        default: "linux/amd64"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BACKEND:  ${{ github.repository_owner }}/eclaire-backend
+  IMAGE_FRONTEND: ${{ github.repository_owner }}/eclaire-frontend
+  IMAGE_WORKERS:  ${{ github.repository_owner }}/eclaire-workers
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ci-staging-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  noop:
-    # hard block runs on main just in case someone clicks Run here
-    if: ${{ github.ref_name != 'main' }}
-    runs-on: ubuntu-latest
+  build:
+    # Optional: keep this workflow usable only on ci/* or your feature branch
+    if: startsWith(github.ref_name, 'feature/ci-') || github.ref_name == 'feature/ci-staging'
+    runs-on: ubuntu-22.04
+    environment: ci-staging   # create this Environment and require reviewers
+    strategy:
+      matrix:
+        service: [backend, frontend, workers]
+
     steps:
-      - run: echo "This is a stub on main. Run this workflow from the feature/ci-staging branch."
+      - name: Checkout (full)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR (for push only)
+        if: inputs.push_images
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute version
+        id: ver
+        run: |
+          chmod +x scripts/version.sh
+          source scripts/version.sh
+          REF_SAFE="${GITHUB_REF_NAME//[\/ _]/-}"
+          echo "semver=${SEMVER}" >> $GITHUB_OUTPUT
+          echo "full=${FULL_VERSION}" >> $GITHUB_OUTPUT
+          echo "build=${BUILD}" >> $GITHUB_OUTPUT
+          echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "refsafe=${REF_SAFE}" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
+      - name: Build (and optionally push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/${{ matrix.service }}
+          file: ./apps/${{ matrix.service }}/Dockerfile
+          push: ${{ inputs.push_images }}
+          platforms: ${{ inputs.platforms }}
+          # CI-only tags; no semver/public tags in staging
+          tags: |
+            ${{ env.REGISTRY }}/${{ env[format('IMAGE_{0}', upper(matrix.service))] }}:ci-${{ steps.ver.outputs.refsafe }}-${{ steps.ver.outputs.hash }}
+            ${{ env.REGISTRY }}/${{ env[format('IMAGE_{0}', upper(matrix.service))] }}:ci-${{ steps.ver.outputs.refsafe }}-run${{ github.run_number }}
+          labels: |
+            org.opencontainers.image.title=Eclaire-${{ matrix.service }}
+            org.opencontainers.image.version=${{ steps.ver.outputs.full }}
+            org.opencontainers.image.revision=${{ steps.ver.outputs.hash }}
+            org.opencontainers.image.created=${{ steps.ver.outputs.timestamp }}
+          build-args: |
+            APP_VERSION=${{ steps.ver.outputs.semver }}
+            APP_FULL_VERSION=${{ steps.ver.outputs.full }}
+            APP_BUILD_NUMBER=${{ steps.ver.outputs.build }}
+            APP_BUILD_TIMESTAMP=${{ steps.ver.outputs.timestamp }}
+            APP_GIT_HASH=${{ steps.ver.outputs.hash }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Optional: artifact download when push_images = false
+      - name: Export image as artifact (amd64 only)
+        if: ${{ !inputs.push_images && contains(inputs.platforms, 'linux/amd64') }}
+        run: |
+          docker buildx build \
+            --platform linux/amd64 --load \
+            -f ./apps/${{ matrix.service }}/Dockerfile \
+            -t eclaire-${{ matrix.service }}:ci-${{ steps.ver.outputs.refsafe }}-run${{ github.run_number }} \
+            ./apps/${{ matrix.service }}
+          docker save eclaire-${{ matrix.service }}:ci-${{ steps.ver.outputs.refsafe }}-run${{ github.run_number }} \
+            -o eclaire-${{ matrix.service }}-ci-${{ steps.ver.outputs.refsafe }}-run${{ github.run_number }}.tar
+      - name: Upload artifact
+        if: ${{ !inputs.push_images && contains(inputs.platforms, 'linux/amd64') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: eclaire-${{ matrix.service }}-ci-${{ steps.ver.outputs.refsafe }}-run${{ github.run_number }}
+          path: eclaire-${{ matrix.service }}-ci-${{ steps.ver.outputs.refsafe }}-run${{ github.run_number }}.tar
+          retention-days: 7
