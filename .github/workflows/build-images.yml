@@ -132,7 +132,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ toLower(github.repository_owner) }}/eclaire-${{ matrix.service }}
+          images: ${{ env.REGISTRY }}/${{ lower(github.repository_owner) }}/eclaire-${{ matrix.service }}
           tags: |
             # Release: X.Y.Z, X.Y, latest, sha-<7>
             type=semver,pattern={{version}},enable=${{ steps.vsh.outputs.release_mode == 'true' }}
