@@ -1,5 +1,29 @@
 # Eclaire Changelog
 
+## [0.3.1] - 2025-10-08
+### Features
+- **ci/cd**: official GHCR image publishing system with Github Actions
+
+### CI/CD
+- **workflows**: overhauled CI/CD workflows and Docker build system
+- **automation**: bootstrap GitHub Actions UI on main branch
+
+### Security
+- **deps**: upgraded axios, hono, next.js to resolve security advisories
+- **deps**: bumped axios in tools/models-cli to address security advisory
+
+### Refactoring
+- **deps**: migrated to zod v4 and removed zod-openapi integration
+- **deps**: removed unused @hono/zod-validator dependency
+- **deps**: upgraded safe dependencies across frontend, backend, and workers
+
+### Documentation
+- **readme**: added demo video
+- **readme**: added comprehensive Quick Start guide for running official Docker images
+- **readme**: restructured setup options (Quick Start, Development, Building Docker Locally)
+
+---
+
 ## [0.3.0] - 2025-09-29
 ### Features
 - **repo**: publish core application (backend, frontend, workers) to a public repository
