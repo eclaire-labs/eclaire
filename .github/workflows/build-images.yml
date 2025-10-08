@@ -66,6 +66,8 @@ jobs:
           source ./scripts/version.sh
           {
             echo "semver=$SEMVER"
+            echo "major=$MAJOR"
+            echo "minor=$MINOR"
             echo "full=$FULL_VERSION"
             echo "docker_tag=$DOCKER_TAG"
             echo "commits_since_tag=$COMMITS_SINCE_TAG"
@@ -78,6 +80,24 @@ jobs:
             echo "git_dirty=$GIT_DIRTY"
           } >> "$GITHUB_OUTPUT"
           echo "Version: semver=$SEMVER full=$FULL_VERSION release=$RELEASE_MODE commits=$COMMITS_SINCE_TAG dirty=$GIT_DIRTY"
+
+      - name: Sanity check semver matches input (release only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          REF="${{ inputs.ref }}"
+          # Only validate if input looks like vX.Y.Z
+          if [[ "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            expected="${REF#v}"  # strip 'v' prefix
+            actual="${{ steps.vsh.outputs.semver }}"
+            if [[ "$actual" != "$expected" ]]; then
+              echo "❌ Sanity check failed: input ref '$REF' but version.sh computed SEMVER='$actual'"
+              exit 1
+            fi
+            echo "✅ Sanity check passed: SEMVER=$actual matches input ref $REF"
+          else
+            echo "ℹ️  Skipping sanity check (input '$REF' is not a semver tag)"
+          fi
 
       - name: Login to GHCR
         if: inputs.push_images
@@ -142,8 +162,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ steps.who.outputs.lc }}/eclaire-${{ matrix.service }}
           tags: |
             # Release: X.Y.Z, X.Y, latest, sha-<7>
-            type=semver,pattern={{version}},enable=${{ steps.vsh.outputs.release_mode == 'true' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ steps.vsh.outputs.release_mode == 'true' }}
+            type=raw,value=${{ steps.vsh.outputs.semver }},enable=${{ steps.vsh.outputs.release_mode == 'true' }}
+            type=raw,value=${{ steps.vsh.outputs.major }}.${{ steps.vsh.outputs.minor }},enable=${{ steps.vsh.outputs.release_mode == 'true' }}
             type=raw,value=latest,enable=${{ steps.vsh.outputs.release_mode == 'true' && inputs.publish_latest }}
             type=raw,value=sha-${{ steps.vsh.outputs.short_sha }}
             # Non-release: branch name and detailed tag
