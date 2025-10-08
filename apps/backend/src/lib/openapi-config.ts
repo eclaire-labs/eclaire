@@ -4,10 +4,17 @@ import z from "zod/v4";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Read version from versions.json
-const versionPath = resolve(__dirname, "../../../../versions.json");
-const versionData = JSON.parse(readFileSync(versionPath, "utf8"));
-const version = `${versionData.major}.${versionData.minor}.${versionData.patch}`;
+// Read version from build-info.json (generated during build) or fallback to package.json
+let version = "0.0.0";
+try {
+  const buildInfoPath = resolve(__dirname, "../../../../build-info.json");
+  const buildInfo = JSON.parse(readFileSync(buildInfoPath, "utf8"));
+  version = buildInfo.version || "0.0.0";
+} catch {
+  // Fallback: If build-info.json doesn't exist, use a default version
+  // This can happen during development or when generate:openapi runs before build.sh
+  version = "0.0.0-dev";
+}
 
 // =============================================================================
 // Reusable Zod Schemas for OpenAPI

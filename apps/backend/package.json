@@ -1,6 +1,6 @@
 {
   "name": "@eclaire/backend",
-  "version": "0.3.1",
+  "version": "0.0.0",
   "private": true,
   "packageManager": "npm@11.6.1",
   "license": "MIT",
@@ -19,7 +19,7 @@
   },
   "scripts": {
     "dev": "NODE_ENV=development tsx watch src/index.ts",
-    "build": "[ -f ./versions.json ] || cp ../../versions.json ./versions.json; tsc && tsc-alias && npm run generate:tool-signatures",
+    "build": "tsc && tsc-alias && npm run generate:tool-signatures",
     "build:with-docs": "npm run build && npm run generate:openapi",
     "start": "NODE_ENV=production node dist/src/index.js",
     "lint": "biome lint ./",

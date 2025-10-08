@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, FileText } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -18,8 +18,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -60,16 +58,12 @@ export default function SettingsContent() {
   const [healthData, setHealthData] = useState({
     version: "Loading...",
     fullVersion: null,
-    buildNumber: null,
     gitHash: null,
     timestamp: null,
     buildTimestamp: null,
     uptime: null,
     environment: null,
   });
-  const [changelogContent, setChangelogContent] = useState<string>("");
-  const [changelogLoading, setChangelogLoading] = useState(false);
-  const [changelogError, setChangelogError] = useState<string | null>(null);
 
   // Update active tab when URL parameters change
   useEffect(() => {
@@ -96,7 +90,6 @@ export default function SettingsContent() {
         setHealthData({
           version: data.version || "Unknown",
           fullVersion: data.fullVersion || null,
-          buildNumber: data.buildNumber || null,
           gitHash: data.gitHash || null,
           timestamp: data.timestamp || null,
           buildTimestamp: data.buildTimestamp || null,
@@ -108,55 +101,6 @@ export default function SettingsContent() {
         setHealthData((prev) => ({ ...prev, version: "Unknown" }));
       });
   }, []);
-
-  // Function to fetch changelog content
-  const fetchChangelog = async () => {
-    if (changelogContent) return; // Already loaded
-
-    setChangelogLoading(true);
-    setChangelogError(null);
-
-    try {
-      const response = await fetch("/api/changelog");
-      const data = await response.json();
-
-      if (data.status === "success") {
-        setChangelogContent(data.content);
-      } else {
-        setChangelogError(data.error || "Failed to load changelog");
-      }
-    } catch (error) {
-      setChangelogError("Failed to fetch changelog");
-    } finally {
-      setChangelogLoading(false);
-    }
-  };
-
-  // Function to render markdown content as HTML (simple implementation)
-  const renderMarkdown = (markdown: string) => {
-    return (
-      markdown
-        .replace(/^# (.+$)/gim, '<h1 class="text-2xl font-bold mb-4">$1</h1>')
-        .replace(
-          /^## (.+$)/gim,
-          '<h2 class="text-xl font-semibold mb-3 mt-6">$1</h2>',
-        )
-        .replace(
-          /^### (.+$)/gim,
-          '<h3 class="text-lg font-medium mb-2 mt-4">$1</h3>',
-        )
-        .replace(/^- (.+$)/gim, '<li class="ml-4">$1</li>')
-        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-        .replace(/\*(.+?)\*/g, "<em>$1</em>")
-        // Handle paragraph breaks properly - convert double newlines to paragraph breaks
-        .replace(/\n\n/g, '</p><p class="mb-4">')
-        // Wrap the entire content in paragraph tags and handle single newlines as spaces
-        .replace(/\n/g, " ")
-        // Wrap with initial paragraph tag
-        .replace(/^/, '<p class="mb-4">')
-        .replace(/$/, "</p>")
-    );
-  };
 
   // Function to render the content for the current tab on mobile
   const renderMobileTabContent = () => {
@@ -233,19 +177,11 @@ export default function SettingsContent() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <h4 className="font-semibold">Build Number</h4>
-                  <p className="text-sm text-muted-foreground font-mono">
-                    {healthData.buildNumber || "Unknown"}
-                  </p>
-                </div>
-                <div className="space-y-2">
                   <h4 className="font-semibold">Git Hash</h4>
                   <p className="text-sm text-muted-foreground font-mono">
                     {healthData.gitHash || "Unknown"}
                   </p>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <h4 className="font-semibold">Build Environment</h4>
                   <p className="text-sm text-muted-foreground font-mono">
@@ -254,6 +190,8 @@ export default function SettingsContent() {
                       "development"}
                   </p>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <h4 className="font-semibold">Uptime</h4>
                   <p className="text-sm text-muted-foreground">
@@ -262,52 +200,16 @@ export default function SettingsContent() {
                       : "Unknown"}
                   </p>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold">Build Date</h4>
-                <p className="text-sm text-muted-foreground">
-                  {healthData.buildTimestamp
-                    ? formatBuildDate(healthData.buildTimestamp)
-                    : healthData.timestamp
-                      ? formatBuildDate(healthData.timestamp)
-                      : "Unknown"}
-                </p>
-              </div>
-              <div className="pt-4 border-t">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" onClick={fetchChangelog}>
-                      <FileText className="w-4 h-4 mr-2" />
-                      View Changelog
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[80vh]">
-                    <ScrollArea className="h-[60vh] w-full rounded-md border p-4">
-                      {changelogLoading && (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="text-sm text-muted-foreground">
-                            Loading changelog...
-                          </div>
-                        </div>
-                      )}
-                      {changelogError && (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="text-sm text-destructive">
-                            {changelogError}
-                          </div>
-                        </div>
-                      )}
-                      {changelogContent && !changelogLoading && (
-                        <div
-                          className="prose dark:prose-invert max-w-none"
-                          dangerouslySetInnerHTML={{
-                            __html: renderMarkdown(changelogContent),
-                          }}
-                        />
-                      )}
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Build Date</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {healthData.buildTimestamp
+                      ? formatBuildDate(healthData.buildTimestamp)
+                      : healthData.timestamp
+                        ? formatBuildDate(healthData.timestamp)
+                        : "Unknown"}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -496,20 +398,11 @@ export default function SettingsContent() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <h4 className="font-semibold">Build Number</h4>
-                  <p className="text-sm text-muted-foreground font-mono">
-                    {healthData.buildNumber || "Unknown"}
-                  </p>
-                </div>
-                <div className="space-y-2">
                   <h4 className="font-semibold">Git Hash</h4>
                   <p className="text-sm text-muted-foreground font-mono">
                     {healthData.gitHash || "Unknown"}
                   </p>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <h4 className="font-semibold">Build Environment</h4>
                   <p className="text-sm text-muted-foreground font-mono">
@@ -518,6 +411,9 @@ export default function SettingsContent() {
                       "development"}
                   </p>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <h4 className="font-semibold">Uptime</h4>
                   <p className="text-sm text-muted-foreground">
@@ -526,54 +422,16 @@ export default function SettingsContent() {
                       : "Unknown"}
                   </p>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="font-semibold">Build Date</h4>
-                <p className="text-sm text-muted-foreground">
-                  {healthData.buildTimestamp
-                    ? formatBuildDate(healthData.buildTimestamp)
-                    : healthData.timestamp
-                      ? formatBuildDate(healthData.timestamp)
-                      : "Unknown"}
-                </p>
-              </div>
-
-              <div className="pt-4 border-t">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" onClick={fetchChangelog}>
-                      <FileText className="w-4 h-4 mr-2" />
-                      View Changelog
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[80vh]">
-                    <ScrollArea className="h-[60vh] w-full rounded-md border p-4">
-                      {changelogLoading && (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="text-sm text-muted-foreground">
-                            Loading changelog...
-                          </div>
-                        </div>
-                      )}
-                      {changelogError && (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="text-sm text-destructive">
-                            {changelogError}
-                          </div>
-                        </div>
-                      )}
-                      {changelogContent && !changelogLoading && (
-                        <div
-                          className="prose dark:prose-invert max-w-none"
-                          dangerouslySetInnerHTML={{
-                            __html: renderMarkdown(changelogContent),
-                          }}
-                        />
-                      )}
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Build Date</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {healthData.buildTimestamp
+                      ? formatBuildDate(healthData.buildTimestamp)
+                      : healthData.timestamp
+                        ? formatBuildDate(healthData.timestamp)
+                        : "Unknown"}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

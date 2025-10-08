@@ -17,11 +17,6 @@ const {
   colors
 } = require('./setup-utils');
 
-// Read version from versions.json
-const versionsPath = path.join(__dirname, '..', 'versions.json');
-const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf-8'));
-const VERSION = `${versions.major}.${versions.minor}.${versions.patch}`;
-
 // Parse command line arguments
 const args = process.argv.slice(2);
 
@@ -31,7 +26,8 @@ const flags = {
   force: args.includes('--force') || args.includes('-f'),
   skipDeps: args.includes('--skip-deps'),
   skipModels: args.includes('--skip-models'),
-  skipDb: args.includes('--skip-db')
+  skipDb: args.includes('--skip-db'),
+  build: args.includes('--build')
 };
 
 // Get environment after filtering out flags
@@ -100,8 +96,10 @@ async function showPreflightSummary(env) {
 
   if (!flags.skipDb) {
     console.log(`  5. ${colors.blue}Install npm dependencies${colors.reset} (backend, frontend, workers)`);
-    if (env === 'prod') {
-      console.log(`  6. ${colors.blue}Build Docker containers${colors.reset} (can skip if already built)`);
+    if (env === 'prod' && flags.build) {
+      console.log(`  6. ${colors.blue}Build Docker containers${colors.reset} (--build flag detected)`);
+    } else if (env === 'prod') {
+      console.log(`  6. ${colors.blue}Skip Docker build${colors.reset} (will use official GHCR images)`);
     }
     console.log(`  ${env === 'prod' ? '7' : '6'}. ${colors.blue}Start dependencies${colors.reset} (PostgreSQL, Redis, AI models via PM2)`);
     console.log(`     ${colors.yellow}Note: AI models will download on first start (may take 5-10 minutes)${colors.reset}`);
@@ -125,7 +123,7 @@ async function showPreflightSummary(env) {
 
 async function setup() {
   console.log(`${colors.cyan}╔══════════════════════════════════════════════╗${colors.reset}`);
-  console.log(`${colors.cyan}║         Eclaire Setup Script v${VERSION}          ║${colors.reset}`);
+  console.log(`${colors.cyan}║            Eclaire Setup Script              ║${colors.reset}`);
   console.log(`${colors.cyan}╚══════════════════════════════════════════════╝${colors.reset}`);
 
   // Determine environment
@@ -144,6 +142,7 @@ async function setup() {
     console.log('  --skip-deps        Skip dependency checks');
     console.log('  --skip-models      Skip model checks');
     console.log('  --skip-db          Skip database initialization');
+    console.log('  --build            Build Docker containers locally (prod only)');
     process.exit(1);
   }
 
@@ -246,9 +245,9 @@ async function setup() {
       }
     }
 
-    // Step 6: Build containers (production only, needed for database migrations)
-    if (!flags.skipDb && env === 'prod' && results.npmDependencies) {
-      if (await confirm('\nStep 6: Build Docker containers (N to skip build)?')) {
+    // Step 6: Build containers (production only, optional with --build flag)
+    if (!flags.skipDb && env === 'prod' && results.npmDependencies && flags.build) {
+      if (await confirm('\nStep 6: Build Docker containers?')) {
         console.log(`\n${colors.blue}Building containers...${colors.reset}`);
         try {
           results.containersBuilt = await buildContainers();
@@ -260,9 +259,12 @@ async function setup() {
           results.containersBuildFailed = true;
         }
       } else {
-        console.log(`${colors.yellow}Skipping container build (using existing images)${colors.reset}`);
+        console.log(`${colors.yellow}Skipping container build${colors.reset}`);
         results.containersBuilt = true; // Mark as done so database init proceeds
       }
+    } else if (!flags.skipDb && env === 'prod' && results.npmDependencies && !flags.build) {
+      console.log(`${colors.yellow}Skipping container build (using official GHCR images). Use --build flag to build locally.${colors.reset}`);
+      results.containersBuilt = true; // Mark as done so database init proceeds
     } else if (!flags.skipDb && env === 'prod' && !results.npmDependencies) {
       console.log(`${colors.yellow}Skipping container build (npm dependencies not installed)${colors.reset}`);
     }
@@ -310,7 +312,7 @@ async function setup() {
 
     // Print summary
     console.log('\n');
-    printSummary(results, env);
+    printSummary(results, env, flags);
 
     // Check for failures and exit with appropriate code
     const hasFailures = Object.keys(results).some(key => key.endsWith('Failed') && results[key]);

@@ -29,21 +29,18 @@ RUN corepack enable && corepack prepare npm@11.5.1 --activate
 # Build metadata (optional)
 ARG APP_VERSION=N/A
 ARG APP_FULL_VERSION=N/A
-ARG APP_BUILD_NUMBER=N/A
+ARG APP_COMMITS_SINCE_TAG=0
 ARG APP_BUILD_TIMESTAMP=N/A
 ARG APP_GIT_HASH=N/A
 ENV APP_VERSION=${APP_VERSION} \
     APP_FULL_VERSION=${APP_FULL_VERSION} \
-    APP_BUILD_NUMBER=${APP_BUILD_NUMBER} \
+    APP_COMMITS_SINCE_TAG=${APP_COMMITS_SINCE_TAG} \
     APP_BUILD_TIMESTAMP=${APP_BUILD_TIMESTAMP} \
     APP_GIT_HASH=${APP_GIT_HASH}
 
 # Install all deps (including dev) with cache
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
-
-# Copy versions.json for OpenAPI config
-COPY versions.json ./versions.json
 
 # Copy the rest and build
 COPY . .
@@ -64,14 +61,21 @@ WORKDIR /app
 # Build metadata (kept in final image for observability)
 ARG APP_VERSION=N/A
 ARG APP_FULL_VERSION=N/A
-ARG APP_BUILD_NUMBER=N/A
+ARG APP_COMMITS_SINCE_TAG=0
 ARG APP_BUILD_TIMESTAMP=N/A
 ARG APP_GIT_HASH=N/A
+ARG APP_SERVICE=backend
+ARG APP_ORIGIN=local
+ARG APP_CHANNEL=unknown
+ARG APP_CHANNEL_TAG=unknown
+ARG APP_GIT_DIRTY=false
+ARG APP_CI_RUN_ID=""
+ARG APP_CI_RUN_NUMBER=""
 
 ENV NODE_ENV=production \
     APP_VERSION=${APP_VERSION} \
     APP_FULL_VERSION=${APP_FULL_VERSION} \
-    APP_BUILD_NUMBER=${APP_BUILD_NUMBER} \
+    APP_COMMITS_SINCE_TAG=${APP_COMMITS_SINCE_TAG} \
     APP_BUILD_TIMESTAMP=${APP_BUILD_TIMESTAMP} \
     APP_GIT_HASH=${APP_GIT_HASH} \
     PORT=3001 \
@@ -82,11 +86,21 @@ ENV NODE_ENV=production \
 LABEL org.opencontainers.image.title="Eclaire Backend" \
       org.opencontainers.image.description="Eclaire Backend Service" \
       org.opencontainers.image.source="https://github.com/eclaire-labs/eclaire" \
+      org.opencontainers.image.url="https://eclaire.co" \
+      org.opencontainers.image.documentation="https://eclaire.co/docs/" \
+      org.opencontainers.image.authors="Eclaire Labs <https://github.com/eclaire-labs/>" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version=$APP_FULL_VERSION \
       org.opencontainers.image.revision=$APP_GIT_HASH \
       org.opencontainers.image.created=$APP_BUILD_TIMESTAMP \
-      org.opencontainers.image.vendor="Eclaire Labs"
+      org.opencontainers.image.vendor="Eclaire Labs" \
+      co.eclaire.service=$APP_SERVICE \
+      co.eclaire.origin=$APP_ORIGIN \
+      co.eclaire.channel=$APP_CHANNEL \
+      co.eclaire.channel_tag=$APP_CHANNEL_TAG \
+      co.eclaire.git_dirty=$APP_GIT_DIRTY \
+      co.eclaire.ci_run_id=$APP_CI_RUN_ID \
+      co.eclaire.ci_run_number=$APP_CI_RUN_NUMBER
 
 # Copy dumb-init for PID1
 COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init

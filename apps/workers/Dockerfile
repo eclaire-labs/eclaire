@@ -45,13 +45,13 @@ COPY . .
 # Do NOT set NODE_ENV=production in builder; you need devDeps to build
 ARG APP_VERSION=N/A
 ARG APP_FULL_VERSION=N/A
-ARG APP_BUILD_NUMBER=N/A
+ARG APP_COMMITS_SINCE_TAG=0
 ARG APP_BUILD_TIMESTAMP=N/A
 ARG APP_GIT_HASH=N/A
 ENV NEXT_TELEMETRY_DISABLED=1 \
     APP_VERSION=${APP_VERSION} \
     APP_FULL_VERSION=${APP_FULL_VERSION} \
-    APP_BUILD_NUMBER=${APP_BUILD_NUMBER} \
+    APP_COMMITS_SINCE_TAG=${APP_COMMITS_SINCE_TAG} \
     APP_BUILD_TIMESTAMP=${APP_BUILD_TIMESTAMP} \
     APP_GIT_HASH=${APP_GIT_HASH}
 RUN npm run build
@@ -69,15 +69,22 @@ WORKDIR /app
 # Build metadata
 ARG APP_VERSION=N/A
 ARG APP_FULL_VERSION=N/A
-ARG APP_BUILD_NUMBER=N/A
+ARG APP_COMMITS_SINCE_TAG=0
 ARG APP_BUILD_TIMESTAMP=N/A
 ARG APP_GIT_HASH=N/A
+ARG APP_SERVICE=workers
+ARG APP_ORIGIN=local
+ARG APP_CHANNEL=unknown
+ARG APP_CHANNEL_TAG=unknown
+ARG APP_GIT_DIRTY=false
+ARG APP_CI_RUN_ID=""
+ARG APP_CI_RUN_NUMBER=""
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     APP_VERSION=${APP_VERSION} \
     APP_FULL_VERSION=${APP_FULL_VERSION} \
-    APP_BUILD_NUMBER=${APP_BUILD_NUMBER} \
+    APP_COMMITS_SINCE_TAG=${APP_COMMITS_SINCE_TAG} \
     APP_BUILD_TIMESTAMP=${APP_BUILD_TIMESTAMP} \
     APP_GIT_HASH=${APP_GIT_HASH} \
     HOST=0.0.0.0 \
@@ -88,11 +95,21 @@ ENV NODE_ENV=production \
 LABEL org.opencontainers.image.title="Eclaire Workers" \
       org.opencontainers.image.description="Eclaire background/queue workers" \
       org.opencontainers.image.source="https://github.com/eclaire-labs/eclaire" \
+      org.opencontainers.image.url="https://eclaire.co" \
+      org.opencontainers.image.documentation="https://eclaire.co/docs/" \
+      org.opencontainers.image.authors="Eclaire Labs <https://github.com/eclaire-labs/>" \
+      org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version=$APP_FULL_VERSION \
       org.opencontainers.image.revision=$APP_GIT_HASH \
       org.opencontainers.image.created=$APP_BUILD_TIMESTAMP \
-      org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.vendor="Eclaire Labs"
+      org.opencontainers.image.vendor="Eclaire Labs" \
+      co.eclaire.service=$APP_SERVICE \
+      co.eclaire.origin=$APP_ORIGIN \
+      co.eclaire.channel=$APP_CHANNEL \
+      co.eclaire.channel_tag=$APP_CHANNEL_TAG \
+      co.eclaire.git_dirty=$APP_GIT_DIRTY \
+      co.eclaire.ci_run_id=$APP_CI_RUN_ID \
+      co.eclaire.ci_run_number=$APP_CI_RUN_NUMBER
 
 # PID1
 COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
@@ -136,11 +153,11 @@ RUN mkdir -p /app/logs /app/tmp /app/data/browser-data /app/tools && \
 USER nodeapp
 
 # Workers expose Bull Board UI and health endpoint
-EXPOSE 4000
+EXPOSE 3002
 
-# Health check using HTTP endpoint (port 4000 from config)
+# Health check using HTTP endpoint (port 3002 from config)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f -A "Docker-Health-Check" http://localhost:4000/health 2>/dev/null || exit 1
+    CMD curl -f -A "Docker-Health-Check" http://localhost:3002/health 2>/dev/null || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/index.js"]

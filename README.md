@@ -152,27 +152,38 @@ With AI gaining rapid adoption, there is a growing need for alternatives to clos
 > We currently run llama-server and docling **bare-metal** (not containerized) for direct GPU access; PM2 supervises these processes.
 
 
-### Quick Start (pick one)
+### Quick Start
 
-#### Option A — Docker (recommended for staging/production or quick self-host)
-This path uses **production** configs.
+Choose the setup path that matches your needs:
+
+#### Option A — Quick Start (Recommended)
+**For users who want to run Eclaire quickly using official Docker images**
 
 1. **Run automated setup**
-```
+```bash
 npm run setup:prod
 ```
-This will copy config files, create directories, check dependencies, build the containers and guide you through the setup.
+This will:
+- Copy configuration files
+- Create required directories
+- Check system dependencies
+- Install npm dependencies (needed for database migrations)
+- Start PostgreSQL and Redis
+- Initialize the database with essential seed data
 
-2. **Run**
-```
+The setup will **automatically use official GHCR images** and skip local Docker builds.
+
+2. **Start Eclaire**
+```bash
 docker compose up
 ```
 
-Frontend: http://localhost:3000
-Backend health: curl http://localhost:3001/health
+Access the application:
+- Frontend: http://localhost:3000
+- Backend health: curl http://localhost:3001/health
 
 
-#### Option B — Dev (for contributors)
+#### Option B — Development (For contributors)
 
 ** Additional dependencies required:**
 - LibreOffice (soffice for document processing)
@@ -209,11 +220,42 @@ This will:
 Setup runs in interactive mode by default (asks for confirmation at each step).
 
 2. **Run the dev servers**
-```
+```bash
 npm run dev
 ```
-Frontend: http://localhost:3000
-Backend health: curl http://localhost:3001/health
+
+Access the application:
+- Frontend: http://localhost:3000
+- Backend health: curl http://localhost:3001/health
+
+
+#### Option C — Building Docker Locally (Advanced)
+**For users who want to customize and build their own Docker containers**
+
+If you need to modify the application or build custom images:
+
+1. **Setup with build** (if starting fresh):
+```bash
+npm run setup:prod:build
+```
+This runs the full setup process, builds Docker containers locally, and generates `docker-compose.local.yml` to reference your local images.
+
+2. **Or build manually** (if already setup):
+```bash
+./scripts/build.sh
+```
+This will build the Docker images locally and generate `docker-compose.local.yml` that references your local images.
+
+3. **Run with local images**:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml up
+```
+
+The build script creates `docker-compose.local.yml` that overrides the image references to use your locally-built containers instead of pulling from GHCR.
+
+Access the application:
+- Frontend: http://localhost:3000
+- Backend health: curl http://localhost:3001/health
 
 
 ### Stopping & Cleanup

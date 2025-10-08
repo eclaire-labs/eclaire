@@ -44,7 +44,7 @@ export const config = {
     ), // 90 seconds
   },
   server: {
-    port: Number.parseInt(process.env.WORKER_PORT || "4000", 10), // Port for Fastify/Bull Board
+    port: Number.parseInt(process.env.WORKER_PORT || "3002", 10), // Port for Fastify/Bull Board
     basePath: "/ui", // Base path for Bull Board UI
   },
   queues: {

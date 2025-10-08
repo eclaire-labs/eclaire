@@ -21,6 +21,7 @@
     "setup:dev": "node scripts/setup.js dev",
     "setup:dev:yes": "node scripts/setup.js dev --yes",
     "setup:prod": "node scripts/setup.js prod",
+    "setup:prod:build": "node scripts/setup.js prod --build",
     "setup:prod:yes": "node scripts/setup.js prod --yes",
     "setup:check": "node scripts/setup.js dev --skip-db --skip-models",
     "setup:clean": "node scripts/setup-clean.js",

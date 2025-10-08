@@ -1,219 +1,213 @@
-#!/bin/bash
-
-# Eclaire – Global Build Script (Production Only)
-# ----------------------------------------------------
-# This script builds the Docker images for the different Eclaire services (backend, frontend, workers)
-# by delegating to each service's own docker-build.sh helper.
-#
-# Since the project has migrated to production-only containers, this script only builds production images.
-#
-# Usage:
-#   ./build.sh [service ...] [--backend-url BACKEND_URL] [--release]
-#
-# Arguments:
-#   1+. Service names (optional) – Any combination of "backend", "frontend", "workers".
-#       If no service names are provided, all services will be built.
-#   --backend-url BACKEND_URL (optional) – Override the backend URL for frontend builds (build-time operations).
-#   --release (optional) – Enforce git validation checks for production releases.
-#
-# Examples:
-#   ./build.sh                 # Build ALL services for development
-#   ./build.sh backend         # Build only the backend
-#   ./build.sh backend frontend  # Build backend & frontend
-#   ./build.sh --backend-url http://backend:3001  # Build all with custom backend URL
-#   ./build.sh frontend --backend-url http://backend:3001  # Build frontend with custom backend URL
-#   ./build.sh --release       # Build all services with git validation for release
-#   ./build.sh backend --release  # Build backend with git validation
-#
-# For Docker cleanup, use: ./scripts/docker-cleanup.sh [options]
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Initialize variables
 RELEASE_MODE=false
+BACKEND_URL_OVERRIDE=""
+PARSED_ARGS=()
 
-# Version management: Read versions.json and build number from separate files
-VERSION_FILE="versions.json"
-BUILD_NUMBER_FILE=".build_number"
+# Parse CLI
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --backend-url) BACKEND_URL_OVERRIDE="$2"; shift 2 ;;
+    --release)     RELEASE_MODE=true; shift ;;
+    *)             PARSED_ARGS+=("$1"); shift ;;
+  esac
+done
+if [[ ${#PARSED_ARGS[@]} -gt 0 ]]; then set -- "${PARSED_ARGS[@]}"; else set --; fi
 
-if [[ ! -f "$VERSION_FILE" ]]; then
-  echo "❌ Error: $VERSION_FILE not found. Please create it with major, minor, and patch versions."
-  exit 1
+# Compute version/build from git (and optionally CI env)
+source ./scripts/version.sh
+
+# Gather additional build metadata
+GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+GIT_BRANCH="${GIT_BRANCH:-${CHANNEL}}"
+
+# Detect origin and CI provider
+if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+  ORIGIN="ci"
+  CI_PROVIDER="github"
+  CI_RUN_ID="${GITHUB_RUN_ID:-}"
+  CI_RUN_NUMBER="${GITHUB_RUN_NUMBER:-}"
+  CI_WORKFLOW="${GITHUB_WORKFLOW:-}"
+  CI_REF="${GITHUB_REF:-}"
+  CI_ACTOR="${GITHUB_ACTOR:-}"
+  BUILDER="github-actions"
+elif [[ -n "${CI:-}" ]]; then
+  ORIGIN="ci"
+  CI_PROVIDER="unknown"
+  CI_RUN_ID=""
+  CI_RUN_NUMBER=""
+  CI_WORKFLOW=""
+  CI_REF=""
+  CI_ACTOR=""
+  BUILDER="ci"
+else
+  ORIGIN="local"
+  CI_PROVIDER=""
+  CI_RUN_ID=""
+  CI_RUN_NUMBER=""
+  CI_WORKFLOW=""
+  CI_REF=""
+  CI_ACTOR=""
+  BUILDER="$(whoami)@$(hostname)"
 fi
 
-if [[ ! -f "$BUILD_NUMBER_FILE" ]]; then
-  echo "❌ Error: $BUILD_NUMBER_FILE not found. Please create it with initial build number."
-  exit 1
-fi
+# GIT_DIRTY is already set by version.sh
 
-# Get version info
-MAJOR=$(jq -r '.major' "$VERSION_FILE")
-MINOR=$(jq -r '.minor' "$VERSION_FILE")
-PATCH=$(jq -r '.patch' "$VERSION_FILE")
-SEMANTIC_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-EXPECTED_TAG="v${SEMANTIC_VERSION}"
-
-# Git validation checks (only for release builds)
+# If --release, enforce your existing clean/tag checks (re-using SEMVER)
 if [ "$RELEASE_MODE" = true ]; then
-  # 1. Check if working directory is clean (no uncommitted changes)
-  if ! git diff-index --quiet HEAD --; then
-    echo "❌ ERROR: Uncommitted changes detected."
-    echo "Please commit or stash your changes before creating a release build."
-    git status --short # Show the user what is uncommitted
-    exit 1
+  if [ "$GIT_DIRTY" = true ]; then
+    echo "❌ Uncommitted changes."; git status --short; exit 1
   fi
-  echo "✅ Git working directory is clean."
-
-  # 2. Check if the current commit hash matches the version tag's hash
-  # Get the commit hash that the tag points to. Suppress errors if tag doesn't exist.
+  EXPECTED_TAG="v${SEMVER}"
   TAG_HASH=$(git rev-parse "$EXPECTED_TAG^{commit}" 2>/dev/null || true)
   HEAD_HASH=$(git rev-parse HEAD)
-
-  if [ -z "$TAG_HASH" ]; then
-    echo "❌ ERROR: Release tag '${EXPECTED_TAG}' not found."
-    echo "Please create and push the tag for version ${SEMANTIC_VERSION} before building."
-    echo "Run: git tag ${EXPECTED_TAG} && git push origin main --tags"
-    exit 1
+  if [ -z "$TAG_HASH" ] || [ "$TAG_HASH" != "$HEAD_HASH" ]; then
+    echo "❌ HEAD must match ${EXPECTED_TAG} for a release build."; exit 1
   fi
-
-  if [ "$TAG_HASH" != "$HEAD_HASH" ]; then
-    echo "❌ ERROR: Git HEAD does not match the '${EXPECTED_TAG}' tag."
-    echo "You must be on the exact commit that was tagged for a release build."
-    echo "  - Commit for tag '${EXPECTED_TAG}': ${TAG_HASH}"
-    echo "  - Current HEAD commit:          ${HEAD_HASH}"
-    echo "Run 'git checkout ${EXPECTED_TAG}' to fix this."
-    exit 1
-  fi
-  echo "✅ Git HEAD matches the release tag '${EXPECTED_TAG}'."
-else
-  echo "ℹ️  Skipping git validation checks (use --release flag to enable)"
 fi
 
-# Read and increment build number
-BUILD=$(cat "$BUILD_NUMBER_FILE")
-BUILD=$((BUILD + 1))
+# Convert DOCKER_TAGS to JSON array format
+DOCKER_TAGS_JSON="["
+first=true
+for tag in $DOCKER_TAGS; do
+  if [ "$first" = true ]; then
+    DOCKER_TAGS_JSON+="\"${tag}\""
+    first=false
+  else
+    DOCKER_TAGS_JSON+=",\"${tag}\""
+  fi
+done
+DOCKER_TAGS_JSON+="]"
 
-# Update build number file
-echo "$BUILD" > "$BUILD_NUMBER_FILE"
-
-# Generate build metadata
-BUILD_TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-FULL_VERSION="${SEMANTIC_VERSION}+build.${BUILD}"
-GIT_HASH=$(git rev-parse --short HEAD)
-BUILD_HOST=$(hostname)
-
-echo "🏗️  Building Eclaire v${SEMANTIC_VERSION} (build ${BUILD}, ${GIT_HASH})"
-echo "📦 Semantic version: ${SEMANTIC_VERSION}"
-echo "🔧 Full version: ${FULL_VERSION}"
-echo "📅 Build timestamp: $BUILD_TIMESTAMP"
-
-# Create build-info.json for backup CLI and other tools
+# Build-info for your tooling
 cat > build-info.json << EOF
 {
-  "version": "${SEMANTIC_VERSION}",
+  "version": "${SEMVER}",
   "fullVersion": "${FULL_VERSION}",
   "major": ${MAJOR},
   "minor": ${MINOR},
   "patch": ${PATCH},
-  "build": ${BUILD},
+  "commitsSinceTag": ${COMMITS_SINCE_TAG},
   "buildTimestamp": "${BUILD_TIMESTAMP}",
   "gitHash": "${GIT_HASH}",
-  "buildHost": "${BUILD_HOST}",
+  "shortSha": "${SHORT_SHA}",
+  "gitBranch": "${GIT_BRANCH}",
+  "gitDirty": ${GIT_DIRTY},
+  "channel": "${CHANNEL}",
+  "channelSafe": "${CHANNEL_SAFE}",
+  "channelTagSafe": "${CHANNEL_TAG_SAFE}",
+  "dockerTag": "${DOCKER_TAG}",
+  "dockerTags": ${DOCKER_TAGS_JSON},
   "releaseMode": ${RELEASE_MODE},
+  "origin": "${ORIGIN}",
+  "ciProvider": "${CI_PROVIDER}",
+  "ciRunId": "${CI_RUN_ID}",
+  "ciRunNumber": "${CI_RUN_NUMBER}",
+  "ciWorkflow": "${CI_WORKFLOW}",
+  "ciRef": "${CI_REF}",
+  "ciActor": "${CI_ACTOR}",
+  "builder": "${BUILDER}",
+  "service": "",
   "createdAt": "${BUILD_TIMESTAMP}",
   "buildTool": "build.sh"
 }
 EOF
 
-echo "📄 Created build-info.json with build metadata"
+echo "========================================="
+echo "Building v${SEMVER} (${COMMITS_SINCE_TAG} commits since tag, sha ${SHORT_SHA})"
+echo "========================================="
 
-# Parse arguments for backend URL override and release flag
-BACKEND_URL_OVERRIDE=""
-PARSED_ARGS=()
+[[ -n "$BACKEND_URL_OVERRIDE" ]] && echo "🔧 Backend URL override: $BACKEND_URL_OVERRIDE"
 
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    --backend-url)
-      BACKEND_URL_OVERRIDE="$2"
-      shift 2
-      ;;
-    --release)
-      RELEASE_MODE=true
-      shift
-      ;;
-    *)
-      PARSED_ARGS+=("$1")
-      shift
-      ;;
-  esac
-done
-
-# Restore parsed arguments
-if [[ ${#PARSED_ARGS[@]} -gt 0 ]]; then
-  set -- "${PARSED_ARGS[@]}"
-else
-  set --
-fi
-
-# Array of all supported services
 ALL_SERVICES=(backend frontend workers)
-# If the user provided specific service names, use those; otherwise, build all.
-if [[ $# -gt 0 ]]; then
-  SERVICES=("$@")
-else
-  SERVICES=("${ALL_SERVICES[@]}")
-fi
+if [[ $# -gt 0 ]]; then SERVICES=("$@"); else SERVICES=("${ALL_SERVICES[@]}"); fi
 
-# Validate service names
 for svc in "${SERVICES[@]}"; do
-  if [[ ! " ${ALL_SERVICES[*]} " =~ " ${svc} " ]]; then
-    echo "❌ Error: Unknown service '${svc}'. Valid options are: ${ALL_SERVICES[*]}"
-    exit 1
-  fi
-done
+  echo -e ""
+  echo "--------------------------------------------------------------------------------------------------"
+  printf "Building %s %s\n" "$svc" "$FULL_VERSION"
+  echo "--------------------------------------------------------------------------------------------------"
 
-# Display override info
-if [[ -n "$BACKEND_URL_OVERRIDE" ]]; then
-  echo "🔧 Backend URL Override: $BACKEND_URL_OVERRIDE"
-fi
+  # Determine base image tag
+  BASE_IMAGE_TAG="eclaire-${svc}"
 
-# Build each requested service
-for svc in "${SERVICES[@]}"; do
-  SCRIPT_PATH="apps/${svc}/docker-build.sh"
-  if [[ -x "$SCRIPT_PATH" ]]; then
-    # Use printf for portable newlines and avoid Bash 4 string substitution
-    printf "\n==============================\n"
-    printf "Building %s v%s (Production)\n" "$svc" "$FULL_VERSION"
-    printf "==============================\n"
-    
-    # Update package.json version before building (use semantic version)
-    PACKAGE_JSON="apps/${svc}/package.json"
-    if [[ -f "$PACKAGE_JSON" ]]; then
-      jq --arg version "$SEMANTIC_VERSION" '.version = $version' "$PACKAGE_JSON" > "${PACKAGE_JSON}.tmp" && mv "${PACKAGE_JSON}.tmp" "$PACKAGE_JSON"
-      echo "📦 Updated ${svc} package.json to v${SEMANTIC_VERSION}"
-    fi
-    
-    # Pass version and build metadata to build scripts
-    export VERSION="$SEMANTIC_VERSION"
-    export FULL_VERSION="$FULL_VERSION"
-    export MAJOR="$MAJOR"
-    export MINOR="$MINOR"
-    export PATCH="$PATCH"
-    export BUILD="$BUILD"
-    export BUILD_TIMESTAMP="$BUILD_TIMESTAMP"
-    export GIT_HASH="$GIT_HASH"
-    
-    # Pass backend URL override to frontend builds
-    if [[ "$svc" == "frontend" && -n "$BACKEND_URL_OVERRIDE" ]]; then
-      (cd "apps/${svc}" && ./docker-build.sh "$BACKEND_URL_OVERRIDE")
-    else
-      (cd "apps/${svc}" && ./docker-build.sh)
-    fi
+  # Build tags array
+  TAGS=()
+  if [[ "$RELEASE_MODE" == "true" ]]; then
+    TAGS+=( -t "${BASE_IMAGE_TAG}:${SEMVER}" )
+    TAGS+=( -t "${BASE_IMAGE_TAG}:${MAJOR}.${MINOR}" )
+    TAGS+=( -t "${BASE_IMAGE_TAG}:latest" )
   else
-    echo "⚠️  Skipping ${svc}: build script not found or not executable at ${SCRIPT_PATH}"
+    for tag in $DOCKER_TAGS; do
+      TAGS+=( -t "${BASE_IMAGE_TAG}:${tag}" )
+    done
   fi
+
+  # Build args array
+  BUILD_ARGS=(
+    --build-arg "APP_VERSION=${SEMVER}"
+    --build-arg "APP_FULL_VERSION=${FULL_VERSION}"
+    --build-arg "APP_COMMITS_SINCE_TAG=${COMMITS_SINCE_TAG}"
+    --build-arg "APP_BUILD_TIMESTAMP=${BUILD_TIMESTAMP}"
+    --build-arg "APP_GIT_HASH=${GIT_HASH}"
+    --build-arg "APP_SERVICE=${svc}"
+    --build-arg "APP_ORIGIN=${ORIGIN}"
+    --build-arg "APP_CHANNEL=${CHANNEL_SAFE}"
+    --build-arg "APP_CHANNEL_TAG=${CHANNEL_TAG_SAFE}"
+    --build-arg "APP_GIT_DIRTY=${GIT_DIRTY}"
+    --build-arg "APP_CI_RUN_ID=${CI_RUN_ID}"
+    --build-arg "APP_CI_RUN_NUMBER=${CI_RUN_NUMBER}"
+  )
+
+  # Frontend-specific: add BACKEND_URL if provided
+  if [[ "$svc" == "frontend" && -n "$BACKEND_URL_OVERRIDE" ]]; then
+    BUILD_ARGS+=( --build-arg "BACKEND_URL=${BACKEND_URL_OVERRIDE}" )
+    echo "🔧 Using custom BACKEND_URL for build: $BACKEND_URL_OVERRIDE"
+  fi
+
+  # Build the image
+  (
+    cd "apps/${svc}"
+    docker build \
+      -f Dockerfile \
+      "${TAGS[@]}" \
+      "${BUILD_ARGS[@]}" \
+      .
+  ) || { echo "❌ ${svc} build failed"; exit 1; }
+
+  echo "✅ ${svc} done."
+  echo "📋 Images tagged as:"
+  for tag in "${TAGS[@]}"; do
+    [[ "$tag" != "-t" ]] && echo "   ${tag}"
+  done
 done
 
-echo "\n✅ Global build completed for production environment"
-echo "🎯 Built version: ${SEMANTIC_VERSION} (build ${BUILD}, ${GIT_HASH})"
-echo "🐳 Docker images tagged with: ${SEMANTIC_VERSION}, ${MAJOR}.${MINOR}, latest" 
+# Generate docker-compose.local.yml with the built image tags
+echo "📝 Generating docker-compose.local.yml..."
+cat > docker-compose.local.yml << EOF
+# Auto-generated by scripts/build.sh - DO NOT EDIT
+# Built on: ${BUILD_TIMESTAMP}
+# Version: ${FULL_VERSION}
+
+services:
+EOF
+
+for svc in "${SERVICES[@]}"; do
+  cat >> docker-compose.local.yml << EOF
+  ${svc}:
+    image: eclaire-${svc}:${DOCKER_TAG}
+EOF
+done
+
+echo -e "\n✅ Build complete: ${SEMVER} (${COMMITS_SINCE_TAG} commits since tag, sha ${SHORT_SHA})"
+echo -e "\n📦 Local images tagged:"
+for svc in "${SERVICES[@]}"; do
+  for tag in $DOCKER_TAGS; do
+    echo "   - eclaire-${svc}:${tag}"
+  done
+done
+echo -e "\n📝 Created docker-compose.local.yml with local image tags"
+echo -e "\n🚀 To run with local images, use:"
+echo "   docker compose -f docker-compose.yml -f docker-compose.local.yml up"
+echo -e "\n"

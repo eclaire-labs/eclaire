@@ -1,0 +1,182 @@
+name: "Build Images (Manual: Release or Preflight)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build (tag vX.Y.Z, branch, or SHA)"
+        type: string
+        required: true
+        default: main
+      push_images:
+        description: "Push images to GHCR"
+        type: boolean
+        required: true
+        default: true
+      publish_latest:
+        description: "Also tag ':latest' (release only)"
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    concurrency:
+      group: build-images-${{ inputs.ref }}-${{ matrix.service }}
+      cancel-in-progress: true
+
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        service: [backend, frontend, workers]
+
+    steps:
+      - name: Validate ref exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="https://github.com/${{ github.repository }}"
+          REF="${{ inputs.ref }}"
+          git ls-remote --exit-code "$REPO" "$REF" >/dev/null 2>&1 || \
+          git ls-remote --exit-code "$REPO" "refs/heads/$REF" >/dev/null 2>&1 || \
+          git ls-remote --exit-code "$REPO" "refs/tags/$REF" >/dev/null 2>&1 || {
+            echo "❌ Error: ref '$REF' does not exist in repository"
+            exit 1
+          }
+          echo "✅ Validated ref '$REF' exists"
+
+      - name: Checkout ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Source version.sh
+        id: vsh
+        shell: bash
+        run: |
+          set -euo pipefail
+          source ./scripts/version.sh
+          {
+            echo "semver=$SEMVER"
+            echo "full=$FULL_VERSION"
+            echo "docker_tag=$DOCKER_TAG"
+            echo "commits_since_tag=$COMMITS_SINCE_TAG"
+            echo "hash=$GIT_HASH"
+            echo "short_sha=$SHORT_SHA"
+            echo "ts=$BUILD_TIMESTAMP"
+            echo "release_mode=$RELEASE_MODE"
+            echo "channel=$CHANNEL_SAFE"
+            echo "channel_tag=$CHANNEL_TAG_SAFE"
+            echo "git_dirty=$GIT_DIRTY"
+          } >> "$GITHUB_OUTPUT"
+          echo "Version: semver=$SEMVER full=$FULL_VERSION release=$RELEASE_MODE commits=$COMMITS_SINCE_TAG dirty=$GIT_DIRTY"
+
+      - name: Login to GHCR
+        if: inputs.push_images
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fail if immutable tags already exist (release only)
+        if: inputs.push_images && steps.vsh.outputs.release_mode == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          owner='${{ github.repository_owner }}'
+          sem='${{ steps.vsh.outputs.semver }}'
+
+          check_tag() {
+            local svc="$1" tag="$2"
+            # Try org; if 404, try user; use --paginate to avoid missing older tags
+            set +e
+            existing=$(gh api -H "Accept: application/vnd.github+json" \
+                        --paginate "/orgs/$owner/packages/container/eclaire-${svc}/versions" 2>/dev/null \
+                      | jq -r '.[].metadata.container.tags[]' 2>/dev/null \
+                      | grep -E "^${tag}$")
+            if [[ -z "$existing" ]]; then
+              existing=$(gh api -H "Accept: application/vnd.github+json" \
+                          --paginate "/users/$owner/packages/container/eclaire-${svc}/versions" 2>/dev/null \
+                        | jq -r '.[].metadata.container.tags[]' 2>/dev/null \
+                        | grep -E "^${tag}$")
+            fi
+            set -e
+            [[ -n "$existing" ]]
+          }
+
+          for svc in backend frontend workers; do
+            if check_tag "$svc" "$sem"; then
+              echo "❌ Refusing to overwrite eclaire-${svc}:${sem} in GHCR."
+              exit 2
+            fi
+          done
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ toLower(github.repository_owner) }}/eclaire-${{ matrix.service }}
+          tags: |
+            # Release: X.Y.Z, X.Y, latest, sha-<7>
+            type=semver,pattern={{version}},enable=${{ steps.vsh.outputs.release_mode == 'true' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ steps.vsh.outputs.release_mode == 'true' }}
+            type=raw,value=latest,enable=${{ steps.vsh.outputs.release_mode == 'true' && inputs.publish_latest }}
+            type=raw,value=sha-${{ steps.vsh.outputs.short_sha }}
+            # Non-release: branch name and detailed tag
+            type=raw,value=${{ steps.vsh.outputs.channel_tag }},enable=${{ steps.vsh.outputs.release_mode != 'true' }}
+            type=raw,value=${{ steps.vsh.outputs.semver }}-${{ steps.vsh.outputs.channel_tag }}-sha-${{ steps.vsh.outputs.short_sha }},enable=${{ steps.vsh.outputs.release_mode != 'true' }}
+          labels: |
+            org.opencontainers.image.title=Eclaire-${{ matrix.service }}
+            org.opencontainers.image.version=${{ steps.vsh.outputs.full }}
+            org.opencontainers.image.revision=${{ steps.vsh.outputs.hash }}
+            org.opencontainers.image.url=https://eclaire.co
+            org.opencontainers.image.documentation=https://eclaire.co/docs/
+            org.opencontainers.image.authors=Eclaire Labs <https://github.com/eclaire-labs/>
+            co.eclaire.origin=ci
+            co.eclaire.channel=${{ steps.vsh.outputs.channel }}
+            co.eclaire.channel_tag=${{ steps.vsh.outputs.channel_tag }}
+            co.eclaire.git_dirty=${{ steps.vsh.outputs.git_dirty }}
+            co.eclaire.ci_run_id=${{ github.run_id }}
+            co.eclaire.ci_run_number=${{ github.run_number }}
+
+      - name: Build & (optionally) Push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/${{ matrix.service }}
+          file: ./apps/${{ matrix.service }}/Dockerfile
+          push: ${{ inputs.push_images }}
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.vsh.outputs.semver }}
+            APP_FULL_VERSION=${{ steps.vsh.outputs.full }}
+            APP_COMMITS_SINCE_TAG=${{ steps.vsh.outputs.commits_since_tag }}
+            APP_BUILD_TIMESTAMP=${{ steps.vsh.outputs.ts }}
+            APP_GIT_HASH=${{ steps.vsh.outputs.hash }}
+            APP_SERVICE=${{ matrix.service }}
+            APP_ORIGIN=ci
+            APP_CHANNEL=${{ steps.vsh.outputs.channel }}
+            APP_CHANNEL_TAG=${{ steps.vsh.outputs.channel_tag }}
+            APP_GIT_DIRTY=${{ steps.vsh.outputs.git_dirty }}
+            APP_CI_RUN_ID=${{ github.run_id }}
+            APP_CI_RUN_NUMBER=${{ github.run_number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

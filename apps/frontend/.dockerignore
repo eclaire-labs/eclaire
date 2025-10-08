@@ -59,7 +59,6 @@ coverage
 
 # Documentation
 *.md
-!CHANGELOG.md
 README.md
 
 # Temporary files

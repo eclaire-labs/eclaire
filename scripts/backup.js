@@ -201,8 +201,7 @@ function showBackupPreview() {
   const configFiles = [
     'config/models.json',
     'docker-compose.yml',
-    'pm2.deps.config.js',
-    'versions.json'
+    'pm2.deps.config.js'
   ];
 
   for (const configFile of configFiles) {
@@ -293,8 +292,7 @@ async function createBackup() {
   const configFiles = [
     { src: path.join(PROJECT_ROOT, 'config/models.json'), dest: path.join(backupDir, 'config/models.json') },
     { src: path.join(PROJECT_ROOT, 'docker-compose.yml'), dest: path.join(backupDir, 'docker-compose.yml') },
-    { src: path.join(PROJECT_ROOT, 'pm2.deps.config.js'), dest: path.join(backupDir, 'pm2.deps.config.js') },
-    { src: path.join(PROJECT_ROOT, 'versions.json'), dest: path.join(backupDir, 'versions.json') }
+    { src: path.join(PROJECT_ROOT, 'pm2.deps.config.js'), dest: path.join(backupDir, 'pm2.deps.config.js') }
   ];
 
   for (const { src, dest } of configFiles) {
@@ -563,8 +561,7 @@ function validateBackup(backupDir) {
   const configFiles = [
     { src: path.join(PROJECT_ROOT, 'config/models.json'), backup: path.join(backupDir, 'config/models.json') },
     { src: path.join(PROJECT_ROOT, 'docker-compose.yml'), backup: path.join(backupDir, 'docker-compose.yml') },
-    { src: path.join(PROJECT_ROOT, 'pm2.deps.config.js'), backup: path.join(backupDir, 'pm2.deps.config.js') },
-    { src: path.join(PROJECT_ROOT, 'versions.json'), backup: path.join(backupDir, 'versions.json') }
+    { src: path.join(PROJECT_ROOT, 'pm2.deps.config.js'), backup: path.join(backupDir, 'pm2.deps.config.js') }
   ];
 
   validationReport.checks.configFiles = {};

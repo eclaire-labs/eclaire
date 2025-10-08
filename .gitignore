@@ -50,14 +50,17 @@ coverage/
 # Centralized data directory
 data/
 
-# Build-generated versions.json files (root versions.json is the source of truth)
+# build versioning (deprecated)
+versions.json
 apps/*/versions.json
+.build_number
+
+# build info (generated)
+build-info.json
+docker-compose.local.yml
 
 # Local model configuration (use models.json.example as template)
 config/models.json
-
-.build_number
-build-info.json
 
 backups/
 local/

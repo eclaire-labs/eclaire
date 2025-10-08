@@ -446,13 +446,6 @@ async function installDependencies(env = 'dev') {
 async function buildContainers() {
   console.log('\n  Building Docker containers...');
 
-  // Ensure .build_number exists
-  const buildNumberPath = path.join(process.cwd(), '.build_number');
-  if (!fs.existsSync(buildNumberPath)) {
-    console.log('  Creating .build_number file...');
-    fs.writeFileSync(buildNumberPath, '0');
-  }
-
   const result = exec('./scripts/build.sh');
 
   if (!result.success) {
@@ -533,6 +526,7 @@ async function initDatabase(env, questionFn) {
     }
 
     console.log('  Starting backend container for migrations...');
+    console.log(`  ${colors.cyan}Note: Docker will pull images from GHCR if not available locally (may take a few minutes)${colors.reset}`);
     const startResult = exec('docker compose up -d backend');
 
     if (!startResult.success) {
@@ -657,7 +651,7 @@ async function initDatabase(env, questionFn) {
 }
 
 // Print setup summary
-function printSummary(results, env) {
+function printSummary(results, env, flags = {}) {
   console.log(`${colors.cyan}╔══════════════════════════════════════════════╗${colors.reset}`);
   console.log(`${colors.cyan}║              Setup Summary                   ║${colors.reset}`);
   console.log(`${colors.cyan}╚══════════════════════════════════════════════╝${colors.reset}`);
@@ -749,8 +743,25 @@ function printSummary(results, env) {
   } else {
     console.log(`  🚀 ${colors.green}Your production environment is ready!${colors.reset}`);
     console.log('');
-    console.log(`  To start the application:`);
-    console.log(`     ${colors.cyan}docker compose up${colors.reset}`);
+
+    if (flags.build && results.containersBuilt && !results.containersBuildFailed) {
+      // Option C: Built Docker containers locally
+      console.log(`  ${colors.yellow}Using locally-built Docker images${colors.reset}`);
+      console.log('');
+      console.log(`  To start the application:`);
+      console.log(`     ${colors.cyan}docker compose -f docker-compose.yml -f docker-compose.local.yml up${colors.reset}`);
+      console.log('');
+      console.log(`  Note: docker-compose.local.yml was generated to use your local images`);
+    } else {
+      // Option A: Using official GHCR images
+      console.log(`  ${colors.yellow}Using official GHCR images${colors.reset}`);
+      console.log('');
+      console.log(`  To start the application:`);
+      console.log(`     ${colors.cyan}docker compose up${colors.reset}`);
+      console.log('');
+      console.log(`  Note: Docker will pull official images from ghcr.io/eclaire-labs`);
+    }
+
     console.log('');
     console.log(`  Access the app at:`);
     console.log(`     Frontend: ${colors.blue}http://localhost:3000${colors.reset}`);

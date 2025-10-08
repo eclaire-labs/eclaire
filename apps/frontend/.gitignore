@@ -24,6 +24,3 @@ public/workbox-*.js
 
 # Build artifacts
 dist/
-
-# Docker build context
-CHANGELOG.md

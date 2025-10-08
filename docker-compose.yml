@@ -1,93 +1,91 @@
+name: eclaire
+
 services:
-  # Backend API Service
+  # Backend API
   backend:
-    image: eclaire-backend:latest
+    image: ghcr.io/eclaire-labs/eclaire-backend:${BACKEND_TAG:-0.3}
+    # If you only loaded a local image (not from GHCR), you can switch to: eclaire-backend:${BACKEND_TAG}
     container_name: eclaire-backend
-    # Remove external port exposure - backend is now internal only
-    expose:
-      - "3001"
+    ports:
+      - "3001:3001"
     env_file:
-      - ./apps/backend/.env.prod  # Use production env file
+      - ./apps/backend/.env.prod
     environment:
       - NODE_ENV=production
       - PORT=3001
       - HOST=0.0.0.0
       - REDIS_URL=redis://eclaire-redis:6379
     volumes:
-      # Mount shared data directory for persistence
       - ./data:/app/data
-      # Mount configuration directory
       - ./config:/app/config
-      # Ensure logs directory is available
       - ./data/logs:/app/data/logs
     extra_hosts:
       - "host.docker.internal:host-gateway"
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
         max-size: "5m"
         max-file: "2"
     restart: unless-stopped
+    # Healthcheck inherited from Dockerfile (curl-based)
 
-  # Frontend Next.js Service
+  # Frontend (Next.js)
   frontend:
-    image: eclaire-frontend:latest
+    image: ghcr.io/eclaire-labs/eclaire-frontend:${FRONTEND_TAG:-0.3}
     container_name: eclaire-frontend
     ports:
       - "3000:3000"
     env_file:
-      - ./apps/frontend/.env.prod  # Use production env file
+      - ./apps/frontend/.env.prod
     environment:
       - NODE_ENV=production
       - PORT=3000
       - BACKEND_URL=http://eclaire-backend:3001
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     volumes:
-      # Mount logs directory for frontend logging
       - ./data/logs:/app/data/logs
     extra_hosts:
       - "host.docker.internal:host-gateway"
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
         max-size: "5m"
         max-file: "2"
     restart: unless-stopped
+    # Healthcheck inherited from Dockerfile (curl-based)
 
-  # Background Workers Service
+  # Workers (BullMQ)
   workers:
-    image: eclaire-workers:latest
+    image: ghcr.io/eclaire-labs/eclaire-workers:${WORKERS_TAG:-0.3}
     container_name: eclaire-workers
     env_file:
-      - ./apps/workers/.env.prod  # Use production env file
+      - ./apps/workers/.env.prod
     environment:
       - NODE_ENV=production
       - REDIS_URL=redis://eclaire-redis:6379
       - BACKEND_URL=http://eclaire-backend:3001
-      - OLLAMA_API_URL=http://host.docker.internal:11435/api/generate
-    extra_hosts:
-      - "host.docker.internal:host-gateway"  # For external services
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     volumes:
-      # Mount shared data directory
       - ./data:/app/data
-      # Mount browser data directory
       - ./data/browser-data:/app/browser-data
-      # Mount configuration directory
       - ./config:/app/config
-      # Ensure logs directory is available
       - ./data/logs:/app/data/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
         max-size: "5m"
         max-file: "2"
     restart: unless-stopped
+    # Healthcheck inherited from Dockerfile (curl-based)
 
-# External network created by pm2.deps.config.js services
 networks:
   default:
     name: eclaire-net
     external: true
+

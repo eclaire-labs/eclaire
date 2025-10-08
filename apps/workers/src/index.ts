@@ -320,7 +320,6 @@ app.get("/health", (c) => {
   const buildInfo = {
     version: process.env.APP_VERSION || "N/A",
     fullVersion: process.env.APP_FULL_VERSION || "N/A",
-    buildNumber: process.env.APP_BUILD_NUMBER || "N/A",
     gitHash: process.env.APP_GIT_HASH || "N/A",
     buildTimestamp: process.env.APP_BUILD_TIMESTAMP || "N/A",
   };
@@ -343,7 +342,6 @@ app.get("/health", (c) => {
       service: "eclaire-workers",
       version: buildInfo.version,
       fullVersion: buildInfo.fullVersion,
-      buildNumber: buildInfo.buildNumber,
       gitHash: buildInfo.gitHash,
       buildTimestamp: buildInfo.buildTimestamp,
       timestamp: new Date().toISOString(),
@@ -359,7 +357,6 @@ app.get("/health", (c) => {
       service: "eclaire-workers",
       version: buildInfo.version,
       fullVersion: buildInfo.fullVersion,
-      buildNumber: buildInfo.buildNumber,
       gitHash: buildInfo.gitHash,
       buildTimestamp: buildInfo.buildTimestamp,
       timestamp: new Date().toISOString(),
@@ -611,13 +608,13 @@ const start = async () => {
     // Validate AI configuration first - fail fast if not properly configured
     validateAIConfigOnStartup();
 
-    const server = serve(
+    serve(
       {
         fetch: app.fetch,
         port: config.server.port,
         hostname: "0.0.0.0",
       },
-      (info) => {
+      () => {
         logger.info(
           {
             port: config.server.port,
