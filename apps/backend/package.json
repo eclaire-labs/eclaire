@@ -94,6 +94,7 @@
     "sharp": "0.34.4",
     "telegraf": "4.16.3",
     "tiktoken": "1.0.22",
+    "tmp-promise": "3.0.3",
     "tsx": "4.20.6",
     "uuid": "11.1.0",
     "zod": "4.1.11"
@@ -106,6 +107,7 @@
     "@types/mime-types": "3.0.1",
     "@types/node": "24.6.2",
     "@types/pg": "8.15.5",
+    "@types/tmp": "0.2.6",
     "@types/uuid": "10.0.0",
     "@vitejs/plugin-react": "4.7.0",
     "drizzle-kit": "0.31.5",

@@ -228,7 +228,7 @@ export async function promptEditModel(model: Model): Promise<ModelEditData> {
       name: 'provider',
       message: 'Provider:',
       default: model.provider,
-      choices: ['llamacpp', 'ollama', 'lm-studio', 'mlx_lm', 'mlx_vlm', 'proxy', 'openrouter']
+      choices: ['llamacpp', 'ollama', 'lm-studio', 'mlx-vlm', 'proxy', 'openrouter']
     },
     {
       type: 'checkbox',

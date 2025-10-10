@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { file as tmpFile } from "tmp-promise";
 import { encoding_for_model, get_encoding } from "tiktoken";
 import { createChildLogger } from "./logger";
 
@@ -433,17 +434,137 @@ export interface AIStreamResponse {
   estimatedInputTokens?: number;
 }
 
-// Supported AI providers
+// Supported AI providers (canonical names with hyphens)
 const SUPPORTED_PROVIDERS = [
   "ollama",
   "llamacpp",
   "lm-studio",
   "mlx_lm",
-  "mlx_vlm",
+  "mlx-vlm",
   "openrouter",
   "proxy",
 ] as const;
 type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
+
+/**
+ * Normalize provider name by removing special characters for matching
+ * This allows mlx-vlm, mlx_vlm, mlxvlm, llamacpp, llama.cpp, etc. to all work
+ */
+function normalizeProviderForMatching(provider: string): string {
+  return provider.toLowerCase().replace(/[_\-\.]/g, "");
+}
+
+/**
+ * Find canonical provider name from user input
+ * Returns the canonical provider name or null if not found
+ */
+function getCanonicalProviderName(provider: string): SupportedProvider | null {
+  const normalized = normalizeProviderForMatching(provider);
+
+  for (const canonicalProvider of SUPPORTED_PROVIDERS) {
+    if (normalizeProviderForMatching(canonicalProvider) === normalized) {
+      return canonicalProvider;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if provider is mlx-vlm (accepts mlx-vlm, mlx_vlm, mlxvlm, etc.)
+ */
+function isMLXVLMProvider(provider: string): boolean {
+  const canonical = getCanonicalProviderName(provider);
+  return canonical === "mlx-vlm";
+}
+
+/**
+ * Helper to write base64 image data to a temporary file
+ * Returns the file path and cleanup function
+ */
+async function writeBase64ToTempFile(
+  base64Data: string,
+  mimeType: string,
+): Promise<{ path: string; cleanup: () => Promise<void> }> {
+  // Determine file extension from MIME type
+  const extension = mimeType.includes("png")
+    ? ".png"
+    : mimeType.includes("jpeg") || mimeType.includes("jpg")
+      ? ".jpg"
+      : ".jpg"; // default to jpg
+
+  const { path: tempPath, cleanup } = await tmpFile({
+    postfix: extension,
+  });
+
+  // Convert base64 to buffer and write to temp file
+  const buffer = Buffer.from(base64Data, "base64");
+  await fs.promises.writeFile(tempPath, buffer);
+
+  logger.debug({ tempPath, size: buffer.length }, "Created temp file for image");
+
+  return { path: tempPath, cleanup };
+}
+
+/**
+ * Convert OpenAI-style messages to mlx-vlm format
+ * Extracts images from message content and saves them to temp files
+ * Returns the converted format and cleanup function for temp files
+ */
+async function convertMessagesToMLXVLMFormat(
+  messages: AIMessage[],
+  model: string,
+  options: AICallOptions,
+): Promise<{
+  mlxRequest: any;
+  cleanup: () => Promise<void>;
+}> {
+  const imagePaths: string[] = [];
+  const cleanupFunctions: (() => Promise<void>)[] = [];
+  let systemPrompt = "";
+  let userPrompt = "";
+
+  // Process messages to extract system, user prompts, and images
+  for (const message of messages) {
+    if (message.role === "system") {
+      systemPrompt = message.content;
+    } else if (message.role === "user") {
+      // Handle simple string content (backend doesn't use array content format yet)
+      if (typeof message.content === "string") {
+        userPrompt += message.content;
+      }
+    }
+  }
+
+  // Build mlx-vlm request format
+  const mlxRequest: any = {
+    model,
+    prompt: userPrompt.trim(),
+    stream: options.stream ?? false,
+    max_tokens: options.maxTokens ?? 2000,
+  };
+
+  if (systemPrompt) {
+    mlxRequest.system = systemPrompt;
+  }
+
+  if (imagePaths.length > 0) {
+    mlxRequest.image = imagePaths;
+  }
+
+  // Cleanup function to remove all temp files
+  const cleanup = async () => {
+    for (const cleanupFn of cleanupFunctions) {
+      try {
+        await cleanupFn();
+      } catch (err) {
+        logger.warn({ err }, "Failed to cleanup temp file");
+      }
+    }
+  };
+
+  return { mlxRequest, cleanup };
+}
 
 /**
  * Estimates token count for messages using tiktoken
@@ -520,11 +641,20 @@ function validateAIConfig(
         `No active model defined for ${context} context in models.json. Please configure activeModel.${context}.`,
       );
     }
-    providerName = activeModel.provider as SupportedProvider;
+    const inputProviderName = activeModel.provider;
     modelShortName = activeModel.modelShortName;
+
+    // Normalize provider name and validate it's supported
+    const normalizedProvider = getCanonicalProviderName(inputProviderName);
+    if (!normalizedProvider) {
+      throw new Error(
+        `Unsupported AI provider '${inputProviderName}' for ${context}. Supported: ${SUPPORTED_PROVIDERS.join(", ")}`,
+      );
+    }
+    providerName = normalizedProvider;
   }
 
-  // Validate provider is supported
+  // Validate provider is supported (redundant check but kept for clarity)
   if (!SUPPORTED_PROVIDERS.includes(providerName)) {
     throw new Error(
       `Unsupported AI provider '${providerName}' for ${context}. Supported: ${SUPPORTED_PROVIDERS.join(", ")}`,
@@ -672,11 +802,13 @@ export async function callAI(
     headers.Authorization = `Bearer ${provider.apiKey}`;
   }
 
-  // For proxy providers, use the baseURL as-is. For others, append /v1/chat/completions
+  // Determine URL based on provider
   const url =
     provider.name === "proxy"
       ? provider.baseURL
-      : `${provider.baseURL}/v1/chat/completions`;
+      : isMLXVLMProvider(provider.name)
+        ? `${provider.baseURL}/generate`
+        : `${provider.baseURL}/v1/chat/completions`;
 
   logger.debug(
     {
@@ -691,16 +823,31 @@ export async function callAI(
         messages: `[${messages.length} messages]`,
       },
       isProxy: provider.name === "proxy",
+      isMLXVLM: isMLXVLMProvider(provider.name),
       traceEnabled: options.trace?.enabled || false,
     },
     "Making AI API call",
   );
 
+  // Handle mlx-vlm format conversion
+  let mlxCleanup: (() => Promise<void>) | null = null;
+  let actualRequestBody = requestBody;
+
+  if (isMLXVLMProvider(provider.name)) {
+    const { mlxRequest, cleanup} = await convertMessagesToMLXVLMFormat(
+      processedMessages,
+      provider.model,
+      options,
+    );
+    actualRequestBody = mlxRequest;
+    mlxCleanup = cleanup;
+  }
+
   try {
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(actualRequestBody),
       signal: options.timeout
         ? AbortSignal.timeout(options.timeout)
         : undefined,
@@ -724,9 +871,20 @@ export async function callAI(
     }
 
     const data = (await response.json()) as any;
-    const message = data.choices?.[0]?.message;
-    const content = message?.content;
-    const reasoning = message?.reasoning;
+
+    // Extract content based on provider response format
+    let content: string;
+    let reasoning: string | undefined;
+
+    if (isMLXVLMProvider(provider.name)) {
+      // mlx-vlm returns { "response": "..." } or similar
+      content = data.response || data.text || data.content;
+      reasoning = undefined; // mlx-vlm doesn't have reasoning
+    } else {
+      const message = data.choices?.[0]?.message;
+      content = message?.content;
+      reasoning = message?.reasoning;
+    }
 
     if (!content) {
       logger.error(
@@ -835,6 +993,11 @@ export async function callAI(
     }
 
     throw error;
+  } finally {
+    // Cleanup temp files for mlx-vlm
+    if (mlxCleanup) {
+      await mlxCleanup();
+    }
   }
 }
 
@@ -904,11 +1067,13 @@ export async function callAIStream(
     headers.Authorization = `Bearer ${provider.apiKey}`;
   }
 
-  // For proxy providers, use the baseURL as-is. For others, append /v1/chat/completions
+  // Determine URL based on provider
   const url =
     provider.name === "proxy"
       ? provider.baseURL
-      : `${provider.baseURL}/v1/chat/completions`;
+      : isMLXVLMProvider(provider.name)
+        ? `${provider.baseURL}/generate`
+        : `${provider.baseURL}/v1/chat/completions`;
 
   logger.debug(
     {
@@ -918,16 +1083,31 @@ export async function callAIStream(
       model: provider.model,
       messagesCount: messages.length,
       estimatedInputTokens,
+      isMLXVLM: isMLXVLMProvider(provider.name),
       traceEnabled: options.trace?.enabled || false,
     },
     "Making streaming AI API call",
   );
 
+  // Handle mlx-vlm format conversion
+  let mlxCleanup: (() => Promise<void>) | null = null;
+  let actualRequestBody = requestBody;
+
+  if (isMLXVLMProvider(provider.name)) {
+    const { mlxRequest, cleanup } = await convertMessagesToMLXVLMFormat(
+      processedMessages,
+      provider.model,
+      options,
+    );
+    actualRequestBody = mlxRequest;
+    mlxCleanup = cleanup;
+  }
+
   try {
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(actualRequestBody),
       signal: options.timeout
         ? AbortSignal.timeout(options.timeout)
         : undefined,
@@ -1023,6 +1203,11 @@ export async function callAIStream(
     }
 
     throw error;
+  } finally {
+    // Cleanup temp files for mlx-vlm
+    if (mlxCleanup) {
+      await mlxCleanup();
+    }
   }
 }
 

@@ -29,7 +29,7 @@ export const colors = {
     ollama: chalk.yellow, // Changed from orange to yellow since chalk doesn't have orange
     'lm-studio': chalk.cyan,
     mlx_lm: chalk.yellow,
-    mlx_vlm: chalk.yellow,
+    'mlx-vlm': chalk.yellow,
     openrouter: chalk.magenta
   } as Record<string, ChalkFunction>
 };

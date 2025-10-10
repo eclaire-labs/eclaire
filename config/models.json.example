@@ -283,6 +283,30 @@
         },
         "modality": "file,image,text,audio->text"
       }
+    },
+    {
+      "id": "mlx-vlm-gemma-3-4b-it-qat-4bit",
+      "modelFullName": "mlx-community/gemma-3-4b-it-qat-4bit",
+      "provider": "mlx-vlm",
+      "modelShortName": "gemma-3-4b-it-qat-4bit",
+      "modelUrl": "https://huggingface.co/mlx-community/gemma-3-4b-it-qat-4bit",
+      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "never"
+        }
+      },
+      "contexts": [
+        "workers"
+      ],
+      "description": "image-text-to-text with tags: transformers, safetensors, gemma3, image-text-to-text, internvl",
+      "metadata": {
+        "url": "https://huggingface.co/mlx-community/gemma-3-4b-it-qat-4bit",
+        "apiEndpoint": "https://api-inference.huggingface.co/models/mlx-community/gemma-3-4b-it-qat-4bit",
+        "apiModelId": "mlx-community/gemma-3-4b-it-qat-4bit",
+        "isGGUF": false
+      }
     }
   ]
 }

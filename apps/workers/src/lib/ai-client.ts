@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { file as tmpFile } from "tmp-promise";
 import {
   aiPromptLogger,
   type TraceAICall,
@@ -408,16 +409,48 @@ interface AIProvider {
   apiKey?: string;
 }
 
-// Supported AI providers
+// Supported AI providers (canonical names with hyphens)
 const SUPPORTED_PROVIDERS = [
   "ollama",
   "llamacpp",
   "lm-studio",
-  "mlx_vlm",
+  "mlx-vlm",
   "openrouter",
   "proxy",
 ] as const;
 type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
+
+/**
+ * Normalize provider name by removing special characters for matching
+ * This allows mlx-vlm, mlx_vlm, mlxvlm, llamacpp, llama.cpp, etc. to all work
+ */
+function normalizeProviderForMatching(provider: string): string {
+  return provider.toLowerCase().replace(/[_\-\.]/g, "");
+}
+
+/**
+ * Find canonical provider name from user input
+ * Returns the canonical provider name or null if not found
+ */
+function getCanonicalProviderName(provider: string): SupportedProvider | null {
+  const normalized = normalizeProviderForMatching(provider);
+
+  for (const canonicalProvider of SUPPORTED_PROVIDERS) {
+    if (normalizeProviderForMatching(canonicalProvider) === normalized) {
+      return canonicalProvider;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if provider is mlx-vlm (accepts mlx-vlm, mlx_vlm, mlxvlm, etc.)
+ */
+function isMLXVLMProvider(provider: string): boolean {
+  const canonical = getCanonicalProviderName(provider);
+  return canonical === "mlx-vlm";
+}
 
 /**
  * Validates that required configuration exists and looks up model config
@@ -432,13 +465,14 @@ function validateWorkerAIConfig(): AIProvider {
     );
   }
 
-  const providerName = activeModel.provider as SupportedProvider;
+  const inputProviderName = activeModel.provider;
   const modelShortName = activeModel.modelShortName;
 
-  // Validate provider is supported
-  if (!SUPPORTED_PROVIDERS.includes(providerName)) {
+  // Normalize provider name and validate it's supported
+  const providerName = getCanonicalProviderName(inputProviderName);
+  if (!providerName) {
     throw new Error(
-      `Unsupported AI provider '${providerName}' for workers. Supported: ${SUPPORTED_PROVIDERS.join(", ")}`,
+      `Unsupported AI provider '${inputProviderName}' for workers. Supported: ${SUPPORTED_PROVIDERS.join(", ")}`,
     );
   }
 
@@ -548,10 +582,13 @@ export async function callAI(
     headers.Authorization = `Bearer ${provider.apiKey}`;
   }
 
+  // Determine URL based on provider
   const url =
     provider.name === "proxy"
       ? provider.baseURL
-      : `${provider.baseURL}/v1/chat/completions`;
+      : isMLXVLMProvider(provider.name)
+        ? `${provider.baseURL}/generate`
+        : `${provider.baseURL}/v1/chat/completions`;
 
   const logSafeMessages = processedMessages.map((msg) => {
     if (typeof msg.content === "string") {
@@ -601,12 +638,26 @@ export async function callAI(
     "Making AI API call from worker",
   );
 
+  // Handle mlx-vlm format conversion
+  let mlxCleanup: (() => Promise<void>) | null = null;
+  let actualRequestBody = requestBody;
+
+  if (isMLXVLMProvider(provider.name)) {
+    const { mlxRequest, cleanup } = await convertMessagesToMLXVLMFormat(
+      processedMessages,
+      provider.model,
+      options,
+    );
+    actualRequestBody = mlxRequest;
+    mlxCleanup = cleanup;
+  }
+
   try {
     const aiCallStartTime = Date.now();
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(actualRequestBody),
       signal: options.timeout
         ? AbortSignal.timeout(options.timeout)
         : undefined,
@@ -630,7 +681,15 @@ export async function callAI(
     }
 
     const data = (await response.json()) as any;
-    const content = data.choices?.[0]?.message?.content;
+
+    // Extract content based on provider response format
+    let content: string;
+    if (isMLXVLMProvider(provider.name)) {
+      // mlx-vlm returns { "response": "..." } or similar
+      content = data.response || data.text || data.content;
+    } else {
+      content = data.choices?.[0]?.message?.content;
+    }
 
     if (!content) {
       logger.error(
@@ -715,6 +774,11 @@ export async function callAI(
       "AI API call failed in worker",
     );
     throw error;
+  } finally {
+    // Cleanup temp files for mlx-vlm
+    if (mlxCleanup) {
+      await mlxCleanup();
+    }
   }
 }
 
@@ -732,6 +796,122 @@ export function cleanAIResponse(response: string): string {
     .trim();
 
   return cleaned;
+}
+
+/**
+ * Helper to write base64 image data to a temporary file
+ * Returns the file path and cleanup function
+ */
+async function writeBase64ToTempFile(
+  base64Data: string,
+  mimeType: string,
+): Promise<{ path: string; cleanup: () => Promise<void> }> {
+  // Determine file extension from MIME type
+  const extension = mimeType.includes("png")
+    ? ".png"
+    : mimeType.includes("jpeg") || mimeType.includes("jpg")
+      ? ".jpg"
+      : ".jpg"; // default to jpg
+
+  const { path: tempPath, cleanup } = await tmpFile({
+    postfix: extension,
+  });
+
+  // Convert base64 to buffer and write to temp file
+  const buffer = Buffer.from(base64Data, "base64");
+  await fs.promises.writeFile(tempPath, buffer);
+
+  logger.debug({ tempPath, size: buffer.length }, "Created temp file for image");
+
+  return { path: tempPath, cleanup };
+}
+
+/**
+ * Convert OpenAI-style messages to mlx_vlm format
+ * Extracts images from message content and saves them to temp files
+ * Returns the converted format and cleanup function for temp files
+ */
+async function convertMessagesToMLXVLMFormat(
+  messages: AIMessage[],
+  model: string,
+  options: AICallOptions,
+): Promise<{
+  mlxRequest: any;
+  cleanup: () => Promise<void>;
+}> {
+  const imagePaths: string[] = [];
+  const cleanupFunctions: (() => Promise<void>)[] = [];
+  let systemPrompt = "";
+  let userPrompt = "";
+
+  // Process messages to extract system, user prompts, and images
+  for (const message of messages) {
+    if (message.role === "system" && typeof message.content === "string") {
+      systemPrompt = message.content;
+    } else if (message.role === "user") {
+      if (typeof message.content === "string") {
+        userPrompt += message.content;
+      } else if (Array.isArray(message.content)) {
+        // Handle multimodal content (text + images)
+        for (const item of message.content) {
+          if (item.type === "text" && item.text) {
+            userPrompt += item.text + " ";
+          } else if (
+            item.type === "image_url" &&
+            item.image_url &&
+            item.image_url.url
+          ) {
+            const url = item.image_url.url;
+            // Check if it's a data URL
+            if (url.startsWith("data:")) {
+              // Extract base64 data and MIME type
+              const matches = url.match(/^data:([^;]+);base64,(.+)$/);
+              if (matches && matches[1] && matches[2]) {
+                const mimeType = matches[1];
+                const base64Data = matches[2];
+                const { path: tempPath, cleanup } =
+                  await writeBase64ToTempFile(base64Data, mimeType);
+                imagePaths.push(tempPath);
+                cleanupFunctions.push(cleanup);
+              }
+            } else {
+              // It's a file path or URL, use as-is
+              imagePaths.push(url);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Build mlx_vlm request format
+  const mlxRequest: any = {
+    model,
+    prompt: userPrompt.trim(),
+    stream: options.stream ?? false,
+    max_tokens: options.maxTokens ?? 2000,
+  };
+
+  if (systemPrompt) {
+    mlxRequest.system = systemPrompt;
+  }
+
+  if (imagePaths.length > 0) {
+    mlxRequest.image = imagePaths;
+  }
+
+  // Cleanup function to remove all temp files
+  const cleanup = async () => {
+    for (const cleanupFn of cleanupFunctions) {
+      try {
+        await cleanupFn();
+      } catch (err) {
+        logger.warn({ err }, "Failed to cleanup temp file");
+      }
+    }
+  };
+
+  return { mlxRequest, cleanup };
 }
 
 /**
