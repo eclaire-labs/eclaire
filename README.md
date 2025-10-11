@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/eclaire-labs-eclaire-badge.png)](https://mseep.ai/app/eclaire-labs-eclaire)
+
 <!-- README.md -->
 
 <p align="center">
