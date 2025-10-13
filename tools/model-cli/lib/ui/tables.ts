@@ -1,5 +1,5 @@
 import Table from 'cli-table3';
-import { colors, formatStatus, formatProvider, formatContext, truncateString } from './colors.js';
+import { colors, formatStatus, formatProvider, formatContext, truncateString, formatMLX } from './colors.js';
 import { Model, ModelsConfig } from '../types/index.js';
 
 interface ActiveModel {
@@ -25,6 +25,7 @@ export function createModelsTable(models: Model[], activeModels: ActiveModels = 
     head: [
       colors.header('ID'),
       colors.header('Provider'),
+      colors.header('MLX'),
       colors.header('Short Name'),
       colors.header('Model'),
       colors.header('Context'),
@@ -46,12 +47,24 @@ export function createModelsTable(models: Model[], activeModels: ActiveModels = 
     );
   }
 
+  // Helper to check if model is MLX
+  function isMLXModel(model: Model): boolean {
+    // Check if model has 'mlx' tag in metadata
+    if (model.metadata?.tags && Array.isArray(model.metadata.tags)) {
+      return model.metadata.tags.includes('mlx');
+    }
+    // For OpenRouter models, could check architecture if needed
+    return false;
+  }
+
   models.forEach(model => {
     const isActive = isModelActive(model);
+    const isMLX = isMLXModel(model);
 
     table.push([
       colors.emphasis(model.id),
       formatProvider(model.provider),
+      formatMLX(isMLX),
       model.modelShortName,
       model.name || model.modelShortName, // No truncation - auto-sizing handles it
       formatContext(model.contexts),

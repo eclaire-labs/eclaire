@@ -2,7 +2,7 @@ import axios from 'axios';
 import ora from 'ora';
 import inquirer from 'inquirer';
 import { addModel, loadModelsConfig, saveModelsConfig } from '../config/models.js';
-import { colors, icons } from '../ui/colors.js';
+import { colors, icons, printProviderReminder } from '../ui/colors.js';
 import type { CommandOptions, Model } from '../types/index.js';
 
 interface ModelInfo {
@@ -20,9 +20,9 @@ interface ModelInfo {
   quantizations?: QuantizationInfo[];
   selectedQuantization?: QuantizationInfo;
   fileSize?: number;
-  pricing?: any;
   architecture?: any;
   modality?: string;
+  tags?: string[];
 }
 
 interface QuantizationInfo {
@@ -78,14 +78,21 @@ export async function importCommand(url: string, options: CommandOptions): Promi
 
     // Display model information
     console.log(colors.subheader('\nModel Information:'));
-    console.log(colors.info(`Name: ${modelInfo.name}`));
-    console.log(colors.emphasis(`API Model ID: ${modelInfo.apiModelId}`));
-    console.log(colors.info(`Description: ${modelInfo.description || 'No description available'}`));
-    console.log(colors.info(`Provider: ${modelInfo.provider}`));
-    console.log(colors.info(`Context: ${modelInfo.contexts.join(', ')}`));
+    console.log(`Name: ${modelInfo.name}`);
+    console.log(`API Model ID: ${modelInfo.apiModelId}`);
+    console.log(`Description: ${modelInfo.description || 'No description available'}`);
+
+    // Show vision support status
+    const hasVision = hasVisionSupport(modelInfo.tags, modelInfo.pipeline_tag, modelInfo.architecture);
+    console.log(`Vision: ${hasVision ? 'Detected' : 'Not Detected'}`);
+
+    console.log(`Provider: ${modelInfo.provider}`);
+    console.log(`Context: ${modelInfo.contexts.join(', ')}`);
     if (modelInfo.maxTokens) {
-      console.log(colors.info(`Max Tokens: ${modelInfo.maxTokens}`));
+      console.log(`Max Tokens: ${modelInfo.maxTokens}`);
     }
+
+    console.log(''); // Empty line before provider selection
 
     // Show quantization options for GGUF models and prompt for selection
     if (modelInfo.isGGUF && modelInfo.quantizations && modelInfo.quantizations.length > 0) {
@@ -134,8 +141,82 @@ export async function importCommand(url: string, options: CommandOptions): Promi
       modelInfo.fileSize = quant.size;
     }
 
-    // Interactive configuration if not in non-interactive mode
-    if (!options.interactive) {
+    // Provider selection (if not already specified via CLI option)
+    if (!options.provider) {
+      let providerChoices: Array<{ name: string; value: string }> = [];
+
+      if (urlType === 'openrouter') {
+        // OpenRouter models
+        providerChoices = [
+          { name: 'openrouter (default)', value: 'openrouter' },
+          { name: 'proxy', value: 'proxy' }
+        ];
+      } else {
+        // All HuggingFace models (GGUF, MLX, or any other format)
+        providerChoices = [
+          { name: 'llamacpp (default)', value: 'llamacpp' },
+          { name: 'mlx-lm (text-only, Apple Silicon)', value: 'mlx-lm' },
+          { name: 'mlx-vlm (vision support, Apple Silicon)', value: 'mlx-vlm' },
+          { name: 'ollama', value: 'ollama' },
+          { name: 'lm-studio', value: 'lm-studio' },
+          { name: 'openrouter', value: 'openrouter' },
+          { name: 'proxy', value: 'proxy' }
+        ];
+      }
+
+      if (providerChoices.length > 0) {
+        const providerAnswer = await inquirer.prompt([{
+          type: 'list',
+          name: 'provider',
+          message: 'Select provider:',
+          choices: providerChoices,
+          default: providerChoices[0]?.value || 'llamacpp'
+        }]);
+
+        modelInfo.provider = providerAnswer.provider;
+
+        // Warn if user selects mlx-lm for a vision model
+        const isVision = hasVisionSupport(modelInfo.tags, modelInfo.pipeline_tag, modelInfo.architecture);
+        if (modelInfo.provider === 'mlx-lm' && isVision) {
+          console.log(colors.warning(`\n${icons.warning} Warning: mlx-lm only supports text models.`));
+          console.log(colors.dim('For vision support, consider using mlx-vlm instead.'));
+
+          const confirmMLXLM = await inquirer.prompt([{
+            type: 'confirm',
+            name: 'continue',
+            message: 'Continue with mlx-lm anyway?',
+            default: false
+          }]);
+
+          if (!confirmMLXLM.continue) {
+            console.log(colors.dim('Import cancelled'));
+            process.exit(0);
+          }
+        }
+
+        // Warn if user selects mlx-vlm for a non-vision model
+        if (modelInfo.provider === 'mlx-vlm' && !isVision) {
+          console.log(colors.warning(`\n${icons.warning} Warning: mlx-vlm is designed for vision models.`));
+          console.log(colors.dim('This model does not appear to have vision capabilities.'));
+          console.log(colors.dim('For text-only models, consider using mlx-lm instead.'));
+
+          const confirmMLXVLM = await inquirer.prompt([{
+            type: 'confirm',
+            name: 'continue',
+            message: 'Continue with mlx-vlm anyway?',
+            default: false
+          }]);
+
+          if (!confirmMLXVLM.continue) {
+            console.log(colors.dim('Import cancelled'));
+            process.exit(0);
+          }
+        }
+      }
+    }
+
+    // Interactive configuration (unless --no-interactive flag is passed)
+    if (options.interactive !== false) {
       const questions: any[] = [
         {
           type: 'input',
@@ -157,15 +238,7 @@ export async function importCommand(url: string, options: CommandOptions): Promi
         }
       ];
 
-
       questions.push(
-        {
-          type: 'input',
-          name: 'provider',
-          message: 'Provider:',
-          default: options.provider || modelInfo.provider,
-          validate: (input: string) => input.trim().length > 0 || 'Provider is required'
-        },
         {
           type: 'input',
           name: 'maxTokens',
@@ -173,7 +246,7 @@ export async function importCommand(url: string, options: CommandOptions): Promi
           default: modelInfo.maxTokens,
           filter: (input: string) => input ? parseInt(input) : undefined,
           validate: (input: string) => !input || (!isNaN(Number(input)) && parseInt(input) > 0) || 'Must be a positive number'
-        },
+        }
       );
 
       const answers = await inquirer.prompt(questions);
@@ -181,8 +254,30 @@ export async function importCommand(url: string, options: CommandOptions): Promi
       // Update model info with user choices
       modelInfo.modelShortName = answers.modelShortName;
       modelInfo.contexts = answers.contexts;
-      modelInfo.provider = answers.provider;
       modelInfo.maxTokens = answers.maxTokens;
+
+      // Warn if workers context is selected for a non-vision model
+      if (!hasVision && answers.contexts.includes('workers')) {
+        console.log(colors.warning(`\n${icons.warning} Warning: Workers context typically requires vision support.`));
+        console.log(colors.dim('This model does not appear to have vision capabilities.'));
+
+        const confirmWorkers = await inquirer.prompt([{
+          type: 'confirm',
+          name: 'continue',
+          message: 'Continue with workers context anyway?',
+          default: false
+        }]);
+
+        if (!confirmWorkers.continue) {
+          // Remove workers from contexts
+          modelInfo.contexts = answers.contexts.filter((ctx: string) => ctx !== 'workers');
+          if (modelInfo.contexts.length === 0) {
+            console.log(colors.dim('Import cancelled - no contexts selected'));
+            process.exit(0);
+          }
+          console.log(colors.info(`Continuing with contexts: ${modelInfo.contexts.join(', ')}`));
+        }
+      }
 
     } else {
       // Use command line options in non-interactive mode
@@ -207,14 +302,14 @@ export async function importCommand(url: string, options: CommandOptions): Promi
     // Final confirmation before importing
     console.log(colors.subheader('\n📋 Import Summary:'));
     console.log(colors.emphasis(`Model: ${modelInfo.name}`));
-    console.log(colors.info(`Short Name: ${modelInfo.modelShortName}`));
-    console.log(colors.info(`Provider: ${modelInfo.provider}`));
-    console.log(colors.info(`Contexts: ${modelInfo.contexts.join(', ')}`));
+    console.log(`Short Name: ${modelInfo.modelShortName}`);
+    console.log(`Provider: ${modelInfo.provider}`);
+    console.log(`Contexts: ${modelInfo.contexts.join(', ')}`);
     if (modelInfo.maxTokens) {
-      console.log(colors.info(`Max Tokens: ${modelInfo.maxTokens}`));
+      console.log(`Max Tokens: ${modelInfo.maxTokens}`);
     }
     if (modelInfo.selectedQuantization) {
-      console.log(colors.info(`Quantization: ${modelInfo.selectedQuantization.quantization} (${modelInfo.selectedQuantization.sizeFormatted})`));
+      console.log(`Quantization: ${modelInfo.selectedQuantization.quantization} (${modelInfo.selectedQuantization.sizeFormatted})`);
     }
 
     const confirm = await inquirer.prompt([{
@@ -253,9 +348,9 @@ export async function importCommand(url: string, options: CommandOptions): Promi
         apiModelId: modelInfo.apiModelId,
         isGGUF: modelInfo.isGGUF,
         selectedQuantization: modelInfo.selectedQuantization,
-        pricing: modelInfo.pricing,
         architecture: modelInfo.architecture,
-        modality: modelInfo.modality
+        modality: modelInfo.modality,
+        tags: modelInfo.tags
       }
     };
 
@@ -266,6 +361,9 @@ export async function importCommand(url: string, options: CommandOptions): Promi
       addModel(model);
       console.log(colors.success(`${icons.success} Model '${modelInfo.modelShortName}' imported successfully!`));
       console.log(colors.dim(`Run 'model-cli activate ${model.id}' to activate this model`));
+
+      // Show provider setup reminder for local providers
+      printProviderReminder(model.provider, model.contexts || []);
     } catch (error: any) {
       console.log(colors.error(`${icons.error} ${error.message}`));
       process.exit(1);
@@ -284,6 +382,20 @@ function isValidUrl(string: string): boolean {
   } catch (_) {
     return false;
   }
+}
+
+function hasVisionSupport(tags: string[] = [], pipelineTag?: string, architecture?: any): boolean {
+  // Check HuggingFace models: look for image-text-to-text tag
+  if (tags.includes('image-text-to-text') || pipelineTag === 'image-text-to-text') {
+    return true;
+  }
+
+  // Check OpenRouter models: look for 'image' in input_modalities
+  if (architecture?.input_modalities && Array.isArray(architecture.input_modalities)) {
+    return architecture.input_modalities.includes('image');
+  }
+
+  return false;
 }
 
 function getUrlType(url: string): string | null {
@@ -314,7 +426,9 @@ async function fetchHuggingFaceModel(url: string): Promise<ModelInfo> {
       headers: {
         'User-Agent': 'model-cli/1.0.0'
       },
-      timeout: 10000
+      timeout: 10000,
+      maxRedirects: 5, // Explicitly follow up to 5 redirects
+      validateStatus: (status) => status >= 200 && status < 300 // Only accept 2xx responses
     });
 
     const data = response.data as any; // API response structure varies
@@ -332,6 +446,12 @@ async function fetchHuggingFaceModel(url: string): Promise<ModelInfo> {
       description = `${data.pipeline_tag || 'HuggingFace'} model`;
     }
 
+    // Determine if model has vision support
+    const isVisionModel = hasVisionSupport(data.tags, data.pipeline_tag);
+
+    // Set smart context defaults: vision models -> both contexts, non-vision -> backend only
+    const defaultContexts = isVisionModel ? ['backend', 'workers'] : ['backend'];
+
     // Extract model information
     let modelInfo: ModelInfo = {
       name: data.modelId || modelId,
@@ -339,13 +459,14 @@ async function fetchHuggingFaceModel(url: string): Promise<ModelInfo> {
       apiModelId: modelId, // The identifier used for API calls
       description,
       provider: 'huggingface',
-      contexts: ['backend', 'workers'], // Default to both
+      contexts: defaultContexts,
       url: `https://huggingface.co/${modelId}`,
       apiEndpoint: `https://api-inference.huggingface.co/models/${modelId}`,
       maxTokens: extractMaxTokens(data),
       pipeline_tag: data.pipeline_tag,
       isGGUF: false,
-      quantizations: []
+      quantizations: [],
+      tags: data.tags || []
     };
 
     // Check if this is a GGUF repository by looking for .gguf files
@@ -353,7 +474,9 @@ async function fetchHuggingFaceModel(url: string): Promise<ModelInfo> {
       try {
         const filesResponse = await axios.get(`https://huggingface.co/api/models/${modelId}/tree/main`, {
           headers: { 'User-Agent': 'model-cli/1.0.0' },
-          timeout: 10000
+          timeout: 10000,
+          maxRedirects: 5,
+          validateStatus: (status) => status >= 200 && status < 300
         });
 
         const files = (filesResponse.data as any) || [];
@@ -410,7 +533,9 @@ async function fetchOpenRouterModel(url: string): Promise<ModelInfo> {
       headers: {
         'User-Agent': 'model-cli/1.0.0'
       },
-      timeout: 10000
+      timeout: 10000,
+      maxRedirects: 5,
+      validateStatus: (status) => status >= 200 && status < 300
     });
 
     const models = (response.data as any).data;
@@ -424,20 +549,6 @@ async function fetchOpenRouterModel(url: string): Promise<ModelInfo> {
     let description = model.description || '';
     if (!description) {
       description = `OpenRouter model: ${model.name || modelId}`;
-    }
-
-    // Calculate pricing per 1M tokens with proper validation
-    let promptCost = 0;
-    let completionCost = 0;
-    if (model.pricing && typeof model.pricing === 'object') {
-      const prompt = parseFloat(model.pricing.prompt || '0');
-      const completion = parseFloat(model.pricing.completion || '0');
-
-      if (!isNaN(prompt) && !isNaN(completion)) {
-        promptCost = prompt * 1000000; // Convert to per million tokens
-        completionCost = completion * 1000000;
-        description += ` (Pricing: $${promptCost.toFixed(2)}/$${completionCost.toFixed(2)} per 1M tokens)`;
-      }
     }
 
     // Add context length info
@@ -461,23 +572,23 @@ async function fetchOpenRouterModel(url: string): Promise<ModelInfo> {
       modality = model.modality;
     }
 
+    // Detect vision support from architecture
+    const isVisionModel = hasVisionSupport([], undefined, model.architecture);
+
+    // Set smart context defaults: vision models -> both contexts, non-vision -> backend only
+    const defaultContexts = isVisionModel ? ['backend', 'workers'] : ['backend'];
+
     // Extract model information with proper validation
     const modelInfo: ModelInfo = {
       name: model.name || modelId,
       modelShortName: generateShortName(modelId),
       apiModelId: modelId, // The identifier used for API calls
       description,
-      provider: 'proxy',
-      contexts: ['backend', 'workers'], // Default to both
+      provider: 'openrouter',
+      contexts: defaultContexts,
       url: `https://openrouter.ai/models/${modelId}`,
       apiEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
       maxTokens: typeof model.context_length === 'number' ? model.context_length : undefined,
-      pricing: {
-        prompt: model.pricing?.prompt || '0',
-        completion: model.pricing?.completion || '0',
-        promptPer1M: promptCost,
-        completionPer1M: completionCost
-      },
       architecture: model.architecture,
       modality: modality
     };

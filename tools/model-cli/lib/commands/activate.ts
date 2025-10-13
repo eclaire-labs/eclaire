@@ -2,13 +2,16 @@ import inquirer from 'inquirer';
 import { getActiveModels, getActiveModelsAsObjects, getModels, setActiveModel, setActiveModelByProvider, findModelById } from '../config/models.js';
 import { createActiveModelsTable } from '../ui/tables.js';
 import { promptContext, promptModelSelection } from '../ui/prompts.js';
-import { colors, icons } from '../ui/colors.js';
+import { colors, icons, printProviderReminder } from '../ui/colors.js';
 import type { CommandOptions, Model } from '../types/index.js';
 
 export async function activateCommand(id?: string, options: CommandOptions = {}): Promise<void> {
   try {
     // If specific options provided, set active models directly using provider:model format
     if (options.backend || options.workers) {
+      let reminderProvider: string | null = null;
+      const reminderContexts: string[] = [];
+
       if (options.backend) {
         const [provider, modelShortName] = options.backend.split(':');
         if (!provider || !modelShortName) {
@@ -18,6 +21,8 @@ export async function activateCommand(id?: string, options: CommandOptions = {})
 
         const model = setActiveModelByProvider('backend', provider, modelShortName);
         console.log(colors.success(`${icons.success} Backend active model set to ${provider}:${modelShortName}`));
+        reminderProvider = provider;
+        reminderContexts.push('backend');
       }
 
       if (options.workers) {
@@ -29,6 +34,13 @@ export async function activateCommand(id?: string, options: CommandOptions = {})
 
         const model = setActiveModelByProvider('workers', provider, modelShortName);
         console.log(colors.success(`${icons.success} Workers active model set to ${provider}:${modelShortName}`));
+        reminderProvider = provider;
+        reminderContexts.push('workers');
+      }
+
+      // Show reminder once for all activated contexts
+      if (reminderProvider && reminderContexts.length > 0) {
+        printProviderReminder(reminderProvider, reminderContexts);
       }
       return;
     }
@@ -73,6 +85,7 @@ export async function activateCommand(id?: string, options: CommandOptions = {})
 
         const activatedModel = setActiveModelByProvider(context, model.provider, model.modelShortName);
         console.log(colors.success(`${icons.success} ${context} active model set to ${model.provider}:${model.modelShortName}`));
+        printProviderReminder(model.provider, [context]);
       } else {
         // Model supports multiple contexts - ask user which one
         const context = await promptContext(`Model ${id} supports multiple contexts. Which would you like to activate?`, supportedContexts);
@@ -81,10 +94,12 @@ export async function activateCommand(id?: string, options: CommandOptions = {})
           setActiveModelByProvider('backend', model.provider, model.modelShortName);
           setActiveModelByProvider('workers', model.provider, model.modelShortName);
           console.log(colors.success(`${icons.success} Model activated for both backend and workers contexts`));
+          printProviderReminder(model.provider, ['backend', 'workers']);
           return;
         }
         const activatedModel = setActiveModelByProvider(context as 'backend' | 'workers', model.provider, model.modelShortName);
         console.log(colors.success(`${icons.success} ${context} active model set to ${model.provider}:${model.modelShortName}`));
+        printProviderReminder(model.provider, [context]);
       }
       return;
     }
@@ -147,6 +162,7 @@ async function setActiveForContext(context: 'backend' | 'workers', allModels: Mo
   console.log(colors.success(
     `${icons.success} ${context} active model set to ${selected.provider}:${selected.modelShortName}`
   ));
+  printProviderReminder(selected.provider, [context]);
 }
 
 export async function deactivateCommand(context?: string): Promise<void> {

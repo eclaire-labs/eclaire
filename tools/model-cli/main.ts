@@ -18,8 +18,7 @@ const program = new Command();
 
 // CLI Header
 console.log(boxen(
-  chalk.cyan.bold('Eclaire AI Model Management CLI\n') +
-  chalk.gray('Manage your AI models with ease'),
+  chalk.cyan.bold('Eclaire AI Model Management CLI'),
   {
     padding: 1,
     margin: 1,
