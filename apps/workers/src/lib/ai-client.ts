@@ -821,7 +821,10 @@ async function writeBase64ToTempFile(
   const buffer = Buffer.from(base64Data, "base64");
   await fs.promises.writeFile(tempPath, buffer);
 
-  logger.debug({ tempPath, size: buffer.length }, "Created temp file for image");
+  logger.debug(
+    { tempPath, size: buffer.length },
+    "Created temp file for image",
+  );
 
   return { path: tempPath, cleanup };
 }
@@ -869,8 +872,10 @@ async function convertMessagesToMLXVLMFormat(
               if (matches && matches[1] && matches[2]) {
                 const mimeType = matches[1];
                 const base64Data = matches[2];
-                const { path: tempPath, cleanup } =
-                  await writeBase64ToTempFile(base64Data, mimeType);
+                const { path: tempPath, cleanup } = await writeBase64ToTempFile(
+                  base64Data,
+                  mimeType,
+                );
                 imagePaths.push(tempPath);
                 cleanupFunctions.push(cleanup);
               }

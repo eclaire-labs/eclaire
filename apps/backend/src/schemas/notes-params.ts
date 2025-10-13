@@ -299,8 +299,8 @@ export const NoteSearchSchema = z
         examples: ["2024-12-31T23:59:59Z"],
       }),
 
-    limit: z
-      .coerce.number()
+    limit: z.coerce
+      .number()
       .int()
       .positive()
       .default(50)
@@ -309,8 +309,8 @@ export const NoteSearchSchema = z
         examples: ["10", "50", "100"],
       }),
 
-    offset: z
-      .coerce.number()
+    offset: z.coerce
+      .number()
       .int()
       .nonnegative()
       .default(0)

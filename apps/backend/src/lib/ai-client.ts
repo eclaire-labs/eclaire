@@ -502,7 +502,10 @@ async function writeBase64ToTempFile(
   const buffer = Buffer.from(base64Data, "base64");
   await fs.promises.writeFile(tempPath, buffer);
 
-  logger.debug({ tempPath, size: buffer.length }, "Created temp file for image");
+  logger.debug(
+    { tempPath, size: buffer.length },
+    "Created temp file for image",
+  );
 
   return { path: tempPath, cleanup };
 }
@@ -828,7 +831,7 @@ export async function callAI(
   let actualRequestBody = requestBody;
 
   if (isMLXVLMProvider(provider.name)) {
-    const { mlxRequest, cleanup} = await convertMessagesToMLXVLMFormat(
+    const { mlxRequest, cleanup } = await convertMessagesToMLXVLMFormat(
       processedMessages,
       provider.model,
       options,
@@ -1087,7 +1090,9 @@ function transformMLXVLMStreamToOpenAI(
                     };
 
                     controller.enqueue(
-                      encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`),
+                      encoder.encode(
+                        `data: ${JSON.stringify(openaiFormat)}\n\n`,
+                      ),
                     );
                   }
                 } else if (eventType === "response.completed") {

@@ -29,10 +29,7 @@ const BaseItemSchema = z
       .string()
       .nullable()
       .meta({ description: "MIME type of the content" }),
-    fileSize: z
-      .number()
-      .nullable()
-      .meta({ description: "File size in bytes" }),
+    fileSize: z.number().nullable().meta({ description: "File size in bytes" }),
     processingStatus: z
       .enum(["pending", "processing", "completed", "failed"])
       .nullable()
@@ -154,10 +151,7 @@ export const CreatedItemSchema = z
       .boolean()
       .nullable()
       .meta({ description: "Whether the created item is pinned" }),
-    fileSize: z
-      .number()
-      .nullable()
-      .meta({ description: "File size in bytes" }),
+    fileSize: z.number().nullable().meta({ description: "File size in bytes" }),
     originalFilename: z
       .string()
       .nullable()
