@@ -3,7 +3,7 @@ name: eclaire
 services:
   # Backend API
   backend:
-    image: ghcr.io/eclaire-labs/eclaire-backend:${BACKEND_TAG:-0.3}
+    image: ghcr.io/eclaire-labs/eclaire-backend:${BACKEND_TAG:-0.4}
     # If you only loaded a local image (not from GHCR), you can switch to: eclaire-backend:${BACKEND_TAG}
     container_name: eclaire-backend
     ports:
@@ -31,7 +31,7 @@ services:
 
   # Frontend (Next.js)
   frontend:
-    image: ghcr.io/eclaire-labs/eclaire-frontend:${FRONTEND_TAG:-0.3}
+    image: ghcr.io/eclaire-labs/eclaire-frontend:${FRONTEND_TAG:-0.4}
     container_name: eclaire-frontend
     ports:
       - "3000:3000"
@@ -58,7 +58,7 @@ services:
 
   # Workers (BullMQ)
   workers:
-    image: ghcr.io/eclaire-labs/eclaire-workers:${WORKERS_TAG:-0.3}
+    image: ghcr.io/eclaire-labs/eclaire-workers:${WORKERS_TAG:-0.4}
     container_name: eclaire-workers
     env_file:
       - ./apps/workers/.env.prod
