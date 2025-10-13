@@ -101,9 +101,9 @@
       }
     },
     {
-      "id": "mlx_lm-qwen3-30b-a3b-4bit-dwq-10072025",
+      "id": "mlx-lm-qwen3-30b-a3b-4bit-dwq-10072025",
       "modelFullName": "mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
-      "provider": "mlx_lm",
+      "provider": "mlx-lm",
       "modelShortName": "qwen3-30b-a3b-4bit-dwq-10072025",
       "modelUrl": "https://huggingface.co/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
       "providerUrl": "${AI_LOCAL_PROVIDER_URL}",

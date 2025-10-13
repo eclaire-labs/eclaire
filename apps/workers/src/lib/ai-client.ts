@@ -560,7 +560,7 @@ export async function callAI(
   const requestBody: any = {
     model: provider.model,
     messages: processedMessages,
-    temperature: options.temperature ?? 0.1,
+    temperature: options.temperature ?? 0.5,
     max_tokens: options.maxTokens ?? 2000,
     stream: options.stream ?? false,
   };
@@ -890,6 +890,7 @@ async function convertMessagesToMLXVLMFormat(
     prompt: userPrompt.trim(),
     stream: options.stream ?? false,
     max_tokens: options.maxTokens ?? 2000,
+    temperature: options.temperature ?? 0.5,
   };
 
   if (systemPrompt) {

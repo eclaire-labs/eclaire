@@ -391,6 +391,7 @@ export interface AICallTrace {
 export interface AICallOptions {
   temperature?: number;
   maxTokens?: number;
+  top_p?: number;
   stream?: boolean;
   timeout?: number;
   // Add thinking support
@@ -439,7 +440,7 @@ const SUPPORTED_PROVIDERS = [
   "ollama",
   "llamacpp",
   "lm-studio",
-  "mlx_lm",
+  "mlx-lm",
   "mlx-vlm",
   "openrouter",
   "proxy",
@@ -507,8 +508,8 @@ async function writeBase64ToTempFile(
 }
 
 /**
- * Convert OpenAI-style messages to mlx-vlm format
- * Extracts images from message content and saves them to temp files
+ * Convert OpenAI-style messages to mlx-vlm /responses format
+ * Supports full conversation history with system/user/assistant messages
  * Returns the converted format and cleanup function for temp files
  */
 async function convertMessagesToMLXVLMFormat(
@@ -519,40 +520,33 @@ async function convertMessagesToMLXVLMFormat(
   mlxRequest: any;
   cleanup: () => Promise<void>;
 }> {
-  const imagePaths: string[] = [];
   const cleanupFunctions: (() => Promise<void>)[] = [];
-  let systemPrompt = "";
-  let userPrompt = "";
+  const inputMessages: any[] = [];
 
-  // Process messages to extract system, user prompts, and images
+  // Process each message and convert to MLX-VLM /responses format
+  // Backend only uses text content (workers handle multimodal/images)
   for (const message of messages) {
-    if (message.role === "system") {
-      systemPrompt = message.content;
-    } else if (message.role === "user") {
-      // Handle simple string content (backend doesn't use array content format yet)
-      if (typeof message.content === "string") {
-        userPrompt += message.content;
-      }
-    }
+    inputMessages.push({
+      role: message.role,
+      content: message.content, // Text-only content
+    });
   }
 
-  // Build mlx-vlm request format
+  // Build mlx-vlm /responses request format
   const mlxRequest: any = {
     model,
-    prompt: userPrompt.trim(),
+    input: inputMessages, // MLX-VLM uses "input" field
     stream: options.stream ?? false,
-    max_tokens: options.maxTokens ?? 2000,
+    max_output_tokens: options.maxTokens ?? 2000, // MLX-VLM uses max_output_tokens
+    temperature: options.temperature ?? 0.5,
   };
 
-  if (systemPrompt) {
-    mlxRequest.system = systemPrompt;
+  // Add top_p if provided
+  if (options.top_p !== undefined) {
+    mlxRequest.top_p = options.top_p;
   }
 
-  if (imagePaths.length > 0) {
-    mlxRequest.image = imagePaths;
-  }
-
-  // Cleanup function to remove all temp files
+  // Cleanup function to remove all temp files (if any were created)
   const cleanup = async () => {
     for (const cleanupFn of cleanupFunctions) {
       try {
@@ -788,7 +782,7 @@ export async function callAI(
   const requestBody = {
     model: provider.model,
     messages: processedMessages,
-    temperature: options.temperature ?? 0.1,
+    temperature: options.temperature ?? 0.5,
     max_tokens: options.maxTokens ?? 2000,
     stream: options.stream ?? false,
   };
@@ -807,7 +801,7 @@ export async function callAI(
     provider.name === "proxy"
       ? provider.baseURL
       : isMLXVLMProvider(provider.name)
-        ? `${provider.baseURL}/generate`
+        ? `${provider.baseURL}/responses`
         : `${provider.baseURL}/v1/chat/completions`;
 
   logger.debug(
@@ -877,9 +871,15 @@ export async function callAI(
     let reasoning: string | undefined;
 
     if (isMLXVLMProvider(provider.name)) {
-      // mlx-vlm returns { "response": "..." } or similar
-      content = data.response || data.text || data.content;
-      reasoning = undefined; // mlx-vlm doesn't have reasoning
+      // mlx-vlm /responses API returns response.output_text or response.text
+      content =
+        data.response?.output_text ||
+        data.response?.text ||
+        data.output_text ||
+        data.text ||
+        data.response ||
+        data.content;
+      reasoning = undefined; // mlx-vlm doesn't have reasoning in responses
     } else {
       const message = data.choices?.[0]?.message;
       content = message?.content;
@@ -1002,6 +1002,144 @@ export async function callAI(
 }
 
 /**
+ * Transform MLX-VLM /responses SSE stream to OpenAI-compatible format
+ *
+ * MLX-VLM /responses API uses named event types (similar to OpenAI Realtime API):
+ * - response.output_text.delta: Incremental text chunks (what we want)
+ * - response.output_text.done: Complete text (causes duplication if processed)
+ * - response.content_part.done: Complete text (ignored)
+ * - response.output_item.done: Complete text (ignored)
+ * - response.completed: End signal (converted to finish_reason: "stop")
+ *
+ * This function filters to only process delta events and completion signal,
+ * avoiding duplication from the .done events that contain full text.
+ */
+function transformMLXVLMStreamToOpenAI(
+  stream: ReadableStream<Uint8Array>,
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const reader = stream.getReader();
+      let buffer = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            // Send final [DONE] signal in OpenAI format
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+            break;
+          }
+
+          // Decode chunk and add to buffer
+          const chunk = decoder.decode(value, { stream: true });
+          buffer += chunk;
+
+          // Process complete SSE lines
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (line.trim() === "" || line.startsWith(":")) {
+              // Empty line or comment - keep as is
+              controller.enqueue(encoder.encode(line + "\n"));
+              continue;
+            }
+
+            if (line.startsWith("data: ")) {
+              const data = line.substring(6);
+
+              // Handle [DONE] signal
+              if (data.trim() === "[DONE]") {
+                controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                continue;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+
+                // MLX-VLM /responses API uses named event types in the data payload
+                // Only process delta events to avoid duplication from .done events
+                const eventType = parsed.type;
+
+                if (eventType === "response.output_text.delta") {
+                  // Extract delta content from response.output_text.delta event
+                  const deltaContent = parsed.delta;
+
+                  // Skip empty deltas to reduce overhead
+                  if (deltaContent && deltaContent !== "") {
+                    // Transform to OpenAI format
+                    const openaiFormat = {
+                      choices: [
+                        {
+                          delta: {
+                            content: deltaContent,
+                          },
+                          index: 0,
+                          finish_reason: null,
+                        },
+                      ],
+                    };
+
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`),
+                    );
+                  }
+                } else if (eventType === "response.completed") {
+                  // Stream is complete, send finish signal
+                  const openaiFormat = {
+                    choices: [
+                      {
+                        delta: {},
+                        index: 0,
+                        finish_reason: "stop",
+                      },
+                    ],
+                  };
+
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`),
+                  );
+                }
+                // Ignore other event types (response.created, response.in_progress,
+                // response.output_text.done, response.content_part.done, etc.)
+                // as they contain duplicate data or metadata we don't need
+              } catch (e) {
+                // If parsing fails, pass through as-is
+                logger.warn(
+                  {
+                    line,
+                    error: e instanceof Error ? e.message : "Unknown error",
+                  },
+                  "Failed to parse MLX-VLM SSE line",
+                );
+                controller.enqueue(encoder.encode(line + "\n"));
+              }
+            } else {
+              // Pass through other lines as-is
+              controller.enqueue(encoder.encode(line + "\n"));
+            }
+          }
+        }
+      } catch (error) {
+        logger.error(
+          { error: error instanceof Error ? error.message : "Unknown error" },
+          "Error transforming MLX-VLM stream",
+        );
+        controller.error(error);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  });
+}
+
+/**
  * Makes a streaming AI API call using the OpenAI-compatible /v1/chat/completions endpoint
  */
 export async function callAIStream(
@@ -1053,7 +1191,7 @@ export async function callAIStream(
   const requestBody = {
     model: provider.model,
     messages: processedMessages,
-    temperature: options.temperature ?? 0.1,
+    temperature: options.temperature ?? 0.5,
     max_tokens: options.maxTokens ?? 2000,
     stream: true, // Always enable streaming for this function
   };
@@ -1072,7 +1210,7 @@ export async function callAIStream(
     provider.name === "proxy"
       ? provider.baseURL
       : isMLXVLMProvider(provider.name)
-        ? `${provider.baseURL}/generate`
+        ? `${provider.baseURL}/responses`
         : `${provider.baseURL}/v1/chat/completions`;
 
   logger.debug(
@@ -1134,8 +1272,15 @@ export async function callAIStream(
       throw new Error("No response body available for streaming");
     }
 
-    // Return the raw response body stream directly - let the parser handle SSE parsing
-    const stream = response.body;
+    // Transform MLX-VLM stream to OpenAI format if needed
+    let stream = response.body;
+    if (isMLXVLMProvider(provider.name)) {
+      logger.debug(
+        { provider: provider.name },
+        "Transforming MLX-VLM stream to OpenAI format",
+      );
+      stream = transformMLXVLMStreamToOpenAI(stream);
+    }
 
     // Capture trace if enabled
     if (options.trace?.enabled && options.trace.onTraceCapture) {
