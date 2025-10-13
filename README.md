@@ -270,6 +270,21 @@ pm2 stop pm2.deps.config.js
 ```
 
 
+## Upgrading
+
+To upgrade to the latest release:
+
+```bash
+git pull
+docker compose pull
+```
+
+Then restart the services:
+```bash
+docker compose up
+```
+
+
 ## Selecting Models
 Eclaire is designed to work with various LLM backends and models. By default we picked llama.cpp with Qwen3 14b Q4_K_XL GGUF for AI assistant and Gemma3 4b Q4_K_XL GGUF because that runs well on a typical dev machine (eg a Macbook Pro M1+ with 32GB memory) but you may want to pick something more appropriate. Some notes:
 
