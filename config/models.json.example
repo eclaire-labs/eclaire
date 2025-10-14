@@ -8,7 +8,7 @@
       "id": "llamacpp-qwen3-14b-gguf-q4-k-xl",
       "modelFullName": "unsloth/Qwen3-14B-GGUF:Q4_K_XL",
       "provider": "llamacpp",
-      "modelShortName": "qwen3-14b-gguf-q4_k_xl",
+      "modelShortName": "qwen3-14b",
       "modelUrl": "https://huggingface.co/unsloth/qwen3-14b-gguf",
       "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
       "capabilities": {
@@ -36,14 +36,31 @@
           "size": 9159818624,
           "quantization": "Q4_K_XL",
           "sizeFormatted": "8.5 GB"
-        }
+        },
+        "tags": [
+          "transformers",
+          "gguf",
+          "qwen3",
+          "text-generation",
+          "qwen",
+          "unsloth",
+          "en",
+          "arxiv:2309.00071",
+          "base_model:Qwen/Qwen3-14B",
+          "base_model:quantized:Qwen/Qwen3-14B",
+          "license:apache-2.0",
+          "autotrain_compatible",
+          "endpoints_compatible",
+          "region:us",
+          "conversational"
+        ]
       }
     },
     {
       "id": "llamacpp-gemma-3-4b-it-qat-gguf-q4-k-xl",
       "modelFullName": "unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL",
       "provider": "llamacpp",
-      "modelShortName": "gemma-3-4b-it-qat-gguf-q4_k_xl",
+      "modelShortName": "gemma-3-4b",
       "modelUrl": "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF",
       "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
       "capabilities": {
@@ -66,82 +83,24 @@
           "size": 2537530496,
           "quantization": "Q4_K_XL",
           "sizeFormatted": "2.4 GB"
-        }
+        },
+        "tags": [
+          "transformers",
+          "gguf",
+          "gemma3",
+          "image-text-to-text",
+          "unsloth",
+          "gemma",
+          "google",
+          "en",
+          "base_model:google/gemma-3-4b-it-qat-q4_0-unquantized",
+          "base_model:quantized:google/gemma-3-4b-it-qat-q4_0-unquantized",
+          "license:gemma",
+          "endpoints_compatible",
+          "region:us",
+          "conversational"
+        ]
       }
-    },
-    {
-      "id": "lm-studio-gemma-3-27b-it-qat-gguf-q4-0",
-      "modelFullName": "lmstudio-community/gemma-3-27B-it-qat-GGUF:Q4_0",
-      "provider": "lm-studio",
-      "modelShortName": "gemma-3-27b-it-qat-gguf-q4_0",
-      "modelUrl": "https://huggingface.co/lmstudio-community/gemma-3-27B-it-qat-GGUF",
-      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
-      "capabilities": {
-        "stream": true,
-        "thinking": {
-          "mode": "never"
-        }
-      },
-      "contexts": [
-        "backend",
-        "workers"
-      ],
-      "description": "image-text-to-text with tags: gguf, image-text-to-text, base_model:google/gemma-3-27b-it, base_model:quantized:google/gemma-3-27b-it, license:gemma (GGUF format with 2 quantization options) (Q4_0 quantization, 14.5 GB)",
-      "metadata": {
-        "url": "https://huggingface.co/lmstudio-community/gemma-3-27B-it-qat-GGUF",
-        "apiEndpoint": "https://api-inference.huggingface.co/models/lmstudio-community/gemma-3-27B-it-qat-GGUF",
-        "apiModelId": "lmstudio-community/gemma-3-27B-it-qat-GGUF",
-        "isGGUF": true,
-        "selectedQuantization": {
-          "filename": "gemma-3-27B-it-QAT-Q4_0.gguf",
-          "size": 15567396544,
-          "quantization": "Q4_0",
-          "sizeFormatted": "14.5 GB"
-        }
-      }
-    },
-    {
-      "id": "mlx-lm-qwen3-30b-a3b-4bit-dwq-10072025",
-      "modelFullName": "mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
-      "provider": "mlx-lm",
-      "modelShortName": "qwen3-30b-a3b-4bit-dwq-10072025",
-      "modelUrl": "https://huggingface.co/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
-      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
-      "capabilities": {
-        "stream": true,
-        "thinking": {
-          "mode": "never"
-        }
-      },
-      "contexts": [
-        "backend"
-      ],
-      "description": "text-generation with tags: mlx, safetensors, qwen3_moe, text-generation, conversational",
-      "metadata": {
-        "url": "https://huggingface.co/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
-        "apiEndpoint": "https://api-inference.huggingface.co/models/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
-        "apiModelId": "mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
-        "isGGUF": false
-      }
-    },
-    {
-      "id": "ollama_gemma3-27b-it-qat",
-      "provider": "ollama",
-      "modelShortName": "gemma3:27b-it-qat",
-      "modelFullName": "gemma3:27b-it-qat",
-      "modelUrl": "https://ollama.com/library/gemma3:27b",
-      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
-      "capabilities": {
-        "stream": true,
-        "thinking": {
-          "mode": "never"
-        }
-      },
-      "contexts": [
-        "backend",
-        "workers"
-      ],
-      "description": "Multimodel model by Google, for processing text and images."
     },
     {
       "id": "proxy-qwen3-14b",
@@ -215,12 +174,6 @@
         "url": "https://openrouter.ai/models/openai/gpt-5-mini",
         "apiEndpoint": "https://openrouter.ai/api/v1/chat/completions",
         "apiModelId": "openai/gpt-5-mini",
-        "pricing": {
-          "prompt": "0.00000025",
-          "completion": "0.000002",
-          "promptPer1M": 0.25,
-          "completionPer1M": 2
-        },
         "architecture": {
           "modality": "text+image->text",
           "input_modalities": [
@@ -261,12 +214,6 @@
         "url": "https://openrouter.ai/models/google/gemini-2.5-flash",
         "apiEndpoint": "https://openrouter.ai/api/v1/chat/completions",
         "apiModelId": "google/gemini-2.5-flash",
-        "pricing": {
-          "prompt": "0.0000003",
-          "completion": "0.0000025",
-          "promptPer1M": 0.3,
-          "completionPer1M": 2.5
-        },
         "architecture": {
           "modality": "text+image->text",
           "input_modalities": [
@@ -285,10 +232,88 @@
       }
     },
     {
+      "id": "mlx-lm-qwen3-14b-4bit-awq",
+      "modelFullName": "mlx-community/Qwen3-14B-4bit-AWQ",
+      "provider": "mlx-lm",
+      "modelShortName": "qwen3-14b",
+      "modelUrl": "https://huggingface.co/mlx-community/Qwen3-14B-4bit-AWQ",
+      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "choosable",
+          "control": {
+            "type": "prompt_prefix",
+            "on": "",
+            "off": "/no_think"
+          }
+        }
+      },
+      "contexts": [
+        "backend"
+      ],
+      "description": "text-generation with tags: mlx, safetensors, qwen3, unsloth, text-generation",
+      "metadata": {
+        "url": "https://huggingface.co/mlx-community/Qwen3-14B-4bit-AWQ",
+        "apiEndpoint": "https://api-inference.huggingface.co/models/mlx-community/Qwen3-14B-4bit-AWQ",
+        "apiModelId": "mlx-community/Qwen3-14B-4bit-AWQ",
+        "isGGUF": false,
+        "tags": [
+          "mlx",
+          "safetensors",
+          "qwen3",
+          "unsloth",
+          "text-generation",
+          "conversational",
+          "base_model:unsloth/Qwen3-14B",
+          "base_model:quantized:unsloth/Qwen3-14B",
+          "license:apache-2.0",
+          "4-bit",
+          "region:us"
+        ]
+      }
+    },
+    {
+      "id": "mlx-lm-qwen3-30b-a3b-4bit-dwq-10072025",
+      "modelFullName": "mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
+      "provider": "mlx-lm",
+      "modelShortName": "qwen3-30b-a3b",
+      "modelUrl": "https://huggingface.co/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
+      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "never"
+        }
+      },
+      "contexts": [
+        "backend"
+      ],
+      "description": "text-generation with tags: mlx, safetensors, qwen3_moe, text-generation, conversational",
+      "metadata": {
+        "url": "https://huggingface.co/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
+        "apiEndpoint": "https://api-inference.huggingface.co/models/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
+        "apiModelId": "mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025",
+        "isGGUF": false,
+        "tags": [
+          "mlx",
+          "safetensors",
+          "qwen3_moe",
+          "text-generation",
+          "conversational",
+          "base_model:Qwen/Qwen3-30B-A3B",
+          "base_model:quantized:Qwen/Qwen3-30B-A3B",
+          "license:apache-2.0",
+          "4-bit",
+          "region:us"
+        ]
+      }
+    },
+    {
       "id": "mlx-vlm-gemma-3-4b-it-qat-4bit",
       "modelFullName": "mlx-community/gemma-3-4b-it-qat-4bit",
       "provider": "mlx-vlm",
-      "modelShortName": "gemma-3-4b-it-qat-4bit",
+      "modelShortName": "gemma-3-4b",
       "modelUrl": "https://huggingface.co/mlx-community/gemma-3-4b-it-qat-4bit",
       "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
       "capabilities": {
@@ -298,6 +323,7 @@
         }
       },
       "contexts": [
+        "backend",
         "workers"
       ],
       "description": "image-text-to-text with tags: transformers, safetensors, gemma3, image-text-to-text, internvl",
@@ -305,7 +331,62 @@
         "url": "https://huggingface.co/mlx-community/gemma-3-4b-it-qat-4bit",
         "apiEndpoint": "https://api-inference.huggingface.co/models/mlx-community/gemma-3-4b-it-qat-4bit",
         "apiModelId": "mlx-community/gemma-3-4b-it-qat-4bit",
-        "isGGUF": false
+        "isGGUF": false,
+        "tags": [
+          "transformers",
+          "safetensors",
+          "gemma3",
+          "image-text-to-text",
+          "internvl",
+          "custom_code",
+          "mlx",
+          "conversational",
+          "multilingual",
+          "dataset:OpenGVLab/MMPR-v1.2",
+          "base_model:OpenGVLab/InternVL3-1B-Instruct",
+          "base_model:finetune:OpenGVLab/InternVL3-1B-Instruct",
+          "license:other",
+          "text-generation-inference",
+          "endpoints_compatible",
+          "region:us"
+        ]
+      }
+    },
+    {
+      "id": "lm-studio-magistral-small-2509-mlx-4bit",
+      "modelFullName": "lmstudio-community/Magistral-Small-2509-MLX-4bit",
+      "provider": "lm-studio",
+      "modelShortName": "magistral-small-2509",
+      "modelUrl": "https://huggingface.co/lmstudio-community/Magistral-Small-2509-MLX-4bit",
+      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
+      "capabilities": {
+        "stream": true,
+        "thinking": {
+          "mode": "never"
+        }
+      },
+      "contexts": [
+        "backend",
+        "workers"
+      ],
+      "description": "Model with tags: vllm, safetensors, mistral3, mistral-common, mlx",
+      "metadata": {
+        "url": "https://huggingface.co/lmstudio-community/Magistral-Small-2509-MLX-4bit",
+        "apiEndpoint": "https://api-inference.huggingface.co/models/lmstudio-community/Magistral-Small-2509-MLX-4bit",
+        "apiModelId": "lmstudio-community/Magistral-Small-2509-MLX-4bit",
+        "isGGUF": false,
+        "tags": [
+          "vllm",
+          "safetensors",
+          "mistral3",
+          "mistral-common",
+          "mlx",
+          "base_model:mistralai/Magistral-Small-2509",
+          "base_model:quantized:mistralai/Magistral-Small-2509",
+          "license:apache-2.0",
+          "4-bit",
+          "region:us"
+        ]
       }
     }
   ]
