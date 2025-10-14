@@ -453,6 +453,14 @@ function isMLXVLMProvider(provider: string): boolean {
 }
 
 /**
+ * Check if provider is lm-studio (accepts lm-studio, lm_studio, lmstudio, etc.)
+ */
+function isLMStudioProvider(provider: string): boolean {
+  const canonical = getCanonicalProviderName(provider);
+  return canonical === "lm-studio";
+}
+
+/**
  * Validates that required configuration exists and looks up model config
  * Uses JSON config as source of truth for model details
  */
@@ -558,12 +566,17 @@ export async function callAI(
 
   // Base request body
   const requestBody: any = {
-    model: provider.model,
     messages: processedMessages,
     temperature: options.temperature ?? 0.5,
     max_tokens: options.maxTokens ?? 2000,
     stream: options.stream ?? false,
   };
+
+  // LM Studio doesn't require the model field and may fail if it doesn't match
+  // exactly what's loaded. Only include model for non-LM Studio providers.
+  if (!isLMStudioProvider(provider.name)) {
+    requestBody.model = provider.model;
+  }
 
   // If a schema is provided, add the response_format object
   // This is the key change to enable structured output

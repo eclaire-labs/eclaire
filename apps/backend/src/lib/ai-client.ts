@@ -480,6 +480,14 @@ function isMLXVLMProvider(provider: string): boolean {
 }
 
 /**
+ * Check if provider is lm-studio (accepts lm-studio, lm_studio, lmstudio, etc.)
+ */
+function isLMStudioProvider(provider: string): boolean {
+  const canonical = getCanonicalProviderName(provider);
+  return canonical === "lm-studio";
+}
+
+/**
  * Helper to write base64 image data to a temporary file
  * Returns the file path and cleanup function
  */
@@ -782,13 +790,18 @@ export async function callAI(
     provider.model,
   );
 
-  const requestBody = {
-    model: provider.model,
+  const requestBody: any = {
     messages: processedMessages,
     temperature: options.temperature ?? 0.5,
     max_tokens: options.maxTokens ?? 2000,
     stream: options.stream ?? false,
   };
+
+  // LM Studio doesn't require the model field and may fail if it doesn't match
+  // exactly what's loaded. Only include model for non-LM Studio providers.
+  if (!isLMStudioProvider(provider.name)) {
+    requestBody.model = provider.model;
+  }
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -1193,13 +1206,18 @@ export async function callAIStream(
     provider.model,
   );
 
-  const requestBody = {
-    model: provider.model,
+  const requestBody: any = {
     messages: processedMessages,
     temperature: options.temperature ?? 0.5,
     max_tokens: options.maxTokens ?? 2000,
     stream: true, // Always enable streaming for this function
   };
+
+  // LM Studio doesn't require the model field and may fail if it doesn't match
+  // exactly what's loaded. Only include model for non-LM Studio providers.
+  if (!isLMStudioProvider(provider.name)) {
+    requestBody.model = provider.model;
+  }
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
