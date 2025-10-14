@@ -27,7 +27,7 @@ export function createModelsTable(models: Model[], activeModels: ActiveModels = 
       colors.header('Provider'),
       colors.header('MLX'),
       colors.header('Short Name'),
-      colors.header('Model'),
+      colors.header('Full Name'),
       colors.header('Context'),
       colors.header('Status')
     ],
@@ -66,7 +66,7 @@ export function createModelsTable(models: Model[], activeModels: ActiveModels = 
       formatProvider(model.provider),
       formatMLX(isMLX),
       model.modelShortName,
-      model.name || model.modelShortName, // No truncation - auto-sizing handles it
+      model.modelFullName || model.modelShortName, // No truncation - auto-sizing handles it
       formatContext(model.contexts),
       formatStatus(isActive)
     ]);
