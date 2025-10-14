@@ -1,5 +1,30 @@
 # Eclaire Changelog
 
+## [0.4.0] - 2025-10-14
+### Features
+- **ai**: Apple MLX integration with native support for Apple Silicon
+  - **mlx-lm**: text inference using MLX
+  - **mlx-vlm**: vision model support with multimodal capabilities using MLX
+- **ai**: LM Studio integration for local model inference
+- **model-cli**: enhanced import workflow with provider selection
+  - Interactive provider selection (MLX-LM, MLX-VLM, LM Studio, Ollama, LlamaCpp, and more)
+  - Automatic vision capability detection from model metadata
+  - Smart warnings for incompatible provider/model combinations
+  - Improved user experience with context-aware prompts
+
+### Bug Fixes
+- **config**: use 127.0.0.1 instead of localhost for service URLs to improve compatibility
+- **model-cli**: display modelFullName instead of name in list command
+
+### Documentation
+- **readme**: added upgrade section with instructions for updating between versions
+
+### CI/CD
+- **docker**: bumped default image tags to 0.4
+- **workflows**: explicit semver values for Docker tags
+
+---
+
 ## [0.3.1] - 2025-10-08
 ### Features
 - **ci/cd**: official GHCR image publishing system with Github Actions
