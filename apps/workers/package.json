@@ -52,7 +52,7 @@
     "execa": "8.0.0",
     "form-data": "4.0.4",
     "heic-convert": "2.1.0",
-    "hono": "4.9.9",
+    "hono": "4.10.3",
     "html-to-text": "9.0.5",
     "ioredis": "5.8.0",
     "jsdom": "24.0.0",
