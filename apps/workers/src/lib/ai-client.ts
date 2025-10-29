@@ -583,7 +583,10 @@ export async function callAI(
   if (options.schema) {
     requestBody.response_format = {
       type: "json_schema",
-      json_schema: options.schema,
+      json_schema: {
+        name: "response_schema",
+        schema: options.schema,
+      },
     };
   }
 
