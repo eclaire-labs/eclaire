@@ -1,5 +1,16 @@
 # Eclaire Changelog
 
+## [0.4.1] - 2025-10-30
+### Security
+- **deps**: bumped Hono to address security vulnerabilities (GHSA-m732-5p4w-x69g, GHSA-q7jf-gf43-6x6p)
+  - Upgraded to latest safe version to resolve Improper Authorization vulnerability (CVE-2025-62610)
+  - Fixed Vary Header Injection leading to potential CORS Bypass
+
+### Bug Fixes
+- **ai**: use json_schema { name, schema } envelope to align with OpenAI structured outputs
+
+---
+
 ## [0.4.0] - 2025-10-14
 ### Features
 - **ai**: Apple MLX integration with native support for Apple Silicon
