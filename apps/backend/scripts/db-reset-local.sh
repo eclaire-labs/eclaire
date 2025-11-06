@@ -15,8 +15,25 @@ if [ "$SEED_TYPE" != "essential" ] && [ "$SEED_TYPE" != "demo" ]; then
     exit 1
 fi
 
+# Load environment variables to check DATABASE_TYPE
+if [ -f ".env.dev" ]; then
+    export $(grep -v '^#' .env.dev | grep DATABASE_TYPE | xargs)
+fi
+
+# Detect database type (default to postgresql if not set)
+DB_TYPE="${DATABASE_TYPE:-postgresql}"
+
 echo "🔄 Resetting database with '$SEED_TYPE' data..."
+echo "📊 Database type: $DB_TYPE"
 echo ""
+
+# If PGlite, delegate to the PGlite-specific script
+if [ "$DB_TYPE" = "pglite" ]; then
+    echo "🔀 Detected PGlite, using PGlite reset script..."
+    exec "$SCRIPT_DIR/db-reset-pglite.sh" "$SEED_TYPE"
+fi
+
+# PostgreSQL path continues below
 echo "⚠️  WARNING: This will completely DROP and recreate the 'eclaire' database!"
 echo "   All existing data will be permanently lost."
 echo ""

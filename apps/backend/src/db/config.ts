@@ -35,3 +35,25 @@ export function getDatabaseUrl(): string {
 export function getDatabaseAuthToken(): string | undefined {
   return process.env.DATABASE_AUTH_TOKEN;
 }
+
+/**
+ * Get the database type to use
+ *
+ * @returns "postgresql" or "pglite"
+ */
+export function getDatabaseType(): "postgresql" | "pglite" {
+  const type = process.env.DATABASE_TYPE?.toLowerCase();
+  if (type === "pglite") {
+    return "pglite";
+  }
+  return "postgresql";
+}
+
+/**
+ * Get the PGlite data directory path
+ *
+ * @returns The path where PGlite should store its data
+ */
+export function getPGlitePath(): string {
+  return process.env.PGLITE_DATA_DIR || "./data/db/pglite";
+}

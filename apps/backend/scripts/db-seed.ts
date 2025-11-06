@@ -3,11 +3,15 @@ import "../src/lib/env-loader";
 
 import { hashPassword } from "better-auth/crypto";
 import { randomBytes } from "crypto";
+import { mkdirSync } from "fs";
+import { dirname } from "path";
 import type { InferInsertModel } from "drizzle-orm";
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { drizzle as drizzlePostgres, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
+import { PGlite } from "@electric-sql/pglite";
 import postgres from "postgres";
 import { v4 as uuid } from "uuid";
-import { getDatabaseUrl } from "../src/db/config";
+import { getDatabaseUrl, getDatabaseType, getPGlitePath } from "../src/db/config";
 import * as schema from "../src/db/schema";
 import { hmacBase64 } from "../src/lib/api-key-security";
 
@@ -16,7 +20,7 @@ type InsertUser = InferInsertModel<typeof schema.users>;
 type InsertAccount = InferInsertModel<typeof schema.accounts>;
 type InsertApiKey = InferInsertModel<typeof schema.apiKeys>;
 
-type Database = PostgresJsDatabase<typeof schema>;
+type Database = PostgresJsDatabase<typeof schema> | PgliteDatabase<typeof schema>;
 
 // --- Helper Functions ---
 function computeApiKeyHash(fullKey: string): {
@@ -125,15 +129,42 @@ async function main() {
     console.log("🌱 Seeding database with essential users only...");
   }
 
-  const dbUrl = process.env.DATABASE_URL || getDatabaseUrl();
-  console.log(`Connecting to database: ${dbUrl}`);
+  const dbType = getDatabaseType();
+  let db: Database;
+  let cleanup: () => Promise<void>;
 
-  const client = postgres(dbUrl, {
-    max: 10, // Maximum number of connections
-    idle_timeout: 20, // Seconds before idle connection is closed
-    connect_timeout: 10, // Seconds before connection timeout
-  });
-  const db: Database = drizzle(client, { schema });
+  if (dbType === "pglite") {
+    // PGlite setup
+    const pglitePath = getPGlitePath();
+    console.log(`Connecting to PGlite database: ${pglitePath}`);
+
+    // Ensure directory exists
+    try {
+      mkdirSync(dirname(pglitePath), { recursive: true });
+    } catch (error) {
+      // Directory might already exist, ignore
+    }
+
+    const client = new PGlite(pglitePath);
+    db = drizzlePglite(client, { schema });
+    cleanup = async () => {
+      await client.close();
+    };
+  } else {
+    // PostgreSQL setup
+    const dbUrl = process.env.DATABASE_URL || getDatabaseUrl();
+    console.log(`Connecting to PostgreSQL database: ${dbUrl}`);
+
+    const client = postgres(dbUrl, {
+      max: 10, // Maximum number of connections
+      idle_timeout: 20, // Seconds before idle connection is closed
+      connect_timeout: 10, // Seconds before connection timeout
+    });
+    db = drizzlePostgres(client, { schema });
+    cleanup = async () => {
+      await client.end();
+    };
+  }
 
   // Variables to store the generated keys (needed for output at the end)
   let workerKey: { fullKey: string; keyId: string; keySuffix: string };
@@ -365,7 +396,7 @@ async function main() {
     process.exit(1);
   } finally {
     console.log("Closing database connection.");
-    await client.end();
+    await cleanup();
   }
 }
 
