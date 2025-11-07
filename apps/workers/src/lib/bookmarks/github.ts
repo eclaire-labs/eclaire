@@ -35,6 +35,7 @@ export async function processGitHubBookmark(
   const { bookmarkId, url: originalUrl, userId } = job.data;
   logger.info({ bookmarkId, userId }, "Processing with GITHUB handler");
 
+  let browser: any = null;
   let context: BrowserContext | null = null;
   const allArtifacts: Record<string, any> = {};
 
@@ -61,14 +62,12 @@ export async function processGitHubBookmark(
     await reporter.updateStage("content_extraction", "processing", 0);
 
     // Standard browser-based content extraction
-    context = await chromium.launchPersistentContext(
-      process.env.BROWSER_DATA_DIR || "./browser-data",
-      {
-        headless: true,
-        viewport: null,
-      },
-    );
-    const page = await context.newPage();
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--use-mock-keychain'],
+    });
+    context = await browser.newContext({ viewport: null });
+    const page = await context!.newPage();
 
     // Navigate to the URL with fallback strategies for slow-loading pages
     let response;
@@ -287,6 +286,7 @@ export async function processGitHubBookmark(
     await reporter.completeJob(finalArtifacts);
   } finally {
     if (context) await context.close();
+    if (browser) await browser.close();
   }
 }
 

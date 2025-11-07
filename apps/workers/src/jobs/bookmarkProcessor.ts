@@ -16,6 +16,7 @@ import {
 } from "../lib/bookmarks";
 import { processRedditApiBookmark } from "../lib/bookmarks/reddit-api";
 import { domainRateLimiter } from "../lib/domainRateLimiter";
+import { createRateLimitError } from "../lib/job-adapters";
 import { createChildLogger } from "../lib/logger";
 import {
   createProcessingReporter,
@@ -38,6 +39,7 @@ async function processRegularBookmarkJob(
 ) {
   const { bookmarkId, url: originalUrl, userId } = job.data;
   logger.info({ bookmarkId, userId }, "Processing with REGULAR handler");
+  let browser: any = null;
   let context: BrowserContext | null = null;
   let page: Page | null = null;
   const allArtifacts: Record<string, any> = {};
@@ -53,25 +55,25 @@ async function processRegularBookmarkJob(
     currentStage = "content_extraction";
     await reporter.updateStage("content_extraction", "processing", 0);
 
-    // Browser context setup with hard timeout
+    // Browser launch with hard timeout
     try {
-      logger.debug({ bookmarkId }, "Attempting to launch browser context...");
-      context = await withTimeout(
-        chromium.launchPersistentContext(
-          process.env.BROWSER_DATA_DIR || "./browser-data",
-          {
-            headless: true,
-            viewport: null,
-          },
-        ),
+      logger.debug({ bookmarkId }, "Attempting to launch browser...");
+      browser = await withTimeout(
+        chromium.launch({
+          headless: true,
+          args: ['--use-mock-keychain'],
+        }),
         config.timeouts.browserContext,
-        "Browser context setup",
+        "Browser launch",
       );
-      logger.debug({ bookmarkId }, "Browser context launched successfully.");
+      logger.debug({ bookmarkId }, "Browser launched successfully.");
+
+      context = await browser.newContext({ viewport: null });
+      logger.debug({ bookmarkId }, "Browser context created successfully.");
     } catch (error) {
       if (error instanceof TimeoutError) {
         throw new Error(
-          `Browser context setup timed out after ${config.timeouts.browserContext}ms`,
+          `Browser launch timed out after ${config.timeouts.browserContext}ms`,
         );
       }
       throw error;
@@ -442,6 +444,19 @@ async function processRegularBookmarkJob(
       );
     }
 
+    try {
+      if (browser) {
+        logger.debug({ bookmarkId }, "Closing browser...");
+        await browser.close();
+        logger.debug({ bookmarkId }, "Browser closed successfully.");
+      }
+    } catch (browserCloseError: any) {
+      logger.warn(
+        { bookmarkId, error: browserCloseError.message },
+        "Failed to close browser during cleanup",
+      );
+    }
+
     logger.debug({ bookmarkId }, "Cleanup phase completed.");
   }
 }
@@ -457,6 +472,18 @@ async function processBookmarkJob(
   worker?: Worker,
 ) {
   const { bookmarkId, url: originalUrl, userId } = job.data;
+
+  // Validate required job data
+  if (!bookmarkId || !originalUrl || !userId) {
+    logger.error(
+      { jobId: job.id, bookmarkId, originalUrl, userId, jobData: job.data },
+      "Missing required job data - cannot process bookmark"
+    );
+    throw new Error(
+      `Missing required job data: bookmarkId=${bookmarkId}, url=${originalUrl}, userId=${userId}`
+    );
+  }
+
   const jobId = job.id?.toString() || `${bookmarkId}-${Date.now()}`;
 
   logger.info(
@@ -504,10 +531,12 @@ async function processBookmarkJob(
       // Use proper BullMQ rate limiting instead of adding a new job
       if (worker) {
         await worker.rateLimit(availability.delayMs);
+        // Throw RateLimitError to properly move the job back to waiting state
+        throw Worker.RateLimitError();
+      } else {
+        // In database mode, throw error with delay information
+        throw createRateLimitError(availability.delayMs);
       }
-
-      // Throw RateLimitError to properly move the job back to waiting state
-      throw Worker.RateLimitError();
     }
 
     domainRateLimiter.markDomainProcessing(originalUrl, jobId);

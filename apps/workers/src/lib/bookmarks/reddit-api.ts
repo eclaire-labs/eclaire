@@ -35,6 +35,7 @@ export async function processRedditApiBookmark(
   const { bookmarkId, url: originalUrl, userId } = job.data;
   logger.info({ bookmarkId, userId }, "Processing with REDDIT-API handler");
 
+  let browser: any = null;
   let context: BrowserContext | null = null;
   const allArtifacts: Record<string, any> = {};
 
@@ -139,15 +140,13 @@ export async function processRedditApiBookmark(
     // Stage 4: Generate screenshots and PDFs using browser automation
     logger.info({ bookmarkId }, "Generating screenshots and PDFs");
 
-    // Launch browser context
-    context = await chromium.launchPersistentContext(
-      process.env.BROWSER_DATA_DIR || "./browser-data",
-      {
-        headless: true,
-        viewport: null,
-      },
-    );
-    const page = await context.newPage();
+    // Launch browser
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--use-mock-keychain'],
+    });
+    context = await browser.newContext({ viewport: null });
+    const page = await context!.newPage();
 
     // Create a data URL for the HTML content (no-comments version for screenshots)
     const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(htmlNoComments)}`;
@@ -322,6 +321,7 @@ export async function processRedditApiBookmark(
     throw error;
   } finally {
     if (context) await context.close();
+    if (browser) await browser.close();
   }
 }
 
