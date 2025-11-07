@@ -512,8 +512,8 @@ describe("Better Auth Session Integration Tests", () => {
       expect(response.status).toBe(422);
 
       const data = (await response.json()) as any;
-      expect(data.code).toBe("USER_ALREADY_EXISTS");
-      expect(data.message).toBe("User already exists");
+      expect(data.code).toBe("USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL");
+      expect(data.message).toBe("User already exists. Use another email.");
 
       console.log("✅ Duplicate email registration properly rejected");
     });
