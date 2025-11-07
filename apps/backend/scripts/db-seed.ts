@@ -79,15 +79,15 @@ const FIXED_TEST_KEYS = {
     keyId: "DEVONLYAIASST01",
     keySuffix: "1111",
   },
-  // Demo user API keys
+  // Demo user API keys (15 char keyId, 32 char secret)
   demoUser1: {
-    fullKey: "sk-DEVONLYUSER001-DEVONLY2222222222222222222222222",
-    keyId: "DEVONLYUSER001",
+    fullKey: "sk-DEVONLYUSER0001-DEVONLY2222222222222222222222222",
+    keyId: "DEVONLYUSER0001",
     keySuffix: "2222",
   },
   demoUser2: {
-    fullKey: "sk-DEVONLYUSER002-DEVONLY3333333333333333333333333",
-    keyId: "DEVONLYUSER002",
+    fullKey: "sk-DEVONLYUSER0002-DEVONLY3333333333333333333333333",
+    keyId: "DEVONLYUSER0002",
     keySuffix: "3333",
   },
 };
