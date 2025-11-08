@@ -22,6 +22,7 @@ import {
 } from "@/db/schema";
 import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
 import { getQueue, QueueNames } from "@/lib/queues";
+import { getQueueAdapter } from "@/lib/queue-adapter";
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history";
 import { createOrUpdateProcessingJob } from "./processing-status";
@@ -254,19 +255,13 @@ export async function createBookmarkAndQueueJob(
 
     // Only queue the main processing job if enabled
     if (enabled) {
-      const bookmarkQueue = getQueue(QueueNames.BOOKMARK_PROCESSING);
-      if (bookmarkQueue) {
-        await bookmarkQueue.add(
-          "process-bookmark",
-          {
-            bookmarkId: bookmarkId,
-            url: url,
-            userId: userId, // Pass userId for storage path construction
-          },
-          {
-            jobId: bookmarkId, // Use bookmarkId as jobId for deduplication
-          },
-        );
+      try {
+        const queueAdapter = getQueueAdapter();
+        await queueAdapter.enqueueBookmark({
+          bookmarkId,
+          url,
+          userId,
+        });
         logger.info(
           {
             bookmarkId,
@@ -275,13 +270,14 @@ export async function createBookmarkAndQueueJob(
           },
           "Queued bookmark processing job",
         );
-      } else {
+      } catch (error) {
         logger.error(
           {
             bookmarkId,
             userId,
+            error: error instanceof Error ? error.message : "Unknown error",
           },
-          "Failed to get bookmark processing queue",
+          "Failed to enqueue bookmark processing job",
         );
         // Optionally update the job status to 'failed' here
       }

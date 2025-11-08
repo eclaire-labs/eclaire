@@ -24,6 +24,7 @@ import {
 } from "@/db/schema"; // Ensure users schema is imported if needed elsewhere
 import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
 import { getQueue, QueueNames } from "@/lib/queues"; // Import queue utilities
+import { getQueueAdapter } from "@/lib/queue-adapter";
 import { objectStorage, type StorageInfo } from "@/lib/storage";
 import { generatePhotoId } from "../id-generator";
 import { createChildLogger } from "../logger";
@@ -181,29 +182,27 @@ async function queuePhotoBackgroundJobs(
   try {
     // Queue unified image processing job for ALL images
     // The worker will handle conversion, thumbnails, and AI analysis as needed
-    const unifiedProcessingQueue = getQueue(QueueNames.IMAGE_PROCESSING); // You'll need to add this queue name
-
-    if (unifiedProcessingQueue) {
-      await unifiedProcessingQueue.add(
-        "processImage",
-        {
-          photoId: photoData.id,
-          storageId: photoData.storageId,
-          mimeType: photoData.mimeType,
-          userId: userId,
-          originalFilename: originalFilename,
-        },
-        {
-          jobId: photoData.id, // Use photoId as jobId for deduplication
-        },
-      );
+    try {
+      const queueAdapter = getQueueAdapter();
+      await queueAdapter.enqueueImage({
+        imageId: photoData.id,
+        photoId: photoData.id, // Worker expects 'photoId'
+        storageId: photoData.storageId,
+        mimeType: originalMimeType,
+        originalFilename: originalFilename,
+        userId: userId,
+      });
 
       logger.info(
         `Enqueued unified image processing job for photo ${photoData.id}`,
       );
-    } else {
+    } catch (innerError) {
       logger.error(
-        `Failed to get queue "${QueueNames.IMAGE_PROCESSING}". Job not enqueued for photo ${photoData.id}.`,
+        {
+          photoId: photoData.id,
+          error: innerError instanceof Error ? innerError.message : "Unknown error",
+        },
+        `Failed to enqueue image processing job`,
       );
     }
   } catch (error) {

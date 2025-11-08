@@ -470,7 +470,15 @@ async function handleStaleJob(
   staleTimeMs: number,
 ): Promise<void> {
   try {
-    // First, try to find and fail the job in BullMQ
+    // First, try to find and fail the job in BullMQ (only in Redis mode)
+    if (!bookmarkProcessingQueue) {
+      logger.warn(
+        { jobId, domain },
+        "Stale job cleanup skipped: not in Redis mode",
+      );
+      return;
+    }
+
     const job = await bookmarkProcessingQueue.getJob(jobId);
 
     if (job && (await job.isActive())) {

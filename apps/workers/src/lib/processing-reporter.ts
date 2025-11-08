@@ -415,8 +415,21 @@ export class ProcessingReporter {
 
   /**
    * Publish a real-time event via Redis Pub/Sub.
+   * Skips publishing if Redis connection is not available (e.g., in database mode).
    */
   private async publishEvent(event: ProcessingEvent): Promise<void> {
+    // Skip publishing if Redis is not available (database mode)
+    if (!redisConnection) {
+      logger.debug(
+        {
+          userId: this.userId,
+          event,
+        },
+        "Skipping Redis publish - no connection available (database mode)",
+      );
+      return;
+    }
+
     try {
       await redisConnection.publish(
         `processing:${this.userId}`,

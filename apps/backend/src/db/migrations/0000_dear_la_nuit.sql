@@ -47,6 +47,12 @@ CREATE TABLE "asset_processing_jobs" (
 	"completed_at" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"job_data" jsonb,
+	"locked_by" text,
+	"locked_at" timestamp,
+	"expires_at" timestamp,
+	"scheduled_for" timestamp,
+	"priority" integer DEFAULT 0,
 	CONSTRAINT "asset_processing_jobs_asset_type_asset_id_unique" UNIQUE("asset_type","asset_id")
 );
 --> statement-breakpoint
@@ -371,6 +377,7 @@ ALTER TABLE "tasks_tags" ADD CONSTRAINT "tasks_tags_tag_id_tags_id_fk" FOREIGN K
 CREATE INDEX "accounts_user_id_idx" ON "accounts" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "api_keys_user_id_idx" ON "api_keys" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "asset_jobs_status_retry_idx" ON "asset_processing_jobs" USING btree ("status","next_retry_at");--> statement-breakpoint
+CREATE INDEX "asset_jobs_queue_poll_idx" ON "asset_processing_jobs" USING btree ("status","scheduled_for","priority");--> statement-breakpoint
 CREATE INDEX "bookmarks_user_id_idx" ON "bookmarks" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "bookmarks_is_pinned_idx" ON "bookmarks" USING btree ("is_pinned");--> statement-breakpoint
 CREATE INDEX "bookmarks_user_id_normalized_url_idx" ON "bookmarks" USING btree ("user_id","normalized_url");--> statement-breakpoint

@@ -26,6 +26,7 @@ import {
 } from "@/db/schema";
 import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
 import { getQueue, QueueNames } from "@/lib/queues";
+import { getQueueAdapter } from "@/lib/queue-adapter";
 import { objectStorage, type StorageInfo } from "@/lib/storage";
 import type { ProcessingStatus } from "../../types/assets";
 import { generateDocumentId } from "../id-generator";
@@ -337,27 +338,25 @@ export async function createDocument(
       await createOrUpdateProcessingJob("documents", documentId, userId, [
         "processing",
       ]);
-      const documentProcessingQueue = getQueue(QueueNames.DOCUMENT_PROCESSING);
-      if (documentProcessingQueue) {
-        await documentProcessingQueue.add(
-          "processDocument",
-          {
-            documentId,
-            storageId: assetResult.storageId, // Use the storage ID directly from the save operation
-            mimeType: verifiedMimeType,
-            userId,
-            originalFilename,
-          },
-          {
-            jobId: documentId, // Use documentId as jobId for consistency
-          },
-        );
+      try {
+        const queueAdapter = getQueueAdapter();
+        await queueAdapter.enqueueDocument({
+          documentId,
+          userId,
+          storageId: newDocument?.storageId || undefined,
+          mimeType: newDocument?.mimeType || undefined,
+          originalFilename: newDocument?.originalFilename || undefined,
+        });
         logger.info(
           `Enqueued unified document processing job for document ${documentId}`,
         );
-      } else {
+      } catch (error) {
         logger.error(
-          `Failed to get queue "${QueueNames.DOCUMENT_PROCESSING}". Job not enqueued for document ${documentId}.`,
+          {
+            documentId,
+            error: error instanceof Error ? error.message : "Unknown error",
+          },
+          `Failed to enqueue document processing job`,
         );
       }
     } else {

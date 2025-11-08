@@ -18,6 +18,7 @@ import { db } from "@/db";
 import { assetProcessingJobs, notes, notesTags, tags } from "@/db/schema";
 import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
 import { getQueue, QueueNames } from "@/lib/queues";
+import { getQueueAdapter } from "@/lib/queue-adapter";
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history";
 
@@ -129,20 +130,14 @@ export async function createNoteEntry(data: CreateNoteData, userId: string) {
 
     // Only queue the AI processing job if enabled
     if (enabled) {
-      const noteQueue = getQueue(QueueNames.NOTE_PROCESSING);
-      if (noteQueue) {
-        await noteQueue.add(
-          "process-note",
-          {
-            noteId: entryId,
-            title: newEntry.title,
-            content: data.content,
-            userId: userId,
-          },
-          {
-            jobId: entryId, // Use noteId as jobId for deduplication
-          },
-        );
+      try {
+        const queueAdapter = getQueueAdapter();
+        await queueAdapter.enqueueNote({
+          noteId: entryId,
+          userId,
+          title: newEntry.title || undefined,
+          content: newEntry.content || undefined,
+        });
         logger.info(
           {
             noteId: entryId,
@@ -151,13 +146,14 @@ export async function createNoteEntry(data: CreateNoteData, userId: string) {
           },
           "Queued note processing job",
         );
-      } else {
+      } catch (error) {
         logger.error(
           {
             noteId: entryId,
             userId,
+            error: error instanceof Error ? error.message : "Unknown error",
           },
-          "Failed to get note processing queue",
+          "Failed to enqueue note processing job",
         );
       }
     } else {

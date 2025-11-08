@@ -43,6 +43,7 @@ import { conversationsRoutes } from "./routes/conversations";
 import { documentsRoutes } from "./routes/documents";
 import { feedbackRoutes } from "./routes/feedback";
 import { historyRoutes } from "./routes/history";
+import { jobsRoutes } from "./routes/jobs";
 import { modelRoutes } from "./routes/model";
 import { notesRoutes } from "./routes/notes";
 import { notificationsRoutes } from "./routes/notifications";
@@ -344,6 +345,7 @@ app.route("/api/model", modelRoutes);
 app.route("/api/prompt", promptRoutes);
 app.route("/api/processing-status", processingStatusRoutes);
 app.route("/api/processing-events", processingEventsRoutes);
+app.route("/api/jobs", jobsRoutes);
 
 // Start the server
 const start = async () => {
@@ -418,6 +420,15 @@ const shutdown = async (signal: string) => {
     logger.info("Telegram bots stopped");
   } catch (error) {
     logger.error({ error }, "Error stopping Telegram bots");
+  }
+
+  try {
+    // Close processing events
+    const { closeProcessingEvents } = await import("./routes/processing-events");
+    await closeProcessingEvents();
+    logger.info("Processing events closed");
+  } catch (error) {
+    logger.error({ error }, "Error closing processing events");
   }
 
   try {

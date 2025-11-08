@@ -9,8 +9,42 @@ const logger = createChildLogger("processing-events");
 
 export const processingEventsRoutes = new Hono<{ Variables: RouteVariables }>();
 
-// Redis connection for pub/sub
-const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+// Queue backend configuration
+const queueBackend = process.env.QUEUE_BACKEND || "redis";
+const useRedisPubSub = queueBackend === "redis";
+
+// Redis connection for pub/sub (only used in redis mode)
+const redisUrl = process.env.REDIS_URL;
+
+// Warn if redis mode but no URL
+if (useRedisPubSub && !redisUrl) {
+  logger.warn({}, "REDIS_URL not set but QUEUE_BACKEND=redis - pub/sub will not work");
+}
+
+// Reusable Redis publisher connection (only created in redis mode)
+let publisherConnection: Redis | null = null;
+
+if (useRedisPubSub && redisUrl) {
+  publisherConnection = new Redis(redisUrl, {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+  });
+
+  publisherConnection.on("error", (err) => {
+    logger.error(
+      { error: err.message, stack: err.stack },
+      "Publisher Redis connection error",
+    );
+  });
+
+  publisherConnection.on("connect", () => {
+    logger.info({}, "Publisher Redis connected for processing events");
+  });
+
+  logger.info({}, "Redis pub/sub initialized for processing events");
+} else {
+  logger.info({ queueBackend }, "Using in-memory events only (no Redis pub/sub)");
+}
 
 // Map to track active SSE streams by userId
 const activeStreams = new Map<
@@ -57,29 +91,35 @@ processingEventsRoutes.get("/stream", async (c) => {
       let keepAliveInterval: NodeJS.Timeout | null = null;
 
       try {
-        // Create Redis subscriber for this user's processing events
-        subscriber = new Redis(redisUrl, {
-          maxRetriesPerRequest: null,
-          enableReadyCheck: false,
-        });
+        // Create Redis subscriber only if in redis mode
+        if (useRedisPubSub && redisUrl) {
+          subscriber = new Redis(redisUrl, {
+            maxRetriesPerRequest: null,
+            enableReadyCheck: false,
+          });
 
-        await subscriber.subscribe(`processing:${userId}`);
+          await subscriber.subscribe(`processing:${userId}`);
 
-        // Handle incoming messages
-        subscriber.on("message", (_channel, message) => {
-          try {
-            // Send the message as SSE data
-            stream.write(`data: ${message}\n\n`);
-          } catch (error) {
-            logger.error(
-              {
-                userId,
-                error: error instanceof Error ? error.message : "Unknown error",
-              },
-              "Error sending SSE message",
-            );
+          // Handle incoming messages
+          subscriber.on("message", (_channel, message) => {
+            try {
+              // Send the message as SSE data
+              stream.write(`data: ${message}\n\n`);
+            } catch (error) {
+              logger.error(
+                {
+                  userId,
+                  error: error instanceof Error ? error.message : "Unknown error",
+                },
+                "Error sending SSE message from Redis",
+              );
           }
         });
+
+          logger.info({ userId }, "Redis subscriber active for processing events");
+        } else {
+          logger.info({ userId, queueBackend }, "Using in-memory events only (database queue mode)");
+        }
 
         // Send initial connection confirmation
         const connectionMessage = JSON.stringify({
@@ -92,6 +132,7 @@ processingEventsRoutes.get("/stream", async (c) => {
         logger.info(
           {
             userId,
+            useRedisPubSub,
           },
           "Processing events SSE connection established",
         );
@@ -205,40 +246,49 @@ export async function publishProcessingEvent(
     [key: string]: any;
   },
 ): Promise<void> {
-  try {
-    const redis = new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-    });
+  const eventWithTimestamp = {
+    ...event,
+    timestamp: Date.now(),
+  };
 
-    const eventWithTimestamp = {
-      ...event,
-      timestamp: Date.now(),
-    };
+  // ALWAYS publish to in-memory streams (works in all modes)
+  await publishDirectSSEEvent(userId, eventWithTimestamp);
 
-    await redis.publish(
-      `processing:${userId}`,
-      JSON.stringify(eventWithTimestamp),
-    );
-    await redis.quit();
+  // Conditionally publish to Redis pub/sub (only in redis mode)
+  if (useRedisPubSub && publisherConnection) {
+    try {
+      await publisherConnection.publish(
+        `processing:${userId}`,
+        JSON.stringify(eventWithTimestamp),
+      );
 
+      logger.debug(
+        {
+          userId,
+          eventType: event.type,
+          assetType: event.assetType,
+          assetId: event.assetId,
+        },
+        "Published processing event to Redis",
+      );
+    } catch (error) {
+      logger.error(
+        {
+          userId,
+          event,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+        "Failed to publish processing event to Redis",
+      );
+    }
+  } else {
     logger.debug(
       {
         userId,
         eventType: event.type,
-        assetType: event.assetType,
-        assetId: event.assetId,
+        queueBackend,
       },
-      "Published processing event",
-    );
-  } catch (error) {
-    logger.error(
-      {
-        userId,
-        event,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Failed to publish processing event",
+      "Skipped Redis pub/sub (using in-memory only)",
     );
   }
 }
@@ -326,5 +376,25 @@ export async function publishDirectSSEEvent(
       },
       "Failed to publish direct SSE event",
     );
+  }
+}
+
+/**
+ * Close processing events resources (for graceful shutdown)
+ */
+export async function closeProcessingEvents(): Promise<void> {
+  if (publisherConnection) {
+    try {
+      await publisherConnection.quit();
+      publisherConnection = null;
+      logger.info({}, "Publisher Redis connection closed");
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+        "Error closing publisher Redis connection",
+      );
+    }
   }
 }

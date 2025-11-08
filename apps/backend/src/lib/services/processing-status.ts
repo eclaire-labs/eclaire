@@ -1257,40 +1257,6 @@ async function retryPhotoProcessing(
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get queues
-    const imageQueue = getQueue(QueueNames.IMAGE_PROCESSING);
-
-    if (!imageQueue) {
-      return { success: false, error: "Required queues not available" };
-    }
-
-    // Check existing jobs
-    const imageJob = await imageQueue.getJob(assetId);
-
-    // Check if any jobs are currently running
-    if (imageJob) {
-      const imageState = await imageJob.getState();
-      if (
-        imageState === "active" ||
-        imageState === "waiting" ||
-        imageState === "delayed"
-      ) {
-        return {
-          success: false,
-          error: `Image conversion job is currently ${imageState}. Cannot retry while running.`,
-        };
-      }
-    }
-
-    // Remove existing jobs
-    if (imageJob) {
-      await imageJob.remove();
-      logger.info(
-        { assetId, oldJobId: imageJob.id },
-        "Removed existing image conversion job for retry",
-      );
-    }
-
     // Reset processing state
     await resetProcessingJobState("photos", assetId, userId);
 
@@ -1314,30 +1280,22 @@ async function retryPhotoProcessing(
       return { success: false, error: "Photo not found" };
     }
 
-    // Queue unified image processing job (same as initial photo creation)
-    // The worker will handle conversion, thumbnails, and AI analysis as needed
-    await imageQueue.add(
-      "processImage",
-      {
-        photoId: assetId,
-        storageId: photo.storageId,
-        mimeType: photo.mimeType || photo.originalMimeType,
-        userId: userId,
-        originalFilename: photo.originalFilename,
-      },
-      {
-        jobId: assetId, // Use photoId as jobId
-      },
-    );
+    // Queue unified image processing job using Queue Adapter (supports both Redis and Database backends)
+    const { getQueueAdapter } = await import("../../lib/queue-adapter");
+    const queueAdapter = getQueueAdapter();
+
+    await queueAdapter.enqueueImage({
+      imageId: assetId,
+      photoId: assetId,
+      storageId: photo.storageId || undefined,
+      mimeType: photo.mimeType || photo.originalMimeType || undefined,
+      userId: userId,
+      originalFilename: photo.originalFilename || undefined,
+    });
 
     logger.info(
       { assetId, userId },
       "Queued unified image processing job for retry",
-    );
-
-    logger.info(
-      { assetId, userId },
-      "Successfully set up photo retry with fresh processing state",
     );
 
     return { success: true };
@@ -1467,43 +1425,6 @@ async function retryBookmarkProcessing(
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get bookmark processing queue
-    const bookmarkQueue = getQueue(QueueNames.BOOKMARK_PROCESSING);
-
-    if (!bookmarkQueue) {
-      return {
-        success: false,
-        error: "Bookmark processing queue not available",
-      };
-    }
-
-    // Check existing job
-    const existingJob = await bookmarkQueue.getJob(assetId);
-
-    // Check if job is currently running
-    if (existingJob) {
-      const jobState = await existingJob.getState();
-      if (
-        jobState === "active" ||
-        jobState === "waiting" ||
-        jobState === "delayed"
-      ) {
-        return {
-          success: false,
-          error: `Bookmark processing job is currently ${jobState}. Cannot retry while running.`,
-        };
-      }
-    }
-
-    // Remove existing job
-    if (existingJob) {
-      await existingJob.remove();
-      logger.info(
-        { assetId, oldJobId: existingJob.id },
-        "Removed existing bookmark processing job for retry",
-      );
-    }
-
     // Reset processing state
     await resetProcessingJobState("bookmarks", assetId, userId);
 
@@ -1519,18 +1440,15 @@ async function retryBookmarkProcessing(
       return { success: false, error: "Bookmark not found" };
     }
 
-    // Queue new bookmark processing job
-    await bookmarkQueue.add(
-      "process-bookmark",
-      {
-        bookmarkId: assetId,
-        url: bookmark.originalUrl,
-        userId: userId,
-      },
-      {
-        jobId: assetId, // Use bookmarkId as jobId
-      },
-    );
+    // Queue new bookmark processing job using Queue Adapter (supports both Redis and Database backends)
+    const { getQueueAdapter } = await import("../../lib/queue-adapter");
+    const queueAdapter = getQueueAdapter();
+
+    await queueAdapter.enqueueBookmark({
+      bookmarkId: assetId,
+      url: bookmark.originalUrl,
+      userId: userId,
+    });
 
     logger.info(
       { assetId, userId },
@@ -1559,43 +1477,6 @@ async function retryDocumentProcessing(
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get document processing queue
-    const documentQueue = getQueue(QueueNames.DOCUMENT_PROCESSING);
-
-    if (!documentQueue) {
-      return {
-        success: false,
-        error: "Document processing queue not available",
-      };
-    }
-
-    // Check existing job
-    const existingJob = await documentQueue.getJob(assetId);
-
-    // Check if job is currently running
-    if (existingJob) {
-      const jobState = await existingJob.getState();
-      if (
-        jobState === "active" ||
-        jobState === "waiting" ||
-        jobState === "delayed"
-      ) {
-        return {
-          success: false,
-          error: `Document processing job is currently ${jobState}. Cannot retry while running.`,
-        };
-      }
-    }
-
-    // Remove existing job
-    if (existingJob) {
-      await existingJob.remove();
-      logger.info(
-        { assetId, oldJobId: existingJob.id },
-        "Removed existing document processing job for retry",
-      );
-    }
-
     // Reset processing state
     await resetProcessingJobState("documents", assetId, userId);
 
@@ -1611,21 +1492,18 @@ async function retryDocumentProcessing(
       return { success: false, error: "Document not found" };
     }
 
-    // Queue new document processing job
-    await documentQueue.add(
-      "processDocument",
-      {
-        documentId: assetId,
-        storageId: document.storageId,
-        mimeType:
-          document.originalMimeType || document.mimeType || "application/pdf",
-        userId: userId,
-        originalFilename: document.originalFilename || `document-${assetId}`,
-      },
-      {
-        jobId: assetId, // Use documentId as jobId
-      },
-    );
+    // Queue new document processing job using Queue Adapter (supports both Redis and Database backends)
+    const { getQueueAdapter } = await import("../../lib/queue-adapter");
+    const queueAdapter = getQueueAdapter();
+
+    await queueAdapter.enqueueDocument({
+      documentId: assetId,
+      storageId: document.storageId || undefined,
+      mimeType:
+        document.originalMimeType || document.mimeType || undefined,
+      userId: userId,
+      originalFilename: document.originalFilename || undefined,
+    });
 
     logger.info(
       { assetId, userId },
@@ -1654,40 +1532,6 @@ async function retryNoteProcessing(
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get note processing queue
-    const noteQueue = getQueue(QueueNames.NOTE_PROCESSING);
-
-    if (!noteQueue) {
-      return { success: false, error: "Note processing queue not available" };
-    }
-
-    // Check existing job
-    const existingJob = await noteQueue.getJob(assetId);
-
-    // Check if job is currently running
-    if (existingJob) {
-      const jobState = await existingJob.getState();
-      if (
-        jobState === "active" ||
-        jobState === "waiting" ||
-        jobState === "delayed"
-      ) {
-        return {
-          success: false,
-          error: `Note processing job is currently ${jobState}. Cannot retry while running.`,
-        };
-      }
-    }
-
-    // Remove existing job
-    if (existingJob) {
-      await existingJob.remove();
-      logger.info(
-        { assetId, oldJobId: existingJob.id },
-        "Removed existing note processing job for retry",
-      );
-    }
-
     // Reset processing state
     await resetProcessingJobState("notes", assetId, userId);
 
@@ -1703,19 +1547,16 @@ async function retryNoteProcessing(
       return { success: false, error: "Note not found" };
     }
 
-    // Queue new note processing job
-    await noteQueue.add(
-      "process-note",
-      {
-        noteId: assetId,
-        title: note.title,
-        content: note.content,
-        userId: userId,
-      },
-      {
-        jobId: assetId, // Use noteId as jobId
-      },
-    );
+    // Queue new note processing job using Queue Adapter (supports both Redis and Database backends)
+    const { getQueueAdapter } = await import("../../lib/queue-adapter");
+    const queueAdapter = getQueueAdapter();
+
+    await queueAdapter.enqueueNote({
+      noteId: assetId,
+      title: note.title || undefined,
+      content: note.content || undefined,
+      userId: userId,
+    });
 
     logger.info({ assetId, userId }, "Queued note processing job for retry");
 
@@ -1741,40 +1582,6 @@ async function retryTaskProcessing(
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get task processing queue
-    const taskQueue = getQueue(QueueNames.TASK_PROCESSING);
-
-    if (!taskQueue) {
-      return { success: false, error: "Task processing queue not available" };
-    }
-
-    // Check existing job
-    const existingJob = await taskQueue.getJob(assetId);
-
-    // Check if job is currently running
-    if (existingJob) {
-      const jobState = await existingJob.getState();
-      if (
-        jobState === "active" ||
-        jobState === "waiting" ||
-        jobState === "delayed"
-      ) {
-        return {
-          success: false,
-          error: `Task processing job is currently ${jobState}. Cannot retry while running.`,
-        };
-      }
-    }
-
-    // Remove existing job
-    if (existingJob) {
-      await existingJob.remove();
-      logger.info(
-        { assetId, oldJobId: existingJob.id },
-        "Removed existing task processing job for retry",
-      );
-    }
-
     // Reset processing state
     await resetProcessingJobState("tasks", assetId, userId);
 
@@ -1790,19 +1597,16 @@ async function retryTaskProcessing(
       return { success: false, error: "Task not found" };
     }
 
-    // Queue new task processing job
-    await taskQueue.add(
-      "process-task",
-      {
-        taskId: assetId,
-        title: task.title,
-        description: task.description,
-        userId: userId,
-      },
-      {
-        jobId: assetId, // Use taskId as jobId for deduplication
-      },
-    );
+    // Queue new task processing job using Queue Adapter (supports both Redis and Database backends)
+    const { getQueueAdapter } = await import("../../lib/queue-adapter");
+    const queueAdapter = getQueueAdapter();
+
+    await queueAdapter.enqueueTask({
+      taskId: assetId,
+      title: task.title || undefined,
+      description: task.description || undefined,
+      userId: userId,
+    });
 
     logger.info({ assetId, userId }, "Queued task processing job for retry");
 

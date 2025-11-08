@@ -483,6 +483,14 @@ export const assetProcessingJobs = pgTable(
     completedAt: timestamp("completed_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+
+    // Queue management (for database-backed queue mode)
+    jobData: jsonb("job_data"), // Job input parameters (null in Redis mode)
+    lockedBy: text("locked_by"), // Worker ID that claimed this job
+    lockedAt: timestamp("locked_at"), // When job was locked
+    expiresAt: timestamp("expires_at"), // Job lock expiration for timeout detection
+    scheduledFor: timestamp("scheduled_for"), // When to process the job
+    priority: integer("priority").default(0), // Higher priority processed first
   },
   (table) => ({
     assetUnique: unique().on(table.assetType, table.assetId),
@@ -490,6 +498,12 @@ export const assetProcessingJobs = pgTable(
     statusRetryIdx: index("asset_jobs_status_retry_idx").on(
       table.status,
       table.nextRetryAt,
+    ),
+    // Index for database queue mode polling (priority + scheduled time)
+    queuePollIdx: index("asset_jobs_queue_poll_idx").on(
+      table.status,
+      table.scheduledFor,
+      table.priority,
     ),
   }),
 );

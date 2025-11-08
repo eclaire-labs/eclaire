@@ -26,6 +26,7 @@ import { getNextExecutionTime, isValidCronExpression } from "@/lib/cron-utils";
 import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
 import { ValidationError } from "@/lib/errors";
 import { getQueue, QueueNames } from "@/lib/queues";
+import { getQueueAdapter } from "@/lib/queue-adapter";
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history";
 
@@ -163,7 +164,9 @@ interface UpdateTaskParams {
 export type TaskStatus = "not-started" | "in-progress" | "completed";
 
 /**
- * Creates or updates a BullMQ scheduler for a recurring task
+ * Creates or updates a scheduler for a recurring task
+ * Uses BullMQ scheduler
+ *
  * @param taskId - The task ID
  * @param cronExpression - Valid cron expression
  * @param taskData - Task data for the job
@@ -236,6 +239,8 @@ async function upsertTaskScheduler(
 
 /**
  * Cancels a task execution job
+ * Uses BullMQ to remove the job
+ *
  * @param taskId - The task ID
  * @returns Promise<boolean> - Success status
  */
@@ -294,7 +299,9 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
 }
 
 /**
- * Removes a BullMQ scheduler for a task
+ * Removes a scheduler for a recurring task
+ * Uses BullMQ scheduler
+ *
  * @param taskId - The task ID
  * @returns Promise<boolean> - Success status
  */
@@ -316,7 +323,7 @@ async function removeTaskScheduler(taskId: string): Promise<boolean> {
 
     logger.info(
       { taskId, schedulerId },
-      "Successfully removed task scheduler.",
+      "Successfully removed task scheduler",
     );
     return true;
   } catch (error) {
@@ -540,54 +547,36 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
       userId: userId,
     });
 
-    const taskQueue = getQueue(QueueNames.TASK_PROCESSING); // Ensure this queue name exists
-    if (taskQueue) {
-      await taskQueue.add(
-        "process-task",
-        {
-          taskId: taskId,
-          title: newTask.title,
-          description: newTask.description || "",
-          userId: userId,
-        },
-        {
-          jobId: taskId, // Use taskId for deduplication
-        },
-      );
-      logger.info({ taskId, userId }, "Queued task for AI tag processing");
-    } else {
-      logger.error({ taskId, userId }, "Failed to get task processing queue");
-    }
+    const queueAdapter = getQueueAdapter();
+    await queueAdapter.enqueueTask({
+      taskId: taskId,
+      title: newTask.title,
+      description: newTask.description || "",
+      userId: userId,
+    });
+    logger.info({ taskId, userId }, "Queued task for AI tag processing");
 
     // Queue task execution processing if task is assigned to an AI assistant
     const isAssignedToAI = await isAIAssistant(assignedToUserId);
     if (isAssignedToAI) {
-      const taskExecutionQueue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
-      if (taskExecutionQueue) {
+      const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
+      if (queue) {
         const delay = calculateAIAssistantJobDelay(dueDateValue);
-        await taskExecutionQueue.add(
-          "process-task-execution",
-          {
-            taskId: taskId,
-            title: newTask.title,
-            description: newTask.description || "",
-            userId: userId,
-            assignedToId: assignedToUserId,
-            isAssignedToAI: isAssignedToAI,
+        await queue.add("process-task-execution", {
+          taskId: taskId,
+          userId: userId,
+          dueDate: dueDateValue ?? undefined,
+        }, {
+          delay,
+          removeOnComplete: {
+            age: 3600 * 24,
+            count: 1000,
           },
-          {
-            jobId: `task-execution-${taskId}`, // Use unique ID for task execution jobs
-            delay: delay, // Delay based on due date
-          },
-        );
+          removeOnFail: false,
+        });
         logger.info(
           { taskId, userId, assignedToId: assignedToUserId, delay },
           "Queued task for execution processing",
-        );
-      } else {
-        logger.error(
-          { taskId, userId },
-          "Failed to get task execution processing queue",
         );
       }
     }
@@ -924,39 +913,28 @@ export async function updateTask(
       if (finalAssignedToId) {
         const isAssignedToAI = await isAIAssistant(finalAssignedToId);
         if (isAssignedToAI) {
-          const taskExecutionQueue = getQueue(
-            QueueNames.TASK_EXECUTION_PROCESSING,
-          );
-          if (taskExecutionQueue) {
-            const finalDueDate = includeDueDateUpdate
-              ? dueDateValue
-              : existingTask.dueDate;
-            const delay = calculateAIAssistantJobDelay(finalDueDate);
+          const finalDueDate = includeDueDateUpdate
+            ? dueDateValue
+            : existingTask.dueDate;
+          const delay = calculateAIAssistantJobDelay(finalDueDate);
 
-            await taskExecutionQueue.add(
-              "process-task-execution",
-              {
-                taskId: id,
-                title: taskData.title || existingTask.title,
-                description:
-                  taskData.description ?? existingTask.description ?? "",
-                userId: userId,
-                assignedToId: finalAssignedToId,
-                isAssignedToAI: isAssignedToAI,
+          const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
+          if (queue) {
+            await queue.add("process-task-execution", {
+              taskId: id,
+              userId: userId,
+              dueDate: finalDueDate ?? undefined,
+            }, {
+              delay,
+              removeOnComplete: {
+                age: 3600 * 24,
+                count: 1000,
               },
-              {
-                jobId: `task-execution-${id}`,
-                delay: delay,
-              },
-            );
+              removeOnFail: false,
+            });
             logger.info(
               { taskId: id, userId, assignedToId: finalAssignedToId, delay },
               "Queued updated task for execution processing",
-            );
-          } else {
-            logger.error(
-              { taskId: id, userId },
-              "Failed to get task execution processing queue",
             );
           }
         }

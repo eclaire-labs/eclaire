@@ -22,6 +22,7 @@ import processNoteJob from "./jobs/noteProcessor"; // Import the note processor
 import processTaskExecution from "./jobs/taskExecutionProcessor"; // Import the task execution processor
 import processTaskJob from "./jobs/taskProcessor"; // Import the task processor
 import { validateAIConfigOnStartup } from "./lib/ai-client";
+import { startDatabaseQueueWorkers } from "./lib/database-queue-workers.js";
 import { domainRateLimiter } from "./lib/domainRateLimiter";
 import { createChildLogger } from "./lib/logger";
 // Import the new queue and processor
@@ -56,24 +57,52 @@ try {
 // --- Initialize Hono App ---
 const app = new Hono();
 
-// --- Initialize Bull Board ---
-const serverAdapter = new HonoAdapter(serveStatic);
-createBullBoard({
-  queues: getAllQueues().map((q) => new BullMQAdapter(q)), // Automatically includes the new queue
-  serverAdapter: serverAdapter,
-});
-serverAdapter.setBasePath(config.server.basePath);
+// --- Determine Queue Backend ---
+const queueBackend = process.env.QUEUE_BACKEND || "redis";
+logger.info({ queueBackend }, "Worker queue backend mode");
 
-// Register the Bull Board routes
-app.route(config.server.basePath, serverAdapter.registerPlugin());
+// --- Conditional Initialization Based on Queue Backend ---
+if (queueBackend === "database") {
+  // DATABASE QUEUE MODE
+  // Skip Bull Board and BullMQ workers entirely
+  logger.info({}, "Database queue mode: Skipping Bull Board and BullMQ workers");
+} else {
+  // REDIS/BULLMQ MODE (DEFAULT)
+  // --- Initialize Bull Board ---
+  const serverAdapter = new HonoAdapter(serveStatic);
+  createBullBoard({
+    queues: getAllQueues().map((q) => new BullMQAdapter(q)), // Automatically includes the new queue
+    serverAdapter: serverAdapter,
+  });
+  serverAdapter.setBasePath(config.server.basePath);
 
-// --- Initialize BullMQ Workers ---
+  // Register the Bull Board routes
+  app.route(config.server.basePath, serverAdapter.registerPlugin());
+}
+
+// --- Declare workers and loggers (nullable for database mode) ---
+let bookmarkWorker: Worker | null = null;
+let imageWorker: Worker | null = null;
+let documentWorker: Worker | null = null;
+let noteWorker: Worker | null = null;
+let taskWorker: Worker | null = null;
+let taskExecutionWorker: Worker | null = null;
+
+let bookmarkLogger: ReturnType<typeof createChildLogger> | null = null;
+let imageLogger: ReturnType<typeof createChildLogger> | null = null;
+let documentLogger: ReturnType<typeof createChildLogger> | null = null;
+let noteLogger: ReturnType<typeof createChildLogger> | null = null;
+let taskLogger: ReturnType<typeof createChildLogger> | null = null;
+let taskExecutionLogger: ReturnType<typeof createChildLogger> | null = null;
+
+// --- Initialize BullMQ Workers (REDIS MODE ONLY) ---
+if (queueBackend === "redis") {
 logger.info({ concurrency: config.worker.concurrency }, "Initializing workers");
 
 // Bookmark Worker - 15 minute timeout with rate limiting
-const bookmarkWorker: Worker = new Worker(
+bookmarkWorker = new Worker(
   config.queues.bookmarkProcessing,
-  (job, token): Promise<any> => processBookmarkJob(job, token, bookmarkWorker),
+  (job, token): Promise<any> => processBookmarkJob(job, token, bookmarkWorker!),
   {
     ...longTaskWorkerOptions,
     limiter: {
@@ -84,13 +113,13 @@ const bookmarkWorker: Worker = new Worker(
 );
 
 // Image Conversion Worker (NEW) - 15 minute timeout
-const imageWorker = new Worker(config.queues.imageProcessing, processImageJob, {
+imageWorker = new Worker(config.queues.imageProcessing, processImageJob, {
   ...longTaskWorkerOptions,
   concurrency: 1,
 });
 
 // Document Worker (NEW) - 15 minute timeout
-const documentWorker = new Worker(
+documentWorker = new Worker(
   config.queues.documentProcessing,
   processDocumentJob,
   {
@@ -99,17 +128,17 @@ const documentWorker = new Worker(
 );
 
 // Note Processing Worker (NEW) - 5 minute timeout
-const noteWorker = new Worker(config.queues.noteProcessing, processNoteJob, {
+noteWorker = new Worker(config.queues.noteProcessing, processNoteJob, {
   ...shortTaskWorkerOptions,
 });
 
 // Task Processing Worker (NEW) - 5 minute timeout
-const taskWorker = new Worker(config.queues.taskProcessing, processTaskJob, {
+taskWorker = new Worker(config.queues.taskProcessing, processTaskJob, {
   ...shortTaskWorkerOptions,
 });
 
 // Task Execution Processing Worker (renamed from AI Assistant) - 10 minute timeout
-const taskExecutionWorker = new Worker(
+taskExecutionWorker = new Worker(
   config.queues.taskExecutionProcessing,
   processTaskExecution,
   {
@@ -118,10 +147,10 @@ const taskExecutionWorker = new Worker(
 );
 
 // --- Worker Event Listeners ---
-const bookmarkLogger = createChildLogger("bookmark-worker");
+bookmarkLogger = createChildLogger("bookmark-worker");
 
 bookmarkWorker.on("completed", (job: Job, result: any) => {
-  bookmarkLogger.info(
+  bookmarkLogger!.info(
     {
       jobId: job.id,
       bookmarkId: job.data.bookmarkId,
@@ -130,7 +159,7 @@ bookmarkWorker.on("completed", (job: Job, result: any) => {
   );
 });
 bookmarkWorker.on("failed", (job: Job | undefined, err: Error) => {
-  bookmarkLogger.error(
+  bookmarkLogger!.error(
     {
       jobId: job?.id,
       bookmarkId: job?.data?.bookmarkId,
@@ -141,7 +170,7 @@ bookmarkWorker.on("failed", (job: Job | undefined, err: Error) => {
   );
 });
 bookmarkWorker.on("error", (err: Error) => {
-  bookmarkLogger.error(
+  bookmarkLogger!.error(
     {
       error: err.message,
       stack: err.stack,
@@ -151,10 +180,10 @@ bookmarkWorker.on("error", (err: Error) => {
 });
 
 // Image Worker Listeners (NEW)
-const imageLogger = createChildLogger("image-worker");
+imageLogger = createChildLogger("image-worker");
 
 imageWorker.on("completed", (job, result) => {
-  imageLogger.info(
+  imageLogger!.info(
     {
       jobId: job.id,
       photoId: job.data.photoId,
@@ -163,7 +192,7 @@ imageWorker.on("completed", (job, result) => {
   );
 });
 imageWorker.on("failed", (job, err) => {
-  imageLogger.error(
+  imageLogger!.error(
     {
       jobId: job?.id,
       photoId: job?.data?.photoId,
@@ -174,7 +203,7 @@ imageWorker.on("failed", (job, err) => {
   );
 });
 imageWorker.on("error", (err) => {
-  imageLogger.error(
+  imageLogger!.error(
     {
       error: err.message,
       stack: err.stack,
@@ -184,10 +213,10 @@ imageWorker.on("error", (err) => {
 });
 
 // Document Worker Listeners (NEW)
-const documentLogger = createChildLogger("document-worker");
+documentLogger = createChildLogger("document-worker");
 
 documentWorker.on("completed", (job, result) => {
-  documentLogger.info(
+  documentLogger!.info(
     {
       jobId: job.id,
       documentId: job.data.documentId,
@@ -196,7 +225,7 @@ documentWorker.on("completed", (job, result) => {
   );
 });
 documentWorker.on("failed", (job, err) => {
-  documentLogger.error(
+  documentLogger!.error(
     {
       jobId: job?.id,
       documentId: job?.data?.documentId,
@@ -207,7 +236,7 @@ documentWorker.on("failed", (job, err) => {
   );
 });
 documentWorker.on("error", (err) => {
-  documentLogger.error(
+  documentLogger!.error(
     {
       error: err.message,
       stack: err.stack,
@@ -217,10 +246,10 @@ documentWorker.on("error", (err) => {
 });
 
 // Note Processing Worker Listeners (NEW)
-const noteLogger = createChildLogger("note-worker");
+noteLogger = createChildLogger("note-worker");
 
 noteWorker.on("completed", (job, result) => {
-  noteLogger.info(
+  noteLogger!.info(
     {
       jobId: job.id,
       noteId: job.data.noteId,
@@ -229,7 +258,7 @@ noteWorker.on("completed", (job, result) => {
   );
 });
 noteWorker.on("failed", (job, err) => {
-  noteLogger.error(
+  noteLogger!.error(
     {
       jobId: job?.id,
       noteId: job?.data?.noteId,
@@ -240,7 +269,7 @@ noteWorker.on("failed", (job, err) => {
   );
 });
 noteWorker.on("error", (err) => {
-  noteLogger.error(
+  noteLogger!.error(
     {
       error: err.message,
       stack: err.stack,
@@ -250,10 +279,10 @@ noteWorker.on("error", (err) => {
 });
 
 // Task Processing Worker Listeners (NEW)
-const taskLogger = createChildLogger("task-worker");
+taskLogger = createChildLogger("task-worker");
 
 taskWorker.on("completed", (job, result) => {
-  taskLogger.info(
+  taskLogger!.info(
     {
       jobId: job.id,
       taskId: job.data.taskId,
@@ -262,7 +291,7 @@ taskWorker.on("completed", (job, result) => {
   );
 });
 taskWorker.on("failed", (job, err) => {
-  taskLogger.error(
+  taskLogger!.error(
     {
       jobId: job?.id,
       taskId: job?.data?.taskId,
@@ -273,7 +302,7 @@ taskWorker.on("failed", (job, err) => {
   );
 });
 taskWorker.on("error", (err) => {
-  taskLogger.error(
+  taskLogger!.error(
     {
       error: err.message,
       stack: err.stack,
@@ -283,10 +312,10 @@ taskWorker.on("error", (err) => {
 });
 
 // Task Execution Processing Worker Listeners (renamed from AI Assistant)
-const taskExecutionLogger = createChildLogger("task-execution-worker");
+taskExecutionLogger = createChildLogger("task-execution-worker");
 
 taskExecutionWorker.on("completed", (job, result) => {
-  taskExecutionLogger.info(
+  taskExecutionLogger!.info(
     {
       jobId: job.id,
       taskId: job.data.taskId,
@@ -295,7 +324,7 @@ taskExecutionWorker.on("completed", (job, result) => {
   );
 });
 taskExecutionWorker.on("failed", (job, err) => {
-  taskExecutionLogger.error(
+  taskExecutionLogger!.error(
     {
       jobId: job?.id,
       taskId: job?.data?.taskId,
@@ -306,66 +335,13 @@ taskExecutionWorker.on("failed", (job, err) => {
   );
 });
 taskExecutionWorker.on("error", (err) => {
-  taskExecutionLogger.error(
+  taskExecutionLogger!.error(
     {
       error: err.message,
       stack: err.stack,
     },
     "Worker error",
   );
-});
-
-// --- Health Check Endpoint ---
-app.get("/health", (c) => {
-  const buildInfo = {
-    version: process.env.APP_VERSION || "N/A",
-    fullVersion: process.env.APP_FULL_VERSION || "N/A",
-    gitHash: process.env.APP_GIT_HASH || "N/A",
-    buildTimestamp: process.env.APP_BUILD_TIMESTAMP || "N/A",
-  };
-
-  const isRedisConnected = redisConnection.status === "ready";
-  // Check status of all workers
-  const areWorkersRunning = {
-    bookmark: bookmarkWorker.isRunning(),
-    image: imageWorker.isRunning(),
-    noteProcessing: noteWorker.isRunning(),
-    taskProcessing: taskWorker.isRunning(),
-    taskExecutionProcessing: taskExecutionWorker.isRunning(),
-    documentProcessing: documentWorker.isRunning(),
-  };
-  const allRunning = Object.values(areWorkersRunning).every((status) => status);
-
-  if (isRedisConnected && allRunning) {
-    return c.json({
-      status: "ok",
-      service: "eclaire-workers",
-      version: buildInfo.version,
-      fullVersion: buildInfo.fullVersion,
-      gitHash: buildInfo.gitHash,
-      buildTimestamp: buildInfo.buildTimestamp,
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || "development",
-      redis: redisConnection.status,
-      workers: areWorkersRunning,
-    });
-  } else {
-    c.status(503); // Service Unavailable
-    return c.json({
-      status: "error",
-      service: "eclaire-workers",
-      version: buildInfo.version,
-      fullVersion: buildInfo.fullVersion,
-      gitHash: buildInfo.gitHash,
-      buildTimestamp: buildInfo.buildTimestamp,
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || "development",
-      redis: redisConnection.status,
-      workers: areWorkersRunning,
-    });
-  }
 });
 
 // --- Domain Management Endpoints ---
@@ -602,9 +578,100 @@ function getWorkerConfigForQueue(queueName: string) {
   );
 }
 
+// End of Redis/BullMQ mode initialization
+}
+
+// --- Health Check Endpoint ---
+app.get("/health", (c) => {
+  const buildInfo = {
+    version: process.env.APP_VERSION || "N/A",
+    fullVersion: process.env.APP_FULL_VERSION || "N/A",
+    gitHash: process.env.APP_GIT_HASH || "N/A",
+    buildTimestamp: process.env.APP_BUILD_TIMESTAMP || "N/A",
+  };
+
+  if (queueBackend === "database") {
+    // Database mode - simpler health check
+    return c.json({
+      status: "ok",
+      service: "eclaire-workers",
+      version: buildInfo.version,
+      fullVersion: buildInfo.fullVersion,
+      gitHash: buildInfo.gitHash,
+      buildTimestamp: buildInfo.buildTimestamp,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || "development",
+      queueBackend: "database",
+      mode: "polling",
+    });
+  }
+
+  // Redis mode - check Redis connection and workers
+  const isRedisConnected = redisConnection?.status === "ready";
+  // Check status of all workers
+  const areWorkersRunning = {
+    bookmark: bookmarkWorker?.isRunning() ?? false,
+    image: imageWorker?.isRunning() ?? false,
+    noteProcessing: noteWorker?.isRunning() ?? false,
+    taskProcessing: taskWorker?.isRunning() ?? false,
+    taskExecutionProcessing: taskExecutionWorker?.isRunning() ?? false,
+    documentProcessing: documentWorker?.isRunning() ?? false,
+  };
+  const allRunning = Object.values(areWorkersRunning).every((status) => status);
+
+  if (isRedisConnected && allRunning) {
+    return c.json({
+      status: "ok",
+      service: "eclaire-workers",
+      version: buildInfo.version,
+      fullVersion: buildInfo.fullVersion,
+      gitHash: buildInfo.gitHash,
+      buildTimestamp: buildInfo.buildTimestamp,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || "development",
+      queueBackend: "redis",
+      redis: redisConnection?.status,
+      workers: areWorkersRunning,
+    });
+  } else {
+    c.status(503); // Service Unavailable
+    return c.json({
+      status: "error",
+      service: "eclaire-workers",
+      version: buildInfo.version,
+      fullVersion: buildInfo.fullVersion,
+      gitHash: buildInfo.gitHash,
+      buildTimestamp: buildInfo.buildTimestamp,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || "development",
+      queueBackend: "redis",
+      redis: redisConnection?.status,
+      workers: areWorkersRunning,
+    });
+  }
+});
+
 // --- Start Server ---
 const start = async () => {
   try {
+    // Start database queue workers if in database mode
+    if (queueBackend === "database") {
+      try {
+        await startDatabaseQueueWorkers();
+      } catch (error) {
+        logger.error(
+          {
+            error: error instanceof Error ? error.message : "Unknown error",
+          },
+          "Failed to start database queue workers",
+        );
+        process.exit(1);
+      }
+    }
+
     // Validate AI configuration first - fail fast if not properly configured
     validateAIConfigOnStartup();
 
@@ -615,21 +682,32 @@ const start = async () => {
         hostname: "0.0.0.0",
       },
       () => {
-        logger.info(
-          {
-            port: config.server.port,
-            bullBoardUrl: `http://localhost:${config.server.port}${config.server.basePath}`,
-          },
-          "Worker service running",
-        );
+        if (queueBackend === "redis") {
+          logger.info(
+            {
+              port: config.server.port,
+              bullBoardUrl: `http://localhost:${config.server.port}${config.server.basePath}`,
+            },
+            "Worker service running",
+          );
 
-        logger.info("All workers started and listening for jobs");
-        bookmarkLogger.info("Bookmark worker ready");
-        imageLogger.info("Image worker ready");
-        noteLogger.info("Note Processing worker ready");
-        taskLogger.info("Task Processing worker ready");
-        taskExecutionLogger.info("Task Execution Processing worker ready");
-        documentLogger.info("Document worker ready");
+          logger.info("All workers started and listening for jobs");
+          bookmarkLogger?.info("Bookmark worker ready");
+          imageLogger?.info("Image worker ready");
+          noteLogger?.info("Note Processing worker ready");
+          taskLogger?.info("Task Processing worker ready");
+          taskExecutionLogger?.info("Task Execution Processing worker ready");
+          documentLogger?.info("Document worker ready");
+        } else {
+          logger.info(
+            {
+              port: config.server.port,
+              queueBackend: "database",
+            },
+            "Worker service running in database queue mode",
+          );
+          logger.info("Database queue polling workers active");
+        }
       },
     );
   } catch (err) {
@@ -648,25 +726,30 @@ const start = async () => {
 const shutdown = async (signal: string) => {
   logger.info({ signal }, "Shutdown signal received. Shutting down gracefully");
 
-  logger.info("Closing BullMQ workers");
-  await Promise.all([
-    bookmarkWorker.close(),
-    imageWorker.close(), // Close the image worker
-    noteWorker.close(), // Close the note worker
-    taskWorker.close(), // Close the task worker
-    taskExecutionWorker.close(), // Close the task execution worker
-    documentWorker.close(), // Close the document worker
-  ]);
-  logger.info("BullMQ workers closed");
+  if (queueBackend === "redis") {
+    logger.info("Closing BullMQ workers");
+    await Promise.all([
+      bookmarkWorker?.close(),
+      imageWorker?.close(), // Close the image worker
+      noteWorker?.close(), // Close the note worker
+      taskWorker?.close(), // Close the task worker
+      taskExecutionWorker?.close(), // Close the task execution worker
+      documentWorker?.close(), // Close the document worker
+    ].filter(Boolean));
+    logger.info("BullMQ workers closed");
 
-  await closeQueues();
+    await closeQueues();
 
-  if (
-    redisConnection.status === "ready" ||
-    redisConnection.status === "connecting"
-  ) {
-    await redisConnection.quit();
-    logger.info("Redis connection closed");
+    if (
+      redisConnection &&
+      (redisConnection.status === "ready" ||
+        redisConnection.status === "connecting")
+    ) {
+      await redisConnection.quit();
+      logger.info("Redis connection closed");
+    }
+  } else {
+    logger.info("Database queue mode: No workers to close (polling loops will terminate)");
   }
 
   logger.info("Shutdown complete");
