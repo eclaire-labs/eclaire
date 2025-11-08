@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { bookmarks, documents, notes, photos, tasks } from "@/db/schema";
+import { db, schema } from "@/db";
+
+const { bookmarks, documents, notes, photos, tasks } = schema;
 import {
   type AIMessage,
   callAI,

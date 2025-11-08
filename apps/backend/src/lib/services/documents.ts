@@ -17,14 +17,15 @@ import {
 } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { Readable } from "stream";
-import { db } from "@/db";
-import {
+import { db, txManager, schema } from "@/db";
+
+const {
   assetProcessingJobs,
   documentsTags,
-  documents as schemaDocuments,
+  documents: schemaDocuments,
   tags,
-} from "@/db/schema";
-import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
+} = schema;
+import { formatToISO8601, formatRequiredTimestamp, getOrCreateTags } from "@/lib/db-helpers";
 import { getQueue, QueueNames } from "@/lib/queues";
 import { getQueueAdapter } from "@/lib/queue-adapter";
 import { objectStorage, type StorageInfo } from "@/lib/storage";
@@ -195,15 +196,16 @@ async function getDocumentWithDetails(
     mimeType: document.mimeType,
     fileSize: document.fileSize,
     fileUrl,
-    createdAt: formatToISO8601(document.createdAt),
-    updatedAt: formatToISO8601(document.updatedAt),
+    createdAt: formatRequiredTimestamp(document.createdAt),
+    updatedAt: formatRequiredTimestamp(document.updatedAt),
     tags: documentTagNames,
     thumbnailUrl,
     screenshotUrl,
     pdfUrl,
     contentUrl,
     extractedText: document.extractedText,
-    processingStatus: result.status || null,
+    processingStatus:
+      result.status && typeof result.status === "string" ? result.status : null,
     reviewStatus: document.reviewStatus || "pending",
     flagColor: document.flagColor,
     isPinned: document.isPinned || false,
@@ -459,22 +461,17 @@ export async function deleteDocument(
       return { success: true };
     }
 
-    await db.transaction(async (tx) => {
-      await tx.delete(documentsTags).where(eq(documentsTags.documentId, id));
-      const { assetProcessingJobs } = await import("@/db/schema");
-      await tx
-        .delete(assetProcessingJobs)
-        .where(
-          and(
-            eq(assetProcessingJobs.assetType, "documents"),
-            eq(assetProcessingJobs.assetId, id),
-          ),
-        );
-      await tx
-        .delete(schemaDocuments)
-        .where(
-          and(eq(schemaDocuments.id, id), eq(schemaDocuments.userId, userId)),
-        );
+    await txManager.withTransaction((tx) => {
+      tx.documentsTags.delete(eq(documentsTags.documentId, id));
+      tx.assetProcessingJobs.delete(
+        and(
+          eq(assetProcessingJobs.assetType, "documents"),
+          eq(assetProcessingJobs.assetId, id),
+        ),
+      );
+      tx.documents.delete(
+        and(eq(schemaDocuments.id, id), eq(schemaDocuments.userId, userId)),
+      );
     });
 
     if (deleteStorage) {
@@ -546,15 +543,16 @@ export async function getAllDocuments(
           mimeType: document.mimeType,
           fileSize: document.fileSize,
           fileUrl,
-          createdAt: formatToISO8601(document.createdAt),
-          updatedAt: formatToISO8601(document.updatedAt),
+          createdAt: formatRequiredTimestamp(document.createdAt),
+          updatedAt: formatRequiredTimestamp(document.updatedAt),
           tags: documentTagNames,
           thumbnailUrl,
           screenshotUrl,
           pdfUrl,
           contentUrl,
           extractedText: document.extractedText,
-          processingStatus: result.status || null,
+          processingStatus:
+      result.status && typeof result.status === "string" ? result.status : null,
           reviewStatus: document.reviewStatus || "pending",
           flagColor: document.flagColor,
           isPinned: document.isPinned || false,
@@ -709,15 +707,16 @@ export async function findDocuments(
           mimeType: document.mimeType,
           fileSize: document.fileSize,
           fileUrl,
-          createdAt: formatToISO8601(document.createdAt),
-          updatedAt: formatToISO8601(document.updatedAt),
+          createdAt: formatRequiredTimestamp(document.createdAt),
+          updatedAt: formatRequiredTimestamp(document.updatedAt),
           tags: documentTagNames,
           thumbnailUrl,
           screenshotUrl,
           pdfUrl,
           contentUrl,
           extractedText: document.extractedText,
-          processingStatus: result.status || null,
+          processingStatus:
+      result.status && typeof result.status === "string" ? result.status : null,
           reviewStatus: document.reviewStatus || "pending",
           flagColor: document.flagColor,
           isPinned: document.isPinned || false,
@@ -800,7 +799,20 @@ export async function updateDocumentArtifacts(
 ): Promise<void> {
   try {
     logger.info(`Saving final artifacts for document ${documentId}`);
-    await db.transaction(async (tx) => {
+
+    // Get or create tags BEFORE transaction if tags are provided
+    let tagList: { id: string; name: string }[] = [];
+    if (artifacts.tags && Array.isArray(artifacts.tags) && artifacts.tags.length > 0) {
+      const document = await db.query.documents.findFirst({
+        columns: { userId: true },
+        where: eq(schemaDocuments.id, documentId),
+      });
+      if (!document)
+        throw new Error("Could not find document to associate tags with.");
+      tagList = await getOrCreateTags(artifacts.tags, document.userId);
+    }
+
+    await txManager.withTransaction((tx) => {
       const updatePayload: Partial<typeof schemaDocuments.$inferInsert> = {
         updatedAt: new Date(),
       };
@@ -820,29 +832,17 @@ export async function updateDocumentArtifacts(
       if (artifacts.screenshotStorageId)
         updatePayload.screenshotStorageId = artifacts.screenshotStorageId;
 
-      const result = await tx
-        .update(schemaDocuments)
-        .set(updatePayload)
-        .where(eq(schemaDocuments.id, documentId));
-      // if (result.rowCount === 0) throw new Error("Document not found");
+      tx.documents.update(eq(schemaDocuments.id, documentId), updatePayload);
 
       if (artifacts.tags && Array.isArray(artifacts.tags)) {
-        const document = await tx.query.documents.findFirst({
-          columns: { userId: true },
-          where: eq(schemaDocuments.id, documentId),
-        });
-        if (!document)
-          throw new Error("Could not find document to associate tags with.");
-        await tx
-          .delete(documentsTags)
-          .where(eq(documentsTags.documentId, documentId));
-        if (artifacts.tags.length > 0) {
-          await addTagsToDocument(
-            documentId,
-            artifacts.tags,
-            document.userId,
-            tx,
-          );
+        // Clear existing tags
+        tx.documentsTags.delete(eq(documentsTags.documentId, documentId));
+
+        // Insert new tags
+        if (tagList.length > 0) {
+          tagList.forEach((tag) => {
+            tx.documentsTags.insert({ documentId, tagId: tag.id });
+          });
         }
       }
     });

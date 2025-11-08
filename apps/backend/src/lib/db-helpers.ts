@@ -1,7 +1,8 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import { tags as tagsSchema } from "@/db/schema";
+import { db, schema } from "@/db";
 import { generateTagId } from "./id-generator";
+
+const { tags: tagsSchema } = schema;
 
 type DrizzleClient =
   | typeof db
@@ -58,37 +59,90 @@ export async function getOrCreateTags(
 }
 
 /**
- * Format a timestamp to ISO 8601
- * Handles both Date objects (from PostgreSQL) and numeric timestamps (from SQLite)
+ * Format a timestamp to ISO 8601 string.
+ *
+ * With Drizzle's `mode: 'timestamp_ms'`, SQLite now returns Date objects just like PostgreSQL.
+ * This function safely handles Date objects, numbers (milliseconds), strings, and invalid inputs.
+ *
+ * @param timestamp - Date object, number (milliseconds since epoch), string, or null/undefined
+ * @returns ISO 8601 string, or null for invalid/missing timestamps
  */
 export function formatToISO8601(
-  timestamp: number | Date | null | undefined,
-): string {
+  timestamp: Date | number | string | null | undefined,
+): string | null {
+  // Return null for missing values
   if (timestamp === null || timestamp === undefined) {
-    return new Date().toISOString(); // Default to current date if timestamp is missing
+    return null;
   }
 
-  // If it's already a Date object (PostgreSQL), just return its ISO string
+  // If it's already a Date object, validate and return its ISO string
   if (timestamp instanceof Date) {
+    // Check for Invalid Date - this was the source of the original error
+    const time = timestamp.getTime();
+    if (isNaN(time)) {
+      console.error("formatToISO8601: Invalid Date object received", {
+        timestamp,
+      });
+      return null;
+    }
     return timestamp.toISOString();
   }
 
-  // Handle numeric timestamps (SQLite legacy)
-  const numericTimestamp = Number(timestamp);
-
-  // Validate that the timestamp is a valid number
-  if (isNaN(numericTimestamp)) {
-    return new Date().toISOString(); // Fallback to current date
+  // Handle numeric timestamps (milliseconds since epoch)
+  if (typeof timestamp === "number") {
+    if (isNaN(timestamp) || !isFinite(timestamp)) {
+      console.error("formatToISO8601: Invalid numeric timestamp", {
+        timestamp,
+      });
+      return null;
+    }
+    const date = new Date(timestamp);
+    const time = date.getTime();
+    if (isNaN(time)) {
+      console.error("formatToISO8601: Number creates invalid Date", {
+        timestamp,
+      });
+      return null;
+    }
+    return date.toISOString();
   }
 
-  // SQLite timestamp is in seconds since epoch, need to convert to milliseconds for JS Date
-  // But first check if it's already in milliseconds (very large number)
-  const timestampInMs =
-    numericTimestamp > 100000000000
-      ? numericTimestamp
-      : numericTimestamp * 1000;
+  // Handle string timestamps (ISO 8601 strings or numeric strings)
+  if (typeof timestamp === "string") {
+    const date = new Date(timestamp);
+    const time = date.getTime();
+    if (isNaN(time)) {
+      console.error("formatToISO8601: String creates invalid Date", {
+        timestamp,
+      });
+      return null;
+    }
+    return date.toISOString();
+  }
 
-  return new Date(timestampInMs).toISOString();
+  // Unknown type, return null
+  console.error("formatToISO8601: Unknown timestamp type", {
+    timestamp,
+    type: typeof timestamp,
+  });
+  return null;
+}
+
+/**
+ * Format a required timestamp to ISO 8601 string.
+ * Use this for non-null database fields like createdAt and updatedAt.
+ * Throws an error if the timestamp is null/undefined/invalid.
+ *
+ * @param timestamp - Date object (required)
+ * @returns ISO 8601 string (never null)
+ * @throws Error if timestamp is null, undefined, or invalid
+ */
+export function formatRequiredTimestamp(timestamp: Date | number | string): string {
+  const result = formatToISO8601(timestamp);
+  if (result === null) {
+    throw new Error(`Invalid required timestamp: ${timestamp}`);
+  }
+  return result;
 }
 
 /**

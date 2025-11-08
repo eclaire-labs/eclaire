@@ -1,9 +1,11 @@
 import type { Readable } from "node:stream";
+import { and, eq } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
+import { db, schema } from "@/db";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
 // Import response schemas
 import { ErrorResponseSchema } from "@/lib/openapi-config";
@@ -49,6 +51,8 @@ import type { RouteVariables } from "@/types/route-variables";
 import { createChildLogger } from "../lib/logger";
 
 const logger = createChildLogger("documents");
+
+const { documents: schemaDocuments } = schema;
 
 export const documentsRoutes = new Hono<{ Variables: RouteVariables }>();
 
@@ -729,10 +733,6 @@ async function getDocumentAssetDetails(
   if (!assetInfo) {
     throw new Error("Invalid asset type");
   }
-
-  const { db } = await import("@/db");
-  const { documents: schemaDocuments } = await import("@/db/schema");
-  const { eq, and } = await import("drizzle-orm");
 
   const document = await db.query.documents.findFirst({
     columns: {

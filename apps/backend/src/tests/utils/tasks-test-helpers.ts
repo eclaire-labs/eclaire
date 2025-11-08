@@ -18,7 +18,7 @@ export const loggedFetch = (url: string, options?: RequestInit) => {
 // AI Assistant constants (from seed data)
 export const AI_ASSISTANT_USER_ID = "user-ai-assistant";
 export const AI_ASSISTANT_API_KEY =
-  "sk-aiassistant0001-fixedSecretAiAssistant1234567890";
+  "sk-DEVONLYAIASST01-DEVONLY1111111111111111111111111";
 export const loggedFetchAsAssistant = (url: string, options?: RequestInit) => {
   const fullUrl = url.startsWith("http") ? url : `${BASE_URL}${url}`;
   return createAuthenticatedFetch(AI_ASSISTANT_API_KEY)(fullUrl, options);

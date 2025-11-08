@@ -32,6 +32,26 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 
 // Helper to extract error information from various error response formats
 const extractErrorInfo = (errorResponse: any) => {
+  // Hono zValidator format: { error: [...], success: false } - where error is array of issues
+  if (
+    errorResponse.error &&
+    Array.isArray(errorResponse.error) &&
+    errorResponse.error.length > 0
+  ) {
+    const messages = errorResponse.error
+      .map((issue: any) => issue.message || "Unknown validation error")
+      .filter((msg: string) => msg); // Filter out empty messages
+
+    const combinedMessage =
+      messages.length > 0 ? messages.join(", ") : "Validation failed";
+
+    return {
+      hasError: true,
+      errorMessage: combinedMessage,
+      isZodError: true,
+    };
+  }
+
   // Check for nested Zod validation error format: { error: { issues: [...] } }
   if (
     errorResponse.error &&

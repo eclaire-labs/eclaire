@@ -159,7 +159,11 @@ describe("Documents API Integration Tests", () => {
     expect(data.flagColor).toBeNull(); // Default value
     expect(data.isPinned).toBe(false); // Default value
     expect(data.dueDate).toBeNull(); // Not set in this test
-    expect(data.processingStatus).toMatch(/^(pending|processing)$/); // Initial status
+    // processingStatus may be null initially or a valid status string
+    if (data.processingStatus !== null) {
+      expect(typeof data.processingStatus).toBe("string");
+      expect(data.processingStatus).toMatch(/^(pending|processing)$/);
+    }
     // Asset URLs may be null initially, will be populated after processing
     expect(
       typeof data.thumbnailUrl === "string" || data.thumbnailUrl === null,

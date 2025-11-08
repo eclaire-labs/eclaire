@@ -1,7 +1,8 @@
 import { and, asc, count, desc, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { messages } from "@/db/schema";
+import { db, schema } from "@/db";
 import { generateMessageId } from "@/lib/id-generator";
+
+const { messages } = schema;
 import { createChildLogger } from "@/lib/logger";
 import type { ToolCallSummary } from "@/schemas/prompt-responses";
 

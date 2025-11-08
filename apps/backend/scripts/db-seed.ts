@@ -8,19 +8,26 @@ import { dirname } from "path";
 import type { InferInsertModel } from "drizzle-orm";
 import { drizzle as drizzlePostgres, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
+import { drizzle as drizzleSqlite, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { PGlite } from "@electric-sql/pglite";
+import Database from "better-sqlite3";
 import postgres from "postgres";
 import { v4 as uuid } from "uuid";
-import { getDatabaseUrl, getDatabaseType, getPGlitePath } from "../src/db/config";
-import * as schema from "../src/db/schema";
+import { getDatabaseUrl, getDatabaseType, getPGlitePath, getSqlitePath } from "../src/db/config";
+import * as pgSchema from "../src/db/schema/postgres";
+import * as sqliteSchema from "../src/db/schema/sqlite";
 import { hmacBase64 } from "../src/lib/api-key-security";
+
+// Determine which schema to use
+const dbType = getDatabaseType();
+const schema = dbType === "sqlite" ? sqliteSchema : pgSchema;
 
 // --- Drizzle Insert Types ---
 type InsertUser = InferInsertModel<typeof schema.users>;
 type InsertAccount = InferInsertModel<typeof schema.accounts>;
 type InsertApiKey = InferInsertModel<typeof schema.apiKeys>;
 
-type Database = PostgresJsDatabase<typeof schema> | PgliteDatabase<typeof schema>;
+type Database = PostgresJsDatabase<typeof pgSchema> | PgliteDatabase<typeof pgSchema> | BetterSQLite3Database<typeof sqliteSchema>;
 
 // --- Helper Functions ---
 function computeApiKeyHash(fullKey: string): {
@@ -129,11 +136,34 @@ async function main() {
     console.log("🌱 Seeding database with essential users only...");
   }
 
-  const dbType = getDatabaseType();
   let db: Database;
   let cleanup: () => Promise<void>;
 
-  if (dbType === "pglite") {
+  if (dbType === "sqlite") {
+    // SQLite setup
+    const sqlitePath = getSqlitePath();
+    console.log(`Connecting to SQLite database: ${sqlitePath}`);
+
+    // Ensure directory exists
+    try {
+      mkdirSync(dirname(sqlitePath), { recursive: true });
+    } catch (error) {
+      // Directory might already exist, ignore
+    }
+
+    const client = new Database(sqlitePath);
+
+    // Configure SQLite for better concurrency
+    client.pragma("journal_mode = WAL");
+    client.pragma("synchronous = NORMAL");
+    client.pragma("busy_timeout = 5000");
+    client.pragma("foreign_keys = ON");
+
+    db = drizzleSqlite(client, { schema: sqliteSchema }) as Database;
+    cleanup = async () => {
+      client.close();
+    };
+  } else if (dbType === "pglite") {
     // PGlite setup
     const pglitePath = getPGlitePath();
     console.log(`Connecting to PGlite database: ${pglitePath}`);
@@ -146,7 +176,7 @@ async function main() {
     }
 
     const client = new PGlite(pglitePath);
-    db = drizzlePglite(client, { schema });
+    db = drizzlePglite(client, { schema: pgSchema }) as Database;
     cleanup = async () => {
       await client.close();
     };
@@ -160,7 +190,7 @@ async function main() {
       idle_timeout: 20, // Seconds before idle connection is closed
       connect_timeout: 10, // Seconds before connection timeout
     });
-    db = drizzlePostgres(client, { schema });
+    db = drizzlePostgres(client, { schema: pgSchema }) as Database;
     cleanup = async () => {
       await client.end();
     };
@@ -171,7 +201,7 @@ async function main() {
   let aiAssistantKey: { fullKey: string; keyId: string; keySuffix: string };
 
   try {
-    // Use current timestamp as Date object for PostgreSQL
+    // Use current timestamp - with mode: 'timestamp_ms', all databases expect Date objects
     const now = new Date();
 
     // 1. Create Users
@@ -235,7 +265,7 @@ async function main() {
       usersData = [...essentialUsersData, ...demoUsersData];
     }
 
-    await db.insert(schema.users).values(usersData).onConflictDoNothing();
+    await (db as any).insert(schema.users).values(usersData).onConflictDoNothing();
     console.log(`-> ${usersData.length} users ensured.`);
 
     // 2. Create Accounts
@@ -294,7 +324,7 @@ async function main() {
       accountsData = [...essentialAccountsData, ...demoAccountsData];
     }
 
-    await db.insert(schema.accounts).values(accountsData).onConflictDoNothing();
+    await (db as any).insert(schema.accounts).values(accountsData).onConflictDoNothing();
     console.log(`-> ${accountsData.length} accounts ensured.`);
 
     // 3. Create API Keys
@@ -363,7 +393,7 @@ async function main() {
       apiKeysToInsert = [...essentialApiKeysData, ...demoApiKeysData];
     }
 
-    await db
+    await (db as any)
       .insert(schema.apiKeys)
       .values(apiKeysToInsert)
       .onConflictDoNothing();

@@ -287,7 +287,7 @@ describe("POST /api/all Integration Tests", () => {
   });
 
   // FIX: This test now correctly expects a note, per the rule hierarchy.
-  it.only("should create a note for text/rtf content", async () => {
+  it("should create a note for text/rtf content", async () => {
     await delay(100);
     const formData = new FormData();
     const rtfContent = "{\\rtf1\\ansi This is RTF content.}";

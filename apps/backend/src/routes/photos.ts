@@ -4,9 +4,10 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { db } from "@/db";
-import { photos } from "@/db/schema";
+import { db, schema } from "@/db";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
+
+const { photos } = schema;
 import {
   countPhotos,
   createPhoto,

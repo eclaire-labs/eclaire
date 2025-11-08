@@ -43,26 +43,57 @@ async function generateNoteTags(
         workerType: "note-tag-generation",
       },
     });
-    const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
-    const cleanedJsonString = jsonMatch?.[1] || aiResponse;
-    const parsed = JSON.parse(cleanedJsonString);
 
-    if (Array.isArray(parsed)) {
-      return parsed.filter((t: unknown): t is string => typeof t === "string");
-    } else if (
-      parsed &&
-      typeof parsed === "object" &&
-      Array.isArray(parsed.tags)
-    ) {
-      return parsed.tags.filter(
-        (t: unknown): t is string => typeof t === "string",
+    // Try to parse the AI response
+    try {
+      // First try to extract from markdown code blocks
+      const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
+      const cleanedJsonString = (jsonMatch?.[1] || aiResponse).trim();
+
+      // Validate that the string looks like JSON before parsing
+      if (
+        !cleanedJsonString.startsWith("[") &&
+        !cleanedJsonString.startsWith("{")
+      ) {
+        logger.warn(
+          { noteId, response: aiResponse.substring(0, 100) },
+          "AI response does not appear to be JSON, using empty tags",
+        );
+        return [];
+      }
+
+      const parsed = JSON.parse(cleanedJsonString);
+
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (t: unknown): t is string => typeof t === "string",
+        );
+      } else if (
+        parsed &&
+        typeof parsed === "object" &&
+        Array.isArray(parsed.tags)
+      ) {
+        return parsed.tags.filter(
+          (t: unknown): t is string => typeof t === "string",
+        );
+      }
+      logger.warn(
+        { noteId, parsed },
+        "Unexpected response format from AI for note tags",
       );
+      return [];
+    } catch (parseError) {
+      logger.error(
+        {
+          noteId,
+          aiResponse: aiResponse.substring(0, 200),
+          error:
+            parseError instanceof Error ? parseError.message : "Unknown error",
+        },
+        "Failed to parse AI response as JSON, using empty tags",
+      );
+      return []; // Return empty array instead of throwing
     }
-    logger.warn(
-      { noteId, parsed },
-      "Unexpected response format from AI for note tags",
-    );
-    return [];
   } catch (error) {
     logger.error(
       {

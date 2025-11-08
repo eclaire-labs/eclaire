@@ -1,8 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { type Context, session, Telegraf } from "telegraf";
-import { db } from "@/db";
-import { channels, users } from "@/db/schema";
+import { db, schema } from "@/db";
 import { decrypt } from "../encryption";
+
+const { channels, users } = schema;
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history";
 import { processPromptRequest } from "./prompt";
@@ -391,7 +392,7 @@ export async function startAllTelegramBots(): Promise<void> {
     const telegramChannels = await db.query.channels.findMany({
       where: and(
         eq(channels.platform, "telegram"),
-        eq(channels.isActive, true),
+        channels.isActive,
       ),
       with: {
         user: {
@@ -537,7 +538,7 @@ export async function startTelegramBot(channelId: string): Promise<boolean> {
       where: and(
         eq(channels.id, channelId),
         eq(channels.platform, "telegram"),
-        eq(channels.isActive, true),
+        channels.isActive,
       ),
     });
 

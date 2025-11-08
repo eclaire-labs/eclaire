@@ -1,7 +1,7 @@
 import { createChildLogger } from "./logger.js";
-import { db } from "../db/index.js";
-import { assetProcessingJobs } from "../db/schema.js";
-import { sql, and, or, eq, isNull, lte } from "drizzle-orm";
+import { db, schema } from "../db/index.js";
+const { assetProcessingJobs } = schema;
+import { sql, and, or, eq, isNull, lte, gt } from "drizzle-orm";
 
 const logger = createChildLogger("job-waitlist");
 
@@ -120,7 +120,7 @@ class JobWaitlist {
               eq(assetProcessingJobs.status, "pending"),
               eq(assetProcessingJobs.status, "retry_pending")
             ),
-            sql`${assetProcessingJobs.scheduledFor} > NOW()`
+            gt(assetProcessingJobs.scheduledFor, new Date())
           )
         )
         .orderBy(assetProcessingJobs.scheduledFor)

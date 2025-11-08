@@ -1,7 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { taskComments, tasks, users } from "@/db/schema";
+import { db, schema } from "@/db";
 import { formatToISO8601 } from "@/lib/db-helpers";
+
+const { taskComments, tasks, users } = schema;
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history";
 

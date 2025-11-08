@@ -2,80 +2,218 @@
 // Workers poll these endpoints to fetch and process jobs
 
 import { Hono } from "hono";
-import { db } from "@/db";
-import { assetProcessingJobs } from "@/db/schema";
-import { eq, and, lte, sql } from "drizzle-orm";
+import { db, dbCapabilities, schema } from "@/db";
+
+const { assetProcessingJobs } = schema;
+import {
+	eq,
+	and,
+	or,
+	lte,
+	lt,
+	inArray,
+	isNull,
+	sql,
+	asc,
+	desc,
+} from "drizzle-orm";
 import { createChildLogger } from "@/lib/logger";
 import { jobWaitlist, type AssetType } from "@/lib/job-waitlist";
+import {
+	getCurrentTimestamp,
+	getExpirationTime,
+	getScheduledTime,
+	formatJobResult,
+	type ClaimedJob,
+} from "@/lib/db-queue-helpers";
 
 const logger = createChildLogger("jobs-api");
 
 const app = new Hono();
 
 /**
- * Atomic job claim query that picks up:
+ * Atomic job claim that picks up:
  * - New pending jobs (status = 'pending' or 'retry_pending')
  * - Scheduled jobs that are now ready (scheduled_for <= NOW())
  * - Expired/timed-out jobs (status = 'processing' AND expires_at < NOW())
  *
- * This eliminates the need for a separate stale job detector
+ * Uses database-specific optimizations:
+ * - PostgreSQL/PGlite: FOR UPDATE SKIP LOCKED for optimal concurrency
+ * - SQLite: Optimistic locking (SELECT then UPDATE)
  */
-async function claimJob(assetType: string, workerId: string) {
-  const result = await db.execute(sql`
-    UPDATE asset_processing_jobs
-    SET
-      status = 'processing',
-      locked_by = ${workerId},
-      locked_at = NOW(),
-      expires_at = NOW() + INTERVAL '15 minutes',
-      started_at = COALESCE(started_at, NOW()),
-      updated_at = NOW()
-    WHERE id = (
-      SELECT id
-      FROM asset_processing_jobs
-      WHERE
-        asset_type = ${assetType}
-        AND (
-          -- Pick up new/pending jobs
-          (
-            (status = 'pending' OR status = 'retry_pending')
-            AND (scheduled_for IS NULL OR scheduled_for <= NOW())
-          )
-          -- Pick up expired/timed-out jobs (lazy reclamation)
-          OR (
-            status = 'processing'
-            AND expires_at < NOW()
-            AND retry_count < max_retries
-          )
-        )
-      ORDER BY
-        -- Prioritize recovery of expired jobs
-        CASE WHEN status = 'processing' THEN 0 ELSE 1 END,
-        priority DESC NULLS LAST,
-        created_at ASC
-      LIMIT 1
-      FOR UPDATE SKIP LOCKED
-    )
-    RETURNING
-      id,
-      asset_type,
-      asset_id,
-      user_id,
-      status,
-      job_data,
-      locked_by,
-      locked_at,
-      expires_at,
-      retry_count,
-      max_retries,
-      created_at
-  `) as any;
+async function claimJob(
+	assetType: string,
+	workerId: string,
+): Promise<ClaimedJob | null> {
+	if (dbCapabilities.skipLocked) {
+		// PostgreSQL/PGlite: Use atomic UPDATE with SKIP LOCKED
+		return claimJobPostgres(assetType, workerId);
+	} else {
+		// SQLite: Use optimistic locking pattern
+		return claimJobSqlite(assetType, workerId);
+	}
+}
 
-  if (!result.rows || result.rows.length === 0) {
-    return null;
-  }
+/**
+ * PostgreSQL/PGlite job claiming with FOR UPDATE SKIP LOCKED
+ */
+async function claimJobPostgres(
+	assetType: string,
+	workerId: string,
+): Promise<ClaimedJob | null> {
+	const now = getCurrentTimestamp();
+	const expiresAt = getExpirationTime(15); // 15 minutes
 
-  return result.rows[0];
+	const [job] = await db
+		.update(assetProcessingJobs)
+		.set({
+			status: "processing",
+			lockedBy: workerId,
+			lockedAt: now,
+			expiresAt: expiresAt,
+			startedAt: sql`COALESCE(${assetProcessingJobs.startedAt}, ${now})`,
+			updatedAt: now,
+		})
+		.where(
+			eq(
+				assetProcessingJobs.id,
+				db
+					.select({ id: assetProcessingJobs.id })
+					.from(assetProcessingJobs)
+					.where(
+						and(
+							eq(
+								assetProcessingJobs.assetType,
+								assetType as
+									| "tasks"
+									| "bookmarks"
+									| "documents"
+									| "photos"
+									| "notes",
+							),
+							or(
+								// New/pending jobs ready to process
+								and(
+									inArray(assetProcessingJobs.status, [
+										"pending",
+										"retry_pending",
+									]),
+									or(
+										isNull(assetProcessingJobs.scheduledFor),
+										lte(assetProcessingJobs.scheduledFor, now),
+									),
+								),
+								// Expired jobs (lazy reclamation)
+								and(
+									eq(assetProcessingJobs.status, "processing"),
+									lt(assetProcessingJobs.expiresAt, now),
+									lt(
+										assetProcessingJobs.retryCount,
+										assetProcessingJobs.maxRetries,
+									),
+								),
+							),
+						),
+					)
+					.orderBy(
+						// Prioritize expired jobs for recovery
+						sql`CASE WHEN ${assetProcessingJobs.status} = 'processing' THEN 0 ELSE 1 END`,
+						desc(assetProcessingJobs.priority),
+						asc(assetProcessingJobs.createdAt),
+					)
+					.limit(1)
+					.for("update", { skipLocked: true }),
+			),
+		)
+		.returning();
+
+	return formatJobResult(job);
+}
+
+/**
+ * SQLite job claiming with optimistic locking
+ * Two-step process: SELECT then UPDATE with status verification
+ */
+async function claimJobSqlite(
+	assetType: string,
+	workerId: string,
+): Promise<ClaimedJob | null> {
+	const now = getCurrentTimestamp();
+	const expiresAt = getExpirationTime(15); // 15 minutes
+
+	// Step 1: Find a claimable job (read-only, fast)
+	const candidates = await db
+		.select()
+		.from(assetProcessingJobs)
+		.where(
+			and(
+				eq(
+					assetProcessingJobs.assetType,
+					assetType as "tasks" | "bookmarks" | "documents" | "photos" | "notes",
+				),
+				or(
+					// New/pending jobs ready to process
+					and(
+						inArray(assetProcessingJobs.status, ["pending", "retry_pending"]),
+						or(
+							isNull(assetProcessingJobs.scheduledFor),
+							lte(assetProcessingJobs.scheduledFor, now),
+						),
+					),
+					// Expired jobs (lazy reclamation)
+					and(
+						eq(assetProcessingJobs.status, "processing"),
+						lt(assetProcessingJobs.expiresAt, now),
+						lt(assetProcessingJobs.retryCount, assetProcessingJobs.maxRetries),
+					),
+				),
+			),
+		)
+		.orderBy(
+			// Prioritize expired jobs - SQLite compatible syntax
+			sql`CASE WHEN ${assetProcessingJobs.status} = 'processing' THEN 0 ELSE 1 END`,
+			sql`${assetProcessingJobs.priority} IS NULL`, // NULLs last
+			desc(assetProcessingJobs.priority),
+			asc(assetProcessingJobs.createdAt),
+		)
+		.limit(1);
+
+	if (!candidates.length) {
+		return null;
+	}
+
+	const candidate = candidates[0];
+	if (!candidate) {
+		return null;
+	}
+
+	// Step 2: Try to claim it (optimistic locking)
+	// Only succeeds if job is still in the same state
+	const [claimedJob] = await db
+		.update(assetProcessingJobs)
+		.set({
+			status: "processing",
+			lockedBy: workerId,
+			lockedAt: now,
+			expiresAt: expiresAt,
+			startedAt: candidate.startedAt || now,
+			updatedAt: now,
+		})
+		.where(
+			and(
+				eq(assetProcessingJobs.id, candidate.id),
+				// Verify job is still in original state (optimistic lock)
+				eq(assetProcessingJobs.status, candidate.status),
+				or(
+					isNull(assetProcessingJobs.lockedBy),
+					eq(assetProcessingJobs.lockedBy, candidate.lockedBy || ""),
+				),
+			),
+		)
+		.returning();
+
+	// If update failed, another worker claimed it (race condition)
+	return formatJobResult(claimedJob);
 }
 
 /**
@@ -272,21 +410,24 @@ app.post("/:jobId/heartbeat", async (c) => {
     return c.json({ error: "Invalid JSON body" }, 400);
   }
 
-  try {
-    const result = await db
-      .update(assetProcessingJobs)
-      .set({
-        expiresAt: sql`NOW() + INTERVAL '15 minutes'`,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(assetProcessingJobs.id, jobId),
-          eq(assetProcessingJobs.lockedBy, workerId),
-          eq(assetProcessingJobs.status, "processing"),
-        ),
-      )
-      .returning({ id: assetProcessingJobs.id });
+	try {
+		const now = getCurrentTimestamp();
+		const newExpiresAt = getExpirationTime(15); // 15 minutes
+
+		const result = await db
+			.update(assetProcessingJobs)
+			.set({
+				expiresAt: newExpiresAt,
+				updatedAt: now,
+			})
+			.where(
+				and(
+					eq(assetProcessingJobs.id, jobId),
+					eq(assetProcessingJobs.lockedBy, workerId),
+					eq(assetProcessingJobs.status, "processing"),
+				),
+			)
+			.returning({ id: assetProcessingJobs.id });
 
     if (result.length === 0) {
       logger.warn(
@@ -350,29 +491,29 @@ app.post("/:jobId/reschedule", async (c) => {
     return c.json({ error: "Invalid JSON body" }, 400);
   }
 
-  try {
-    // Calculate scheduled time
-    const scheduledFor = new Date(Date.now() + delayMs);
+	try {
+		const now = getCurrentTimestamp();
+		const scheduledFor = getScheduledTime(delayMs);
 
-    // Release the job back to pending with scheduled time
-    const result = await db
-      .update(assetProcessingJobs)
-      .set({
-        status: "pending",
-        lockedBy: null,
-        lockedAt: null,
-        expiresAt: null,
-        scheduledFor: scheduledFor,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(assetProcessingJobs.id, jobId),
-          eq(assetProcessingJobs.lockedBy, workerId),
-          eq(assetProcessingJobs.status, "processing"),
-        ),
-      )
-      .returning({ id: assetProcessingJobs.id });
+		// Release the job back to pending with scheduled time
+		const result = await db
+			.update(assetProcessingJobs)
+			.set({
+				status: "pending",
+				lockedBy: null,
+				lockedAt: null,
+				expiresAt: null,
+				scheduledFor: scheduledFor,
+				updatedAt: now,
+			})
+			.where(
+				and(
+					eq(assetProcessingJobs.id, jobId),
+					eq(assetProcessingJobs.lockedBy, workerId),
+					eq(assetProcessingJobs.status, "processing"),
+				),
+			)
+			.returning({ id: assetProcessingJobs.id });
 
     if (result.length === 0) {
       logger.warn(
@@ -419,28 +560,25 @@ app.post("/:jobId/reschedule", async (c) => {
  * Useful for monitoring and debugging
  */
 app.get("/stats", async (c) => {
-  try {
-    const result = await db.execute(sql`
-      SELECT
-        asset_type,
-        status,
-        COUNT(*) as count
-      FROM asset_processing_jobs
-      GROUP BY asset_type, status
-      ORDER BY asset_type, status
-    `) as any;
+	try {
+		const results = await db
+			.select({
+				asset_type: assetProcessingJobs.assetType,
+				status: assetProcessingJobs.status,
+				count: sql<number>`count(*)`.as("count"),
+			})
+			.from(assetProcessingJobs)
+			.groupBy(assetProcessingJobs.assetType, assetProcessingJobs.status)
+			.orderBy(assetProcessingJobs.assetType, assetProcessingJobs.status);
 
-    const stats: Record<
-      string,
-      Record<string, number>
-    > = {};
+		const stats: Record<string, Record<string, number>> = {};
 
-    for (const row of result.rows) {
-      const assetType = row.asset_type as string;
-      const status = row.status as string;
-      const count = Number(row.count);
+		for (const row of results) {
+			const assetType = row.asset_type as string;
+			const status = row.status as string;
+			const count = Number(row.count);
 
-      if (!stats[assetType]) {
+			if (!stats[assetType]) {
         stats[assetType] = {};
       }
       stats[assetType][status] = count;

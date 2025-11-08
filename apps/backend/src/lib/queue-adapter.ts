@@ -2,9 +2,10 @@
 // Allows switching between Redis/BullMQ and database-backed queue implementations
 
 import { Queue } from "bullmq";
-import { db } from "@/db";
-import { assetProcessingJobs } from "@/db/schema";
+import { db, schema } from "@/db";
 import { sql, eq, and, lte } from "drizzle-orm";
+
+const { assetProcessingJobs } = schema;
 import { getQueue, QueueNames } from "./queues";
 import { createChildLogger } from "./logger";
 import { jobWaitlist, type AssetType } from "./job-waitlist";

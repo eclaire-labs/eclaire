@@ -1,8 +1,9 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Context } from "hono";
-import { db } from "@/db";
-import { apiKeys } from "@/db/schema";
+import { db, schema } from "@/db";
 import { parseApiKey, verifyApiKeyHash } from "./api-key-security";
+
+const { apiKeys } = schema;
 
 /**
  * Verifies an API key and returns validation result with user ID
@@ -23,7 +24,7 @@ export async function verifyApiKey(
 
     // Find the key record by keyId
     const keyRecord = await db.query.apiKeys.findFirst({
-      where: and(eq(apiKeys.keyId, keyId!), eq(apiKeys.isActive, true)),
+      where: and(eq(apiKeys.keyId, keyId!), apiKeys.isActive),
     });
 
     if (!keyRecord) {

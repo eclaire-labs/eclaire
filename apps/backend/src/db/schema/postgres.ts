@@ -30,7 +30,7 @@ import {
   generateTaskCommentId,
   generateTaskId,
   generateUserId,
-} from "../lib/id-generator";
+} from "../../lib/id-generator";
 
 export const users = pgTable("users", {
   id: text("id")

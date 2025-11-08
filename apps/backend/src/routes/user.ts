@@ -5,8 +5,9 @@ import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import path from "path";
 import sharp from "sharp";
-import { db } from "@/db";
-import { apiKeys, users } from "@/db/schema";
+import { db, schema } from "@/db";
+
+const { apiKeys, users } = schema;
 import {
   formatApiKeyForDisplay,
   generateFullApiKey,
@@ -230,7 +231,7 @@ userRoutes.get("/api-keys", async (c) => {
     }
 
     const keys = await db.query.apiKeys.findMany({
-      where: and(eq(apiKeys.userId, userId), eq(apiKeys.isActive, true)),
+      where: and(eq(apiKeys.userId, userId), apiKeys.isActive),
       columns: {
         id: true,
         keyId: true,

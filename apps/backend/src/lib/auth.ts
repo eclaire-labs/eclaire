@@ -1,8 +1,7 @@
 // lib/auth.ts
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "@/db/index"; // Your drizzle database instance
-import * as schema from "@/db/schema"; // Your schema file
+import { db, dbType, schema } from "@/db/index"; // Your drizzle database instance and conditional schema
 import { generateSecurityId, generateUserId } from "./id-generator";
 import { createChildLogger } from "./logger";
 
@@ -40,8 +39,13 @@ try {
     );
     throw new Error("DB or schema not properly loaded for Drizzle adapter.");
   }
+  // Determine the correct provider based on database type
+  const provider = dbType === "sqlite" ? "sqlite" : "pg";
+
+  logger.info({ dbType, provider }, "Configuring Drizzle adapter with provider");
+
   initializedAdapter = drizzleAdapter(db, {
-    provider: "pg", // Fixed: Use PostgreSQL provider
+    provider: provider, // Dynamically set based on DATABASE_TYPE
     schema: {
       user: schema.users,
       session: schema.sessions,

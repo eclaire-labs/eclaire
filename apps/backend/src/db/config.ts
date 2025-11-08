@@ -39,12 +39,15 @@ export function getDatabaseAuthToken(): string | undefined {
 /**
  * Get the database type to use
  *
- * @returns "postgresql" or "pglite"
+ * @returns "postgresql", "pglite", or "sqlite"
  */
-export function getDatabaseType(): "postgresql" | "pglite" {
+export function getDatabaseType(): "postgresql" | "pglite" | "sqlite" {
   const type = process.env.DATABASE_TYPE?.toLowerCase();
   if (type === "pglite") {
     return "pglite";
+  }
+  if (type === "sqlite") {
+    return "sqlite";
   }
   return "postgresql";
 }
@@ -56,4 +59,13 @@ export function getDatabaseType(): "postgresql" | "pglite" {
  */
 export function getPGlitePath(): string {
   return process.env.PGLITE_DATA_DIR || "./data/db/pglite";
+}
+
+/**
+ * Get the SQLite database file path
+ *
+ * @returns The path where SQLite should store its database file
+ */
+export function getSqlitePath(): string {
+  return process.env.SQLITE_DB_PATH || "./data/db/sqlite.db";
 }

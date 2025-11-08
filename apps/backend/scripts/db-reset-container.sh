@@ -1,8 +1,13 @@
 #!/bin/bash
-# Orchestrates a full database reset from within a container.
-# This script is designed to be called via 'docker exec'.
+# Unified Database Reset Script (for container environments)
+# This script is designed to be called via 'docker exec' or run inside a container.
 
-set -e # Exit immediately if a command exits with a non-zero status.
+set -e
+
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
+cd "$BACKEND_DIR"
 
 # --- Argument Check ---
 SEED_TYPE="$1"
@@ -12,65 +17,41 @@ if [ "$SEED_TYPE" != "essential" ] && [ "$SEED_TYPE" != "demo" ]; then
     exit 1
 fi
 
-echo "🔥🔥🔥 CONTAINER DATABASE RESET INITIATED 🔥🔥🔥"
-echo "Seed type: $SEED_TYPE"
-echo "------------------------------------------------"
-echo ""
-echo "⚠️  WARNING: This will completely DROP and recreate the 'eclaire' database!"
-echo "   All existing data will be permanently lost."
-echo ""
-read -p "Are you sure you want to continue? (y/N): " -n 1 -r
-echo ""
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "❌ Database reset cancelled."
-    exit 0
-fi
-echo ""
-
-echo "🧹 Step 1: Cleaning the database..."
-
-# Get database connection details - prioritize DATABASE_URL like TypeScript scripts
-if [ -n "$DATABASE_URL" ]; then
-    echo "   Using DATABASE_URL for connection"
-    # Parse DATABASE_URL format: postgresql://user:password@host:port/database
-    # Extract components using parameter expansion and sed
-    DB_URL_NO_PROTOCOL=$(echo "$DATABASE_URL" | sed 's|^postgresql://||')
-    DB_USER_PASSWORD=$(echo "$DB_URL_NO_PROTOCOL" | cut -d'@' -f1)
-    DB_HOST_PORT_DB=$(echo "$DB_URL_NO_PROTOCOL" | cut -d'@' -f2)
-
-    DB_USER=$(echo "$DB_USER_PASSWORD" | cut -d':' -f1)
-    DB_PASSWORD=$(echo "$DB_USER_PASSWORD" | cut -d':' -f2)
-
-    DB_HOST_PORT=$(echo "$DB_HOST_PORT_DB" | cut -d'/' -f1)
-    DB_HOST=$(echo "$DB_HOST_PORT" | cut -d':' -f1)
-    DB_PORT=$(echo "$DB_HOST_PORT" | cut -d':' -f2)
-    DB_NAME=$(echo "$DB_HOST_PORT_DB" | cut -d'/' -f2)
-else
-    # Fall back to individual environment variables with defaults
-    echo "   Using individual DB_* environment variables"
-    DB_HOST="${DB_HOST:-localhost}"
-    DB_USER="${DB_USER:-eclaire}"
-    DB_PASSWORD="${DB_PASSWORD:-eclaire}"
-    DB_NAME="${DB_NAME:-eclaire}"
-    DB_PORT="${DB_PORT:-5432}"
+# Load environment variables to check DATABASE_TYPE
+if [ -f ".env" ]; then
+    export $(grep -v '^#' .env | grep DATABASE_TYPE | xargs)
 fi
 
-echo "   Host: $DB_HOST:$DB_PORT"
-echo "   Database: $DB_NAME"
-echo "   User: $DB_USER"
+# Detect database type (default to postgresql if not set)
+DB_TYPE="${DATABASE_TYPE:-postgresql}"
 
-echo "   Dropping and recreating database '$DB_NAME'..."
+echo "🔄 Resetting database with '$SEED_TYPE' data (container mode)..."
+echo "📊 Database type: $DB_TYPE"
+echo ""
 
-# Drop and recreate database using postgres client
-PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $DB_NAME;"
-PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_NAME;"
+# PGlite
+if [ "$DB_TYPE" = "pglite" ]; then
+    echo "🔀 Detected PGlite, using PGlite reset script..."
+    export RUNNING_IN_CONTAINER=true
+    exec "$SCRIPT_DIR/db-reset-pglite.sh" "$SEED_TYPE"
+fi
 
-echo "✅ Database cleaned successfully!"
+# SQLite
+if [ "$DB_TYPE" = "sqlite" ]; then
+    echo "🔀 Detected SQLite, using SQLite reset script..."
+    export RUNNING_IN_CONTAINER=true
+    exec "$SCRIPT_DIR/db-reset-sqlite.sh" "$SEED_TYPE"
+fi
 
-echo "🏗️  Step 2: Applying database migrations..."
-pnpm run db:migrate:apply:prod:force
+# PostgreSQL (default)
+if [ "$DB_TYPE" = "postgresql" ] || [ -z "$DB_TYPE" ]; then
+    echo "🔀 Detected PostgreSQL, using PostgreSQL reset script..."
+    export RUNNING_IN_CONTAINER=true
+    exec "$SCRIPT_DIR/db-reset-postgres.sh" "$SEED_TYPE"
+fi
 
-echo "🌱 Step 3: Seeding with '$SEED_TYPE' data..."
-pnpm run "db:seed:$SEED_TYPE:prod" # <-- Use the 'prod' version
+# Unknown type
+echo "❌ Error: Unknown DATABASE_TYPE: $DB_TYPE"
+echo "   Supported types: pglite, sqlite, postgresql"
+exit 1
 
-echo "🎉 Staging database reset complete!"

@@ -1,6 +1,8 @@
 import { desc, eq, sql } from "drizzle-orm";
-import { db } from "@/db";
-import { feedback } from "@/db/schema";
+import { db, txManager, schema } from "@/db";
+import { generateFeedbackId } from "@/lib/id-generator";
+
+const { feedback } = schema;
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history";
 
@@ -30,43 +32,43 @@ export async function createFeedback(
   try {
     logger.info("Creating feedback entry", { userId, data });
 
-    const [newFeedback] = await db.transaction(async (tx) => {
+    // Pre-generate ID before transaction
+    const feedbackId = generateFeedbackId();
+
+    // Execute synchronous transaction
+    await txManager.withTransaction((tx) => {
       // Create feedback entry
-      const [feedbackEntry] = await tx
-        .insert(feedback)
-        .values({
-          userId: userId,
-          description: data.description,
-          sentiment: data.sentiment || null,
-        })
-        .returning();
-
-      if (!feedbackEntry) {
-        throw new Error("Failed to create feedback entry");
-      }
-
-      // Record history
-      await recordHistory({
-        action: "create",
-        itemType: "feedback" as any, // Cast since feedback is not in the union yet
-        itemId: feedbackEntry.id,
-        itemName: "Feedback submission",
-        beforeData: null,
-        afterData: {
-          description: data.description,
-          sentiment: data.sentiment,
-        },
-        actor: "user",
+      tx.feedback.insert({
+        id: feedbackId,
         userId: userId,
-        metadata: { userId },
-        tx,
+        description: data.description,
+        sentiment: data.sentiment || null,
       });
+    });
 
-      return [feedbackEntry];
+    // Record history AFTER transaction (not critical for atomicity)
+    await recordHistory({
+      action: "create",
+      itemType: "feedback" as any, // Cast since feedback is not in the union yet
+      itemId: feedbackId,
+      itemName: "Feedback submission",
+      beforeData: null,
+      afterData: {
+        description: data.description,
+        sentiment: data.sentiment,
+      },
+      actor: "user",
+      userId: userId,
+      metadata: { userId },
+    });
+
+    // Fetch the created feedback to return
+    const newFeedback = await db.query.feedback.findFirst({
+      where: eq(feedback.id, feedbackId),
     });
 
     if (!newFeedback) {
-      throw new Error("Failed to create feedback entry in transaction");
+      throw new Error("Failed to retrieve created feedback entry");
     }
 
     logger.info("Feedback entry created successfully", {

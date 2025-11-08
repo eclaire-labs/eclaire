@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { users } from "@/db/schema";
+import { db, schema } from "@/db";
 import { createChildLogger } from "./logger";
+
+const { users } = schema;
 
 const logger = createChildLogger("user");
 

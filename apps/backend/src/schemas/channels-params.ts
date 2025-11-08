@@ -20,20 +20,27 @@ export const ChannelCapabilitySchema = z
 export const TelegramConfigSchema = z
   .object({
     chat_identifier: z
-      .string()
-      .min(1, "Chat identifier is required")
+      .string({
+        required_error: "Chat identifier is required",
+        invalid_type_error: "Chat identifier must be a string",
+      })
+      .min(1, "Chat identifier cannot be empty")
       .meta({
         description: "Telegram chat identifier (chat ID or username)",
         examples: ["-1001234567890", "@mychannel", "123456789"],
       }),
     bot_token: z
-      .string()
-      .min(1, "Bot token is required")
+      .string({
+        required_error: "Bot token is required",
+        invalid_type_error: "Bot token must be a string",
+      })
+      .min(1, "Bot token cannot be empty")
       .meta({
         description: "Telegram bot token for authentication",
         examples: ["1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"],
       }),
   })
+  .strict()
   .meta({
     description: "Configuration for Telegram channels",
   });

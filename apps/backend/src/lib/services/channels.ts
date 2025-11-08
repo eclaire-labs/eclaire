@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { channels } from "@/db/schema";
+import { db, schema } from "@/db";
+
+const { channels } = schema;
 import {
   type ChannelCapability,
   type ChannelPlatform,
@@ -15,7 +16,7 @@ import type {
   ListChannelsResponse,
   UpdateChannelResponse,
 } from "@/schemas/channels-responses";
-import { formatToISO8601 } from "../db-helpers";
+import { formatToISO8601, formatRequiredTimestamp } from "../db-helpers";
 import { decrypt, encrypt } from "../encryption";
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history";
@@ -54,10 +55,14 @@ function validateAndEncryptConfig(
 
     return validatedConfig;
   } catch (error) {
+    // Log detailed error for debugging
     logger.error(
       {
         platform,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error:
+          error instanceof Error
+            ? error.message
+            : JSON.stringify(error, null, 2),
       },
       "Failed to validate/encrypt config",
     );
@@ -76,8 +81,8 @@ function formatChannelForResponse(channel: any): ChannelResponse {
     platform: channel.platform,
     capability: channel.capability,
     isActive: channel.isActive,
-    createdAt: formatToISO8601(channel.createdAt),
-    updatedAt: formatToISO8601(channel.updatedAt),
+    createdAt: formatRequiredTimestamp(channel.createdAt),
+    updatedAt: formatRequiredTimestamp(channel.updatedAt),
   };
 }
 
@@ -418,7 +423,7 @@ export async function getNotificationChannels(
 
     const whereConditions: any[] = [
       eq(channels.userId, userId),
-      eq(channels.isActive, true),
+      channels.isActive,
     ];
 
     // If specific channels are requested

@@ -1,14 +1,14 @@
 import type { Queue } from "bullmq";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
-import { db } from "../../db/index";
-import {
+import { db, schema, txManager } from "../../db/index";
+const {
   assetProcessingJobs,
   bookmarks,
   documents,
   notes,
   photos,
   tasks,
-} from "../../db/schema";
+} = schema;
 import { publishProcessingEvent } from "../../routes/processing-events";
 import type { AssetType, ProcessingStatus } from "../../types/assets";
 import { createChildLogger } from "../logger";
@@ -144,7 +144,7 @@ export async function createOrUpdateProcessingJob(
             errorDetails: null,
             startedAt: null,
             completedAt: null,
-            updatedAt: new Date(),
+            // updatedAt removed - handled by schema defaults
           },
         })
         .returning();
@@ -266,157 +266,160 @@ export async function updateProcessingJobStatus(
   addStages?: string[],
 ): Promise<ProcessingJobDetails | null> {
   try {
-    // A transaction is crucial to ensure all updates for a single event
-    // are applied atomically, preventing race conditions.
-    const updatedJob = await db.transaction(async (tx) => {
-      // 1. Fetch the current state of the job.
-      const job = await tx.query.assetProcessingJobs.findFirst({
-        where: and(
-          eq(assetProcessingJobs.assetType, assetType),
-          eq(assetProcessingJobs.assetId, assetId),
-        ),
-      });
+    // 1. Fetch the current state of the job BEFORE transaction.
+    // NOTE: This introduces a small race condition window, but it's necessary
+    // for SQLite compatibility. The transaction still ensures atomicity of the update itself.
+    const job = await db.query.assetProcessingJobs.findFirst({
+      where: and(
+        eq(assetProcessingJobs.assetType, assetType),
+        eq(assetProcessingJobs.assetId, assetId),
+      ),
+    });
 
-      if (!job) {
-        logger.warn(
-          { assetType, assetId },
-          "Processing job not found for status update",
-        );
-        return null;
+    if (!job) {
+      logger.warn(
+        { assetType, assetId },
+        "Processing job not found for status update",
+      );
+      return null;
+    }
+
+    // 2. Prepare data structures for the update.
+    const existingStages: ProcessingStage[] =
+      (job.stages as ProcessingStage[]) || [];
+    const now = Math.floor(Date.now() / 1000);
+    const nowDate = new Date();
+
+    // Initialize updateData with a flexible type to handle SQL expressions
+    const updateData: Record<string, any> = {
+      updatedAt: new Date(),
+    };
+
+    // 3. (RACE CONDITION FIX) Handle adding new stages first, if requested.
+    // This logic runs before any other status update, ensuring the stage list is
+    // up-to-date within the same transaction.
+    if (addStages && addStages.length > 0) {
+      const stagesToAdd: ProcessingStage[] = addStages
+        // Filter out stages that might already exist to be safe
+        .filter((newName) => !existingStages.some((s) => s.name === newName))
+        .map((stageName) => ({
+          name: stageName,
+          status: "pending",
+          progress: 0,
+        }));
+
+      if (stagesToAdd.length > 0) {
+        existingStages.push(...stagesToAdd);
       }
+    }
 
-      // 2. Prepare data structures for the update.
-      const existingStages: ProcessingStage[] =
-        (job.stages as ProcessingStage[]) || [];
-      const now = Math.floor(Date.now() / 1000);
-      const nowDate = new Date();
+    // 4. Update the specific stage's details if a 'stage' is provided in the call.
+    if (stage) {
+      const stageIndex = existingStages.findIndex((s) => s.name === stage);
 
-      // Initialize updateData with a flexible type to handle SQL expressions
-      const updateData: Record<string, any> = {
-        updatedAt: new Date(),
-      };
-
-      // 3. (RACE CONDITION FIX) Handle adding new stages first, if requested.
-      // This logic runs before any other status update, ensuring the stage list is
-      // up-to-date within the same transaction.
-      if (addStages && addStages.length > 0) {
-        const stagesToAdd: ProcessingStage[] = addStages
-          // Filter out stages that might already exist to be safe
-          .filter((newName) => !existingStages.some((s) => s.name === newName))
-          .map((stageName) => ({
-            name: stageName,
-            status: "pending",
-            progress: 0,
-          }));
-
-        if (stagesToAdd.length > 0) {
-          existingStages.push(...stagesToAdd);
-        }
-      }
-
-      // 4. Update the specific stage's details if a 'stage' is provided in the call.
-      if (stage) {
-        const stageIndex = existingStages.findIndex((s) => s.name === stage);
-
-        // This check is important for the race condition fix.
-        // The stage now exists in `existingStages` because step 3 ran first.
-        if (stageIndex >= 0) {
-          const stageToUpdate = existingStages[stageIndex];
-          if (!stageToUpdate) {
-            logger.error(
-              { assetType, assetId, stage, stageIndex },
-              "Stage found by index but is undefined",
-            );
-            return null;
-          }
-
-          stageToUpdate.status = status;
-          stageToUpdate.progress = progress ?? stageToUpdate.progress;
-          if (error) stageToUpdate.error = error;
-
-          // Set stage-specific timestamps
-          if (status === "processing" && !stageToUpdate.startedAt) {
-            stageToUpdate.startedAt = now;
-          }
-          if (["completed", "failed"].includes(status)) {
-            stageToUpdate.completedAt = now;
-          }
-        } else {
-          logger.warn(
-            { assetType, assetId, stage },
-            "Attempted to update a stage that does not exist in the job's stage list.",
+      // This check is important for the race condition fix.
+      // The stage now exists in `existingStages` because step 3 ran first.
+      if (stageIndex >= 0) {
+        const stageToUpdate = existingStages[stageIndex];
+        if (!stageToUpdate) {
+          logger.error(
+            { assetType, assetId, stage, stageIndex },
+            "Stage found by index but is undefined",
           );
+          return null;
         }
 
-        // The job's current stage is the one being actively updated.
-        updateData.currentStage = stage;
-      }
+        stageToUpdate.status = status;
+        stageToUpdate.progress = progress ?? stageToUpdate.progress;
+        if (error) stageToUpdate.error = error;
 
-      // 5. Determine the overall job status and manage job-level timestamps.
-      if (status === "failed") {
-        // If any stage fails, the entire job fails.
-        updateData.status = "failed";
-        updateData.completedAt = nowDate; // A failed job is also a completed job.
-        updateData.currentStage = stage || job.currentStage; // Keep context of what failed.
-        updateData.errorMessage = error || null;
-        updateData.errorDetails = errorDetails || null;
-      } else if (status === "completed" && !stage) {
-        // This block handles a 'completeJob()' call (no specific stage).
-        updateData.status = "completed";
-        updateData.completedAt = nowDate;
-        updateData.currentStage = null; // No current stage when the job is fully done.
-        updateData.overallProgress = 100;
-        // Mark any pending stages as completed as well
-        for (const s of existingStages) {
-          if (s.status !== "completed") {
-            s.status = "completed";
-            s.progress = 100;
-            if (!s.completedAt) s.completedAt = now;
-          }
+        // Set stage-specific timestamps
+        if (status === "processing" && !stageToUpdate.startedAt) {
+          stageToUpdate.startedAt = now;
+        }
+        if (["completed", "failed"].includes(status)) {
+          stageToUpdate.completedAt = now;
         }
       } else {
-        // Any other update (e.g., stage 'processing', stage 'completed') means the job is 'processing'.
-        updateData.status = "processing";
-        updateData.completedAt = null; // (PREMATURE `completedAt` FIX) Explicitly nullify on processing.
-        if (!job.startedAt) {
-          updateData.startedAt = nowDate;
+        logger.warn(
+          { assetType, assetId, stage },
+          "Attempted to update a stage that does not exist in the job's stage list.",
+        );
+      }
+
+      // The job's current stage is the one being actively updated.
+      updateData.currentStage = stage;
+    }
+
+    // 5. Determine the overall job status and manage job-level timestamps.
+    if (status === "failed") {
+      // If any stage fails, the entire job fails.
+      updateData.status = "failed";
+      updateData.completedAt = nowDate; // A failed job is also a completed job.
+      updateData.currentStage = stage || job.currentStage; // Keep context of what failed.
+      updateData.errorMessage = error || null;
+      updateData.errorDetails = errorDetails || null;
+    } else if (status === "completed" && !stage) {
+      // This block handles a 'completeJob()' call (no specific stage).
+      updateData.status = "completed";
+      updateData.completedAt = nowDate;
+      updateData.currentStage = null; // No current stage when the job is fully done.
+      updateData.overallProgress = 100;
+      // Mark any pending stages as completed as well
+      for (const s of existingStages) {
+        if (s.status !== "completed") {
+          s.status = "completed";
+          s.progress = 100;
+          if (!s.completedAt) s.completedAt = now;
         }
       }
-
-      // 6. Recalculate overall progress and finalize the update payload.
-      updateData.stages = existingStages;
-      if (updateData.status !== "completed") {
-        // Avoid overwriting 100% on final completion
-        updateData.overallProgress =
-          existingStages.length > 0
-            ? Math.round(
-                existingStages.reduce((sum, s) => sum + (s.progress || 0), 0) /
-                  existingStages.length,
-              )
-            : (progress ?? job.overallProgress ?? 0);
+    } else {
+      // Any other update (e.g., stage 'processing', stage 'completed') means the job is 'processing'.
+      updateData.status = "processing";
+      updateData.completedAt = null; // (PREMATURE `completedAt` FIX) Explicitly nullify on processing.
+      if (!job.startedAt) {
+        updateData.startedAt = nowDate;
       }
+    }
 
-      // 7. Filter out undefined values to prevent SQL syntax errors
-      const cleanUpdateData: Record<string, any> = {};
-      for (const [key, value] of Object.entries(updateData)) {
-        if (value !== undefined) {
-          cleanUpdateData[key] = value;
-        }
+    // 6. Recalculate overall progress and finalize the update payload.
+    updateData.stages = existingStages;
+    if (updateData.status !== "completed") {
+      // Avoid overwriting 100% on final completion
+      updateData.overallProgress =
+        existingStages.length > 0
+          ? Math.round(
+              existingStages.reduce((sum, s) => sum + (s.progress || 0), 0) /
+                existingStages.length,
+            )
+          : (progress ?? job.overallProgress ?? 0);
+    }
+
+    // 7. Filter out undefined values to prevent SQL syntax errors
+    const cleanUpdateData: Record<string, any> = {};
+    for (const [key, value] of Object.entries(updateData)) {
+      if (value !== undefined) {
+        cleanUpdateData[key] = value;
       }
+    }
 
-      logger.debug(
-        { assetType, assetId, cleanUpdateData },
-        "About to update processing job with cleaned data",
+    logger.debug(
+      { assetType, assetId, cleanUpdateData },
+      "About to update processing job with cleaned data",
+    );
+
+    // 8. Execute synchronous transaction to commit all collected changes
+    let updatedJob: any;
+    await txManager.withTransaction((tx) => {
+      tx.assetProcessingJobs.update(
+        eq(assetProcessingJobs.id, job.id),
+        cleanUpdateData
       );
+    });
 
-      // 8. Commit all collected changes to the database in one go.
-      const [result] = await tx
-        .update(assetProcessingJobs)
-        .set(cleanUpdateData)
-        .where(eq(assetProcessingJobs.id, job.id))
-        .returning();
-
-      return result;
+    // 9. Fetch the updated job to return (since we can't use .returning() in sync transaction)
+    updatedJob = await db.query.assetProcessingJobs.findFirst({
+      where: eq(assetProcessingJobs.id, job.id),
     });
 
     if (!updatedJob) {
@@ -560,23 +563,23 @@ export async function getUserProcessingSummary(
           or(
             and(
               eq(assetProcessingJobs.assetType, "photos"),
-              eq(photos.enabled, true),
+              photos.enabled,
             ),
             and(
               eq(assetProcessingJobs.assetType, "documents"),
-              eq(documents.enabled, true),
+              documents.enabled,
             ),
             and(
               eq(assetProcessingJobs.assetType, "bookmarks"),
-              eq(bookmarks.enabled, true),
+              bookmarks.enabled,
             ),
             and(
               eq(assetProcessingJobs.assetType, "notes"),
-              eq(notes.enabled, true),
+              notes.enabled,
             ),
             and(
               eq(assetProcessingJobs.assetType, "tasks"),
-              eq(tasks.enabled, true),
+              tasks.enabled,
             ),
           ),
         ),
@@ -768,23 +771,23 @@ export async function getUserProcessingJobs(
           or(
             and(
               eq(assetProcessingJobs.assetType, "photos"),
-              eq(photos.enabled, true),
+              photos.enabled,
             ),
             and(
               eq(assetProcessingJobs.assetType, "documents"),
-              eq(documents.enabled, true),
+              documents.enabled,
             ),
             and(
               eq(assetProcessingJobs.assetType, "bookmarks"),
-              eq(bookmarks.enabled, true),
+              bookmarks.enabled,
             ),
             and(
               eq(assetProcessingJobs.assetType, "notes"),
-              eq(notes.enabled, true),
+              notes.enabled,
             ),
             and(
               eq(assetProcessingJobs.assetType, "tasks"),
-              eq(tasks.enabled, true),
+              tasks.enabled,
             ),
           ),
         ),
@@ -1261,7 +1264,8 @@ async function retryPhotoProcessing(
     await resetProcessingJobState("photos", assetId, userId);
 
     // Get photo details to determine job requirements
-    const { photos } = await import("../../db/schema");
+    const { schema } = await import("../../db/index");
+    const { photos } = schema;
     const { eq, and } = await import("drizzle-orm");
 
     const photo = await db.query.photos.findFirst({
@@ -1321,7 +1325,8 @@ async function queueRetryJob(
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
   // Import necessary modules for document lookup
-  const { documents } = await import("../../db/schema");
+  const { schema } = await import("../../db/index");
+  const { documents } = schema;
   const { eq, and } = await import("drizzle-orm");
   try {
     switch (assetType) {
@@ -1429,7 +1434,8 @@ async function retryBookmarkProcessing(
     await resetProcessingJobState("bookmarks", assetId, userId);
 
     // Get bookmark details to determine job requirements
-    const { bookmarks } = await import("../../db/schema");
+    const { schema } = await import("../../db/index");
+    const { bookmarks } = schema;
     const { eq, and } = await import("drizzle-orm");
 
     const bookmark = await db.query.bookmarks.findFirst({
@@ -1481,7 +1487,8 @@ async function retryDocumentProcessing(
     await resetProcessingJobState("documents", assetId, userId);
 
     // Get document details to determine job requirements
-    const { documents } = await import("../../db/schema");
+    const { schema } = await import("../../db/index");
+    const { documents } = schema;
     const { eq, and } = await import("drizzle-orm");
 
     const document = await db.query.documents.findFirst({
@@ -1536,7 +1543,8 @@ async function retryNoteProcessing(
     await resetProcessingJobState("notes", assetId, userId);
 
     // Get note details to determine job requirements
-    const { notes } = await import("../../db/schema");
+    const { schema } = await import("../../db/index");
+    const { notes } = schema;
     const { eq, and } = await import("drizzle-orm");
 
     const note = await db.query.notes.findFirst({
@@ -1586,7 +1594,8 @@ async function retryTaskProcessing(
     await resetProcessingJobState("tasks", assetId, userId);
 
     // Get task details to determine job requirements
-    const { tasks } = await import("../../db/schema");
+    const { schema } = await import("../../db/index");
+    const { tasks } = schema;
     const { eq, and } = await import("drizzle-orm");
 
     const task = await db.query.tasks.findFirst({

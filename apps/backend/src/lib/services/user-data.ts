@@ -1,7 +1,9 @@
 import { verifyPassword } from "better-auth/crypto";
 import { and, count, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
-import { db } from "@/db";
-import {
+import { db, schema } from "@/db";
+import { createChildLogger } from "../logger";
+
+const {
   accounts,
   assetProcessingJobs,
   bookmarks,
@@ -11,8 +13,7 @@ import {
   photos,
   tasks,
   users,
-} from "@/db/schema";
-import { createChildLogger } from "../logger";
+} = schema;
 import { LocalObjectStorage, objectStorage } from "../storage";
 
 // Import individual deletion services
@@ -696,19 +697,19 @@ export async function getQuickStats(userId: string) {
       db
         .select({ count: count() })
         .from(bookmarks)
-        .where(and(eq(bookmarks.userId, userId), eq(bookmarks.isPinned, true))),
+        .where(and(eq(bookmarks.userId, userId), bookmarks.isPinned)),
       db
         .select({ count: count() })
         .from(documents)
-        .where(and(eq(documents.userId, userId), eq(documents.isPinned, true))),
+        .where(and(eq(documents.userId, userId), documents.isPinned)),
       db
         .select({ count: count() })
         .from(photos)
-        .where(and(eq(photos.userId, userId), eq(photos.isPinned, true))),
+        .where(and(eq(photos.userId, userId), photos.isPinned)),
       db
         .select({ count: count() })
         .from(notes)
-        .where(and(eq(notes.userId, userId), eq(notes.isPinned, true))),
+        .where(and(eq(notes.userId, userId), notes.isPinned)),
 
       // Pending review items
       db

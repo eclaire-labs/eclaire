@@ -42,7 +42,7 @@ else
 fi
 
 # 2. Clear old migration files
-MIGRATIONS_DIR="src/db/migrations"
+MIGRATIONS_DIR="src/db/migrations-postgres"
 echo "🗑️  Step 2: Deleting and recreating migrations directory '$MIGRATIONS_DIR'..."
 rm -rf "$MIGRATIONS_DIR"
 mkdir -p "$MIGRATIONS_DIR"

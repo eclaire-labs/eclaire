@@ -14,15 +14,16 @@ import exifr from "exifr"; // <-- Import exifr
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 import { Readable } from "stream";
-import { db } from "@/db";
-import {
+import { db, txManager, schema } from "@/db";
+import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
+
+const {
   assetProcessingJobs,
   photos,
   photosTags,
   tags,
   users,
-} from "@/db/schema"; // Ensure users schema is imported if needed elsewhere
-import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
+} = schema;
 import { getQueue, QueueNames } from "@/lib/queues"; // Import queue utilities
 import { getQueueAdapter } from "@/lib/queue-adapter";
 import { objectStorage, type StorageInfo } from "@/lib/storage";
@@ -620,7 +621,6 @@ export async function deletePhoto(
     await db.delete(photosTags).where(eq(photosTags.photoId, id));
 
     // 3. Delete processing jobs for this photo
-    const { assetProcessingJobs } = await import("@/db/schema");
     await db
       .delete(assetProcessingJobs)
       .where(
@@ -1658,46 +1658,34 @@ export async function updatePhotoArtifacts(
       updatePayload.dominantColors = artifacts.dominantColors;
     }
 
-    // Start a transaction for photo + tags update
-    await db.transaction(async (tx) => {
-      const result = await tx
-        .update(photos)
-        .set(updatePayload)
+    // Get or create tags BEFORE transaction if tags are provided
+    let tagRecords: { id: string; name: string }[] = [];
+    if (artifacts.tags !== undefined && artifacts.tags.length > 0) {
+      // Get the photo's userId for tag scoping
+      const photo = await db
+        .select({ userId: photos.userId })
+        .from(photos)
         .where(eq(photos.id, photoId));
 
-      // if (result.rowCount === 0) {
-      //   logger.warn({ photoId }, "Photo not found during artifacts update");
-      //   return;
-      // }
+      if (photo.length > 0 && photo[0]) {
+        tagRecords = await getOrCreateTags(artifacts.tags, photo[0].userId);
+      }
+    }
+
+    // Execute synchronous transaction
+    await txManager.withTransaction((tx) => {
+      tx.photos.update(eq(photos.id, photoId), updatePayload);
 
       // Handle AI-generated tags if provided
       if (artifacts.tags !== undefined) {
-        await tx.delete(photosTags).where(eq(photosTags.photoId, photoId));
-        if (artifacts.tags.length > 0) {
-          // Get the photo's userId for tag scoping
-          const photo = await tx
-            .select({ userId: photos.userId })
-            .from(photos)
-            .where(eq(photos.id, photoId));
-
-          if (photo.length > 0 && photo[0]) {
-            const tagRecords = await getOrCreateTags(
-              artifacts.tags,
-              photo[0].userId,
-              tx,
-            );
-            if (tagRecords.length > 0) {
-              await tx
-                .insert(photosTags)
-                .values(
-                  tagRecords.map((tag) => ({
-                    photoId: photoId,
-                    tagId: tag.id,
-                  })),
-                )
-                .onConflictDoNothing();
-            }
-          }
+        tx.photosTags.delete(eq(photosTags.photoId, photoId));
+        if (tagRecords.length > 0) {
+          tagRecords.forEach((tag) => {
+            tx.photosTags.insert({
+              photoId: photoId,
+              tagId: tag.id,
+            });
+          });
         }
       }
     });

@@ -11,12 +11,21 @@ const dbType = process.env.DATABASE_TYPE?.toLowerCase();
 // For PGlite, use the configured path or default
 const pglitePath = process.env.PGLITE_DATA_DIR || "./data/db/pglite";
 
+// For SQLite, use the configured path or default
+const sqlitePath = process.env.SQLITE_DATA_DIR || "./data/db/sqlite.db";
+
+// Determine schema, dialect, and output based on database type
+const isSqlite = dbType === "sqlite";
+
 export default {
-  schema: "./src/db/schema.ts",
-  out: "./src/db/migrations",
-  dialect: "postgresql", // PGlite uses PostgreSQL dialect
-  dbCredentials:
-    dbType === "pglite"
+  schema: isSqlite ? "./src/db/schema/sqlite.ts" : "./src/db/schema/postgres.ts",
+  out: isSqlite ? "./src/db/migrations-sqlite" : "./src/db/migrations-postgres",
+  dialect: isSqlite ? "sqlite" : "postgresql",
+  dbCredentials: isSqlite
+    ? {
+        url: sqlitePath,
+      }
+    : dbType === "pglite"
       ? {
           url: pglitePath,
         }

@@ -1,7 +1,8 @@
 // lib/services/history.ts
-import { db } from "@/db";
-import { history } from "@/db/schema";
+import { db, schema } from "@/db";
 import { createChildLogger } from "../logger";
+
+const { history } = schema;
 
 const logger = createChildLogger("services:history");
 
