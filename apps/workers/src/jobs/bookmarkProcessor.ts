@@ -79,6 +79,10 @@ async function processRegularBookmarkJob(
       throw error;
     }
 
+    if (!context) {
+      throw new Error("Failed to create browser context");
+    }
+
     logger.debug({ bookmarkId }, "Creating new page...");
     page = await context.newPage();
     logger.debug({ bookmarkId }, "New page created successfully.");
