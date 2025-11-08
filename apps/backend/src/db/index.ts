@@ -9,12 +9,15 @@ import * as schema from "./schema";
 const logger = createChildLogger("db");
 
 // Singleton instance
-let dbInstance: ReturnType<typeof drizzlePostgres> | ReturnType<typeof drizzlePglite> | null = null;
+// Both drizzlePostgres and drizzlePglite return compatible database instances
+// We use the PostgreSQL type as the common type since PGlite implements the same interface
+type DbInstance = ReturnType<typeof drizzlePostgres<typeof schema>>;
+let dbInstance: DbInstance | null = null;
 
 /**
  * Initialize the database client based on DATABASE_TYPE
  */
-function initializeDatabase() {
+function initializeDatabase(): DbInstance {
   if (dbInstance) {
     return dbInstance;
   }
@@ -27,7 +30,9 @@ function initializeDatabase() {
     logger.info({ path: pglitePath }, "Initializing PGlite database");
 
     const client = new PGlite(pglitePath);
-    dbInstance = drizzlePglite(client, { schema });
+    // PGlite implements the same Drizzle ORM interface as PostgreSQL
+    // Use 'as any' to bypass internal type differences while maintaining external API compatibility
+    dbInstance = drizzlePglite(client, { schema }) as any;
 
     logger.info({ path: pglitePath }, "PGlite database initialized");
   } else {
@@ -55,17 +60,13 @@ function initializeDatabase() {
     );
   }
 
-  return dbInstance;
+  // dbInstance is always set at this point
+  return dbInstance!;
 }
 
-// Export db with lazy initialization
-// Using a getter to maintain backward compatibility with `import { db } from "@/db"`
-export const db = new Proxy({} as ReturnType<typeof initializeDatabase>, {
-  get(target, prop) {
-    const instance = initializeDatabase();
-    return (instance as any)[prop];
-  },
-});
+// Export db instance directly
+// Direct initialization provides better TypeScript type inference
+export const db = initializeDatabase();
 
 // Export the schema for migrations and other uses
 export { schema };
