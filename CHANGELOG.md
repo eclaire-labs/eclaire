@@ -1,5 +1,36 @@
 # Eclaire Changelog
 
+## [0.5.0] - 2025-11-11
+
+### ⚠️ Migration Notes
+
+This release includes significant tooling changes:
+
+- **Node.js Version**: Upgraded requirement from v22 to v24 LTS
+  - Ensure you're running Node.js v24.x
+
+- **Package Manager**: Migrated from npm to pnpm
+  - Enable corepack (one-time setup): `corepack enable`
+  - Delete `node_modules` folders: `rm -rf node_modules apps/*/node_modules tools/*/node_modules`
+  - Install dependencies: `pnpm install`
+
+### CI/CD
+
+- **deps**: migrate to pnpm and update package dependencies
+- **deps**: upgrade Node.js requirement from v22 to v24 LTS
+- **deps**: change Node.js engine from >=24.0.0 to ^24.0.0
+
+### Bug Fixes
+
+- **workers**: eliminate macOS keychain popup by using non-persistent browser contexts
+- **workers**: add null check for browser context in bookmark processor
+- **db**: correct key length in seed script
+- **db**: complete key length correction in seed script
+- **docker**: use monorepo root as build context for pnpm workspace compatibility
+- **ci**: use repository root as Docker build context in GitHub Actions
+
+---
+
 ## [0.4.1] - 2025-10-30
 ### Security
 - **deps**: bumped Hono to address security vulnerabilities (GHSA-m732-5p4w-x69g, GHSA-q7jf-gf43-6x6p)
