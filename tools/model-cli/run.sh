@@ -12,8 +12,8 @@ fi
 # Check if node_modules exists, if not install dependencies
 if [ ! -d "$SCRIPT_DIR/node_modules" ]; then
     echo "Installing model-cli dependencies..."
-    cd "$SCRIPT_DIR" && npm install
+    cd "$SCRIPT_DIR" && pnpm install
 fi
 
 # Run the TypeScript file directly with tsx
-cd "$SCRIPT_DIR" && npx tsx main.ts "$@"
+cd "$SCRIPT_DIR" && pnpm dlx tsx main.ts "$@"

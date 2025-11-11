@@ -11,6 +11,6 @@ Please describe the tests that you ran to verify your changes, tests added, etc.
 - [ ] Test B
 
 ## Checklist:
-- [ ] My code follows the project’s style guidelines (`npm run format`)
+- [ ] My code follows the project's style guidelines (`pnpm format`)
 - [ ] I have added tests where needed
 - [ ] I have updated documentation where appropriate

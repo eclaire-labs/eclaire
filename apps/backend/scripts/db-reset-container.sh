@@ -68,9 +68,9 @@ PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d post
 echo "✅ Database cleaned successfully!"
 
 echo "🏗️  Step 2: Applying database migrations..."
-npm run db:migrate:apply:prod:force
+pnpm run db:migrate:apply:prod:force
 
 echo "🌱 Step 3: Seeding with '$SEED_TYPE' data..."
-npm run "db:seed:$SEED_TYPE:prod" # <-- Use the 'prod' version
+pnpm run "db:seed:$SEED_TYPE:prod" # <-- Use the 'prod' version
 
 echo "🎉 Staging database reset complete!"

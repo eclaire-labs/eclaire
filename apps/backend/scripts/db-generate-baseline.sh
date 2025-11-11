@@ -34,7 +34,7 @@ echo "✅ Old migrations cleared."
 
 # 2. Generate a new baseline migration from schema.ts
 echo "🏗️  Generating new baseline migration..."
-npm run db:migrate:generate
+pnpm run db:migrate:generate
 
 echo ""
 echo "✅ New baseline migration generated successfully!"

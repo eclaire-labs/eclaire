@@ -67,15 +67,15 @@ echo "✅ Migrations directory is now clean."
 
 # 4. Generate a new baseline migration from schema.ts
 echo "🏗️  Step 4: Generating new baseline migration..."
-npm run db:migrate:generate
+pnpm run db:migrate:generate
 
 # 5. Apply the new baseline migration
 echo "✅ Step 5: Applying baseline migration to the database..."
-npm run db:migrate:apply
+pnpm run db:migrate:apply
 
 # 6. Seed the database
 echo "🌱 Step 6: Seeding with '$SEED_TYPE' data..."
-npm run "db:seed:$SEED_TYPE"
+pnpm run "db:seed:$SEED_TYPE"
 
 echo ""
 echo "✅ Database reset complete!"

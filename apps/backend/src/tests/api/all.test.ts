@@ -190,7 +190,7 @@ describe("POST /api/all Integration Tests", () => {
     formData.append("metadata", JSON.stringify(metadata));
     formData.append(
       "content",
-      new Blob([photoBuffer], { type: "image/jpeg" }),
+      new Blob([photoBuffer as BlobPart], { type: "image/jpeg" }),
       "photo1.jpg",
     );
 
@@ -220,7 +220,7 @@ describe("POST /api/all Integration Tests", () => {
     formData.append("metadata", JSON.stringify(metadata));
     formData.append(
       "content",
-      new Blob([docBuffer], { type: "application/pdf" }),
+      new Blob([docBuffer as BlobPart], { type: "application/pdf" }),
       "document2.pdf",
     );
 

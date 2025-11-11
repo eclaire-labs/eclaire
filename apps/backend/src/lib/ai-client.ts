@@ -1296,13 +1296,13 @@ export async function callAIStream(
     }
 
     // Transform MLX-VLM stream to OpenAI format if needed
-    let stream = response.body;
+    let stream: ReadableStream<Uint8Array> = response.body;
     if (isMLXVLMProvider(provider.name)) {
       logger.debug(
         { provider: provider.name },
         "Transforming MLX-VLM stream to OpenAI format",
       );
-      stream = transformMLXVLMStreamToOpenAI(stream);
+      stream = transformMLXVLMStreamToOpenAI(stream) as typeof stream;
     }
 
     // Capture trace if enabled

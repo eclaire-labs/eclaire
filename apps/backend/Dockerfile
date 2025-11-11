@@ -23,8 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-# Pin npm to match your lockfile version for reproducibility
-RUN corepack enable && corepack prepare npm@11.5.1 --activate
+# Enable pnpm via corepack
+RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
 
 # Build metadata (optional)
 ARG APP_VERSION=N/A
@@ -39,20 +39,21 @@ ENV APP_VERSION=${APP_VERSION} \
     APP_GIT_HASH=${APP_GIT_HASH}
 
 # Install all deps (including dev) with cache
-COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # Copy the rest and build
 COPY . .
 # If you generate code (e.g., drizzle generate/prisma generate), do it here before build
-# RUN npm run db:generate
-RUN npm run build
+# RUN pnpm run db:generate
+RUN pnpm build
 
 # ===== Production deps (pruned) =====
 FROM node:24-bookworm-slim AS prod-deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
+COPY package.json pnpm-lock.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --prod
 
 # ===== Runner Stage =====
 FROM base AS runner
@@ -107,7 +108,8 @@ COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 
 # Copy pruned production node_modules and runtime files
 COPY --from=prod-deps --chown=nodeapp:nodeapp /app/node_modules ./node_modules
-COPY --from=builder  --chown=nodeapp:nodeapp /app/package*.json ./
+COPY --from=builder  --chown=nodeapp:nodeapp /app/package.json ./
+COPY --from=builder  --chown=nodeapp:nodeapp /app/pnpm-lock.yaml ./
 COPY --from=builder  --chown=nodeapp:nodeapp /app/dist ./dist
 COPY --from=builder  --chown=nodeapp:nodeapp /app/tool-signatures.json ./
 

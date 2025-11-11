@@ -34,11 +34,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # COPY ./docker/imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 
 # Install deps (dev included) with cache
-COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # Install patchright browsers (needed for workers)
-RUN npx patchright install chromium
+RUN pnpm dlx patchright install chromium
 
 # Copy source and build
 COPY . .
@@ -54,13 +55,14 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     APP_COMMITS_SINCE_TAG=${APP_COMMITS_SINCE_TAG} \
     APP_BUILD_TIMESTAMP=${APP_BUILD_TIMESTAMP} \
     APP_GIT_HASH=${APP_GIT_HASH}
-RUN npm run build
+RUN pnpm build
 
 # ===== Production deps (pruned) =====
 FROM node:24-bookworm-slim AS prod-deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --prod
 
 # ===== Runner (slim) =====
 FROM base AS runner

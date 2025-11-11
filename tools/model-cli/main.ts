@@ -106,6 +106,10 @@ program.exitOverride((err) => {
     // Help output is expected, exit gracefully
     process.exit(0);
   }
+  if (err.code === 'commander.version') {
+    // Version output is expected, exit gracefully
+    process.exit(0);
+  }
   throw err;
 });
 

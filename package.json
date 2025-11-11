@@ -2,7 +2,7 @@
   "name": "@eclaire/monorepo",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "npm@11.5.1",
+  "packageManager": "pnpm@10.21.0",
   "license": "MIT",
   "description": "Eclaire - AI-powered productivity platform",
   "repository": {
@@ -25,13 +25,13 @@
     "setup:prod:yes": "node scripts/setup.js prod --yes",
     "setup:check": "node scripts/setup.js dev --skip-db --skip-models",
     "setup:clean": "node scripts/setup-clean.js",
-    "dev": "npm run dev:backend & npm run dev:frontend & npm run dev:workers",
-    "dev:backend": "cd apps/backend && npm run dev",
-    "dev:frontend": "cd apps/frontend && npm run dev",
-    "dev:workers": "cd apps/workers && npm run dev",
-    "build": "cd apps/backend && npm run build && cd ../frontend && npm run build && cd ../workers && npm run build",
-    "test": "cd apps/backend && npm run test && cd ../frontend && npm run test && cd ../workers && npm run test",
-    "lint": "cd apps/backend && npm run lint && cd ../frontend && npm run lint && cd ../workers && npm run lint",
-    "format": "cd apps/backend && npm run format && cd ../frontend && npm run format && cd ../workers && npm run format"
+    "dev": "pnpm dev:backend & pnpm dev:frontend & pnpm dev:workers",
+    "dev:backend": "cd apps/backend && pnpm dev",
+    "dev:frontend": "cd apps/frontend && pnpm dev",
+    "dev:workers": "cd apps/workers && pnpm dev",
+    "build": "cd apps/backend && pnpm build && cd ../frontend && pnpm build && cd ../workers && pnpm build",
+    "test": "cd apps/backend && pnpm test && cd ../frontend && pnpm test && cd ../workers && pnpm test",
+    "lint": "cd apps/backend && pnpm lint && cd ../frontend && pnpm lint && cd ../workers && pnpm lint",
+    "format": "cd apps/backend && pnpm format && cd ../frontend && pnpm format && cd ../workers && pnpm format"
   }
 }

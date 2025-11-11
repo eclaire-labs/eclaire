@@ -29,15 +29,17 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     BACKEND_URL=${BACKEND_URL}
 
 # 1) Install deps with cache
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml ./
+# Enable corepack and prepare pnpm
+RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
 # Use BuildKit cache for faster incremental builds
-RUN --mount=type=cache,target=/root/.npm npm ci
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # 2) Copy source
 COPY . .
 
 # 3) Build
-RUN npm run build
+RUN pnpm build
 
 # ===== Runner Stage =====
 FROM base AS runner

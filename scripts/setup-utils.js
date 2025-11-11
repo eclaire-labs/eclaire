@@ -72,11 +72,11 @@ async function checkDependencies(env = 'dev') {
       }
     },
     {
-      name: 'npm',
-      command: 'npm',
-      minVersion: '11.5.1',
+      name: 'pnpm',
+      command: 'pnpm',
+      minVersion: '10.21.0',
       check: () => {
-        const version = getVersion('npm', '-v');
+        const version = getVersion('pnpm', '-v');
         return { exists: true, version };
       }
     },
@@ -197,7 +197,7 @@ async function checkDependencies(env = 'dev') {
       allGood = false;
       console.log(`     ${colors.red}Please install ${dep.name}${colors.reset}`);
       if (dep.name === 'PM2') {
-        console.log(`     Run: ${colors.cyan}npm install -g pm2${colors.reset}`);
+        console.log(`     Run: ${colors.cyan}pnpm add -g pm2${colors.reset}`);
       } else if (dep.name === 'LibreOffice') {
         console.log(`     macOS: ${colors.cyan}brew install --cask libreoffice${colors.reset}`);
         console.log(`     Ubuntu/Debian: ${colors.cyan}sudo apt-get install libreoffice${colors.reset}`);
@@ -394,9 +394,9 @@ async function checkModels() {
   return true;
 }
 
-// Install npm dependencies for all apps
+// Install pnpm dependencies for all apps
 async function installDependencies(env = 'dev') {
-  console.log('\n  Installing npm dependencies...');
+  console.log('\n  Installing pnpm dependencies...');
 
   const apps = ['apps/backend', 'apps/frontend', 'apps/workers'];
   let successCount = 0;
@@ -405,7 +405,7 @@ async function installDependencies(env = 'dev') {
   for (const app of apps) {
     console.log(`  Installing dependencies for ${app}...`);
 
-    const result = exec(`cd ${app} && npm install`, true);
+    const result = exec(`cd ${app} && pnpm install`, true);
 
     if (result.success) {
       console.log(`  ✅ ${app}: Dependencies installed`);
@@ -419,7 +419,7 @@ async function installDependencies(env = 'dev') {
 
   if (failedApps.length > 0) {
     console.log(`\n  ${colors.red}❌ Failed to install dependencies for: ${failedApps.join(', ')}${colors.reset}`);
-    console.log(`  ${colors.cyan}Try running manually: cd <app> && npm install${colors.reset}`);
+    console.log(`  ${colors.cyan}Try running manually: cd <app> && pnpm install${colors.reset}`);
     return false;
   }
 
@@ -428,13 +428,13 @@ async function installDependencies(env = 'dev') {
   // Install patchright browsers for workers (dev only - prod uses Docker with pre-installed browsers)
   if (env === 'dev') {
     console.log('\n  Installing Patchright browsers for workers...');
-    const patchrightResult = exec('cd apps/workers && npx patchright install chromium', true);
+    const patchrightResult = exec('cd apps/workers && pnpm dlx patchright install chromium', true);
 
     if (patchrightResult.success) {
       console.log(`  ✅ Patchright browsers installed successfully`);
     } else {
       console.log(`  ${colors.yellow}⚠️  Patchright browser installation failed${colors.reset}`);
-      console.log(`     ${colors.cyan}Run manually: cd apps/workers && npx patchright install chromium${colors.reset}`);
+      console.log(`     ${colors.cyan}Run manually: cd apps/workers && pnpm dlx patchright install chromium${colors.reset}`);
       console.log(`     This is needed for web scraping functionality`);
     }
   }
@@ -465,7 +465,7 @@ async function startDependencies() {
   // Check if PM2 is installed
   if (!commandExists('pm2')) {
     console.log(`  ${colors.red}❌ PM2 is not installed${colors.reset}`);
-    console.log(`  ${colors.cyan}Install with: npm install -g pm2${colors.reset}`);
+    console.log(`  ${colors.cyan}Install with: pnpm add -g pm2${colors.reset}`);
     return false;
   }
 
@@ -554,7 +554,7 @@ async function initDatabase(env, questionFn) {
 
     // Run migrations
     console.log('  Running database migrations...');
-    const migrateResult = exec('docker exec eclaire-backend npm run db:migrate:apply:prod:force');
+    const migrateResult = exec('docker exec eclaire-backend pnpm db:migrate:apply:prod:force');
 
     if (!migrateResult.success) {
       console.log(`  ${colors.red}❌ Migration failed${colors.reset}`);
@@ -568,7 +568,7 @@ async function initDatabase(env, questionFn) {
     console.log(`  Seeding database with ${seedType} data...`);
 
     // Capture output for production to extract API keys
-    const seedResult = exec('docker exec -e GENERATE_SECURE_KEYS=true eclaire-backend npm run db:seed:essential:prod', true);
+    const seedResult = exec('docker exec -e GENERATE_SECURE_KEYS=true eclaire-backend pnpm db:seed:essential:prod', true);
 
     if (!seedResult.success) {
       console.log(`  ${colors.red}❌ Seeding failed${colors.reset}`);
@@ -617,7 +617,7 @@ async function initDatabase(env, questionFn) {
         }
       } else {
         console.log(`  ${colors.yellow}⚠️  Could not extract API keys from seed output${colors.reset}`);
-        console.log(`  ${colors.cyan}Please run 'docker exec eclaire-backend npm run db:seed:essential:prod' manually${colors.reset}`);
+        console.log(`  ${colors.cyan}Please run 'docker exec eclaire-backend pnpm db:seed:essential:prod' manually${colors.reset}`);
         console.log(`  ${colors.cyan}and copy the API keys to apps/workers/.env.prod${colors.reset}`);
       }
     }
@@ -625,7 +625,7 @@ async function initDatabase(env, questionFn) {
     // Development: Use host-based approach (existing logic)
     console.log('  Running database migrations...');
     const migrateScript = 'db:migrate:apply';
-    const migrateResult = exec(`cd apps/backend && npm run ${migrateScript}`);
+    const migrateResult = exec(`cd apps/backend && pnpm ${migrateScript}`);
 
     if (!migrateResult.success) {
       console.log(`  ${colors.red}❌ Migration failed${colors.reset}`);
@@ -637,7 +637,7 @@ async function initDatabase(env, questionFn) {
     const seedScript = `db:seed:${seedType}`;
     console.log(`  Seeding database with ${seedType} data...`);
 
-    const seedCommand = `cd apps/backend && npm run ${seedScript}`;
+    const seedCommand = `cd apps/backend && pnpm ${seedScript}`;
     const seedResult = exec(seedCommand);
 
     if (!seedResult.success) {
@@ -726,7 +726,7 @@ function printSummary(results, env, flags = {}) {
     console.log(`  🚀 ${colors.green}Your development environment is ready!${colors.reset}`);
     console.log('');
     console.log(`  To start the application:`);
-    console.log(`     ${colors.cyan}npm run dev${colors.reset}`);
+    console.log(`     ${colors.cyan}pnpm dev${colors.reset}`);
     console.log('');
     console.log(`  Access the app at:`);
     console.log(`     Frontend: ${colors.blue}http://localhost:3000${colors.reset}`);

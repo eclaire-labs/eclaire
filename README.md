@@ -136,9 +136,10 @@ With AI gaining rapid adoption, there is a growing need for alternatives to clos
 ### System Requirements
 
 **Runtime & Tools:**
-- **Node.js ≥ 24** (npm ≥ 11.5.1 recommended)
+- **Node.js ≥ 24** with **corepack** enabled
+- **pnpm@10.21.0** (managed via corepack - no manual install needed)
 - **Docker Desktop** with **Compose v2**
-- **PM2** process manager (`npm i -g pm2`) - used to run dependencies.
+- **PM2** process manager (`pnpm add -g pm2`) - used to run dependencies.
 
 **Infrastructure Services:**
 - **PostgreSQL ≥ 17.5** (managed via Docker)
@@ -151,6 +152,19 @@ With AI gaining rapid adoption, there is a growing need for alternatives to clos
 > [!NOTE]
 > We currently run llama-server and docling **bare-metal** (not containerized) for direct GPU access; PM2 supervises these processes.
 
+### Package Manager Setup
+
+Eclaire uses **pnpm** for dependency management. Node.js 24+ includes **corepack**, which automatically manages pnpm for you.
+
+**Enable corepack** (one-time setup):
+```bash
+corepack enable
+```
+
+That's it! Corepack will automatically use **pnpm@10.21.0** as specified in `package.json`. No need to install pnpm separately.
+
+> [!TIP]
+> If corepack is not available (older Node.js), install pnpm manually: `npm install -g pnpm@10.21.0`
 
 ### Quick Start
 
@@ -161,13 +175,13 @@ Choose the setup path that matches your needs:
 
 1. **Run automated setup**
 ```bash
-npm run setup:prod
+pnpm setup:prod
 ```
 This will:
 - Copy configuration files
 - Create required directories
 - Check system dependencies
-- Install npm dependencies (needed for database migrations)
+- Install pnpm dependencies (needed for database migrations)
 - Start PostgreSQL and Redis
 - Initialize the database with essential seed data
 
@@ -205,13 +219,13 @@ sudo apt-get install libreoffice poppler-utils graphicsmagick imagemagick ghosts
 
 1. **Run automated setup**
 ```
-npm run setup:dev
+pnpm setup:dev
 ```
 This will:
 - Check system dependencies (Node.js, Docker, PM2, etc.)
 - Copy all environment config files
 - Create required data directories
-- Install npm dependencies for all apps
+- Install pnpm dependencies for all apps
 - Start dependencies (PostgreSQL, Redis, AI models via PM2)
 - Initialize the database with sample data
 
@@ -221,7 +235,7 @@ Setup runs in interactive mode by default (asks for confirmation at each step).
 
 2. **Run the dev servers**
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Access the application:
@@ -236,7 +250,7 @@ If you need to modify the application or build custom images:
 
 1. **Setup with build** (if starting fresh):
 ```bash
-npm run setup:prod:build
+pnpm setup:prod:build
 ```
 This runs the full setup process, builds Docker containers locally, and generates `docker-compose.local.yml` to reference your local images.
 

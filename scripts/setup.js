@@ -95,7 +95,7 @@ async function showPreflightSummary(env) {
   }
 
   if (!flags.skipDb) {
-    console.log(`  5. ${colors.blue}Install npm dependencies${colors.reset} (backend, frontend, workers)`);
+    console.log(`  5. ${colors.blue}Install pnpm dependencies${colors.reset} (backend, frontend, workers)`);
     if (env === 'prod' && flags.build) {
       console.log(`  6. ${colors.blue}Build Docker containers${colors.reset} (--build flag detected)`);
     } else if (env === 'prod') {
@@ -112,7 +112,7 @@ async function showPreflightSummary(env) {
     console.log(`\n${colors.yellow}Interactive mode: You'll confirm each step${colors.reset}`);
   }
 
-  console.log(`\nTo skip all prompts: ${colors.cyan}npm run setup:dev -- --yes${colors.reset}`);
+  console.log(`\nTo skip all prompts: ${colors.cyan}pnpm setup:dev -- --yes${colors.reset}`);
 
   const proceed = await question(`\n${colors.green}Proceed with setup?${colors.reset} [Y/n] `);
   if (proceed.toLowerCase() === 'n' || proceed.toLowerCase() === 'no') {
@@ -135,7 +135,7 @@ async function setup() {
     env = await chooseEnvironment();
   } else {
     console.log(`${colors.red}Invalid environment: ${environment}${colors.reset}`);
-    console.log('Usage: npm run setup [dev|prod] [options]');
+    console.log('Usage: pnpm setup [dev|prod] [options]');
     console.log('Options:');
     console.log('  --yes, -y          Skip all prompts (non-interactive mode)');
     console.log('  --force, -f        Overwrite existing files');
@@ -228,8 +228,8 @@ async function setup() {
 
     // Step 5: Install npm dependencies
     if (!flags.skipDb) {
-      if (await confirm('\nStep 5: Install npm dependencies?')) {
-        console.log(`\n${colors.blue}Installing npm dependencies...${colors.reset}`);
+      if (await confirm('\nStep 5: Install pnpm dependencies?')) {
+        console.log(`\n${colors.blue}Installing pnpm dependencies...${colors.reset}`);
         try {
           results.npmDependencies = await installDependencies(env);
           if (!results.npmDependencies) {
@@ -240,7 +240,7 @@ async function setup() {
           results.npmDependenciesFailed = true;
         }
       } else {
-        console.log(`${colors.yellow}Skipping npm dependencies installation (assuming already installed)${colors.reset}`);
+        console.log(`${colors.yellow}Skipping pnpm dependencies installation (assuming already installed)${colors.reset}`);
         results.npmDependencies = true; // Mark as done so subsequent steps can proceed
       }
     }
@@ -266,7 +266,7 @@ async function setup() {
       console.log(`${colors.yellow}Skipping container build (using official GHCR images). Use --build flag to build locally.${colors.reset}`);
       results.containersBuilt = true; // Mark as done so database init proceeds
     } else if (!flags.skipDb && env === 'prod' && !results.npmDependencies) {
-      console.log(`${colors.yellow}Skipping container build (npm dependencies not installed)${colors.reset}`);
+      console.log(`${colors.yellow}Skipping container build (pnpm dependencies not installed)${colors.reset}`);
     }
 
     // Step 7: Start dependencies (needed for database)

@@ -5,7 +5,7 @@
   "description": "Eclaire AI Model Management CLI",
   "main": "dist/main.js",
   "type": "module",
-  "packageManager": "npm@11.5.1",
+  "packageManager": "pnpm@10.21.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/eclaire-labs/eclaire.git",
@@ -22,8 +22,8 @@
     "build": "tsc",
     "dev": "tsx main.ts",
     "test": "node test.js",
-    "link": "npm link",
-    "unlink": "npm unlink -g model-cli"
+    "link": "pnpm link",
+    "unlink": "pnpm unlink -g @eclaire/model-cli"
   },
   "keywords": [
     "ai",
@@ -36,22 +36,19 @@
   "author": "Eclaire Labs",
   "license": "MIT",
   "dependencies": {
-    "axios": "1.12.2",
-    "boxen": "7.1.1",
-    "chalk": "5.3.0",
+    "axios": "1.13.2",
+    "boxen": "8.0.1",
+    "chalk": "5.6.2",
     "cli-table3": "^0.6.5",
-    "commander": "12.1.0",
+    "commander": "14.0.2",
     "inquirer": "10.2.2",
-    "ora": "8.1.0"
+    "ora": "8.2.0"
   },
   "devDependencies": {
-    "@types/boxen": "^2.1.0",
-    "@types/commander": "^2.12.0",
     "@types/inquirer": "^9.0.9",
-    "@types/node": "^24.0.0",
-    "@types/ora": "^3.1.0",
-    "tsx": "^4.20.3",
-    "typescript": "^5.9.2"
+    "@types/node": "^24.10.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": "^24.0.0"

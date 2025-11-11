@@ -334,9 +334,9 @@ async function performCleanup(options = {}) {
   if (!dryRun) {
     console.log(`${colors.bright}${colors.yellow}⚠️  IMPORTANT: Before proceeding${colors.reset}`);
     console.log(`${colors.yellow}Please stop these services first:${colors.reset}`);
-    console.log(`  • Frontend server (npm run dev)`);
-    console.log(`  • Backend server (npm run dev)`);
-    console.log(`  • Workers service (npm run dev)`);
+    console.log(`  • Frontend server (pnpm run dev)`);
+    console.log(`  • Backend server (pnpm run dev)`);
+    console.log(`  • Workers service (pnpm run dev)`);
     console.log('');
   }
 

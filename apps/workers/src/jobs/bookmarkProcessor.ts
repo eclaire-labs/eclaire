@@ -16,7 +16,7 @@ import {
 } from "../lib/bookmarks";
 import { processRedditApiBookmark } from "../lib/bookmarks/reddit-api";
 import { domainRateLimiter } from "../lib/domainRateLimiter";
-import { createRateLimitError } from "../lib/job-adapters";
+import { createRateLimitError } from "../lib/job-utils";
 import { createChildLogger } from "../lib/logger";
 import {
   createProcessingReporter,

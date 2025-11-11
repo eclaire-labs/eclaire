@@ -421,7 +421,7 @@ describe("Photo API Integration Tests (Real File Uploads)", () => {
 
       const fileSize = fileBuffer.length;
       // Create Blob from file buffer
-      const fileBlob = new Blob([fileBuffer], { type: mimeType });
+      const fileBlob = new Blob([fileBuffer as BlobPart], { type: mimeType });
 
       // Create FormData for this specific file
       const formData = new FormData();

@@ -7,7 +7,7 @@
  * frontend's public directory so the docs site can load it at build-time
  * without depending on a live backend.
  *
- * Run with:  npm run generate:openapi  (see package.json)
+ * Run with:  pnpm run generate:openapi  (see package.json)
  */
 
 import { mkdir, writeFile } from "node:fs/promises";

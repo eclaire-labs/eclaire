@@ -4,7 +4,7 @@ Thank you for your interest in contributing! We're looking for people interested
 
 ## Code Style
 
-- Run `npm run format` to format your code
+- Run `pnpm format` to format your code
 - Follow existing patterns and conventions in the codebase
 - Write descriptive commit messages
 
@@ -12,7 +12,7 @@ Thank you for your interest in contributing! We're looking for people interested
 
 - Add or update tests when introducing new features or bug fixes
 - Ensure all existing tests pass locally
-- Run the full suite with `npm test`
+- Run the full suite with `pnpm test`
 
 ## Pull Request Process
 
