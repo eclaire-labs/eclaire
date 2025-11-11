@@ -39,11 +39,16 @@ ENV APP_VERSION=${APP_VERSION} \
     APP_GIT_HASH=${APP_GIT_HASH}
 
 # Install all deps (including dev) with cache
-COPY package.json pnpm-lock.yaml ./
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+# Copy workspace root files and backend package.json
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY apps/backend/package.json ./apps/backend/
 
-# Copy the rest and build
-COPY . .
+# Install dependencies for backend workspace
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --filter=@eclaire/backend...
+
+# Copy backend source and build
+COPY apps/backend ./apps/backend/
+WORKDIR /app/apps/backend
 # If you generate code (e.g., drizzle generate/prisma generate), do it here before build
 # RUN pnpm run db:generate
 RUN pnpm build
@@ -52,8 +57,11 @@ RUN pnpm build
 FROM node:24-bookworm-slim AS prod-deps
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
-COPY package.json pnpm-lock.yaml ./
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --prod
+
+# Copy workspace files and install prod deps for backend only
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY apps/backend/package.json ./apps/backend/
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --filter=@eclaire/backend --prod
 
 # ===== Runner Stage =====
 FROM base AS runner
@@ -108,16 +116,16 @@ COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 
 # Copy pruned production node_modules and runtime files
 COPY --from=prod-deps --chown=nodeapp:nodeapp /app/node_modules ./node_modules
-COPY --from=builder  --chown=nodeapp:nodeapp /app/package.json ./
+COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/package.json ./
 COPY --from=builder  --chown=nodeapp:nodeapp /app/pnpm-lock.yaml ./
-COPY --from=builder  --chown=nodeapp:nodeapp /app/dist ./dist
-COPY --from=builder  --chown=nodeapp:nodeapp /app/tool-signatures.json ./
+COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/dist ./dist
+COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/tool-signatures.json ./
 
 # --- Optional runtime DB tooling (only if used at container runtime) ---
 # If your entrypoint or ops scripts call these, keep them; otherwise omit.
-COPY --from=builder  --chown=nodeapp:nodeapp /app/scripts ./scripts
-COPY --from=builder  --chown=nodeapp:nodeapp /app/src/db/migrations ./src/db/migrations
-COPY --from=builder  --chown=nodeapp:nodeapp /app/drizzle.config.ts ./
+COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/scripts ./scripts
+COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/src/db/migrations ./src/db/migrations
+COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/drizzle.config.ts ./
 
 # Permissions
 RUN mkdir -p /app/data /app/logs \

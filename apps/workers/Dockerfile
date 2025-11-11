@@ -34,15 +34,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # COPY ./docker/imagemagick-policy.xml /etc/ImageMagick-6/policy.xml
 
 # Install deps (dev included) with cache
-COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+
+# Copy workspace root files and workers package.json
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY apps/workers/package.json ./apps/workers/
+
+# Install dependencies for workers workspace
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --filter=@eclaire/workers...
 
 # Install patchright browsers (needed for workers)
 RUN pnpm dlx patchright install chromium
 
 # Copy source and build
-COPY . .
+COPY apps/workers ./apps/workers/
+WORKDIR /app/apps/workers
+
 # Do NOT set NODE_ENV=production in builder; you need devDeps to build
 ARG APP_VERSION=N/A
 ARG APP_FULL_VERSION=N/A
@@ -60,9 +67,12 @@ RUN pnpm build
 # ===== Production deps (pruned) =====
 FROM node:24-bookworm-slim AS prod-deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --prod
+
+# Copy workspace files and install prod deps for workers only
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY apps/workers/package.json ./apps/workers/
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --filter=@eclaire/workers --prod
 
 # ===== Runner (slim) =====
 FROM base AS runner
@@ -118,8 +128,8 @@ COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 
 # Prod deps and app
 COPY --from=prod-deps --chown=nodeapp:nodeapp /app/node_modules ./node_modules
-COPY --from=builder   --chown=nodeapp:nodeapp /app/package*.json ./
-COPY --from=builder   --chown=nodeapp:nodeapp /app/dist ./dist
+COPY --from=builder   --chown=nodeapp:nodeapp /app/apps/workers/package*.json ./
+COPY --from=builder   --chown=nodeapp:nodeapp /app/apps/workers/dist ./dist
 COPY --from=builder   --chown=nodeapp:nodeapp /root/.cache/ms-playwright /home/nodeapp/.cache/ms-playwright
 
 # Install runtime dependencies for document/image processing and Playwright browsers

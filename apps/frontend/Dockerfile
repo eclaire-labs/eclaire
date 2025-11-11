@@ -29,14 +29,17 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     BACKEND_URL=${BACKEND_URL}
 
 # 1) Install deps with cache
-COPY package.json pnpm-lock.yaml ./
-# Enable corepack and prepare pnpm
+# Copy workspace root files and frontend package.json
 RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
-# Use BuildKit cache for faster incremental builds
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY apps/frontend/package.json ./apps/frontend/
+
+# Use BuildKit cache for faster incremental builds - install only frontend deps
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --filter=@eclaire/frontend...
 
 # 2) Copy source
-COPY . .
+COPY apps/frontend ./apps/frontend/
+WORKDIR /app/apps/frontend
 
 # 3) Build
 RUN pnpm build
@@ -91,9 +94,9 @@ LABEL org.opencontainers.image.title="Eclaire Frontend" \
 COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 
 # Copy the standalone output (includes node_modules for runtime)
-COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nextjs /app/public ./public
+COPY --from=builder --chown=nextjs:nextjs /app/apps/frontend/.next/standalone ./
+COPY --from=builder --chown=nextjs:nextjs /app/apps/frontend/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nextjs /app/apps/frontend/public ./public
 
 USER nextjs
 EXPOSE 3000

@@ -166,15 +166,12 @@ for svc in "${SERVICES[@]}"; do
     echo "🔧 Using custom BACKEND_URL for build: $BACKEND_URL_OVERRIDE"
   fi
 
-  # Build the image
-  (
-    cd "apps/${svc}"
-    docker build \
-      -f Dockerfile \
-      "${TAGS[@]}" \
-      "${BUILD_ARGS[@]}" \
-      .
-  ) || { echo "❌ ${svc} build failed"; exit 1; }
+  # Build the image from root context (for monorepo with shared pnpm-lock.yaml)
+  docker build \
+    -f "apps/${svc}/Dockerfile" \
+    "${TAGS[@]}" \
+    "${BUILD_ARGS[@]}" \
+    . || { echo "❌ ${svc} build failed"; exit 1; }
 
   echo "✅ ${svc} done."
   echo "📋 Images tagged as:"

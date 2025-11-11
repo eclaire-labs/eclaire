@@ -1,0 +1,71 @@
+# Node modules (will be installed during build)
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+**/dist
+.next
+**/.next
+build
+**/build
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+!.env.example
+*.local
+
+# Data directories
+data/
+backups/
+local/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Documentation (not needed in containers)
+*.md
+!README.md
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Docker
+docker-compose*.yml
+!docker-compose.yml
+Dockerfile
+**/Dockerfile
+.dockerignore
+**/.dockerignore
+
+# Misc
+.cache
+tmp/
+temp/
+*.tmp
