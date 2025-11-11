@@ -186,7 +186,7 @@ jobs:
       - name: Build & (optionally) Push ${{ matrix.service }}
         uses: docker/build-push-action@v6
         with:
-          context: ./apps/${{ matrix.service }}
+          context: .
           file: ./apps/${{ matrix.service }}/Dockerfile
           push: ${{ inputs.push_images }}
           platforms: linux/amd64,linux/arm64
