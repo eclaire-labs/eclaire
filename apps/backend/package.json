@@ -15,7 +15,7 @@
   },
   "homepage": "https://eclaire.co/",
   "engines": {
-    "node": ">=24.0.0"
+    "node": "^24.0.0"
   },
   "scripts": {
     "dev": "NODE_ENV=development tsx watch src/index.ts",
