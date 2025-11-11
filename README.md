@@ -136,7 +136,7 @@ With AI gaining rapid adoption, there is a growing need for alternatives to clos
 ### System Requirements
 
 **Runtime & Tools:**
-- **Node.js ≥ 22** (npm ≥ 11.5.1 recommended)
+- **Node.js ≥ 24** (npm ≥ 11.5.1 recommended)
 - **Docker Desktop** with **Compose v2**
 - **PM2** process manager (`npm i -g pm2`) - used to run dependencies.
 

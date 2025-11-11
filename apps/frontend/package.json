@@ -16,7 +16,7 @@
   },
   "homepage": "https://eclaire.co/",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "dev": "dotenv -e .env.dev -- next dev",

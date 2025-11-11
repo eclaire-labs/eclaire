@@ -27,7 +27,7 @@ If applicable, add screenshots to help explain your problem.
  - OS: [e.g. macOS, Windows, Linux]
  - Browser [e.g. chrome, safari]
  - Product Version [e.g. 0.5.1]
- - Node.js version [e.g. 22.0.0]
+ - Node.js version [e.g. 24.0.0]
 
 **Additional context**
 Add any other context about the problem here.

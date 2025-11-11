@@ -1,6 +1,6 @@
 # Production Dockerfile for Eclaire Backend
 # --- Base runtime kept minimal; build tools live in builder only
-FROM node:22-bookworm-slim AS base
+FROM node:24-bookworm-slim AS base
 WORKDIR /app
 
 # Install only what runtime truly needs (curl for healthcheck, dumb-init for PID1)
@@ -14,7 +14,7 @@ RUN groupadd -r nodeapp && useradd -r -g nodeapp -m -d /home/nodeapp nodeapp
 
 # ===== Builder Stage =====
 # Includes build toolchain for native modules & TS compile
-FROM node:22-bookworm-slim AS builder
+FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 
 # Build tools needed to compile native deps; psql only if your build/migrate runs at build-time
@@ -49,7 +49,7 @@ COPY . .
 RUN npm run build
 
 # ===== Production deps (pruned) =====
-FROM node:22-bookworm-slim AS prod-deps
+FROM node:24-bookworm-slim AS prod-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev

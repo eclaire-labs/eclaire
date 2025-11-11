@@ -65,7 +65,7 @@ async function checkDependencies(env = 'dev') {
     {
       name: 'Node.js',
       command: 'node',
-      minVersion: '22.0.0',
+      minVersion: '24.0.0',
       check: () => {
         const version = getVersion('node', '-v').replace('v', '');
         return { exists: true, version };

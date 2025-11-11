@@ -1,5 +1,5 @@
 # Production Dockerfile for Eclaire Frontend (Next.js)
-FROM node:22-bookworm-slim AS base
+FROM node:24-bookworm-slim AS base
 
 RUN apt-get update && apt-get install -y curl dumb-init \
   && apt-get clean \

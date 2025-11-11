@@ -2,7 +2,7 @@
 # Goal: heavy deps only in builder; slim, non-root runner
 
 # ===== Base runtime (slim) =====
-FROM node:22-bookworm-slim AS base
+FROM node:24-bookworm-slim AS base
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     dumb-init curl ca-certificates fontconfig \
@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd -r nodeapp && useradd -r -g nodeapp -m -d /home/nodeapp nodeapp
 
 # ===== Builder (heavy deps + browsers installed once) =====
-FROM node:22-bookworm-slim AS builder
+FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 
 # Build tools (only here)
@@ -57,7 +57,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 RUN npm run build
 
 # ===== Production deps (pruned) =====
-FROM node:22-bookworm-slim AS prod-deps
+FROM node:24-bookworm-slim AS prod-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
