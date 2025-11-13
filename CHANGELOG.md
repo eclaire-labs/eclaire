@@ -1,5 +1,22 @@
 # Eclaire Changelog
 
+## [0.5.1] - 2025-11-13
+
+### Features
+
+- **build**: configure pnpm workspace for Docker deployment with pnpm deploy
+
+### Bug Fixes
+
+- **docker**: migrate to pnpm deploy for proper dependency resolution in containers
+- **frontend**: invalidate asset list on processing status to show spinner
+
+### CI/CD
+
+- **dx**: add --dev flag to build script and update contributor docs
+
+---
+
 ## [0.5.0] - 2025-11-11
 
 ### ⚠️ Migration Notes
