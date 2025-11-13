@@ -54,14 +54,12 @@ WORKDIR /app/apps/backend
 RUN pnpm build
 
 # ===== Production deps (pruned) =====
-FROM node:24-bookworm-slim AS prod-deps
-WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
+FROM builder AS prod-deps
 
-# Copy workspace files and install prod deps for backend only
-COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
-COPY apps/backend/package.json ./apps/backend/
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --filter=@eclaire/backend --prod
+# At this point, /app/apps/backend/dist already exists from builder
+# Just deploy the standalone backend with prod dependencies
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm deploy --filter=@eclaire/backend --prod /deploy
 
 # ===== Runner Stage =====
 FROM base AS runner
@@ -114,11 +112,10 @@ LABEL org.opencontainers.image.title="Eclaire Backend" \
 # Copy dumb-init for PID1
 COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 
-# Copy pruned production node_modules and runtime files
-COPY --from=prod-deps --chown=nodeapp:nodeapp /app/node_modules ./node_modules
-COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/package.json ./
-COPY --from=builder  --chown=nodeapp:nodeapp /app/pnpm-lock.yaml ./
-COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/dist ./dist
+# Copy standalone deployment from pnpm deploy (includes node_modules, package.json, and dist)
+COPY --from=prod-deps --chown=nodeapp:nodeapp /deploy ./
+
+# Copy additional runtime files
 COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/tool-signatures.json ./
 
 # --- Optional runtime DB tooling (only if used at container runtime) ---

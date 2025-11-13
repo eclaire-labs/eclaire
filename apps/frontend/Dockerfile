@@ -95,8 +95,10 @@ COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 
 # Copy the standalone output (includes node_modules for runtime)
 COPY --from=builder --chown=nextjs:nextjs /app/apps/frontend/.next/standalone ./
-COPY --from=builder --chown=nextjs:nextjs /app/apps/frontend/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nextjs /app/apps/frontend/public ./public
+
+# Copy static files to the nested app location where server.js runs
+COPY --from=builder --chown=nextjs:nextjs /app/apps/frontend/.next/static ./apps/frontend/.next/static
+COPY --from=builder --chown=nextjs:nextjs /app/apps/frontend/public ./apps/frontend/public
 
 USER nextjs
 EXPOSE 3000
@@ -106,4 +108,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
       curl -fsS -A "Docker-Health-Check" http://localhost:3000/ 2>/dev/null || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "server.js"]
+CMD ["node", "apps/frontend/server.js"]

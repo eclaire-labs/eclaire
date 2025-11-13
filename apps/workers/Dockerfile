@@ -43,9 +43,6 @@ COPY apps/workers/package.json ./apps/workers/
 # Install dependencies for workers workspace
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --filter=@eclaire/workers...
 
-# Install patchright browsers (needed for workers)
-RUN pnpm dlx patchright install chromium
-
 # Copy source and build
 COPY apps/workers ./apps/workers/
 WORKDIR /app/apps/workers
@@ -65,14 +62,16 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 RUN pnpm build
 
 # ===== Production deps (pruned) =====
-FROM node:24-bookworm-slim AS prod-deps
-WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
+FROM builder AS prod-deps
 
-# Copy workspace files and install prod deps for workers only
-COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
-COPY apps/workers/package.json ./apps/workers/
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --filter=@eclaire/workers --prod
+# At this point, /app/apps/workers/dist already exists from builder
+# Just deploy the standalone workers with prod dependencies
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm deploy --filter=@eclaire/workers --prod /deploy
+
+# Install patchright browsers AFTER deploy, using the deployed node_modules
+WORKDIR /deploy
+RUN npx patchright install chromium
 
 # ===== Runner (slim) =====
 FROM base AS runner
@@ -126,11 +125,10 @@ LABEL org.opencontainers.image.title="Eclaire Workers" \
 # PID1
 COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 
-# Prod deps and app
-COPY --from=prod-deps --chown=nodeapp:nodeapp /app/node_modules ./node_modules
-COPY --from=builder   --chown=nodeapp:nodeapp /app/apps/workers/package*.json ./
-COPY --from=builder   --chown=nodeapp:nodeapp /app/apps/workers/dist ./dist
-COPY --from=builder   --chown=nodeapp:nodeapp /root/.cache/ms-playwright /home/nodeapp/.cache/ms-playwright
+# Copy standalone deployment from pnpm deploy (includes node_modules, package.json, and dist)
+COPY --from=prod-deps --chown=nodeapp:nodeapp /deploy ./
+# Copy browser cache from prod-deps (where browsers were installed after pnpm deploy)
+COPY --from=prod-deps --chown=nodeapp:nodeapp /root/.cache/ms-playwright /home/nodeapp/.cache/ms-playwright
 
 # Install runtime dependencies for document/image processing and Playwright browsers
 RUN apt-get update && apt-get install -y --no-install-recommends \
