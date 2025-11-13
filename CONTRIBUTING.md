@@ -2,6 +2,19 @@
 
 Thank you for your interest in contributing! We're looking for people interested in the vision of Eclaire and willing to help. Have a look at the [Roadmap](README.md#roadmap), [GitHub Issues](https://github.com/eclaire-labs/eclaire/issues), or feel free to suggest features or fixes. There are areas for improvement across the whole stack. We're also open to integrating or partnering with other open source projects that are building pieces that can augment, complement, or replace some of the existing building blocks in Eclaire.
 
+## Development Workflow
+
+### Pulling Updates
+
+After pulling changes from the repository, always update your dependencies:
+
+```bash
+git pull
+pnpm install  # Updates dependencies to match the lockfile
+```
+
+This ensures your local environment matches the project's dependency requirements, especially after workspace configuration changes.
+
 ## Code Style
 
 - Run `pnpm format` to format your code

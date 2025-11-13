@@ -2,6 +2,7 @@
 set -euo pipefail
 
 RELEASE_MODE=false
+FORCE_DEV_MODE=false
 BACKEND_URL_OVERRIDE=""
 PARSED_ARGS=()
 
@@ -10,6 +11,7 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     --backend-url) BACKEND_URL_OVERRIDE="$2"; shift 2 ;;
     --release)     RELEASE_MODE=true; shift ;;
+    --dev)         FORCE_DEV_MODE=true; shift ;;
     *)             PARSED_ARGS+=("$1"); shift ;;
   esac
 done
@@ -17,6 +19,11 @@ if [[ ${#PARSED_ARGS[@]} -gt 0 ]]; then set -- "${PARSED_ARGS[@]}"; else set --;
 
 # Compute version/build from git (and optionally CI env)
 source ./scripts/version.sh
+
+# Override RELEASE_MODE if --dev flag was used
+if [ "$FORCE_DEV_MODE" = true ]; then
+  RELEASE_MODE=false
+fi
 
 # Gather additional build metadata
 GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
