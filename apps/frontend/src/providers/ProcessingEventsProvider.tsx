@@ -200,6 +200,14 @@ export function ProcessingEventsProvider({
                   queryClient.invalidateQueries({
                     queryKey: [job.assetType, job.assetId],
                   });
+
+                  // When status changes to "processing", also invalidate the list query
+                  // so the UI can display the processing state immediately
+                  if (job.status === "processing") {
+                    queryClient.invalidateQueries({
+                      queryKey: [job.assetType],
+                    });
+                  }
                 }
               }
             }
