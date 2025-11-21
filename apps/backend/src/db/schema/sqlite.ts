@@ -25,7 +25,6 @@ import {
   generateTaskId,
   generateUserId,
 } from "../../lib/id-generator";
-import { sqliteNow } from "../adapters/sqlite/timestamps";
 
 // Type definitions for JSON fields
 type RawMetadata = Record<string, unknown>;
@@ -67,10 +66,10 @@ export const users = sqliteTable("users", {
 
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
-    .$defaultFn(() => sqliteNow()),
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" })
     .notNull()
-    .$defaultFn(() => sqliteNow()),
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
 });
 
 export const sessions = sqliteTable(
@@ -87,10 +86,10 @@ export const sessions = sqliteTable(
     token: text("token").notNull().unique(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => ({
@@ -118,10 +117,10 @@ export const accounts = sqliteTable(
     passwordHash: text("password_hash"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   },
   (table) => ({
     providerAccountIdx: unique().on(table.providerId, table.accountId),
@@ -137,10 +136,10 @@ export const verifications = sqliteTable("verifications", {
   token: text("token").notNull().unique(),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
-    .$defaultFn(() => sqliteNow()),
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" })
     .notNull()
-    .$defaultFn(() => sqliteNow()),
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
 });
 
@@ -161,7 +160,7 @@ export const apiKeys = sqliteTable(
     lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     isActive: integer("is_active", { mode: "boolean" })
       .notNull()
       .default(true),
@@ -211,10 +210,10 @@ export const tasks = sqliteTable(
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   },
   (table) => ({
     userIdx: index("tasks_user_id_idx").on(table.userId),
@@ -243,10 +242,10 @@ export const taskComments = sqliteTable(
     content: text("content").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   },
   (table) => ({
     taskIdx: index("task_comments_task_id_idx").on(table.taskId),
@@ -277,10 +276,10 @@ export const bookmarks = sqliteTable(
     pageLastUpdatedAt: integer("page_last_updated_at", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
 
     contentType: text("content_type"),
     etag: text("etag"),
@@ -361,10 +360,10 @@ export const documents = sqliteTable(
 
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   },
   (table) => ({
     userIdx: index("documents_user_id_idx").on(table.userId),
@@ -433,10 +432,10 @@ export const photos = sqliteTable(
 
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   },
   (table) => ({
     userIdx: index("photos_user_id_idx").on(table.userId),
@@ -473,10 +472,10 @@ export const notes = sqliteTable(
 
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   },
   (table) => ({
     userIdx: index("notes_user_id_idx").on(table.userId),
@@ -523,10 +522,10 @@ export const assetProcessingJobs = sqliteTable(
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
 
     jobData: text("job_data", { mode: "json" }).$type<JobData>(),
     lockedBy: text("locked_by"),
@@ -659,7 +658,7 @@ export const history = sqliteTable(
     metadata: text("metadata", { mode: "json" }).$type<HistoryMetadata>(),
     timestamp: integer("timestamp", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     userId: text("user_id").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -682,10 +681,10 @@ export const conversations = sqliteTable(
     title: text("title").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     lastMessageAt: integer("last_message_at", { mode: "timestamp_ms" }),
     messageCount: integer("message_count").notNull().default(0),
   },
@@ -711,7 +710,7 @@ export const messages = sqliteTable(
     thinkingContent: text("thinking_content"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     metadata: text("metadata", { mode: "json" }).$type<MessageMetadata>(),
   },
   (table) => ({
@@ -746,10 +745,10 @@ export const channels = sqliteTable(
       .default(true),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   },
   (table) => ({
     userIdx: index("channels_user_id_idx").on(table.userId),
@@ -774,10 +773,10 @@ export const feedback = sqliteTable(
     }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
-      .$defaultFn(() => sqliteNow()),
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   },
   (table) => ({
     userIdx: index("feedback_user_id_idx").on(table.userId),

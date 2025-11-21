@@ -75,7 +75,6 @@ function wrapPgTx(drizzleTx: DrizzlePgTx): {
 		history: createRepository("history"),
 		conversations: createRepository("conversations"),
 		messages: createRepository("messages"),
-		conversationMembers: createRepository("conversations"), // Placeholder
 		channels: createRepository("channels"),
 		feedback: createRepository("feedback"),
 	};

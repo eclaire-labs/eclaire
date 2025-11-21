@@ -4,6 +4,8 @@ import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
 import { PGlite } from "@electric-sql/pglite";
 import Database from "better-sqlite3";
 import postgres from "postgres";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { createChildLogger } from "../lib/logger";
 import {
 	getDatabaseUrl,
@@ -85,6 +87,10 @@ function initializeDatabase(): {
 		// Initialize SQLite (file-based, synchronous)
 		const sqlitePath = getSqlitePath();
 		logger.info({ path: sqlitePath }, "Initializing SQLite database");
+
+		// Ensure parent directory exists
+		const dir = dirname(sqlitePath);
+		mkdirSync(dir, { recursive: true });
 
 		const client = new Database(sqlitePath);
 

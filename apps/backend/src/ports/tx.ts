@@ -57,7 +57,6 @@ export interface Tx {
 	// Conversations & Messages
 	conversations: BaseRepository<any, any, any>;
 	messages: BaseRepository<any, any, any>;
-	conversationMembers: BaseRepository<any, any, any>;
 
 	// Channels & Feedback
 	channels: BaseRepository<any, any, any>;

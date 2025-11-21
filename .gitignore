@@ -8,6 +8,7 @@ lerna-debug.log*
 
 # Build output
 dist/
+dist-typecheck/
 .next/
 
 # Environment variables

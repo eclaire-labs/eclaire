@@ -8,6 +8,20 @@
       "when": 1762584380548,
       "tag": "0000_public_salo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1763696620031,
+      "tag": "0001_sturdy_shotgun",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1763698907435,
+      "tag": "0002_smooth_reaper",
+      "breakpoints": true
     }
   ]
 }

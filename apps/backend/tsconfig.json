@@ -6,9 +6,6 @@
     "skipLibCheck": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "noEmit": false,
-    "outDir": "./dist",
-    "rootDir": "./",
     "esModuleInterop": true,
     "module": "commonjs",
     "moduleResolution": "node",
@@ -20,8 +17,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "rootDir": "./",
+    "noEmit": true
   },
-  "include": ["src/**/*.ts", "scripts/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/tests/**/*", "**/*.test.ts", "**/*.spec.ts"]
+  "include": ["src/**/*.ts", "src/**/*.test.ts", "src/**/*.spec.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

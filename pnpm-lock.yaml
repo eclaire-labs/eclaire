@@ -12,13 +12,13 @@ importers:
   apps/backend:
     dependencies:
       '@electric-sql/pglite':
-        specifier: ^0.3.13
-        version: 0.3.14
+        specifier: 0.3.13
+        version: 0.3.13
       '@hono/node-server':
         specifier: 1.19.6
         version: 1.19.6(hono@4.10.4)
       '@hono/standard-validator':
-        specifier: ^0.1.5
+        specifier: 0.1.5
         version: 0.1.5(@standard-schema/spec@1.0.0)(hono@4.10.4)
       axios:
         specifier: 1.13.2
@@ -30,8 +30,8 @@ importers:
         specifier: 1.3.34
         version: 1.3.34(next@15.5.4(@babel/core@7.28.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       better-sqlite3:
-        specifier: ^11.0.0
-        version: 11.10.0
+        specifier: 12.4.1
+        version: 12.4.1
       bullmq:
         specifier: 5.63.0
         version: 5.63.0
@@ -43,7 +43,7 @@ importers:
         version: 17.2.3
       drizzle-orm:
         specifier: 0.44.7
-        version: 0.44.7(@electric-sql/pglite@0.3.14)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.6)(better-sqlite3@11.10.0)(kysely@0.28.8)(pg@8.16.3)(postgres@3.4.7)
+        version: 0.44.7(@electric-sql/pglite@0.3.13)(@types/better-sqlite3@7.6.0)(@types/pg@8.15.6)(better-sqlite3@12.4.1)(kysely@0.28.8)(pg@8.16.3)(postgres@3.4.7)
       exifr:
         specifier: 7.1.3
         version: 7.1.3
@@ -115,8 +115,8 @@ importers:
         specifier: 6.0.0
         version: 6.0.0
       '@types/better-sqlite3':
-        specifier: ^7.6.0
-        version: 7.6.13
+        specifier: 7.6.0
+        version: 7.6.0
       '@types/is-url':
         specifier: 1.2.32
         version: 1.2.32
@@ -1219,8 +1219,8 @@ packages:
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
 
-  '@electric-sql/pglite@0.3.14':
-    resolution: {integrity: sha512-3DB258dhqdsArOI1fIt7cb9RpUOgcDg5hXWVgVHAeqVQ/qxtFy605QKs4gx6mFq3jWsSPqDN8TgSEsqC3OfV9Q==}
+  '@electric-sql/pglite@0.3.13':
+    resolution: {integrity: sha512-w1oy/qyUs/fUTSE93dNvOcUThsGY2BL5N9Q1WujYr9onHYJYqxwJy+hd62p9UNql41XRqbz2yDBzYAUN5IiDww==}
 
   '@emnapi/runtime@1.7.0':
     resolution: {integrity: sha512-oAYoQnCYaQZKVS53Fq23ceWMRxq5EhQsE0x0RdQ55jT7wagMu5k+fS39v1fiSLrtrLQlXwVINenqhLMtTrV/1Q==}
@@ -3123,8 +3123,8 @@ packages:
   '@types/bcrypt@6.0.0':
     resolution: {integrity: sha512-/oJGukuH3D2+D+3H4JWLaAsJ/ji86dhRidzZ/Od7H/i8g+aCmvkeCc6Ni/f9uxGLSQVCRZkX2/lqEFG2BvWtlQ==}
 
-  '@types/better-sqlite3@7.6.13':
-    resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
+  '@types/better-sqlite3@7.6.0':
+    resolution: {integrity: sha512-rnSP9vY+fVsF3iJja5yRGBJV63PNBiezJlYrCkqUmQWFoB16cxAHwOkjsAYEu317miOfKaJpa65cbp0P4XJ/jw==}
 
   '@types/chai@4.3.20':
     resolution: {integrity: sha512-/pC9HAB5I/xMlc5FP77qjCnI16ChlJfW0tGa0IUcFn38VJrTV6DeZ60NU5KZBtaOZqjdpwTWohz5HU1RrhiYxQ==}
@@ -3591,8 +3591,9 @@ packages:
   better-call@1.0.19:
     resolution: {integrity: sha512-sI3GcA1SCVa3H+CDHl8W8qzhlrckwXOTKhqq3OOPXjgn5aTOMIqGY34zLY/pHA6tRRMjTUC3lz5Mi7EbDA24Kw==}
 
-  better-sqlite3@11.10.0:
-    resolution: {integrity: sha512-EwhOpyXiOEL/lKzHz9AW1msWFNzGc/z+LzeB3/jnFJpxu+th2yqvzsSWas1v9jgs9+xiXJcD5A8CJxAG2TaghQ==}
+  better-sqlite3@12.4.1:
+    resolution: {integrity: sha512-3yVdyZhklTiNrtg+4WqHpJpFDd+WHTg2oM7UcR80GqL05AOV0xEJzc6qNvFYoEtE+hRp1n9MpN6/+4yhlGkDXQ==}
+    engines: {node: 20.x || 22.x || 23.x || 24.x}
 
   big.js@5.2.2:
     resolution: {integrity: sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ==}
@@ -7868,7 +7869,7 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
-  '@electric-sql/pglite@0.3.14': {}
+  '@electric-sql/pglite@0.3.13': {}
 
   '@emnapi/runtime@1.7.0':
     dependencies:
@@ -9582,7 +9583,7 @@ snapshots:
     dependencies:
       '@types/node': 24.10.0
 
-  '@types/better-sqlite3@7.6.13':
+  '@types/better-sqlite3@7.6.0':
     dependencies:
       '@types/node': 24.10.0
 
@@ -10092,7 +10093,7 @@ snapshots:
       set-cookie-parser: 2.7.2
       uncrypto: 0.1.3
 
-  better-sqlite3@11.10.0:
+  better-sqlite3@12.4.1:
     dependencies:
       bindings: 1.5.0
       prebuild-install: 7.1.3
@@ -10553,12 +10554,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.44.7(@electric-sql/pglite@0.3.14)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.6)(better-sqlite3@11.10.0)(kysely@0.28.8)(pg@8.16.3)(postgres@3.4.7):
+  drizzle-orm@0.44.7(@electric-sql/pglite@0.3.13)(@types/better-sqlite3@7.6.0)(@types/pg@8.15.6)(better-sqlite3@12.4.1)(kysely@0.28.8)(pg@8.16.3)(postgres@3.4.7):
     optionalDependencies:
-      '@electric-sql/pglite': 0.3.14
-      '@types/better-sqlite3': 7.6.13
+      '@electric-sql/pglite': 0.3.13
+      '@types/better-sqlite3': 7.6.0
       '@types/pg': 8.15.6
-      better-sqlite3: 11.10.0
+      better-sqlite3: 12.4.1
       kysely: 0.28.8
       pg: 8.16.3
       postgres: 3.4.7
