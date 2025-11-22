@@ -612,8 +612,14 @@ export async function findDocuments(
       originalFilename: schemaDocuments.originalFilename,
     };
     const sortColumn = sortColumnMap[sortBy] || schemaDocuments.createdAt;
+    // Use lower() for text columns to ensure consistent case-insensitive sorting across databases
+    // (SQLite uses BINARY collation by default which doesn't provide proper alphabetical ordering)
+    const textSortColumns = ["title", "mimeType", "originalFilename"];
+    const sortExpression = textSortColumns.includes(sortBy)
+      ? sql`lower(${sortColumn})`
+      : sortColumn;
     const orderByClause =
-      sortDir === "asc" ? asc(sortColumn) : desc(sortColumn);
+      sortDir === "asc" ? asc(sortExpression) : desc(sortExpression);
 
     let finalDocIds: string[];
 
