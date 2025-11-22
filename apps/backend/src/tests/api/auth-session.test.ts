@@ -54,6 +54,7 @@ const loggedFetch = async (url: string, options: RequestInit = {}) => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "User-Agent": "better-auth-cli/1.0.0",
+    Origin: "http://localhost:3000",
     ...((options.headers as Record<string, string>) || {}),
   };
 
