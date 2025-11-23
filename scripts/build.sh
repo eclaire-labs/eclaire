@@ -127,7 +127,7 @@ echo "========================================="
 
 [[ -n "$BACKEND_URL_OVERRIDE" ]] && echo "🔧 Backend URL override: $BACKEND_URL_OVERRIDE"
 
-ALL_SERVICES=(backend frontend workers)
+ALL_SERVICES=(backend frontend)
 if [[ $# -gt 0 ]]; then SERVICES=("$@"); else SERVICES=("${ALL_SERVICES[@]}"); fi
 
 for svc in "${SERVICES[@]}"; do

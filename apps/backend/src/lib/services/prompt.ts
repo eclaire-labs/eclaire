@@ -2721,7 +2721,9 @@ export async function processPromptRequestStream(
             await createMessage({
               conversationId: conversation.id,
               role: "assistant",
-              content: finalAssistantMessage.content,
+              content: typeof finalAssistantMessage.content === "string"
+                ? finalAssistantMessage.content
+                : JSON.stringify(finalAssistantMessage.content),
               thinkingContent: thinkingResult.thinkingContent || undefined,
               toolCalls:
                 toolCallSummaries.length > 0 ? toolCallSummaries : undefined,
@@ -2760,7 +2762,9 @@ export async function processPromptRequestStream(
             await createMessage({
               conversationId: newConversation.id,
               role: "assistant",
-              content: finalAssistantMessage.content,
+              content: typeof finalAssistantMessage.content === "string"
+                ? finalAssistantMessage.content
+                : JSON.stringify(finalAssistantMessage.content),
               thinkingContent: thinkingResult.thinkingContent || undefined,
               toolCalls:
                 toolCallSummaries.length > 0 ? toolCallSummaries : undefined,
@@ -2798,7 +2802,9 @@ export async function processPromptRequestStream(
               traceData,
               {
                 type: "text_response",
-                response: finalAssistantMessage.content,
+                response: typeof finalAssistantMessage.content === "string"
+                  ? finalAssistantMessage.content
+                  : JSON.stringify(finalAssistantMessage.content),
                 thinkingContent: finalThinkingContent,
                 toolCalls:
                   toolCallSummaries.length > 0 ? toolCallSummaries : undefined,

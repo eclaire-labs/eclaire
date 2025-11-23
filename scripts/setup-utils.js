@@ -245,11 +245,6 @@ async function copyEnvFiles(env, force = false) {
       isBackend: true
     },
     {
-      source: `apps/workers/.env.${env}.example`,
-      dest: `apps/workers/.env.${env}`,
-      isWorkers: true
-    },
-    {
       source: 'config/models.json.example',
       dest: 'config/models.json'
     }
@@ -303,12 +298,6 @@ async function copyEnvFiles(env, force = false) {
         console.log(`  ✅ Generated secure API_KEY_HMAC_KEY_V1`);
       }
 
-      // For production workers, we'll need to add API keys after DB seed
-      if (env === 'prod' && file.isWorkers) {
-        // Store for later use
-        generatedValues.workersEnvPath = destPath;
-      }
-
       fs.writeFileSync(destPath, content);
       console.log(`  ✅ Copied: ${file.source} → ${file.dest}`);
       copiedCount++;
@@ -318,11 +307,6 @@ async function copyEnvFiles(env, force = false) {
   }
 
   console.log(`\n  Summary: ${copiedCount} files copied, ${skippedCount} skipped`);
-
-  // Store generated values for later use (API keys will be added after DB seed)
-  if (env === 'prod' && generatedValues.workersEnvPath) {
-    global.prodWorkersEnvPath = generatedValues.workersEnvPath;
-  }
 
   return copiedCount > 0 || skippedCount > 0;
 }
@@ -398,7 +382,7 @@ async function checkModels() {
 async function installDependencies(env = 'dev') {
   console.log('\n  Installing pnpm dependencies...');
 
-  const apps = ['apps/backend', 'apps/frontend', 'apps/workers'];
+  const apps = ['apps/backend', 'apps/frontend'];
   let successCount = 0;
   let failedApps = [];
 
@@ -425,16 +409,16 @@ async function installDependencies(env = 'dev') {
 
   console.log(`\n  ${colors.green}✅ All dependencies installed successfully${colors.reset}`);
 
-  // Install patchright browsers for workers (dev only - prod uses Docker with pre-installed browsers)
+  // Install patchright browsers for backend (dev only - prod uses Docker with pre-installed browsers)
   if (env === 'dev') {
-    console.log('\n  Installing Patchright browsers for workers...');
-    const patchrightResult = exec('cd apps/workers && pnpm dlx patchright install chromium', true);
+    console.log('\n  Installing Patchright browsers for backend...');
+    const patchrightResult = exec('cd apps/backend && pnpm dlx patchright install chromium', true);
 
     if (patchrightResult.success) {
       console.log(`  ✅ Patchright browsers installed successfully`);
     } else {
       console.log(`  ${colors.yellow}⚠️  Patchright browser installation failed${colors.reset}`);
-      console.log(`     ${colors.cyan}Run manually: cd apps/workers && pnpm dlx patchright install chromium${colors.reset}`);
+      console.log(`     ${colors.cyan}Run manually: cd apps/backend && pnpm dlx patchright install chromium${colors.reset}`);
       console.log(`     This is needed for web scraping functionality`);
     }
   }
@@ -508,7 +492,7 @@ async function initDatabase(env, questionFn) {
     exec('docker compose down', true);
 
     // Check if old containers still exist
-    const checkContainers = exec('docker ps -a --filter name=eclaire-backend --filter name=eclaire-frontend --filter name=eclaire-workers --format "{{.Names}}"', true);
+    const checkContainers = exec('docker ps -a --filter name=eclaire-backend --filter name=eclaire-frontend --format "{{.Names}}"', true);
 
     if (checkContainers.success && checkContainers.output && checkContainers.output.trim()) {
       const existingContainers = checkContainers.output.trim().split('\n');
@@ -583,43 +567,42 @@ async function initDatabase(env, questionFn) {
     console.log('  Stopping backend container...');
     exec('docker compose down');
 
-    // Extract API keys from seed output and update workers .env.prod
-    if (global.prodWorkersEnvPath) {
-      console.log(`  🔑 Extracting API keys from seed output...`);
+    // Extract API keys from seed output and update backend .env.prod
+    const backendEnvPath = path.join(process.cwd(), 'apps/backend/.env.prod');
+    console.log(`  🔑 Extracting API keys from seed output...`);
 
-      const output = seedResult.output || '';
-      const workerKeyMatch = output.match(/Worker API Key:\s*(sk-[\w-]+)/);
-      const assistantKeyMatch = output.match(/AI Assistant API Key:\s*(sk-[\w-]+)/);
+    const output = seedResult.output || '';
+    const workerKeyMatch = output.match(/Worker API Key:\s*(sk-[\w-]+)/);
+    const assistantKeyMatch = output.match(/AI Assistant API Key:\s*(sk-[\w-]+)/);
 
-      if (workerKeyMatch && assistantKeyMatch) {
-        const workerApiKey = workerKeyMatch[1];
-        const assistantApiKey = assistantKeyMatch[1];
+    if (workerKeyMatch && assistantKeyMatch) {
+      const workerApiKey = workerKeyMatch[1];
+      const assistantApiKey = assistantKeyMatch[1];
 
-        try {
-          let workersEnvContent = fs.readFileSync(global.prodWorkersEnvPath, 'utf-8');
+      try {
+        let backendEnvContent = fs.readFileSync(backendEnvPath, 'utf-8');
 
-          workersEnvContent = workersEnvContent.replace(
-            /WORKER_API_KEY=$/m,
-            `WORKER_API_KEY=${workerApiKey}`
-          );
-          workersEnvContent = workersEnvContent.replace(
-            /AI_ASSISTANT_API_KEY=$/m,
-            `AI_ASSISTANT_API_KEY=${assistantApiKey}`
-          );
+        backendEnvContent = backendEnvContent.replace(
+          /WORKER_API_KEY=$/m,
+          `WORKER_API_KEY=${workerApiKey}`
+        );
+        backendEnvContent = backendEnvContent.replace(
+          /AI_ASSISTANT_API_KEY=$/m,
+          `AI_ASSISTANT_API_KEY=${assistantApiKey}`
+        );
 
-          fs.writeFileSync(global.prodWorkersEnvPath, workersEnvContent);
-          console.log(`  ✅ Updated workers .env.prod with API keys`);
-        } catch (error) {
-          console.log(`  ${colors.yellow}⚠️  Could not update workers .env.prod with API keys${colors.reset}`);
-          console.log(`  ${colors.cyan}Please manually add these keys to apps/workers/.env.prod:${colors.reset}`);
-          console.log(`    WORKER_API_KEY=${workerApiKey}`);
-          console.log(`    AI_ASSISTANT_API_KEY=${assistantApiKey}`);
-        }
-      } else {
-        console.log(`  ${colors.yellow}⚠️  Could not extract API keys from seed output${colors.reset}`);
-        console.log(`  ${colors.cyan}Please run 'docker exec eclaire-backend pnpm db:seed:essential:prod' manually${colors.reset}`);
-        console.log(`  ${colors.cyan}and copy the API keys to apps/workers/.env.prod${colors.reset}`);
+        fs.writeFileSync(backendEnvPath, backendEnvContent);
+        console.log(`  ✅ Updated backend .env.prod with API keys`);
+      } catch (error) {
+        console.log(`  ${colors.yellow}⚠️  Could not update backend .env.prod with API keys${colors.reset}`);
+        console.log(`  ${colors.cyan}Please manually add these keys to apps/backend/.env.prod:${colors.reset}`);
+        console.log(`    WORKER_API_KEY=${workerApiKey}`);
+        console.log(`    AI_ASSISTANT_API_KEY=${assistantApiKey}`);
       }
+    } else {
+      console.log(`  ${colors.yellow}⚠️  Could not extract API keys from seed output${colors.reset}`);
+      console.log(`  ${colors.cyan}Please run 'docker exec eclaire-backend pnpm db:seed:essential:prod' manually${colors.reset}`);
+      console.log(`  ${colors.cyan}and copy the API keys to apps/backend/.env.prod${colors.reset}`);
     }
   } else {
     // Development: Use host-based approach (existing logic)

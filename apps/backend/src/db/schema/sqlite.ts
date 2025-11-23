@@ -5,6 +5,7 @@ import {
   sqliteTable,
   text,
   unique,
+  uniqueIndex,
   index,
 } from "drizzle-orm/sqlite-core";
 import {
@@ -498,6 +499,12 @@ export const assetProcessingJobs = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
 
+    // Job type for assets that have multiple processing pipelines (e.g., tasks)
+    // - "processing" (default): Standard asset processing
+    // - "tag_generation": AI tag generation for tasks
+    // - "execution": AI task execution for tasks assigned to AI assistant
+    jobType: text("job_type").default("processing"),
+
     status: text("status", {
       enum: ["pending", "processing", "completed", "failed", "retry_pending"],
     })
@@ -535,7 +542,11 @@ export const assetProcessingJobs = sqliteTable(
     priority: integer("priority").default(0),
   },
   (table) => ({
-    assetUnique: unique().on(table.assetType, table.assetId),
+    // Unified unique constraint on (assetType, assetId, jobType)
+    // - Non-task assets all use jobType="processing" (default), so still unique on (assetType, assetId)
+    // - Tasks can have multiple job types (tag_generation, execution), each unique
+    assetJobTypeUnique: uniqueIndex("asset_jobs_asset_job_type_unique_idx")
+      .on(table.assetType, table.assetId, table.jobType),
     statusRetryIdx: index("asset_jobs_status_retry_idx").on(
       table.status,
       table.nextRetryAt,

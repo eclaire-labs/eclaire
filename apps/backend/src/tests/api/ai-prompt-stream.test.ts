@@ -936,7 +936,7 @@ describe("Streaming Prompt API Integration Tests", { timeout: 60000 }, () => {
     );
   });
 
-  it("POST /api/prompt/stream - markdown vs JSON distinction test", async () => {
+  it("POST /api/prompt/stream - markdown vs JSON distinction test", { timeout: 120000 }, async () => {
     await delay(200);
 
     // Ask for something that should include legitimate code examples

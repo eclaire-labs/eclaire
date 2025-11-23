@@ -4,13 +4,16 @@ import Redis from "ioredis";
 import type { RouteVariables } from "@/types/route-variables";
 import { getAuthenticatedUserId } from "../lib/auth-utils";
 import { createChildLogger } from "../lib/logger";
+import { getQueueMode } from "../lib/env-validation";
 
 const logger = createChildLogger("processing-events");
 
 export const processingEventsRoutes = new Hono<{ Variables: RouteVariables }>();
 
-// Queue backend configuration
-const queueBackend = process.env.QUEUE_BACKEND || "redis";
+// Queue mode is derived from SERVICE_ROLE:
+// - "unified" → database mode (no Redis dependency)
+// - "backend"/"worker" → redis mode (requires Redis)
+const queueBackend = getQueueMode();
 const useRedisPubSub = queueBackend === "redis";
 
 // Redis connection for pub/sub (only used in redis mode)
@@ -18,7 +21,7 @@ const redisUrl = process.env.REDIS_URL;
 
 // Warn if redis mode but no URL
 if (useRedisPubSub && !redisUrl) {
-  logger.warn({}, "REDIS_URL not set but QUEUE_BACKEND=redis - pub/sub will not work");
+  logger.warn({}, "REDIS_URL not set but queue mode is 'redis' - pub/sub will not work");
 }
 
 // Reusable Redis publisher connection (only created in redis mode)

@@ -513,7 +513,7 @@ app.post("/:jobId/reschedule", async (c) => {
 					eq(assetProcessingJobs.status, "processing"),
 				),
 			)
-			.returning({ id: assetProcessingJobs.id });
+			.returning({ id: assetProcessingJobs.id, assetType: assetProcessingJobs.assetType });
 
     if (result.length === 0) {
       logger.warn(
@@ -526,8 +526,18 @@ app.post("/:jobId/reschedule", async (c) => {
       );
     }
 
+		// Wake up waiting workers appropriately based on schedule
+		const assetType = result[0]!.assetType as AssetType;
+		if (delayMs === 0) {
+			// Job is ready immediately, notify waiting workers now
+			jobWaitlist.notifyWaiters(assetType);
+		} else {
+			// Job scheduled for future, arm the timer to wake workers when ready
+			jobWaitlist.scheduleNextWakeup(assetType);
+		}
+
     logger.info(
-      { jobId, workerId, delayMs, scheduledFor },
+      { jobId, workerId, delayMs, scheduledFor, assetType },
       "Job rescheduled for rate limiting",
     );
     return c.json({ success: true, scheduledFor });

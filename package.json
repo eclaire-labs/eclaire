@@ -25,13 +25,12 @@
     "setup:prod:yes": "node scripts/setup.js prod --yes",
     "setup:check": "node scripts/setup.js dev --skip-db --skip-models",
     "setup:clean": "node scripts/setup-clean.js",
-    "dev": "pnpm dev:backend & pnpm dev:frontend & pnpm dev:workers",
+    "dev": "pnpm dev:backend & pnpm dev:frontend",
     "dev:backend": "cd apps/backend && pnpm dev",
     "dev:frontend": "cd apps/frontend && pnpm dev",
-    "dev:workers": "cd apps/workers && pnpm dev",
-    "build": "cd apps/backend && pnpm build && cd ../frontend && pnpm build && cd ../workers && pnpm build",
-    "test": "cd apps/backend && pnpm test && cd ../frontend && pnpm test && cd ../workers && pnpm test",
-    "lint": "cd apps/backend && pnpm lint && cd ../frontend && pnpm lint && cd ../workers && pnpm lint",
-    "format": "cd apps/backend && pnpm format && cd ../frontend && pnpm format && cd ../workers && pnpm format"
+    "build": "cd apps/backend && pnpm build && cd ../frontend && pnpm build",
+    "test": "cd apps/backend && pnpm test && cd ../frontend && pnpm test",
+    "lint": "cd apps/backend && pnpm lint && cd ../frontend && pnpm lint",
+    "format": "cd apps/backend && pnpm format && cd ../frontend && pnpm format"
   }
 }

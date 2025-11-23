@@ -28,6 +28,8 @@ import { getNextExecutionTime, isValidCronExpression } from "@/lib/cron-utils";
 import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
 import { ValidationError } from "@/lib/errors";
 import { getQueue, QueueNames } from "@/lib/queues";
+import { getQueueMode } from "@/lib/env-validation";
+import { getCurrentTimestamp } from "@/lib/db-queue-helpers";
 import { getQueueAdapter } from "@/lib/queue-adapter";
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history";
@@ -185,44 +187,72 @@ async function upsertTaskScheduler(
   limit?: number,
   immediately?: boolean,
 ): Promise<boolean> {
+  const queueMode = getQueueMode();
+
   try {
-    const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
-    if (!queue) {
-      logger.error(
-        { taskId },
-        "Failed to get task execution queue for scheduler",
+    if (queueMode === "redis") {
+      // Redis mode: Use BullMQ scheduler
+      const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
+      if (!queue) {
+        logger.error(
+          { taskId },
+          "Failed to get task execution queue for scheduler",
+        );
+        return false;
+      }
+
+      const schedulerId = `recurring-task-${taskId}`;
+
+      await queue.upsertJobScheduler(
+        schedulerId,
+        {
+          pattern: cronExpression,
+          endDate: endDate || undefined,
+          limit: limit,
+          immediately: immediately,
+        },
+        {
+          name: `recurring-task-job-${taskId}`,
+          data: {
+            ...taskData,
+            isRecurring: true,
+            cronExpression: cronExpression,
+          },
+          opts: {
+            removeOnComplete: 1000,
+            removeOnFail: 100,
+          },
+        },
       );
-      return false;
-    }
 
-    const schedulerId = `recurring-task-${taskId}`;
+      logger.info(
+        { taskId, cronExpression, schedulerId: `recurring-task-${taskId}`, limit, immediately, queueMode },
+        "Created/updated task scheduler (Redis/BullMQ)",
+      );
+    } else {
+      // Database mode: Update task record, scheduler loop will pick it up
+      const now = getCurrentTimestamp();
+      const nextRunAt = immediately ? now : getNextExecutionTime(cronExpression);
 
-    await queue.upsertJobScheduler(
-      schedulerId,
-      {
-        pattern: cronExpression,
-        endDate: endDate || undefined,
-        limit: limit,
-        immediately: immediately,
-      },
-      {
-        name: `recurring-task-job-${taskId}`,
-        data: {
-          ...taskData,
+      await db
+        .update(tasks)
+        .set({
           isRecurring: true,
           cronExpression: cronExpression,
-        },
-        opts: {
-          removeOnComplete: 1000,
-          removeOnFail: 100,
-        },
-      },
-    );
+          recurrenceEndDate: endDate,
+          recurrenceLimit: limit,
+          runImmediately: immediately || false,
+          nextRunAt: nextRunAt,
+          updatedAt: now,
+        })
+        .where(eq(tasks.id, taskId));
 
-    logger.info(
-      { taskId, cronExpression, schedulerId, limit, immediately },
-      "Created/updated task scheduler",
-    );
+      logger.info(
+        { taskId, cronExpression, nextRunAt, limit, immediately, queueMode },
+        "Updated task scheduler (Database mode)",
+      );
+    }
+
     return true;
   } catch (error) {
     logger.error(
@@ -231,6 +261,7 @@ async function upsertTaskScheduler(
         cronExpression,
         limit,
         immediately,
+        queueMode,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Failed to create/update task scheduler",
@@ -241,50 +272,69 @@ async function upsertTaskScheduler(
 
 /**
  * Cancels a task execution job
- * Uses BullMQ to remove the job
+ * In Redis mode: removes the BullMQ job
+ * In Database mode: deletes pending jobs from asset_processing_jobs
  *
  * @param taskId - The task ID
  * @returns Promise<boolean> - Success status
  */
 async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
+  const queueMode = getQueueMode();
+
   try {
-    const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
-    if (!queue) {
-      logger.error(
-        { taskId },
-        "Failed to get task execution queue to cancel job",
-      );
-      return false;
-    }
+    if (queueMode === "redis") {
+      // Redis mode: Remove BullMQ job
+      const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
+      if (!queue) {
+        logger.error(
+          { taskId },
+          "Failed to get task execution queue to cancel job",
+        );
+        return false;
+      }
 
-    const jobId = `task-execution-${taskId}`;
+      const jobId = `task-execution-${taskId}`;
 
-    // Try to get the job and cancel it
-    const job = await queue.getJob(jobId);
-    if (job) {
-      try {
-        await job.remove();
-        logger.info({ taskId, jobId }, "Cancelled task execution job");
-      } catch (removeError) {
-        // Job might be locked by another worker - this is expected during execution
-        const errorMessage =
-          removeError instanceof Error ? removeError.message : "Unknown error";
-        if (errorMessage.includes("locked by another worker")) {
-          logger.warn(
-            { taskId, jobId },
-            "Task execution job is locked by another worker, skipping removal",
-          );
-          return true; // Consider this a successful cancellation attempt
-        } else {
-          logger.error(
-            { taskId, jobId, error: errorMessage },
-            "Failed to remove task execution job",
-          );
-          return false;
+      // Try to get the job and cancel it
+      const job = await queue.getJob(jobId);
+      if (job) {
+        try {
+          await job.remove();
+          logger.info({ taskId, jobId, queueMode }, "Cancelled task execution job (Redis)");
+        } catch (removeError) {
+          // Job might be locked by another worker - this is expected during execution
+          const errorMessage =
+            removeError instanceof Error ? removeError.message : "Unknown error";
+          if (errorMessage.includes("locked by another worker")) {
+            logger.warn(
+              { taskId, jobId },
+              "Task execution job is locked by another worker, skipping removal",
+            );
+            return true; // Consider this a successful cancellation attempt
+          } else {
+            logger.error(
+              { taskId, jobId, error: errorMessage },
+              "Failed to remove task execution job",
+            );
+            return false;
+          }
         }
+      } else {
+        logger.debug({ taskId, jobId }, "No task execution job found to cancel");
       }
     } else {
-      logger.debug({ taskId, jobId }, "No task execution job found to cancel");
+      // Database mode: Delete pending jobs for this task
+      const result = await db
+        .delete(assetProcessingJobs)
+        .where(
+          and(
+            eq(assetProcessingJobs.assetType, "tasks"),
+            eq(assetProcessingJobs.assetId, taskId),
+            eq(assetProcessingJobs.status, "pending")
+          )
+        );
+
+      logger.info({ taskId, queueMode }, "Cancelled pending task execution jobs (Database)");
     }
 
     return true;
@@ -292,6 +342,7 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
     logger.error(
       {
         taskId,
+        queueMode,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Failed to cancel task execution job",
@@ -302,36 +353,65 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
 
 /**
  * Removes a scheduler for a recurring task
- * Uses BullMQ scheduler
+ * In Redis mode: removes BullMQ scheduler
+ * In Database mode: clears recurrence fields on task
  *
  * @param taskId - The task ID
  * @returns Promise<boolean> - Success status
  */
 async function removeTaskScheduler(taskId: string): Promise<boolean> {
-  try {
-    logger.info({ taskId }, "Starting scheduler removal process");
+  const queueMode = getQueueMode();
 
-    const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
-    if (!queue) {
-      logger.error(
-        { taskId },
-        "Failed to get task execution queue to remove scheduler",
+  try {
+    logger.info({ taskId, queueMode }, "Starting scheduler removal process");
+
+    if (queueMode === "redis") {
+      // Redis mode: Remove BullMQ scheduler
+      const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
+      if (!queue) {
+        logger.error(
+          { taskId },
+          "Failed to get task execution queue to remove scheduler",
+        );
+        return false;
+      }
+
+      const schedulerId = `recurring-task-${taskId}`;
+      await queue.removeJobScheduler(schedulerId);
+
+      logger.info(
+        { taskId, schedulerId, queueMode },
+        "Successfully removed task scheduler (Redis)",
       );
-      return false;
+    } else {
+      // Database mode: Clear recurrence fields
+      const now = getCurrentTimestamp();
+
+      await db
+        .update(tasks)
+        .set({
+          isRecurring: false,
+          cronExpression: null,
+          recurrenceEndDate: null,
+          recurrenceLimit: null,
+          runImmediately: false,
+          nextRunAt: null,
+          updatedAt: now,
+        })
+        .where(eq(tasks.id, taskId));
+
+      logger.info(
+        { taskId, queueMode },
+        "Successfully removed task scheduler (Database)",
+      );
     }
 
-    const schedulerId = `recurring-task-${taskId}`;
-    await queue.removeJobScheduler(schedulerId);
-
-    logger.info(
-      { taskId, schedulerId },
-      "Successfully removed task scheduler",
-    );
     return true;
   } catch (error) {
     logger.error(
       {
         taskId,
+        queueMode,
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       },
@@ -546,6 +626,7 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
       title: taskData.title,
       description: taskData.description || "",
       userId: userId,
+      jobType: "tag_generation",
     });
     logger.info({ taskId, userId }, "Queued task for AI tag processing");
 
@@ -554,11 +635,13 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
     if (isAssignedToAI) {
       const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
       if (queue) {
+        // Redis/BullMQ mode
         const delay = calculateAIAssistantJobDelay(dueDateValue);
         await queue.add("process-task-execution", {
           taskId: taskId,
           userId: userId,
           dueDate: dueDateValue ?? undefined,
+          isAssignedToAI: true,
         }, {
           delay,
           removeOnComplete: {
@@ -569,7 +652,26 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
         });
         logger.info(
           { taskId, userId, assignedToId: assignedToUserId, delay },
-          "Queued task for execution processing",
+          "Queued task for execution processing (Redis)",
+        );
+      } else {
+        // Database queue mode - use queueAdapter with execution jobType
+        const delay = calculateAIAssistantJobDelay(dueDateValue);
+        const scheduledFor = delay > 0 ? new Date(Date.now() + delay) : undefined;
+        await queueAdapter.enqueueTask({
+          taskId: taskId,
+          userId: userId,
+          title: taskData.title,
+          description: taskData.description || "",
+          isAssignedToAI: true,
+          assignedToId: assignedToUserId,
+          dueDate: dueDateValue ?? undefined,
+          scheduledFor,
+          jobType: "execution",
+        });
+        logger.info(
+          { taskId, userId, assignedToId: assignedToUserId, delay },
+          "Queued task for execution processing (Database)",
         );
       }
     }
@@ -913,10 +1015,12 @@ export async function updateTask(
 
           const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
           if (queue) {
+            // Redis/BullMQ mode
             await queue.add("process-task-execution", {
               taskId: id,
               userId: userId,
               dueDate: finalDueDate ?? undefined,
+              isAssignedToAI: true,
             }, {
               delay,
               removeOnComplete: {
@@ -927,7 +1031,26 @@ export async function updateTask(
             });
             logger.info(
               { taskId: id, userId, assignedToId: finalAssignedToId, delay },
-              "Queued updated task for execution processing",
+              "Queued updated task for execution processing (Redis)",
+            );
+          } else {
+            // Database queue mode - use queueAdapter with execution jobType
+            const queueAdapter = getQueueAdapter();
+            const scheduledFor = delay > 0 ? new Date(Date.now() + delay) : undefined;
+            await queueAdapter.enqueueTask({
+              taskId: id,
+              userId: userId,
+              title: existingTask.title,
+              description: existingTask.description || "",
+              isAssignedToAI: true,
+              assignedToId: finalAssignedToId,
+              dueDate: finalDueDate ?? undefined,
+              scheduledFor,
+              jobType: "execution",
+            });
+            logger.info(
+              { taskId: id, userId, assignedToId: finalAssignedToId, delay },
+              "Queued updated task for execution processing (Database)",
             );
           }
         }

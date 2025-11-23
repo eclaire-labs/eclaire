@@ -1,21 +1,21 @@
 // backend/src/lib/queues.ts
 import { Queue } from "bullmq";
-import { Redis } from "ioredis";
+import type { Redis } from "ioredis";
 import { createChildLogger } from "./logger";
+import { createRedisConnection } from "./redis-connection";
+import { QueueNames } from "./queue-names";
+import { getQueueMode } from "./env-validation";
 
 const logger = createChildLogger("queues");
 
 // --- Configuration ---
-const queueBackend = process.env.QUEUE_BACKEND || "redis";
+// Queue mode is derived from SERVICE_ROLE:
+// - "unified" → database mode (no Redis dependency)
+// - "backend"/"worker" → redis mode (requires Redis)
+const queueBackend = getQueueMode();
 
-export const QueueNames = {
-  BOOKMARK_PROCESSING: "bookmark-processing",
-  IMAGE_PROCESSING: "image-processing",
-  DOCUMENT_PROCESSING: "document-processing",
-  NOTE_PROCESSING: "note-processing",
-  TASK_PROCESSING: "task-processing",
-  TASK_EXECUTION_PROCESSING: "task-execution-processing",
-} as const;
+// Re-export QueueNames for backwards compatibility
+export { QueueNames };
 
 // --- Conditional Redis Connection ---
 let connection: Redis | null = null;
@@ -26,38 +26,14 @@ if (queueBackend === "redis") {
   if (!redisUrl) {
     logger.error(
       {},
-      "FATAL: REDIS_URL environment variable is not set but QUEUE_BACKEND=redis. Queue functionality will fail",
+      "FATAL: REDIS_URL environment variable is not set but queue mode is 'redis'. Queue functionality will fail",
     );
   } else {
-    // Use recommended BullMQ options
-    connection = new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false, // Recommended for BullMQ >= 4. BullMQ handles readiness checks.
+    connection = createRedisConnection({
+      url: redisUrl,
+      logger,
+      serviceName: "Backend Service",
     });
-
-    connection.on("error", (err) =>
-      logger.error(
-        {
-          error: err instanceof Error ? err.message : "Unknown error",
-          stack: err instanceof Error ? err.stack : undefined,
-        },
-        "Backend Service Redis Connection Error",
-      ),
-    );
-
-    connection.on("connect", () =>
-      logger.info({}, "Backend Service Redis Connected"),
-    );
-
-    connection.on("close", () =>
-      logger.info({}, "Backend Service Redis Connection Closed"),
-    );
-
-    connection.on("reconnecting", () =>
-      logger.info({}, "Backend Service Redis Reconnecting"),
-    );
-
-    logger.info({}, "Redis connection initialized for BullMQ queues");
   }
 } else {
   logger.info(
@@ -82,9 +58,9 @@ export function getQueue(
 ): Queue | null {
   // Check if we're in redis mode
   if (queueBackend !== "redis") {
-    logger.warn(
+    logger.debug(
       { queueName: name, queueBackend },
-      "getQueue called but QUEUE_BACKEND is not 'redis' - returning null",
+      "getQueue called but queue mode is 'database' - returning null (this is expected)",
     );
     return null;
   }
@@ -119,7 +95,7 @@ export function getQueue(
       logger.info({ queueName: name }, "Queue initialized successfully");
 
       // Add an error listener specific to this queue instance
-      queues[name].on("error", (error) => {
+      queues[name]?.on("error", (error) => {
         logger.error(
           {
             queueName: name,
@@ -141,7 +117,7 @@ export function getQueue(
       return null;
     }
   }
-  return queues[name];
+  return queues[name] ?? null;
 }
 
 // --- Graceful Shutdown ---

@@ -107,25 +107,27 @@ export class LLMStreamParser {
           const delta = parsed.choices[0].delta;
 
           // Handle reasoning field (from providers like OpenRouter)
+          // Support both 'reasoning' and 'reasoning_content' field names (different providers use different names)
+          const reasoningValue = delta.reasoning ?? delta.reasoning_content;
           // Only process reasoning if it has actual content (not empty string)
           if (
-            delta.reasoning !== null &&
-            delta.reasoning !== undefined &&
-            delta.reasoning.trim() !== ""
+            reasoningValue !== null &&
+            reasoningValue !== undefined &&
+            reasoningValue.trim() !== ""
           ) {
             logger.debug(
-              { reasoningContent: delta.reasoning },
+              { reasoningContent: reasoningValue },
               "Returning reasoning content",
             );
-            return { type: "reasoning", content: delta.reasoning };
+            return { type: "reasoning", content: reasoningValue };
           } else if (
-            delta.reasoning !== null &&
-            delta.reasoning !== undefined
+            reasoningValue !== null &&
+            reasoningValue !== undefined
           ) {
             logger.debug(
               {
-                reasoningValue: delta.reasoning,
-                reasoningLength: delta.reasoning.length,
+                reasoningValue: reasoningValue,
+                reasoningLength: reasoningValue.length,
               },
               "Skipping empty reasoning content, will check for regular content",
             );

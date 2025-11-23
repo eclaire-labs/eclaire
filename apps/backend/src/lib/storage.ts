@@ -10,9 +10,12 @@ import { createChildLogger } from "./logger";
 
 const logger = createChildLogger("storage");
 
-// Use environment variable for base storage directory, with fallback to relative data directory
+// Use environment variable for base storage directory
+// Support both USERS_DIR (backend) and WORKER_SHARED_DATA_PATH (workers) with fallback
 const BASE_STORAGE_DIR =
-  process.env.USERS_DIR || path.join(process.cwd(), "data");
+  process.env.USERS_DIR ||
+  process.env.WORKER_SHARED_DATA_PATH ||
+  path.join(process.cwd(), "data");
 
 // Legacy interface for backward compatibility
 export interface SaveObjectOptions {

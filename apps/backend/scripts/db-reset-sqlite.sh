@@ -29,7 +29,7 @@ fi
 echo ""
 
 # Get SQLite database path from environment or use default
-SQLITE_PATH="${SQLITE_DATA_DIR:-../../data/db/sqlite.db}"
+SQLITE_PATH="${SQLITE_DB_PATH:-./data/db/sqlite.db}"
 echo "📂 SQLite database: $SQLITE_PATH"
 
 # 1. Delete the SQLite database file

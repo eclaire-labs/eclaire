@@ -13,13 +13,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd -r nodeapp && useradd -r -g nodeapp -m -d /home/nodeapp nodeapp
 
 # ===== Builder Stage =====
-# Includes build toolchain for native modules & TS compile
+# Includes build toolchain for native modules & TS compile + worker dependencies
 FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 
-# Build tools needed to compile native deps; psql only if your build/migrate runs at build-time
+# Build tools needed to compile native deps + worker processing tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ \
+    # Document & image tooling needed at build-time:
+    libreoffice libreoffice-writer libreoffice-calc libreoffice-impress \
+    graphicsmagick imagemagick ghostscript poppler-utils libheif1 \
+    # Playwright deps
+    libnss3 libnspr4 libatk-bridge2.0-0 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+    libxrandr2 libgbm1 libxss1 libasound2 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
@@ -57,9 +63,13 @@ RUN pnpm build
 FROM builder AS prod-deps
 
 # At this point, /app/apps/backend/dist already exists from builder
-# Just deploy the standalone backend with prod dependencies
+# Deploy the standalone backend with prod dependencies (now includes worker deps)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm deploy --filter=@eclaire/backend --prod /deploy
+
+# Install patchright browsers for worker mode
+WORKDIR /deploy
+RUN npx patchright install chromium
 
 # ===== Runner Stage =====
 FROM base AS runner
@@ -87,11 +97,12 @@ ENV NODE_ENV=production \
     APP_GIT_HASH=${APP_GIT_HASH} \
     PORT=3001 \
     HOST=0.0.0.0 \
+    PLAYWRIGHT_BROWSERS_PATH=/home/nodeapp/.cache/ms-playwright \
     NODE_OPTIONS=--enable-source-maps
 
 # OCI Labels for provenance
 LABEL org.opencontainers.image.title="Eclaire Backend" \
-      org.opencontainers.image.description="Eclaire Backend Service" \
+      org.opencontainers.image.description="Eclaire unified service - Supports backend, worker, and unified modes via SERVICE_ROLE" \
       org.opencontainers.image.source="https://github.com/eclaire-labs/eclaire" \
       org.opencontainers.image.url="https://eclaire.co" \
       org.opencontainers.image.documentation="https://eclaire.co/docs/" \
@@ -102,6 +113,7 @@ LABEL org.opencontainers.image.title="Eclaire Backend" \
       org.opencontainers.image.created=$APP_BUILD_TIMESTAMP \
       org.opencontainers.image.vendor="Eclaire Labs" \
       co.eclaire.service=$APP_SERVICE \
+      co.eclaire.supports_modes="backend,worker,unified" \
       co.eclaire.origin=$APP_ORIGIN \
       co.eclaire.channel=$APP_CHANNEL \
       co.eclaire.channel_tag=$APP_CHANNEL_TAG \
@@ -114,6 +126,8 @@ COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 
 # Copy standalone deployment from pnpm deploy (includes node_modules, package.json, and dist)
 COPY --from=prod-deps --chown=nodeapp:nodeapp /deploy ./
+# Copy browser cache from prod-deps (where browsers were installed)
+COPY --from=prod-deps --chown=nodeapp:nodeapp /root/.cache/ms-playwright /home/nodeapp/.cache/ms-playwright
 
 # Copy additional runtime files
 COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/tool-signatures.json ./
@@ -121,15 +135,42 @@ COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/tool-signatures.j
 # --- Optional runtime DB tooling (only if used at container runtime) ---
 # If your entrypoint or ops scripts call these, keep them; otherwise omit.
 COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/scripts ./scripts
-COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/src/db/migrations ./src/db/migrations
+COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/src/db/migrations-postgres ./src/db/migrations-postgres
+COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/src/db/migrations-sqlite ./src/db/migrations-sqlite
 COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/drizzle.config.ts ./
 
-# Permissions
-RUN mkdir -p /app/data /app/logs \
- && chown -R nodeapp:nodeapp /app
+# Install runtime dependencies for worker functionality (document/image processing, browsers)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # LibreOffice for document processing
+    libreoffice libreoffice-writer libreoffice-calc libreoffice-impress \
+    # Image processing tools
+    graphicsmagick imagemagick ghostscript poppler-utils libheif1 \
+    # Playwright browser runtime dependencies
+    libatk1.0-0 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 \
+    libgbm1 libxkbcommon0 libasound2 libnss3 libnspr4 libatk-bridge2.0-0 \
+    libdrm2 libxrandr2 libxss1 \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
+# ImageMagick security policy (allow PDF read-only + resource limits)
+RUN printf '%s\n' "\
+<policymap>\n\
+  <policy domain=\"resource\" name=\"memory\" value=\"512MiB\"/>\n\
+  <policy domain=\"resource\" name=\"map\"    value=\"1GiB\"/>\n\
+  <policy domain=\"resource\" name=\"area\"   value=\"256MiB\"/>\n\
+  <policy domain=\"resource\" name=\"disk\"   value=\"2GiB\"/>\n\
+  <policy domain=\"coder\" rights=\"read\" pattern=\"PDF\"/>\n\
+</policymap>\n" > /etc/ImageMagick-6/policy.xml
+
+# Permissions (include browser-data for worker mode)
+RUN mkdir -p /app/data /app/logs /app/browser-data /app/tmp \
+ && chown -R nodeapp:nodeapp /app /home/nodeapp \
+ && chmod 1777 /tmp
 
 USER nodeapp
 EXPOSE 3001
+# Also expose 3002 for Bull Board when SERVICE_ROLE=worker
+EXPOSE 3002
 
 # Healthcheck (give app time to boot)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \

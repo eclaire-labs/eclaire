@@ -1,7 +1,7 @@
 name: eclaire
 
 services:
-  # Backend API
+  # Backend API (SERVICE_ROLE=backend, uses Redis queue)
   backend:
     image: ghcr.io/eclaire-labs/eclaire-backend:${BACKEND_TAG:-0.5}
     # For locally-built images, use: docker compose -f docker-compose.yml -f docker-compose.local.yml up
@@ -13,6 +13,7 @@ services:
       - ./apps/backend/.env.prod
     environment:
       - NODE_ENV=production
+      - SERVICE_ROLE=backend  # Backend API only (requires Redis + separate workers)
       - PORT=3001
       - HOST=0.0.0.0
       - REDIS_URL=redis://eclaire-redis:6379
@@ -57,33 +58,40 @@ services:
     restart: unless-stopped
     # Healthcheck inherited from Dockerfile (curl-based)
 
-  # Workers (BullMQ)
-  workers:
-    image: ghcr.io/eclaire-labs/eclaire-workers:${WORKERS_TAG:-0.5}
-    container_name: eclaire-workers
-    env_file:
-      - ./apps/workers/.env.prod
-    environment:
-      - NODE_ENV=production
-      - REDIS_URL=redis://eclaire-redis:6379
-      - BACKEND_URL=http://eclaire-backend:3001
-    depends_on:
-      backend:
-        condition: service_healthy
-    volumes:
-      - ./data:/app/data
-      - ./data/browser-data:/app/browser-data
-      - ./config:/app/config
-      - ./data/logs:/app/data/logs
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    logging:
-      driver: json-file
-      options:
-        max-size: "5m"
-        max-file: "2"
-    restart: unless-stopped
-    # Healthcheck inherited from Dockerfile (curl-based)
+  # ===== UNIFIED MODE (Optional) =====
+  # Uncomment this service to run Eclaire in unified mode (single container, no Redis required)
+  # This combines backend + workers in a single process with database-backed queue
+  #
+  # unified:
+  #   image: ghcr.io/eclaire-labs/eclaire-backend:${BACKEND_TAG:-0.5}
+  #   # Or build locally: docker build -f apps/backend/Dockerfile -t eclaire-backend .
+  #   container_name: eclaire-unified
+  #   ports:
+  #     - "3001:3001"
+  #   env_file:
+  #     - ./apps/backend/.env.prod
+  #   environment:
+  #     - NODE_ENV=production
+  #     - SERVICE_ROLE=unified  # Backend + Workers in single container (no Redis required)
+  #     - PORT=3001
+  #     - HOST=0.0.0.0
+  #     # Note: No REDIS_URL needed - uses database queue mode
+  #   volumes:
+  #     - ./data:/app/data
+  #     - ./data/browser-data:/app/browser-data
+  #     - ./config:/app/config
+  #     - ./data/logs:/app/logs
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   logging:
+  #     driver: json-file
+  #     options:
+  #       max-size: "5m"
+  #       max-file: "2"
+  #   restart: unless-stopped
+  #   # Healthcheck inherited from Dockerfile (curl on port 3001)
+  #
+  # Note: When using unified mode, comment out the backend and workers services above
 
 networks:
   default:

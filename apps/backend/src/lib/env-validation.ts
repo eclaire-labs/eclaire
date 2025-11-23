@@ -2,15 +2,68 @@ import { createChildLogger } from "./logger";
 
 const logger = createChildLogger("env-validation");
 
+/**
+ * Get the current queue mode based on SERVICE_ROLE
+ * - unified → database mode (no Redis dependency)
+ * - backend/worker → redis mode (requires Redis)
+ */
+export function getQueueMode(): "redis" | "database" {
+  const serviceRole = process.env.SERVICE_ROLE || "backend";
+  return serviceRole === "unified" ? "database" : "redis";
+}
+
+/**
+ * Get the current service role
+ */
+export function getServiceRole(): "backend" | "worker" | "unified" {
+  return (process.env.SERVICE_ROLE || "backend") as "backend" | "worker" | "unified";
+}
+
 export function validateRequiredEnvVars() {
   const allowDevKeys = process.env.ALLOW_DEV_KEYS === "true";
 
+  // Validate SERVICE_ROLE
+  const serviceRole = process.env.SERVICE_ROLE || "backend";
+  const validRoles = ["backend", "worker", "unified"];
+  if (!validRoles.includes(serviceRole)) {
+    logger.error(
+      { serviceRole, validRoles },
+      `Invalid SERVICE_ROLE: ${serviceRole}. Must be one of: ${validRoles.join(", ")}`,
+    );
+    throw new Error(
+      `Invalid SERVICE_ROLE: ${serviceRole}. Must be one of: ${validRoles.join(", ")}`,
+    );
+  }
+
+  // Determine queue mode based on SERVICE_ROLE
+  // unified = database mode (no Redis), backend/worker = redis mode (requires Redis)
+  const queueMode = serviceRole === "unified" ? "database" : "redis";
+
+  // Validate REDIS_URL when in redis mode
+  if (queueMode === "redis" && !process.env.REDIS_URL) {
+    logger.error(
+      { serviceRole, queueMode },
+      `REDIS_URL is required when SERVICE_ROLE is 'backend' or 'worker'`,
+    );
+    throw new Error(
+      `REDIS_URL is required when SERVICE_ROLE is 'backend' or 'worker'`,
+    );
+  }
+
   // Validate presence of all required variables
-  const required = [
+  const commonRequired = [
     "BETTER_AUTH_SECRET",
     "MASTER_ENCRYPTION_KEY",
     "API_KEY_HMAC_KEY_V1",
   ];
+
+  // Add worker-specific keys when running as worker or unified
+  const workerRequired =
+    serviceRole === "worker" || serviceRole === "unified"
+      ? ["WORKER_API_KEY", "AI_ASSISTANT_API_KEY"]
+      : [];
+
+  const required = [...commonRequired, ...workerRequired];
   const missing = required.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {
@@ -64,6 +117,18 @@ export function validateRequiredEnvVars() {
             invalidLengthVars.push(`${key} (must be at least 32 characters)`);
           }
           break;
+        case "WORKER_API_KEY":
+          // Must be at least 32 characters for secure authentication
+          if (value.length < 32) {
+            invalidLengthVars.push(`${key} (must be at least 32 characters)`);
+          }
+          break;
+        case "AI_ASSISTANT_API_KEY":
+          // Must be at least 32 characters for secure API authentication
+          if (value.length < 32) {
+            invalidLengthVars.push(`${key} (must be at least 32 characters)`);
+          }
+          break;
       }
     }
 
@@ -93,6 +158,8 @@ export function validateRequiredEnvVars() {
       validatedVars: required,
       environment: process.env.NODE_ENV,
       allowDevKeys,
+      serviceRole,
+      queueMode,
     },
     "Environment validation complete",
   );

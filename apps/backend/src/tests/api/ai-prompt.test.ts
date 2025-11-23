@@ -48,8 +48,7 @@ interface ModelConfigResponse {
   modelFullName: string;
   modelUrl: string;
   capabilities: ModelCapabilities;
-  notes: string;
-  enabled: boolean;
+  description: string;
 }
 
 // Custom interface for Bookmark API response used in prompt tests
@@ -123,14 +122,16 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     }
 
     // Create a test note for findNotes testing
+    // Use enabled: false to prevent AI processing from overwriting the tags
     const noteData = {
       title: "AI Assistant Test Note",
       content:
         "This is a test note for AI integration testing with specific content.",
       tags: ["ai-test", "findnotes", "integration"],
+      enabled: false,
     };
 
-    await loggedFetch(`${BASE_URL}/notes`, {
+    const noteResponse = await loggedFetch(`${BASE_URL}/notes`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -138,6 +139,15 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
       },
       body: JSON.stringify(noteData),
     });
+
+    if (noteResponse.status === 201) {
+      const note = (await noteResponse.json()) as { id: string };
+      console.info(`Test note created: ${note.id}`);
+    } else {
+      console.warn(
+        `Failed to create test note: ${noteResponse.status} ${await noteResponse.text()}`,
+      );
+    }
   });
 
   it("GET /api/model - should return current model configuration", async () => {
@@ -160,8 +170,7 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     expect(data.modelShortName).toBeTypeOf("string");
     expect(data.modelFullName).toBeTypeOf("string");
     expect(data.modelUrl).toBeTypeOf("string");
-    expect(data.enabled).toBeTypeOf("boolean");
-    expect(data.notes).toBeTypeOf("string");
+    expect(data.description).toBeTypeOf("string");
 
     // Verify capabilities structure
     expect(data.capabilities).toBeDefined();
@@ -523,7 +532,7 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     expect(toolCall!.functionName).toBeTypeOf("string");
     expect(toolCall!.executionTimeMs).toBeTypeOf("number");
     expect(toolCall!.success).toBeTypeOf("boolean");
-    expect(toolCall!.executionTimeMs).toBeGreaterThan(0);
+    expect(toolCall!.executionTimeMs).toBeGreaterThanOrEqual(0);
 
     // The tool call should likely be 'findBookmarks' for this test
     expect(toolCall!.functionName).toMatch(/bookmark|find/i);

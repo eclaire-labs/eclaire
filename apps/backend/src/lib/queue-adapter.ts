@@ -53,6 +53,12 @@ export interface TaskJobData extends JobData {
   userId: string;
   title?: string;
   description?: string;
+  isRecurringExecution?: boolean;
+  isAssignedToAI?: boolean;
+  assignedToId?: string;
+  dueDate?: Date;
+  scheduledFor?: Date;
+  jobType?: "tag_generation" | "execution";
 }
 
 export interface QueueAdapter {
@@ -189,20 +195,26 @@ export class DatabaseQueueAdapter implements QueueAdapter {
     options: {
       scheduledFor?: Date;
       priority?: number;
+      jobType?: string;
     } = {},
   ): Promise<void> {
     const scheduledFor = options.scheduledFor || new Date();
     const priority = options.priority || 0;
+    const jobType = options.jobType || "processing";
 
     try {
       // Insert or update the job in the database
       // Use upsert pattern: if job exists, update it
+      // All asset types use (assetType, assetId, jobType) as unique constraint
+      // - Non-task assets all use jobType="processing" (default), so still unique on (assetType, assetId)
+      // - Tasks can have multiple job types (tag_generation, execution), each unique
       await db
         .insert(assetProcessingJobs)
         .values({
           assetType,
           assetId,
           userId,
+          jobType,
           status: "pending",
           jobData,
           scheduledFor,
@@ -211,7 +223,7 @@ export class DatabaseQueueAdapter implements QueueAdapter {
           maxRetries: 3,
         })
         .onConflictDoUpdate({
-          target: [assetProcessingJobs.assetType, assetProcessingJobs.assetId],
+          target: [assetProcessingJobs.assetType, assetProcessingJobs.assetId, assetProcessingJobs.jobType],
           set: {
             status: sql`'pending'`,
             jobData: sql`EXCLUDED.job_data`,
@@ -228,7 +240,7 @@ export class DatabaseQueueAdapter implements QueueAdapter {
         });
 
       logger.info(
-        { assetType, assetId, userId },
+        { assetType, assetId, userId, jobType },
         "Job enqueued to database queue",
       );
 
@@ -251,6 +263,7 @@ export class DatabaseQueueAdapter implements QueueAdapter {
           assetType,
           assetId,
           userId,
+          jobType,
           error: error instanceof Error ? error.message : "Unknown error",
         },
         "Failed to enqueue job to database",
@@ -276,7 +289,10 @@ export class DatabaseQueueAdapter implements QueueAdapter {
   }
 
   async enqueueTask(data: TaskJobData): Promise<void> {
-    await this.enqueueJob("tasks", data.taskId, data.userId, data);
+    await this.enqueueJob("tasks", data.taskId, data.userId, data, {
+      scheduledFor: data.scheduledFor,
+      jobType: data.jobType || "tag_generation",
+    });
   }
 
   async close(): Promise<void> {
@@ -290,7 +306,9 @@ let queueAdapterInstance: QueueAdapter | null = null;
 
 export function getQueueAdapter(): QueueAdapter {
   if (!queueAdapterInstance) {
-    const queueBackend = process.env.QUEUE_BACKEND || "redis";
+    // Import here to avoid circular dependency at module load time
+    const { getQueueMode } = require("./env-validation");
+    const queueBackend = getQueueMode();
 
     if (queueBackend === "database") {
       logger.info({}, "Using database-backed queue adapter");

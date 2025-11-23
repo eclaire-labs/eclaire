@@ -95,7 +95,7 @@ async function showPreflightSummary(env) {
   }
 
   if (!flags.skipDb) {
-    console.log(`  5. ${colors.blue}Install pnpm dependencies${colors.reset} (backend, frontend, workers)`);
+    console.log(`  5. ${colors.blue}Install pnpm dependencies${colors.reset} (backend, frontend)`);
     if (env === 'prod' && flags.build) {
       console.log(`  6. ${colors.blue}Build Docker containers${colors.reset} (--build flag detected)`);
     } else if (env === 'prod') {

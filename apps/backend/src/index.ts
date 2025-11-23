@@ -12,10 +12,13 @@ process.on("uncaughtException", (error) => {
 
 // CRITICAL: Load environment variables FIRST, before any other imports
 import "./lib/env-loader";
-import { validateRequiredEnvVars } from "./lib/env-validation";
+import { validateRequiredEnvVars, getServiceRole, getQueueMode } from "./lib/env-validation";
 
 // Validate required environment variables before starting
 validateRequiredEnvVars();
+
+const SERVICE_ROLE = getServiceRole();
+const QUEUE_MODE = getQueueMode();
 
 // Now import modules that depend on environment variables
 import { serve } from "@hono/node-server";
@@ -35,6 +38,7 @@ import {
   startAllTelegramBots,
   stopAllTelegramBots,
 } from "./lib/services/telegram";
+import { startTaskScheduler, stopTaskScheduler } from "./lib/task-scheduler";
 
 import { allRoutes } from "./routes/all";
 import { bookmarksRoutes } from "./routes/bookmarks";
@@ -350,57 +354,97 @@ app.route("/api/jobs", jobsRoutes);
 // Start the server
 const start = async () => {
   try {
-    // Validate configurations first - fail fast if not properly configured
-    validateAIConfigOnStartup();
+    logger.info({ SERVICE_ROLE, QUEUE_MODE }, "Starting service");
 
-    // Validate encryption service if MASTER_ENCRYPTION_KEY is provided
-    if (process.env.MASTER_ENCRYPTION_KEY) {
-      validateEncryptionService();
-      logger.info("Encryption service validated successfully");
-    } else {
-      logger.warn(
-        "MASTER_ENCRYPTION_KEY not set - channel encryption disabled",
-      );
-    }
+    // Only start HTTP server if role includes backend functionality
+    if (SERVICE_ROLE === "backend" || SERVICE_ROLE === "unified") {
+      // Validate configurations first - fail fast if not properly configured
+      validateAIConfigOnStartup();
 
-    const port = Number(process.env.PORT) || 3001;
-    const host = process.env.HOST || "0.0.0.0";
+      // Validate encryption service if MASTER_ENCRYPTION_KEY is provided
+      if (process.env.MASTER_ENCRYPTION_KEY) {
+        validateEncryptionService();
+        logger.info("Encryption service validated successfully");
+      } else {
+        logger.warn(
+          "MASTER_ENCRYPTION_KEY not set - channel encryption disabled",
+        );
+      }
 
-    logger.info(
-      {
-        port,
-        host,
-        endpoints: {
-          auth: `http://${host}:${port}/api/auth`,
-          session: `http://${host}:${port}/api/session`,
-          channels: `http://${host}:${port}/api/channels`,
-          notifications: `http://${host}:${port}/api/notifications`,
+      const port = Number(process.env.PORT) || 3001;
+      const host = process.env.HOST || "0.0.0.0";
+
+      logger.info(
+        {
+          port,
+          host,
+          serviceRole: SERVICE_ROLE,
+          queueMode: QUEUE_MODE,
+          endpoints: {
+            auth: `http://${host}:${port}/api/auth`,
+            session: `http://${host}:${port}/api/session`,
+            channels: `http://${host}:${port}/api/channels`,
+            notifications: `http://${host}:${port}/api/notifications`,
+          },
         },
-      },
-      "Backend server starting",
-    );
+        "Backend HTTP server starting",
+      );
 
-    logger.info({}, "Registered Hono routes:");
-    showRoutes(app);
-    logger.info({}, "Route registration complete");
+      logger.info({}, "Registered Hono routes:");
+      showRoutes(app);
+      logger.info({}, "Route registration complete");
 
-    serve({
-      fetch: app.fetch,
-      port,
-      hostname: host,
-    });
+      serve({
+        fetch: app.fetch,
+        port,
+        hostname: host,
+      });
 
-    logger.info({ port, host }, "Server running successfully");
+      logger.info({ port, host, SERVICE_ROLE, QUEUE_MODE }, "HTTP server running successfully");
 
-    // Start Telegram bots after server is running
-    if (process.env.MASTER_ENCRYPTION_KEY) {
-      logger.info("Starting Telegram bots...");
-      await startAllTelegramBots();
-    } else {
-      logger.info("Skipping Telegram bot startup - encryption not configured");
+      // Start Telegram bots after server is running
+      if (process.env.MASTER_ENCRYPTION_KEY) {
+        logger.info("Starting Telegram bots...");
+        await startAllTelegramBots();
+      } else {
+        logger.info("Skipping Telegram bot startup - encryption not configured");
+      }
+
+      // In unified mode with database queue, start the task scheduler
+      if (SERVICE_ROLE === "unified" && QUEUE_MODE === "database") {
+        logger.info("Starting task scheduler for recurring tasks (unified + database mode)");
+        startTaskScheduler();
+      }
     }
+
+    // In unified mode, also start the database workers
+    if (SERVICE_ROLE === "unified") {
+      logger.info("Starting database queue workers (unified mode)");
+      const { startDatabaseWorkers } = await import("./workers");
+      await startDatabaseWorkers();
+    }
+
+  // If SERVICE_ROLE=worker, start BullMQ workers only (no HTTP server)
+  if (SERVICE_ROLE === "worker") {
+    logger.info("Starting BullMQ workers (worker mode)");
+    const { startBullMQWorkers } = await import("./workers");
+    await startBullMQWorkers();
+  }
+
+  logger.info({ SERVICE_ROLE, QUEUE_MODE }, "Service startup complete");
   } catch (err) {
-    logger.error({ error: err }, "Failed to start server");
+    logger.error(
+      {
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        errorType: err?.constructor?.name,
+        SERVICE_ROLE,
+        QUEUE_MODE
+      },
+      "Failed to start service"
+    );
+    // Also log to console for visibility in case logger fails
+    console.error("Failed to start service:", err);
     process.exit(1);
   }
 };
@@ -410,7 +454,7 @@ start();
 // Graceful shutdown handling
 const shutdown = async (signal: string) => {
   logger.info(
-    { signal },
+    { signal, SERVICE_ROLE, QUEUE_MODE },
     "Shutdown signal received. Shutting down gracefully...",
   );
 
@@ -420,6 +464,27 @@ const shutdown = async (signal: string) => {
     logger.info("Telegram bots stopped");
   } catch (error) {
     logger.error({ error }, "Error stopping Telegram bots");
+  }
+
+  // Stop task scheduler if running (unified mode)
+  if (SERVICE_ROLE === "unified" && QUEUE_MODE === "database") {
+    try {
+      stopTaskScheduler();
+      logger.info("Task scheduler stopped");
+    } catch (error) {
+      logger.error({ error }, "Error stopping task scheduler");
+    }
+  }
+
+  // Stop workers if running (worker or unified mode)
+  if (SERVICE_ROLE === "worker" || SERVICE_ROLE === "unified") {
+    try {
+      const { shutdownWorkers } = await import("./workers");
+      await shutdownWorkers();
+      logger.info("Workers stopped");
+    } catch (error) {
+      logger.error({ error }, "Error stopping workers");
+    }
   }
 
   try {

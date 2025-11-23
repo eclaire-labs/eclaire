@@ -3,8 +3,14 @@ import pino from "pino";
 
 const isProd = process.env.NODE_ENV === "production";
 
+// Determine service name based on SERVICE_ROLE env var or default to "eclaire-backend"
+// This allows the same logger to be used by both backend and workers
+const serviceName = process.env.SERVICE_ROLE === "worker"
+  ? "eclaire-workers"
+  : "eclaire-backend";
+
 const base = {
-  service: "eclaire-backend",
+  service: serviceName,
   version:
     process.env.APP_VERSION || process.env.npm_package_version || "0.1.0",
   environment: process.env.NODE_ENV || "development",
@@ -32,7 +38,10 @@ export const logger = pino(
           destination: 1, // stdout
           colorize: true,
           translateTime: "SYS:standard",
-          messageFormat: "[{requestId}] {method} {path} - {msg}",
+          // Support both backend (requestId/method/path) and worker (worker/module) formats
+          messageFormat: serviceName === "eclaire-workers"
+            ? "[{worker}{module}] {msg}"
+            : "[{requestId}] {method} {path} - {msg}",
           ignore: "pid,hostname,service,version,environment",
         },
       }),
@@ -152,8 +161,10 @@ export const smartLogger = () => {
 };
 
 // Export a child logger creator for use in other modules
+// Uses 'worker' key for workers, 'module' key for backend
 export const createChildLogger = (name: string) => {
-  return logger.child({ module: name });
+  const key = serviceName === "eclaire-workers" ? "worker" : "module";
+  return logger.child({ [key]: name });
 };
 
 // Export the base logger as default

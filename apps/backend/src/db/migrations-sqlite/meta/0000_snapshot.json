@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "4bce628b-ef16-4cbd-81d4-d936d41775a1",
+  "id": "5ce3f9f0-5174-4f71-8ff4-4663e02c69ec",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "accounts": {
@@ -89,14 +89,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         }
       },
       "indexes": {
@@ -200,7 +202,8 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "is_active": {
           "name": "is_active",
@@ -276,6 +279,14 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "job_type": {
+          "name": "job_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'processing'"
         },
         "status": {
           "name": "status",
@@ -363,14 +374,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "job_data": {
           "name": "job_data",
@@ -417,6 +430,15 @@
         }
       },
       "indexes": {
+        "asset_jobs_asset_job_type_unique_idx": {
+          "name": "asset_jobs_asset_job_type_unique_idx",
+          "columns": [
+            "asset_type",
+            "asset_id",
+            "job_type"
+          ],
+          "isUnique": true
+        },
         "asset_jobs_status_retry_idx": {
           "name": "asset_jobs_status_retry_idx",
           "columns": [
@@ -433,14 +455,6 @@
             "priority"
           ],
           "isUnique": false
-        },
-        "asset_processing_jobs_asset_type_asset_id_unique": {
-          "name": "asset_processing_jobs_asset_type_asset_id_unique",
-          "columns": [
-            "asset_type",
-            "asset_id"
-          ],
-          "isUnique": true
         }
       },
       "foreignKeys": {
@@ -540,14 +554,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "content_type": {
           "name": "content_type",
@@ -859,14 +875,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         }
       },
       "indexes": {
@@ -940,14 +958,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "last_message_at": {
           "name": "last_message_at",
@@ -1164,14 +1184,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         }
       },
       "indexes": {
@@ -1304,14 +1326,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         }
       },
       "indexes": {
@@ -1420,7 +1444,8 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "user_id": {
           "name": "user_id",
@@ -1509,7 +1534,8 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "metadata": {
           "name": "metadata",
@@ -1655,14 +1681,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         }
       },
       "indexes": {
@@ -2042,14 +2070,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         }
       },
       "indexes": {
@@ -2196,14 +2226,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "expires_at": {
           "name": "expires_at",
@@ -2338,14 +2370,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         }
       },
       "indexes": {
@@ -2549,14 +2583,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         }
       },
       "indexes": {
@@ -2801,14 +2837,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         }
       },
       "indexes": {
@@ -2854,14 +2892,16 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
         },
         "expires_at": {
           "name": "expires_at",

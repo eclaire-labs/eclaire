@@ -64,13 +64,19 @@ export async function createOrUpdateProcessingJob(
   assetId: string,
   userId: string,
   initialStages: string[] = [],
+  jobType?: string,
 ): Promise<ProcessingJobDetails> {
   try {
+    // For tasks with multiple job types, filter by jobType too
+    const whereConditions = [
+      eq(assetProcessingJobs.assetType, assetType),
+      eq(assetProcessingJobs.assetId, assetId),
+    ];
+    if (jobType && assetType === "tasks") {
+      whereConditions.push(eq(assetProcessingJobs.jobType, jobType));
+    }
     const existingJob = await db.query.assetProcessingJobs.findFirst({
-      where: and(
-        eq(assetProcessingJobs.assetType, assetType),
-        eq(assetProcessingJobs.assetId, assetId),
-      ),
+      where: and(...whereConditions),
     });
 
     const stages: ProcessingStage[] = initialStages.map((stageName) => ({
@@ -264,16 +270,22 @@ export async function updateProcessingJobStatus(
   error?: string,
   errorDetails?: any,
   addStages?: string[],
+  jobType?: string,
 ): Promise<ProcessingJobDetails | null> {
   try {
     // 1. Fetch the current state of the job BEFORE transaction.
     // NOTE: This introduces a small race condition window, but it's necessary
     // for SQLite compatibility. The transaction still ensures atomicity of the update itself.
+    // For tasks with multiple job types, filter by jobType too
+    const whereConditions = [
+      eq(assetProcessingJobs.assetType, assetType),
+      eq(assetProcessingJobs.assetId, assetId),
+    ];
+    if (jobType && assetType === "tasks") {
+      whereConditions.push(eq(assetProcessingJobs.jobType, jobType));
+    }
     const job = await db.query.assetProcessingJobs.findFirst({
-      where: and(
-        eq(assetProcessingJobs.assetType, assetType),
-        eq(assetProcessingJobs.assetId, assetId),
-      ),
+      where: and(...whereConditions),
     });
 
     if (!job) {
@@ -479,14 +491,20 @@ export async function getProcessingJob(
   assetType: AssetType,
   assetId: string,
   userId: string,
+  jobType?: string,
 ): Promise<ProcessingJobDetails | null> {
   try {
+    // For tasks with multiple job types, filter by jobType too
+    const whereConditions = [
+      eq(assetProcessingJobs.assetType, assetType),
+      eq(assetProcessingJobs.assetId, assetId),
+      eq(assetProcessingJobs.userId, userId),
+    ];
+    if (jobType && assetType === "tasks") {
+      whereConditions.push(eq(assetProcessingJobs.jobType, jobType));
+    }
     const job = await db.query.assetProcessingJobs.findFirst({
-      where: and(
-        eq(assetProcessingJobs.assetType, assetType),
-        eq(assetProcessingJobs.assetId, assetId),
-        eq(assetProcessingJobs.userId, userId),
-      ),
+      where: and(...whereConditions),
     });
 
     return job ? formatJobDetails(job) : null;
@@ -849,6 +867,7 @@ export async function updateProcessingStatusWithArtifacts(
     stages?: string[]; // For job initialization
     addStages?: string[];
     artifacts?: Record<string, any>;
+    jobType?: string; // For tasks with multiple job types (tag_generation, execution)
   },
 ): Promise<ProcessingJobDetails | null> {
   try {
@@ -861,6 +880,7 @@ export async function updateProcessingStatusWithArtifacts(
       stages,
       addStages,
       artifacts,
+      jobType,
     } = options;
 
     logger.debug(
@@ -877,7 +897,7 @@ export async function updateProcessingStatusWithArtifacts(
 
     // 1. Handle Job Initialization
     if (stages && Array.isArray(stages)) {
-      await createOrUpdateProcessingJob(assetType, assetId, userId, stages);
+      await createOrUpdateProcessingJob(assetType, assetId, userId, stages, jobType);
     }
 
     // 2. Handle Artifacts Processing
@@ -900,6 +920,7 @@ export async function updateProcessingStatusWithArtifacts(
         error,
         errorDetails,
         addStages,
+        jobType,
       );
 
       if (!job) {
@@ -919,7 +940,7 @@ export async function updateProcessingStatusWithArtifacts(
     }
 
     // If no status update is needed, just return the current job
-    return await getProcessingJob(assetType, assetId, userId);
+    return await getProcessingJob(assetType, assetId, userId, jobType);
   } catch (error) {
     logger.error(
       {

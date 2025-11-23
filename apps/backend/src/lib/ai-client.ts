@@ -402,11 +402,19 @@ export interface AICallOptions {
     callIndex: number;
     onTraceCapture?: (trace: AICallTrace) => void;
   };
+  // Add schema support for structured outputs (workers compatibility)
+  schema?: Record<string, any>;
+  // Add traceMetadata for worker job tracing
+  traceMetadata?: Record<string, any>;
 }
 
 export interface AIMessage {
   role: "system" | "user" | "assistant";
-  content: string;
+  content: string | Array<{
+    type: "text" | "image_url";
+    text?: string;
+    image_url?: { url: string };
+  }>;
   reasoning?: string; // Optional reasoning field for AI responses
 }
 
@@ -592,7 +600,21 @@ function estimateTokenCount(messages: AIMessage[], model: string): number {
       // Each message has some overhead tokens
       totalTokens += 4; // Base overhead per message
       totalTokens += encoding.encode(message.role).length;
-      totalTokens += encoding.encode(message.content).length;
+
+      // Handle multimodal content (array) or string content
+      if (typeof message.content === "string") {
+        totalTokens += encoding.encode(message.content).length;
+      } else {
+        // For multimodal content, only count text parts for token estimation
+        for (const part of message.content) {
+          if (part.type === "text" && part.text) {
+            totalTokens += encoding.encode(part.text).length;
+          } else if (part.type === "image_url") {
+            // Images typically use a fixed number of tokens (approximation)
+            totalTokens += 85; // Approximate token cost for an image
+          }
+        }
+      }
     }
 
     // Add a small buffer for message formatting
@@ -899,7 +921,8 @@ export async function callAI(
     } else {
       const message = data.choices?.[0]?.message;
       content = message?.content;
-      reasoning = message?.reasoning;
+      // Support both 'reasoning' and 'reasoning_content' field names (different providers use different names)
+      reasoning = message?.reasoning || message?.reasoning_content;
     }
 
     if (!content) {

@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        service: [backend, frontend, workers]
+        service: [backend, frontend]
 
     steps:
       - name: Validate ref exists
@@ -135,7 +135,7 @@ jobs:
             [[ -n "$existing" ]]
           }
 
-          for svc in backend frontend workers; do
+          for svc in backend frontend; do
             if check_tag "$svc" "$sem"; then
               echo "❌ Refusing to overwrite eclaire-${svc}:${sem} in GHCR."
               exit 2

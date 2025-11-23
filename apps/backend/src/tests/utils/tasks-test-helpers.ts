@@ -682,8 +682,15 @@ export const RecurrenceTestHelpers = {
 
   /**
    * Inspects the BullMQ scheduler for a specific task
+   * Returns null when running in database queue mode (no Redis)
    */
   inspectScheduler: async (taskId: string) => {
+    // Skip Redis operations in database queue mode
+    const { getQueueMode } = await import("../../lib/env-validation.js");
+    if (getQueueMode() === "database") {
+      return null;
+    }
+
     // Initialize connections if not already done
     if (!redisConnection) {
       redisConnection = new IORedis(
@@ -799,37 +806,41 @@ export const globalTestCleanup = async () => {
   }
   allRecurringTaskIds = [];
 
-  // Try to clear task processing queues if available
-  try {
-    const { getQueue, QueueNames } = await import("../../lib/queues.js");
-    const taskQueue = getQueue(QueueNames.TASK_PROCESSING);
-    const executionQueue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
+  // Only attempt Redis queue cleanup if in redis mode
+  const { getQueueMode } = await import("../../lib/env-validation.js");
+  if (getQueueMode() === "redis") {
+    // Try to clear task processing queues if available
+    try {
+      const { getQueue, QueueNames } = await import("../../lib/queues.js");
+      const taskQueue = getQueue(QueueNames.TASK_PROCESSING);
+      const executionQueue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
 
-    if (taskQueue) {
-      await taskQueue.drain(); // Remove all waiting jobs
-      await taskQueue.clean(0, 1000, "completed"); // Clean completed jobs
-      await taskQueue.clean(0, 1000, "failed"); // Clean failed jobs
+      if (taskQueue) {
+        await taskQueue.drain(); // Remove all waiting jobs
+        await taskQueue.clean(0, 1000, "completed"); // Clean completed jobs
+        await taskQueue.clean(0, 1000, "failed"); // Clean failed jobs
+      }
+
+      if (executionQueue) {
+        await executionQueue.drain(); // Remove all waiting jobs
+        await executionQueue.clean(0, 1000, "completed"); // Clean completed jobs
+        await executionQueue.clean(0, 1000, "failed"); // Clean failed jobs
+      }
+    } catch (error: any) {
+      console.warn("Could not clean task queues:", error);
     }
 
-    if (executionQueue) {
-      await executionQueue.drain(); // Remove all waiting jobs
-      await executionQueue.clean(0, 1000, "completed"); // Clean completed jobs
-      await executionQueue.clean(0, 1000, "failed"); // Clean failed jobs
+    // Close Redis connections used for scheduler inspection
+    try {
+      if (taskExecutionQueue) {
+        await taskExecutionQueue.close();
+      }
+      if (redisConnection) {
+        await redisConnection.quit();
+      }
+    } catch (error) {
+      console.warn("Error closing Redis connections:", error);
     }
-  } catch (error: any) {
-    console.warn("Could not clean task queues:", error);
-  }
-
-  // Close Redis connections used for scheduler inspection
-  try {
-    if (taskExecutionQueue) {
-      await taskExecutionQueue.close();
-    }
-    if (redisConnection) {
-      await redisConnection.quit();
-    }
-  } catch (error) {
-    console.warn("Error closing Redis connections:", error);
   }
 
   // Add a delay to ensure all cleanup completes

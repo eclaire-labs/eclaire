@@ -59,6 +59,7 @@ export interface ClaimedJob {
 	asset_type: string;
 	asset_id: string;
 	user_id: string;
+	job_type: string;
 	status: string;
 	job_data: any;
 	locked_by: string | null;
@@ -82,6 +83,7 @@ export function formatJobResult(row: any): ClaimedJob | null {
 		asset_type: row.assetType,
 		asset_id: row.assetId,
 		user_id: row.userId,
+		job_type: row.jobType || "processing",
 		status: row.status,
 		job_data: row.jobData,
 		locked_by: row.lockedBy,
