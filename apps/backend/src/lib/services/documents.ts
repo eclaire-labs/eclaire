@@ -461,15 +461,15 @@ export async function deleteDocument(
       return { success: true };
     }
 
-    await txManager.withTransaction((tx) => {
-      tx.documentsTags.delete(eq(documentsTags.documentId, id));
-      tx.assetProcessingJobs.delete(
+    await txManager.withTransaction(async (tx) => {
+      await tx.documentsTags.delete(eq(documentsTags.documentId, id));
+      await tx.assetProcessingJobs.delete(
         and(
           eq(assetProcessingJobs.assetType, "documents"),
           eq(assetProcessingJobs.assetId, id),
         ),
       );
-      tx.documents.delete(
+      await tx.documents.delete(
         and(eq(schemaDocuments.id, id), eq(schemaDocuments.userId, userId)),
       );
     });
@@ -818,7 +818,7 @@ export async function updateDocumentArtifacts(
       tagList = await getOrCreateTags(artifacts.tags, document.userId);
     }
 
-    await txManager.withTransaction((tx) => {
+    await txManager.withTransaction(async (tx) => {
       const updatePayload: Partial<typeof schemaDocuments.$inferInsert> = {
         updatedAt: new Date(),
       };
@@ -838,17 +838,17 @@ export async function updateDocumentArtifacts(
       if (artifacts.screenshotStorageId)
         updatePayload.screenshotStorageId = artifacts.screenshotStorageId;
 
-      tx.documents.update(eq(schemaDocuments.id, documentId), updatePayload);
+      await tx.documents.update(eq(schemaDocuments.id, documentId), updatePayload);
 
       if (artifacts.tags && Array.isArray(artifacts.tags)) {
         // Clear existing tags
-        tx.documentsTags.delete(eq(documentsTags.documentId, documentId));
+        await tx.documentsTags.delete(eq(documentsTags.documentId, documentId));
 
         // Insert new tags
         if (tagList.length > 0) {
-          tagList.forEach((tag) => {
-            tx.documentsTags.insert({ documentId, tagId: tag.id });
-          });
+          for (const tag of tagList) {
+            await tx.documentsTags.insert({ documentId, tagId: tag.id });
+          }
         }
       }
     });

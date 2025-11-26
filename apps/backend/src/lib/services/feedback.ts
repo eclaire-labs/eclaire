@@ -35,10 +35,10 @@ export async function createFeedback(
     // Pre-generate ID before transaction
     const feedbackId = generateFeedbackId();
 
-    // Execute synchronous transaction
-    await txManager.withTransaction((tx) => {
+    // Execute transaction
+    await txManager.withTransaction(async (tx) => {
       // Create feedback entry
-      tx.feedback.insert({
+      await tx.feedback.insert({
         id: feedbackId,
         userId: userId,
         description: data.description,

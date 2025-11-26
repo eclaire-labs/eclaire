@@ -1672,20 +1672,20 @@ export async function updatePhotoArtifacts(
       }
     }
 
-    // Execute synchronous transaction
-    await txManager.withTransaction((tx) => {
-      tx.photos.update(eq(photos.id, photoId), updatePayload);
+    // Execute transaction
+    await txManager.withTransaction(async (tx) => {
+      await tx.photos.update(eq(photos.id, photoId), updatePayload);
 
       // Handle AI-generated tags if provided
       if (artifacts.tags !== undefined) {
-        tx.photosTags.delete(eq(photosTags.photoId, photoId));
+        await tx.photosTags.delete(eq(photosTags.photoId, photoId));
         if (tagRecords.length > 0) {
-          tagRecords.forEach((tag) => {
-            tx.photosTags.insert({
+          for (const tag of tagRecords) {
+            await tx.photosTags.insert({
               photoId: photoId,
               tagId: tag.id,
             });
-          });
+          }
         }
       }
     });

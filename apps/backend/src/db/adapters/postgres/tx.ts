@@ -3,7 +3,9 @@
  *
  * Implements the TransactionManager interface for both PostgreSQL and PGlite.
  * Both databases use the same Drizzle transaction API, so a single implementation works for both.
- * Wraps Drizzle's async transaction API to work with sync-only transaction callbacks.
+ *
+ * Uses native async transactions directly - no operation queuing needed.
+ * Supports full Read-Modify-Write patterns inside transactions.
  */
 
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
@@ -22,14 +24,9 @@ type DrizzlePgTx = Parameters<
 
 /**
  * Wraps a Drizzle PostgreSQL/PGlite transaction to provide the Tx interface.
- * Collects operations to execute, then executes them all after the sync callback returns.
+ * All operations execute directly and async - no queuing.
  */
-function wrapPgTx(drizzleTx: DrizzlePgTx): {
-	tx: Tx;
-	pendingOps: Array<() => Promise<void>>;
-} {
-	const pendingOps: Array<() => Promise<void>> = [];
-
+function wrapPgTx(drizzleTx: DrizzlePgTx): Tx {
 	// Helper to create a repository for a given table
 	function createRepository<TTable extends keyof typeof schema>(
 		tableName: TTable,
@@ -37,28 +34,32 @@ function wrapPgTx(drizzleTx: DrizzlePgTx): {
 		const table = schema[tableName] as any;
 
 		return {
-			insert(values: any): void {
-				// Queue the operation to be executed after callback returns
-				pendingOps.push(async () => {
-					await drizzleTx.insert(table).values(values);
-				});
+			async insert(values: any): Promise<void> {
+				await drizzleTx.insert(table).values(values);
 			},
-			update(where: SQL | undefined, values: any): void {
+			async update(where: SQL | undefined, values: any): Promise<void> {
 				if (!where) return;
-				pendingOps.push(async () => {
-					await drizzleTx.update(table).set(values).where(where);
-				});
+				await drizzleTx.update(table).set(values).where(where);
 			},
-			delete(where: SQL | undefined): void {
+			async delete(where: SQL | undefined): Promise<void> {
 				if (!where) return;
-				pendingOps.push(async () => {
-					await drizzleTx.delete(table).where(where);
-				});
+				await drizzleTx.delete(table).where(where);
+			},
+			async findFirst(where: SQL | undefined): Promise<any | undefined> {
+				const baseQuery = drizzleTx.select().from(table);
+				const results = where
+					? await baseQuery.where(where).limit(1)
+					: await baseQuery.limit(1);
+				return results[0];
+			},
+			async findMany(where: SQL | undefined): Promise<any[]> {
+				const baseQuery = drizzleTx.select().from(table);
+				return where ? await baseQuery.where(where) : await baseQuery;
 			},
 		};
 	}
 
-	const tx: Tx = {
+	return {
 		users: createRepository("users"),
 		bookmarks: createRepository("bookmarks"),
 		bookmarksTags: createRepository("bookmarksTags"),
@@ -78,8 +79,6 @@ function wrapPgTx(drizzleTx: DrizzlePgTx): {
 		channels: createRepository("channels"),
 		feedback: createRepository("feedback"),
 	};
-
-	return { tx, pendingOps };
 }
 
 /**
@@ -90,19 +89,11 @@ export function createPgTransactionManager(
 	db: PgDatabase,
 ): TransactionManager {
 	return {
-		async withTransaction<T>(fn: (tx: Tx) => T): Promise<T> {
+		async withTransaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
 			return db.transaction(async (drizzleTx) => {
-				const { tx, pendingOps } = wrapPgTx(drizzleTx);
-
-				// Call the user's sync function - this queues operations
-				const result = fn(tx);
-
-				// Execute all queued operations sequentially
-				for (const op of pendingOps) {
-					await op();
-				}
-
-				return result;
+				const tx = wrapPgTx(drizzleTx);
+				// Direct async execution - no more queuing
+				return await fn(tx);
 			});
 		},
 	};

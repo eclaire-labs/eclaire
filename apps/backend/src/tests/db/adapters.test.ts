@@ -34,8 +34,8 @@ describe.each(DB_TEST_CONFIGS)(
 				const bookmarkId = generateTestBookmarkId();
 				const { txManager, db } = testDb;
 
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.insert({
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.insert({
 						id: bookmarkId,
 						userId: testUserId,
 						originalUrl: "https://example.com",
@@ -59,13 +59,13 @@ describe.each(DB_TEST_CONFIGS)(
 				const bookmark2Id = generateTestBookmarkId();
 				const { txManager, db } = testDb;
 
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.insert({
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.insert({
 						id: bookmark1Id,
 						userId: testUserId,
 						originalUrl: "https://example1.com",
 					});
-					tx.bookmarks.insert({
+					await tx.bookmarks.insert({
 						id: bookmark2Id,
 						userId: testUserId,
 						originalUrl: "https://example2.com",
@@ -89,8 +89,8 @@ describe.each(DB_TEST_CONFIGS)(
 				const dueDate = new Date("2025-12-31T23:59:59.000Z");
 				const rawMetadata = { source: "test", tags: ["a", "b"] };
 
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.insert({
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.insert({
 						id: bookmarkId,
 						userId: testUserId,
 						originalUrl: "https://example.com",
@@ -124,8 +124,8 @@ describe.each(DB_TEST_CONFIGS)(
 				const { txManager, db } = testDb;
 
 				// Insert first
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.insert({
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.insert({
 						id: bookmarkId,
 						userId: testUserId,
 						originalUrl: "https://example.com",
@@ -134,8 +134,8 @@ describe.each(DB_TEST_CONFIGS)(
 				});
 
 				// Update via adapter
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.update(eq(testDb.schema.bookmarks.id, bookmarkId), {
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.update(eq(testDb.schema.bookmarks.id, bookmarkId), {
 						title: "Updated",
 					});
 				});
@@ -153,14 +153,14 @@ describe.each(DB_TEST_CONFIGS)(
 				const { txManager, db } = testDb;
 
 				// Insert two bookmarks
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.insert({
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.insert({
 						id: bookmark1Id,
 						userId: testUserId,
 						originalUrl: "https://example1.com",
 						isPinned: false,
 					});
-					tx.bookmarks.insert({
+					await tx.bookmarks.insert({
 						id: bookmark2Id,
 						userId: testUserId,
 						originalUrl: "https://example2.com",
@@ -169,8 +169,8 @@ describe.each(DB_TEST_CONFIGS)(
 				});
 
 				// Update only unpinned bookmarks
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.update(
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.update(
 						and(
 							eq(testDb.schema.bookmarks.userId, testUserId),
 							eq(testDb.schema.bookmarks.isPinned, false),
@@ -195,8 +195,8 @@ describe.each(DB_TEST_CONFIGS)(
 				const { txManager, db } = testDb;
 
 				// Insert first
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.insert({
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.insert({
 						id: bookmarkId,
 						userId: testUserId,
 						originalUrl: "https://example.com",
@@ -207,8 +207,8 @@ describe.each(DB_TEST_CONFIGS)(
 				});
 
 				// Update multiple fields
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.update(eq(testDb.schema.bookmarks.id, bookmarkId), {
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.update(eq(testDb.schema.bookmarks.id, bookmarkId), {
 						title: "Multi-Update",
 						isPinned: true,
 						reviewStatus: "accepted",
@@ -231,8 +231,8 @@ describe.each(DB_TEST_CONFIGS)(
 				const { txManager, db } = testDb;
 
 				// Insert first
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.insert({
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.insert({
 						id: bookmarkId,
 						userId: testUserId,
 						originalUrl: "https://example.com",
@@ -240,8 +240,8 @@ describe.each(DB_TEST_CONFIGS)(
 				});
 
 				// Delete via adapter
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.delete(eq(testDb.schema.bookmarks.id, bookmarkId));
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.delete(eq(testDb.schema.bookmarks.id, bookmarkId));
 				});
 
 				const result = await db.query.bookmarks.findFirst({
@@ -257,14 +257,14 @@ describe.each(DB_TEST_CONFIGS)(
 				const { txManager, db } = testDb;
 
 				// Insert two bookmarks
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.insert({
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.insert({
 						id: bookmark1Id,
 						userId: testUserId,
 						originalUrl: "https://example1.com",
 						reviewStatus: "rejected",
 					});
-					tx.bookmarks.insert({
+					await tx.bookmarks.insert({
 						id: bookmark2Id,
 						userId: testUserId,
 						originalUrl: "https://example2.com",
@@ -273,8 +273,8 @@ describe.each(DB_TEST_CONFIGS)(
 				});
 
 				// Delete only rejected bookmarks
-				await txManager.withTransaction((tx: Tx) => {
-					tx.bookmarks.delete(
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.bookmarks.delete(
 						and(
 							eq(testDb.schema.bookmarks.userId, testUserId),
 							eq(testDb.schema.bookmarks.reviewStatus, "rejected"),
@@ -296,9 +296,9 @@ describe.each(DB_TEST_CONFIGS)(
 				const { txManager } = testDb;
 
 				await expect(
-					txManager.withTransaction((tx: Tx) => {
+					txManager.withTransaction(async (tx: Tx) => {
 						// Missing required field (url)
-						tx.bookmarks.insert({
+						await tx.bookmarks.insert({
 							id: generateTestBookmarkId(),
 							userId: testUserId,
 							url: null as any, // Violates NOT NULL
@@ -311,8 +311,8 @@ describe.each(DB_TEST_CONFIGS)(
 				const { txManager } = testDb;
 
 				await expect(
-					txManager.withTransaction((tx: Tx) => {
-						tx.bookmarks.insert({
+					txManager.withTransaction(async (tx: Tx) => {
+						await tx.bookmarks.insert({
 							id: generateTestBookmarkId(),
 							userId: "nonexistent-user",
 							originalUrl: "https://example.com",
@@ -326,16 +326,16 @@ describe.each(DB_TEST_CONFIGS)(
 				const { txManager, db } = testDb;
 
 				await expect(
-					txManager.withTransaction((tx: Tx) => {
+					txManager.withTransaction(async (tx: Tx) => {
 						// First operation should succeed
-						tx.bookmarks.insert({
+						await tx.bookmarks.insert({
 							id: bookmarkId,
 							userId: testUserId,
 							originalUrl: "https://example.com",
 						});
 
 						// Second operation will fail
-						tx.bookmarks.insert({
+						await tx.bookmarks.insert({
 							id: generateTestBookmarkId(),
 							userId: "nonexistent-user",
 							originalUrl: "https://example.com",
@@ -360,22 +360,22 @@ describe.each(DB_TEST_CONFIGS)(
 				const { txManager, db } = testDb;
 
 				// Create tags first
-				await txManager.withTransaction((tx: Tx) => {
-					tx.tags.insert({ id: tag1Id, userId: testUserId, name: "urgent" });
-					tx.tags.insert({ id: tag2Id, userId: testUserId, name: "work" });
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.tags.insert({ id: tag1Id, userId: testUserId, name: "urgent" });
+					await tx.tags.insert({ id: tag2Id, userId: testUserId, name: "work" });
 				});
 
 				// Create task with tags in transaction
-				await txManager.withTransaction((tx: Tx) => {
-					tx.tasks.insert({
+				await txManager.withTransaction(async (tx: Tx) => {
+					await tx.tasks.insert({
 						id: taskId,
 						userId: testUserId,
 						title: "Important Task",
 						status: "pending",
 					});
 
-					tx.tasksTags.insert({ taskId, tagId: tag1Id });
-					tx.tasksTags.insert({ taskId, tagId: tag2Id });
+					await tx.tasksTags.insert({ taskId, tagId: tag1Id });
+					await tx.tasksTags.insert({ taskId, tagId: tag2Id });
 				});
 
 				// Verify task exists

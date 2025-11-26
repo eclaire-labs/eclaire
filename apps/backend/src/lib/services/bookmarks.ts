@@ -191,10 +191,10 @@ export async function createBookmarkAndQueueJob(
       tagList = await getOrCreateTags(tags, userId);
     }
 
-    // Execute synchronous transaction
-    await txManager.withTransaction((tx) => {
+    // Execute transaction
+    await txManager.withTransaction(async (tx) => {
       // Insert bookmark
-      tx.bookmarks.insert({
+      await tx.bookmarks.insert({
         id: bookmarkId,
         userId: userId,
         originalUrl: url,
@@ -211,9 +211,9 @@ export async function createBookmarkAndQueueJob(
 
       // Insert bookmark-tag relationships
       if (tagList.length > 0) {
-        tagList.forEach((tag) => {
-          tx.bookmarksTags.insert({ bookmarkId, tagId: tag.id });
-        });
+        for (const tag of tagList) {
+          await tx.bookmarksTags.insert({ bookmarkId, tagId: tag.id });
+        }
       }
     });
 
@@ -715,10 +715,10 @@ export async function updateBookmarkArtifacts(
       }
     }
 
-    // Execute synchronous transaction
-    await txManager.withTransaction((tx) => {
+    // Execute transaction
+    await txManager.withTransaction(async (tx) => {
       if (Object.keys(bookmarkUpdateData).length > 0) {
-        tx.bookmarks.update(eq(bookmarks.id, bookmarkId), {
+        await tx.bookmarks.update(eq(bookmarks.id, bookmarkId), {
           ...bookmarkUpdateData,
           updatedAt: new Date(),
         });
@@ -726,13 +726,13 @@ export async function updateBookmarkArtifacts(
 
       if (tagNames !== undefined && Array.isArray(tagNames)) {
         // Clear existing tags
-        tx.bookmarksTags.delete(eq(bookmarksTags.bookmarkId, bookmarkId));
+        await tx.bookmarksTags.delete(eq(bookmarksTags.bookmarkId, bookmarkId));
 
         // Insert new tags
         if (tagList.length > 0) {
-          tagList.forEach((tag) => {
-            tx.bookmarksTags.insert({ bookmarkId, tagId: tag.id });
-          });
+          for (const tag of tagList) {
+            await tx.bookmarksTags.insert({ bookmarkId, tagId: tag.id });
+          }
         }
       }
     });

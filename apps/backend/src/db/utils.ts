@@ -29,10 +29,3 @@ export function toISOString(date: Date | string | number): string {
 export function fromISOString(iso: string): Date {
 	return new Date(iso);
 }
-
-/**
- * Check if a value is a Promise
- */
-export function isPromise(value: any): value is Promise<any> {
-	return value && typeof value.then === "function";
-}

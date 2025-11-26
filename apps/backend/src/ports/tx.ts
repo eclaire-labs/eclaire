@@ -1,25 +1,38 @@
 /**
  * Transaction Port - Dialect-neutral transaction interface
  *
- * IMPORTANT: Transaction callbacks MUST be synchronous (no `await` allowed inside).
- * This ensures compatibility across PostgreSQL and SQLite databases.
+ * Supports async callbacks with Read-Modify-Write patterns inside transactions.
+ * Both PostgreSQL and SQLite use the same async interface.
  *
- * Pre-generate IDs before calling withTransaction, and do side-effects (queues, network)
- * after the transaction commits.
+ * BEST PRACTICES:
+ * - Pre-generate IDs (UUIDs) before calling withTransaction
+ * - Keep transactions tight - avoid slow network calls inside transactions
+ * - Perform side-effects (queues, external APIs) AFTER the transaction commits
+ *
+ * SQLite uses a mutex to serialize transactions while allowing async callbacks.
+ * PostgreSQL uses native async transactions directly.
  */
 
 import type { SQL } from "drizzle-orm";
 
-// Repository method signatures (sync-only, no Promises returned)
+/**
+ * Repository method signatures - all async for consistent API across databases.
+ * Write methods return Promise<void>, read methods return Promise<T>.
+ */
 export interface BaseRepository<TInsert, TUpdate, TSelect> {
-	insert(values: TInsert): void;
-	update(where: SQL | undefined, values: TUpdate): void;
-	delete(where: SQL | undefined): void;
+	// Write methods
+	insert(values: TInsert): Promise<void>;
+	update(where: SQL | undefined, values: TUpdate): Promise<void>;
+	delete(where: SQL | undefined): Promise<void>;
+
+	// Read methods for Read-Modify-Write patterns
+	findFirst(where: SQL | undefined): Promise<TSelect | undefined>;
+	findMany(where: SQL | undefined): Promise<TSelect[]>;
 }
 
 /**
  * Transaction context - provides access to repositories for database operations.
- * All methods are synchronous to ensure compatibility with both PostgreSQL and SQLite.
+ * All methods are async for consistent Read-Modify-Write support.
  */
 export interface Tx {
 	// User repositories
@@ -72,9 +85,13 @@ export interface Tx {
  * Usage example:
  * ```ts
  * const bookmarkId = randomUUID();
- * await txManager.withTransaction((tx) => {
- *   tx.bookmarks.insert({ id: bookmarkId, title: "Example", ... });
- *   tx.bookmarksTags.insert({ bookmarkId, tagId });
+ * await txManager.withTransaction(async (tx) => {
+ *   // Read-Modify-Write patterns are fully supported
+ *   const existing = await tx.bookmarks.findFirst(eq(bookmarks.id, someId));
+ *   if (!existing) {
+ *     await tx.bookmarks.insert({ id: bookmarkId, title: "Example", ... });
+ *   }
+ *   await tx.bookmarksTags.insert({ bookmarkId, tagId });
  * });
  * // Do side-effects after commit
  * await publisher.publish('bookmark.created', { bookmarkId });
@@ -82,18 +99,17 @@ export interface Tx {
  */
 export interface TransactionManager {
 	/**
-	 * Execute a transaction with a synchronous callback.
+	 * Execute a transaction with an async callback.
 	 *
-	 * CRITICAL RULES:
-	 * 1. The callback MUST be synchronous - no `await` allowed inside
-	 * 2. Pre-generate all IDs (UUIDs) before calling this function
-	 * 3. Do only database operations inside the callback
-	 * 4. Perform side-effects (queues, network calls) AFTER the transaction
+	 * BEST PRACTICES:
+	 * 1. Pre-generate all IDs (UUIDs) before calling this function
+	 * 2. Keep transactions tight - avoid slow network calls inside
+	 * 3. Perform side-effects (queues, external APIs) AFTER the transaction
 	 *
-	 * @param fn - Synchronous callback that performs database operations
+	 * @param fn - Async callback that performs database operations
 	 * @returns Promise that resolves with the callback's return value
 	 */
-	withTransaction<T>(fn: (tx: Tx) => T): Promise<T>;
+	withTransaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T>;
 }
 
 /**

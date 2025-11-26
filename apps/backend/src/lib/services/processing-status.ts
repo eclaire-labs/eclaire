@@ -420,10 +420,10 @@ export async function updateProcessingJobStatus(
       "About to update processing job with cleaned data",
     );
 
-    // 8. Execute synchronous transaction to commit all collected changes
+    // 8. Execute transaction to commit all collected changes
     let updatedJob: any;
-    await txManager.withTransaction((tx) => {
-      tx.assetProcessingJobs.update(
+    await txManager.withTransaction(async (tx) => {
+      await tx.assetProcessingJobs.update(
         eq(assetProcessingJobs.id, job.id),
         cleanUpdateData
       );
