@@ -1,5 +1,13 @@
 # Eclaire Changelog
 
+## [0.5.2] - 2025-12-03
+
+### Security
+
+- **frontend**: upgrade Next.js to 15.5.7 for CVE-2025-55182
+
+---
+
 ## [0.5.1] - 2025-11-13
 
 ### Features
