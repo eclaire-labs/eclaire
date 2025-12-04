@@ -1,4 +1,3 @@
-"use client";
 
 import {
   AlertTriangle,
@@ -7,7 +6,7 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import { useEffect, useState } from "react";
 import {
   Tooltip,

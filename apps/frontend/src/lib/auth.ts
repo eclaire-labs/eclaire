@@ -1,11 +1,9 @@
 // lib/auth.ts
-"use client"; // Good practice to add this to client-only modules
-
 import { createAuthClient } from "better-auth/react";
 
 // Create the Better Auth client for client-side use
 export const authClient = createAuthClient({
-  baseURL: "", // Use relative URLs - requests go through Next.js proxy
+  baseURL: "", // Use relative URLs - requests go through Vite proxy (dev) or same-origin (prod)
 });
 
 // Export commonly used methods for convenience

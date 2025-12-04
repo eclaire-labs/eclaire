@@ -1,4 +1,3 @@
-"use client";
 
 import type { RefObject } from "react";
 import type { ToolCall } from "@/components/ui/tool-execution-tracker";
@@ -11,7 +10,7 @@ interface MobileChatViewProps {
   isLoading: boolean;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   attachedAssets: AssetReference[];
-  setAttachedAssets: (assets: AssetReference[]) => void;
+  setAttachedAssets: React.Dispatch<React.SetStateAction<AssetReference[]>>;
   input: string;
   inputRef: RefObject<HTMLInputElement | null>;
   setInput: (input: string) => void;

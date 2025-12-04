@@ -1,4 +1,3 @@
-"use client";
 
 import {
   ArrowDown,
@@ -22,7 +21,7 @@ import {
   XCircle, // Upload status icons
 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import React, {
   useCallback,
   useEffect,
@@ -1745,7 +1744,7 @@ export default function DocumentsPage() {
 interface TileViewProps {
   documents: Document[];
   focusedIndex: number;
-  sortBy: "createdAt" | "title" | "mimeType";
+  sortBy: string;
   onDocumentClick: (doc: Document) => void;
   onEditClick: (doc: Document) => void;
   onDeleteClick: (doc: Document) => void;

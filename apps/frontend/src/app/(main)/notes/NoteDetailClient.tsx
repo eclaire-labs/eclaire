@@ -1,5 +1,3 @@
-"use client";
-
 import {
   ArrowLeft,
   Calendar,
@@ -13,7 +11,7 @@ import {
   Type,
   X,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "@/lib/navigation";
 import React, { useEffect, useState } from "react";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +70,7 @@ const formatDateForInput = (isoString: string | null | undefined): string => {
   }
 };
 
-export default function NotePage() {
+export function NoteDetailClient() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();

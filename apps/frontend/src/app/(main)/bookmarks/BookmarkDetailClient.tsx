@@ -1,4 +1,3 @@
-"use client";
 
 import {
   AlertCircle,
@@ -34,7 +33,7 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "@/lib/navigation";
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -149,7 +148,7 @@ const isRedditBookmark = (
   );
 };
 
-export default function BookmarkDetailPage() {
+export function BookmarkDetailClient() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();

@@ -30,7 +30,7 @@ export function usePhotoAnalysis(
     },
     enabled: enabled && !!photoId,
     staleTime: 5 * 60 * 1000, // 5 minutes - analysis data doesn't change often
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
     retry: (failureCount, error) => {
       // Don't retry if analysis doesn't exist yet
       if (

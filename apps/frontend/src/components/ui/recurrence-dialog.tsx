@@ -1,4 +1,3 @@
-"use client";
 
 import { Calendar, Clock, RefreshCw, X } from "lucide-react";
 import React, { useEffect, useState } from "react";

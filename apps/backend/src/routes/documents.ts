@@ -1,4 +1,3 @@
-import type { Readable } from "node:stream";
 import { and, eq } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
@@ -798,7 +797,7 @@ const serveDocumentAsset = async (c: any, assetType: DocumentAssetType) => {
     }
     headers.set("Cache-Control", "private, max-age=3600");
 
-    return new Response(stream as any, { status: 200, headers });
+    return new Response(stream, { status: 200, headers });
   } catch (error: any) {
     logger.error(`Error serving document asset (${assetType}):`, error);
     if (
@@ -821,8 +820,7 @@ const serveDocumentAsset = async (c: any, assetType: DocumentAssetType) => {
 const createAssetResponse = (
   c: any,
   asset: {
-    // *** FIX: The stream can be a Node.js Readable or a Web ReadableStream ***
-    stream: Readable | ReadableStream;
+    stream: ReadableStream<Uint8Array>;
     contentLength?: number;
     mimeType: string;
     filename: string;
@@ -844,9 +842,7 @@ const createAssetResponse = (
     `${disposition}; filename="${asset.filename}"`,
   );
 
-  // *** FIX: Cast to 'any' here because the Response constructor is strictly typed,
-  // but Hono's runtime can handle the Node.js stream. ***
-  return new Response(asset.stream as any, { status: 200, headers });
+  return new Response(asset.stream, { status: 200, headers });
 };
 
 /**

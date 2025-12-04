@@ -1507,6 +1507,7 @@ export async function getAllTasks(userId: string) {
         and(
           eq(tasks.id, assetProcessingJobs.assetId),
           eq(assetProcessingJobs.assetType, "tasks"),
+          eq(assetProcessingJobs.jobType, "tag_generation"),
         ),
       )
       .where(eq(tasks.userId, userId));
@@ -1549,6 +1550,7 @@ export async function getTaskById(taskId: string, userId: string) {
         and(
           eq(tasks.id, assetProcessingJobs.assetId),
           eq(assetProcessingJobs.assetType, "tasks"),
+          eq(assetProcessingJobs.jobType, "tag_generation"),
         ),
       )
       .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
@@ -1773,6 +1775,7 @@ export async function findTasks(
         and(
           eq(tasks.id, assetProcessingJobs.assetId),
           eq(assetProcessingJobs.assetType, "tasks"),
+          eq(assetProcessingJobs.jobType, "tag_generation"),
         ),
       )
       .where(and(...conditions))

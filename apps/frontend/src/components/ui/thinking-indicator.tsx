@@ -1,4 +1,3 @@
-"use client";
 
 import { Brain, ChevronDown, ChevronRight } from "lucide-react";
 import React, { useState } from "react";
@@ -136,21 +135,6 @@ export function StreamingThinkingIndicator({
     setTimestamp(undefined);
     onContentUpdate?.("");
   }, [onContentUpdate]);
-
-  // Expose methods via ref
-  React.useImperativeHandle(
-    React.useRef<{
-      addContent: (content: string, timestamp?: string) => void;
-      complete: () => void;
-      reset: () => void;
-    }>(),
-    () => ({
-      addContent: addThinkingContent,
-      complete: completeThinking,
-      reset: resetThinking,
-    }),
-    [addThinkingContent, completeThinking, resetThinking],
-  );
 
   return (
     <ThinkingIndicator

@@ -1,8 +1,7 @@
-"use client";
 
 import { Bell, FolderOpen, Home, MessageSquare, Settings } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link } from "@/lib/navigation";
+import { usePathname } from "@/lib/navigation";
 import { useDueNowCount } from "@/hooks/use-due-now-count";
 import { cn } from "@/lib/utils";
 
@@ -65,7 +64,6 @@ export function MobileTabBar({
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
-          const hasNotification = "badge" in tab && tab.badge;
 
           if ("href" in tab && tab.href) {
             return (
@@ -83,14 +81,7 @@ export function MobileTabBar({
                 )}
                 onClick={() => onTabChange(tab.id)}
               >
-                <div className="relative">
-                  <Icon className="h-5 w-5 mb-1" />
-                  {hasNotification && "badge" in tab && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-medium">
-                      {tab.badge && tab.badge > 99 ? "99+" : tab.badge}
-                    </span>
-                  )}
-                </div>
+                <Icon className="h-5 w-5 mb-1" />
                 <span className="text-xs font-medium truncate">
                   {tab.label}
                 </span>
@@ -112,14 +103,7 @@ export function MobileTabBar({
                   : "text-muted-foreground hover:text-foreground hover:bg-muted",
               )}
             >
-              <div className="relative">
-                <Icon className="h-5 w-5 mb-1" />
-                {hasNotification && "badge" in tab && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-medium">
-                    {tab.badge && tab.badge > 99 ? "99+" : tab.badge}
-                  </span>
-                )}
-              </div>
+              <Icon className="h-5 w-5 mb-1" />
               <span className="text-xs font-medium truncate">{tab.label}</span>
             </button>
           );

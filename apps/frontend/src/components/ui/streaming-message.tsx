@@ -1,4 +1,3 @@
-"use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownDisplay } from "@/components/markdown-display";
@@ -25,7 +24,7 @@ export function StreamingMessage({
   const [displayedContent, setDisplayedContent] = useState("");
   const [showTypingCursor, setShowTypingCursor] = useState(false);
   const contentRef = useRef(content);
-  const typewriterTimeoutRef = useRef<NodeJS.Timeout>();
+  const typewriterTimeoutRef = useRef<NodeJS.Timeout>(undefined);
 
   // Debug logging for content updates
   console.log("💬 StreamingMessage render:", {
@@ -280,34 +279,6 @@ export function RealTimeStreamingMessage({
     setIsTextComplete(false);
     setToolCalls([]);
   }, []);
-
-  // Expose methods via imperative handle
-  React.useImperativeHandle(
-    React.useRef<{
-      addThinkingContent: (content: string) => void;
-      completeThinking: () => void;
-      addTextContent: (content: string) => void;
-      completeText: () => void;
-      addToolCall: (name: string, status: string) => void;
-      reset: () => void;
-    }>(),
-    () => ({
-      addThinkingContent,
-      completeThinking,
-      addTextContent,
-      completeText,
-      addToolCall,
-      reset,
-    }),
-    [
-      addThinkingContent,
-      completeThinking,
-      addTextContent,
-      completeText,
-      addToolCall,
-      reset,
-    ],
-  );
 
   return (
     <StreamingMessageContainer

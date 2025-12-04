@@ -1,4 +1,3 @@
-"use client";
 
 import { ChevronLeft } from "lucide-react";
 import { useMobileNavigationSafe } from "@/contexts/mobile-navigation-context";

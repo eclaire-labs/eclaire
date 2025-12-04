@@ -1,4 +1,3 @@
-"use client";
 
 import {
   AlertCircle,
@@ -16,7 +15,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "@/lib/navigation";
 import React, { useEffect, useState } from "react";
 import { MarkdownDisplayWithAssets } from "@/components/markdown-display-with-assets";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +63,7 @@ import {
 } from "@/lib/frontend-api";
 import type { Task, TaskComment, TaskStatus, User } from "@/types/task";
 
-export default function TaskDetailPage() {
+export function TaskDetailClient() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();

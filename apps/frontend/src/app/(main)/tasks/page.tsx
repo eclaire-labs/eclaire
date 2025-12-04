@@ -1,4 +1,3 @@
-"use client";
 
 import {
   ArrowDown, // Icons for view/sort
@@ -22,7 +21,7 @@ import {
   User as UserIcon,
   X,
 } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "@/lib/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";

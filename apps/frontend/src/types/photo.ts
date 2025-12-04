@@ -51,7 +51,7 @@ export interface Photo {
   isOriginalViewable?: boolean;
 
   // Processing status
-  processingStatus: "pending" | "processing" | "completed" | "failed" | string;
+  processingStatus: "pending" | "processing" | "completed" | "failed" | "retry_pending" | null;
 
   // Review, flagging, and pinning
   reviewStatus: "pending" | "accepted" | "rejected";

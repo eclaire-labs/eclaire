@@ -236,10 +236,6 @@ async function checkDependencies(env = 'dev') {
 async function copyEnvFiles(env, force = false) {
   const filesToCopy = [
     {
-      source: `apps/frontend/.env.${env}.example`,
-      dest: `apps/frontend/.env.${env}`
-    },
-    {
       source: `apps/backend/.env.${env}.example`,
       dest: `apps/backend/.env.${env}`,
       isBackend: true
@@ -382,7 +378,7 @@ async function checkModels() {
 async function installDependencies(env = 'dev') {
   console.log('\n  Installing pnpm dependencies...');
 
-  const apps = ['apps/backend', 'apps/frontend'];
+  const apps = ['apps/backend'];
   let successCount = 0;
   let failedApps = [];
 
@@ -492,7 +488,7 @@ async function initDatabase(env, questionFn) {
     exec('docker compose down', true);
 
     // Check if old containers still exist
-    const checkContainers = exec('docker ps -a --filter name=eclaire-backend --filter name=eclaire-frontend --format "{{.Names}}"', true);
+    const checkContainers = exec('docker ps -a --filter name=eclaire-backend --format "{{.Names}}"', true);
 
     if (checkContainers.success && checkContainers.output && checkContainers.output.trim()) {
       const existingContainers = checkContainers.output.trim().split('\n');

@@ -1,4 +1,3 @@
-"use client";
 
 import { createContext, type ReactNode, useContext } from "react";
 import type { MobileTab } from "@/components/mobile/mobile-tab-bar";

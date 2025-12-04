@@ -374,12 +374,7 @@ async function processImageJob(job: Job<ImageJobData>): Promise<void> {
   try {
     // STAGE: IMAGE PREPARATION
     await reporter.updateStage(STAGES.PREPARATION, "processing", 0);
-    const { stream: imageStream } = await objectStorage.getStream(storageId);
-    const chunks: Buffer[] = [];
-    for await (const chunk of imageStream) {
-      chunks.push(Buffer.from(chunk));
-    }
-    let imageBuffer = Buffer.concat(chunks);
+    let imageBuffer = await objectStorage.getBuffer(storageId);
     if (imageBuffer.length === 0)
       throw new Error("Fetched image file is empty.");
     await reporter.completeStage(STAGES.PREPARATION);

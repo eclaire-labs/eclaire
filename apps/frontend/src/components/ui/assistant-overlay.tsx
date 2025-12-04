@@ -1,7 +1,5 @@
-"use client";
-
 import { CheckSquare, Maximize2, MessageSquare, Upload } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 

@@ -340,7 +340,7 @@ const serveBookmarkAsset = async (c: any, assetType: BookmarkAssetType) => {
       headers.set("Cache-Control", "private, max-age=3600");
     }
 
-    return new Response(stream as any, { status: 200, headers });
+    return new Response(stream, { status: 200, headers });
   } catch (error: any) {
     logger.error(`Error serving bookmark asset (${assetType}):`, error);
     if (

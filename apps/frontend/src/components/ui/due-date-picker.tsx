@@ -1,4 +1,3 @@
-"use client";
 
 import { Calendar, CalendarDays, Clock, Plus } from "lucide-react";
 import { useState } from "react";

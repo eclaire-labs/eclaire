@@ -2,6 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { apiFetch, getAbsoluteApiUrl } from "@/lib/frontend-api";
+import {
+  useProcessingEvents,
+  useSSEConnectionStatus,
+} from "@/providers/ProcessingEventsProvider";
 
 export type AssetType =
   | "photos"
@@ -197,22 +201,10 @@ export function useProcessingSummary() {
  * Hook for global processing events (for dashboard-wide updates)
  * Now uses the singleton ProcessingEventsProvider
  */
-export { useProcessingEvents } from "@/providers/ProcessingEventsProvider";
-
-/**
- * Hook to get SSE connection status without creating new connections
- */
-export function useSSEConnectionStatus(): { isConnected: boolean } {
-  const {
-    useProcessingEvents,
-  } = require("@/providers/ProcessingEventsProvider");
-  try {
-    const { isConnected } = useProcessingEvents();
-    return { isConnected };
-  } catch {
-    return { isConnected: false };
-  }
-}
+export {
+  useProcessingEvents,
+  useSSEConnectionStatus,
+} from "@/providers/ProcessingEventsProvider";
 
 /**
  * Hook to automatically refresh asset data when processing completes

@@ -1,4 +1,3 @@
-"use client";
 
 import { Bot, Edit2, History, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -30,11 +29,11 @@ function convertBackendMessage(msg: BackendMessage): Message {
 interface MobileChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
-  messagesEndRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
   attachedAssets: AssetReference[];
-  setAttachedAssets: (assets: AssetReference[]) => void;
+  setAttachedAssets: React.Dispatch<React.SetStateAction<AssetReference[]>>;
   input: string;
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   setInput: (input: string) => void;
   handleKeyDown: (e: React.KeyboardEvent) => void;
   handleSend: () => void;
@@ -252,8 +251,7 @@ export function MobileChatInterface({
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
           showThinkingTokens={showThinkingTokens}
-          messagesEndRef={messagesEndRef}
-          inputRef={inputRef}
+          isClient={true}
         />
       </div>
     </div>

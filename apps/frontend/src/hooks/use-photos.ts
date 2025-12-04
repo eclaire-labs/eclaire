@@ -8,19 +8,17 @@ import type { Photo } from "@/types/photo";
 const transformPhotoData = (backendPhoto: any): Photo => {
   return {
     id: backendPhoto.id,
-    userId: backendPhoto.userId || "",
     title: backendPhoto.title,
     description: backendPhoto.description,
     originalFilename: backendPhoto.originalFilename,
     deviceId: backendPhoto.deviceId,
     mimeType: backendPhoto.mimeType,
     fileSize: backendPhoto.fileSize,
-    rawMetadata: backendPhoto.rawMetadata,
     tags: backendPhoto.tags || [],
     // Computed URLs for assets
     imageUrl: backendPhoto.imageUrl
       ? getAbsoluteApiUrl(backendPhoto.imageUrl)
-      : null,
+      : "",
     thumbnailUrl: backendPhoto.thumbnailUrl
       ? getAbsoluteApiUrl(backendPhoto.thumbnailUrl)
       : null,
@@ -35,18 +33,32 @@ const transformPhotoData = (backendPhoto: any): Photo => {
     fNumber: backendPhoto.fNumber,
     exposureTime: backendPhoto.exposureTime,
     iso: backendPhoto.iso,
-    focalLength: backendPhoto.focalLength,
+    orientation: backendPhoto.orientation,
     // Location data
     latitude: backendPhoto.latitude,
     longitude: backendPhoto.longitude,
+    altitude: backendPhoto.altitude,
     locationCity: backendPhoto.locationCity,
+    locationCountryIso2: backendPhoto.locationCountryIso2,
     locationCountryName: backendPhoto.locationCountryName,
-    locationAddress: backendPhoto.locationAddress,
+    // AI Generated Data
+    photoType: backendPhoto.photoType || null,
+    ocrText: backendPhoto.ocrText || null,
+    dominantColors: backendPhoto.dominantColors || null,
     // Processing status (unified from backend)
     processingStatus: backendPhoto.processingStatus || null,
     // Timestamps (backend returns ISO strings)
     createdAt: backendPhoto.createdAt || new Date().toISOString(),
     updatedAt: backendPhoto.updatedAt || new Date().toISOString(),
+    dueDate: backendPhoto.dueDate || null,
+    // URLs
+    originalUrl: backendPhoto.originalUrl
+      ? getAbsoluteApiUrl(backendPhoto.originalUrl)
+      : "",
+    convertedJpgUrl: backendPhoto.convertedJpgUrl
+      ? getAbsoluteApiUrl(backendPhoto.convertedJpgUrl)
+      : null,
+    isOriginalViewable: backendPhoto.isOriginalViewable,
     // Review, flagging, and pinning
     reviewStatus: backendPhoto.reviewStatus || "pending",
     flagColor: backendPhoto.flagColor || null,

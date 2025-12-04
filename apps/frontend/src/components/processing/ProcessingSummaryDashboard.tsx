@@ -1,4 +1,3 @@
-"use client";
 
 import { CheckCircle, Clock, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";

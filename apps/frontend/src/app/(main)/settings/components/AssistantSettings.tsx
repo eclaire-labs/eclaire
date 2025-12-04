@@ -1,4 +1,3 @@
-"use client";
 
 import { Bot, Brain, Info, Zap } from "lucide-react";
 import {

@@ -1,4 +1,3 @@
-"use client";
 
 import {
   Activity,
@@ -17,8 +16,8 @@ import {
   Search,
   Upload,
 } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link } from "@/lib/navigation";
+import { usePathname } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 interface MobileFoldersViewProps {

@@ -1,4 +1,3 @@
-"use client";
 
 import { Flag, Pin } from "lucide-react";
 import { useCallback, useRef, useState } from "react";

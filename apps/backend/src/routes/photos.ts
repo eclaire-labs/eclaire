@@ -526,7 +526,7 @@ photosRoutes.get(
       headers.set("Cache-Control", "private, max-age=3600");
 
       // Return the file stream
-      return new Response(stream as any, { status: 200, headers });
+      return new Response(stream, { status: 200, headers });
     } catch (error: any) {
       const requestId = c.get("requestId");
       logger.error(
@@ -592,7 +592,7 @@ photosRoutes.get(
       headers.set("Cache-Control", "public, max-age=86400");
 
       // Return the thumbnail stream
-      return new Response(stream as any, { status: 200, headers });
+      return new Response(stream, { status: 200, headers });
     } catch (error: any) {
       const requestId = c.get("requestId");
       logger.error(
@@ -680,7 +680,7 @@ photosRoutes.get(
           );
         }
 
-        return new Response(stream as any, { status: 200, headers });
+        return new Response(stream, { status: 200, headers });
       } catch (storageError: any) {
         if (storageError.code === "ENOENT") {
           return c.json(
@@ -760,7 +760,7 @@ photosRoutes.get("/:id/original", async (c) => {
     const filename = photo.originalFilename || `${photo.id}-original`;
     headers.set("Content-Disposition", `inline; filename="${filename}"`);
 
-    return new Response(stream as any, { status: 200, headers });
+    return new Response(stream, { status: 200, headers });
   } catch (error: any) {
     const requestId = c.get("requestId");
     logger.error(
@@ -835,7 +835,7 @@ photosRoutes.get("/:id/converted", async (c) => {
     const filename = `${baseFilename}-converted.jpg`;
     headers.set("Content-Disposition", `inline; filename="${filename}"`);
 
-    return new Response(stream as any, { status: 200, headers });
+    return new Response(stream, { status: 200, headers });
   } catch (error: any) {
     const requestId = c.get("requestId");
     logger.error(
@@ -913,7 +913,7 @@ photosRoutes.get(
           );
         }
 
-        return new Response(stream as any, { status: 200, headers });
+        return new Response(stream, { status: 200, headers });
       } catch (storageError: any) {
         if (storageError.code === "ENOENT") {
           return c.json(

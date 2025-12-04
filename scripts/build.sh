@@ -3,13 +3,11 @@ set -euo pipefail
 
 RELEASE_MODE=false
 FORCE_DEV_MODE=false
-BACKEND_URL_OVERRIDE=""
 PARSED_ARGS=()
 
 # Parse CLI
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --backend-url) BACKEND_URL_OVERRIDE="$2"; shift 2 ;;
     --release)     RELEASE_MODE=true; shift ;;
     --dev)         FORCE_DEV_MODE=true; shift ;;
     *)             PARSED_ARGS+=("$1"); shift ;;
@@ -125,9 +123,7 @@ echo "========================================="
 echo "Building v${SEMVER} (${COMMITS_SINCE_TAG} commits since tag, sha ${SHORT_SHA})"
 echo "========================================="
 
-[[ -n "$BACKEND_URL_OVERRIDE" ]] && echo "🔧 Backend URL override: $BACKEND_URL_OVERRIDE"
-
-ALL_SERVICES=(backend frontend)
+ALL_SERVICES=(backend)
 if [[ $# -gt 0 ]]; then SERVICES=("$@"); else SERVICES=("${ALL_SERVICES[@]}"); fi
 
 for svc in "${SERVICES[@]}"; do
@@ -166,12 +162,6 @@ for svc in "${SERVICES[@]}"; do
     --build-arg "APP_CI_RUN_ID=${CI_RUN_ID}"
     --build-arg "APP_CI_RUN_NUMBER=${CI_RUN_NUMBER}"
   )
-
-  # Frontend-specific: add BACKEND_URL if provided
-  if [[ "$svc" == "frontend" && -n "$BACKEND_URL_OVERRIDE" ]]; then
-    BUILD_ARGS+=( --build-arg "BACKEND_URL=${BACKEND_URL_OVERRIDE}" )
-    echo "🔧 Using custom BACKEND_URL for build: $BACKEND_URL_OVERRIDE"
-  fi
 
   # Build the image from root context (for monorepo with shared pnpm-lock.yaml)
   docker build \

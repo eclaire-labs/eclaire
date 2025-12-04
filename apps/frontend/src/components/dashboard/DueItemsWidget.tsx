@@ -1,4 +1,3 @@
-"use client";
 
 import { format } from "date-fns";
 import {
@@ -8,7 +7,7 @@ import {
   CheckSquare,
   Clock,
 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/lib/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

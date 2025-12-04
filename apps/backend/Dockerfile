@@ -1,4 +1,4 @@
-# Production Dockerfile for Eclaire Backend
+# Production Dockerfile for Eclaire (unified backend + frontend)
 # --- Base runtime kept minimal; build tools live in builder only
 FROM node:24-bookworm-slim AS base
 WORKDIR /app
@@ -12,7 +12,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Non-root user
 RUN groupadd -r nodeapp && useradd -r -g nodeapp -m -d /home/nodeapp nodeapp
 
-# ===== Builder Stage =====
+# ===== Frontend Builder Stage =====
+FROM node:24-bookworm-slim AS frontend-builder
+WORKDIR /app
+
+# Enable pnpm via corepack
+RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
+
+# Copy workspace root files and frontend package.json
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY apps/frontend/package.json ./apps/frontend/
+
+# Install frontend dependencies
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --filter=@eclaire/frontend...
+
+# Copy frontend source and build
+COPY apps/frontend ./apps/frontend/
+WORKDIR /app/apps/frontend
+RUN pnpm build
+
+# ===== Backend Builder Stage =====
 # Includes build toolchain for native modules & TS compile + worker dependencies
 FROM node:24-bookworm-slim AS builder
 WORKDIR /app
@@ -128,6 +148,10 @@ COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 COPY --from=prod-deps --chown=nodeapp:nodeapp /deploy ./
 # Copy browser cache from prod-deps (where browsers were installed)
 COPY --from=prod-deps --chown=nodeapp:nodeapp /root/.cache/ms-playwright /home/nodeapp/.cache/ms-playwright
+
+# Copy frontend dist for SPA serving
+COPY --from=frontend-builder --chown=nodeapp:nodeapp /app/apps/frontend/dist ./frontend-dist
+ENV FRONTEND_DIST_PATH=/app/frontend-dist
 
 # Copy additional runtime files
 COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/tool-signatures.json ./

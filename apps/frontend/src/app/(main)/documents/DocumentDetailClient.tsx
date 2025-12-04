@@ -1,4 +1,3 @@
-"use client";
 
 import {
   ArrowLeft,
@@ -15,7 +14,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "@/lib/navigation";
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,7 +91,7 @@ const formatFileSize = (bytes: number | null) => {
   return `${size.toFixed(1)} ${sizes[i]}`;
 };
 
-export default function DocumentDetailPage() {
+export function DocumentDetailClient() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();

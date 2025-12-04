@@ -26,12 +26,8 @@ function question(query) {
 async function clean() {
   console.log(`${colors.yellow}⚠️  WARNING: This will delete all generated configuration files${colors.reset}`);
   console.log('\nThe following files will be deleted:');
-  console.log('  - apps/frontend/.env.dev');
-  console.log('  - apps/frontend/.env.prod');
   console.log('  - apps/backend/.env.dev');
   console.log('  - apps/backend/.env.prod');
-  console.log('  - apps/workers/.env.dev');
-  console.log('  - apps/workers/.env.prod');
   console.log('  - config/models.json');
 
   const answer = await question(`\n${colors.red}Are you sure you want to continue? [y/N] ${colors.reset}`);
@@ -44,12 +40,8 @@ async function clean() {
   }
 
   const files = [
-    'apps/frontend/.env.dev',
-    'apps/frontend/.env.prod',
     'apps/backend/.env.dev',
     'apps/backend/.env.prod',
-    'apps/workers/.env.dev',
-    'apps/workers/.env.prod',
     'config/models.json'
   ];
 

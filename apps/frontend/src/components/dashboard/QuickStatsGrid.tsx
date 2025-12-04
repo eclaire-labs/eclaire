@@ -1,7 +1,6 @@
-"use client";
 
 import { Eye, Flag, Pin, Zap } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/lib/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface QuickStatsGridProps {

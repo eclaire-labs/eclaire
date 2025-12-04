@@ -1,4 +1,3 @@
-"use client";
 
 import {
   Bell,
@@ -9,8 +8,7 @@ import {
   Settings,
   User,
 } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { Link, usePathname, useSearchParams } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 interface SettingsMenuItem {

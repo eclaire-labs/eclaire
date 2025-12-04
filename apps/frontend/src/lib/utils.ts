@@ -23,10 +23,6 @@ export function getApiBaseUrl(): string {
   return ""; // Use relative URLs - requests go through Next.js proxy
 }
 
-// lib/utils.ts (or similar utility file)
-
-import path from "path";
-
 const mimeMap: { [key: string]: string } = {
   // Images
   ".jpg": "image/jpeg",
@@ -84,7 +80,9 @@ export function getMimeTypeFromExtension(
   }
 
   // Extract extension, including the dot (e.g., ".jpg")
-  const extension = path.extname(filenameOrPath).toLowerCase();
+  const lastDotIndex = filenameOrPath.lastIndexOf(".");
+  const extension =
+    lastDotIndex !== -1 ? filenameOrPath.slice(lastDotIndex).toLowerCase() : "";
 
   return mimeMap[extension]; // Return mapped type or undefined
 }

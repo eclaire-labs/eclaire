@@ -130,14 +130,10 @@ export async function fetchAssetContent(
         // Try to get content from storage file
         if (bookmark.extractedTxtStorageId) {
           try {
-            const { stream } = await objectStorage.getStream(
+            const buffer = await objectStorage.getBuffer(
               bookmark.extractedTxtStorageId,
             );
-            const chunks: Buffer[] = [];
-            for await (const chunk of stream) {
-              chunks.push(Buffer.from(chunk));
-            }
-            const content = Buffer.concat(chunks).toString("utf-8");
+            const content = buffer.toString("utf-8");
             logger.debug(
               { assetId: assetRef.id, contentLength: content.length },
               "Retrieved bookmark content from storage",
@@ -204,14 +200,10 @@ export async function fetchAssetContent(
         // Try to get markdown content first (from Docling processor)
         if (document.extractedMdStorageId) {
           try {
-            const { stream } = await objectStorage.getStream(
+            const buffer = await objectStorage.getBuffer(
               document.extractedMdStorageId,
             );
-            const chunks: Buffer[] = [];
-            for await (const chunk of stream) {
-              chunks.push(Buffer.from(chunk));
-            }
-            const markdownContent = Buffer.concat(chunks).toString("utf-8");
+            const markdownContent = buffer.toString("utf-8");
             logger.debug(
               {
                 assetId: assetRef.id,
@@ -237,14 +229,10 @@ export async function fetchAssetContent(
         // Try to get plain text content from storage file
         if (document.extractedTxtStorageId) {
           try {
-            const { stream } = await objectStorage.getStream(
+            const buffer = await objectStorage.getBuffer(
               document.extractedTxtStorageId,
             );
-            const chunks: Buffer[] = [];
-            for await (const chunk of stream) {
-              chunks.push(Buffer.from(chunk));
-            }
-            const textContent = Buffer.concat(chunks).toString("utf-8");
+            const textContent = buffer.toString("utf-8");
             logger.debug(
               {
                 assetId: assetRef.id,

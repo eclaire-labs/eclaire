@@ -172,7 +172,6 @@ export default function ChannelCard({ channel, onEdit }: ChannelCardProps) {
                 checked={channel.isActive}
                 onCheckedChange={handleToggleActive}
                 disabled={isUpdating || isToggling}
-                size="sm"
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

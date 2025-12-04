@@ -814,7 +814,7 @@ userRoutes.get("/:userId/avatar", async (c) => {
     }
     headers.set("Cache-Control", "public, max-age=86400"); // Cache for 24 hours
 
-    return new Response(stream as any, { status: 200, headers });
+    return new Response(stream, { status: 200, headers });
   } catch (error) {
     const requestId = c.get("requestId");
     return c.json({ error: "Failed to serve avatar" }, 500);

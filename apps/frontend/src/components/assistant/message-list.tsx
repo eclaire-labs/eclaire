@@ -1,5 +1,4 @@
 // components/assistant/message-list.tsx
-"use client";
 
 import { Bot } from "lucide-react";
 import { useEffect, useRef } from "react";

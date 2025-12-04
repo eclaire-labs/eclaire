@@ -2,7 +2,7 @@
 
 // Import env-loader first to ensure environment variables are loaded
 import "./env-loader";
-import fs, { promises as fsPromises, type ReadStream } from "fs";
+import fs, { promises as fsPromises } from "fs";
 import path from "path";
 import { Readable } from "stream";
 import { generateStorageId } from "./id-generator";
@@ -40,7 +40,7 @@ export interface StorageInfo {
 }
 
 export interface GetObjectOutput {
-  stream: ReadStream;
+  stream: ReadableStream<Uint8Array>;
   contentType?: string;
   contentLength?: number;
 }
@@ -252,8 +252,32 @@ export class LocalObjectStorage {
     try {
       await fsPromises.access(fullPath, fs.constants.R_OK);
       const stats = await fsPromises.stat(fullPath);
-      const stream = fs.createReadStream(fullPath);
+      const nodeStream = fs.createReadStream(fullPath);
+      // Convert Node.js ReadStream to Web ReadableStream to avoid race conditions
+      // when passed to the Response constructor
+      const stream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
       return { stream, contentLength: stats.size };
+    } catch (error: any) {
+      if (error.code === "ENOENT" || error.code === "EACCES") {
+        const notFoundError = new Error(
+          `File not found for storageId: ${storageId}`,
+        );
+        (notFoundError as any).code = "ENOENT";
+        throw notFoundError;
+      }
+      throw new Error("Failed to read file");
+    }
+  }
+
+  /**
+   * Reads a file and returns its content as a Buffer.
+   * Use this when you need the entire file content in memory.
+   * For streaming to HTTP responses, use getStream() instead.
+   */
+  async getBuffer(storageId: string): Promise<Buffer> {
+    const fullPath = this.getFullPath(storageId);
+    try {
+      return await fsPromises.readFile(fullPath);
     } catch (error: any) {
       if (error.code === "ENOENT" || error.code === "EACCES") {
         const notFoundError = new Error(

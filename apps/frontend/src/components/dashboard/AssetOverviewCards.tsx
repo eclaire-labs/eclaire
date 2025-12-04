@@ -1,4 +1,3 @@
-"use client";
 
 import {
   BookOpen,
@@ -7,7 +6,7 @@ import {
   FileText,
   StickyNote,
 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/lib/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface AssetOverviewCardsProps {

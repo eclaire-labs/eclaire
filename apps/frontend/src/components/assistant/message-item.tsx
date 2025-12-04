@@ -102,7 +102,25 @@ export function MessageItem({
 
       {isUser &&
         (auth?.user ? (
-          <UserAvatar user={auth.user} size="md" />
+          <UserAvatar
+            user={{
+              email: auth.user.email,
+              displayName:
+                (auth.user as { displayName?: string }).displayName ??
+                auth.user.name ??
+                null,
+              fullName:
+                (auth.user as { fullName?: string }).fullName ??
+                auth.user.name ??
+                null,
+              avatarUrl:
+                (auth.user as { avatarUrl?: string }).avatarUrl ??
+                auth.user.image ??
+                null,
+              id: auth.user.id,
+            }}
+            size="md"
+          />
         ) : (
           <Avatar className="h-8 w-8">
             <AvatarFallback>

@@ -1,4 +1,3 @@
-"use client";
 
 import {
   ArrowRight,
@@ -9,7 +8,7 @@ import {
   Folder,
   StickyNote,
 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/lib/navigation";
 import { useCallback, useState } from "react";
 import { ActivityTimelineChart } from "@/components/dashboard/ActivityTimelineChart";
 import { AssetOverviewCards } from "@/components/dashboard/AssetOverviewCards";

@@ -1,4 +1,3 @@
-"use client";
 
 import {
   ArrowDown,
@@ -27,8 +26,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { nanoid } from "nanoid"; // For unique upload IDs
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@/lib/navigation";
+import { useRouter } from "@/lib/navigation";
 import React, {
   useCallback,
   useEffect,
@@ -1868,7 +1867,7 @@ export default function PhotosPage() {
 interface TileViewProps {
   photos: Photo[];
   focusedIndex: number;
-  sortBy: "dateTaken" | "createdAt" | "title" | "location";
+  sortBy: string;
   // onPhotoClick: (index: number) => void; // Removed
   openViewDialog: (photo: Photo) => void; // Added
   onEditClick: (photo: Photo) => void;

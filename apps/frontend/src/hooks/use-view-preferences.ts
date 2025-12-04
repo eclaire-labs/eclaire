@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useState } from "react";
 
@@ -79,60 +78,12 @@ const DEFAULT_PREFERENCES: Record<PageType, ViewPreferences> = {
 const getStorageKey = (pageType: PageType): string =>
   `view-preferences-${pageType}`;
 
-// Type-safe hook overloads
-export function useViewPreferences(
-  pageType: "bookmarks",
-): [
-  BookmarksViewPreferences,
-  (
-    key: keyof BookmarksViewPreferences,
-    value: BookmarksViewPreferences[keyof BookmarksViewPreferences],
-  ) => void,
+// Hook implementation with union return type
+export function useViewPreferences(pageType: PageType): [
+  ViewPreferences,
+  (key: keyof ViewPreferences, value: ViewPreferences[keyof ViewPreferences]) => void,
   boolean,
-];
-export function useViewPreferences(
-  pageType: "tasks",
-): [
-  TasksViewPreferences,
-  (
-    key: keyof TasksViewPreferences,
-    value: TasksViewPreferences[keyof TasksViewPreferences],
-  ) => void,
-  boolean,
-];
-export function useViewPreferences(
-  pageType: "notes",
-): [
-  NotesViewPreferences,
-  (
-    key: keyof NotesViewPreferences,
-    value: NotesViewPreferences[keyof NotesViewPreferences],
-  ) => void,
-  boolean,
-];
-export function useViewPreferences(
-  pageType: "documents",
-): [
-  DocumentsViewPreferences,
-  (
-    key: keyof DocumentsViewPreferences,
-    value: DocumentsViewPreferences[keyof DocumentsViewPreferences],
-  ) => void,
-  boolean,
-];
-export function useViewPreferences(
-  pageType: "photos",
-): [
-  PhotosViewPreferences,
-  (
-    key: keyof PhotosViewPreferences,
-    value: PhotosViewPreferences[keyof PhotosViewPreferences],
-  ) => void,
-  boolean,
-];
-
-// Implementation
-export function useViewPreferences(pageType: PageType) {
+] {
   const [preferences, setPreferences] = useState<ViewPreferences>(
     DEFAULT_PREFERENCES[pageType],
   );

@@ -295,8 +295,8 @@ app.all("/api/auth/*", async (c) => {
   }
 });
 
-// Health check endpoint with version info
-app.get("/health", (c) => {
+// Health check handler
+const healthHandler = (c: Context<{ Variables: Variables }>) => {
   const buildInfo = {
     version: process.env.APP_VERSION || "N/A",
     fullVersion: process.env.APP_FULL_VERSION || "N/A",
@@ -315,7 +315,11 @@ app.get("/health", (c) => {
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || "development",
   });
-});
+};
+
+// Health check endpoints - /health for load balancers, /api/health for frontend
+app.get("/health", healthHandler);
+app.get("/api/health", healthHandler);
 
 // Session test endpoint
 app.get("/api/session", (c) => {
@@ -350,6 +354,11 @@ app.route("/api/prompt", promptRoutes);
 app.route("/api/processing-status", processingStatusRoutes);
 app.route("/api/processing-events", processingEventsRoutes);
 app.route("/api/jobs", jobsRoutes);
+
+// SPA middleware - serves frontend static files and falls back to index.html
+// Must be registered AFTER all API routes
+import { createSpaMiddleware } from "./middleware/static-spa";
+app.use("*", createSpaMiddleware());
 
 // Start the server
 const start = async () => {

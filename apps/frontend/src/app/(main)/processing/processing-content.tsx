@@ -1,5 +1,3 @@
-"use client";
-
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -14,7 +12,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "@/lib/navigation";
 import { useEffect, useState } from "react";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { ProcessingSummaryDashboard } from "@/components/processing/ProcessingSummaryDashboard";

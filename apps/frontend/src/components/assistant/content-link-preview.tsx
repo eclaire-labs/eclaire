@@ -1,4 +1,3 @@
-"use client";
 
 import {
   Bookmark,
@@ -8,7 +7,7 @@ import {
   Monitor,
   StickyNote,
 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import type { ContentLink } from "@/types/message";
 

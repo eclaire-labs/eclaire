@@ -1,4 +1,3 @@
-"use client";
 
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -20,7 +19,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "@/lib/navigation";
 import React, { useEffect, useState } from "react";
 import { PhotoAnalysisCard } from "@/components/photo-analysis";
 import { Badge } from "@/components/ui/badge";
@@ -117,7 +116,7 @@ const formatCoordinate = (
   return String(coord);
 };
 
-export default function PhotoDetailPage() {
+export function PhotoDetailClient() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();

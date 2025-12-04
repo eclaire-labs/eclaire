@@ -1,5 +1,4 @@
 // components/assistant/chat-panel.tsx
-"use client";
 
 import { Card } from "@/components/ui/card";
 import type { ConversationSummary } from "@/types/conversation";

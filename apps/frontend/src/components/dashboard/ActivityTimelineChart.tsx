@@ -1,4 +1,3 @@
-"use client";
 
 import { format } from "date-fns";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";

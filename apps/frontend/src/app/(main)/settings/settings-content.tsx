@@ -1,8 +1,5 @@
-"use client";
-
 import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Link, useRouter, useSearchParams } from "@/lib/navigation";
 import { useEffect, useState } from "react";
 import AccountSettings from "@/app/(main)/settings/components/AccountSettings";
 import AssistantSettings from "@/app/(main)/settings/components/AssistantSettings";

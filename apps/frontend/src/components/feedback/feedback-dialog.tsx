@@ -1,4 +1,3 @@
-"use client";
 
 import { MessageSquare, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useEffect, useState } from "react";

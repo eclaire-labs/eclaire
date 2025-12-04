@@ -1,4 +1,3 @@
-"use client";
 
 import {
   AlertCircle,
@@ -26,7 +25,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import React, {
   useCallback,
   useEffect,

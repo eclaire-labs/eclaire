@@ -1,5 +1,3 @@
-"use client";
-
 import {
   AlertCircle,
   ArrowDown,
@@ -20,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { MarkdownPreview } from "@/components/markdown-preview";
@@ -1615,7 +1613,7 @@ export default function NotesPage() {
 interface TileViewProps {
   entries: NoteEntry[];
   focusedIndex: number;
-  sortBy: "date" | "title" | "content";
+  sortBy: string;
   onEntryClick: (entry: NoteEntry) => void;
   onEditClick: (entry: NoteEntry) => void;
   onDeleteClick: (entry: NoteEntry) => void;

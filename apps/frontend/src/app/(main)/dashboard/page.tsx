@@ -1,64 +1,102 @@
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-
-export const metadata: Metadata = {
-  title: "Dashboard",
-};
-
-import { Suspense } from "react";
+import { useEffect, useState } from "react";
 import { DashboardClientContent } from "@/components/dashboard/DashboardClientContent";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
-import { getCurrentUser, type User } from "@/lib/auth.server"; // Correctly importing from the .server file
-import {
-  getActivityTimeline,
-  getDashboardStats,
-  getDueItems,
-  getQuickStats,
-  getRecentActivity,
-} from "@/lib/data-fetching";
+import { useAuth } from "@/hooks/use-auth";
+import { apiFetch } from "@/lib/frontend-api";
 
-// This line explicitly tells Next.js that this page MUST be rendered dynamically.
-// It silences the "Dynamic server usage" build notification because you are acknowledging the behavior.
-export const dynamic = "force-dynamic";
+// Note: metadata export not supported in client components
+// Title will be set via document.title or a head component
 
-export default async function DashboardPage() {
-  // 1. Get the user session on the server.
-  const user = await getCurrentUser();
+export default function DashboardPage() {
+  const { data: session, isPending: isSessionPending } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<{
+    stats: any;
+    recentActivities: any[];
+    activityTimeline: any[];
+    dueItems: any;
+    quickStats: any;
+  } | null>(null);
 
-  // 2. Redirect if the user somehow bypassed middleware.
-  if (!user) {
-    redirect("/auth/login");
+  // Set document title
+  useEffect(() => {
+    document.title = "Dashboard — Eclaire";
+  }, []);
+
+  // Fetch dashboard data client-side
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    async function fetchDashboardData() {
+      try {
+        const [statsRes, activityRes, timelineRes, dueItemsRes, quickStatsRes] =
+          await Promise.all([
+            apiFetch("/api/user/dashboard-stats"),
+            apiFetch("/api/history?limit=5"),
+            apiFetch("/api/user/activity-timeline?days=30"),
+            apiFetch("/api/user/due-items"),
+            apiFetch("/api/user/quick-stats"),
+          ]);
+
+        const [stats, activityData, timeline, dueItems, quickStats] =
+          await Promise.all([
+            statsRes.ok ? statsRes.json() : null,
+            activityRes.ok ? activityRes.json() : { records: [] },
+            timelineRes.ok ? timelineRes.json() : [],
+            dueItemsRes.ok
+              ? dueItemsRes.json()
+              : { overdue: [], dueToday: [], dueThisWeek: [] },
+            quickStatsRes.ok ? quickStatsRes.json() : null,
+          ]);
+
+        setDashboardData({
+          stats,
+          recentActivities: Array.isArray(activityData.records)
+            ? activityData.records
+            : [],
+          activityTimeline: Array.isArray(timeline) ? timeline : [],
+          dueItems,
+          quickStats,
+        });
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchDashboardData();
+  }, [session?.user?.id]);
+
+  // Show skeleton while loading session or data
+  if (isSessionPending || isLoading) {
+    return <DashboardSkeleton />;
   }
 
-  // 3. Render the page using Suspense for a better loading experience.
-  return (
-    <Suspense fallback={<DashboardSkeleton />}>
-      <DashboardDataFetcher user={user} />
-    </Suspense>
-  );
-}
+  // If no session, the AuthGuard in the layout will handle redirect
+  if (!session?.user) {
+    return <DashboardSkeleton />;
+  }
 
-// This component fetches the actual dashboard data.
-async function DashboardDataFetcher({ user }: { user: User }) {
-  // 4. Fetch dashboard-specific data on the server in parallel.
-  const [stats, recentActivities, activityTimeline, dueItems, quickStats] =
-    await Promise.all([
-      getDashboardStats(user.id),
-      getRecentActivity(user.id),
-      getActivityTimeline(user.id),
-      getDueItems(user.id),
-      getQuickStats(user.id),
-    ]);
+  // Show skeleton if data hasn't loaded yet
+  if (!dashboardData) {
+    return <DashboardSkeleton />;
+  }
 
-  // 5. Pass all server-fetched data as props to the Client Component.
+  const userName =
+    session.user.name || (session.user as any).displayName || session.user.email;
+
   return (
     <DashboardClientContent
-      userName={user.name || user.email}
-      initialStats={stats}
-      initialActivity={recentActivities}
-      initialTimeline={activityTimeline}
-      initialDueItems={dueItems}
-      initialQuickStats={quickStats}
+      userName={userName}
+      initialStats={dashboardData.stats}
+      initialActivity={dashboardData.recentActivities}
+      initialTimeline={dashboardData.activityTimeline}
+      initialDueItems={dashboardData.dueItems}
+      initialQuickStats={dashboardData.quickStats}
     />
   );
 }

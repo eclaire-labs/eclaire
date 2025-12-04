@@ -1,5 +1,5 @@
 import { ArrowLeft, Mail, MessageSquare, Phone } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,

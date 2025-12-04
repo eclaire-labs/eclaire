@@ -1,7 +1,6 @@
-"use client";
 
 import { ArrowLeft, Mail } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/lib/navigation";
 import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";

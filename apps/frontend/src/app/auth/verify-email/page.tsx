@@ -1,8 +1,7 @@
-"use client";
 
 import { ArrowLeft, Mail } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "@/lib/navigation";
+import { useRouter } from "@/lib/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

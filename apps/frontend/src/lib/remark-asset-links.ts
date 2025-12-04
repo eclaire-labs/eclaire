@@ -1,4 +1,4 @@
-import type { Root } from "mdast";
+import type { Root, Text } from "mdast";
 import { visit } from "unist-util-visit";
 import type { ContentLink } from "@/types/message";
 
@@ -11,6 +11,7 @@ export interface AssetLinkData {
  * Instead of splitting the content, we mark asset links for later processing
  */
 export function remarkAssetLinks() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return function transformer(tree: Root, file: any) {
     const contentLinks: ContentLink[] = [];
 
@@ -19,7 +20,7 @@ export function remarkAssetLinks() {
       /(\/(?:bookmarks|documents|photos|tasks|notes)\/[a-zA-Z0-9_-]+)/g;
 
     // Visit all text nodes in the tree
-    visit(tree, "text", (node) => {
+    visit(tree, "text", (node: Text) => {
       if (typeof node.value === "string") {
         const matches = node.value.match(linkPattern);
 

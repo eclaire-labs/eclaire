@@ -223,8 +223,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
     await reporter.updateStage(currentStage, "processing");
     jobLogger.info("Starting preparation stage.");
     tempDir = await fs.mkdtemp(path.join(tmpdir(), `doc-proc-${documentId}-`));
-    const { stream: documentStream } = await objectStorage.getStream(storageId);
-    const documentBuffer = Buffer.concat(await documentStream.toArray());
+    const documentBuffer = await objectStorage.getBuffer(storageId);
     jobLogger.info(
       { bufferSize: documentBuffer.length },
       "Document downloaded.",

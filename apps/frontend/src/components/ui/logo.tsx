@@ -1,6 +1,3 @@
-"use client";
-
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -23,12 +20,12 @@ export function Logo({
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      <Image
+      <img
         src={logoSrc}
         alt="Eclaire Logo"
         width={32}
         height={32}
-        priority={priority}
+        loading={priority ? "eager" : "lazy"}
         className="h-8 w-auto object-contain"
       />
       <span className={textClassName} style={{ fontFamily: "Arial" }}>

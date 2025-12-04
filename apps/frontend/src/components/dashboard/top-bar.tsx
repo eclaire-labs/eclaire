@@ -1,4 +1,3 @@
-"use client";
 
 import {
   Bell,
@@ -11,8 +10,8 @@ import {
   Minimize2,
   User,
 } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { Link } from "@/lib/navigation";
+import { usePathname, useRouter } from "@/lib/navigation";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -142,7 +141,25 @@ export function TopBar({
               className="rounded-full"
             >
               {auth?.user ? (
-                <UserAvatar user={auth.user} size={isMobile ? "sm" : "md"} />
+                <UserAvatar
+                  user={{
+                    email: auth.user.email,
+                    displayName:
+                      (auth.user as { displayName?: string }).displayName ??
+                      auth.user.name ??
+                      null,
+                    fullName:
+                      (auth.user as { fullName?: string }).fullName ??
+                      auth.user.name ??
+                      null,
+                    avatarUrl:
+                      (auth.user as { avatarUrl?: string }).avatarUrl ??
+                      auth.user.image ??
+                      null,
+                    id: auth.user.id,
+                  }}
+                  size={isMobile ? "sm" : "md"}
+                />
               ) : (
                 <Avatar className={isMobile ? "h-6 w-6" : "h-8 w-8"}>
                   <AvatarFallback className={isMobile ? "text-xs" : ""}>
