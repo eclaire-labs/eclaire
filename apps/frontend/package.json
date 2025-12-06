@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.21.0",
+  "packageManager": "pnpm@10.24.0",
   "license": "MIT",
   "description": "Eclaire frontend web application",
   "repository": {

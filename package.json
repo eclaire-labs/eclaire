@@ -2,7 +2,7 @@
   "name": "@eclaire/monorepo",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "pnpm@10.21.0",
+  "packageManager": "pnpm@10.24.0",
   "license": "MIT",
   "description": "Eclaire - AI-powered productivity platform",
   "repository": {
@@ -17,8 +17,8 @@
     "node": "^24.0.0"
   },
   "devDependencies": {
-    "node-gyp": "^11.0.0",
-    "node-addon-api": "^8.0.0"
+    "node-gyp": "^12.1.0",
+    "node-addon-api": "^8.5.0"
   },
   "scripts": {
     "setup": "node scripts/setup.js",
