@@ -75,7 +75,7 @@
     "react-dropzone": "14.3.8",
     "react-hook-form": "7.68.0",
     "react-resizable-panels": "3.0.6",
-    "recharts": "2.15.4",
+    "recharts": "3.5.1",
     "rehype-highlight": "7.0.2",
     "rehype-stringify": "10.0.1",
     "remark": "15.0.1",
