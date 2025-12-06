@@ -1,57 +1,133 @@
 /* ———————————————————————————————————————————
    imports FIRST (per CSS spec)
 ——————————————————————————————————————————— */
-@import url("highlight.js/styles/github.css") (prefers-color-scheme: light);
-@import url("highlight.js/styles/github-dark.css") (prefers-color-scheme: dark);
+@import url('highlight.js/styles/github.css') layer(base)
+  (prefers-color-scheme: light);
+@import url('highlight.js/styles/github-dark.css') layer(base)
+  (prefers-color-scheme: dark);
 
 /* tailwind layers */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
-/* base font */
-body {
-  font-family: "Inter", Arial, Helvetica, sans-serif;
+/* plugins */
+@plugin '@tailwindcss/typography';
+
+/* dark mode for next-themes (class-based) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* theme extensions */
+@theme {
+  /* Colors */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  /* Border radius */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Animations */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-spin-slow: spin-slow 20s linear infinite;
+  --animate-spin-reverse-slow: spin-reverse-slow 25s linear infinite;
 }
 
-/* utilities you already had */
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* Custom keyframes */
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
 
-  .line-clamp-1,
-  .line-clamp-2,
-  .line-clamp-3 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-  }
-  .line-clamp-1 {
-    -webkit-line-clamp: 1;
-  }
-  .line-clamp-2 {
-    -webkit-line-clamp: 2;
-  }
-  .line-clamp-3 {
-    -webkit-line-clamp: 3;
-  }
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
 
-  .safe-area-pb {
-    padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-  .safe-area-pt {
-    padding-top: env(safe-area-inset-top, 0);
-  }
-  .mobile-viewport {
-    height: 100vh;
-    height: 100dvh;
-  }
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
+@keyframes spin-reverse-slow {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+@utility line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+@utility line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+@utility line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+@utility safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+@utility safe-area-pt {
+  padding-top: env(safe-area-inset-top, 0);
+}
+@utility mobile-viewport {
+  height: 100vh;
+  height: 100dvh;
+}
+@utility text-brand-on-dark {
   /* Brand text that should remain readable on dark UIs */
-  .text-brand-on-dark {
-    color: hsl(var(--brand-on-dark));
+  color: hsl(var(--brand-on-dark));
+}
+
+@layer utilities {
+  /* base font */
+  body {
+    font-family: 'Inter', Arial, Helvetica, sans-serif;
   }
+
+  /* utilities you already had */
 }
 
 @layer base {
