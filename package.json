@@ -16,6 +16,10 @@
   "engines": {
     "node": "^24.0.0"
   },
+  "devDependencies": {
+    "node-gyp": "^11.0.0",
+    "node-addon-api": "^8.0.0"
+  },
   "scripts": {
     "setup": "node scripts/setup.js",
     "setup:dev": "node scripts/setup.js dev",

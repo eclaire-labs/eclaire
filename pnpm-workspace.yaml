@@ -5,3 +5,22 @@ packages:
 injectWorkspacePackages: true
 syncInjectedDepsAfterScripts:
   - build
+
+onlyBuiltDependencies:
+  - better-sqlite3
+  - sharp
+  - bcrypt
+
+packageExtensions:
+  sharp:
+    dependencies:
+      node-addon-api: '*'
+      node-gyp: '*'
+  bcrypt:
+    dependencies:
+      node-addon-api: '*'
+      node-gyp: '*'
+  better-sqlite3:
+    dependencies:
+      node-addon-api: '*'
+      node-gyp: '*'

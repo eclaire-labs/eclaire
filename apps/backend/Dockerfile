@@ -70,7 +70,8 @@ COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
 COPY apps/backend/package.json ./apps/backend/
 
 # Install dependencies for backend workspace
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --filter=@eclaire/backend...
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    SHARP_IGNORE_GLOBAL_LIBVIPS=1 pnpm install --frozen-lockfile --filter=@eclaire/backend...
 
 # Copy backend source and build
 COPY apps/backend ./apps/backend/
