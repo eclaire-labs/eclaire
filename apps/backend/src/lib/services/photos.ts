@@ -194,9 +194,7 @@ async function queuePhotoBackgroundJobs(
         userId: userId,
       });
 
-      logger.info(
-        `Enqueued unified image processing job for photo ${photoData.id}`,
-      );
+      logger.info({ photoId: photoData.id }, "Enqueued unified image processing job for photo");
     } catch (innerError) {
       logger.error(
         {
@@ -209,8 +207,8 @@ async function queuePhotoBackgroundJobs(
   } catch (error) {
     // Log the error but don't fail the photo creation
     logger.error(
-      `Error queueing unified processing job for photo ${photoData.id}:`,
-      error,
+      { err: error, photoId: photoData.id },
+      "Error queueing unified processing job for photo",
     );
   }
 }
@@ -255,7 +253,8 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
     const exif = extractedMetadata?.exif || {};
     const location = extractedMetadata?.location || {};
 
-    logger.info(`[DB] Preparing EXIF data for photo ${originalFilename}:`, {
+    logger.info({
+      originalFilename,
       hasExtractedMetadata: !!extractedMetadata,
       hasExifData: !!extractedMetadata?.exif,
       exifKeys: extractedMetadata?.exif
@@ -273,7 +272,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
             DateTimeOriginal: extractedMetadata.exif.DateTimeOriginal,
           }
         : null,
-    });
+    }, "[DB] Preparing EXIF data for photo");
 
     // Convert EXIF date to Date object if available
     let dateTakenValue: Date | null = null;
@@ -282,20 +281,18 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
       !isNaN(exif.DateTimeOriginal.getTime())
     ) {
       dateTakenValue = exif.DateTimeOriginal;
-      logger.info(`[DB] Using DateTimeOriginal: ${exif.DateTimeOriginal}`);
+      logger.info({ dateTimeOriginal: exif.DateTimeOriginal }, "[DB] Using DateTimeOriginal");
     } else if (
       exif.CreateDate instanceof Date &&
       !isNaN(exif.CreateDate.getTime())
     ) {
       // Fallback to CreateDate if DateTimeOriginal is missing
       dateTakenValue = exif.CreateDate;
-      logger.info(`[DB] Using CreateDate fallback: ${exif.CreateDate}`);
+      logger.info({ createDate: exif.CreateDate }, "[DB] Using CreateDate fallback");
     } else {
       logger.info(
-        `[DB] No valid date found. DateTimeOriginal:`,
-        exif.DateTimeOriginal,
-        `CreateDate:`,
-        exif.CreateDate,
+        { dateTimeOriginal: exif.DateTimeOriginal, createDate: exif.CreateDate },
+        "[DB] No valid date found",
       );
     }
 
@@ -639,9 +636,7 @@ export async function deletePhoto(
     if (deleteStorage) {
       try {
         await objectStorage.deleteAsset(userId, "photos", id);
-        logger.info(
-          `Successfully deleted storage for photo ${id} (user: ${userId})`,
-        );
+        logger.info({ photoId: id, userId }, "Successfully deleted storage for photo");
       } catch (storageError) {
         // Log that storage deletion failed but DB entry is gone. Don't fail the whole operation.
         logger.warn(
@@ -654,13 +649,11 @@ export async function deletePhoto(
             stack:
               storageError instanceof Error ? storageError.stack : undefined,
           },
-          `DB record ${id} deleted, but failed to delete asset folder for photo ${id} (user: ${userId})`,
+          "DB record deleted, but failed to delete asset folder for photo",
         );
       }
     } else {
-      logger.info(
-        `Storage deletion skipped for photo ${id} (user: ${userId}) - deleteStorage flag set to false`,
-      );
+      logger.info({ photoId: id, userId }, "Storage deletion skipped for photo - deleteStorage flag set to false");
     }
 
     // 6. Record history (optional)

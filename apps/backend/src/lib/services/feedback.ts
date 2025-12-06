@@ -30,7 +30,7 @@ export async function createFeedback(
   userId: string,
 ): Promise<FeedbackEntry> {
   try {
-    logger.info("Creating feedback entry", { userId, data });
+    logger.info({ userId, data }, "Creating feedback entry");
 
     // Pre-generate ID before transaction
     const feedbackId = generateFeedbackId();
@@ -71,14 +71,11 @@ export async function createFeedback(
       throw new Error("Failed to retrieve created feedback entry");
     }
 
-    logger.info("Feedback entry created successfully", {
-      id: newFeedback.id,
-      userId,
-    });
+    logger.info({ id: newFeedback.id, userId }, "Feedback entry created successfully");
 
     return newFeedback;
   } catch (error) {
-    logger.error("Failed to create feedback entry", { error, userId, data });
+    logger.error({ err: error, userId, data }, "Failed to create feedback entry");
     throw error;
   }
 }
@@ -92,7 +89,7 @@ export async function getUserFeedback(
   offset = 0,
 ): Promise<FeedbackEntry[]> {
   try {
-    logger.info("Getting user feedback", { userId, limit, offset });
+    logger.info({ userId, limit, offset }, "Getting user feedback");
 
     const feedbackEntries = await db
       .select()
@@ -102,14 +99,11 @@ export async function getUserFeedback(
       .limit(limit)
       .offset(offset);
 
-    logger.info("Retrieved user feedback", {
-      userId,
-      count: feedbackEntries.length,
-    });
+    logger.info({ userId, count: feedbackEntries.length }, "Retrieved user feedback");
 
     return feedbackEntries;
   } catch (error) {
-    logger.error("Failed to get user feedback", { error, userId });
+    logger.error({ err: error, userId }, "Failed to get user feedback");
     throw error;
   }
 }
@@ -122,7 +116,7 @@ export async function getAllFeedback(
   offset = 0,
 ): Promise<FeedbackEntry[]> {
   try {
-    logger.info("Getting all feedback", { limit, offset });
+    logger.info({ limit, offset }, "Getting all feedback");
 
     const feedbackEntries = await db
       .select()
@@ -131,11 +125,11 @@ export async function getAllFeedback(
       .limit(limit)
       .offset(offset);
 
-    logger.info("Retrieved all feedback", { count: feedbackEntries.length });
+    logger.info({ count: feedbackEntries.length }, "Retrieved all feedback");
 
     return feedbackEntries;
   } catch (error) {
-    logger.error("Failed to get all feedback", { error });
+    logger.error({ err: error }, "Failed to get all feedback");
     throw error;
   }
 }
@@ -147,7 +141,7 @@ export async function getFeedbackById(
   id: string,
 ): Promise<FeedbackEntry | null> {
   try {
-    logger.info("Getting feedback by ID", { id });
+    logger.info({ id }, "Getting feedback by ID");
 
     const [feedbackEntry] = await db
       .select()
@@ -156,14 +150,14 @@ export async function getFeedbackById(
       .limit(1);
 
     if (!feedbackEntry) {
-      logger.info("Feedback not found", { id });
+      logger.info({ id }, "Feedback not found");
       return null;
     }
 
-    logger.info("Retrieved feedback by ID", { id });
+    logger.info({ id }, "Retrieved feedback by ID");
     return feedbackEntry;
   } catch (error) {
-    logger.error("Failed to get feedback by ID", { error, id });
+    logger.error({ err: error, id }, "Failed to get feedback by ID");
     throw error;
   }
 }
@@ -180,7 +174,7 @@ export async function countUserFeedback(userId: string): Promise<number> {
 
     return Number(result[0]?.count ?? 0);
   } catch (error) {
-    logger.error("Failed to count user feedback", { error, userId });
+    logger.error({ err: error, userId }, "Failed to count user feedback");
     throw error;
   }
 }

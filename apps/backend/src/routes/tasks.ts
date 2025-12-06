@@ -445,7 +445,7 @@ tasksRoutes.post("/:id/reprocess", async (c) => {
       return c.json({ error: result.error }, 400);
     }
   } catch (error) {
-    logger.error("Error reprocessing task:", error);
+    logger.error({ err: error }, "Error reprocessing task");
     return c.json({ error: "Failed to reprocess task" }, 500);
   }
 });
@@ -533,7 +533,7 @@ tasksRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating task review status:", error);
+      logger.error({ err: error }, "Error updating task review status");
       return c.json({ error: "Failed to update task review status" }, 500);
     }
   },
@@ -581,7 +581,7 @@ tasksRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating task flag:", error);
+      logger.error({ err: error }, "Error updating task flag");
       return c.json({ error: "Failed to update task flag" }, 500);
     }
   },
@@ -626,7 +626,7 @@ tasksRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating task pin status:", error);
+      logger.error({ err: error }, "Error updating task pin status");
       return c.json({ error: "Failed to update task pin status" }, 500);
     }
   },

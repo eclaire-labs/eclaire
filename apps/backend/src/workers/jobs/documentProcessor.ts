@@ -332,10 +332,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
         originalFilename,
       );
       Object.assign(allArtifacts, aiMetadata);
-      jobLogger.info("AI metadata analysis complete.", {
-        title: aiMetadata.title,
-        tags: aiMetadata.tags,
-      });
+      jobLogger.info({ title: aiMetadata.title, tags: aiMetadata.tags }, "AI metadata analysis complete");
     } else {
       jobLogger.info("Skipping AI analysis due to insufficient text.");
     }
@@ -367,9 +364,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
         "converted.pdf",
       );
       allArtifacts.pdfStorageId = pdfResult.storageId;
-      jobLogger.info("PDF generation and storage complete.", {
-        pdfStorageId: pdfResult.storageId,
-      });
+      jobLogger.info({ pdfStorageId: pdfResult.storageId }, "PDF generation and storage complete");
       await reporter.completeStage(currentStage);
     } else {
       pdfBuffer = documentBuffer;
@@ -403,10 +398,10 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
       );
       allArtifacts.screenshotStorageId = screenshotResult.storageId;
 
-      jobLogger.info("HTML thumbnail and screenshot generation complete.", {
-        thumbnailStorageId: thumbnailResult.storageId,
-        screenshotStorageId: screenshotResult.storageId,
-      });
+      jobLogger.info(
+        { thumbnailStorageId: thumbnailResult.storageId, screenshotStorageId: screenshotResult.storageId },
+        "HTML thumbnail and screenshot generation complete",
+      );
       await reporter.completeStage(currentStage);
     } else {
       currentStage = "thumbnail_generation";
@@ -440,10 +435,10 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
         );
         allArtifacts.screenshotStorageId = screenshotResult.storageId;
 
-        jobLogger.info("PDF thumbnail and screenshot generation complete.", {
-          thumbnailStorageId: thumbnailResult.storageId,
-          screenshotStorageId: screenshotResult.storageId,
-        });
+        jobLogger.info(
+          { thumbnailStorageId: thumbnailResult.storageId, screenshotStorageId: screenshotResult.storageId },
+          "PDF thumbnail and screenshot generation complete",
+        );
       } else {
         jobLogger.warn("Skipping thumbnail generation, no PDF available.");
       }

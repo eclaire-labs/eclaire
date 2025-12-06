@@ -36,7 +36,7 @@ export async function deleteAllUserData(
   password: string,
 ): Promise<void> {
   try {
-    logger.info(`Starting bulk data deletion for user: ${userId}`);
+    logger.info({ userId }, "Starting bulk data deletion for user");
 
     // 1. Verify password first
     const user = await db.query.users.findFirst({
@@ -108,8 +108,10 @@ export async function deleteAllUserData(
       userTasks.length;
     const totalSystemData = userHistory.length + userAssetJobs.length;
     logger.info(
-      `Found ${totalAssets} assets and ${totalSystemData} system records to delete for user ${userId}`,
       {
+        userId,
+        totalAssets,
+        totalSystemData,
         bookmarks: userBookmarks.length,
         documents: userDocuments.length,
         photos: userPhotos.length,
@@ -118,6 +120,7 @@ export async function deleteAllUserData(
         history: userHistory.length,
         assetProcessingJobs: userAssetJobs.length,
       },
+      "Found assets and system records to delete",
     );
 
     // 3. Delete all assets in parallel batches for efficiency
@@ -140,13 +143,14 @@ export async function deleteAllUserData(
             try {
               await deleteFunction(item.id, userId, true); // Always delete storage
             } catch (error) {
-              logger.warn(`Failed to delete ${assetType} ${item.id}:`, error);
+              logger.warn({ err: error, assetType, itemId: item.id }, "Failed to delete asset");
               // Continue with other deletions even if one fails
             }
           }),
         );
         logger.info(
-          `Deleted batch of ${batch.length} ${assetType} (${i + batch.length}/${items.length})`,
+          { assetType, batchSize: batch.length, completed: i + batch.length, total: items.length },
+          "Deleted batch of assets",
         );
       }
     };
@@ -168,29 +172,26 @@ export async function deleteAllUserData(
     await deleteBatch(userTasks, deleteTask, "tasks");
 
     // 4. Delete system data (history and processing jobs)
-    logger.info(`Deleting system data for user ${userId}`);
+    logger.info({ userId }, "Deleting system data for user");
 
     // Delete history records
     await db.delete(history).where(eq(history.userId, userId));
-    logger.info(`Deleted history records for user ${userId}`);
+    logger.info({ userId }, "Deleted history records for user");
 
     // Delete asset processing jobs (unified table for all asset types)
     await db
       .delete(assetProcessingJobs)
       .where(eq(assetProcessingJobs.userId, userId));
-    logger.info(`Deleted asset processing jobs for user ${userId}`);
+    logger.info({ userId }, "Deleted asset processing jobs for user");
 
-    logger.info(`Completed system data deletion for user ${userId}`);
+    logger.info({ userId }, "Completed system data deletion for user");
 
     // 5. Clean up any remaining storage at the user level
     try {
       await objectStorage.deleteAsset(userId, "", ""); // This should delete the entire user folder
-      logger.info(`Cleaned up user storage folder for ${userId}`);
+      logger.info({ userId }, "Cleaned up user storage folder");
     } catch (storageError) {
-      logger.warn(
-        `Failed to clean user storage folder for ${userId}:`,
-        storageError,
-      );
+      logger.warn({ err: storageError, userId }, "Failed to clean user storage folder");
       // Don't fail the entire operation if storage cleanup fails
     }
 
@@ -198,9 +199,7 @@ export async function deleteAllUserData(
     // This could include resetting API call counts, etc.
     // await resetUserStatistics(userId);
 
-    logger.info(
-      `Successfully completed bulk data deletion for user: ${userId}`,
-    );
+    logger.info({ userId }, "Successfully completed bulk data deletion for user");
   } catch (error) {
     logger.error(
       {
@@ -282,7 +281,7 @@ export async function getUserDataSummary(userId: string) {
       total: assetsTotal + systemTotal,
     };
   } catch (error) {
-    logger.error("Error getting user data summary:", error);
+    logger.error({ err: error }, "Error getting user data summary");
     throw new Error("Failed to get user data summary");
   }
 }
@@ -528,7 +527,7 @@ export async function getActivityTimeline(userId: string, days: number = 30) {
 
     return result;
   } catch (error) {
-    logger.error("Error getting activity timeline:", error);
+    logger.error({ err: error }, "Error getting activity timeline");
     throw new Error("Failed to get activity timeline");
   }
 }
@@ -668,7 +667,7 @@ export async function getDueItems(userId: string) {
       dueThisWeek: [...dueWeekBookmarks, ...dueWeekTasks],
     };
   } catch (error) {
-    logger.error("Error getting due items:", error);
+    logger.error({ err: error }, "Error getting due items");
     throw new Error("Failed to get due items");
   }
 }
@@ -795,7 +794,7 @@ export async function getQuickStats(userId: string) {
       processing: processingJobs[0]?.count || 0,
     };
   } catch (error) {
-    logger.error("Error getting quick stats:", error);
+    logger.error({ err: error }, "Error getting quick stats");
     throw new Error("Failed to get quick stats");
   }
 }

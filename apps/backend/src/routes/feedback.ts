@@ -56,7 +56,7 @@ feedbackRoutes.post(
 
       const data = c.req.valid("json");
 
-      logger.info("Creating feedback", { userId, data });
+      logger.info({ userId, data }, "Creating feedback");
 
       const feedback = await createFeedback(data, userId);
 
@@ -70,7 +70,7 @@ feedbackRoutes.post(
         201,
       );
     } catch (error) {
-      logger.error("Failed to create feedback", { error });
+      logger.error({ err: error }, "Failed to create feedback");
       return c.json({ error: "Failed to create feedback" }, 500);
     }
   },
@@ -90,7 +90,7 @@ feedbackRoutes.get(
 
       const { limit, offset } = c.req.valid("query");
 
-      logger.info("Getting user feedback", { userId, limit, offset });
+      logger.info({ userId, limit, offset }, "Getting user feedback");
 
       const [feedback, total] = await Promise.all([
         getUserFeedback(userId, limit, offset),
@@ -110,7 +110,7 @@ feedbackRoutes.get(
         offset,
       });
     } catch (error) {
-      logger.error("Failed to get feedback", { error });
+      logger.error({ err: error }, "Failed to get feedback");
       return c.json({ error: "Failed to get feedback" }, 500);
     }
   },

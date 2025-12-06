@@ -525,7 +525,7 @@ documentsRoutes.post("/:id/reprocess", async (c) => {
       return c.json({ error: result.error }, 400);
     }
   } catch (error) {
-    logger.error("Error reprocessing document:", error);
+    logger.error({ err: error }, "Error reprocessing document");
     return c.json({ error: "Failed to reprocess document" }, 500);
   }
 });
@@ -615,7 +615,7 @@ documentsRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating document review status:", error);
+      logger.error({ err: error }, "Error updating document review status");
       return c.json({ error: "Failed to update document review status" }, 500);
     }
   },
@@ -663,7 +663,7 @@ documentsRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating document flag:", error);
+      logger.error({ err: error }, "Error updating document flag");
       return c.json({ error: "Failed to update document flag" }, 500);
     }
   },
@@ -708,7 +708,7 @@ documentsRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating document pin status:", error);
+      logger.error({ err: error }, "Error updating document pin status");
       return c.json({ error: "Failed to update document pin status" }, 500);
     }
   },
@@ -799,7 +799,7 @@ const serveDocumentAsset = async (c: any, assetType: DocumentAssetType) => {
 
     return new Response(stream, { status: 200, headers });
   } catch (error: any) {
-    logger.error(`Error serving document asset (${assetType}):`, error);
+    logger.error({ err: error, assetType }, "Error serving document asset");
     if (
       error.name === "NotFoundError" ||
       error.name === "FileNotFoundError" ||

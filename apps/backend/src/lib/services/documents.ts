@@ -110,7 +110,7 @@ async function getDocumentTags(documentId: string): Promise<string[]> {
       .where(eq(documentsTags.documentId, documentId));
     return documentTagsJoin.map((tag) => tag.name);
   } catch (error) {
-    logger.error(`Error getting tags for document ${documentId}:`, error);
+    logger.error({ err: error, documentId }, "Error getting tags for document");
     return [];
   }
 }
@@ -133,7 +133,7 @@ async function addTagsToDocument(
         .onConflictDoNothing();
     }
   } catch (error) {
-    logger.error(`Error adding tags to document ${documentId}:`, error);
+    logger.error({ err: error, documentId }, "Error adding tags to document");
     throw new Error("Failed to add tags to document");
   }
 }
@@ -331,7 +331,7 @@ export async function createDocument(
       actor: "user",
       userId,
     }).catch((err) =>
-      logger.error("Failed to record history for document creation:", err),
+      logger.error({ err }, "Failed to record history for document creation"),
     );
 
     const newDocumentDetails = await getDocumentWithDetails(documentId, userId);
@@ -369,7 +369,7 @@ export async function createDocument(
 
     return newDocumentDetails;
   } catch (error) {
-    logger.error(`Error creating document for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "Error creating document");
     if (storageInfo?.storageId) {
       logger.warn(
         `Attempting to clean up stored file ${storageInfo.storageId} after DB error.`,
@@ -377,7 +377,7 @@ export async function createDocument(
       try {
         await objectStorage.delete(storageInfo.storageId);
       } catch (cleanupError) {
-        logger.error("Document file cleanup failed:", cleanupError);
+        logger.error({ err: cleanupError }, "Document file cleanup failed");
       }
     }
     throw new Error("Failed to create document");
@@ -435,7 +435,7 @@ export async function updateDocument(
 
     return getDocumentWithDetails(id, userId);
   } catch (error) {
-    logger.error(`Error updating document ${id}:`, error);
+    logger.error({ err: error, documentId: id }, "Error updating document");
     if (error instanceof Error && (error as any).code === "NOT_FOUND")
       throw error;
     throw new Error("Failed to update document metadata");
@@ -455,9 +455,7 @@ export async function deleteDocument(
       ),
     });
     if (!existingDocument) {
-      logger.warn(
-        `Document record ${id} not found for user ${userId} during deletion attempt.`,
-      );
+      logger.warn({ documentId: id, userId }, "Document record not found during deletion attempt");
       return { success: true };
     }
 
@@ -479,15 +477,15 @@ export async function deleteDocument(
         .deleteAsset(userId, "documents", id)
         .catch((storageError: any) => {
           logger.warn(
-            `DB record ${id} deleted, but failed to delete asset folder:`,
-            storageError.message || storageError,
+            { documentId: id, storageError: storageError.message || storageError },
+            "DB record deleted, but failed to delete asset folder",
           );
         });
     }
 
     return { success: true };
   } catch (error) {
-    logger.error(`Error deleting document ${id}:`, error);
+    logger.error({ err: error, documentId: id }, "Error deleting document");
     throw new Error("Failed to delete document");
   }
 }
@@ -562,7 +560,7 @@ export async function getAllDocuments(
     );
     return results;
   } catch (error) {
-    logger.error(`Error getting all documents for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "Error getting all documents");
     throw new Error("Failed to fetch documents");
   }
 }
@@ -576,7 +574,7 @@ export async function getDocumentById(
   } catch (error) {
     if (error instanceof Error && (error as any).code === "NOT_FOUND")
       throw error;
-    logger.error(`Error getting document by ID ${documentId}:`, error);
+    logger.error({ err: error, documentId }, "Error getting document by ID");
     throw new Error("Failed to fetch document");
   }
 }
@@ -732,7 +730,7 @@ export async function findDocuments(
     );
     return results;
   } catch (error) {
-    logger.error(`Error searching documents for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "Error searching documents");
     throw new Error("Failed to search documents");
   }
 }
@@ -784,7 +782,7 @@ export async function countDocuments(
       .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
     return docsWithAllTags.length;
   } catch (error) {
-    logger.error(`Error counting documents for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "Error counting documents");
     throw new Error("Failed to count documents");
   }
 }
@@ -804,7 +802,7 @@ export async function updateDocumentArtifacts(
   },
 ): Promise<void> {
   try {
-    logger.info(`Saving final artifacts for document ${documentId}`);
+    logger.info({ documentId }, "Saving final artifacts for document");
 
     // Get or create tags BEFORE transaction if tags are provided
     let tagList: { id: string; name: string }[] = [];
@@ -852,7 +850,7 @@ export async function updateDocumentArtifacts(
         }
       }
     });
-    logger.info(`Successfully saved all artifacts for document ${documentId}`);
+    logger.info({ documentId }, "Successfully saved all artifacts for document");
   } catch (error) {
     logger.error(
       {
