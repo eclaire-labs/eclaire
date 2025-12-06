@@ -311,12 +311,28 @@ async function executeAIWorkflowStep(
 
 /**
  * Parse AI model response to extract JSON.
+ * Handles both string responses and AIResponse objects from callAI().
  */
 function parseModelResponse(responseText: string | any): any {
   try {
-    if (typeof responseText === "object") {
+    // Handle AIResponse objects from callAI()
+    if (typeof responseText === "object" && responseText !== null) {
+      // If it has a 'content' property (AIResponse), extract and parse it
+      if (
+        "content" in responseText &&
+        typeof responseText.content === "string"
+      ) {
+        const content = responseText.content;
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+        throw new Error("No JSON object found in AIResponse content.");
+      }
+      // Otherwise assume it's already parsed JSON
       return responseText;
     }
+    // Handle string responses
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
