@@ -1167,7 +1167,7 @@ export async function importBookmarkFile(
       `Imported ${result.imported} bookmarks from file for user ${userId}`,
     );
   } catch (error) {
-    logger.error("Error importing bookmark file:", error);
+    logger.error({ err: error }, "Error importing bookmark file");
     result.errors.push(
       `Failed to process bookmark file: ${error instanceof Error ? error.message : String(error)}`,
     );

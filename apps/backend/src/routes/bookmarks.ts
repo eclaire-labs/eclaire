@@ -135,7 +135,7 @@ bookmarksRoutes.post(
       // 4. Return the initial bookmark data immediately
       return c.json(result.bookmark, 202); // 202 Accepted: The request has been accepted for processing
     } catch (error) {
-      logger.error("Error creating bookmark:", error);
+      logger.error({ err: error }, "Error creating bookmark");
       if (error instanceof z.ZodError) {
         return c.json(
           { error: "Invalid request data", details: error.issues },
@@ -175,7 +175,7 @@ bookmarksRoutes.get(
         throw error;
       }
     } catch (error) {
-      logger.error("Error fetching bookmark:", error);
+      logger.error({ err: error }, "Error fetching bookmark");
       return c.json({ error: "Failed to fetch bookmark" }, 500);
     }
   },
@@ -212,7 +212,7 @@ bookmarksRoutes.put(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating bookmark:", error);
+      logger.error({ err: error }, "Error updating bookmark");
 
       if (error instanceof z.ZodError) {
         return c.json(
@@ -257,7 +257,7 @@ bookmarksRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating bookmark:", error);
+      logger.error({ err: error }, "Error updating bookmark");
 
       if (error instanceof z.ZodError) {
         return c.json(
@@ -298,7 +298,7 @@ bookmarksRoutes.delete(
         throw error;
       }
     } catch (error) {
-      logger.error("Error deleting bookmark:", error);
+      logger.error({ err: error }, "Error deleting bookmark");
       return c.json({ error: "Failed to delete bookmark" }, 500);
     }
   },
@@ -489,7 +489,7 @@ bookmarksRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating bookmark review status:", error);
+      logger.error({ err: error }, "Error updating bookmark review status");
       return c.json({ error: "Failed to update bookmark review status" }, 500);
     }
   },
@@ -537,7 +537,7 @@ bookmarksRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating bookmark flag:", error);
+      logger.error({ err: error }, "Error updating bookmark flag");
       return c.json({ error: "Failed to update bookmark flag" }, 500);
     }
   },
@@ -582,7 +582,7 @@ bookmarksRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating bookmark pin status:", error);
+      logger.error({ err: error }, "Error updating bookmark pin status");
       return c.json({ error: "Failed to update bookmark pin status" }, 500);
     }
   },
@@ -616,7 +616,7 @@ bookmarksRoutes.post("/:id/reprocess", async (c) => {
       return c.json({ error: result.error }, 400);
     }
   } catch (error) {
-    logger.error("Error reprocessing bookmark:", error);
+    logger.error({ err: error }, "Error reprocessing bookmark");
     return c.json({ error: "Failed to reprocess bookmark" }, 500);
   }
 });
@@ -674,7 +674,7 @@ bookmarksRoutes.post(
         errors: result.errors,
       });
     } catch (error) {
-      logger.error("Error importing bookmarks:", error);
+      logger.error({ err: error }, "Error importing bookmarks");
       return c.json({ error: "Failed to import bookmarks" }, 500);
     }
   },

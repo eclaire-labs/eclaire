@@ -985,7 +985,7 @@ photosRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating photo review status:", error);
+      logger.error({ err: error }, "Error updating photo review status");
       return c.json({ error: "Failed to update photo review status" }, 500);
     }
   },
@@ -1037,7 +1037,7 @@ photosRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating photo flag:", error);
+      logger.error({ err: error }, "Error updating photo flag");
       return c.json({ error: "Failed to update photo flag" }, 500);
     }
   },
@@ -1086,7 +1086,7 @@ photosRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating photo pin status:", error);
+      logger.error({ err: error }, "Error updating photo pin status");
       return c.json({ error: "Failed to update photo pin status" }, 500);
     }
   },

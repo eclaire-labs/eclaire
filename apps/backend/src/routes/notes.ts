@@ -562,7 +562,7 @@ notesRoutes.post("/:id/reprocess", async (c) => {
       return c.json({ error: result.error }, 400);
     }
   } catch (error) {
-    logger.error("Error reprocessing note:", error);
+    logger.error({ err: error }, "Error reprocessing note");
     return c.json({ error: "Failed to reprocess note" }, 500);
   }
 });
@@ -591,9 +591,8 @@ notesRoutes.delete(
       }
     } catch (error) {
       logger.error(
-        { requestId: c.get("requestId") },
-        "Error deleting note entry:",
-        error,
+        { err: error, requestId: c.get("requestId") },
+        "Error deleting note entry",
       );
       return c.json({ error: "Failed to delete note entry" }, 500);
     }
@@ -642,7 +641,7 @@ notesRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating note review status:", error);
+      logger.error({ err: error }, "Error updating note review status");
       return c.json({ error: "Failed to update note review status" }, 500);
     }
   },
@@ -693,7 +692,7 @@ notesRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating note flag:", error);
+      logger.error({ err: error }, "Error updating note flag");
       return c.json({ error: "Failed to update note flag" }, 500);
     }
   },
@@ -741,7 +740,7 @@ notesRoutes.patch(
         throw error;
       }
     } catch (error) {
-      logger.error("Error updating note pin status:", error);
+      logger.error({ err: error }, "Error updating note pin status");
       return c.json({ error: "Failed to update note pin status" }, 500);
     }
   },
