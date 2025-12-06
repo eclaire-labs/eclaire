@@ -86,10 +86,10 @@ if [ "$CONTAINER_MODE" = true ]; then
     echo "✅ Database cleaned successfully!"
 
     echo "🏗️  Step 2: Applying database migrations..."
-    npm run db:migrate:apply:prod:force
+    pnpm run db:migrate:apply:prod:force
 
     echo "🌱 Step 3: Seeding with '$SEED_TYPE' data..."
-    npm run "db:seed:$SEED_TYPE:prod"
+    pnpm run "db:seed:$SEED_TYPE:prod"
 
     echo "🎉 Container database reset complete!"
 
@@ -136,15 +136,15 @@ else
 
     # 4. Generate a new baseline migration from schema.ts
     echo "🏗️  Step 4: Generating new baseline migration..."
-    npm run db:migrate:generate
+    pnpm run db:migrate:generate
 
     # 5. Apply the new baseline migration
     echo "✅ Step 5: Applying baseline migration to the database..."
-    npm run db:migrate:apply
+    pnpm run db:migrate:apply
 
     # 6. Seed the database
     echo "🌱 Step 6: Seeding with '$SEED_TYPE' data..."
-    npm run "db:seed:$SEED_TYPE"
+    pnpm run "db:seed:$SEED_TYPE"
 
     echo ""
     echo "✅ Database reset complete!"

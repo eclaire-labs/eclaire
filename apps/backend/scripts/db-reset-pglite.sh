@@ -51,15 +51,15 @@ echo "✅ Migrations directory is now clean."
 
 # 3. Generate a new baseline migration from schema.ts
 echo "🏗️  Step 3: Generating new baseline migration..."
-DATABASE_TYPE=pglite npm run db:migrate:generate
+DATABASE_TYPE=pglite pnpm run db:migrate:generate
 
 # 4. Apply the new baseline migration
 echo "✅ Step 4: Applying baseline migration to the database..."
-DATABASE_TYPE=pglite npm run db:migrate:apply
+DATABASE_TYPE=pglite pnpm run db:migrate:apply
 
 # 5. Seed the database
 echo "🌱 Step 5: Seeding with '$SEED_TYPE' data..."
-DATABASE_TYPE=pglite npm run "db:seed:$SEED_TYPE"
+DATABASE_TYPE=pglite pnpm run "db:seed:$SEED_TYPE"
 
 echo ""
 echo "✅ PGlite database reset complete!"
