@@ -18,9 +18,12 @@ if [ "$SEED_TYPE" != "essential" ] && [ "$SEED_TYPE" != "demo" ]; then
 fi
 
 # Load environment variables to check DATABASE_TYPE
-if [ -f ".env" ]; then
-    export $(grep -v '^#' .env | grep DATABASE_TYPE | xargs)
-fi
+for envfile in ".env.prod" ".env"; do
+    if [ -f "$envfile" ]; then
+        export $(grep -v '^#' "$envfile" | grep DATABASE_TYPE | xargs)
+        break
+    fi
+done
 
 # Detect database type (default to postgresql if not set)
 DB_TYPE="${DATABASE_TYPE:-postgresql}"

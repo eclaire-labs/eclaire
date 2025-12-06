@@ -8,6 +8,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$BACKEND_DIR"
 
+# Load environment variables for SQLITE_DB_PATH
+# Use .env.prod for container, .env.dev for local development
+if [ "$RUNNING_IN_CONTAINER" = "true" ]; then
+    envfiles=(".env.prod" ".env")
+else
+    envfiles=(".env.dev" ".env")
+fi
+
+for envfile in "${envfiles[@]}"; do
+    if [ -f "$envfile" ]; then
+        export $(grep -v '^#' "$envfile" | grep SQLITE_DB_PATH | xargs)
+        break
+    fi
+done
+
 # Determine seed type (demo or essential)
 SEED_TYPE="$1"
 if [ "$SEED_TYPE" != "essential" ] && [ "$SEED_TYPE" != "demo" ]; then

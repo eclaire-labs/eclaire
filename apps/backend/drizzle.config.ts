@@ -12,7 +12,7 @@ const dbType = process.env.DATABASE_TYPE?.toLowerCase();
 const pglitePath = process.env.PGLITE_DATA_DIR || "./data/db/pglite";
 
 // For SQLite, use the configured path or default
-const sqlitePath = process.env.SQLITE_DATA_DIR || "./data/db/sqlite.db";
+const sqlitePath = process.env.SQLITE_DB_PATH || "./data/db/sqlite.db";
 
 // Determine schema, dialect, and output based on database type
 const isSqlite = dbType === "sqlite";
