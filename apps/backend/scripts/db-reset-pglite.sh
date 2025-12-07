@@ -29,7 +29,7 @@ fi
 echo ""
 
 # Get PGlite data directory from environment or use default
-PGLITE_DIR="${PGLITE_DATA_DIR:-../../data/db/pglite}"
+PGLITE_DIR="${PGLITE_DATA_DIR:-../../data/pglite}"
 echo "📂 PGlite directory: $PGLITE_DIR"
 
 # 1. Delete the PGlite database directory

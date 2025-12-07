@@ -58,7 +58,7 @@ export function getDatabaseType(): "postgresql" | "pglite" | "sqlite" {
  * @returns The path where PGlite should store its data
  */
 export function getPGlitePath(): string {
-  return process.env.PGLITE_DATA_DIR || "./data/db/pglite";
+  return process.env.PGLITE_DATA_DIR || "./data/pglite";
 }
 
 /**
@@ -67,5 +67,5 @@ export function getPGlitePath(): string {
  * @returns The path where SQLite should store its database file
  */
 export function getSqlitePath(): string {
-  return process.env.SQLITE_DB_PATH || "./data/db/sqlite.db";
+  return process.env.SQLITE_DB_PATH || "./data/sqlite/sqlite.db";
 }

@@ -314,7 +314,9 @@ async function createDataDirectories() {
     'data/logs',
     'data/users',
     'data/browser-data',
-    'data/db',
+    'data/postgres',
+    'data/pglite',
+    'data/sqlite',
     'data/redis'
   ];
 

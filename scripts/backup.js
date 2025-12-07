@@ -183,7 +183,9 @@ function showBackupPreview() {
   // 2. Data directories
   console.log(`\n${colors.bright}${colors.magenta}2. Data Directories${colors.reset}`);
   const dataDirs = [
-    { name: 'data/db', path: path.join(PROJECT_ROOT, 'data/db') },
+    { name: 'data/postgres', path: path.join(PROJECT_ROOT, 'data/postgres') },
+    { name: 'data/pglite', path: path.join(PROJECT_ROOT, 'data/pglite') },
+    { name: 'data/sqlite', path: path.join(PROJECT_ROOT, 'data/sqlite') },
     { name: 'data/users', path: path.join(PROJECT_ROOT, 'data/users') }
   ];
 
@@ -276,7 +278,9 @@ async function createBackup() {
   // 2. Backup data directories
   console.log(`\n${colors.bright}${colors.magenta}2. Data Directories${colors.reset}`);
   const dataDirs = [
-    { src: path.join(PROJECT_ROOT, 'data/db'), dest: path.join(backupDir, 'data/db') },
+    { src: path.join(PROJECT_ROOT, 'data/postgres'), dest: path.join(backupDir, 'data/postgres') },
+    { src: path.join(PROJECT_ROOT, 'data/pglite'), dest: path.join(backupDir, 'data/pglite') },
+    { src: path.join(PROJECT_ROOT, 'data/sqlite'), dest: path.join(backupDir, 'data/sqlite') },
     { src: path.join(PROJECT_ROOT, 'data/users'), dest: path.join(backupDir, 'data/users') }
   ];
 
@@ -522,7 +526,9 @@ function validateBackup(backupDir) {
   // 2. Validate data directories
   console.log(`\n${colors.bright}${colors.magenta}2. Data Directory Validation${colors.reset}`);
   const dataDirs = [
-    { name: 'data/db', src: path.join(PROJECT_ROOT, 'data/db'), backup: path.join(backupDir, 'data/db') },
+    { name: 'data/postgres', src: path.join(PROJECT_ROOT, 'data/postgres'), backup: path.join(backupDir, 'data/postgres') },
+    { name: 'data/pglite', src: path.join(PROJECT_ROOT, 'data/pglite'), backup: path.join(backupDir, 'data/pglite') },
+    { name: 'data/sqlite', src: path.join(PROJECT_ROOT, 'data/sqlite'), backup: path.join(backupDir, 'data/sqlite') },
     { name: 'data/users', src: path.join(PROJECT_ROOT, 'data/users'), backup: path.join(backupDir, 'data/users') }
   ];
 

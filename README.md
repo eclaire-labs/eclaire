@@ -370,9 +370,10 @@ The system automatically creates all required data directories when services sta
 - `data/logs` - Application logs
 - `data/users` - User files and assets
 - `data/browser-data` - Browser profile data for workers
-- `data/db` - PostgreSQL database files
+- `data/postgres` - PostgreSQL database files
+- `data/pglite` - PGlite embedded database files
+- `data/sqlite` - SQLite database files
 - `data/redis` - Redis persistence files
-- `data/users` - All system data for users including original uploads, fetched from bookmarks, files extracted and generated.
 
 ## Roadmap
 - MCP Client/Host
