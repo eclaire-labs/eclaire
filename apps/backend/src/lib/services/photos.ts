@@ -27,7 +27,7 @@ const {
 import { getQueue, QueueNames } from "@/lib/queues"; // Import queue utilities
 import { getQueueAdapter } from "@/lib/queue-adapter";
 import { objectStorage, type StorageInfo } from "@/lib/storage";
-import { generatePhotoId } from "../id-generator";
+import { generateHistoryId, generatePhotoId } from "../id-generator";
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history"; // Assuming this service exists and is configured
 import { createOrUpdateProcessingJob } from "./processing-status";
@@ -534,41 +534,48 @@ export async function updatePhotoMetadata(
       filteredUpdateData.dueDate = dueDateValue;
     }
 
-    // 3. Perform the database update for user-editable fields
-    if (Object.keys(filteredUpdateData).length > 0 || tagNames !== undefined) {
-      await db
-        .update(photos)
-        .set({
-          ...filteredUpdateData, // Apply updates for title, description, deviceId etc.
-          updatedAt: new Date(), // Update timestamp
-        })
-        .where(and(eq(photos.id, id), eq(photos.userId, userId))); // Ensure ownership
-    }
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
 
-    // 4. Handle tags update if tags were provided
-    if (tagNames !== undefined) {
-      // Check if tags array was explicitly passed
-      await db.delete(photosTags).where(eq(photosTags.photoId, id)); // Remove existing tags
-      if (tagNames.length > 0) {
-        await addTagsToPhoto(id, tagNames, userId); // Add new tags
+    // 3. Atomic transaction: update photo, handle tags, and record history together
+    await txManager.withTransaction(async (tx) => {
+      // Perform the database update for user-editable fields
+      if (Object.keys(filteredUpdateData).length > 0 || tagNames !== undefined) {
+        await tx.photos.update(
+          and(eq(photos.id, id), eq(photos.userId, userId)),
+          { ...filteredUpdateData, updatedAt: new Date() },
+        );
       }
-    }
 
-    // 5. Record history (optional)
-    await recordHistory({
-      action: "update",
-      itemType: "photo",
-      itemId: id,
-      itemName: photoData.title || existingPhoto.title,
-      // Include relevant fields in before/after data
-      beforeData: { ...existingPhoto, tags: currentPhotoTags },
-      afterData: {
-        ...existingPhoto,
-        ...photoData,
-        tags: tagNames ?? currentPhotoTags,
-      },
-      actor: "user",
-      userId: userId,
+      // Handle tags update if tags were provided
+      if (tagNames !== undefined) {
+        await tx.photosTags.delete(eq(photosTags.photoId, id));
+        if (tagNames.length > 0) {
+          const tagList = await tx.getOrCreateTags(tagNames, userId);
+          for (const tag of tagList) {
+            await tx.photosTags.insert({ photoId: id, tagId: tag.id });
+          }
+        }
+      }
+
+      // Record history - atomic with the update
+      await tx.history.insert({
+        id: historyId,
+        action: "update",
+        itemType: "photo",
+        itemId: id,
+        itemName: photoData.title || existingPhoto.title,
+        beforeData: { ...existingPhoto, tags: currentPhotoTags },
+        afterData: {
+          ...existingPhoto,
+          ...photoData,
+          tags: tagNames ?? currentPhotoTags,
+        },
+        actor: "user",
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
     });
 
     // 6. Return the updated photo details
@@ -614,25 +621,45 @@ export async function deletePhoto(
 
     const photoTags = await getPhotoTags(id); // For history
 
-    // 2. Delete photo-tag relationships first
-    await db.delete(photosTags).where(eq(photosTags.photoId, id));
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
 
-    // 3. Delete processing jobs for this photo
-    await db
-      .delete(assetProcessingJobs)
-      .where(
+    // Atomic transaction: delete all DB records and record history together
+    await txManager.withTransaction(async (tx) => {
+      // Delete photo-tag relationships first
+      await tx.photosTags.delete(eq(photosTags.photoId, id));
+
+      // Delete processing jobs for this photo
+      await tx.assetProcessingJobs.delete(
         and(
           eq(assetProcessingJobs.assetType, "photos"),
           eq(assetProcessingJobs.assetId, id),
         ),
       );
 
-    // 4. Delete the photo record from the database
-    const deleted = await db
-      .delete(photos)
-      .where(and(eq(photos.id, id), eq(photos.userId, userId))); // Ensure ownership
+      // Delete the photo record from the database
+      await tx.photos.delete(
+        and(eq(photos.id, id), eq(photos.userId, userId)),
+      );
 
-    // 5. Delete the entire asset folder if deleteStorage is true
+      // Record history - atomic with the delete
+      await tx.history.insert({
+        id: historyId,
+        action: "delete",
+        itemType: "photo",
+        itemId: id,
+        itemName: existingPhoto.title || "Untitled Photo",
+        beforeData: { ...existingPhoto, tags: photoTags },
+        afterData: null,
+        actor: "user",
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
+    });
+
+    // Delete the entire asset folder if deleteStorage is true
+    // (outside transaction - external side-effect)
     if (deleteStorage) {
       try {
         await objectStorage.deleteAsset(userId, "photos", id);
@@ -655,17 +682,6 @@ export async function deletePhoto(
     } else {
       logger.info({ photoId: id, userId }, "Storage deletion skipped for photo - deleteStorage flag set to false");
     }
-
-    // 6. Record history (optional)
-    await recordHistory({
-      action: "delete",
-      itemType: "photo",
-      itemId: id,
-      itemName: existingPhoto.title || "Untitled Photo",
-      beforeData: { ...existingPhoto, tags: photoTags }, // Pass the fetched data
-      actor: "user",
-      userId: userId,
-    });
 
     return { success: true };
   } catch (error) {

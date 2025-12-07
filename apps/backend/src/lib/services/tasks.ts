@@ -14,7 +14,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { db, txManager, schema } from "@/db";
-import { generateTaskId } from "@/lib/id-generator";
+import { generateHistoryId, generateTaskId } from "@/lib/id-generator";
 
 const {
   assetProcessingJobs,
@@ -944,48 +944,55 @@ export async function updateTask(
       delete updateSet.completedAt;
     }
 
-    const updatedTaskResult = await db
-      .update(tasks)
-      .set(updateSet)
-      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
-      .returning();
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
 
-    if (!updatedTaskResult.length) {
-      throw new Error("Task update failed or task not found");
-    }
-    const updatedDbTask = updatedTaskResult[0];
-
-    // Handle tags if provided
-    if (tagNames) {
-      // Remove existing tags
-      await db.delete(tasksTags).where(eq(tasksTags.taskId, id));
-
-      // Add new tags
-      if (tagNames.length > 0) {
-        await addTagsToTask(id, tagNames, userId);
-      }
-    }
-
-    // Record history for task update
-    // Format existingTask's dueDate for comparison if needed
+    // Format existingTask for history (before transaction)
     const formattedExistingTask = cleanTaskForResponse(
       existingTask,
       currentTaskTags,
     );
-    await recordHistory({
-      action: "update",
-      itemType: "task",
-      itemId: id,
-      itemName: taskData.title || existingTask.title,
-      beforeData: formattedExistingTask, // Use formatted data for consistency
-      // Construct afterData based on the update, ensuring dueDate is the input string/null
-      afterData: {
-        ...formattedExistingTask,
-        ...taskData,
-        tags: tagNames ?? currentTaskTags,
-      },
-      actor: "user",
-      userId: userId,
+
+    // Atomic transaction: update task, handle tags, and record history together
+    await txManager.withTransaction(async (tx) => {
+      // Update the task
+      await tx.tasks.update(
+        and(eq(tasks.id, id), eq(tasks.userId, userId)),
+        updateSet,
+      );
+
+      // Handle tags if provided
+      if (tagNames) {
+        // Remove existing tags
+        await tx.tasksTags.delete(eq(tasksTags.taskId, id));
+
+        // Add new tags
+        if (tagNames.length > 0) {
+          const tagList = await tx.getOrCreateTags(tagNames, userId);
+          for (const tag of tagList) {
+            await tx.tasksTags.insert({ taskId: id, tagId: tag.id });
+          }
+        }
+      }
+
+      // Record history for task update - atomic with the update
+      await tx.history.insert({
+        id: historyId,
+        action: "update",
+        itemType: "task",
+        itemId: id,
+        itemName: taskData.title || existingTask.title,
+        beforeData: formattedExistingTask,
+        afterData: {
+          ...formattedExistingTask,
+          ...taskData,
+          tags: tagNames ?? currentTaskTags,
+        },
+        actor: "user",
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
     });
 
     // Queue task execution processing if assignment to AI assistant has changed
@@ -1427,6 +1434,7 @@ export async function deleteTask(id: string, userId: string) {
     const taskTags = await getTaskTags(id);
 
     // Remove recurring task scheduler if exists - BEFORE deleting task data
+    // (outside transaction - external side-effect)
     if (existingTask.isRecurring) {
       logger.info({ taskId: id }, "Removing recurring task scheduler");
       const schedulerRemoved = await removeTaskScheduler(id);
@@ -1434,6 +1442,7 @@ export async function deleteTask(id: string, userId: string) {
     }
 
     // Cancel task execution job if it exists - don't fail if job is locked
+    // (outside transaction - external side-effect)
     logger.info({ taskId: id }, "Cancelling task execution job");
     const cancelSuccess = await cancelTaskExecutionJob(id);
     if (!cancelSuccess) {
@@ -1443,38 +1452,39 @@ export async function deleteTask(id: string, userId: string) {
       );
     }
 
-    // Delete task-tag relationships first
-    await db.delete(tasksTags).where(eq(tasksTags.taskId, id));
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
 
-    // Delete processing jobs for this task
-    await db
-      .delete(assetProcessingJobs)
-      .where(
+    // Atomic transaction: delete all DB records and record history together
+    await txManager.withTransaction(async (tx) => {
+      // Delete task-tag relationships first
+      await tx.tasksTags.delete(eq(tasksTags.taskId, id));
+
+      // Delete processing jobs for this task
+      await tx.assetProcessingJobs.delete(
         and(
           eq(assetProcessingJobs.assetType, "tasks"),
           eq(assetProcessingJobs.assetId, id),
         ),
       );
 
-    // Delete the task
-    const deletedTask = await db
-      .delete(tasks)
-      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
-      .returning();
+      // Delete the task
+      await tx.tasks.delete(and(eq(tasks.id, id), eq(tasks.userId, userId)));
 
-    if (!deletedTask.length) {
-      throw new Error("Task not found");
-    }
-
-    // Record history for task deletion
-    await recordHistory({
-      action: "delete",
-      itemType: "task",
-      itemId: id,
-      itemName: existingTask.title,
-      beforeData: { ...existingTask, tags: taskTags },
-      actor: "user",
-      userId: userId,
+      // Record history for task deletion - atomic with the delete
+      await tx.history.insert({
+        id: historyId,
+        action: "delete",
+        itemType: "task",
+        itemId: id,
+        itemName: existingTask.title,
+        beforeData: { ...existingTask, tags: taskTags },
+        afterData: null,
+        actor: "user",
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
     });
 
     return { success: true };

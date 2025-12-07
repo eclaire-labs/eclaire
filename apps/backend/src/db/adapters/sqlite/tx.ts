@@ -9,10 +9,10 @@
  */
 
 import { Mutex } from "async-mutex";
-import { sql } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
+import { and, eq, inArray, sql, type SQL } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type { Tx, TransactionManager, BaseRepository } from "@/ports/tx";
+import { generateTagId } from "@/lib/id-generator";
 
 // For now, we'll use a minimal schema type. This will need to be updated
 // when we create the SQLite-specific schema
@@ -89,6 +89,44 @@ function wrapSqliteTx(
 		messages: createRepository("messages"),
 		channels: createRepository("channels"),
 		feedback: createRepository("feedback"),
+
+		async getOrCreateTags(
+			tagNames: string[],
+			userId: string,
+		): Promise<{ id: string; name: string }[]> {
+			const tagsTable = schema.tags;
+			if (!tagsTable) return [];
+			if (!tagNames || tagNames.length === 0) return [];
+
+			const uniqueNames = [
+				...new Set(
+					tagNames.map((name) => name.trim().toLowerCase()).filter(Boolean),
+				),
+			];
+			if (uniqueNames.length === 0) return [];
+
+			// Atomic upsert: insert all tags, ignore conflicts on (userId, name)
+			// SQLite uses synchronous .run() method
+			db.insert(tagsTable)
+				.values(
+					uniqueNames.map((name) => ({
+						id: generateTagId(),
+						name,
+						userId,
+					})),
+				)
+				.onConflictDoNothing({ target: [tagsTable.userId, tagsTable.name] })
+				.run();
+
+			// Fetch all matching tags using synchronous .all() method
+			return db
+				.select({ id: tagsTable.id, name: tagsTable.name })
+				.from(tagsTable)
+				.where(
+					and(eq(tagsTable.userId, userId), inArray(tagsTable.name, uniqueNames)),
+				)
+				.all();
+		},
 	};
 }
 

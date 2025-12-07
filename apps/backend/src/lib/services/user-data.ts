@@ -1,27 +1,28 @@
 import { verifyPassword } from "better-auth/crypto";
-import { and, count, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
-import { db, schema } from "@/db";
+import { and, count, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { db, txManager, schema } from "@/db";
 import { createChildLogger } from "../logger";
 
 const {
   accounts,
   assetProcessingJobs,
   bookmarks,
+  bookmarksTags,
   documents,
+  documentsTags,
   history,
   notes,
+  notesTags,
   photos,
+  photosTags,
   tasks,
+  tasksTags,
   users,
 } = schema;
 import { LocalObjectStorage, objectStorage } from "../storage";
 
-// Import individual deletion services
-import { deleteBookmark } from "./bookmarks";
-import { deleteDocument } from "./documents";
-import { deleteNoteEntry } from "./notes";
-import { deletePhoto } from "./photos";
-import { deleteTask } from "./tasks";
+// Individual delete services are no longer needed for bulk deletion
+// We use bulk transactions instead for better performance and SQLite safety
 
 const logger = createChildLogger("services:user-data");
 
@@ -66,38 +67,19 @@ export async function deleteAllUserData(
       throw new Error("Invalid password");
     }
 
-    // 2. Get all user assets for bulk deletion
+    // 2. Get all user asset IDs for bulk deletion (needed for storage cleanup)
     const [
       userBookmarks,
       userDocuments,
       userPhotos,
       userNotes,
       userTasks,
-      userHistory,
-      userAssetJobs,
     ] = await Promise.all([
-      db
-        .select({ id: bookmarks.id })
-        .from(bookmarks)
-        .where(eq(bookmarks.userId, userId)),
-      db
-        .select({ id: documents.id })
-        .from(documents)
-        .where(eq(documents.userId, userId)),
-      db
-        .select({ id: photos.id })
-        .from(photos)
-        .where(eq(photos.userId, userId)),
+      db.select({ id: bookmarks.id }).from(bookmarks).where(eq(bookmarks.userId, userId)),
+      db.select({ id: documents.id }).from(documents).where(eq(documents.userId, userId)),
+      db.select({ id: photos.id }).from(photos).where(eq(photos.userId, userId)),
       db.select({ id: notes.id }).from(notes).where(eq(notes.userId, userId)),
       db.select({ id: tasks.id }).from(tasks).where(eq(tasks.userId, userId)),
-      db
-        .select({ id: history.id })
-        .from(history)
-        .where(eq(history.userId, userId)),
-      db
-        .select({ id: assetProcessingJobs.id })
-        .from(assetProcessingJobs)
-        .where(eq(assetProcessingJobs.userId, userId)),
     ]);
 
     const totalAssets =
@@ -106,98 +88,120 @@ export async function deleteAllUserData(
       userPhotos.length +
       userNotes.length +
       userTasks.length;
-    const totalSystemData = userHistory.length + userAssetJobs.length;
+
     logger.info(
       {
         userId,
         totalAssets,
-        totalSystemData,
         bookmarks: userBookmarks.length,
         documents: userDocuments.length,
         photos: userPhotos.length,
         notes: userNotes.length,
         tasks: userTasks.length,
-        history: userHistory.length,
-        assetProcessingJobs: userAssetJobs.length,
       },
-      "Found assets and system records to delete",
+      "Found assets to delete",
     );
 
-    // 3. Delete all assets in parallel batches for efficiency
-    const BATCH_SIZE = 10; // Process in batches to avoid overwhelming the system
+    // 3. Delete all database records using bulk transactions per asset type
+    // This approach is much faster and avoids SQLite "database is locked" issues
 
-    // Helper function to process deletions in batches
-    const deleteBatch = async <T extends { id: string }>(
-      items: T[],
-      deleteFunction: (
-        id: string,
-        userId: string,
-        deleteStorage?: boolean,
-      ) => Promise<any>,
-      assetType: string,
-    ) => {
-      for (let i = 0; i < items.length; i += BATCH_SIZE) {
-        const batch = items.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          batch.map(async (item) => {
-            try {
-              await deleteFunction(item.id, userId, true); // Always delete storage
-            } catch (error) {
-              logger.warn({ err: error, assetType, itemId: item.id }, "Failed to delete asset");
-              // Continue with other deletions even if one fails
-            }
-          }),
+    // Delete bookmarks (one atomic transaction)
+    if (userBookmarks.length > 0) {
+      const bookmarkIds = userBookmarks.map((b) => b.id);
+      await txManager.withTransaction(async (tx) => {
+        await tx.bookmarksTags.delete(inArray(bookmarksTags.bookmarkId, bookmarkIds));
+        await tx.assetProcessingJobs.delete(
+          and(
+            eq(assetProcessingJobs.assetType, "bookmarks"),
+            inArray(assetProcessingJobs.assetId, bookmarkIds),
+          ),
         );
-        logger.info(
-          { assetType, batchSize: batch.length, completed: i + batch.length, total: items.length },
-          "Deleted batch of assets",
+        await tx.bookmarks.delete(eq(bookmarks.userId, userId));
+      });
+      logger.info({ userId, count: userBookmarks.length }, "Deleted all bookmarks");
+    }
+
+    // Delete documents (one atomic transaction)
+    if (userDocuments.length > 0) {
+      const documentIds = userDocuments.map((d) => d.id);
+      await txManager.withTransaction(async (tx) => {
+        await tx.documentsTags.delete(inArray(documentsTags.documentId, documentIds));
+        await tx.assetProcessingJobs.delete(
+          and(
+            eq(assetProcessingJobs.assetType, "documents"),
+            inArray(assetProcessingJobs.assetId, documentIds),
+          ),
         );
-      }
-    };
+        await tx.documents.delete(eq(documents.userId, userId));
+      });
+      logger.info({ userId, count: userDocuments.length }, "Deleted all documents");
+    }
 
-    // Delete all asset types SEQUENTIALLY to avoid transaction conflicts
-    logger.info("Deleting bookmarks...");
-    await deleteBatch(userBookmarks, deleteBookmark, "bookmarks");
+    // Delete photos (one atomic transaction)
+    if (userPhotos.length > 0) {
+      const photoIds = userPhotos.map((p) => p.id);
+      await txManager.withTransaction(async (tx) => {
+        await tx.photosTags.delete(inArray(photosTags.photoId, photoIds));
+        await tx.assetProcessingJobs.delete(
+          and(
+            eq(assetProcessingJobs.assetType, "photos"),
+            inArray(assetProcessingJobs.assetId, photoIds),
+          ),
+        );
+        await tx.photos.delete(eq(photos.userId, userId));
+      });
+      logger.info({ userId, count: userPhotos.length }, "Deleted all photos");
+    }
 
-    logger.info("Deleting documents...");
-    await deleteBatch(userDocuments, deleteDocument, "documents");
+    // Delete notes (one atomic transaction)
+    if (userNotes.length > 0) {
+      const noteIds = userNotes.map((n) => n.id);
+      await txManager.withTransaction(async (tx) => {
+        await tx.notesTags.delete(inArray(notesTags.noteId, noteIds));
+        await tx.assetProcessingJobs.delete(
+          and(
+            eq(assetProcessingJobs.assetType, "notes"),
+            inArray(assetProcessingJobs.assetId, noteIds),
+          ),
+        );
+        await tx.notes.delete(eq(notes.userId, userId));
+      });
+      logger.info({ userId, count: userNotes.length }, "Deleted all notes");
+    }
 
-    logger.info("Deleting photos...");
-    await deleteBatch(userPhotos, deletePhoto, "photos");
+    // Delete tasks (one atomic transaction)
+    if (userTasks.length > 0) {
+      const taskIds = userTasks.map((t) => t.id);
+      await txManager.withTransaction(async (tx) => {
+        await tx.tasksTags.delete(inArray(tasksTags.taskId, taskIds));
+        await tx.assetProcessingJobs.delete(
+          and(
+            eq(assetProcessingJobs.assetType, "tasks"),
+            inArray(assetProcessingJobs.assetId, taskIds),
+          ),
+        );
+        await tx.tasks.delete(eq(tasks.userId, userId));
+      });
+      logger.info({ userId, count: userTasks.length }, "Deleted all tasks");
+    }
 
-    logger.info("Deleting notes...");
-    await deleteBatch(userNotes, deleteNoteEntry, "notes");
+    // 4. Delete system data (history and remaining processing jobs)
+    await txManager.withTransaction(async (tx) => {
+      await tx.history.delete(eq(history.userId, userId));
+      // Clean up any orphaned processing jobs
+      await tx.assetProcessingJobs.delete(eq(assetProcessingJobs.userId, userId));
+    });
+    logger.info({ userId }, "Deleted history and system data");
 
-    logger.info("Deleting tasks...");
-    await deleteBatch(userTasks, deleteTask, "tasks");
-
-    // 4. Delete system data (history and processing jobs)
-    logger.info({ userId }, "Deleting system data for user");
-
-    // Delete history records
-    await db.delete(history).where(eq(history.userId, userId));
-    logger.info({ userId }, "Deleted history records for user");
-
-    // Delete asset processing jobs (unified table for all asset types)
-    await db
-      .delete(assetProcessingJobs)
-      .where(eq(assetProcessingJobs.userId, userId));
-    logger.info({ userId }, "Deleted asset processing jobs for user");
-
-    logger.info({ userId }, "Completed system data deletion for user");
-
-    // 5. Clean up any remaining storage at the user level
+    // 5. Clean up storage (outside transactions - can be parallel)
+    // Delete the entire user folder at once for efficiency
     try {
-      await objectStorage.deleteAsset(userId, "", ""); // This should delete the entire user folder
+      await objectStorage.deleteAsset(userId, "", "");
       logger.info({ userId }, "Cleaned up user storage folder");
     } catch (storageError) {
       logger.warn({ err: storageError, userId }, "Failed to clean user storage folder");
       // Don't fail the entire operation if storage cleanup fails
     }
-
-    // 5. Reset user statistics/counts if you track them
-    // This could include resetting API call counts, etc.
-    // await resetUserStatistics(userId);
 
     logger.info({ userId }, "Successfully completed bulk data deletion for user");
   } catch (error) {

@@ -611,5 +611,232 @@ describe.each(DB_TEST_CONFIGS)(
 				});
 			});
 		});
+
+		describe("getOrCreateTags Integration", () => {
+			it("should create tags within a transaction", async () => {
+				const { txManager, db } = testDb;
+				const tagNames = ["tag1", "tag2", "tag3"];
+
+				let createdTags: { id: string; name: string }[] = [];
+
+				await txManager.withTransaction(async (tx) => {
+					createdTags = await tx.getOrCreateTags(tagNames, testUserId);
+				});
+
+				expect(createdTags).toHaveLength(3);
+				expect(createdTags.map((t) => t.name).sort()).toEqual(["tag1", "tag2", "tag3"]);
+
+				// Verify tags persisted
+				const allTags = await db.query.tags.findMany({
+					where: eq(testDb.schema.tags.userId, testUserId),
+				});
+				expect(allTags).toHaveLength(3);
+			});
+
+			it("should return existing tags without duplicating", async () => {
+				const { txManager, db } = testDb;
+
+				// First call creates tags
+				await txManager.withTransaction(async (tx) => {
+					await tx.getOrCreateTags(["existing1", "existing2"], testUserId);
+				});
+
+				// Second call should return existing + create new
+				let tags: { id: string; name: string }[] = [];
+				await txManager.withTransaction(async (tx) => {
+					tags = await tx.getOrCreateTags(["existing1", "new1"], testUserId);
+				});
+
+				expect(tags).toHaveLength(2);
+				expect(tags.map((t) => t.name).sort()).toEqual(["existing1", "new1"]);
+
+				// Total should be 3 unique tags
+				const allTags = await db.query.tags.findMany({
+					where: eq(testDb.schema.tags.userId, testUserId),
+				});
+				expect(allTags).toHaveLength(3);
+			});
+
+			it("should handle empty tag names gracefully", async () => {
+				const { txManager } = testDb;
+
+				let tags: { id: string; name: string }[] = [];
+				await txManager.withTransaction(async (tx) => {
+					tags = await tx.getOrCreateTags([], testUserId);
+				});
+
+				expect(tags).toHaveLength(0);
+			});
+
+			it("should normalize tag names (lowercase, trim)", async () => {
+				const { txManager } = testDb;
+
+				let tags: { id: string; name: string }[] = [];
+				await txManager.withTransaction(async (tx) => {
+					tags = await tx.getOrCreateTags(["  Tag1  ", "TAG2", "tag1"], testUserId);
+				});
+
+				// Should dedupe and normalize
+				expect(tags).toHaveLength(2);
+				expect(tags.map((t) => t.name).sort()).toEqual(["tag1", "tag2"]);
+			});
+		});
+
+		describe("Multi-Statement Rollback", () => {
+			it("should rollback tag insertions when later operation fails", async () => {
+				const { txManager, db } = testDb;
+				const bookmarkId = generateTestBookmarkId();
+
+				// Create initial bookmark
+				await db.insert(testDb.schema.bookmarks).values({
+					id: bookmarkId,
+					userId: testUserId,
+					originalUrl: "https://example.com",
+					title: "Original",
+				});
+
+				// Try a transaction that creates tags then fails
+				try {
+					await txManager.withTransaction(async (tx) => {
+						// Create tags
+						const tags = await tx.getOrCreateTags(["new-tag"], testUserId);
+						expect(tags).toHaveLength(1);
+
+						// Link tag to bookmark
+						await tx.bookmarksTags.insert({
+							bookmarkId,
+							tagId: tags[0].id,
+						});
+
+						// Force failure
+						throw new Error("Simulated failure");
+					});
+				} catch (e) {
+					// Expected
+				}
+
+				// Verify tags were not persisted (transaction rolled back)
+				const allTags = await db.query.tags.findMany({
+					where: eq(testDb.schema.tags.userId, testUserId),
+				});
+				expect(allTags).toHaveLength(0);
+
+				// Verify junction table is empty
+				const junctionRows = await db.query.bookmarksTags.findMany({
+					where: eq(testDb.schema.bookmarksTags.bookmarkId, bookmarkId),
+				});
+				expect(junctionRows).toHaveLength(0);
+			});
+
+			it("should rollback update + tag deletion when history insert fails", async () => {
+				const { txManager, db } = testDb;
+				const bookmarkId = generateTestBookmarkId();
+				const tagId = generateTestTagId();
+
+				// Create bookmark with tag
+				await db.insert(testDb.schema.bookmarks).values({
+					id: bookmarkId,
+					userId: testUserId,
+					originalUrl: "https://example.com",
+					title: "Original",
+				});
+				await db.insert(testDb.schema.tags).values({
+					id: tagId,
+					userId: testUserId,
+					name: "existing-tag",
+				});
+				await db.insert(testDb.schema.bookmarksTags).values({
+					bookmarkId,
+					tagId,
+				});
+
+				// Try a transaction that updates, deletes tags, then fails
+				try {
+					await txManager.withTransaction(async (tx) => {
+						// Update bookmark
+						await tx.bookmarks.update(
+							eq(testDb.schema.bookmarks.id, bookmarkId),
+							{ title: "Updated" },
+						);
+
+						// Delete tags
+						await tx.bookmarksTags.delete(
+							eq(testDb.schema.bookmarksTags.bookmarkId, bookmarkId),
+						);
+
+						// Force failure (simulates history insert failure)
+						throw new Error("Simulated history insert failure");
+					});
+				} catch (e) {
+					// Expected
+				}
+
+				// Verify bookmark title was NOT updated (rolled back)
+				const bookmark = await db.query.bookmarks.findFirst({
+					where: eq(testDb.schema.bookmarks.id, bookmarkId),
+				});
+				expect(bookmark?.title).toBe("Original");
+
+				// Verify tag junction was NOT deleted (rolled back)
+				const junctionRows = await db.query.bookmarksTags.findMany({
+					where: eq(testDb.schema.bookmarksTags.bookmarkId, bookmarkId),
+				});
+				expect(junctionRows).toHaveLength(1);
+			});
+
+			it("should rollback all deletes when history insert fails", async () => {
+				const { txManager, db } = testDb;
+				const bookmarkId = generateTestBookmarkId();
+				const tagId = generateTestTagId();
+
+				// Create bookmark with tag
+				await db.insert(testDb.schema.bookmarks).values({
+					id: bookmarkId,
+					userId: testUserId,
+					originalUrl: "https://example.com",
+					title: "To Delete",
+				});
+				await db.insert(testDb.schema.tags).values({
+					id: tagId,
+					userId: testUserId,
+					name: "delete-tag",
+				});
+				await db.insert(testDb.schema.bookmarksTags).values({
+					bookmarkId,
+					tagId,
+				});
+
+				// Try delete transaction that fails on history
+				try {
+					await txManager.withTransaction(async (tx) => {
+						// Delete junction
+						await tx.bookmarksTags.delete(
+							eq(testDb.schema.bookmarksTags.bookmarkId, bookmarkId),
+						);
+
+						// Delete bookmark
+						await tx.bookmarks.delete(eq(testDb.schema.bookmarks.id, bookmarkId));
+
+						// Simulate history insert failure
+						throw new Error("Simulated history insert failure");
+					});
+				} catch (e) {
+					// Expected
+				}
+
+				// Verify bookmark still exists (rolled back)
+				const bookmark = await db.query.bookmarks.findFirst({
+					where: eq(testDb.schema.bookmarks.id, bookmarkId),
+				});
+				expect(bookmark).toBeDefined();
+				expect(bookmark?.title).toBe("To Delete");
+
+				// Verify junction still exists (rolled back)
+				const junctionRows = await db.query.bookmarksTags.findMany({
+					where: eq(testDb.schema.bookmarksTags.bookmarkId, bookmarkId),
+				});
+				expect(junctionRows).toHaveLength(1);
+			});
+		});
 	},
 );

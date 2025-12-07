@@ -14,7 +14,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { db, txManager, schema } from "@/db";
-import { generateBookmarkId } from "@/lib/id-generator";
+import { generateBookmarkId, generateHistoryId } from "@/lib/id-generator";
 
 const {
   assetProcessingJobs,
@@ -320,34 +320,45 @@ export async function updateBookmark(
       dbUpdateData.dueDate = dueDateValue;
     }
 
-    // The `set` object now correctly matches the schema.
-    if (Object.keys(dbUpdateData).length > 0) {
-      await db
-        .update(bookmarks)
-        .set({
-          ...dbUpdateData,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)));
-    }
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
 
-    if (tagNames !== undefined) {
-      await db.delete(bookmarksTags).where(eq(bookmarksTags.bookmarkId, id));
-      if (tagNames.length > 0) {
-        await addTagsToBookmark(id, tagNames, userId);
+    // Atomic transaction: update bookmark, handle tags, and record history together
+    await txManager.withTransaction(async (tx) => {
+      // Update the bookmark if there are changes
+      if (Object.keys(dbUpdateData).length > 0) {
+        await tx.bookmarks.update(
+          and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)),
+          { ...dbUpdateData, updatedAt: new Date() },
+        );
       }
-    }
 
-    await recordHistory({
-      action: "update",
-      itemType: "bookmark",
-      itemId: id,
-      itemName:
-        bookmarkData.title || existingBookmark.title || existingBookmark.url,
-      beforeData: existingBookmark,
-      afterData: { ...existingBookmark, ...bookmarkData },
-      actor: "user",
-      userId: userId,
+      // Handle tags if provided
+      if (tagNames !== undefined) {
+        await tx.bookmarksTags.delete(eq(bookmarksTags.bookmarkId, id));
+        if (tagNames.length > 0) {
+          const tagList = await tx.getOrCreateTags(tagNames, userId);
+          for (const tag of tagList) {
+            await tx.bookmarksTags.insert({ bookmarkId: id, tagId: tag.id });
+          }
+        }
+      }
+
+      // Record history for bookmark update - atomic with the update
+      await tx.history.insert({
+        id: historyId,
+        action: "update",
+        itemType: "bookmark",
+        itemId: id,
+        itemName:
+          bookmarkData.title || existingBookmark.title || existingBookmark.url,
+        beforeData: existingBookmark,
+        afterData: { ...existingBookmark, ...bookmarkData },
+        actor: "user",
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
     });
 
     return await getBookmarkById(id, userId);
@@ -381,36 +392,45 @@ export async function deleteBookmark(
     const existingBookmark = await getBookmarkById(id, userId);
     if (!existingBookmark) throw new Error("Bookmark not found");
 
-    // Delete bookmark-tag relationships first
-    await db.delete(bookmarksTags).where(eq(bookmarksTags.bookmarkId, id));
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
 
-    // Delete the processing job
-    await db
-      .delete(assetProcessingJobs)
-      .where(
+    // Atomic transaction: delete all DB records and record history together
+    await txManager.withTransaction(async (tx) => {
+      // Delete bookmark-tag relationships first
+      await tx.bookmarksTags.delete(eq(bookmarksTags.bookmarkId, id));
+
+      // Delete the processing job
+      await tx.assetProcessingJobs.delete(
         and(
           eq(assetProcessingJobs.assetType, "bookmarks"),
           eq(assetProcessingJobs.assetId, id),
         ),
       );
 
-    // Delete the bookmark itself
-    await db
-      .delete(bookmarks)
-      .where(and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)));
+      // Delete the bookmark itself
+      await tx.bookmarks.delete(
+        and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)),
+      );
 
-    // Record history after deletion
-    await recordHistory({
-      action: "delete",
-      itemType: "bookmark",
-      itemId: id,
-      itemName: existingBookmark.title || existingBookmark.url,
-      beforeData: existingBookmark,
-      actor: "user",
-      userId: userId,
+      // Record history - atomic with the delete
+      await tx.history.insert({
+        id: historyId,
+        action: "delete",
+        itemType: "bookmark",
+        itemId: id,
+        itemName: existingBookmark.title || existingBookmark.url,
+        beforeData: existingBookmark,
+        afterData: null,
+        actor: "user",
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
     });
 
     // Delete the entire asset folder if deleteStorage is true
+    // (outside transaction - external side-effect)
     if (deleteStorage) {
       try {
         const { objectStorage } = await import("@/lib/storage");

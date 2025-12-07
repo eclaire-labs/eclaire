@@ -30,7 +30,7 @@ import { getQueue, QueueNames } from "@/lib/queues";
 import { getQueueAdapter } from "@/lib/queue-adapter";
 import { objectStorage, type StorageInfo } from "@/lib/storage";
 import type { ProcessingStatus } from "../../types/assets";
-import { generateDocumentId } from "../id-generator";
+import { generateDocumentId, generateHistoryId } from "../id-generator";
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history";
 import { createOrUpdateProcessingJob } from "./processing-status";
@@ -417,21 +417,45 @@ export async function updateDocument(
       updatePayload.dueDate = dueDate ? new Date(dueDate) : null;
     }
 
-    if (Object.keys(updatePayload).length > 0 || tagNames !== undefined) {
-      await db
-        .update(schemaDocuments)
-        .set({ ...updatePayload, updatedAt: new Date() })
-        .where(
-          and(eq(schemaDocuments.id, id), eq(schemaDocuments.userId, userId)),
-        );
-    }
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
 
-    if (tagNames !== undefined) {
-      await db.delete(documentsTags).where(eq(documentsTags.documentId, id));
-      if (tagNames.length > 0) {
-        await addTagsToDocument(id, tagNames, userId);
+    // Atomic transaction: update document, handle tags, and record history together
+    await txManager.withTransaction(async (tx) => {
+      // Update the document if there are changes
+      if (Object.keys(updatePayload).length > 0 || tagNames !== undefined) {
+        await tx.documents.update(
+          and(eq(schemaDocuments.id, id), eq(schemaDocuments.userId, userId)),
+          { ...updatePayload, updatedAt: new Date() },
+        );
       }
-    }
+
+      // Handle tags if provided
+      if (tagNames !== undefined) {
+        await tx.documentsTags.delete(eq(documentsTags.documentId, id));
+        if (tagNames.length > 0) {
+          const tagList = await tx.getOrCreateTags(tagNames, userId);
+          for (const tag of tagList) {
+            await tx.documentsTags.insert({ documentId: id, tagId: tag.id });
+          }
+        }
+      }
+
+      // Record history for document update - atomic with the update
+      await tx.history.insert({
+        id: historyId,
+        action: "update",
+        itemType: "document",
+        itemId: id,
+        itemName: documentData.title || existingDocument.title,
+        beforeData: existingDocument,
+        afterData: { ...existingDocument, ...documentData },
+        actor: "user",
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
+    });
 
     return getDocumentWithDetails(id, userId);
   } catch (error) {

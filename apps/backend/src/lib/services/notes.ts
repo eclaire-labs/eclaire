@@ -15,7 +15,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { db, txManager, schema } from "@/db";
-import { generateNoteId } from "@/lib/id-generator";
+import { generateHistoryId, generateNoteId } from "@/lib/id-generator";
 
 const { assetProcessingJobs, notes, notesTags, tags } = schema;
 import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
@@ -213,34 +213,45 @@ export async function updateNoteEntry(
       updateSet.dueDate = dueDateValue;
     }
 
-    // Update the note entry
-    const [updatedEntry] = await db
-      .update(notes)
-      .set(updateSet)
-      .where(and(eq(notes.id, id), eq(notes.userId, userId)))
-      .returning();
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
 
-    // Handle tags if provided
-    if (tagNames !== undefined) {
-      // Remove existing tags
-      await db.delete(notesTags).where(eq(notesTags.noteId, id));
+    // Atomic transaction: update note, handle tags, and record history together
+    await txManager.withTransaction(async (tx) => {
+      // Update the note entry
+      await tx.notes.update(
+        and(eq(notes.id, id), eq(notes.userId, userId)),
+        updateSet,
+      );
 
-      // Add new tags
-      if (tagNames.length > 0) {
-        await addTagsToNote(id, tagNames, userId);
+      // Handle tags if provided
+      if (tagNames !== undefined) {
+        // Remove existing tags
+        await tx.notesTags.delete(eq(notesTags.noteId, id));
+
+        // Add new tags
+        if (tagNames.length > 0) {
+          const tagList = await tx.getOrCreateTags(tagNames, userId);
+          for (const tag of tagList) {
+            await tx.notesTags.insert({ noteId: id, tagId: tag.id });
+          }
+        }
       }
-    }
 
-    // Record history for note update
-    await recordHistory({
-      action: "update",
-      itemType: "note",
-      itemId: id,
-      itemName: noteData.title || existingEntry.title,
-      beforeData: existingEntry,
-      afterData: { ...existingEntry, ...noteData },
-      actor: "user",
-      userId: userId,
+      // Record history for note update - atomic with the update
+      await tx.history.insert({
+        id: historyId,
+        action: "update",
+        itemType: "note",
+        itemId: id,
+        itemName: noteData.title || existingEntry.title,
+        beforeData: existingEntry,
+        afterData: { ...existingEntry, ...noteData },
+        actor: "user",
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
     });
 
     const entryWithTags = await getNoteEntryWithTags(id);
@@ -270,38 +281,39 @@ export async function deleteNoteEntry(id: string, userId: string) {
       throw new Error("Note entry not found");
     }
 
-    // Delete note-tag relationships first
-    await db.delete(notesTags).where(eq(notesTags.noteId, id));
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
 
-    // Delete processing jobs for this note
-    await db
-      .delete(assetProcessingJobs)
-      .where(
+    // Atomic transaction: delete all DB records and record history together
+    await txManager.withTransaction(async (tx) => {
+      // Delete note-tag relationships first
+      await tx.notesTags.delete(eq(notesTags.noteId, id));
+
+      // Delete processing jobs for this note
+      await tx.assetProcessingJobs.delete(
         and(
           eq(assetProcessingJobs.assetType, "notes"),
           eq(assetProcessingJobs.assetId, id),
         ),
       );
 
-    // Delete the note entry
-    const deletedEntry = await db
-      .delete(notes)
-      .where(and(eq(notes.id, id), eq(notes.userId, userId)))
-      .returning();
+      // Delete the note entry
+      await tx.notes.delete(and(eq(notes.id, id), eq(notes.userId, userId)));
 
-    if (!deletedEntry.length) {
-      throw new Error("Note entry not found");
-    }
-
-    // Record history for note deletion
-    await recordHistory({
-      action: "delete",
-      itemType: "note",
-      itemId: id,
-      itemName: existingEntry.title,
-      beforeData: existingEntry,
-      actor: "user",
-      userId: userId,
+      // Record history for note deletion - atomic with the delete
+      await tx.history.insert({
+        id: historyId,
+        action: "delete",
+        itemType: "note",
+        itemId: id,
+        itemName: existingEntry.title,
+        beforeData: existingEntry,
+        afterData: null,
+        actor: "user",
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
     });
 
     return { success: true };

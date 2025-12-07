@@ -77,6 +77,21 @@ export interface Tx {
 
 	// Outbox for atomic side-effects (optional, for future use)
 	outbox?: BaseRepository<any, any, any>;
+
+	/**
+	 * Get or create tags within the current transaction.
+	 * Tags are scoped per user - each user has their own namespace for tag names.
+	 *
+	 * Uses INSERT ... ON CONFLICT DO NOTHING for atomic upsert, then fetches all matching tags.
+	 *
+	 * @param tagNames - Array of tag names to create or retrieve
+	 * @param userId - User ID for tag scoping
+	 * @returns Array of tag objects with id and name
+	 */
+	getOrCreateTags(
+		tagNames: string[],
+		userId: string,
+	): Promise<{ id: string; name: string }[]>;
 }
 
 /**

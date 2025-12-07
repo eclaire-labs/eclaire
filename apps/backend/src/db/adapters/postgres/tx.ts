@@ -10,9 +10,10 @@
 
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
-import type { SQL } from "drizzle-orm";
+import { and, eq, inArray, type SQL } from "drizzle-orm";
 import type { Tx, TransactionManager, BaseRepository } from "@/ports/tx";
 import * as schema from "@/db/schema/postgres";
+import { generateTagId } from "@/lib/id-generator";
 
 // Union type for both PostgreSQL and PGlite databases
 type PgDatabase = PostgresJsDatabase<typeof schema> | PgliteDatabase<typeof schema>;
@@ -78,6 +79,43 @@ function wrapPgTx(drizzleTx: DrizzlePgTx): Tx {
 		messages: createRepository("messages"),
 		channels: createRepository("channels"),
 		feedback: createRepository("feedback"),
+
+		async getOrCreateTags(
+			tagNames: string[],
+			userId: string,
+		): Promise<{ id: string; name: string }[]> {
+			if (!tagNames || tagNames.length === 0) return [];
+
+			const uniqueNames = [
+				...new Set(
+					tagNames.map((name) => name.trim().toLowerCase()).filter(Boolean),
+				),
+			];
+			if (uniqueNames.length === 0) return [];
+
+			// Atomic upsert: insert all tags, ignore conflicts on (userId, name)
+			await drizzleTx
+				.insert(schema.tags)
+				.values(
+					uniqueNames.map((name) => ({
+						id: generateTagId(),
+						name,
+						userId,
+					})),
+				)
+				.onConflictDoNothing({ target: [schema.tags.userId, schema.tags.name] });
+
+			// Fetch all matching tags
+			return drizzleTx
+				.select({ id: schema.tags.id, name: schema.tags.name })
+				.from(schema.tags)
+				.where(
+					and(
+						eq(schema.tags.userId, userId),
+						inArray(schema.tags.name, uniqueNames),
+					),
+				);
+		},
 	};
 }
 
