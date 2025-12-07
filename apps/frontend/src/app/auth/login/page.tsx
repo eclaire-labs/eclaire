@@ -1,5 +1,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearch } from "@tanstack/react-router";
 import { Github, Globe, Twitter } from "lucide-react";
 import { Link } from "@/lib/navigation";
 import { useRouter } from "@/lib/navigation";
@@ -32,6 +33,7 @@ const formSchema = z.object({
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { callbackUrl } = useSearch({ from: "/auth/login" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,27 +50,28 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const { data, error } = await signIn.email({
+      await signIn.email({
         email: values.email,
         password: values.password,
+        fetchOptions: {
+          onSuccess: () => {
+            toast({
+              title: "Login successful!",
+              description: "Welcome back to Eclaire.",
+            });
+            // Use direct navigation for clean page load with session
+            window.location.href = callbackUrl;
+          },
+          onError: () => {
+            setError("Invalid email or password. Please try again.");
+            toast({
+              title: "Login failed",
+              description: "Invalid email or password. Please try again.",
+              variant: "destructive",
+            });
+          },
+        },
       });
-
-      if (error) {
-        setError("Invalid email or password. Please try again.");
-        toast({
-          title: "Login failed",
-          description: "Invalid email or password. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Login successful!",
-        description: "Welcome back to Eclaire.",
-      });
-      router.push("/dashboard");
-      router.refresh();
     } catch (error) {
       setError("An unexpected error occurred. Please try again.");
       toast({
@@ -158,15 +161,7 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex items-center justify-between">
-                      <FormLabel>Password</FormLabel>
-                      <Link
-                        href="/auth/forgot-password"
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Forgot password?
-                      </Link>
-                    </div>
+                    <FormLabel>Password</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>

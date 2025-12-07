@@ -76,6 +76,9 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
+    cookieCache: {
+      enabled: false, // Disable cookie caching to ensure session is validated against DB on every request
+    },
   },
   user: {
     fields: {
@@ -111,7 +114,9 @@ export const auth = betterAuth({
   //basePath: "/api/auth", // Keep this commented out as per previous advice
   trustedOrigins: [
     "http://localhost:3000",
-    process.env.FRONTEND_URL || "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://frontend:3000", // Docker container name
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
   ],
   advanced: {
     database: {
