@@ -32,7 +32,7 @@ module.exports = {
       script: 'bash',
       args: [
         '-lc',
-        'docker network create eclaire-net 2>/dev/null || true && exec docker run --rm --name eclaire-postgres -e POSTGRES_DB=eclaire -e POSTGRES_USER=eclaire -e POSTGRES_PASSWORD=eclaire -p 5432:5432 --network eclaire-net --expose 5432 -v "$(pwd)/data/db:/var/lib/postgresql/data" postgres:17.5'
+        'docker network create eclaire-net 2>/dev/null || true && exec docker run --rm --name eclaire-postgres -e POSTGRES_DB=eclaire -e POSTGRES_USER=eclaire -e POSTGRES_PASSWORD=eclaire -p 5432:5432 --network eclaire-net --expose 5432 -v "$(pwd)/data/postgres:/var/lib/postgresql/data" postgres:17.5-bookworm'
       ],
       autorestart: false,
       out_file: LOG('postgres.log'),
