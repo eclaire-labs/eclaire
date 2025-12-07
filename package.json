@@ -16,6 +16,11 @@
   "engines": {
     "node": "^24.0.0"
   },
+  "pnpm": {
+    "overrides": {
+      "npm-run-path": "5.3.0"
+    }
+  },
   "devDependencies": {
     "node-gyp": "^12.1.0",
     "node-addon-api": "^8.5.0"
