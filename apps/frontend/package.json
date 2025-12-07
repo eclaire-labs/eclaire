@@ -27,7 +27,8 @@
     "check": "biome check ./",
     "fix": "biome check --write ./",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "5.2.2",
