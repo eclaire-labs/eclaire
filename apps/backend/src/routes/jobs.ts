@@ -56,6 +56,7 @@ async function claimJob(
 
 /**
  * PostgreSQL/PGlite job claiming with FOR UPDATE SKIP LOCKED
+ * Uses SELECT + UPDATE pattern to avoid drizzle-orm Date serialization issue
  */
 async function claimJobPostgres(
 	assetType: string,
@@ -64,6 +65,48 @@ async function claimJobPostgres(
 	const now = getCurrentTimestamp();
 	const expiresAt = getExpirationTime(15); // 15 minutes
 
+	// Step 1: Find and lock a claimable job using FOR UPDATE SKIP LOCKED
+	const [candidate] = await db
+		.select()
+		.from(assetProcessingJobs)
+		.where(
+			and(
+				eq(
+					assetProcessingJobs.assetType,
+					assetType as "tasks" | "bookmarks" | "documents" | "photos" | "notes",
+				),
+				or(
+					// New/pending jobs ready to process
+					and(
+						inArray(assetProcessingJobs.status, ["pending", "retry_pending"]),
+						or(
+							isNull(assetProcessingJobs.scheduledFor),
+							lte(assetProcessingJobs.scheduledFor, now),
+						),
+					),
+					// Expired jobs (lazy reclamation)
+					and(
+						eq(assetProcessingJobs.status, "processing"),
+						lt(assetProcessingJobs.expiresAt, now),
+						lt(assetProcessingJobs.retryCount, assetProcessingJobs.maxRetries),
+					),
+				),
+			),
+		)
+		.orderBy(
+			// Prioritize expired jobs for recovery
+			sql`CASE WHEN ${assetProcessingJobs.status} = 'processing' THEN 0 ELSE 1 END`,
+			desc(assetProcessingJobs.priority),
+			asc(assetProcessingJobs.createdAt),
+		)
+		.limit(1)
+		.for("update", { skipLocked: true });
+
+	if (!candidate) {
+		return null;
+	}
+
+	// Step 2: Update the job (now safely locked)
 	const [job] = await db
 		.update(assetProcessingJobs)
 		.set({
@@ -71,60 +114,10 @@ async function claimJobPostgres(
 			lockedBy: workerId,
 			lockedAt: now,
 			expiresAt: expiresAt,
-			startedAt: sql`COALESCE(${assetProcessingJobs.startedAt}, ${now})`,
+			startedAt: candidate.startedAt || now, // JavaScript coalesce - works correctly
 			updatedAt: now,
 		})
-		.where(
-			eq(
-				assetProcessingJobs.id,
-				db
-					.select({ id: assetProcessingJobs.id })
-					.from(assetProcessingJobs)
-					.where(
-						and(
-							eq(
-								assetProcessingJobs.assetType,
-								assetType as
-									| "tasks"
-									| "bookmarks"
-									| "documents"
-									| "photos"
-									| "notes",
-							),
-							or(
-								// New/pending jobs ready to process
-								and(
-									inArray(assetProcessingJobs.status, [
-										"pending",
-										"retry_pending",
-									]),
-									or(
-										isNull(assetProcessingJobs.scheduledFor),
-										lte(assetProcessingJobs.scheduledFor, now),
-									),
-								),
-								// Expired jobs (lazy reclamation)
-								and(
-									eq(assetProcessingJobs.status, "processing"),
-									lt(assetProcessingJobs.expiresAt, now),
-									lt(
-										assetProcessingJobs.retryCount,
-										assetProcessingJobs.maxRetries,
-									),
-								),
-							),
-						),
-					)
-					.orderBy(
-						// Prioritize expired jobs for recovery
-						sql`CASE WHEN ${assetProcessingJobs.status} = 'processing' THEN 0 ELSE 1 END`,
-						desc(assetProcessingJobs.priority),
-						asc(assetProcessingJobs.createdAt),
-					)
-					.limit(1)
-					.for("update", { skipLocked: true }),
-			),
-		)
+		.where(eq(assetProcessingJobs.id, candidate.id))
 		.returning();
 
 	return formatJobResult(job);
