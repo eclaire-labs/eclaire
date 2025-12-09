@@ -56,21 +56,88 @@ function ChartContainer({
 }) {
   const uniqueId = React.useId();
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`;
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
+
+  React.useEffect(() => {
+    const element = containerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateDimensions = () => {
+      const target = containerRef.current;
+      if (!target) {
+        return;
+      }
+
+      const rect = target.getBoundingClientRect();
+      const width = Math.floor(rect.width);
+      const height = Math.floor(rect.height);
+      if (width <= 0 || height <= 0) {
+        return;
+      }
+
+      setDimensions((prev) =>
+        prev.width === width && prev.height === height
+          ? prev
+          : { width, height },
+      );
+    };
+
+    let animationFrame: number | null = null;
+
+    const scheduleUpdate = () => {
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+
+      animationFrame = window.requestAnimationFrame(updateDimensions);
+    };
+
+    updateDimensions();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", scheduleUpdate);
+      return () => {
+        if (animationFrame !== null) {
+          window.cancelAnimationFrame(animationFrame);
+        }
+        window.removeEventListener("resize", scheduleUpdate);
+      };
+    }
+
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    resizeObserver.observe(element);
+
+    return () => {
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   return (
     <ChartContext.Provider value={{ config }}>
       <div
+        ref={containerRef}
         data-chart={chartId}
         className={cn(
-          "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
+          "flex w-full min-w-0 aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
           className,
         )}
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer>
-          {children}
-        </RechartsPrimitive.ResponsiveContainer>
+        {dimensions.width > 0 && dimensions.height > 0 ? (
+          <RechartsPrimitive.ResponsiveContainer
+            width={dimensions.width}
+            height={dimensions.height}
+          >
+            {children}
+          </RechartsPrimitive.ResponsiveContainer>
+        ) : null}
       </div>
     </ChartContext.Provider>
   );
