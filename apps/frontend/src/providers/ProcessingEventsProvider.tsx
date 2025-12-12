@@ -217,7 +217,7 @@ export function ProcessingEventsProvider({
 
         eventSource.onerror = (error) => {
           console.warn(
-            "Global SSE connection error - this is normal if Redis is not configured:",
+            "Global SSE connection error - will attempt to reconnect:",
             error,
           );
           setIsConnected(false);

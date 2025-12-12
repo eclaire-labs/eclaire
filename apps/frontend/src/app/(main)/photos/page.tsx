@@ -1264,11 +1264,7 @@ export default function PhotosPage() {
                 {/* Added padding-right for scrollbar */}
                 <div className="md:col-span-2 aspect-video overflow-hidden rounded-md bg-muted flex items-center justify-center">
                   <img
-                    src={
-                      selectedPhoto.processingStatus === "failed"
-                        ? "/placeholder.svg"
-                        : selectedPhoto.imageUrl
-                    }
+                    src={selectedPhoto.thumbnailUrl || "/placeholder.svg"}
                     alt={selectedPhoto.title}
                     className="object-contain max-w-full max-h-[70vh]"
                     onError={(e) => {
@@ -1677,11 +1673,7 @@ export default function PhotosPage() {
             {photoToDelete && (
               <div className="my-4 flex justify-center">
                 <img
-                  src={
-                    photoToDelete.processingStatus === "failed"
-                      ? "/placeholder.svg"
-                      : photoToDelete.imageUrl
-                  }
+                  src={photoToDelete.thumbnailUrl || "/placeholder.svg"}
                   alt="Thumbnail"
                   className="max-h-24 rounded border bg-muted"
                   onError={(e) => {
@@ -1968,9 +1960,7 @@ function PhotoTileItem({
     photo.locationCountryName,
   );
   const displayDate = formatDate(photo.dateTaken ?? photo.createdAt);
-  // Don't load image for failed photos to prevent infinite error loops
-  const imgSrc =
-    photo.processingStatus === "failed" ? "/placeholder.svg" : photo.imageUrl;
+  const imgSrc = photo.thumbnailUrl || "/placeholder.svg";
 
   return (
     <Card
@@ -2179,11 +2169,7 @@ function ListView({
             photo.locationCity,
             photo.locationCountryName,
           );
-          // Don't load image for failed photos to prevent infinite error loops
-          const imgSrc =
-            photo.processingStatus === "failed"
-              ? "/placeholder.svg"
-              : photo.imageUrl;
+          const imgSrc = photo.thumbnailUrl || "/placeholder.svg";
           const isFocused = index === focusedIndex;
 
           return (
@@ -2367,11 +2353,9 @@ function GalleryView({
   const currentPhoto = photos[currentIndex];
   if (!currentPhoto) return null; // Should not happen if index is valid
 
-  // Don't load image for failed photos to prevent infinite error loops
+  // Prefer full image, fall back to thumbnail, then placeholder
   const imgSrc =
-    currentPhoto.processingStatus === "failed"
-      ? "/placeholder.svg"
-      : currentPhoto.imageUrl;
+    currentPhoto.imageUrl || currentPhoto.thumbnailUrl || "/placeholder.svg";
 
   // Touch/swipe navigation state
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(
@@ -2540,11 +2524,7 @@ function GalleryView({
           <div className="flex justify-center gap-1 md:gap-2 overflow-x-auto pb-2 md:pb-4">
             {thumbIndices.map((idx) => {
               const thumbPhoto = photos[idx];
-              // Don't load image for failed photos to prevent infinite error loops
-              const thumbSrc =
-                thumbPhoto.processingStatus === "failed"
-                  ? "/placeholder.svg"
-                  : thumbPhoto.imageUrl;
+              const thumbSrc = thumbPhoto.thumbnailUrl || "/placeholder.svg";
               return (
                 <div
                   key={thumbPhoto.id}
