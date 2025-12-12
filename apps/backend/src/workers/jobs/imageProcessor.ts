@@ -294,6 +294,28 @@ async function executeAIWorkflowStep(
       "AI workflow step response",
     );
 
+    // Check for truncation due to token limit
+    if (modelResponse.finishReason === "length") {
+      logger.warn(
+        { photoId, step: stageName, finishReason: modelResponse.finishReason },
+        "AI response truncated due to token limit",
+      );
+      throw new Error(
+        "AI response truncated due to token limit - output may be incomplete",
+      );
+    }
+
+    // Check for repetitive content (model stuck in a loop)
+    if (modelResponse.content && detectRepetition(modelResponse.content)) {
+      logger.warn(
+        { photoId, step: stageName, contentLength: modelResponse.content.length },
+        "Detected repetitive pattern in AI response - model may be stuck in a loop",
+      );
+      throw new Error(
+        "AI response contains repetitive content - model may be stuck in a loop",
+      );
+    }
+
     await reporter.updateProgress(stageName, 80);
     const parsedResponse = parseModelResponse(modelResponse);
 
@@ -310,8 +332,19 @@ async function executeAIWorkflowStep(
 }
 
 /**
+ * Detect if text contains repetitive patterns (model stuck in a loop).
+ * Looks for sequences of 30+ characters repeated 3+ times consecutively.
+ */
+function detectRepetition(text: string): boolean {
+  // Match 30+ character sequences that repeat 3+ times in a row
+  const match = text.match(/(.{30,})\1{2,}/);
+  return match !== null;
+}
+
+/**
  * Parse AI model response to extract JSON.
  * Handles both string responses and AIResponse objects from callAI().
+ * Strips markdown code blocks if present.
  */
 function parseModelResponse(responseText: string | any): any {
   try {
@@ -323,21 +356,35 @@ function parseModelResponse(responseText: string | any): any {
         typeof responseText.content === "string"
       ) {
         const content = responseText.content;
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
+        // First try to extract from markdown code blocks
+        const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+        const cleanedJsonString = (jsonMatch?.[1] || content).trim();
+
+        // Validate that the string looks like JSON before parsing
+        if (
+          !cleanedJsonString.startsWith("[") &&
+          !cleanedJsonString.startsWith("{")
+        ) {
+          throw new Error("Content does not appear to be JSON");
         }
-        throw new Error("No JSON object found in AIResponse content.");
+
+        return JSON.parse(cleanedJsonString);
       }
       // Otherwise assume it's already parsed JSON
       return responseText;
     }
-    // Handle string responses
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+    // Handle string responses - same logic
+    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+    const cleanedJsonString = (jsonMatch?.[1] || responseText).trim();
+
+    if (
+      !cleanedJsonString.startsWith("[") &&
+      !cleanedJsonString.startsWith("{")
+    ) {
+      throw new Error("Content does not appear to be JSON");
     }
-    throw new Error("No JSON object found in the AI response.");
+
+    return JSON.parse(cleanedJsonString);
   } catch (error: any) {
     logger.warn(
       { responseText, error: error.message },

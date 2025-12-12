@@ -429,6 +429,7 @@ export interface AIResponse {
   reasoning?: string; // Optional reasoning field from AI providers
   usage?: TokenUsage;
   estimatedInputTokens?: number;
+  finishReason?: string; // "stop", "length", "content_filter", etc.
 }
 
 export interface AIStreamChunk {
@@ -767,6 +768,8 @@ export async function callAI(
         joinedReasoning && joinedReasoning.trim() ? joinedReasoning : undefined,
       usage: finalUsage,
       estimatedInputTokens: streamResponse.estimatedInputTokens,
+      // Note: finishReason not extracted from streaming - would require parser changes
+      finishReason: undefined,
     };
   }
 
@@ -907,6 +910,7 @@ export async function callAI(
     // Extract content based on provider response format
     let content: string;
     let reasoning: string | undefined;
+    let finishReason: string | undefined;
 
     if (isMLXVLMProvider(provider.name)) {
       // mlx-vlm /responses API returns response.output_text or response.text
@@ -919,10 +923,12 @@ export async function callAI(
         data.content;
       reasoning = undefined; // mlx-vlm doesn't have reasoning in responses
     } else {
-      const message = data.choices?.[0]?.message;
+      const choice = data.choices?.[0];
+      const message = choice?.message;
       content = message?.content;
       // Support both 'reasoning' and 'reasoning_content' field names (different providers use different names)
       reasoning = message?.reasoning || message?.reasoning_content;
+      finishReason = choice?.finish_reason;
     }
 
     if (!content) {
@@ -991,6 +997,7 @@ export async function callAI(
       reasoning: reasoning && reasoning.trim() ? reasoning : undefined,
       usage,
       estimatedInputTokens,
+      finishReason,
     };
   } catch (error) {
     const endTime = Date.now();

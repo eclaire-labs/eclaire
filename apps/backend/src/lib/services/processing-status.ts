@@ -131,6 +131,7 @@ export async function createOrUpdateProcessingJob(
           assetType,
           assetId,
           userId,
+          jobType: jobType ?? "processing",
           status: "pending",
           stages: stages,
           currentStage: null,
@@ -139,7 +140,7 @@ export async function createOrUpdateProcessingJob(
           maxRetries: 3,
         })
         .onConflictDoUpdate({
-          target: [assetProcessingJobs.assetType, assetProcessingJobs.assetId],
+          target: [assetProcessingJobs.assetType, assetProcessingJobs.assetId, assetProcessingJobs.jobType],
           set: {
             status: "pending",
             stages: stages,
