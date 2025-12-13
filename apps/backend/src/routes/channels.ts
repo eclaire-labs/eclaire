@@ -2,30 +2,30 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
-import { createChildLogger } from "@/lib/logger";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { createChildLogger } from "../lib/logger.js";
 // Import services
 import {
   createChannel,
   deleteChannel,
   getUserChannels,
   updateChannel,
-} from "@/lib/services/channels";
+} from "../lib/services/channels.js";
 
 // Import schemas
 import {
   ChannelIdParamSchema,
   CreateChannelSchema,
   UpdateChannelSchema,
-} from "@/schemas/channels-params";
+} from "../schemas/channels-params.js";
 // Import route descriptions
 import {
   deleteChannelRouteDescription,
   getChannelsRouteDescription,
   postChannelsRouteDescription,
   putChannelRouteDescription,
-} from "@/schemas/channels-routes";
-import type { RouteVariables } from "@/types/route-variables";
+} from "../schemas/channels-routes.js";
+import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("routes:channels");
 

@@ -18,7 +18,7 @@ import {
 	type DbCapabilities,
 	type DbDialect,
 } from "@eclaire/db";
-import { createChildLogger } from "@/lib/logger";
+import { createChildLogger } from "../lib/logger.js";
 
 // Re-export types for convenience
 export type {

@@ -3,12 +3,12 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 import {
   CreateConversationSchema,
   ListConversationsSchema,
   UpdateConversationSchema,
-} from "./conversation-params";
+} from "./conversation-params.js";
 import {
   ConversationNotFoundErrorSchema,
   ConversationServerErrorSchema,
@@ -19,7 +19,7 @@ import {
   InvalidConversationIdErrorSchema,
   ListConversationsResponseSchema,
   UpdateConversationResponseSchema,
-} from "./conversation-responses";
+} from "./conversation-responses.js";
 
 // POST /api/conversations - Create new conversation
 export const postConversationRouteDescription = {

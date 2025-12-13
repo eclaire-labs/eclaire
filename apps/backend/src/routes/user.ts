@@ -5,14 +5,14 @@ import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import path from "path";
 import sharp from "sharp";
-import { db, schema } from "@/db";
+import { db, schema } from "../db/index.js";
 
 const { apiKeys, users } = schema;
 import {
   formatApiKeyForDisplay,
   generateFullApiKey,
-} from "@/lib/api-key-security";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
+} from "../lib/api-key-security.js";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import {
   deleteAllUserData,
   getActivityTimeline,
@@ -20,14 +20,14 @@ import {
   getDueItems,
   getQuickStats,
   getUserDataSummary,
-} from "@/lib/services/user-data";
-import { objectStorage } from "@/lib/storage";
-import { getUserProfile } from "@/lib/user";
+} from "../lib/services/user-data.js";
+import { objectStorage } from "../lib/storage.js";
+import { getUserProfile } from "../lib/user.js";
 // Import schemas
 import {
   DeleteAllUserDataSchema,
   UpdateProfileSchema,
-} from "@/schemas/user-params";
+} from "../schemas/user-params.js";
 // Import route descriptions
 import {
   deleteAllUserDataRouteDescription,
@@ -35,9 +35,9 @@ import {
   getUserDashboardStatsRouteDescription,
   getUserProfileRouteDescription,
   updateUserProfileRouteDescription,
-} from "@/schemas/user-routes";
-import type { RouteVariables } from "@/types/route-variables";
-import { createChildLogger } from "../lib/logger";
+} from "../schemas/user-routes.js";
+import type { RouteVariables } from "../types/route-variables.js";
+import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("user");
 

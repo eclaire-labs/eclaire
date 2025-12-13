@@ -1,5 +1,6 @@
 import { readFile } from "fs/promises";
-import { resolve } from "path";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import {
   BASE_URL,
@@ -7,6 +8,9 @@ import {
   delay,
   TEST_API_KEY,
 } from "../utils/test-helpers.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Create authenticated fetch function
 const loggedFetch = createAuthenticatedFetch(TEST_API_KEY);

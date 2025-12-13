@@ -1,8 +1,8 @@
-import { config } from "../config";
-import { getQueue } from "../queues";
+import { config } from "../config.js";
+import { getQueue } from "../queues.js";
 import { QueueNames } from "@eclaire/queue";
-import { createChildLogger } from "../../lib/logger";
-import { createProcessingReporter } from "./processing-reporter";
+import { createChildLogger } from "../../lib/logger.js";
+import { createProcessingReporter } from "./processing-reporter.js";
 
 const logger = createChildLogger("domain-rate-limiter");
 
@@ -503,7 +503,7 @@ async function handleStaleJob(
     // Also update the database state for consistency
     // Note: We don't have access to userId in this context since the job is stuck
     // Using "system" as a placeholder - this could be improved by storing userId in domain state
-    const reporter = createProcessingReporter("bookmarks", jobId, "system");
+    const reporter = await createProcessingReporter("bookmarks", jobId, "system");
 
     // Fail the job in the database with timeout error
     const errorMessage = `Job timed out after ${Math.round(staleTimeMs / 1000)}s during processing (domain: ${domain})`;

@@ -3,19 +3,19 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { db, schema } from "@/db";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
+import { db, schema } from "../db/index.js";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 
 const { assetProcessingJobs, tasks } = schema;
-import { getNextExecutionTime } from "@/lib/cron-utils";
-import { ValidationError } from "@/lib/errors";
-import { getQueueAdapter } from "@/lib/queue-adapter";
+import { getNextExecutionTime } from "../lib/cron-utils.js";
+import { ValidationError } from "../lib/errors.js";
+import { getQueueAdapter } from "../lib/queue-adapter.js";
 import {
   createTaskComment,
   deleteTaskComment,
   getTaskComments,
   updateTaskComment,
-} from "@/lib/services/taskComments";
+} from "../lib/services/taskComments.js";
 import {
   countTasks,
   createTask,
@@ -27,13 +27,13 @@ import {
   type TaskStatus,
   updateTask,
   updateTaskStatusAsAssistant,
-} from "@/lib/services/tasks";
+} from "../lib/services/tasks.js";
 // Import schemas
 import {
   PartialTaskSchema,
   TaskSchema,
   TaskSearchParamsSchema,
-} from "@/schemas/tasks-params";
+} from "../schemas/tasks-params.js";
 // Import route descriptions
 import {
   deleteTaskCommentRouteDescription,
@@ -51,9 +51,9 @@ import {
   putTaskCommentRouteDescription,
   putTaskExecutionTrackingRouteDescription,
   putTaskRouteDescription,
-} from "@/schemas/tasks-routes";
-import type { RouteVariables } from "@/types/route-variables";
-import { createChildLogger } from "../lib/logger";
+} from "../schemas/tasks-routes.js";
+import type { RouteVariables } from "../types/route-variables.js";
+import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("tasks");
 

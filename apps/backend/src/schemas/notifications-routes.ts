@@ -6,9 +6,9 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
-import { SendNotificationSchema } from "./channels-params";
-import { SendNotificationResponseSchema } from "./channels-responses";
+} from "./all-responses.js";
+import { SendNotificationSchema } from "./channels-params.js";
+import { SendNotificationResponseSchema } from "./channels-responses.js";
 
 // POST /api/notifications - Send notification
 export const postNotificationsRouteDescription = {

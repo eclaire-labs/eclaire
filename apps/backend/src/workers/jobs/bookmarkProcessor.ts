@@ -2,7 +2,7 @@ import { type Job, Worker } from "bullmq";
 import { type BrowserContext, chromium, type Page } from "patchright";
 import sharp from "sharp";
 import { Readable } from "stream";
-import { config } from "../config";
+import { config } from "../config.js";
 import {
   type BookmarkHandlerType,
   type BookmarkJobData,
@@ -13,17 +13,17 @@ import {
   normalizeUrl,
   processGitHubBookmark,
   validateApiCredentials,
-} from "../lib/bookmarks";
-import { processRedditApiBookmark } from "../lib/bookmarks/reddit-api";
-import { domainRateLimiter } from "../lib/domainRateLimiter";
-import { createRateLimitError } from "../lib/job-utils";
-import { createChildLogger } from "../../lib/logger";
+} from "../lib/bookmarks/index.js";
+import { processRedditApiBookmark } from "../lib/bookmarks/reddit-api.js";
+import { domainRateLimiter } from "../lib/domainRateLimiter.js";
+import { createRateLimitError } from "../lib/job-utils.js";
+import { createChildLogger } from "../../lib/logger.js";
 import {
   createProcessingReporter,
   type ProcessingReporter,
-} from "../lib/processing-reporter";
-import { objectStorage } from "../../lib/storage";
-import { TimeoutError, withTimeout } from "../lib/utils/timeout";
+} from "../lib/processing-reporter.js";
+import { objectStorage } from "../../lib/storage.js";
+import { TimeoutError, withTimeout } from "../lib/utils/timeout.js";
 
 const logger = createChildLogger("bookmark-processor");
 
@@ -495,7 +495,7 @@ async function processBookmarkJob(
     "Starting bookmark processing job",
   );
 
-  const reporter = createProcessingReporter("bookmarks", bookmarkId, userId);
+  const reporter = await createProcessingReporter("bookmarks", bookmarkId, userId);
   let availability: ReturnType<
     typeof domainRateLimiter.checkDomainAvailability
   > | null = null;

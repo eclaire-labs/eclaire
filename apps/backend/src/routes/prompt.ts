@@ -1,23 +1,23 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { isValidConversationId } from "@eclaire/core";
-import { recordHistory } from "@/lib/services/history";
+import { recordHistory } from "../lib/services/history.js";
 import {
   ConversationNotFoundError,
   processPromptRequest,
   processPromptRequestStream,
   type StreamEvent,
-} from "@/lib/services/prompt";
+} from "../lib/services/prompt.js";
 
 // Import schemas
-import { PromptRequestSchema } from "@/schemas/prompt-params";
-import { postPromptRouteDescription } from "@/schemas/prompt-routes";
-import { StreamPromptRequestSchema } from "@/schemas/prompt-stream-params";
-import { postPromptStreamRouteDescription } from "@/schemas/prompt-stream-routes";
-import type { RouteVariables } from "@/types/route-variables";
-import { createChildLogger } from "../lib/logger";
+import { PromptRequestSchema } from "../schemas/prompt-params.js";
+import { postPromptRouteDescription } from "../schemas/prompt-routes.js";
+import { StreamPromptRequestSchema } from "../schemas/prompt-stream-params.js";
+import { postPromptStreamRouteDescription } from "../schemas/prompt-stream-routes.js";
+import type { RouteVariables } from "../types/route-variables.js";
+import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("prompt");
 

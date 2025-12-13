@@ -9,7 +9,7 @@ import {
 	generateTestTagId,
 	DB_TEST_CONFIGS,
 	type TestDatabase,
-} from "./setup";
+} from "./setup.js";
 import { pgSchema, sqliteSchema } from "@eclaire/db";
 
 describe.each(DB_TEST_CONFIGS)(

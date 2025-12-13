@@ -8,7 +8,7 @@
  * - Proper state management for partial content
  */
 
-import { createChildLogger } from "./logger";
+import { createChildLogger } from "./logger.js";
 
 const logger = createChildLogger("parser-stream-text");
 

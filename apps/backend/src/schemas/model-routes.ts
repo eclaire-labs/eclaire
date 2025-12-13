@@ -1,6 +1,6 @@
 import { resolver } from "hono-openapi";
-import { ErrorResponseSchema } from "./all-responses";
-import { CurrentModelResponseSchema } from "./model-responses";
+import { ErrorResponseSchema } from "./all-responses.js";
+import { CurrentModelResponseSchema } from "./model-responses.js";
 
 export const getCurrentModelRouteDescription = {
   tags: ["AI Model"],

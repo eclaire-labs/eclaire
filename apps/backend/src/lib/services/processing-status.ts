@@ -1,6 +1,6 @@
 import type { Queue } from "bullmq";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
-import { db, schema, txManager } from "../../db/index";
+import { db, schema, txManager } from "../../db/index.js";
 const {
   assetProcessingJobs,
   bookmarks,
@@ -9,11 +9,11 @@ const {
   photos,
   tasks,
 } = schema;
-import { publishProcessingEvent } from "../../routes/processing-events";
-import type { AssetType, ProcessingStatus } from "../../types/assets";
-import { createChildLogger } from "../logger";
-import { getQueue, QueueNames } from "../queues";
-import { processArtifacts } from "./artifact-processor";
+import { publishProcessingEvent } from "../../routes/processing-events.js";
+import type { AssetType, ProcessingStatus } from "../../types/assets.js";
+import { createChildLogger } from "../logger.js";
+import { getQueue, QueueNames } from "../queues.js";
+import { processArtifacts } from "./artifact-processor.js";
 
 const logger = createChildLogger("processing-status");
 
@@ -1286,7 +1286,7 @@ async function retryPhotoProcessing(
     await resetProcessingJobState("photos", assetId, userId);
 
     // Get photo details to determine job requirements
-    const { schema } = await import("../../db/index");
+    const { schema } = await import("../../db/index.js");
     const { photos } = schema;
     const { eq, and } = await import("drizzle-orm");
 
@@ -1307,8 +1307,8 @@ async function retryPhotoProcessing(
     }
 
     // Queue unified image processing job using Queue Adapter (supports both Redis and Database backends)
-    const { getQueueAdapter } = await import("../../lib/queue-adapter");
-    const queueAdapter = getQueueAdapter();
+    const { getQueueAdapter } = await import("../queue-adapter.js");
+    const queueAdapter = await getQueueAdapter();
 
     await queueAdapter.enqueueImage({
       imageId: assetId,
@@ -1347,7 +1347,7 @@ async function queueRetryJob(
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
   // Import necessary modules for document lookup
-  const { schema } = await import("../../db/index");
+  const { schema } = await import("../../db/index.js");
   const { documents } = schema;
   const { eq, and } = await import("drizzle-orm");
   try {
@@ -1456,7 +1456,7 @@ async function retryBookmarkProcessing(
     await resetProcessingJobState("bookmarks", assetId, userId);
 
     // Get bookmark details to determine job requirements
-    const { schema } = await import("../../db/index");
+    const { schema } = await import("../../db/index.js");
     const { bookmarks } = schema;
     const { eq, and } = await import("drizzle-orm");
 
@@ -1469,8 +1469,8 @@ async function retryBookmarkProcessing(
     }
 
     // Queue new bookmark processing job using Queue Adapter (supports both Redis and Database backends)
-    const { getQueueAdapter } = await import("../../lib/queue-adapter");
-    const queueAdapter = getQueueAdapter();
+    const { getQueueAdapter } = await import("../queue-adapter.js");
+    const queueAdapter = await getQueueAdapter();
 
     await queueAdapter.enqueueBookmark({
       bookmarkId: assetId,
@@ -1509,7 +1509,7 @@ async function retryDocumentProcessing(
     await resetProcessingJobState("documents", assetId, userId);
 
     // Get document details to determine job requirements
-    const { schema } = await import("../../db/index");
+    const { schema } = await import("../../db/index.js");
     const { documents } = schema;
     const { eq, and } = await import("drizzle-orm");
 
@@ -1522,8 +1522,8 @@ async function retryDocumentProcessing(
     }
 
     // Queue new document processing job using Queue Adapter (supports both Redis and Database backends)
-    const { getQueueAdapter } = await import("../../lib/queue-adapter");
-    const queueAdapter = getQueueAdapter();
+    const { getQueueAdapter } = await import("../queue-adapter.js");
+    const queueAdapter = await getQueueAdapter();
 
     await queueAdapter.enqueueDocument({
       documentId: assetId,
@@ -1565,7 +1565,7 @@ async function retryNoteProcessing(
     await resetProcessingJobState("notes", assetId, userId);
 
     // Get note details to determine job requirements
-    const { schema } = await import("../../db/index");
+    const { schema } = await import("../../db/index.js");
     const { notes } = schema;
     const { eq, and } = await import("drizzle-orm");
 
@@ -1578,8 +1578,8 @@ async function retryNoteProcessing(
     }
 
     // Queue new note processing job using Queue Adapter (supports both Redis and Database backends)
-    const { getQueueAdapter } = await import("../../lib/queue-adapter");
-    const queueAdapter = getQueueAdapter();
+    const { getQueueAdapter } = await import("../queue-adapter.js");
+    const queueAdapter = await getQueueAdapter();
 
     await queueAdapter.enqueueNote({
       noteId: assetId,
@@ -1616,7 +1616,7 @@ async function retryTaskProcessing(
     await resetProcessingJobState("tasks", assetId, userId);
 
     // Get task details to determine job requirements
-    const { schema } = await import("../../db/index");
+    const { schema } = await import("../../db/index.js");
     const { tasks } = schema;
     const { eq, and } = await import("drizzle-orm");
 
@@ -1629,8 +1629,8 @@ async function retryTaskProcessing(
     }
 
     // Queue new task processing job using Queue Adapter (supports both Redis and Database backends)
-    const { getQueueAdapter } = await import("../../lib/queue-adapter");
-    const queueAdapter = getQueueAdapter();
+    const { getQueueAdapter } = await import("../queue-adapter.js");
+    const queueAdapter = await getQueueAdapter();
 
     await queueAdapter.enqueueTask({
       taskId: assetId,

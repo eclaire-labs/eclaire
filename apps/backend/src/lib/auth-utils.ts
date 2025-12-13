@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Context } from "hono";
-import { db, schema } from "@/db";
-import { parseApiKey, verifyApiKeyHash } from "./api-key-security";
+import { db, schema } from "../db/index.js";
+import { parseApiKey, verifyApiKeyHash } from "./api-key-security.js";
 
 const { apiKeys } = schema;
 

@@ -2,7 +2,7 @@ import z from "zod/v4";
 import {
   ChannelCapabilitySchema,
   ChannelPlatformSchema,
-} from "./channels-params";
+} from "./channels-params.js";
 
 // Channel response schema (config is not included for security)
 export const ChannelResponseSchema = z.object({

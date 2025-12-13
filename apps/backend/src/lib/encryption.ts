@@ -1,5 +1,5 @@
 import { createEncryption, parseEncryptionKey } from "@eclaire/core";
-import { createChildLogger } from "./logger";
+import { createChildLogger } from "./logger.js";
 
 const logger = createChildLogger("encryption");
 

@@ -8,7 +8,7 @@ import Database from "better-sqlite3";
 import { sql } from "drizzle-orm";
 import { pgSchema, sqliteSchema } from "@eclaire/db";
 import path from "node:path";
-import { DB_TEST_CONFIGS, type TestDbType } from "./setup";
+import { DB_TEST_CONFIGS, type TestDbType } from "./setup.js";
 
 describe.each(DB_TEST_CONFIGS)(
 	"$label - Migration Tests",

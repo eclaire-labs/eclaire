@@ -3,7 +3,7 @@ import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import isUrl from "is-url";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import {
   type BookmarkAssetType,
   createBookmarkAndQueueJob, // Renamed for clarity
@@ -13,14 +13,14 @@ import {
   getBookmarkById,
   reprocessBookmark,
   updateBookmark,
-} from "@/lib/services/bookmarks";
-import { objectStorage } from "@/lib/storage";
+} from "../lib/services/bookmarks.js";
+import { objectStorage } from "../lib/storage.js";
 // Import schemas
 import {
   BookmarkSchema,
   CreateBookmarkSchema,
   PartialBookmarkSchema,
-} from "@/schemas/bookmarks-params";
+} from "../schemas/bookmarks-params.js";
 import {
   createAssetRouteDescription,
   deleteBookmarkRouteDescription,
@@ -33,9 +33,9 @@ import {
   postBookmarksImportRouteDescription,
   postBookmarksRouteDescription,
   putBookmarkRouteDescription,
-} from "@/schemas/bookmarks-routes";
-import type { RouteVariables } from "@/types/route-variables";
-import { createChildLogger } from "../lib/logger";
+} from "../schemas/bookmarks-routes.js";
+import type { RouteVariables } from "../types/route-variables.js";
+import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("bookmarks");
 
@@ -664,7 +664,7 @@ bookmarksRoutes.post(
       }
 
       // Import bookmarks using the service
-      const { importBookmarkFile } = await import("@/lib/services/bookmarks");
+      const { importBookmarkFile } = await import("../lib/services/bookmarks.js");
       const result = await importBookmarkFile(userId, bookmarkData);
 
       return c.json({

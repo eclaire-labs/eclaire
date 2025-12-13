@@ -4,13 +4,13 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 import {
   PartialPhotoSchema,
   PhotoMetadataSchema,
   PhotoSchema,
   PhotoSearchParamsSchema,
-} from "./photos-params";
+} from "./photos-params.js";
 import {
   CreatedPhotoResponseSchema,
   PhotoFileNotFoundSchema,
@@ -18,7 +18,7 @@ import {
   PhotoResponseSchema,
   PhotoSearchResponseSchema,
   PhotosListResponseSchema,
-} from "./photos-responses";
+} from "./photos-responses.js";
 
 // GET /api/photos - Get all photos or search photos
 export const getPhotosRouteDescription = {

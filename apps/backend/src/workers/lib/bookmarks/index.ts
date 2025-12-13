@@ -1,10 +1,11 @@
 import type { Job } from "bullmq";
-import type { ProcessingReporter } from "../processing-reporter";
+import type { ProcessingReporter } from "../processing-reporter.js";
+import { createChildLogger } from "../../../lib/logger.js";
 
-export * from "./github";
-export * from "./reddit-api";
+export * from "./github.js";
+export * from "./reddit-api.js";
 // Re-export platform-specific handlers
-export * from "./utils";
+export * from "./utils.js";
 
 // --- TYPE DEFINITIONS ---
 
@@ -115,7 +116,7 @@ export function validateApiCredentials(): void {
   console.log("==============================\n");
 
   // Log to structured logger as well
-  const logger = require("../../../lib/logger").createChildLogger("api-credentials");
+  const logger = createChildLogger("api-credentials");
   logger.info(
     {
       github: hasGitHub,

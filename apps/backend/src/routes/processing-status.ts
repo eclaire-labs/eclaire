@@ -1,16 +1,16 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "../lib/auth-utils";
-import { createChildLogger } from "../lib/logger";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { createChildLogger } from "../lib/logger.js";
 import {
   getProcessingJob,
   getUserProcessingJobs,
   getUserProcessingSummary,
   retryAssetProcessing,
   updateProcessingStatusWithArtifacts,
-} from "../lib/services/processing-status";
-import { assetTypeSchema } from "../schemas/asset-types";
+} from "../lib/services/processing-status.js";
+import { assetTypeSchema } from "../schemas/asset-types.js";
 import {
   getAssetProcessingStatusRouteDescription,
   getProcessingJobsRouteDescription,
@@ -18,8 +18,8 @@ import {
   postAssetProcessingRetryRouteDescription,
   postProcessingRetryRouteDescription,
   putAssetProcessingStatusUpdateRouteDescription,
-} from "../schemas/processing-status-routes";
-import type { RouteVariables } from "../types/route-variables";
+} from "../schemas/processing-status-routes.js";
+import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("processing-status-routes");
 

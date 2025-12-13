@@ -4,7 +4,7 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 import {
   NoteFlagUpdateSchema,
   NoteMetadataSchema,
@@ -13,7 +13,7 @@ import {
   NoteSchema,
   NoteSearchSchema,
   PartialNoteSchema,
-} from "./notes-params";
+} from "./notes-params.js";
 import {
   CreatedNoteResponseSchema,
   InvalidFileTypeSchema,
@@ -21,7 +21,7 @@ import {
   NoteNotFoundSchema,
   NoteResponseSchema,
   NotesListResponseSchema,
-} from "./notes-responses";
+} from "./notes-responses.js";
 
 // GET /api/notes - Get all notes or search notes
 export const getNotesRouteDescription = {

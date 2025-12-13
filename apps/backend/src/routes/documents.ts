@@ -4,10 +4,10 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { db, schema } from "@/db";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
+import { db, schema } from "../db/index.js";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 // Import response schemas
-import { ErrorResponseSchema } from "@/lib/openapi-config";
+import { ErrorResponseSchema } from "../lib/openapi-config.js";
 import {
   countDocuments,
   createDocument,
@@ -18,13 +18,13 @@ import {
   getDocumentById,
   reprocessDocument,
   updateDocument,
-} from "@/lib/services/documents";
+} from "../lib/services/documents.js";
 // Import schemas
 import {
   DocumentMetadataSchema,
   DocumentSearchParamsSchema,
   PartialDocumentSchema,
-} from "@/schemas/documents-params";
+} from "../schemas/documents-params.js";
 // Import route descriptions
 import {
   deleteDocumentRouteDescription,
@@ -43,11 +43,11 @@ import {
   patchDocumentRouteDescription,
   postDocumentsRouteDescription,
   putDocumentRouteDescription,
-} from "@/schemas/documents-routes";
-import { DOCUMENT_MIMES } from "@/types/mime-types";
-import type { RouteVariables } from "@/types/route-variables";
+} from "../schemas/documents-routes.js";
+import { DOCUMENT_MIMES } from "../types/mime-types.js";
+import type { RouteVariables } from "../types/route-variables.js";
 
-import { createChildLogger } from "../lib/logger";
+import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("documents");
 
@@ -781,7 +781,7 @@ const serveDocumentAsset = async (c: any, assetType: DocumentAssetType) => {
       assetType,
     );
 
-    const { objectStorage } = await import("@/lib/storage");
+    const { objectStorage } = await import("../lib/storage.js");
     const { stream, contentLength } = await objectStorage.getStream(storageId);
 
     const headers = new Headers();

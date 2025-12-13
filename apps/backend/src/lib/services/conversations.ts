@@ -1,10 +1,10 @@
 import { and, count, desc, eq } from "drizzle-orm";
-import { db, schema } from "@/db";
+import { db, schema } from "../../db/index.js";
 import { generateConversationId } from "@eclaire/core";
 
 const { conversations, messages } = schema;
-import { createChildLogger } from "@/lib/logger";
-import type { ToolCallSummary } from "@/schemas/prompt-responses";
+import { createChildLogger } from "../logger.js";
+import type { ToolCallSummary } from "../../schemas/prompt-responses.js";
 
 const logger = createChildLogger("conversations-service");
 

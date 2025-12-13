@@ -3,12 +3,12 @@
  * Only runs in unified mode (SERVICE_ROLE=unified) where queue mode is database
  */
 
-import { db, schema } from "@/db";
+import { db, schema } from "../db/index.js";
 import { eq, and, lte, isNotNull } from "drizzle-orm";
-import { createChildLogger } from "./logger";
-import { getQueueAdapter, closeQueueAdapter, type QueueAdapter } from "./queue-adapter";
-import { jobWaitlist } from "./job-waitlist";
-import { getCurrentTimestamp } from "./db-queue-helpers";
+import { createChildLogger } from "./logger.js";
+import { getQueueAdapter, closeQueueAdapter, type QueueAdapter } from "./queue-adapter.js";
+import { jobWaitlist } from "./job-waitlist.js";
+import { getCurrentTimestamp } from "./db-queue-helpers.js";
 import { CronExpressionParser } from "cron-parser";
 
 const logger = createChildLogger("task-scheduler");
@@ -35,13 +35,13 @@ let queueAdapter: QueueAdapter | null = null;
  * Start the task scheduler loop
  * Polls for due recurring tasks every 10 seconds
  */
-export function startTaskScheduler() {
+export async function startTaskScheduler() {
   if (schedulerInterval) {
     logger.warn("Task scheduler already running");
     return;
   }
 
-  queueAdapter = getQueueAdapter();
+  queueAdapter = await getQueueAdapter();
 
   logger.info("Starting task scheduler for recurring tasks");
 

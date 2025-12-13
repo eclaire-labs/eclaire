@@ -1,10 +1,10 @@
-import type { AssetType } from "../../types/assets";
-import { createChildLogger } from "../logger";
-import { updateBookmarkArtifacts } from "./bookmarks";
-import { updateDocumentArtifacts } from "./documents";
-import { updateNoteArtifacts } from "./notes"; // You will uncomment these later
-import { updatePhotoArtifacts } from "./photos";
-import { updateTaskArtifacts } from "./tasks";
+import type { AssetType } from "../../types/assets.js";
+import { createChildLogger } from "../logger.js";
+import { updateBookmarkArtifacts } from "./bookmarks.js";
+import { updateDocumentArtifacts } from "./documents.js";
+import { updateNoteArtifacts } from "./notes.js"; // You will uncomment these later
+import { updatePhotoArtifacts } from "./photos.js";
+import { updateTaskArtifacts } from "./tasks.js";
 
 const logger = createChildLogger("artifact-processor");
 

@@ -9,20 +9,21 @@ import { promises as fs } from "fs";
 import { convert as htmlToText } from "html-to-text";
 import { JSDOM } from "jsdom";
 import { marked } from "marked";
+import { createRequire } from "node:module";
 import { tmpdir } from "os";
 import { chromium } from "patchright";
 import path from "path";
 import sharp from "sharp";
 import { Readable } from "stream";
-import { config } from "../config";
-import { type AIMessage, callAI } from "../../lib/ai-client";
-import { createChildLogger } from "../../lib/logger";
-import { createProcessingReporter } from "../lib/processing-reporter";
-import { objectStorage } from "../../lib/storage";
+import { config } from "../config.js";
+import { type AIMessage, callAI } from "../../lib/ai-client.js";
+import { createChildLogger } from "../../lib/logger.js";
+import { createProcessingReporter } from "../lib/processing-reporter.js";
+import { objectStorage } from "../../lib/storage.js";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+// Use createRequire for CJS-only packages in ESM context
+const require = createRequire(import.meta.url);
 const rtfToHTML = require("@iarna/rtf-to-html");
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const rtf2text = require("rtf2text");
 // Removed pdfjs-dist and canvas dependencies - using pdftocairo instead
 
@@ -192,7 +193,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
     throw new Error(errorMsg);
   }
 
-  const reporter = createProcessingReporter("documents", documentId, userId);
+  const reporter = await createProcessingReporter("documents", documentId, userId);
   const allArtifacts: DocumentArtifacts = {};
 
   let tempDir: string | null = null;

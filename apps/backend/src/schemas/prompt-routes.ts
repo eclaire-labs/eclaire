@@ -3,12 +3,12 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 import {
   ContentDataSchema,
   DeviceInfoSchema,
   PromptRequestSchema,
-} from "./prompt-params";
+} from "./prompt-params.js";
 import {
   AIAPIErrorSchema,
   AIConfigErrorSchema,
@@ -18,7 +18,7 @@ import {
   InvalidRequestErrorSchema,
   RequestValidationErrorSchema,
   TextPromptResponseSchema,
-} from "./prompt-responses";
+} from "./prompt-responses.js";
 
 // POST /api/prompt - Process AI prompt requests
 export const postPromptRouteDescription = {

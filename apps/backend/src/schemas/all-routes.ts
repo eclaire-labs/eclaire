@@ -1,13 +1,13 @@
 // schemas/all-routes.ts
 import { resolver } from "hono-openapi";
-import { SearchQuerySchema } from "./all-params";
+import { SearchQuerySchema } from "./all-params.js";
 import {
   CreatedItemSchema,
   ErrorResponseSchema,
   SearchResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 
 export const getAllRouteDescription = {
   tags: ["All Content"],

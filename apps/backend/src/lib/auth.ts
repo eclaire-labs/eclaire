@@ -1,9 +1,9 @@
 // lib/auth.ts
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db, dbType, schema } from "@/db/index"; // Your drizzle database instance and conditional schema
+import { db, dbType, schema } from "../db/index.js"; // Your drizzle database instance and conditional schema
 import { generateSecurityId, generateUserId } from "@eclaire/core";
-import { createChildLogger } from "./logger";
+import { createChildLogger } from "./logger.js";
 
 const logger = createChildLogger("auth");
 

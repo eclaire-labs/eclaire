@@ -1,10 +1,10 @@
 // lib/services/all.ts
-import { createChildLogger } from "../logger";
-import { countBookmarks, findBookmarks } from "./bookmarks";
-import { countDocuments, findDocuments } from "./documents";
-import { countNotes, findNotes } from "./notes";
-import { countPhotos, findPhotos } from "./photos";
-import { countTasks, findTasks } from "./tasks";
+import { createChildLogger } from "../logger.js";
+import { countBookmarks, findBookmarks } from "./bookmarks.js";
+import { countDocuments, findDocuments } from "./documents.js";
+import { countNotes, findNotes } from "./notes.js";
+import { countPhotos, findPhotos } from "./photos.js";
+import { countTasks, findTasks } from "./tasks.js";
 
 const logger = createChildLogger("services:all");
 

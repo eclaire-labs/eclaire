@@ -4,7 +4,7 @@ import type {
   ChannelPlatform,
   CreateChannelRequest,
   UpdateChannelRequest,
-} from "@/schemas/channels-params";
+} from "../../schemas/channels-params.js";
 
 // Import types from actual schema files
 import type {
@@ -14,7 +14,7 @@ import type {
   DeleteChannelResponse,
   ListChannelsResponse,
   UpdateChannelResponse,
-} from "@/schemas/channels-responses";
+} from "../../schemas/channels-responses.js";
 import {
   BASE_URL,
   createAuthenticatedFetch,

@@ -13,7 +13,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { db, txManager, schema } from "@/db";
+import { db, txManager, schema } from "../../db/index.js";
 import { generateHistoryId, generateTaskId, type TaskStatus } from "@eclaire/core";
 
 const {
@@ -24,15 +24,15 @@ const {
   tasksTags,
   users,
 } = schema;
-import { getNextExecutionTime, isValidCronExpression } from "@/lib/cron-utils";
-import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
-import { ValidationError } from "@/lib/errors";
-import { getQueue, QueueNames } from "@/lib/queues";
-import { getQueueMode } from "@/lib/env-validation";
-import { getCurrentTimestamp } from "@/lib/db-queue-helpers";
-import { getQueueAdapter } from "@/lib/queue-adapter";
-import { createChildLogger } from "../logger";
-import { recordHistory } from "./history";
+import { getNextExecutionTime, isValidCronExpression } from "../cron-utils.js";
+import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { ValidationError } from "../errors.js";
+import { getQueue, QueueNames } from "../queues.js";
+import { getQueueMode } from "../env-validation.js";
+import { getCurrentTimestamp } from "../db-queue-helpers.js";
+import { getQueueAdapter } from "../queue-adapter.js";
+import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:tasks");
 
@@ -620,7 +620,7 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
       userId: userId,
     });
 
-    const queueAdapter = getQueueAdapter();
+    const queueAdapter = await getQueueAdapter();
     await queueAdapter.enqueueTask({
       taskId: taskId,
       title: taskData.title,
@@ -1042,7 +1042,7 @@ export async function updateTask(
             );
           } else {
             // Database queue mode - use queueAdapter with execution jobType
-            const queueAdapter = getQueueAdapter();
+            const queueAdapter = await getQueueAdapter();
             const scheduledFor = delay > 0 ? new Date(Date.now() + delay) : undefined;
             await queueAdapter.enqueueTask({
               taskId: id,
@@ -1950,7 +1950,7 @@ export async function reprocessTask(
     }
 
     // 2. Use the existing retry logic with force parameter to properly handle job deduplication
-    const { retryAssetProcessing } = await import("./processing-status");
+    const { retryAssetProcessing } = await import("./processing-status.js");
     const result = await retryAssetProcessing("tasks", taskId, userId, force);
 
     if (result.success) {

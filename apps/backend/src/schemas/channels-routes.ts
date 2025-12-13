@@ -6,19 +6,19 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 import {
   ChannelIdParamSchema,
   CreateChannelSchema,
   UpdateChannelSchema,
-} from "./channels-params";
+} from "./channels-params.js";
 import {
   ChannelNotFoundSchema,
   CreateChannelResponseSchema,
   DeleteChannelResponseSchema,
   ListChannelsResponseSchema,
   UpdateChannelResponseSchema,
-} from "./channels-responses";
+} from "./channels-responses.js";
 
 // GET /api/channels - List user's channels
 export const getChannelsRouteDescription = {

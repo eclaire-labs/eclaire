@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { db, schema } from "@/db";
+import { db, schema } from "../../db/index.js";
 
 const { bookmarks, documents, notes, photos, tasks } = schema;
 import {
@@ -7,27 +7,27 @@ import {
   callAI,
   callAIStream,
   getAIProviderInfo,
-} from "@/lib/ai-client";
-import { aiPromptLogger } from "@/lib/ai-prompt-logger";
-import { createChildLogger } from "@/lib/logger";
-import { LLMStreamParser } from "@/lib/parser-stream-text";
+} from "../ai-client.js";
+import { aiPromptLogger } from "../ai-prompt-logger.js";
+import { createChildLogger } from "../logger.js";
+import { LLMStreamParser } from "../parser-stream-text.js";
 import {
   extractFinalResponse,
   extractToolCalls,
   parseTextToolContent,
   type TextToolParseResult,
-} from "@/lib/parser-text";
+} from "../parser-text.js";
 import {
   type ConversationWithMessages,
   createConversation,
   generateConversationTitle,
   getConversationWithMessages,
   updateConversationActivity,
-} from "@/lib/services/conversations";
-import { buildAIMessageArray, createMessage } from "@/lib/services/messages";
-import { objectStorage } from "@/lib/storage";
-import { toolRegistry } from "@/lib/tool-registry";
-import { getUserContextForPrompt } from "@/lib/user";
+} from "./conversations.js";
+import { buildAIMessageArray, createMessage } from "./messages.js";
+import { objectStorage } from "../storage.js";
+import { toolRegistry } from "../tool-registry.js";
+import { getUserContextForPrompt } from "../user.js";
 import type {
   AssetReference,
   Context,
@@ -36,8 +36,8 @@ import type {
   TraceAICall,
   TraceContext,
   TraceToolCall,
-} from "@/schemas/prompt-params";
-import type { ToolCallSummary } from "@/schemas/prompt-responses";
+} from "../../schemas/prompt-params.js";
+import type { ToolCallSummary } from "../../schemas/prompt-responses.js";
 
 export class ConversationNotFoundError extends Error {
   constructor(message: string) {

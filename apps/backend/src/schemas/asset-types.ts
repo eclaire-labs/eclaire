@@ -1,5 +1,5 @@
 import z from "zod/v4";
-import { ASSET_COLLECTION_TYPE } from "../types/assets";
+import { ASSET_COLLECTION_TYPE } from "../types/assets.js";
 
 // Shared asset type schema - single source of truth
 export const assetTypeSchema = z.enum([

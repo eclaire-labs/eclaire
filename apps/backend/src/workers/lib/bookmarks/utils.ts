@@ -5,9 +5,9 @@ import { JSDOM } from "jsdom";
 import type { Page } from "patchright";
 import { Readable } from "stream";
 import TurndownService from "turndown";
-import { type AIMessage, callAI } from "../../../lib/ai-client";
-import { createChildLogger } from "../../../lib/logger";
-import { objectStorage } from "../../../lib/storage";
+import { type AIMessage, callAI } from "../../../lib/ai-client.js";
+import { createChildLogger } from "../../../lib/logger.js";
+import { objectStorage } from "../../../lib/storage.js";
 
 const logger = createChildLogger("bookmark-utils");
 

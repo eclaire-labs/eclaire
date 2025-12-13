@@ -5,32 +5,32 @@ import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import isUrl from "is-url";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 // Import search service functions
-import { countAllEntries, findAllEntries } from "@/lib/services/all";
+import { countAllEntries, findAllEntries } from "../lib/services/all.js";
 // Import creation service functions
-import { createBookmarkAndQueueJob } from "@/lib/services/bookmarks";
-import { createDocument } from "@/lib/services/documents";
-import { createNoteEntry } from "@/lib/services/notes";
-import { createPhoto, extractAndGeocode } from "@/lib/services/photos";
-import { createTask } from "@/lib/services/tasks";
+import { createBookmarkAndQueueJob } from "../lib/services/bookmarks.js";
+import { createDocument } from "../lib/services/documents.js";
+import { createNoteEntry } from "../lib/services/notes.js";
+import { createPhoto, extractAndGeocode } from "../lib/services/photos.js";
+import { createTask } from "../lib/services/tasks.js";
 // Import schemas
-import { CreateMetadataSchema, SearchQuerySchema } from "@/schemas/all-params";
+import { CreateMetadataSchema, SearchQuerySchema } from "../schemas/all-params.js";
 import {
   getAllRouteDescription,
   postAllRouteDescription,
-} from "@/schemas/all-routes";
-import { ASSET_TYPE } from "@/types/assets";
+} from "../schemas/all-routes.js";
+import { ASSET_TYPE } from "../types/assets.js";
 // Import MIME type definitions
 import {
   BOOKMARK_MIMES,
   DOCUMENT_MIMES,
   NOTE_MIMES,
   PHOTO_MIMES,
-} from "@/types/mime-types";
-import type { RouteVariables } from "@/types/route-variables";
+} from "../types/mime-types.js";
+import type { RouteVariables } from "../types/route-variables.js";
 
-import { createChildLogger } from "../lib/logger";
+import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("all");
 

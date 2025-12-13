@@ -2,26 +2,26 @@ import type { Job } from "bullmq";
 import { type BrowserContext, chromium } from "patchright";
 import sharp from "sharp";
 import { Readable } from "stream";
-import { createChildLogger } from "../../../lib/logger";
-import type { ProcessingReporter } from "../processing-reporter";
-import { createRedditApiClient } from "../reddit-api-client";
-import { extractRedditData } from "../reddit-extractor";
+import { createChildLogger } from "../../../lib/logger.js";
+import type { ProcessingReporter } from "../processing-reporter.js";
+import { createRedditApiClient } from "../reddit-api-client.js";
+import { extractRedditData } from "../reddit-extractor.js";
 import {
   generateRedditHTMLNoComments,
   generateRedditHTMLWithComments,
-} from "../reddit-renderer";
-import { generateRedditTags } from "../reddit-tags";
-import { objectStorage } from "../../../lib/storage";
+} from "../reddit-renderer.js";
+import { generateRedditTags } from "../reddit-tags.js";
+import { objectStorage } from "../../../lib/storage.js";
 import type {
   BookmarkHandler,
   BookmarkHandlerType,
   BookmarkJobData,
-} from "./index";
+} from "./index.js";
 import {
   extractContentFromHtml,
   generateBookmarkTags,
   generateOptimizedPdf,
-} from "./utils";
+} from "./utils.js";
 
 const logger = createChildLogger("reddit-api-bookmark-handler");
 

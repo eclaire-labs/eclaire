@@ -1,10 +1,10 @@
 import { and, desc, eq } from "drizzle-orm";
-import { db, schema } from "@/db";
-import { formatToISO8601 } from "@/lib/db-helpers";
+import { db, schema } from "../../db/index.js";
+import { formatToISO8601 } from "../db-helpers.js";
 
 const { taskComments, tasks, users } = schema;
-import { createChildLogger } from "../logger";
-import { recordHistory } from "./history";
+import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:taskComments");
 

@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { file as tmpFile } from "tmp-promise";
 import { encoding_for_model, get_encoding } from "tiktoken";
-import { createChildLogger } from "./logger";
+import { createChildLogger } from "./logger.js";
 
 const logger = createChildLogger("ai-client");
 
@@ -731,7 +731,7 @@ export async function callAI(
     // For streaming, we need to collect all chunks and return as a single response
     // Use the parser to handle the raw SSE stream and collect the final content
     const streamResponse = await callAIStream(messages, context, options);
-    const { LLMStreamParser } = await import("./parser-stream-text");
+    const { LLMStreamParser } = await import("./parser-stream-text.js");
 
     const streamParser = new LLMStreamParser();
     const parsedStream = await streamParser.processSSEStream(

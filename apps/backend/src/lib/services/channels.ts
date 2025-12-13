@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { db, schema } from "@/db";
+import { db, schema } from "../../db/index.js";
 
 const { channels } = schema;
 import {
@@ -8,19 +8,19 @@ import {
   type CreateChannelRequest,
   TelegramConfigSchema,
   type UpdateChannelRequest,
-} from "@/schemas/channels-params";
+} from "../../schemas/channels-params.js";
 import type {
   ChannelResponse,
   CreateChannelResponse,
   DeleteChannelResponse,
   ListChannelsResponse,
   UpdateChannelResponse,
-} from "@/schemas/channels-responses";
-import { formatToISO8601, formatRequiredTimestamp } from "../db-helpers";
-import { decrypt, encrypt } from "../encryption";
-import { createChildLogger } from "../logger";
-import { recordHistory } from "./history";
-import { startTelegramBot, stopTelegramBot } from "./telegram";
+} from "../../schemas/channels-responses.js";
+import { formatToISO8601, formatRequiredTimestamp } from "../db-helpers.js";
+import { decrypt, encrypt } from "../encryption.js";
+import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
+import { startTelegramBot, stopTelegramBot } from "./telegram.js";
 
 const logger = createChildLogger("channels");
 

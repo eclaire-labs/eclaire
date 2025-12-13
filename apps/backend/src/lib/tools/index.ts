@@ -1,25 +1,25 @@
 import {
   countBookmarks as countBookmarksImpl,
   findBookmarks as findBookmarksImpl,
-} from "@/lib/services/bookmarks";
+} from "../services/bookmarks.js";
 import {
   countDocuments as countDocumentsImpl,
   findDocuments as findDocumentsImpl,
-} from "@/lib/services/documents";
+} from "../services/documents.js";
 import {
   countNotes as countNotesImpl,
   createNoteEntry,
   findNotes as findNotesImpl,
-} from "@/lib/services/notes";
+} from "../services/notes.js";
 import {
   countPhotos as countPhotosImpl,
   findPhotos as findPhotosImpl,
-} from "@/lib/services/photos";
+} from "../services/photos.js";
 import {
   countTasks as countTasksImpl,
   findTasks as findTasksImpl,
   type TaskStatus,
-} from "@/lib/services/tasks";
+} from "../services/tasks.js";
 
 // --- Search Functions (Return items) ---
 

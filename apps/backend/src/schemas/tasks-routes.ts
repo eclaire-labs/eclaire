@@ -6,14 +6,14 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 import {
   PartialTaskSchema,
   TaskCommentCreateSchema,
   TaskCommentUpdateSchema,
   TaskSchema,
   TaskSearchParamsSchema,
-} from "./tasks-params";
+} from "./tasks-params.js";
 import {
   CommentDeleteSuccessSchema,
   CommentNotFoundSchema,
@@ -25,7 +25,7 @@ import {
   TasksGetResponseSchema,
   TasksListResponseSchema,
   TasksSearchResponseSchema,
-} from "./tasks-responses";
+} from "./tasks-responses.js";
 
 // GET /api/tasks - Get all tasks or search tasks
 export const getTasksRouteDescription = {

@@ -1,30 +1,30 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { isValidConversationId } from "@eclaire/core";
-import { createChildLogger } from "@/lib/logger";
+import { createChildLogger } from "../lib/logger.js";
 import {
   createConversation,
   deleteConversation,
   getConversationWithMessages,
   listConversations,
   updateConversation,
-} from "@/lib/services/conversations";
-import { recordHistory } from "@/lib/services/history";
+} from "../lib/services/conversations.js";
+import { recordHistory } from "../lib/services/history.js";
 import {
   CreateConversationSchema,
   ListConversationsSchema,
   UpdateConversationSchema,
-} from "@/schemas/conversation-params";
+} from "../schemas/conversation-params.js";
 import {
   deleteConversationRouteDescription,
   getConversationRouteDescription,
   getConversationsRouteDescription,
   postConversationRouteDescription,
   putConversationRouteDescription,
-} from "@/schemas/conversation-routes";
-import type { RouteVariables } from "@/types/route-variables";
+} from "../schemas/conversation-routes.js";
+import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("conversations");
 

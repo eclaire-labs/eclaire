@@ -17,7 +17,7 @@ import {
 } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { Readable } from "stream";
-import { db, txManager, schema } from "@/db";
+import { db, txManager, schema } from "../../db/index.js";
 
 const {
   assetProcessingJobs,
@@ -25,15 +25,15 @@ const {
   documents: schemaDocuments,
   tags,
 } = schema;
-import { formatToISO8601, formatRequiredTimestamp, getOrCreateTags } from "@/lib/db-helpers";
-import { getQueue, QueueNames } from "@/lib/queues";
-import { getQueueAdapter } from "@/lib/queue-adapter";
-import { objectStorage, type StorageInfo } from "@/lib/storage";
-import type { ProcessingStatus } from "../../types/assets";
+import { formatToISO8601, formatRequiredTimestamp, getOrCreateTags } from "../db-helpers.js";
+import { getQueue, QueueNames } from "../queues.js";
+import { getQueueAdapter } from "../queue-adapter.js";
+import { objectStorage, type StorageInfo } from "../storage.js";
+import type { ProcessingStatus } from "../../types/assets.js";
 import { generateDocumentId, generateHistoryId } from "@eclaire/core";
-import { createChildLogger } from "../logger";
-import { recordHistory } from "./history";
-import { createOrUpdateProcessingJob } from "./processing-status";
+import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
+import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:documents");
 
@@ -341,7 +341,7 @@ export async function createDocument(
         "processing",
       ]);
       try {
-        const queueAdapter = getQueueAdapter();
+        const queueAdapter = await getQueueAdapter();
         await queueAdapter.enqueueDocument({
           documentId,
           userId,
@@ -986,7 +986,7 @@ export async function reprocessDocument(
     }
 
     // 2. Use the existing retry logic with force parameter to properly handle job deduplication
-    const { retryAssetProcessing } = await import("./processing-status");
+    const { retryAssetProcessing } = await import("./processing-status.js");
     const result = await retryAssetProcessing(
       "documents",
       documentId,

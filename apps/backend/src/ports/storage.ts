@@ -6,7 +6,7 @@
  */
 
 import type { SQL } from "drizzle-orm";
-import type { DbDialect, DbCapabilities, TransactionManager } from "./tx";
+import type { DbDialect, DbCapabilities, TransactionManager } from "./tx.js";
 
 /**
  * Common query options for list operations

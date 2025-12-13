@@ -1,12 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { type Context, session, Telegraf } from "telegraf";
-import { db, schema } from "@/db";
-import { decrypt } from "../encryption";
+import { db, schema } from "../../db/index.js";
+import { decrypt } from "../encryption.js";
 
 const { channels, users } = schema;
-import { createChildLogger } from "../logger";
-import { recordHistory } from "./history";
-import { processPromptRequest } from "./prompt";
+import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
+import { processPromptRequest } from "./prompt.js";
 
 const logger = createChildLogger("telegram");
 

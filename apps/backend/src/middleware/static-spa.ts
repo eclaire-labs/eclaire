@@ -9,6 +9,10 @@ import { type Context, type Next } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import path from "node:path";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Static file extensions to serve directly
 const STATIC_EXTENSIONS = new Set([

@@ -1,6 +1,6 @@
 import { type ThrottlingOptions, throttling } from "@octokit/plugin-throttling";
 import { Octokit } from "@octokit/rest";
-import { createChildLogger } from "../../lib/logger";
+import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("github-api");
 

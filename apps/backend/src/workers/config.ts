@@ -1,5 +1,5 @@
-import { createChildLogger } from "../lib/logger";
-import { QueueNames } from "../lib/queue-names";
+import { createChildLogger } from "../lib/logger.js";
+import { QueueNames } from "../lib/queue-names.js";
 
 const logger = createChildLogger("config");
 

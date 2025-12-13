@@ -1,8 +1,8 @@
 import type { Job } from "bullmq";
-import { config } from "../config";
-import { type AIMessage, callAI } from "../../lib/ai-client";
-import { createChildLogger } from "../../lib/logger";
-import { createProcessingReporter } from "../lib/processing-reporter";
+import { config } from "../config.js";
+import { type AIMessage, callAI } from "../../lib/ai-client.js";
+import { createChildLogger } from "../../lib/logger.js";
+import { createProcessingReporter } from "../lib/processing-reporter.js";
 
 const logger = createChildLogger("task-execution-processor");
 
@@ -466,7 +466,7 @@ async function processUserTask(job: Job<TaskExecutionJobData>) {
 
   const STAGE_NAME = "user_task_processing";
   // Pass jobType to ensure we update the correct job row (execution vs tag_generation)
-  const reporter = createProcessingReporter("tasks", taskId, userId, "execution");
+  const reporter = await createProcessingReporter("tasks", taskId, userId, "execution");
   await reporter.initializeJob([STAGE_NAME]);
 
   try {
@@ -552,7 +552,7 @@ async function processTaskExecution(job: Job<TaskExecutionJobData>) {
 
       const STAGE_NAME = "ai_response";
       // Pass jobType to ensure we update the correct job row (execution vs tag_generation)
-      const reporter = createProcessingReporter("tasks", taskId, userId, "execution");
+      const reporter = await createProcessingReporter("tasks", taskId, userId, "execution");
       await reporter.initializeJob([STAGE_NAME]);
 
       try {

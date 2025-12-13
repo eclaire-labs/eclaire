@@ -1,10 +1,10 @@
 import { desc, eq, sql } from "drizzle-orm";
-import { db, txManager, schema } from "@/db";
+import { db, txManager, schema } from "../../db/index.js";
 import { generateFeedbackId } from "@eclaire/core";
 
 const { feedback } = schema;
-import { createChildLogger } from "../logger";
-import { recordHistory } from "./history";
+import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:feedback");
 

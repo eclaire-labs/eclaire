@@ -9,7 +9,7 @@ import {
 	generateTestTagId,
 	DB_TEST_CONFIGS,
 	type TestDatabase,
-} from "./setup";
+} from "./setup.js";
 
 describe.each(DB_TEST_CONFIGS)(
 	"$label - Transaction Tests",

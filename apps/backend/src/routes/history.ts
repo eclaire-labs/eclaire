@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import {
   countHistory,
   findHistory,
@@ -9,15 +9,15 @@ import {
   type HistoryAction,
   type HistoryActor,
   type HistoryItemType,
-} from "@/lib/services/history";
+} from "../lib/services/history.js";
 
 // Import schemas
-import { HistorySearchParamsSchema } from "@/schemas/history-params";
+import { HistorySearchParamsSchema } from "../schemas/history-params.js";
 
 // Import route descriptions
-import { getHistoryRouteDescription } from "@/schemas/history-routes";
-import type { RouteVariables } from "@/types/route-variables";
-import { createChildLogger } from "../lib/logger";
+import { getHistoryRouteDescription } from "../schemas/history-routes.js";
+import type { RouteVariables } from "../types/route-variables.js";
+import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("history");
 

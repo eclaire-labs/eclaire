@@ -2,18 +2,18 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
-import { createChildLogger } from "@/lib/logger";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { createChildLogger } from "../lib/logger.js";
 // Import services
-import { getNotificationChannels } from "@/lib/services/channels";
-import { recordHistory } from "@/lib/services/history";
-import { sendTelegramMessage } from "@/lib/services/telegram";
+import { getNotificationChannels } from "../lib/services/channels.js";
+import { recordHistory } from "../lib/services/history.js";
+import { sendTelegramMessage } from "../lib/services/telegram.js";
 // Import schemas
-import { SendNotificationSchema } from "@/schemas/channels-params";
-import type { SendNotificationResponse } from "@/schemas/channels-responses";
+import { SendNotificationSchema } from "../schemas/channels-params.js";
+import type { SendNotificationResponse } from "../schemas/channels-responses.js";
 // Import route descriptions
-import { postNotificationsRouteDescription } from "@/schemas/notifications-routes";
-import type { RouteVariables } from "@/types/route-variables";
+import { postNotificationsRouteDescription } from "../schemas/notifications-routes.js";
+import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("routes:notifications");
 

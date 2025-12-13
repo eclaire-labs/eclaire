@@ -2,10 +2,10 @@ import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import type { Redis } from "ioredis";
 import { createRedisConnection } from "@eclaire/queue";
-import type { RouteVariables } from "@/types/route-variables";
-import { getAuthenticatedUserId } from "../lib/auth-utils";
-import { createChildLogger } from "../lib/logger";
-import { getQueueMode } from "../lib/env-validation";
+import type { RouteVariables } from "../types/route-variables.js";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { createChildLogger } from "../lib/logger.js";
+import { getQueueMode } from "../lib/env-validation.js";
 
 const logger = createChildLogger("processing-events");
 

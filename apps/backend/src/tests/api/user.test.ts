@@ -4,8 +4,8 @@ import {
   createAuthenticatedFetch,
   delay,
   TEST_API_KEY,
-} from "../utils/test-helpers";
-import type { User } from "../utils/types";
+} from "../utils/test-helpers.js";
+import type { User } from "../utils/types.js";
 
 describe("User API Integration Tests", () => {
   let originalUser: User;

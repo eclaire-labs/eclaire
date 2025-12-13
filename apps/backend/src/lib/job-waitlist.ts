@@ -1,6 +1,6 @@
 import { createJobWaitlist, type AssetType, type JobWaitlistInterface } from "@eclaire/queue";
-import { createChildLogger } from "./logger";
-import { db, schema } from "../db/index";
+import { createChildLogger } from "./logger.js";
+import { db, schema } from "../db/index.js";
 import { and, or, eq, gt } from "drizzle-orm";
 
 const { assetProcessingJobs } = schema;

@@ -91,7 +91,7 @@ export { createDatabaseAdapter, type DatabaseAdapterConfig } from "./adapters/da
  * });
  * ```
  */
-export function createQueueAdapter(config: QueueConfig): QueueAdapter {
+export async function createQueueAdapter(config: QueueConfig): Promise<QueueAdapter> {
   const { mode, logger } = config;
 
   if (mode === "redis") {
@@ -100,8 +100,8 @@ export function createQueueAdapter(config: QueueConfig): QueueAdapter {
     }
 
     // Import dynamically to avoid loading BullMQ if not needed
-    const { createQueueManager } = require("./bullmq/queues.js");
-    const { createBullMQAdapter } = require("./adapters/bullmq.js");
+    const { createQueueManager } = await import("./bullmq/queues.js");
+    const { createBullMQAdapter } = await import("./adapters/bullmq.js");
 
     const queueManager = createQueueManager({
       redisUrl: config.redis.url,
@@ -116,7 +116,7 @@ export function createQueueAdapter(config: QueueConfig): QueueAdapter {
       throw new Error("Database instance and schema are required for database mode");
     }
 
-    const { createDatabaseAdapter } = require("./adapters/database.js");
+    const { createDatabaseAdapter } = await import("./adapters/database.js");
 
     logger.info({}, "Using database-backed queue adapter");
     return createDatabaseAdapter({
@@ -139,18 +139,18 @@ export function createQueueAdapter(config: QueueConfig): QueueAdapter {
  * @param findNextScheduledJob - Optional function to find the next scheduled job for wakeup scheduling
  * @returns Object containing the adapter and waitlist
  */
-export function createQueueAdapterWithWaitlist(
+export async function createQueueAdapterWithWaitlist(
   config: QueueConfig & { mode: "database" },
   findNextScheduledJob?: (assetType: AssetType) => Promise<Date | null>,
-): { adapter: QueueAdapter; waitlist: JobWaitlistInterface } {
+): Promise<{ adapter: QueueAdapter; waitlist: JobWaitlistInterface }> {
   const { logger, database } = config;
 
   if (!database?.db || !database?.schema) {
     throw new Error("Database instance and schema are required for database mode");
   }
 
-  const { createJobWaitlist } = require("./database/waitlist.js");
-  const { createDatabaseAdapter } = require("./adapters/database.js");
+  const { createJobWaitlist } = await import("./database/waitlist.js");
+  const { createDatabaseAdapter } = await import("./adapters/database.js");
 
   const waitlist = createJobWaitlist({
     logger,

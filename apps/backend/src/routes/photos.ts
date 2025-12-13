@@ -4,8 +4,8 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { db, schema } from "@/db";
-import { getAuthenticatedUserId } from "@/lib/auth-utils";
+import { db, schema } from "../db/index.js";
+import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 
 const { photos } = schema;
 import {
@@ -20,15 +20,15 @@ import {
   getThumbnailStreamDetails,
   reprocessPhoto,
   updatePhotoMetadata,
-} from "@/lib/services/photos";
-import { objectStorage } from "@/lib/storage";
+} from "../lib/services/photos.js";
+import { objectStorage } from "../lib/storage.js";
 // Import schemas
 import {
   PartialPhotoSchema,
   PhotoMetadataSchema,
   PhotoSchema,
   PhotoSearchParamsSchema,
-} from "@/schemas/photos-params";
+} from "../schemas/photos-params.js";
 // Import route descriptions
 import {
   deletePhotoRouteDescription,
@@ -44,10 +44,10 @@ import {
   patchPhotoRouteDescription,
   postPhotosRouteDescription,
   putPhotoRouteDescription,
-} from "@/schemas/photos-routes";
-import { PHOTO_MIMES } from "@/types/mime-types";
-import type { RouteVariables } from "@/types/route-variables";
-import { createChildLogger } from "../lib/logger";
+} from "../schemas/photos-routes.js";
+import { PHOTO_MIMES } from "../types/mime-types.js";
+import type { RouteVariables } from "../types/route-variables.js";
+import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("photos");
 

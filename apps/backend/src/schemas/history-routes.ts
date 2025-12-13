@@ -3,19 +3,19 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 import {
   HistoryActionSchema,
   HistoryActorSchema,
   HistoryItemTypeSchema,
   HistorySearchParamsSchema,
-} from "./history-params";
+} from "./history-params.js";
 import {
   HistoryAccessDeniedSchema,
   HistoryListResponseSchema,
   HistoryNotFoundSchema,
   HistorySearchResponseSchema,
-} from "./history-responses";
+} from "./history-responses.js";
 
 // GET /api/history - Get history records (with optional filtering)
 export const getHistoryRouteDescription = {

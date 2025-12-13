@@ -1,6 +1,6 @@
 // schemas/prompt-responses.ts
 import z from "zod/v4";
-import { TraceSchema } from "./prompt-params";
+import { TraceSchema } from "./prompt-params.js";
 
 // Tool call summary schema for user visibility
 export const ToolCallSummarySchema = z.object({

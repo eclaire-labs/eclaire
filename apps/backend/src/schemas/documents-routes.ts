@@ -4,7 +4,7 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 import {
   DocumentFlagUpdateSchema,
   DocumentMetadataSchema,
@@ -13,7 +13,7 @@ import {
   DocumentSchema,
   DocumentSearchParamsSchema,
   PartialDocumentSchema,
-} from "./documents-params";
+} from "./documents-params.js";
 import {
   CreatedDocumentResponseSchema,
   DocumentNotFoundSchema,
@@ -21,7 +21,7 @@ import {
   DocumentSearchResponseSchema,
   DocumentsListResponseSchema,
   FileNotFoundSchema,
-} from "./documents-responses";
+} from "./documents-responses.js";
 
 // GET /api/documents - Get all documents or search documents
 export const getDocumentsRouteDescription = {

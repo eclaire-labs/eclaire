@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { getCurrentModelConfig } from "@/lib/ai-client";
-import { createChildLogger } from "@/lib/logger";
-import { getCurrentModelRouteDescription } from "@/schemas/model-routes";
-import type { RouteVariables } from "@/types/route-variables";
+import { getCurrentModelConfig } from "../lib/ai-client.js";
+import { createChildLogger } from "../lib/logger.js";
+import { getCurrentModelRouteDescription } from "../schemas/model-routes.js";
+import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("model");
 

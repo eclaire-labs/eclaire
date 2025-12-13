@@ -13,7 +13,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { db, txManager, schema } from "@/db";
+import { db, txManager, schema } from "../../db/index.js";
 import { generateBookmarkId, generateHistoryId } from "@eclaire/core";
 
 const {
@@ -22,12 +22,12 @@ const {
   bookmarksTags,
   tags,
 } = schema;
-import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
-import { getQueue, QueueNames } from "@/lib/queues";
-import { getQueueAdapter } from "@/lib/queue-adapter";
-import { createChildLogger } from "../logger";
-import { recordHistory } from "./history";
-import { createOrUpdateProcessingJob } from "./processing-status";
+import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { getQueue, QueueNames } from "../queues.js";
+import { getQueueAdapter } from "../queue-adapter.js";
+import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
+import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:bookmarks");
 
@@ -245,7 +245,7 @@ export async function createBookmarkAndQueueJob(
     // Only queue the main processing job if enabled
     if (enabled) {
       try {
-        const queueAdapter = getQueueAdapter();
+        const queueAdapter = await getQueueAdapter();
         await queueAdapter.enqueueBookmark({
           bookmarkId,
           url,
@@ -433,7 +433,7 @@ export async function deleteBookmark(
     // (outside transaction - external side-effect)
     if (deleteStorage) {
       try {
-        const { objectStorage } = await import("@/lib/storage");
+        const { objectStorage } = await import("../storage.js");
         await objectStorage.deleteAsset(userId, "bookmarks", id);
         logger.info(
           `Successfully deleted storage for bookmark ${id} (user: ${userId})`,
@@ -1212,7 +1212,7 @@ export async function reprocessBookmark(
     }
 
     // 2. Use the existing retry logic with force parameter to properly handle job deduplication
-    const { retryAssetProcessing } = await import("./processing-status");
+    const { retryAssetProcessing } = await import("./processing-status.js");
     const result = await retryAssetProcessing(
       "bookmarks",
       bookmarkId,

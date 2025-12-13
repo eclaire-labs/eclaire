@@ -1,5 +1,5 @@
 import { formatToISO8601 } from "@eclaire/core";
-import { txManager } from "@/db";
+import { txManager } from "../db/index.js";
 
 // Re-export for backward compatibility
 export { formatToISO8601, formatRequiredTimestamp } from "@eclaire/core";

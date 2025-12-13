@@ -1,6 +1,6 @@
 import axios from "axios";
-import { redisConnection } from "../queues";
-import { createChildLogger } from "../../lib/logger";
+import { redisConnection } from "../queues.js";
+import { createChildLogger } from "../../lib/logger.js";
 
 export type AssetType =
   | "photos"

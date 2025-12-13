@@ -11,23 +11,23 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { type Job, Worker } from "bullmq";
 import fs from "fs";
 import { Hono } from "hono";
-import { config } from "./config";
-import processBookmarkJob from "./jobs/bookmarkProcessor";
-import { processDocumentJob } from "./jobs/documentProcessor";
-import processImageJob from "./jobs/imageProcessor";
-import processNoteJob from "./jobs/noteProcessor";
-import processTaskExecution from "./jobs/taskExecutionProcessor";
-import processTaskJob from "./jobs/taskProcessor";
-import { validateAIConfigOnStartup } from "../lib/ai-client";
-import { startDatabaseQueueWorkers } from "./lib/database-queue-workers";
-import { createChildLogger } from "../lib/logger";
+import { config } from "./config.js";
+import processBookmarkJob from "./jobs/bookmarkProcessor.js";
+import { processDocumentJob } from "./jobs/documentProcessor.js";
+import processImageJob from "./jobs/imageProcessor.js";
+import processNoteJob from "./jobs/noteProcessor.js";
+import processTaskExecution from "./jobs/taskExecutionProcessor.js";
+import processTaskJob from "./jobs/taskProcessor.js";
+import { validateAIConfigOnStartup } from "../lib/ai-client.js";
+import { startDatabaseQueueWorkers } from "./lib/database-queue-workers.js";
+import { createChildLogger } from "../lib/logger.js";
 import {
   closeQueues,
   getAllQueues,
   longTaskWorkerOptions,
   mediumTaskWorkerOptions,
   shortTaskWorkerOptions,
-} from "./queues";
+} from "./queues.js";
 
 const logger = createChildLogger("workers");
 

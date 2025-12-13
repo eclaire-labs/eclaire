@@ -1,7 +1,7 @@
 import { verifyPassword } from "better-auth/crypto";
 import { and, count, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
-import { db, txManager, schema } from "@/db";
-import { createChildLogger } from "../logger";
+import { db, txManager, schema } from "../../db/index.js";
+import { createChildLogger } from "../logger.js";
 
 const {
   accounts,
@@ -19,7 +19,7 @@ const {
   tasksTags,
   users,
 } = schema;
-import { LocalObjectStorage, objectStorage } from "../storage";
+import { LocalObjectStorage, objectStorage } from "../storage.js";
 
 // Individual delete services are no longer needed for bulk deletion
 // We use bulk transactions instead for better performance and SQLite safety

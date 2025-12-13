@@ -4,19 +4,19 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 import {
   BookmarkSchema,
   CreateBookmarkSchema,
   PartialBookmarkSchema,
-} from "./bookmarks-params";
+} from "./bookmarks-params.js";
 import {
   AssetNotFoundSchema,
   BookmarkNotFoundSchema,
   BookmarkResponseSchema,
   BookmarksListResponseSchema,
   CreatedBookmarkResponseSchema,
-} from "./bookmarks-responses";
+} from "./bookmarks-responses.js";
 
 // GET /api/bookmarks - Get all bookmarks
 export const getBookmarksRouteDescription = {

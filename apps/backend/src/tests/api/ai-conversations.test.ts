@@ -5,8 +5,8 @@ import {
   delay,
   TEST_API_KEY,
   TEST_API_KEY_2,
-} from "../utils/test-helpers";
-import type { Conversation } from "../utils/types";
+} from "../utils/test-helpers.js";
+import type { Conversation } from "../utils/types.js";
 
 // Model configuration interfaces
 interface ModelThinkingCapability {

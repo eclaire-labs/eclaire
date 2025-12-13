@@ -13,10 +13,10 @@ import {
   type JobData,
   type AssetType,
 } from "@eclaire/queue";
-import { db, schema } from "@/db";
-import { createChildLogger } from "./logger";
-import { getQueueMode } from "./env-validation";
-import { getQueue, QueueNames } from "./queues";
+import { db, schema } from "../db/index.js";
+import { createChildLogger } from "./logger.js";
+import { getQueueMode } from "./env-validation.js";
+import { getQueue, QueueNames } from "./queues.js";
 
 const logger = createChildLogger("queue-adapter");
 
@@ -35,33 +35,45 @@ export type {
 // --- Factory Function ---
 
 let queueAdapterInstance: QueueAdapter | null = null;
+let queueAdapterInitPromise: Promise<QueueAdapter> | null = null;
 
-export function getQueueAdapter(): QueueAdapter {
-  if (!queueAdapterInstance) {
-    const queueBackend = getQueueMode();
+export async function getQueueAdapter(): Promise<QueueAdapter> {
+  if (queueAdapterInstance) {
+    return queueAdapterInstance;
+  }
 
-    if (queueBackend === "database") {
-      // Use package's database adapter with waitlist
-      const { adapter } = createQueueAdapterWithWaitlist({
-        mode: "database",
-        database: { db, schema },
-        logger,
-      });
-      logger.info({}, "Using database-backed queue adapter");
-      queueAdapterInstance = adapter;
-    } else {
-      // Use package's Redis/BullMQ adapter
-      const redisUrl = process.env.REDIS_URL;
-      if (!redisUrl) {
-        throw new Error("REDIS_URL is required for redis queue mode");
-      }
-      queueAdapterInstance = createPkgQueueAdapter({
-        mode: "redis",
-        redis: { url: redisUrl },
-        logger,
-      });
-      logger.info({}, "Using Redis/BullMQ queue adapter");
+  // Ensure only one initialization happens even with concurrent calls
+  if (!queueAdapterInitPromise) {
+    queueAdapterInitPromise = initializeQueueAdapter();
+  }
+
+  return queueAdapterInitPromise;
+}
+
+async function initializeQueueAdapter(): Promise<QueueAdapter> {
+  const queueBackend = getQueueMode();
+
+  if (queueBackend === "database") {
+    // Use package's database adapter with waitlist
+    const { adapter } = await createQueueAdapterWithWaitlist({
+      mode: "database",
+      database: { db, schema },
+      logger,
+    });
+    logger.info({}, "Using database-backed queue adapter");
+    queueAdapterInstance = adapter;
+  } else {
+    // Use package's Redis/BullMQ adapter
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) {
+      throw new Error("REDIS_URL is required for redis queue mode");
     }
+    queueAdapterInstance = await createPkgQueueAdapter({
+      mode: "redis",
+      redis: { url: redisUrl },
+      logger,
+    });
+    logger.info({}, "Using Redis/BullMQ queue adapter");
   }
 
   return queueAdapterInstance;

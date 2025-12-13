@@ -3,7 +3,7 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 
 // GET /api/processing-status/summary - Get processing status summary
 export const getProcessingStatusSummaryRouteDescription = {

@@ -8,8 +8,8 @@ import {
 	generateTestTagId,
 	DB_TEST_CONFIGS,
 	type TestDatabase,
-} from "./setup";
-import type { Tx } from "@/ports/tx";
+} from "./setup.js";
+import type { Tx } from "../../ports/tx.js";
 
 describe.each(DB_TEST_CONFIGS)(
 	"$label - Adapter Integration Tests",

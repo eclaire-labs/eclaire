@@ -1,4 +1,4 @@
-import { createChildLogger } from "./logger";
+import { createChildLogger } from "./logger.js";
 
 const logger = createChildLogger("env-validation");
 

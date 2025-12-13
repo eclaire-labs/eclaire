@@ -2,6 +2,10 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface ToolSignature {
   name: string;
@@ -107,8 +111,7 @@ async function generateToolSignatures() {
 }
 
 // Run the script if called directly
-if (require.main === module) {
-  generateToolSignatures();
-}
+// In ESM, we can just run the function directly since this file is executed as a script
+generateToolSignatures();
 
 export { generateToolSignatures };

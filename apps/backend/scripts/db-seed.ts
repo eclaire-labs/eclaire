@@ -19,7 +19,7 @@ import {
   createPgliteClient,
   createPostgresClient,
 } from "@eclaire/db";
-import { hmacBase64 } from "../src/lib/api-key-security";
+import { hmacBase64 } from "../src/lib/api-key-security.js";
 
 // Determine which schema to use
 const dbType = getDatabaseType();

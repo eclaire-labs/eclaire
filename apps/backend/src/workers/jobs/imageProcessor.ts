@@ -2,14 +2,14 @@ import { Buffer } from "buffer";
 import type { Job } from "bullmq";
 import heicConvert from "heic-convert";
 import sharp from "sharp";
-import { config } from "../config";
-import { type AIMessage, callAI } from "../../lib/ai-client";
-import { createChildLogger } from "../../lib/logger";
+import { config } from "../config.js";
+import { type AIMessage, callAI } from "../../lib/ai-client.js";
+import { createChildLogger } from "../../lib/logger.js";
 import {
   createProcessingReporter,
   type ProcessingReporter,
-} from "../lib/processing-reporter";
-import { objectStorage } from "../../lib/storage";
+} from "../lib/processing-reporter.js";
+import { objectStorage } from "../../lib/storage.js";
 
 const logger = createChildLogger("image-processor");
 
@@ -422,7 +422,7 @@ async function processImageJob(job: Job<ImageJobData>): Promise<void> {
     //STAGES.FINALIZATION,
   ];
 
-  const reporter = createProcessingReporter("photos", photoId, userId);
+  const reporter = await createProcessingReporter("photos", photoId, userId);
   await reporter.initializeJob(initialStages);
 
   const allArtifacts: Record<string, any> = {};

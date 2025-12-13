@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { BASE_URL, DEMO_API_KEY, delay, logger } from "../utils/test-helpers";
-import type { Bookmark } from "../utils/types";
+import { BASE_URL, DEMO_API_KEY, delay, logger } from "../utils/test-helpers.js";
+import type { Bookmark } from "../utils/types.js";
 
 // Cookie storage to ensure no session interference
 let sessionCookies: string | null = null;

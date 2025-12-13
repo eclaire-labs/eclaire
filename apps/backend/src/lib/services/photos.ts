@@ -14,8 +14,8 @@ import exifr from "exifr"; // <-- Import exifr
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 import { Readable } from "stream";
-import { db, txManager, schema } from "@/db";
-import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
+import { db, txManager, schema } from "../../db/index.js";
+import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 
 const {
   assetProcessingJobs,
@@ -24,13 +24,13 @@ const {
   tags,
   users,
 } = schema;
-import { getQueue, QueueNames } from "@/lib/queues"; // Import queue utilities
-import { getQueueAdapter } from "@/lib/queue-adapter";
-import { objectStorage, type StorageInfo } from "@/lib/storage";
+import { getQueue, QueueNames } from "../queues.js"; // Import queue utilities
+import { getQueueAdapter } from "../queue-adapter.js";
+import { objectStorage, type StorageInfo } from "../storage.js";
 import { generateHistoryId, generatePhotoId } from "@eclaire/core";
-import { createChildLogger } from "../logger";
-import { recordHistory } from "./history"; // Assuming this service exists and is configured
-import { createOrUpdateProcessingJob } from "./processing-status";
+import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js"; // Assuming this service exists and is configured
+import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:photos");
 
@@ -184,7 +184,7 @@ async function queuePhotoBackgroundJobs(
     // Queue unified image processing job for ALL images
     // The worker will handle conversion, thumbnails, and AI analysis as needed
     try {
-      const queueAdapter = getQueueAdapter();
+      const queueAdapter = await getQueueAdapter();
       await queueAdapter.enqueueImage({
         imageId: photoData.id,
         photoId: photoData.id, // Worker expects 'photoId'
@@ -1872,7 +1872,7 @@ export async function reprocessPhoto(
     }
 
     // 2. Use the existing retry logic with force parameter to properly handle job deduplication
-    const { retryAssetProcessing } = await import("./processing-status");
+    const { retryAssetProcessing } = await import("./processing-status.js");
     const result = await retryAssetProcessing("photos", photoId, userId, force);
 
     if (result.success) {

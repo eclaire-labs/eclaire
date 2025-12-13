@@ -8,20 +8,20 @@ import {
   generateGitHubTags,
   isGitHubUrl,
   parseGitHubUrl,
-} from "../github-api";
-import { createChildLogger } from "../../../lib/logger";
-import type { ProcessingReporter } from "../processing-reporter";
-import { objectStorage } from "../../../lib/storage";
+} from "../github-api.js";
+import { createChildLogger } from "../../../lib/logger.js";
+import type { ProcessingReporter } from "../processing-reporter.js";
+import { objectStorage } from "../../../lib/storage.js";
 import type {
   BookmarkHandler,
   BookmarkHandlerType,
   BookmarkJobData,
-} from "./index";
+} from "./index.js";
 import {
   extractContentFromHtml,
   generateBookmarkTags,
   generateOptimizedPdf,
-} from "./utils";
+} from "./utils.js";
 
 const logger = createChildLogger("github-bookmark-handler");
 
@@ -320,4 +320,4 @@ export {
   generateGitHubTags,
   isGitHubUrl,
   parseGitHubUrl,
-} from "../github-api";
+} from "../github-api.js";

@@ -1,5 +1,5 @@
 import { Queue } from "bullmq";
-import IORedis from "ioredis";
+import { Redis } from "ioredis";
 import { afterAll, expect } from "vitest";
 import {
   BASE_URL,
@@ -91,7 +91,7 @@ export interface TaskSearchResponse {
 export let allRecurringTaskIds: string[] = [];
 
 // Redis connection for scheduler inspection
-let redisConnection: IORedis;
+let redisConnection: Redis;
 let taskExecutionQueue: Queue;
 
 // Helper functions for recurrence testing
@@ -693,7 +693,7 @@ export const RecurrenceTestHelpers = {
 
     // Initialize connections if not already done
     if (!redisConnection) {
-      redisConnection = new IORedis(
+      redisConnection = new Redis(
         process.env.REDIS_URL || "redis://127.0.0.1:6379",
         {
           maxRetriesPerRequest: null,

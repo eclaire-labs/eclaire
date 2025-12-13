@@ -1,9 +1,9 @@
-import { publishDirectSSEEvent } from "../routes/processing-events";
-import { createChildLogger } from "./logger";
+import { publishDirectSSEEvent } from "../routes/processing-events.js";
+import { createChildLogger } from "./logger.js";
 import {
   addStagesToProcessingJob,
   updateProcessingStatusWithArtifacts,
-} from "./services/processing-status";
+} from "./services/processing-status.js";
 
 export type AssetType =
   | "photos"

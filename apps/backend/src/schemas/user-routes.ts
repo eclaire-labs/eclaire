@@ -3,8 +3,8 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
-import { DeleteAllUserDataSchema, UpdateProfileSchema } from "./user-params";
+} from "./all-responses.js";
+import { DeleteAllUserDataSchema, UpdateProfileSchema } from "./user-params.js";
 import {
   DeleteAllUserDataResponseSchema,
   ProfileUpdateResponseSchema,
@@ -14,7 +14,7 @@ import {
   UserProfileResponseSchema,
   UserProfileValidationErrorSchema,
   UserUpdateFailedSchema,
-} from "./user-responses";
+} from "./user-responses.js";
 
 // GET /api/user - Get authenticated user's profile
 export const getUserProfileRouteDescription = {

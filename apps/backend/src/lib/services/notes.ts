@@ -14,15 +14,15 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { db, txManager, schema } from "@/db";
+import { db, txManager, schema } from "../../db/index.js";
 import { generateHistoryId, generateNoteId } from "@eclaire/core";
 
 const { assetProcessingJobs, notes, notesTags, tags } = schema;
-import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";
-import { getQueue, QueueNames } from "@/lib/queues";
-import { getQueueAdapter } from "@/lib/queue-adapter";
-import { createChildLogger } from "../logger";
-import { recordHistory } from "./history";
+import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { getQueue, QueueNames } from "../queues.js";
+import { getQueueAdapter } from "../queue-adapter.js";
+import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:notes");
 
@@ -120,7 +120,7 @@ export async function createNoteEntry(data: CreateNoteData, userId: string) {
     // Only queue the AI processing job if enabled
     if (enabled) {
       try {
-        const queueAdapter = getQueueAdapter();
+        const queueAdapter = await getQueueAdapter();
         await queueAdapter.enqueueNote({
           noteId: entryId,
           userId,
@@ -872,7 +872,7 @@ export async function reprocessNote(
     }
 
     // 2. Use the existing retry logic with force parameter to properly handle job deduplication
-    const { retryAssetProcessing } = await import("./processing-status");
+    const { retryAssetProcessing } = await import("./processing-status.js");
     const result = await retryAssetProcessing("notes", noteId, userId, force);
 
     if (result.success) {

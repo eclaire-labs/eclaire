@@ -1,5 +1,5 @@
-import { createChildLogger } from "../../lib/logger";
-import type { RedditMetadata } from "./reddit-extractor";
+import { createChildLogger } from "../../lib/logger.js";
+import type { RedditMetadata } from "./reddit-extractor.js";
 
 const logger = createChildLogger("reddit-tags");
 

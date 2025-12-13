@@ -4,15 +4,15 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses";
+} from "./all-responses.js";
 import {
   AIAPIErrorSchema,
   AIConfigErrorSchema,
   ContentSizeErrorSchema,
   InvalidRequestErrorSchema,
   RequestValidationErrorSchema,
-} from "./prompt-responses";
-import { StreamPromptRequestSchema } from "./prompt-stream-params";
+} from "./prompt-responses.js";
+import { StreamPromptRequestSchema } from "./prompt-stream-params.js";
 
 // POST /api/prompt/stream - Process AI prompt requests with streaming
 export const postPromptStreamRouteDescription = {

@@ -1,5 +1,5 @@
 import { resolver } from "hono-openapi";
-import { ErrorResponseSchema, UnauthorizedSchema } from "./all-responses";
+import { ErrorResponseSchema, UnauthorizedSchema } from "./all-responses.js";
 
 // GET /api/processing-events/stream - Stream processing events
 export const getProcessingEventsStreamRouteDescription = {

@@ -5,8 +5,8 @@ import {
   delay,
   hasSameElements,
   TEST_API_KEY,
-} from "../utils/test-helpers";
-import type { Bookmark } from "../utils/types";
+} from "../utils/test-helpers.js";
+import type { Bookmark } from "../utils/types.js";
 
 describe("Bookmark API Integration Tests", () => {
   let createdBookmarkId: string | null = null;

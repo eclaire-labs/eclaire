@@ -1,7 +1,7 @@
 import type { Job } from "bullmq";
-import { type AIMessage, callAI } from "../../lib/ai-client";
-import { createChildLogger } from "../../lib/logger";
-import { createProcessingReporter } from "../lib/processing-reporter";
+import { type AIMessage, callAI } from "../../lib/ai-client.js";
+import { createChildLogger } from "../../lib/logger.js";
+import { createProcessingReporter } from "../lib/processing-reporter.js";
 
 const logger = createChildLogger("note-processor");
 
@@ -118,7 +118,7 @@ async function processNoteJob(job: Job) {
 
   // A note has a very simple, single stage.
   const STAGE_NAME = "ai_tagging";
-  const reporter = createProcessingReporter("notes", noteId, userId);
+  const reporter = await createProcessingReporter("notes", noteId, userId);
   await reporter.initializeJob([STAGE_NAME]);
 
   try {

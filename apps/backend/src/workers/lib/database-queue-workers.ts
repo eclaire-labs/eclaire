@@ -11,14 +11,14 @@ import {
   type DatabaseJob,
   type AssetType,
 } from "@eclaire/queue";
-import { config } from "../config";
-import processBookmarkJob from "../jobs/bookmarkProcessor";
-import { processDocumentJob } from "../jobs/documentProcessor";
-import processImageJob from "../jobs/imageProcessor";
-import processNoteJob from "../jobs/noteProcessor";
-import processTaskJob from "../jobs/taskProcessor";
-import processTaskExecution from "../jobs/taskExecutionProcessor";
-import { createChildLogger } from "../../lib/logger";
+import { config } from "../config.js";
+import processBookmarkJob from "../jobs/bookmarkProcessor.js";
+import { processDocumentJob } from "../jobs/documentProcessor.js";
+import processImageJob from "../jobs/imageProcessor.js";
+import processNoteJob from "../jobs/noteProcessor.js";
+import processTaskJob from "../jobs/taskProcessor.js";
+import processTaskExecution from "../jobs/taskExecutionProcessor.js";
+import { createChildLogger } from "../../lib/logger.js";
 
 // Generate worker ID once for this process
 const workerId = generateWorkerId();

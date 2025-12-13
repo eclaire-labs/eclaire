@@ -11,8 +11,8 @@ process.on("uncaughtException", (error) => {
 });
 
 // CRITICAL: Load environment variables FIRST, before any other imports
-import "./lib/env-loader";
-import { validateRequiredEnvVars, getServiceRole, getQueueMode } from "./lib/env-validation";
+import "./lib/env-loader.js";
+import { validateRequiredEnvVars, getServiceRole, getQueueMode } from "./lib/env-validation.js";
 
 // Validate required environment variables before starting
 validateRequiredEnvVars();
@@ -25,38 +25,38 @@ import { serve } from "@hono/node-server";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { showRoutes } from "hono/dev";
-import { validateAIConfigOnStartup } from "./lib/ai-client";
-import { auth } from "./lib/auth";
-import { validateEncryptionService } from "./lib/encryption";
-import { logger, smartLogger } from "./lib/logger";
-import { closeQueues } from "./lib/queues";
+import { validateAIConfigOnStartup } from "./lib/ai-client.js";
+import { auth } from "./lib/auth.js";
+import { validateEncryptionService } from "./lib/encryption.js";
+import { logger, smartLogger } from "./lib/logger.js";
+import { closeQueues } from "./lib/queues.js";
 import {
   recordLoginHistory,
   recordLogoutHistory,
-} from "./lib/services/history";
+} from "./lib/services/history.js";
 import {
   startAllTelegramBots,
   stopAllTelegramBots,
-} from "./lib/services/telegram";
-import { startTaskScheduler, stopTaskScheduler } from "./lib/task-scheduler";
+} from "./lib/services/telegram.js";
+import { startTaskScheduler, stopTaskScheduler } from "./lib/task-scheduler.js";
 
-import { allRoutes } from "./routes/all";
-import { bookmarksRoutes } from "./routes/bookmarks";
-import { channelsRoutes } from "./routes/channels";
-import { conversationsRoutes } from "./routes/conversations";
-import { documentsRoutes } from "./routes/documents";
-import { feedbackRoutes } from "./routes/feedback";
-import { historyRoutes } from "./routes/history";
-import { jobsRoutes } from "./routes/jobs";
-import { modelRoutes } from "./routes/model";
-import { notesRoutes } from "./routes/notes";
-import { notificationsRoutes } from "./routes/notifications";
-import { photosRoutes } from "./routes/photos";
-import { processingEventsRoutes } from "./routes/processing-events";
-import { processingStatusRoutes } from "./routes/processing-status";
-import { promptRoutes } from "./routes/prompt";
-import { tasksRoutes } from "./routes/tasks";
-import { userRoutes } from "./routes/user";
+import { allRoutes } from "./routes/all.js";
+import { bookmarksRoutes } from "./routes/bookmarks.js";
+import { channelsRoutes } from "./routes/channels.js";
+import { conversationsRoutes } from "./routes/conversations.js";
+import { documentsRoutes } from "./routes/documents.js";
+import { feedbackRoutes } from "./routes/feedback.js";
+import { historyRoutes } from "./routes/history.js";
+import { jobsRoutes } from "./routes/jobs.js";
+import { modelRoutes } from "./routes/model.js";
+import { notesRoutes } from "./routes/notes.js";
+import { notificationsRoutes } from "./routes/notifications.js";
+import { photosRoutes } from "./routes/photos.js";
+import { processingEventsRoutes } from "./routes/processing-events.js";
+import { processingStatusRoutes } from "./routes/processing-status.js";
+import { promptRoutes } from "./routes/prompt.js";
+import { tasksRoutes } from "./routes/tasks.js";
+import { userRoutes } from "./routes/user.js";
 
 // Define the context type for Better Auth session and user
 type Variables = {
@@ -357,7 +357,7 @@ app.route("/api/jobs", jobsRoutes);
 
 // SPA middleware - serves frontend static files and falls back to index.html
 // Must be registered AFTER all API routes
-import { createSpaMiddleware } from "./middleware/static-spa";
+import { createSpaMiddleware } from "./middleware/static-spa.js";
 app.use("*", createSpaMiddleware());
 
 // Start the server
@@ -422,21 +422,21 @@ const start = async () => {
       // In unified mode with database queue, start the task scheduler
       if (SERVICE_ROLE === "unified" && QUEUE_MODE === "database") {
         logger.info("Starting task scheduler for recurring tasks (unified + database mode)");
-        startTaskScheduler();
+        await startTaskScheduler();
       }
     }
 
     // In unified mode, also start the database workers
     if (SERVICE_ROLE === "unified") {
       logger.info("Starting database queue workers (unified mode)");
-      const { startDatabaseWorkers } = await import("./workers");
+      const { startDatabaseWorkers } = await import("./workers/index.js");
       await startDatabaseWorkers();
     }
 
   // If SERVICE_ROLE=worker, start BullMQ workers only (no HTTP server)
   if (SERVICE_ROLE === "worker") {
     logger.info("Starting BullMQ workers (worker mode)");
-    const { startBullMQWorkers } = await import("./workers");
+    const { startBullMQWorkers } = await import("./workers/index.js");
     await startBullMQWorkers();
   }
 
@@ -488,7 +488,7 @@ const shutdown = async (signal: string) => {
   // Stop workers if running (worker or unified mode)
   if (SERVICE_ROLE === "worker" || SERVICE_ROLE === "unified") {
     try {
-      const { shutdownWorkers } = await import("./workers");
+      const { shutdownWorkers } = await import("./workers/index.js");
       await shutdownWorkers();
       logger.info("Workers stopped");
     } catch (error) {
@@ -498,7 +498,7 @@ const shutdown = async (signal: string) => {
 
   try {
     // Close processing events
-    const { closeProcessingEvents } = await import("./routes/processing-events");
+    const { closeProcessingEvents } = await import("./routes/processing-events.js");
     await closeProcessingEvents();
     logger.info("Processing events closed");
   } catch (error) {

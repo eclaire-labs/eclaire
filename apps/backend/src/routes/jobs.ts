@@ -2,7 +2,7 @@
 // Workers poll these endpoints to fetch and process jobs
 
 import { Hono } from "hono";
-import { db, dbCapabilities, schema } from "@/db";
+import { db, dbCapabilities, schema } from "../db/index.js";
 
 const { assetProcessingJobs } = schema;
 import {
@@ -17,15 +17,15 @@ import {
 	asc,
 	desc,
 } from "drizzle-orm";
-import { createChildLogger } from "@/lib/logger";
-import { jobWaitlist, type AssetType } from "@/lib/job-waitlist";
+import { createChildLogger } from "../lib/logger.js";
+import { jobWaitlist, type AssetType } from "../lib/job-waitlist.js";
 import {
 	getCurrentTimestamp,
 	getExpirationTime,
 	getScheduledTime,
 	formatJobResult,
 	type ClaimedJob,
-} from "@/lib/db-queue-helpers";
+} from "../lib/db-queue-helpers.js";
 
 const logger = createChildLogger("jobs-api");
 

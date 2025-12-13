@@ -24,20 +24,20 @@ import "../src/lib/env-loader";
 // are not required for spec generation).
 // ---------------------------------------------------------------------------
 import { Hono } from "hono";
-import { getOpenAPIDocument } from "../src/lib/openapi-config";
-import { allRoutes } from "../src/routes/all";
-import { bookmarksRoutes } from "../src/routes/bookmarks";
-import { conversationsRoutes } from "../src/routes/conversations";
-import { documentsRoutes } from "../src/routes/documents";
-import { historyRoutes } from "../src/routes/history";
-import { modelRoutes } from "../src/routes/model";
-import { notesRoutes } from "../src/routes/notes";
-import { photosRoutes } from "../src/routes/photos";
-import { processingEventsRoutes } from "../src/routes/processing-events";
-import { processingStatusRoutes } from "../src/routes/processing-status";
-import { promptRoutes } from "../src/routes/prompt";
-import { tasksRoutes } from "../src/routes/tasks";
-import { userRoutes } from "../src/routes/user";
+import { getOpenAPIDocument } from "../src/lib/openapi-config.js";
+import { allRoutes } from "../src/routes/all.js";
+import { bookmarksRoutes } from "../src/routes/bookmarks.js";
+import { conversationsRoutes } from "../src/routes/conversations.js";
+import { documentsRoutes } from "../src/routes/documents.js";
+import { historyRoutes } from "../src/routes/history.js";
+import { modelRoutes } from "../src/routes/model.js";
+import { notesRoutes } from "../src/routes/notes.js";
+import { photosRoutes } from "../src/routes/photos.js";
+import { processingEventsRoutes } from "../src/routes/processing-events.js";
+import { processingStatusRoutes } from "../src/routes/processing-status.js";
+import { promptRoutes } from "../src/routes/prompt.js";
+import { tasksRoutes } from "../src/routes/tasks.js";
+import { userRoutes } from "../src/routes/user.js";
 
 async function main() {
   const app = new Hono();
@@ -94,7 +94,7 @@ async function main() {
   // Gracefully close any Redis/BullMQ connections that may have been opened
   // Import closeQueues only when needed to avoid initializing Redis during build
   try {
-    const { closeQueues } = await import("../src/lib/queues");
+    const { closeQueues } = await import("../src/lib/queues.js");
     await closeQueues();
   } catch (err) {
     console.warn("⚠️  Failed to close queues cleanly:", err);
@@ -108,7 +108,7 @@ main().catch(async (err) => {
   console.error("❌ Failed to generate OpenAPI spec:", err);
   // Attempt to close queues before exiting with error
   try {
-    const { closeQueues } = await import("../src/lib/queues");
+    const { closeQueues } = await import("../src/lib/queues.js");
     await closeQueues();
   } catch {
     // Ignore cleanup errors during error handling

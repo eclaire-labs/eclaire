@@ -1,5 +1,5 @@
 import https from "https";
-import { createChildLogger } from "../../lib/logger";
+import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("reddit-api-client");
 

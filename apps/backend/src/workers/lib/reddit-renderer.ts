@@ -1,10 +1,10 @@
-import { createChildLogger } from "../../lib/logger";
-import type { RedditMediaInfo, RedditSubredditInfo } from "./reddit-api-client";
+import { createChildLogger } from "../../lib/logger.js";
+import type { RedditMediaInfo, RedditSubredditInfo } from "./reddit-api-client.js";
 import type {
   RedditCommentData,
   RedditExtractedData,
   RedditPostData,
-} from "./reddit-extractor";
+} from "./reddit-extractor.js";
 
 const logger = createChildLogger("reddit-renderer");
 
