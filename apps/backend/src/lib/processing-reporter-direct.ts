@@ -4,34 +4,19 @@ import {
   addStagesToProcessingJob,
   updateProcessingStatusWithArtifacts,
 } from "./services/processing-status.js";
+import type {
+  AssetType,
+  ProcessingStatus,
+  ProcessingEvent,
+  IProcessingReporter,
+} from "../workers/lib/processing-reporter-interface.js";
 
-export type AssetType =
-  | "photos"
-  | "documents"
-  | "bookmarks"
-  | "notes"
-  | "tasks";
-export type ProcessingStatus =
-  | "pending"
-  | "processing"
-  | "completed"
-  | "failed"
-  | "retry_pending";
-
-export interface ProcessingEvent {
-  type: "status_update" | "error" | "progress" | "stage_complete";
-  assetType: AssetType;
-  assetId: string;
-  status?: ProcessingStatus;
-  stage?: string;
-  progress?: number;
-  error?: string;
-  timestamp: number;
-}
+// Re-export types for backwards compatibility
+export type { AssetType, ProcessingStatus, ProcessingEvent } from "../workers/lib/processing-reporter-interface.js";
 
 const logger = createChildLogger("processing-reporter-backend");
 
-export class ProcessingReporter {
+export class ProcessingReporter implements IProcessingReporter {
   private assetType: AssetType;
   private assetId: string;
   private userId: string;

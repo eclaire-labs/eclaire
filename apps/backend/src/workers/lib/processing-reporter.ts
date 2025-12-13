@@ -13,19 +13,18 @@
  */
 
 import { getServiceRole } from "../../lib/env-validation.js";
+import type { IProcessingReporter } from "./processing-reporter-interface.js";
 
-// Re-export types from HTTP version (both implementations have identical types)
+// Re-export types from the shared interface
 export type {
   AssetType,
   ProcessingStatus,
   ProcessingEvent,
-} from "./processing-reporter-http.js";
+  IProcessingReporter,
+} from "./processing-reporter-interface.js";
 
-// Re-export the ProcessingReporter type interface
-export type { ProcessingReporter } from "./processing-reporter-http.js";
-
-// Import the type for use in return type annotation
-import type { ProcessingReporter } from "./processing-reporter-http.js";
+// Re-export IProcessingReporter as ProcessingReporter for backwards compatibility
+export type { IProcessingReporter as ProcessingReporter } from "./processing-reporter-interface.js";
 
 /**
  * Factory function that creates the appropriate ProcessingReporter based on deployment mode
@@ -37,7 +36,7 @@ export async function createProcessingReporter(
   assetId: string,
   userId: string,
   jobType?: string,
-): Promise<ProcessingReporter> {
+): Promise<IProcessingReporter> {
   const serviceRole = getServiceRole();
 
   if (serviceRole === "unified") {
@@ -46,9 +45,7 @@ export async function createProcessingReporter(
     const { createProcessingReporter: createDirect } = await import(
       "../../lib/processing-reporter-direct.js"
     );
-    // Cast through unknown since both implementations have the same public API
-    // but different internal structures (apiBaseUrl vs direct DB access)
-    return createDirect(assetType, assetId, userId, jobType) as unknown as ProcessingReporter;
+    return createDirect(assetType, assetId, userId, jobType);
   } else {
     // Worker mode: Separate container from backend
     // Use HTTP API + Redis pub/sub for communication
