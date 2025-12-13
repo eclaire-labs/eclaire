@@ -30,7 +30,7 @@ import { getQueue, QueueNames } from "@/lib/queues";
 import { getQueueAdapter } from "@/lib/queue-adapter";
 import { objectStorage, type StorageInfo } from "@/lib/storage";
 import type { ProcessingStatus } from "../../types/assets";
-import { generateDocumentId, generateHistoryId } from "../id-generator";
+import { generateDocumentId, generateHistoryId } from "@eclaire/core";
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history";
 import { createOrUpdateProcessingJob } from "./processing-status";
@@ -119,13 +119,13 @@ async function addTagsToDocument(
   documentId: string,
   tagNames: string[],
   userId: string,
-  tx: any = db,
 ) {
   if (!tagNames || tagNames.length === 0) return;
   try {
-    const tagRecords = await getOrCreateTags(tagNames, userId, tx);
+    // Get or create tags (this uses its own transaction)
+    const tagRecords = await getOrCreateTags(tagNames, userId);
     if (tagRecords.length > 0) {
-      await tx
+      await db
         .insert(documentsTags)
         .values(
           tagRecords.map((tag) => ({ documentId: documentId, tagId: tag.id })),

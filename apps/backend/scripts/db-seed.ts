@@ -3,19 +3,22 @@ import "../src/lib/env-loader";
 
 import { hashPassword } from "better-auth/crypto";
 import { randomBytes } from "crypto";
-import { mkdirSync } from "fs";
-import { dirname } from "path";
 import type { InferInsertModel } from "drizzle-orm";
 import { drizzle as drizzlePostgres, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
 import { drizzle as drizzleSqlite, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { PGlite } from "@electric-sql/pglite";
-import Database from "better-sqlite3";
-import postgres from "postgres";
 import { v4 as uuid } from "uuid";
-import { getDatabaseUrl, getDatabaseType, getPGlitePath, getSqlitePath } from "../src/db/config";
-import * as pgSchema from "../src/db/schema/postgres";
-import * as sqliteSchema from "../src/db/schema/sqlite";
+import {
+  getDatabaseUrl,
+  getDatabaseType,
+  getPGlitePath,
+  getSqlitePath,
+  pgSchema,
+  sqliteSchema,
+  createSqliteClient,
+  createPgliteClient,
+  createPostgresClient,
+} from "@eclaire/db";
 import { hmacBase64 } from "../src/lib/api-key-security";
 
 // Determine which schema to use
@@ -140,56 +143,31 @@ async function main() {
   let cleanup: () => Promise<void>;
 
   if (dbType === "sqlite") {
-    // SQLite setup
+    // SQLite setup using client helper
     const sqlitePath = getSqlitePath();
     console.log(`Connecting to SQLite database: ${sqlitePath}`);
 
-    // Ensure directory exists
-    try {
-      mkdirSync(dirname(sqlitePath), { recursive: true });
-    } catch (error) {
-      // Directory might already exist, ignore
-    }
-
-    const client = new Database(sqlitePath);
-
-    // Configure SQLite for better concurrency
-    client.pragma("journal_mode = WAL");
-    client.pragma("synchronous = NORMAL");
-    client.pragma("busy_timeout = 5000");
-    client.pragma("foreign_keys = ON");
-
+    const client = createSqliteClient(sqlitePath);
     db = drizzleSqlite(client, { schema: sqliteSchema }) as Database;
     cleanup = async () => {
       client.close();
     };
   } else if (dbType === "pglite") {
-    // PGlite setup
+    // PGlite setup using client helper
     const pglitePath = getPGlitePath();
     console.log(`Connecting to PGlite database: ${pglitePath}`);
 
-    // Ensure directory exists
-    try {
-      mkdirSync(dirname(pglitePath), { recursive: true });
-    } catch (error) {
-      // Directory might already exist, ignore
-    }
-
-    const client = new PGlite(pglitePath);
+    const client = createPgliteClient(pglitePath);
     db = drizzlePglite(client, { schema: pgSchema }) as Database;
     cleanup = async () => {
       await client.close();
     };
   } else {
-    // PostgreSQL setup
+    // PostgreSQL setup using client helper
     const dbUrl = process.env.DATABASE_URL || getDatabaseUrl();
-    console.log(`Connecting to PostgreSQL database: ${dbUrl}`);
+    console.log(`Connecting to PostgreSQL database: ${dbUrl.includes("localhost") ? "local" : "remote"}`);
 
-    const client = postgres(dbUrl, {
-      max: 10, // Maximum number of connections
-      idle_timeout: 20, // Seconds before idle connection is closed
-      connect_timeout: 10, // Seconds before connection timeout
-    });
+    const client = createPostgresClient(dbUrl);
     db = drizzlePostgres(client, { schema: pgSchema }) as Database;
     cleanup = async () => {
       await client.end();

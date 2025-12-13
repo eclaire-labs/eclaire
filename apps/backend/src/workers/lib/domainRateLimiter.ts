@@ -1,5 +1,6 @@
 import { config } from "../config";
-import { bookmarkProcessingQueue } from "../queues";
+import { getQueue } from "../queues";
+import { QueueNames } from "@eclaire/queue";
 import { createChildLogger } from "../../lib/logger";
 import { createProcessingReporter } from "./processing-reporter";
 
@@ -471,7 +472,8 @@ async function handleStaleJob(
 ): Promise<void> {
   try {
     // First, try to find and fail the job in BullMQ (only in Redis mode)
-    if (!bookmarkProcessingQueue) {
+    const bookmarkQueue = getQueue(QueueNames.BOOKMARK_PROCESSING);
+    if (!bookmarkQueue) {
       logger.warn(
         { jobId, domain },
         "Stale job cleanup skipped: not in Redis mode",
@@ -479,7 +481,7 @@ async function handleStaleJob(
       return;
     }
 
-    const job = await bookmarkProcessingQueue.getJob(jobId);
+    const job = await bookmarkQueue.getJob(jobId);
 
     if (job && (await job.isActive())) {
       const errorMessage = `Job timed out after ${Math.round(staleTimeMs / 1000)}s and was cleaned up by the rate limiter (domain: ${domain})`;

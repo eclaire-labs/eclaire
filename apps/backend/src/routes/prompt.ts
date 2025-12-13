@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "@/lib/auth-utils";
-import { isValidConversationId } from "@/lib/id-generator";
+import { isValidConversationId } from "@eclaire/core";
 import { recordHistory } from "@/lib/services/history";
 import {
   ConversationNotFoundError,

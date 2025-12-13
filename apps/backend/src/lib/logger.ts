@@ -1,51 +1,31 @@
 import type { Context, Next } from "hono";
-import pino from "pino";
+import { createLoggerFactory } from "@eclaire/logger";
 
-const isProd = process.env.NODE_ENV === "production";
+// Re-export Logger type for convenience
+export type { Logger } from "@eclaire/logger";
 
 // Determine service name based on SERVICE_ROLE env var or default to "eclaire-backend"
 // This allows the same logger to be used by both backend and workers
-const serviceName = process.env.SERVICE_ROLE === "worker"
-  ? "eclaire-workers"
-  : "eclaire-backend";
+const serviceName =
+  process.env.SERVICE_ROLE === "worker" ? "eclaire-workers" : "eclaire-backend";
 
-const base = {
+// Support both backend (requestId/method/path) and worker (worker/module) formats
+const messageFormat =
+  serviceName === "eclaire-workers"
+    ? "[{worker}{module}] {msg}"
+    : "[{requestId}] {method} {path} - {msg}";
+
+// Create logger using @eclaire/logger package factory
+// Factory auto-detects contextKey from messageFormat ({worker} → "worker", else → "module")
+const { logger, createChildLogger } = createLoggerFactory({
   service: serviceName,
-  version:
-    process.env.APP_VERSION || process.env.npm_package_version || "0.1.0",
+  level: process.env.LOG_LEVEL || "debug",
+  version: process.env.APP_VERSION || process.env.npm_package_version || "0.1.0",
   environment: process.env.NODE_ENV || "development",
-};
+  messageFormat,
+});
 
-// Simplified logger configuration - stdout only
-export const logger = pino(
-  {
-    level: process.env.LOG_LEVEL || "debug",
-    formatters: {
-      level: (label) => ({ level: label }),
-      log: (object) => ({
-        ...object,
-        ...base,
-      }),
-    },
-  },
-  isProd
-    ? // Production: JSON output to stdout for Docker
-      process.stdout
-    : // Development: Pretty console output for log-wrapper.sh
-      pino.transport({
-        target: "pino-pretty",
-        options: {
-          destination: 1, // stdout
-          colorize: true,
-          translateTime: "SYS:standard",
-          // Support both backend (requestId/method/path) and worker (worker/module) formats
-          messageFormat: serviceName === "eclaire-workers"
-            ? "[{worker}{module}] {msg}"
-            : "[{requestId}] {method} {path} - {msg}",
-          ignore: "pid,hostname,service,version,environment",
-        },
-      }),
-);
+export { logger, createChildLogger };
 
 /**
  * Checks if the content type represents large/binary content that shouldn't be logged
@@ -158,13 +138,6 @@ export const smartLogger = () => {
       throw error;
     }
   };
-};
-
-// Export a child logger creator for use in other modules
-// Uses 'worker' key for workers, 'module' key for backend
-export const createChildLogger = (name: string) => {
-  const key = serviceName === "eclaire-workers" ? "worker" : "module";
-  return logger.child({ [key]: name });
 };
 
 // Export the base logger as default

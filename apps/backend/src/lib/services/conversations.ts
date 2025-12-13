@@ -1,6 +1,6 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { generateConversationId } from "@/lib/id-generator";
+import { generateConversationId } from "@eclaire/core";
 
 const { conversations, messages } = schema;
 import { createChildLogger } from "@/lib/logger";

@@ -6,8 +6,7 @@ import { migrate as migrateSqlite } from "drizzle-orm/better-sqlite3/migrator";
 import { PGlite } from "@electric-sql/pglite";
 import Database from "better-sqlite3";
 import { sql } from "drizzle-orm";
-import * as pgSchema from "@/db/schema/postgres";
-import * as sqliteSchema from "@/db/schema/sqlite";
+import { pgSchema, sqliteSchema } from "@eclaire/db";
 import path from "node:path";
 import { DB_TEST_CONFIGS, type TestDbType } from "./setup";
 

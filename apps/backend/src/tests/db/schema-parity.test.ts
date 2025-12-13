@@ -10,8 +10,7 @@ import {
 	DB_TEST_CONFIGS,
 	type TestDatabase,
 } from "./setup";
-import * as pgSchema from "@/db/schema/postgres";
-import * as sqliteSchema from "@/db/schema/sqlite";
+import { pgSchema, sqliteSchema } from "@eclaire/db";
 
 describe.each(DB_TEST_CONFIGS)(
 	"$label - Schema Parity Tests",

@@ -1,0 +1,37 @@
+{
+  "name": "@eclaire/queue",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Job queue abstraction for Eclaire applications - BullMQ and database-backed modes",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@eclaire/core": "workspace:*",
+    "@eclaire/db": "workspace:*",
+    "@eclaire/logger": "workspace:*",
+    "bullmq": "^5.65.1",
+    "ioredis": "^5.8.2",
+    "axios": "^1.13.2",
+    "drizzle-orm": "^0.45.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}

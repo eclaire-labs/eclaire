@@ -3,11 +3,13 @@ import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
 import { PGlite } from "@electric-sql/pglite";
 import Database from "better-sqlite3";
 import { sql } from "drizzle-orm";
-import * as pgSchema from "@/db/schema/postgres";
-import * as sqliteSchema from "@/db/schema/sqlite";
-import type { TransactionManager } from "@/ports/tx";
-import { createPgTransactionManager } from "@/db/adapters/postgres/tx";
-import { createSqliteTransactionManager } from "@/db/adapters/sqlite/tx";
+import {
+	pgSchema,
+	sqliteSchema,
+	createPgTransactionManager,
+	createSqliteTransactionManager,
+	type TransactionManager,
+} from "@eclaire/db";
 import { migrate as migratePg } from "drizzle-orm/pglite/migrator";
 import { migrate as migrateSqlite } from "drizzle-orm/better-sqlite3/migrator";
 import path from "node:path";

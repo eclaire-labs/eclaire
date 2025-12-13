@@ -27,7 +27,7 @@ const {
 import { getQueue, QueueNames } from "@/lib/queues"; // Import queue utilities
 import { getQueueAdapter } from "@/lib/queue-adapter";
 import { objectStorage, type StorageInfo } from "@/lib/storage";
-import { generateHistoryId, generatePhotoId } from "../id-generator";
+import { generateHistoryId, generatePhotoId } from "@eclaire/core";
 import { createChildLogger } from "../logger";
 import { recordHistory } from "./history"; // Assuming this service exists and is configured
 import { createOrUpdateProcessingJob } from "./processing-status";

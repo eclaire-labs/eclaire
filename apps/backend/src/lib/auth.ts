@@ -2,7 +2,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db, dbType, schema } from "@/db/index"; // Your drizzle database instance and conditional schema
-import { generateSecurityId, generateUserId } from "./id-generator";
+import { generateSecurityId, generateUserId } from "@eclaire/core";
 import { createChildLogger } from "./logger";
 
 const logger = createChildLogger("auth");

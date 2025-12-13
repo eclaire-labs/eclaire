@@ -6,7 +6,7 @@
 import { db, schema } from "@/db";
 import { eq, and, lte, isNotNull } from "drizzle-orm";
 import { createChildLogger } from "./logger";
-import { DatabaseQueueAdapter } from "./queue-adapter";
+import { getQueueAdapter, closeQueueAdapter, type QueueAdapter } from "./queue-adapter";
 import { jobWaitlist } from "./job-waitlist";
 import { getCurrentTimestamp } from "./db-queue-helpers";
 import { CronExpressionParser } from "cron-parser";
@@ -29,7 +29,7 @@ interface RecurringTask {
 }
 
 let schedulerInterval: NodeJS.Timeout | null = null;
-let queueAdapter: DatabaseQueueAdapter | null = null;
+let queueAdapter: QueueAdapter | null = null;
 
 /**
  * Start the task scheduler loop
@@ -41,7 +41,7 @@ export function startTaskScheduler() {
     return;
   }
 
-  queueAdapter = new DatabaseQueueAdapter();
+  queueAdapter = getQueueAdapter();
 
   logger.info("Starting task scheduler for recurring tasks");
 
@@ -69,7 +69,7 @@ export function stopTaskScheduler() {
   }
 
   if (queueAdapter) {
-    queueAdapter.close();
+    closeQueueAdapter();
     queueAdapter = null;
   }
 }

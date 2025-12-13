@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
-import Redis from "ioredis";
+import type { Redis } from "ioredis";
+import { createRedisConnection } from "@eclaire/queue";
 import type { RouteVariables } from "@/types/route-variables";
 import { getAuthenticatedUserId } from "../lib/auth-utils";
 import { createChildLogger } from "../lib/logger";
@@ -25,27 +26,15 @@ if (useRedisPubSub && !redisUrl) {
 }
 
 // Reusable Redis publisher connection (only created in redis mode)
-let publisherConnection: Redis | null = null;
+let publisherConnection: Redis | null = useRedisPubSub && redisUrl
+  ? createRedisConnection({
+      url: redisUrl,
+      logger,
+      serviceName: "Processing Events Publisher",
+    })
+  : null;
 
-if (useRedisPubSub && redisUrl) {
-  publisherConnection = new Redis(redisUrl, {
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-  });
-
-  publisherConnection.on("error", (err) => {
-    logger.error(
-      { error: err.message, stack: err.stack },
-      "Publisher Redis connection error",
-    );
-  });
-
-  publisherConnection.on("connect", () => {
-    logger.info({}, "Publisher Redis connected for processing events");
-  });
-
-  logger.info({}, "Redis pub/sub initialized for processing events");
-} else {
+if (!publisherConnection) {
   logger.info({ queueBackend }, "Using in-memory events only (no Redis pub/sub)");
 }
 
@@ -96,30 +85,33 @@ processingEventsRoutes.get("/stream", async (c) => {
       try {
         // Create Redis subscriber only if in redis mode
         if (useRedisPubSub && redisUrl) {
-          subscriber = new Redis(redisUrl, {
-            maxRetriesPerRequest: null,
-            enableReadyCheck: false,
+          subscriber = createRedisConnection({
+            url: redisUrl,
+            logger,
+            serviceName: `Processing Events Subscriber (${userId})`,
           });
 
-          await subscriber.subscribe(`processing:${userId}`);
+          if (subscriber) {
+            await subscriber.subscribe(`processing:${userId}`);
 
-          // Handle incoming messages
-          subscriber.on("message", (_channel, message) => {
-            try {
-              // Send the message as SSE data
-              stream.write(`data: ${message}\n\n`);
-            } catch (error) {
-              logger.error(
-                {
-                  userId,
-                  error: error instanceof Error ? error.message : "Unknown error",
-                },
-                "Error sending SSE message from Redis",
-              );
+            // Handle incoming messages
+            subscriber.on("message", (_channel, message) => {
+              try {
+                // Send the message as SSE data
+                stream.write(`data: ${message}\n\n`);
+              } catch (error) {
+                logger.error(
+                  {
+                    userId,
+                    error: error instanceof Error ? error.message : "Unknown error",
+                  },
+                  "Error sending SSE message from Redis",
+                );
+              }
+            });
+
+            logger.info({ userId }, "Redis subscriber active for processing events");
           }
-        });
-
-          logger.info({ userId }, "Redis subscriber active for processing events");
         } else {
           logger.info({ userId, queueBackend }, "Using in-memory events only (database queue mode)");
         }

@@ -5,7 +5,7 @@ import "./env-loader";
 import fs, { promises as fsPromises } from "fs";
 import path from "path";
 import { Readable } from "stream";
-import { generateStorageId } from "./id-generator";
+import { generateStorageId } from "@eclaire/core";
 import { createChildLogger } from "./logger";
 
 const logger = createChildLogger("storage");

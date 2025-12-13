@@ -14,7 +14,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { db, txManager, schema } from "@/db";
-import { generateHistoryId, generateTaskId } from "@/lib/id-generator";
+import { generateHistoryId, generateTaskId, type TaskStatus } from "@eclaire/core";
 
 const {
   assetProcessingJobs,
@@ -164,8 +164,8 @@ interface UpdateTaskParams {
   completedAt?: string | null;
 }
 
-// Export the status type for external use (e.g., API route)
-export type TaskStatus = "not-started" | "in-progress" | "completed";
+// Re-export TaskStatus from @eclaire/core for external use (e.g., API route)
+export type { TaskStatus };
 
 /**
  * Creates or updates a scheduler for a recurring task
@@ -1638,13 +1638,12 @@ async function addTagsToTask(
   taskId: string,
   tagNames: string[],
   userId: string,
-  tx: any = db,
 ) {
   if (!tagNames.length) return;
-  // Pass the transaction object to getOrCreateTags
-  const tagList = await getOrCreateTags(tagNames, userId, tx);
+  // Get or create tags (this uses its own transaction)
+  const tagList = await getOrCreateTags(tagNames, userId);
   if (tagList.length > 0) {
-    await tx.insert(tasksTags).values(
+    await db.insert(tasksTags).values(
       tagList.map((tag) => ({
         taskId: taskId,
         tagId: tag.id,

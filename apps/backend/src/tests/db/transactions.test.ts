@@ -705,7 +705,7 @@ describe.each(DB_TEST_CONFIGS)(
 						// Link tag to bookmark
 						await tx.bookmarksTags.insert({
 							bookmarkId,
-							tagId: tags[0].id,
+							tagId: tags[0]!.id,
 						});
 
 						// Force failure

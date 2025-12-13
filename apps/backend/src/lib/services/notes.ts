@@ -15,7 +15,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { db, txManager, schema } from "@/db";
-import { generateHistoryId, generateNoteId } from "@/lib/id-generator";
+import { generateHistoryId, generateNoteId } from "@eclaire/core";
 
 const { assetProcessingJobs, notes, notesTags, tags } = schema;
 import { formatToISO8601, getOrCreateTags } from "@/lib/db-helpers";

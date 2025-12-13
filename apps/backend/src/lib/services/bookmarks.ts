@@ -14,7 +14,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { db, txManager, schema } from "@/db";
-import { generateBookmarkId, generateHistoryId } from "@/lib/id-generator";
+import { generateBookmarkId, generateHistoryId } from "@eclaire/core";
 
 const {
   assetProcessingJobs,
@@ -1001,13 +1001,12 @@ async function addTagsToBookmark(
   bookmarkId: string,
   tagNames: string[],
   userId: string,
-  tx?: any,
 ) {
-  const dbOrTx = tx || db;
   if (!tagNames.length) return;
-  const tagList = await getOrCreateTags(tagNames, userId, dbOrTx);
+  // Get or create tags (this uses its own transaction)
+  const tagList = await getOrCreateTags(tagNames, userId);
   if (tagList.length > 0) {
-    await dbOrTx
+    await db
       .insert(bookmarksTags)
       .values(tagList.map((tag) => ({ bookmarkId, tagId: tag.id })));
   }

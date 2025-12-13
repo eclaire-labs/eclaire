@@ -1,0 +1,83 @@
+{
+  "name": "@eclaire/db",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Database abstraction for Eclaire applications - schemas, transactions, migrations",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "require": "./dist/types.js",
+      "types": "./dist/types.d.ts"
+    },
+    "./config": {
+      "import": "./dist/config.js",
+      "require": "./dist/config.js",
+      "types": "./dist/config.d.ts"
+    },
+    "./utils": {
+      "import": "./dist/utils.js",
+      "require": "./dist/utils.js",
+      "types": "./dist/utils.d.ts"
+    },
+    "./schema/postgres": {
+      "import": "./dist/schema/postgres.js",
+      "require": "./dist/schema/postgres.js",
+      "types": "./dist/schema/postgres.d.ts"
+    },
+    "./schema/sqlite": {
+      "import": "./dist/schema/sqlite.js",
+      "require": "./dist/schema/sqlite.js",
+      "types": "./dist/schema/sqlite.d.ts"
+    },
+    "./adapters/postgres/tx": {
+      "import": "./dist/adapters/postgres/tx.js",
+      "require": "./dist/adapters/postgres/tx.js",
+      "types": "./dist/adapters/postgres/tx.d.ts"
+    },
+    "./adapters/sqlite/tx": {
+      "import": "./dist/adapters/sqlite/tx.js",
+      "require": "./dist/adapters/sqlite/tx.js",
+      "types": "./dist/adapters/sqlite/tx.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src/migrations"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "db:migrate": "tsx src/scripts/migrate.ts",
+    "db:migrate:status": "tsx src/scripts/migrate.ts --status",
+    "db:generate": "drizzle-kit generate",
+    "db:generate:pg": "DATABASE_TYPE=postgresql drizzle-kit generate",
+    "db:generate:sqlite": "DATABASE_TYPE=sqlite drizzle-kit generate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@eclaire/core": "workspace:*",
+    "@eclaire/logger": "workspace:*",
+    "@electric-sql/pglite": "0.3.14",
+    "async-mutex": "^0.5.0",
+    "better-sqlite3": "12.5.0",
+    "drizzle-orm": "0.45.0",
+    "postgres": "3.4.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.2",
+    "drizzle-kit": "^0.30.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

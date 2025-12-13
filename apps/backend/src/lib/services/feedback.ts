@@ -1,6 +1,6 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { db, txManager, schema } from "@/db";
-import { generateFeedbackId } from "@/lib/id-generator";
+import { generateFeedbackId } from "@eclaire/core";
 
 const { feedback } = schema;
 import { createChildLogger } from "../logger";
