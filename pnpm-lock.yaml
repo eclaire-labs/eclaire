@@ -571,6 +571,9 @@ importers:
       bullmq:
         specifier: ^5.65.1
         version: 5.65.1
+      cron-parser:
+        specifier: ^4.9.0
+        version: 4.9.0
       drizzle-orm:
         specifier: ^0.45.0
         version: 0.45.0(@electric-sql/pglite@0.3.14)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.6)(better-sqlite3@12.5.0)(gel@2.2.0)(kysely@0.28.8)(pg@8.16.3)(postgres@3.4.7)
@@ -578,12 +581,24 @@ importers:
         specifier: ^5.8.2
         version: 5.8.2
     devDependencies:
+      '@electric-sql/pglite':
+        specifier: 0.3.14
+        version: 0.3.14
+      '@types/better-sqlite3':
+        specifier: 7.6.13
+        version: 7.6.13
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.1
+      better-sqlite3:
+        specifier: 12.5.0
+        version: 12.5.0
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: 4.0.15
+        version: 4.0.15(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.2.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   tools/model-cli:
     dependencies:

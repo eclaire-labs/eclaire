@@ -4,6 +4,12 @@
  * Provides a unified interface for job queuing that works with both:
  * - Redis/BullMQ mode: Production-scale job processing with Redis
  * - Database mode: Zero-Redis deployment using PostgreSQL or SQLite
+ *
+ * The package is organized into submodules:
+ * - @eclaire/queue/core: Zero-dependency core types and utilities
+ * - @eclaire/queue/driver-bullmq: BullMQ implementation (coming soon)
+ * - @eclaire/queue/driver-db: Database implementation (coming soon)
+ * - @eclaire/queue/transport-http: HTTP transport layer (coming soon)
  */
 
 import type { Logger } from "@eclaire/logger";
@@ -17,13 +23,18 @@ import type {
   DatabaseJob,
 } from "./types.js";
 
-// Re-export all types
-export * from "./types.js";
-export * from "./queue-names.js";
+// Re-export core types and utilities (zero dependencies)
+export * from "./core/index.js";
 
-// Re-export utilities
+// NOTE: App-specific types (BookmarkJobData, ImageJobData, AssetType, QueueAdapter, etc.)
+// are now in @eclaire/queue/app - import from there instead of the root.
+// The exports below were removed to avoid polluting the generic library surface:
+// - export * from "./types.js"
+// - export * from "./queue-names.js"
+
+// Re-export utilities (selective to avoid conflicts with core)
 export * from "./database/helpers.js";
-export * from "./database/job-adapters.js";
+export { adaptDatabaseJob } from "./database/job-adapters.js";
 export { createJobWaitlist, type WaitlistConfig } from "./database/waitlist.js";
 export { startPolling, generateWorkerId } from "./database/poller.js";
 

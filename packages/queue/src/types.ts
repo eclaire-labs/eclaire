@@ -169,7 +169,7 @@ export interface ClaimedJob {
 // --- Waitlist Interface ---
 
 export interface JobWaitlistInterface {
-  addWaiter(assetType: AssetType, workerId: string, timeoutMs?: number): Promise<any>;
+  addWaiter(assetType: AssetType, workerId: string, timeout?: number): Promise<any>;
   notifyWaiters(assetType: AssetType, count?: number): number;
   notifyAllWaiters(assetType: AssetType): number;
   scheduleNextWakeup(assetType: AssetType): Promise<void>;

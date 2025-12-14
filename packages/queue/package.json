@@ -2,13 +2,33 @@
   "name": "@eclaire/queue",
   "version": "0.0.1",
   "private": true,
-  "description": "Job queue abstraction for Eclaire applications - BullMQ and database-backed modes",
+  "description": "Job queue abstraction - BullMQ and database-backed modes with zero-dependency core",
   "license": "MIT",
   "type": "module",
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./core": {
+      "import": "./dist/core/index.js",
+      "types": "./dist/core/index.d.ts"
+    },
+    "./driver-db": {
+      "import": "./dist/driver-db/index.js",
+      "types": "./dist/driver-db/index.d.ts"
+    },
+    "./driver-bullmq": {
+      "import": "./dist/driver-bullmq/index.js",
+      "types": "./dist/driver-bullmq/index.d.ts"
+    },
+    "./transport-http": {
+      "import": "./dist/transport-http/index.js",
+      "types": "./dist/transport-http/index.d.ts"
+    },
+    "./app": {
+      "import": "./dist/app/index.js",
+      "types": "./dist/app/index.d.ts"
     }
   },
   "main": "./dist/index.js",
@@ -19,19 +39,28 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:sqlite": "DB_TYPE=sqlite vitest run",
+    "test:pglite": "DB_TYPE=pglite vitest run"
   },
   "dependencies": {
     "@eclaire/core": "workspace:*",
     "@eclaire/db": "workspace:*",
     "@eclaire/logger": "workspace:*",
     "bullmq": "^5.65.1",
+    "cron-parser": "^4.9.0",
     "ioredis": "^5.8.2",
     "axios": "^1.13.2",
     "drizzle-orm": "^0.45.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "@types/better-sqlite3": "7.6.13",
     "@types/node": "^24.10.1",
-    "typescript": "^5.9.3"
+    "better-sqlite3": "12.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "4.0.15"
   }
 }

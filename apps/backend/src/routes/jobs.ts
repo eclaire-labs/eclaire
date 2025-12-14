@@ -217,11 +217,12 @@ async function claimJobSqlite(
  * even with PGlite's single connection (serial execution)
  */
 app.get("/fetch", async (c) => {
-  const assetType = c.req.query("assetType");
+  // Accept both 'name' (new generic) and 'assetType' (legacy) for backwards compatibility
+  const assetType = c.req.query("name") || c.req.query("assetType");
   const workerId = c.req.query("workerId") || "unknown";
 
   if (!assetType) {
-    return c.json({ error: "assetType query parameter is required" }, 400);
+    return c.json({ error: "name (or assetType) query parameter is required" }, 400);
   }
 
   // Validate assetType
@@ -288,12 +289,13 @@ app.get("/fetch", async (c) => {
  * This eliminates continuous database polling!
  */
 app.get("/wait", async (c) => {
-  const assetType = c.req.query("assetType");
+  // Accept both 'name' (new generic) and 'assetType' (legacy) for backwards compatibility
+  const assetType = c.req.query("name") || c.req.query("assetType");
   const workerId = c.req.query("workerId") || "unknown";
   const timeoutMs = parseInt(c.req.query("timeout") || "30000", 10);
 
   if (!assetType) {
-    return c.json({ error: "assetType query parameter is required" }, 400);
+    return c.json({ error: "name (or assetType) query parameter is required" }, 400);
   }
 
   // Validate assetType

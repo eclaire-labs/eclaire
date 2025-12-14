@@ -5,7 +5,7 @@
  * This eliminates continuous polling by notifying workers immediately when new jobs are enqueued.
  */
 
-import type { Logger } from "@eclaire/logger";
+import type { QueueLogger } from "../core/types.js";
 import type { AssetType, JobWaitlistInterface } from "../types.js";
 
 interface Waiter {
@@ -17,7 +17,7 @@ interface Waiter {
 
 export interface WaitlistConfig {
   /** Logger instance */
-  logger: Logger;
+  logger: QueueLogger;
   /** Function to find the next scheduled job (for scheduling wakeups) */
   findNextScheduledJob?: (assetType: AssetType) => Promise<Date | null>;
 }
@@ -55,7 +55,7 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
     async addWaiter(
       assetType: AssetType,
       workerId: string,
-      timeoutMs: number = 30000
+      timeout: number = 30000
     ): Promise<any> {
       return new Promise((resolve, reject) => {
         const waiter: Waiter = {
@@ -78,15 +78,15 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
         );
 
         // Set timeout to reject if no job arrives
-        const timeout = setTimeout(() => {
+        const timeoutTimer = setTimeout(() => {
           removeWaiter(assetType, waiter);
           resolve(null); // Timeout - no job available
-        }, timeoutMs);
+        }, timeout);
 
         // Store original resolve to clear timeout when called
         const originalResolve = waiter.resolve;
         waiter.resolve = (job: any) => {
-          clearTimeout(timeout);
+          clearTimeout(timeoutTimer);
           originalResolve(job);
         };
       });
@@ -146,7 +146,7 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
           if (delay > 0 && delay < 86400000) {
             // Max 24 hours
             logger.info(
-              { assetType, nextRun: nextRun.toISOString(), delayMs: delay },
+              { assetType, nextRun: nextRun.toISOString(), delay },
               "Scheduled next wakeup"
             );
 

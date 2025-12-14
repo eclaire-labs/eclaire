@@ -11,21 +11,12 @@ import type { ClaimedJob } from "../types.js";
 export { getCurrentTimestamp } from "@eclaire/core";
 
 /**
- * Get expiration timestamp
- * @param minutes - Number of minutes from now
- * @returns Date object for expiration time
- */
-export function getExpirationTime(minutes: number): Date {
-	return new Date(Date.now() + minutes * 60 * 1000);
-}
-
-/**
  * Get scheduled time
- * @param delayMs - Delay in milliseconds from now
+ * @param delay - Delay from now (milliseconds)
  * @returns Date object for scheduled time
  */
-export function getScheduledTime(delayMs: number): Date {
-	return new Date(Date.now() + delayMs);
+export function getScheduledTime(delay: number): Date {
+	return new Date(Date.now() + delay);
 }
 
 /**
