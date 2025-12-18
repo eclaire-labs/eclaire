@@ -7,7 +7,7 @@
  */
 
 import type { JobsOptions } from "bullmq";
-import { QueueNames, type QueueName } from "../queue-names.js";
+import { QueueNames, type QueueName } from "./queue-names.js";
 
 // --- Job Options Per Queue ---
 

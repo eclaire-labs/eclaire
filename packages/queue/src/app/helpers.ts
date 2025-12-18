@@ -5,7 +5,7 @@
  * across PostgreSQL, PGlite, and SQLite.
  */
 
-import type { ClaimedJob } from "../types.js";
+import type { ClaimedJob } from "./types.js";
 
 // Re-export from @eclaire/core for backwards compatibility
 export { getCurrentTimestamp } from "@eclaire/core";

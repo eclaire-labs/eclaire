@@ -1,4 +1,4 @@
-import { createJobWaitlist, type AssetType, type JobWaitlistInterface } from "@eclaire/queue";
+import { createJobWaitlist, type AssetType, type JobWaitlistInterface } from "@eclaire/queue/app";
 import { createChildLogger } from "./logger.js";
 import { db, schema } from "../db/index.js";
 import { and, or, eq, gt } from "drizzle-orm";

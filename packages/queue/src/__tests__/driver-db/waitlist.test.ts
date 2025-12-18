@@ -7,8 +7,8 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createTestLogger, sleep } from "../testkit/index.js";
-import { createJobWaitlist } from "../../database/waitlist.js";
-import type { JobWaitlistInterface } from "../../types.js";
+import { createJobWaitlist } from "../../app/waitlist.js";
+import type { JobWaitlistInterface } from "../../app/types.js";
 
 describe("G1-G3: Waitlist", () => {
   const logger = createTestLogger();

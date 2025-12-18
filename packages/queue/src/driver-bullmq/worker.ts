@@ -5,6 +5,7 @@
 import {
   Worker as BullMQWorker,
   DelayedError,
+  UnrecoverableError,
   type Job as BullMQJob,
   type WorkerOptions as BullMQWorkerOptions,
 } from "bullmq";
@@ -18,6 +19,7 @@ import type {
 import {
   RateLimitError,
   isRateLimitError,
+  isPermanentError,
 } from "../core/errors.js";
 import { DEFAULT_BACKOFF } from "../core/utils.js";
 import type { BullMQWorkerConfig } from "./types.js";
@@ -70,12 +72,14 @@ export function createBullMQWorker<T = unknown>(
   function toJob(bullmqJob: BullMQJob<T>): Job<T> {
     return {
       id: bullmqJob.id!,
-      key: bullmqJob.id,
+      // Only set key if user originally provided one (via opts.jobId)
+      key: bullmqJob.opts.jobId ? bullmqJob.id : undefined,
       name: bullmqJob.name,
       data: bullmqJob.data,
       status: "processing", // Job is being processed by the worker
       priority: bullmqJob.opts.priority || 0,
-      attempts: bullmqJob.attemptsMade,
+      // Normalize to 1-based: first attempt = 1 (matches DB driver)
+      attempts: bullmqJob.attemptsMade + 1,
       maxAttempts: bullmqJob.opts.attempts || 3,
       createdAt: new Date(bullmqJob.timestamp),
       scheduledFor: bullmqJob.opts.delay
@@ -111,16 +115,29 @@ export function createBullMQWorker<T = unknown>(
     try {
       await handler(ctx);
     } catch (error) {
-      // Handle rate limit errors specially
+      // Handle rate limit errors: reschedule just this job without consuming attempt
+      // Note: We use moveToDelayed instead of worker.rateLimit() because rateLimit()
+      // throttles the entire worker/queue, not just the delayed job. This matches
+      // DB semantics where only the affected job is delayed.
       if (isRateLimitError(error)) {
         const rateLimitError = error as RateLimitError;
-        // Set the delay for when the job can be retried
-        await worker!.rateLimit(rateLimitError.retryAfter);
-        // Throw DelayedError to move job to delayed state without incrementing attempts
+        const delayUntil = Date.now() + rateLimitError.retryAfter;
+        // Move just this job to delayed state
+        await bullmqJob.moveToDelayed(delayUntil, bullmqJob.token);
+        // Throw DelayedError to signal completion without incrementing attempts
         throw new DelayedError(
           `Rate limited, retry after ${rateLimitError.retryAfter}ms`,
         );
       }
+
+      // Handle permanent errors: fail immediately, no retries
+      if (isPermanentError(error)) {
+        throw new UnrecoverableError(
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+
+      // RetryableError and generic errors: let BullMQ handle retry with backoff
       throw error;
     }
   }

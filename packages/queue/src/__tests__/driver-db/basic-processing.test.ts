@@ -63,6 +63,14 @@ describe.each(DB_TEST_CONFIGS)(
       expect(job?.data).toEqual({ value: 42 });
     });
 
+    it("should have attempts=0 for pending job", async () => {
+      const jobId = await client.enqueue("test-queue", { value: 1 });
+
+      const job = await client.getJob(jobId);
+      expect(job?.status).toBe("pending");
+      expect(job?.attempts).toBe(0);
+    });
+
     it("should process a single job through a worker", async () => {
       const processed: Job[] = [];
 

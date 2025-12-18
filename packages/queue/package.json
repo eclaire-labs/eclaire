@@ -43,7 +43,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:sqlite": "DB_TYPE=sqlite vitest run",
-    "test:pglite": "DB_TYPE=pglite vitest run"
+    "test:pglite": "DB_TYPE=pglite vitest run",
+    "test:bullmq": "QUEUE_DRIVER=bullmq vitest run",
+    "test:all": "pnpm test:sqlite && pnpm test:pglite && pnpm test:bullmq"
   },
   "dependencies": {
     "@eclaire/core": "workspace:*",

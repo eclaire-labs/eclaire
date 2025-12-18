@@ -6,7 +6,7 @@
  */
 
 import type { QueueLogger } from "../core/types.js";
-import type { AssetType, JobWaitlistInterface } from "../types.js";
+import type { AssetType, JobWaitlistInterface } from "./types.js";
 
 interface Waiter {
   resolve: (job: any) => void;
@@ -178,6 +178,31 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
         stats[assetType] = waitersForType.length;
       }
       return stats as Record<AssetType, number>;
+    },
+
+    close(): void {
+      logger.debug({}, "Closing waitlist");
+
+      // Clear all wake timers
+      for (const [assetType, timer] of wakeTimers.entries()) {
+        clearTimeout(timer);
+        logger.debug({ assetType }, "Cleared wake timer");
+      }
+      wakeTimers.clear();
+
+      // Resolve all pending waiters with null (no job)
+      for (const [assetType, waitersForType] of waiters.entries()) {
+        const count = waitersForType.length;
+        if (count > 0) {
+          logger.debug({ assetType, count }, "Resolving pending waiters on close");
+          for (const waiter of waitersForType) {
+            waiter.resolve(null);
+          }
+          waitersForType.length = 0; // Clear the array
+        }
+      }
+
+      logger.debug({}, "Waitlist closed");
     },
   };
 }

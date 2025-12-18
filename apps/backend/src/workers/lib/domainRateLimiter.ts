@@ -1,6 +1,6 @@
 import { config } from "../config.js";
 import { getQueue } from "../queues.js";
-import { QueueNames } from "@eclaire/queue";
+import { QueueNames } from "@eclaire/queue/app";
 import { createChildLogger } from "../../lib/logger.js";
 import { createProcessingReporter } from "./processing-reporter.js";
 

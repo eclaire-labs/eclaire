@@ -5,8 +5,8 @@
 import { Queue } from "bullmq";
 import type { Redis } from "ioredis";
 import type { Logger } from "@eclaire/logger";
-import { createRedisConnection } from "./redis-connection.js";
-import { QueueNames, type QueueName } from "../queue-names.js";
+import { createRedisConnection, closeRedisConnection } from "../shared/redis-connection.js";
+import { QueueNames, type QueueName } from "./queue-names.js";
 import { getDefaultJobOptions } from "./queue-options.js";
 
 export interface QueueManagerConfig {
@@ -35,6 +35,9 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
 
   // Store queue instances to avoid recreating them
   const queues: Record<string, Queue> = {};
+
+  // Store error handlers for cleanup
+  const errorHandlers: Record<string, (error: Error) => void> = {};
 
   // Create Redis connection
   const connection = createRedisConnection({
@@ -79,8 +82,8 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
           });
           logger.info({ queueName: name }, "Queue initialized successfully");
 
-          // Add an error listener specific to this queue instance
-          queues[name]?.on("error", (error) => {
+          // Create and store error handler for later removal
+          const errorHandler = (error: Error) => {
             logger.error(
               {
                 queueName: name,
@@ -89,7 +92,9 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
               },
               "BullMQ Queue Error",
             );
-          });
+          };
+          errorHandlers[name] = errorHandler;
+          queues[name]?.on("error", errorHandler);
         } catch (error) {
           logger.error(
             {
@@ -114,10 +119,19 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
       logger.info({}, "Closing BullMQ queue connections");
       let hadError = false;
 
-      // Close all queues
+      // Close all queues and remove error listeners
       for (const name in queues) {
         try {
-          await queues[name]?.close();
+          const queue = queues[name];
+          if (queue) {
+            // Remove error listener before closing
+            const handler = errorHandlers[name];
+            if (handler) {
+              queue.removeListener("error", handler);
+              delete errorHandlers[name];
+            }
+            await queue.close();
+          }
           logger.info({ queueName: name }, "Queue closed");
         } catch (error) {
           logger.error(
@@ -132,14 +146,14 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
         }
       }
 
-      // Close Redis connection
+      // Close Redis connection (uses closeRedisConnection which removes listeners)
       try {
         if (
           connection.status === "ready" ||
           connection.status === "connecting" ||
           connection.status === "reconnecting"
         ) {
-          await connection.quit();
+          await closeRedisConnection(connection, logger);
           logger.info({}, "Redis connection closed");
         } else {
           logger.info(

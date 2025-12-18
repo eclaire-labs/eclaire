@@ -12,7 +12,7 @@ import {
   type TaskJobData,
   type JobData,
   type AssetType,
-} from "@eclaire/queue";
+} from "@eclaire/queue/app";
 import { db, schema } from "../db/index.js";
 import { createChildLogger } from "./logger.js";
 import { getQueueMode } from "./env-validation.js";

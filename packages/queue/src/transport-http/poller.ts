@@ -12,7 +12,7 @@ import type {
   JobContext,
   Job,
 } from "../core/types.js";
-import { createWorkerId, sleep } from "../core/utils.js";
+import { createWorkerId, sleep, cancellableSleep, createDeferred } from "../core/utils.js";
 import { RateLimitError, isRateLimitError } from "../core/errors.js";
 import type { HttpPollerConfig, HttpJobResponse } from "./types.js";
 import { createHttpClient, type HttpQueueClient } from "./client.js";
@@ -24,6 +24,7 @@ const DEFAULTS = {
   waitTimeout: 30000, // 30 seconds
   heartbeatInterval: 60000, // 1 minute
   errorRetryDelay: 2000, // 2 seconds
+  gracefulShutdownTimeout: 30000, // 30 seconds
 };
 
 /**
@@ -55,6 +56,7 @@ export function createHttpWorker<T = unknown>(
     heartbeatInterval = DEFAULTS.heartbeatInterval,
     errorRetryDelay = DEFAULTS.errorRetryDelay,
     requestTimeout,
+    gracefulShutdownTimeout = DEFAULTS.gracefulShutdownTimeout,
   } = config;
 
   const { concurrency = 1 } = options;
@@ -70,6 +72,8 @@ export function createHttpWorker<T = unknown>(
   let running = false;
   let stopRequested = false;
   let activeJobs = 0;
+  let abortController: AbortController | null = null;
+  let stopDeferred = createDeferred<void>();
 
   /**
    * Convert HTTP job response to Job interface
@@ -169,7 +173,7 @@ export function createHttpWorker<T = unknown>(
     while (running && !stopRequested) {
       // Check if we can take more jobs
       if (activeJobs >= concurrency) {
-        await sleep(100);
+        await cancellableSleep(100, abortController?.signal);
         continue;
       }
 
@@ -208,18 +212,19 @@ export function createHttpWorker<T = unknown>(
           }
         }
 
-        // Back off on error
-        await sleep(errorRetryDelay);
+        // Back off on error (cancellable)
+        await cancellableSleep(errorRetryDelay, abortController?.signal);
       }
     }
 
-    // Wait for active jobs to complete
+    // Wait for active jobs to complete (NOT interruptible - we want jobs to finish)
     while (activeJobs > 0) {
       logger.debug({ name, workerId, activeJobs }, "Waiting for active jobs to complete");
       await sleep(100);
     }
 
     logger.info({ name, workerId }, "HTTP worker stopped");
+    stopDeferred.resolve();
   }
 
   return {
@@ -231,6 +236,8 @@ export function createHttpWorker<T = unknown>(
 
       running = true;
       stopRequested = false;
+      abortController = new AbortController();
+      stopDeferred = createDeferred<void>(); // Reset for new start
 
       // Start the worker loop (don't await)
       runLoop();
@@ -244,15 +251,23 @@ export function createHttpWorker<T = unknown>(
       logger.info({ name, workerId }, "Stopping HTTP worker...");
       stopRequested = true;
 
-      // Wait for loop to finish (with timeout)
-      const maxWait = 30000; // 30 seconds
-      const startTime = Date.now();
+      // Signal sleep calls to cancel immediately
+      abortController?.abort();
 
-      while (running && Date.now() - startTime < maxWait) {
-        await sleep(100);
-      }
+      // Wait for loop to finish with timeout
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          logger.warn(
+            { name, workerId, activeJobs },
+            "HTTP worker shutdown timeout reached - forcing stop",
+          );
+          resolve();
+        }, gracefulShutdownTimeout);
+      });
 
+      await Promise.race([stopDeferred.promise, timeoutPromise]);
       running = false;
+      abortController = null;
     },
 
     isRunning(): boolean {

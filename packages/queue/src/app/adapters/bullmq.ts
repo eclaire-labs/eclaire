@@ -5,7 +5,7 @@
  */
 
 import type { Logger } from "@eclaire/logger";
-import type { QueueManager } from "../bullmq/queues.js";
+import type { QueueManager } from "../queues.js";
 import { QueueNames } from "../queue-names.js";
 import type {
   QueueAdapter,

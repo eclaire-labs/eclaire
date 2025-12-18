@@ -175,4 +175,6 @@ export interface JobWaitlistInterface {
   scheduleNextWakeup(assetType: AssetType): Promise<void>;
   getWaiterCount(assetType: AssetType): number;
   getStats(): Record<AssetType, number>;
+  /** Close the waitlist, clearing all timers and rejecting pending waiters */
+  close(): void;
 }

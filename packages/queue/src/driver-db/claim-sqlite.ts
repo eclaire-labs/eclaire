@@ -1,9 +1,11 @@
 /**
  * @eclaire/queue/driver-db - SQLite job claiming
  *
- * Uses a single-statement UPDATE with subquery for atomic claiming.
+ * Uses a single-statement UPDATE...RETURNING with subquery for atomic claiming.
  * SQLite doesn't support SKIP LOCKED, but serializes writes so only
  * one worker can successfully claim a job at a time.
+ *
+ * Requires SQLite 3.35+ (March 2021) for RETURNING support.
  */
 
 import { sql } from "drizzle-orm";
@@ -14,13 +16,9 @@ import type { DbInstance, ClaimedJob, ClaimOptions } from "./types.js";
 /**
  * Claim a job using SQLite's single-statement atomic pattern
  *
- * Uses UPDATE ... WHERE id = (SELECT id ... LIMIT 1) to atomically
- * find and claim a job in one statement. SQLite serializes writes,
+ * Uses UPDATE ... WHERE id = (SELECT id ... LIMIT 1) RETURNING * to atomically
+ * find, claim, and return a job in one statement. SQLite serializes writes,
  * so only one worker will successfully update when there's contention.
- *
- * This is cleaner than the two-step SELECT then UPDATE approach
- * because there's no window between SELECT and UPDATE where another
- * worker could claim the same job.
  *
  * @param db - Database instance
  * @param queueJobs - Queue jobs table
@@ -44,9 +42,10 @@ export async function claimJobSqlite(
   const lockToken = generateJobId();
 
   try {
-    // Single atomic statement: UPDATE with subquery to find the job
+    // Single atomic statement: UPDATE with subquery + RETURNING
     // SQLite stores timestamps as integers (milliseconds)
-    const result = await (db as any).run(sql`
+    // Uses db.all() to get the RETURNING result (db.run() only returns changes count)
+    const result = await (db as any).all(sql`
       UPDATE ${queueJobs}
       SET
         status = 'processing',
@@ -70,41 +69,23 @@ export async function claimJobSqlite(
           created_at ASC
         LIMIT 1
       )
+      RETURNING *
     `);
 
-    // Check if any row was updated
-    // better-sqlite3 returns { changes: number }
-    const changes = result?.changes ?? result?.rowsAffected ?? 0;
-    if (changes === 0) {
+    // No job available if empty result
+    if (!result || result.length === 0) {
       return null;
     }
 
-    // Fetch the claimed job to return it
-    // We need to SELECT because SQLite's UPDATE doesn't have RETURNING in older versions
-    // and drizzle's sql.run() doesn't support RETURNING
-    // Additional filters (locked_by, status) prevent edge cases from token collision
-    const [claimedJob] = await (db as any)
-      .select()
-      .from(queueJobs)
-      .where(
-        sql`${queueJobs.lockToken} = ${lockToken}
-          AND ${queueJobs.lockedBy} = ${workerId}
-          AND ${queueJobs.status} = 'processing'`,
-      )
-      .limit(1);
-
-    if (!claimedJob) {
-      // This shouldn't happen - we just claimed it
-      logger.warn({ name, workerId, lockToken }, "Claimed job not found after UPDATE");
-      return null;
-    }
+    const job = result[0];
 
     logger.debug(
-      { jobId: claimedJob.id, name, workerId, attempts: claimedJob.attempts },
+      { jobId: job.id, name, workerId, attempts: job.attempts },
       "Job claimed (SQLite)",
     );
 
-    return formatClaimedJob(claimedJob);
+    // Raw SQL RETURNING returns snake_case columns
+    return formatClaimedJob(job);
   } catch (error) {
     logger.error(
       {
@@ -128,7 +109,23 @@ function toDate(value: unknown): Date | null {
 }
 
 /**
+ * Parse JSON if it's a string, otherwise return as-is
+ * SQLite stores JSON as TEXT, so raw SQL returns strings
+ */
+function parseJson(value: unknown): unknown {
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
+/**
  * Format database row to ClaimedJob interface
+ * Handles both camelCase (drizzle ORM) and snake_case (raw SQL) column names
  * Normalizes all timestamp fields to Date objects
  */
 function formatClaimedJob(row: any): ClaimedJob {
@@ -136,23 +133,23 @@ function formatClaimedJob(row: any): ClaimedJob {
     id: row.id,
     name: row.name,
     key: row.key,
-    data: row.data,
+    data: parseJson(row.data),
     status: row.status,
     priority: row.priority,
-    scheduledFor: toDate(row.scheduledFor),
+    scheduledFor: toDate(row.scheduledFor ?? row.scheduled_for),
     attempts: row.attempts,
-    maxAttempts: row.maxAttempts,
-    nextRetryAt: toDate(row.nextRetryAt),
-    backoffMs: row.backoffMs,
-    backoffType: row.backoffType,
-    lockedBy: row.lockedBy,
-    lockedAt: toDate(row.lockedAt),
-    expiresAt: toDate(row.expiresAt),
-    lockToken: row.lockToken,
-    errorMessage: row.errorMessage,
-    errorDetails: row.errorDetails,
-    createdAt: toDate(row.createdAt)!,
-    updatedAt: toDate(row.updatedAt)!,
-    completedAt: toDate(row.completedAt),
+    maxAttempts: row.maxAttempts ?? row.max_attempts,
+    nextRetryAt: toDate(row.nextRetryAt ?? row.next_retry_at),
+    backoffMs: row.backoffMs ?? row.backoff_ms,
+    backoffType: row.backoffType ?? row.backoff_type,
+    lockedBy: row.lockedBy ?? row.locked_by,
+    lockedAt: toDate(row.lockedAt ?? row.locked_at),
+    expiresAt: toDate(row.expiresAt ?? row.expires_at),
+    lockToken: row.lockToken ?? row.lock_token,
+    errorMessage: row.errorMessage ?? row.error_message,
+    errorDetails: parseJson(row.errorDetails ?? row.error_details),
+    createdAt: toDate(row.createdAt ?? row.created_at)!,
+    updatedAt: toDate(row.updatedAt ?? row.updated_at)!,
+    completedAt: toDate(row.completedAt ?? row.completed_at),
   };
 }

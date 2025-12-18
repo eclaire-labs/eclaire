@@ -39,6 +39,11 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
   const queues = new Map<string, Queue>();
 
   // Track schedules we've created (for list functionality)
+  // Note: Schedule tracking is in-memory only. After restart, only schedules
+  // created in this process are visible via list(). Schedules persist in Redis
+  // and will continue to run, but this process won't see them until they're
+  // re-registered via upsert(). This differs from the DB driver which has a
+  // persistent view of all schedules.
   const schedules = new Map<string, ScheduleConfig>();
 
   /**
@@ -72,25 +77,36 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
       const queue = getQueue(name);
 
       try {
-        // BullMQ's upsertJobScheduler API
-        await queue.upsertJobScheduler(
-          key, // Schedule ID
-          {
-            pattern: cron,
-            limit: limit || undefined,
-            endDate: endDate || undefined,
-            immediately,
-          },
-          {
-            name,
-            data,
-          },
-        );
+        // Only create in BullMQ if enabled
+        if (enabled) {
+          // BullMQ's upsertJobScheduler API
+          await queue.upsertJobScheduler(
+            key, // Schedule ID
+            {
+              pattern: cron,
+              limit: limit || undefined,
+              endDate: endDate || undefined,
+              immediately,
+            },
+            {
+              name,
+              data,
+            },
+          );
+          logger.info({ key, name, cron, enabled }, "Schedule upserted");
+        } else {
+          // If disabled, ensure it's removed from BullMQ (in case it existed before)
+          try {
+            await queue.removeJobScheduler(key);
+          } catch {
+            // Ignore if it doesn't exist
+          }
+          logger.info({ key, name, cron, enabled }, "Schedule stored (disabled)");
+        }
 
         // Store for list functionality
         schedules.set(key, scheduleConfig);
 
-        logger.info({ key, name, cron }, "Schedule upserted");
         return key;
       } catch (error) {
         logger.error(
@@ -132,8 +148,9 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
       }
 
       if (enabled) {
-        // Re-create the schedule
-        await this.upsert(schedule);
+        // Re-create the schedule with enabled: true
+        // (cached schedule may have enabled: false)
+        await this.upsert({ ...schedule, enabled: true });
       } else {
         // Remove but keep in our cache
         const queue = getQueue(schedule.name);

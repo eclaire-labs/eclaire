@@ -7,6 +7,20 @@ import type { QueueLogger } from "../core/types.js";
 import type { RedisConfig } from "./types.js";
 
 /**
+ * Stored event handlers for cleanup
+ */
+const connectionHandlers = new WeakMap<
+  Redis,
+  {
+    connect: () => void;
+    ready: () => void;
+    error: (err: Error) => void;
+    close: () => void;
+    reconnecting: () => void;
+  }
+>();
+
+/**
  * Create a Redis connection for BullMQ
  *
  * BullMQ requires specific Redis options to work correctly:
@@ -44,26 +58,34 @@ export function createRedisConnection(
     logger.debug({}, "Creating Redis connection from options");
   }
 
+  // Create named handlers for later removal
+  const handlers = {
+    connect: () => {
+      logger.info({}, "Redis connected");
+    },
+    ready: () => {
+      logger.debug({}, "Redis ready");
+    },
+    error: (err: Error) => {
+      logger.error({ error: err.message }, "Redis error");
+    },
+    close: () => {
+      logger.debug({}, "Redis connection closed");
+    },
+    reconnecting: () => {
+      logger.debug({}, "Redis reconnecting");
+    },
+  };
+
+  // Store handlers for cleanup
+  connectionHandlers.set(connection, handlers);
+
   // Setup event handlers
-  connection.on("connect", () => {
-    logger.info({}, "Redis connected");
-  });
-
-  connection.on("ready", () => {
-    logger.debug({}, "Redis ready");
-  });
-
-  connection.on("error", (err) => {
-    logger.error({ error: err.message }, "Redis error");
-  });
-
-  connection.on("close", () => {
-    logger.debug({}, "Redis connection closed");
-  });
-
-  connection.on("reconnecting", () => {
-    logger.debug({}, "Redis reconnecting");
-  });
+  connection.on("connect", handlers.connect);
+  connection.on("ready", handlers.ready);
+  connection.on("error", handlers.error);
+  connection.on("close", handlers.close);
+  connection.on("reconnecting", handlers.reconnecting);
 
   return connection;
 }
@@ -78,6 +100,18 @@ export async function closeRedisConnection(
   connection: Redis,
   logger: QueueLogger,
 ): Promise<void> {
+  // Remove event listeners to prevent memory leaks
+  const handlers = connectionHandlers.get(connection);
+  if (handlers) {
+    connection.removeListener("connect", handlers.connect);
+    connection.removeListener("ready", handlers.ready);
+    connection.removeListener("error", handlers.error);
+    connection.removeListener("close", handlers.close);
+    connection.removeListener("reconnecting", handlers.reconnecting);
+    connectionHandlers.delete(connection);
+    logger.debug({}, "Removed Redis event listeners");
+  }
+
   try {
     await connection.quit();
     logger.debug({}, "Redis connection closed gracefully");

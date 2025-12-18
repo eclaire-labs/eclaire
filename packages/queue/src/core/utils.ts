@@ -250,6 +250,49 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Sleep for a specified duration with cancellation support
+ *
+ * This version of sleep can be cancelled via an AbortSignal,
+ * which is essential for graceful shutdown scenarios.
+ *
+ * @param ms - Milliseconds to sleep
+ * @param signal - Optional AbortSignal to cancel the sleep
+ * @returns Promise that resolves after the delay or when aborted
+ *
+ * @example
+ * ```typescript
+ * const controller = new AbortController();
+ *
+ * // Will resolve after 5 seconds or when aborted
+ * await cancellableSleep(5000, controller.signal);
+ *
+ * // To cancel early:
+ * controller.abort();
+ * ```
+ */
+export function cancellableSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    // If already aborted, resolve immediately
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+
+    const timer = setTimeout(resolve, ms);
+
+    // Listen for abort signal
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve(); // Resolve (not reject) for graceful shutdown
+      },
+      { once: true },
+    );
+  });
+}
+
+/**
  * Create a deferred promise
  *
  * Useful for creating promises that can be resolved/rejected externally.

@@ -136,4 +136,13 @@ export interface HttpPollerConfig extends HttpClientConfig {
 
   /** Error retry delay (default: 2000) */
   errorRetryDelay?: number;
+
+  /**
+   * Timeout for graceful shutdown in milliseconds (default: 30000)
+   *
+   * After calling stop(), the worker will wait up to this long for active jobs
+   * to complete before returning. If the timeout is reached, stop() returns
+   * even if jobs are still active.
+   */
+  gracefulShutdownTimeout?: number;
 }

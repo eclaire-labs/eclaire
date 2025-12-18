@@ -11,8 +11,8 @@ import { Queue, type WorkerOptions } from "bullmq";
 import type { Redis } from "ioredis";
 import { config } from "./config.js";
 import { createChildLogger } from "../lib/logger.js";
+import { createRedisConnection } from "@eclaire/queue";
 import {
-  createRedisConnection,
   createQueueManager,
   getLongTaskWorkerOptions,
   getMediumTaskWorkerOptions,
@@ -20,7 +20,7 @@ import {
   QueueNames,
   type QueueManager,
   type QueueName,
-} from "@eclaire/queue";
+} from "@eclaire/queue/app";
 import { getQueueMode } from "../lib/env-validation.js";
 
 const logger = createChildLogger("queues");

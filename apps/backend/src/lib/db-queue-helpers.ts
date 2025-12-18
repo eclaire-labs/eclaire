@@ -6,7 +6,7 @@ export {
   isJobReady,
   formatJobResult,
   type ClaimedJob,
-} from "@eclaire/queue";
+} from "@eclaire/queue/app";
 
 /**
  * Get expiration timestamp

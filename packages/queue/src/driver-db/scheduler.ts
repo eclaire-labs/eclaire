@@ -8,7 +8,7 @@
 
 import { eq, and, lte, sql } from "drizzle-orm";
 import type { QueueClient, Scheduler, ScheduleConfig, QueueLogger } from "../core/types.js";
-import { generateScheduleId, sleep, isValidCronExpression } from "../core/utils.js";
+import { generateScheduleId, cancellableSleep, isValidCronExpression, createDeferred } from "../core/utils.js";
 import type { DbInstance } from "./types.js";
 
 // We'll use a simple cron parser - users can provide their own
@@ -33,12 +33,18 @@ export interface DbSchedulerConfig {
 
   /** How often to check for due schedules (default: 10000 = 10 seconds) */
   checkInterval?: number;
+
+  /** Timeout for graceful shutdown in ms (default: 30000) */
+  gracefulShutdownTimeout?: number;
 }
 
 /**
- * Default check interval
+ * Default configuration values
  */
-const DEFAULT_CHECK_INTERVAL = 10000; // 10 seconds
+const DEFAULTS = {
+  checkInterval: 10000, // 10 seconds
+  gracefulShutdownTimeout: 30000, // 30 seconds
+};
 
 /**
  * Create a database-backed scheduler
@@ -52,11 +58,14 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
     queueSchedules,
     queueClient,
     logger,
-    checkInterval = DEFAULT_CHECK_INTERVAL,
+    checkInterval = DEFAULTS.checkInterval,
+    gracefulShutdownTimeout = DEFAULTS.gracefulShutdownTimeout,
   } = config;
 
   let running = false;
   let stopRequested = false;
+  let abortController: AbortController | null = null;
+  let stopDeferred = createDeferred<void>();
 
   /**
    * Calculate next run time from cron expression
@@ -176,10 +185,11 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
 
     while (running && !stopRequested) {
       await processSchedules();
-      await sleep(checkInterval);
+      await cancellableSleep(checkInterval, abortController?.signal);
     }
 
     logger.info({}, "Scheduler stopped");
+    stopDeferred.resolve();
   }
 
   return {
@@ -324,8 +334,10 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
 
       running = true;
       stopRequested = false;
+      abortController = new AbortController();
+      stopDeferred = createDeferred<void>(); // Reset for new start
 
-      // Start loop (don't await)
+      // Start loop (don't await - runs in background)
       runLoop();
     },
 
@@ -334,8 +346,23 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
         return;
       }
 
+      logger.info({}, "Stopping scheduler...");
       stopRequested = true;
+
+      // Signal the sleep to cancel immediately
+      abortController?.abort();
+
+      // Wait for loop to finish with timeout
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          logger.warn({}, "Scheduler shutdown timeout reached");
+          resolve();
+        }, gracefulShutdownTimeout);
+      });
+
+      await Promise.race([stopDeferred.promise, timeoutPromise]);
       running = false;
+      abortController = null;
     },
   };
 }

@@ -4,7 +4,7 @@
  */
 
 import type { Logger } from "@eclaire/logger";
-import type { DatabaseJob, MockBullMQJob } from "../types.js";
+import type { DatabaseJob, MockBullMQJob } from "./types.js";
 
 // Re-export from core for backward compatibility
 export {

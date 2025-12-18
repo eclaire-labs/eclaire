@@ -12,7 +12,7 @@ import {
   QueueNames,
   type QueueManager,
   type QueueName,
-} from "@eclaire/queue";
+} from "@eclaire/queue/app";
 import { getQueueMode } from "./env-validation.js";
 
 const logger = createChildLogger("queues");

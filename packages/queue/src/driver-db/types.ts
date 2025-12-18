@@ -112,6 +112,15 @@ export interface DbWorkerConfig {
 
   /** Notification listener for horizontal scaling (optional) */
   notifyListener?: NotifyListener;
+
+  /**
+   * Timeout for graceful shutdown in milliseconds (default: 30000 = 30 seconds)
+   *
+   * After calling stop(), the worker will wait up to this long for active jobs
+   * to complete before returning. If the timeout is reached, stop() returns
+   * even if jobs are still active.
+   */
+  gracefulShutdownTimeout?: number;
 }
 
 // ============================================================================

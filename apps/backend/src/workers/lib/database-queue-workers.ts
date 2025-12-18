@@ -10,7 +10,7 @@ import {
   getRateLimitDelay,
   type DatabaseJob,
   type AssetType,
-} from "@eclaire/queue";
+} from "@eclaire/queue/app";
 import { config } from "../config.js";
 import processBookmarkJob from "../jobs/bookmarkProcessor.js";
 import { processDocumentJob } from "../jobs/documentProcessor.js";
