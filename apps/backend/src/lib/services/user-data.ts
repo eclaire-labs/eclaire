@@ -1,11 +1,10 @@
 import { verifyPassword } from "better-auth/crypto";
 import { and, count, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
-import { db, txManager, schema } from "../../db/index.js";
+import { db, txManager, schema, queueJobs } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 
 const {
   accounts,
-  assetProcessingJobs,
   bookmarks,
   bookmarksTags,
   documents,
@@ -110,14 +109,11 @@ export async function deleteAllUserData(
       const bookmarkIds = userBookmarks.map((b) => b.id);
       await txManager.withTransaction(async (tx) => {
         await tx.bookmarksTags.delete(inArray(bookmarksTags.bookmarkId, bookmarkIds));
-        await tx.assetProcessingJobs.delete(
-          and(
-            eq(assetProcessingJobs.assetType, "bookmarks"),
-            inArray(assetProcessingJobs.assetId, bookmarkIds),
-          ),
-        );
         await tx.bookmarks.delete(eq(bookmarks.userId, userId));
       });
+      // Delete queue jobs outside transaction (non-critical)
+      const bookmarkKeys = bookmarkIds.map((id) => `bookmarks:${id}`);
+      await db.delete(queueJobs).where(inArray(queueJobs.key, bookmarkKeys));
       logger.info({ userId, count: userBookmarks.length }, "Deleted all bookmarks");
     }
 
@@ -126,14 +122,11 @@ export async function deleteAllUserData(
       const documentIds = userDocuments.map((d) => d.id);
       await txManager.withTransaction(async (tx) => {
         await tx.documentsTags.delete(inArray(documentsTags.documentId, documentIds));
-        await tx.assetProcessingJobs.delete(
-          and(
-            eq(assetProcessingJobs.assetType, "documents"),
-            inArray(assetProcessingJobs.assetId, documentIds),
-          ),
-        );
         await tx.documents.delete(eq(documents.userId, userId));
       });
+      // Delete queue jobs outside transaction (non-critical)
+      const documentKeys = documentIds.map((id) => `documents:${id}`);
+      await db.delete(queueJobs).where(inArray(queueJobs.key, documentKeys));
       logger.info({ userId, count: userDocuments.length }, "Deleted all documents");
     }
 
@@ -142,14 +135,11 @@ export async function deleteAllUserData(
       const photoIds = userPhotos.map((p) => p.id);
       await txManager.withTransaction(async (tx) => {
         await tx.photosTags.delete(inArray(photosTags.photoId, photoIds));
-        await tx.assetProcessingJobs.delete(
-          and(
-            eq(assetProcessingJobs.assetType, "photos"),
-            inArray(assetProcessingJobs.assetId, photoIds),
-          ),
-        );
         await tx.photos.delete(eq(photos.userId, userId));
       });
+      // Delete queue jobs outside transaction (non-critical)
+      const photoKeys = photoIds.map((id) => `photos:${id}`);
+      await db.delete(queueJobs).where(inArray(queueJobs.key, photoKeys));
       logger.info({ userId, count: userPhotos.length }, "Deleted all photos");
     }
 
@@ -158,14 +148,11 @@ export async function deleteAllUserData(
       const noteIds = userNotes.map((n) => n.id);
       await txManager.withTransaction(async (tx) => {
         await tx.notesTags.delete(inArray(notesTags.noteId, noteIds));
-        await tx.assetProcessingJobs.delete(
-          and(
-            eq(assetProcessingJobs.assetType, "notes"),
-            inArray(assetProcessingJobs.assetId, noteIds),
-          ),
-        );
         await tx.notes.delete(eq(notes.userId, userId));
       });
+      // Delete queue jobs outside transaction (non-critical)
+      const noteKeys = noteIds.map((id) => `notes:${id}`);
+      await db.delete(queueJobs).where(inArray(queueJobs.key, noteKeys));
       logger.info({ userId, count: userNotes.length }, "Deleted all notes");
     }
 
@@ -174,23 +161,20 @@ export async function deleteAllUserData(
       const taskIds = userTasks.map((t) => t.id);
       await txManager.withTransaction(async (tx) => {
         await tx.tasksTags.delete(inArray(tasksTags.taskId, taskIds));
-        await tx.assetProcessingJobs.delete(
-          and(
-            eq(assetProcessingJobs.assetType, "tasks"),
-            inArray(assetProcessingJobs.assetId, taskIds),
-          ),
-        );
         await tx.tasks.delete(eq(tasks.userId, userId));
       });
+      // Delete queue jobs outside transaction (non-critical)
+      const taskKeys = taskIds.map((id) => `tasks:${id}`);
+      await db.delete(queueJobs).where(inArray(queueJobs.key, taskKeys));
       logger.info({ userId, count: userTasks.length }, "Deleted all tasks");
     }
 
-    // 4. Delete system data (history and remaining processing jobs)
+    // 4. Delete system data (history)
     await txManager.withTransaction(async (tx) => {
       await tx.history.delete(eq(history.userId, userId));
-      // Clean up any orphaned processing jobs
-      await tx.assetProcessingJobs.delete(eq(assetProcessingJobs.userId, userId));
     });
+    // Clean up any orphaned queue jobs (outside transaction, non-critical)
+    await db.delete(queueJobs).where(sql`${queueJobs.metadata}->>'userId' = ${userId}`);
     logger.info({ userId }, "Deleted history and system data");
 
     // 5. Clean up storage (outside transactions - can be parallel)
@@ -232,7 +216,7 @@ export async function getUserDataSummary(userId: string) {
       notesCount,
       tasksCount,
       historyCount,
-      assetJobsCount,
+      queueJobsCount,
     ] = await Promise.all([
       db
         .select({ count: count() })
@@ -254,8 +238,8 @@ export async function getUserDataSummary(userId: string) {
         .where(eq(history.userId, userId)),
       db
         .select({ count: count() })
-        .from(assetProcessingJobs)
-        .where(eq(assetProcessingJobs.userId, userId)),
+        .from(queueJobs)
+        .where(sql`${queueJobs.metadata}->>'userId' = ${userId}`),
     ]);
 
     const assetsTotal =
@@ -265,7 +249,7 @@ export async function getUserDataSummary(userId: string) {
       (notesCount[0]?.count || 0) +
       (tasksCount[0]?.count || 0);
     const systemTotal =
-      (historyCount[0]?.count || 0) + (assetJobsCount[0]?.count || 0);
+      (historyCount[0]?.count || 0) + (queueJobsCount[0]?.count || 0);
 
     return {
       // User assets
@@ -278,7 +262,7 @@ export async function getUserDataSummary(userId: string) {
 
       // System data
       history: historyCount[0]?.count || 0,
-      assetProcessingJobs: assetJobsCount[0]?.count || 0,
+      queueJobs: queueJobsCount[0]?.count || 0,
       systemTotal,
 
       // Grand total
@@ -761,8 +745,8 @@ export async function getQuickStats(userId: string) {
       // Processing jobs
       db
         .select({ count: count() })
-        .from(assetProcessingJobs)
-        .where(eq(assetProcessingJobs.userId, userId)),
+        .from(queueJobs)
+        .where(sql`${queueJobs.metadata}->>'userId' = ${userId}`),
     ]);
 
     return {

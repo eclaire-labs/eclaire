@@ -15,6 +15,8 @@ import type {
   JobHandler,
   JobContext,
   Job,
+  JobStage,
+  JobEventCallbacks,
 } from "../core/types.js";
 import {
   RateLimitError,
@@ -22,6 +24,15 @@ import {
   isPermanentError,
 } from "../core/errors.js";
 import { DEFAULT_BACKOFF } from "../core/utils.js";
+import {
+  initializeStages,
+  startStageInList,
+  completeStageInList,
+  failStageInList,
+  updateStageProgressInList,
+  addStagesToList,
+  calculateOverallProgress,
+} from "../core/progress.js";
 import type { BullMQWorkerConfig } from "./types.js";
 import { createRedisConnection, closeRedisConnection } from "./connection.js";
 
@@ -37,14 +48,14 @@ const DEFAULTS = {
 /**
  * Create a BullMQ-backed Worker
  *
- * @param name - Queue name to process
+ * @param queue - Queue name to process
  * @param handler - Job handler function
  * @param config - Worker configuration
  * @param options - Worker options
  * @returns Worker instance
  */
 export function createBullMQWorker<T = unknown>(
-  name: string,
+  queue: string,
   handler: JobHandler<T>,
   config: BullMQWorkerConfig,
   options: WorkerOptions = {},
@@ -53,6 +64,8 @@ export function createBullMQWorker<T = unknown>(
     redis,
     logger,
     prefix = DEFAULTS.prefix,
+    eventCallbacks,
+    bullmqOptions,
   } = config;
 
   const {
@@ -67,14 +80,26 @@ export function createBullMQWorker<T = unknown>(
   let worker: BullMQWorker | null = null;
 
   /**
+   * Extended job data interface for stage tracking
+   * We store stages in the job data itself
+   */
+  interface ExtendedJobData {
+    __stages?: JobStage[];
+    __currentStage?: string;
+    __metadata?: Record<string, unknown>;
+    [key: string]: unknown;
+  }
+
+  /**
    * Convert BullMQ job to our Job interface
    */
   function toJob(bullmqJob: BullMQJob<T>): Job<T> {
+    const data = bullmqJob.data as ExtendedJobData;
     return {
       id: bullmqJob.id!,
       // Only set key if user originally provided one (via opts.jobId)
       key: bullmqJob.opts.jobId ? bullmqJob.id : undefined,
-      name: bullmqJob.name,
+      queue: bullmqJob.name,
       data: bullmqJob.data,
       status: "processing", // Job is being processed by the worker
       priority: bullmqJob.opts.priority || 0,
@@ -86,6 +111,11 @@ export function createBullMQWorker<T = unknown>(
         ? new Date(bullmqJob.timestamp + bullmqJob.opts.delay)
         : undefined,
       updatedAt: new Date(bullmqJob.processedOn || bullmqJob.timestamp),
+      // Multi-stage progress tracking (stored in job data)
+      stages: data.__stages,
+      currentStage: data.__currentStage,
+      overallProgress: data.__stages ? calculateOverallProgress(data.__stages) : undefined,
+      metadata: data.__metadata,
     };
   }
 
@@ -94,6 +124,29 @@ export function createBullMQWorker<T = unknown>(
    */
   async function processJob(bullmqJob: BullMQJob<T>): Promise<void> {
     const job = toJob(bullmqJob);
+    const jobData = bullmqJob.data as ExtendedJobData;
+
+    // Track current stages locally
+    let currentStages: JobStage[] = jobData.__stages || [];
+    const metadata = jobData.__metadata;
+
+    // Helper to persist stage updates
+    const persistStages = async (stages: JobStage[], currentStageName: string | null) => {
+      currentStages = stages;
+      job.stages = stages;
+      job.currentStage = currentStageName || undefined;
+      job.overallProgress = calculateOverallProgress(stages);
+
+      // Update job data with new stages
+      await bullmqJob.updateData({
+        ...jobData,
+        __stages: stages,
+        __currentStage: currentStageName,
+      } as T);
+
+      // Update progress as overall percentage
+      await bullmqJob.updateProgress(job.overallProgress);
+    };
 
     const ctx: JobContext<T> = {
       job,
@@ -109,11 +162,56 @@ export function createBullMQWorker<T = unknown>(
       progress(percent: number) {
         bullmqJob.updateProgress(percent);
         logger.debug({ jobId: job.id, progress: percent }, "Job progress");
+        eventCallbacks?.onStageProgress?.(job.id, job.currentStage || "", percent, metadata);
+      },
+
+      // Multi-stage progress tracking methods
+      async initStages(stageNames: string[]) {
+        const stages = initializeStages(stageNames);
+        await persistStages(stages, null);
+        logger.debug({ jobId: job.id, stages: stageNames }, "Job stages initialized");
+      },
+
+      async startStage(stageName: string) {
+        const updatedStages = startStageInList(currentStages, stageName);
+        await persistStages(updatedStages, stageName);
+        logger.debug({ jobId: job.id, stage: stageName }, "Stage started");
+        eventCallbacks?.onStageStart?.(job.id, stageName, metadata);
+      },
+
+      async updateStageProgress(stageName: string, percent: number) {
+        // Lightweight operation - only update local state and emit event
+        currentStages = updateStageProgressInList(currentStages, stageName, percent);
+        job.stages = currentStages;
+        job.overallProgress = calculateOverallProgress(currentStages);
+        eventCallbacks?.onStageProgress?.(job.id, stageName, percent, metadata);
+      },
+
+      async completeStage(stageName: string, artifacts?: Record<string, unknown>) {
+        const updatedStages = completeStageInList(currentStages, stageName, artifacts);
+        await persistStages(updatedStages, null);
+        logger.debug({ jobId: job.id, stage: stageName }, "Stage completed");
+        eventCallbacks?.onStageComplete?.(job.id, stageName, artifacts, metadata);
+      },
+
+      async failStage(stageName: string, error: Error) {
+        const updatedStages = failStageInList(currentStages, stageName, error.message);
+        await persistStages(updatedStages, null);
+        logger.debug({ jobId: job.id, stage: stageName, error: error.message }, "Stage failed");
+        eventCallbacks?.onStageFail?.(job.id, stageName, error.message, metadata);
+      },
+
+      async addStages(stageNames: string[]) {
+        const updatedStages = addStagesToList(currentStages, stageNames);
+        await persistStages(updatedStages, job.currentStage || null);
+        logger.debug({ jobId: job.id, addedStages: stageNames }, "Stages added");
       },
     };
 
     try {
       await handler(ctx);
+      // Call onJobComplete callback
+      eventCallbacks?.onJobComplete?.(job.id, metadata);
     } catch (error) {
       // Handle rate limit errors: reschedule just this job without consuming attempt
       // Note: We use moveToDelayed instead of worker.rateLimit() because rateLimit()
@@ -145,7 +243,7 @@ export function createBullMQWorker<T = unknown>(
   return {
     async start(): Promise<void> {
       if (worker) {
-        logger.warn({ name }, "Worker already running");
+        logger.warn({ queue }, "Worker already running");
         return;
       }
 
@@ -157,14 +255,16 @@ export function createBullMQWorker<T = unknown>(
         stalledInterval,
         // Remove stalled jobs from the queue after lockDuration
         maxStalledCount: 1,
+        // Spread any additional BullMQ-specific options (e.g., limiter)
+        ...bullmqOptions,
       };
 
-      worker = new BullMQWorker(name, processJob, workerOptions);
+      worker = new BullMQWorker(queue, processJob, workerOptions);
 
       // Setup event handlers
       worker.on("completed", (job) => {
         logger.info(
-          { jobId: job.id, name: job.name, attempts: job.attemptsMade },
+          { jobId: job.id, queue: job.name, attempts: job.attemptsMade },
           "Job completed",
         );
       });
@@ -173,12 +273,17 @@ export function createBullMQWorker<T = unknown>(
         logger.error(
           {
             jobId: job?.id,
-            name: job?.name,
+            queue: job?.name,
             attempts: job?.attemptsMade,
             error: error.message,
           },
           "Job failed",
         );
+        // Call onJobFail callback if provided
+        if (job) {
+          const jobData = job.data as ExtendedJobData;
+          eventCallbacks?.onJobFail?.(job.id!, error.message, jobData.__metadata);
+        }
       });
 
       worker.on("error", (error) => {
@@ -189,7 +294,7 @@ export function createBullMQWorker<T = unknown>(
         logger.warn({ jobId }, "Job stalled");
       });
 
-      logger.info({ name, concurrency, lockDuration }, "Worker started");
+      logger.info({ queue, concurrency, lockDuration }, "Worker started");
     },
 
     async stop(): Promise<void> {
@@ -197,7 +302,7 @@ export function createBullMQWorker<T = unknown>(
         return;
       }
 
-      logger.info({ name }, "Stopping worker...");
+      logger.info({ queue }, "Stopping worker...");
 
       try {
         await worker.close();
@@ -211,7 +316,7 @@ export function createBullMQWorker<T = unknown>(
 
       // Close Redis connection
       await closeRedisConnection(connection, logger);
-      logger.info({ name }, "Worker stopped");
+      logger.info({ queue }, "Worker stopped");
     },
 
     isRunning(): boolean {
@@ -224,7 +329,7 @@ export function createBullMQWorker<T = unknown>(
  * Factory function type for creating BullMQ workers
  */
 export type BullMQWorkerFactory<T = unknown> = (
-  name: string,
+  queue: string,
   handler: JobHandler<T>,
   options?: WorkerOptions,
 ) => Worker;
@@ -239,10 +344,10 @@ export function createBullMQWorkerFactory(
   config: BullMQWorkerConfig,
 ): BullMQWorkerFactory {
   return <T>(
-    name: string,
+    queue: string,
     handler: JobHandler<T>,
     options?: WorkerOptions,
   ): Worker => {
-    return createBullMQWorker(name, handler, config, options);
+    return createBullMQWorker(queue, handler, config, options);
   };
 }

@@ -1,8 +1,7 @@
-import type { Job } from "bullmq";
+import type { JobContext } from "@eclaire/queue/core";
 import { config } from "../config.js";
 import { type AIMessage, callAI } from "../../lib/ai-client.js";
 import { createChildLogger } from "../../lib/logger.js";
-import { createProcessingReporter } from "../lib/processing-reporter.js";
 
 const logger = createChildLogger("task-execution-processor");
 
@@ -120,18 +119,16 @@ async function updateTaskStatus(
 }
 
 /**
- * Update task execution tracking in the backend
+ * Update lastExecutedAt timestamp on the task
+ * Note: Recurrence scheduling is now handled by the queue_schedules table,
+ * so we only update lastExecutedAt for display purposes.
  */
-async function updateTaskExecutionTracking(
-  taskId: string,
-  updates: {
-    lastRunAt?: string;
-    nextRunAt?: string | null;
-  },
-): Promise<void> {
+async function updateLastExecutedAt(taskId: string): Promise<void> {
   const backendUrl = config.backend.url;
   const apiKey = config.apiKey!; // Validated during startup
   const url = `${backendUrl}/api/tasks/${taskId}/execution-tracking`;
+
+  const updates = { lastExecutedAt: new Date().toISOString() };
 
   logger.info(
     {
@@ -140,7 +137,7 @@ async function updateTaskExecutionTracking(
       url,
       apiKeyPrefix: apiKey.substring(0, 8) + "...",
     },
-    "Updating task execution tracking",
+    "Updating task lastExecutedAt",
   );
 
   try {
@@ -165,7 +162,7 @@ async function updateTaskExecutionTracking(
             errorText,
             url,
           },
-          "Task was deleted during execution, skipping execution tracking update",
+          "Task was deleted during execution, skipping lastExecutedAt update",
         );
         return; // Gracefully skip the update
       }
@@ -178,10 +175,10 @@ async function updateTaskExecutionTracking(
           errorText,
           url,
         },
-        "Task execution tracking update failed",
+        "Task lastExecutedAt update failed",
       );
       throw new Error(
-        `Failed to update execution tracking: ${response.status} ${errorText}`,
+        `Failed to update lastExecutedAt: ${response.status} ${errorText}`,
       );
     }
 
@@ -191,7 +188,7 @@ async function updateTaskExecutionTracking(
         taskId,
         responseData,
       },
-      "Task execution tracking updated successfully",
+      "Task lastExecutedAt updated successfully",
     );
   } catch (error) {
     logger.error(
@@ -201,7 +198,7 @@ async function updateTaskExecutionTracking(
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       },
-      "Exception occurred while updating task execution tracking",
+      "Exception occurred while updating task lastExecutedAt",
     );
     throw error;
   }
@@ -214,8 +211,7 @@ interface TaskExecutionJobData {
   userId: string;
   assignedToId?: string;
   isAssignedToAI?: boolean;
-  isRecurring?: boolean;
-  cronExpression?: string;
+  isRecurringExecution?: boolean; // Set by scheduler for recurring job executions
 }
 
 /**
@@ -446,15 +442,15 @@ async function createTaskComment(
   }
 }
 
-// Note: Recurrence handling is automatically managed by BullMQ's repeat functionality
-// when jobs are scheduled with repeat: { pattern: cronExpression } option.
-// No manual recurrence handling is needed in the job processor.
+// Note: Recurrence is handled by the queue scheduler (queue_schedules table).
+// The scheduler automatically creates the next job based on the cron expression.
+// This processor only needs to execute the task and update lastExecutedAt.
 
 /**
  * Process user task execution (non-AI assistant)
  */
-async function processUserTask(job: Job<TaskExecutionJobData>) {
-  const { taskId, title, userId } = job.data;
+async function processUserTask(ctx: JobContext<TaskExecutionJobData>) {
+  const { taskId, title, userId } = ctx.job.data;
 
   logger.info({ taskId, userId }, "Processing user task execution");
 
@@ -465,37 +461,27 @@ async function processUserTask(job: Job<TaskExecutionJobData>) {
   // For now, we'll just log that the task was processed
 
   const STAGE_NAME = "user_task_processing";
-  // Pass jobType to ensure we update the correct job row (execution vs tag_generation)
-  const reporter = await createProcessingReporter("tasks", taskId, userId, "execution");
-  await reporter.initializeJob([STAGE_NAME]);
+  await ctx.initStages([STAGE_NAME]);
 
   try {
-    // Update lastRunAt when job starts
-    await updateTaskExecutionTracking(taskId, {
-      lastRunAt: new Date().toISOString(),
-    });
+    // Update lastExecutedAt when job executes
+    await updateLastExecutedAt(taskId);
 
-    await reporter.updateStage(STAGE_NAME, "processing", 50);
+    await ctx.startStage(STAGE_NAME);
+    await ctx.updateStageProgress(STAGE_NAME, 50);
 
     logger.info({ taskId, title }, "User task processing completed");
 
-    await reporter.updateStage(STAGE_NAME, "processing", 100);
-    await reporter.completeStage(STAGE_NAME);
-    await reporter.completeJob({ processed: true });
+    await ctx.updateStageProgress(STAGE_NAME, 100);
+    await ctx.completeStage(STAGE_NAME, { processed: true });
 
-    // For non-recurring tasks, set nextRunAt to null
-    if (!job.data.isRecurring) {
-      await updateTaskExecutionTracking(taskId, {
-        nextRunAt: null,
-      });
-    }
+    // Note: Recurrence is handled by the scheduler - no need to update nextRunAt
   } catch (error: any) {
     logger.error(
       { taskId, error: error.message },
       "Failed to process user task",
     );
-    await reporter.reportError(error as Error, STAGE_NAME);
-    await reporter.failJob(error.message);
+    await ctx.failStage(STAGE_NAME, error);
     throw error;
   }
 }
@@ -503,29 +489,29 @@ async function processUserTask(job: Job<TaskExecutionJobData>) {
 /**
  * Main task execution processor - handles both AI assistant and user tasks
  */
-async function processTaskExecution(job: Job<TaskExecutionJobData>) {
-  const { taskId, title, description, userId, assignedToId } = job.data;
+async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
+  const { taskId, title, description, userId, assignedToId, isAssignedToAI } = ctx.job.data;
   logger.info(
-    { jobId: job.id, taskId, userId, assignedToId },
+    { jobId: ctx.job.id, taskId, userId, assignedToId },
     "Starting task execution processing job",
   );
 
   logger.info(
     {
-      jobId: job.id,
+      jobId: ctx.job.id,
       taskId,
       title,
       description,
       userId,
       assignedToId,
-      fullJobData: job.data,
+      fullJobData: ctx.job.data,
     },
     "Task execution job details",
   );
 
   try {
     // Use the isAssignedToAI field provided by the backend job data
-    const isAI = job.data.isAssignedToAI || false;
+    const isAI = isAssignedToAI || false;
 
     logger.info(
       {
@@ -551,9 +537,7 @@ async function processTaskExecution(job: Job<TaskExecutionJobData>) {
       );
 
       const STAGE_NAME = "ai_response";
-      // Pass jobType to ensure we update the correct job row (execution vs tag_generation)
-      const reporter = await createProcessingReporter("tasks", taskId, userId, "execution");
-      await reporter.initializeJob([STAGE_NAME]);
+      await ctx.initStages([STAGE_NAME]);
 
       try {
         // Mark task as in-progress when AI assistant starts working
@@ -572,12 +556,11 @@ async function processTaskExecution(job: Job<TaskExecutionJobData>) {
           );
         }
 
-        // Update lastRunAt when job starts
-        await updateTaskExecutionTracking(taskId, {
-          lastRunAt: new Date().toISOString(),
-        });
+        // Update lastExecutedAt when job executes
+        await updateLastExecutedAt(taskId);
 
-        await reporter.updateStage(STAGE_NAME, "processing", 10);
+        await ctx.startStage(STAGE_NAME);
+        await ctx.updateStageProgress(STAGE_NAME, 10);
 
         // Generate AI response - use prompt AI or simple AI based on configuration
         let aiResponse: string;
@@ -632,7 +615,7 @@ async function processTaskExecution(job: Job<TaskExecutionJobData>) {
           "AI response generated successfully",
         );
 
-        await reporter.updateStage(STAGE_NAME, "processing", 50);
+        await ctx.updateStageProgress(STAGE_NAME, 50);
 
         // Create comment with AI response
         logger.info({ taskId }, "Creating task comment with AI response");
@@ -653,18 +636,15 @@ async function processTaskExecution(job: Job<TaskExecutionJobData>) {
           "Task comment creation completed successfully",
         );
 
-        await reporter.updateStage(STAGE_NAME, "processing", 90);
+        await ctx.updateStageProgress(STAGE_NAME, 90);
 
         const finalArtifacts = {
           aiResponse: aiResponse,
           commentCreated: true,
         };
 
-        // Mark the stage as complete
-        await reporter.completeStage(STAGE_NAME);
-
-        // Complete the job
-        await reporter.completeJob(finalArtifacts);
+        // Complete the final stage with artifacts - job completion is implicit when handler returns
+        await ctx.completeStage(STAGE_NAME, finalArtifacts);
 
         // Mark task as completed now that AI assistant has finished
         try {
@@ -682,24 +662,18 @@ async function processTaskExecution(job: Job<TaskExecutionJobData>) {
           );
         }
 
-        // For non-recurring tasks, set nextRunAt to null
-        if (!job.data.isRecurring) {
-          await updateTaskExecutionTracking(taskId, {
-            nextRunAt: null,
-          });
-        }
+        // Note: Recurrence is handled by the scheduler - no need to update nextRunAt
 
         logger.info(
-          { jobId: job.id, taskId },
+          { jobId: ctx.job.id, taskId },
           "AI assistant task processing completed successfully",
         );
       } catch (error: any) {
         logger.error(
-          { jobId: job.id, taskId, error: error.message },
+          { jobId: ctx.job.id, taskId, error: error.message },
           "Failed AI assistant task processing",
         );
-        await reporter.reportError(error as Error, STAGE_NAME);
-        await reporter.failJob(error.message);
+        await ctx.failStage(STAGE_NAME, error);
         throw error;
       }
     } else {
@@ -715,7 +689,7 @@ async function processTaskExecution(job: Job<TaskExecutionJobData>) {
         "Entering user task processing path",
       );
 
-      await processUserTask(job);
+      await processUserTask(ctx);
 
       logger.info(
         {
@@ -726,16 +700,13 @@ async function processTaskExecution(job: Job<TaskExecutionJobData>) {
       );
     }
 
-    // Note: Recurrence is automatically handled by BullMQ's repeat functionality
-    // No manual recurrence handling needed here
-
     logger.info(
-      { jobId: job.id, taskId },
+      { jobId: ctx.job.id, taskId },
       "Task execution completed successfully",
     );
   } catch (error: any) {
     logger.error(
-      { jobId: job.id, taskId, error: error.message },
+      { jobId: ctx.job.id, taskId, error: error.message },
       "Failed task execution processing job",
     );
     throw error;

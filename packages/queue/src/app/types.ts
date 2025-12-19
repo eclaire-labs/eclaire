@@ -78,8 +78,8 @@ export interface RedisQueueConfig {
 export interface DatabaseQueueConfig {
   /** Drizzle database instance */
   db: DbInstance;
-  /** Database schema (postgres or sqlite) */
-  schema: any;
+  /** Database type: 'postgres' or 'sqlite' */
+  dbType: "postgres" | "sqlite";
   /** Optional transaction manager */
   txManager?: TransactionManager;
 }

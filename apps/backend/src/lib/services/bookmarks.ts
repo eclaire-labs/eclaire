@@ -13,19 +13,19 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { db, txManager, schema } from "../../db/index.js";
+import { db, txManager, schema, queueJobs } from "../../db/index.js";
 import { generateBookmarkId, generateHistoryId } from "@eclaire/core";
 
 const {
-  assetProcessingJobs,
   bookmarks,
   bookmarksTags,
   tags,
 } = schema;
+
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
-import { getQueue, QueueNames } from "../queues.js";
-import { getQueueAdapter } from "../queue-adapter.js";
+import { getQueue, QueueNames, getQueueAdapter } from "../queue/index.js";
 import { createChildLogger } from "../logger.js";
+
 import { recordHistory } from "./history.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
@@ -400,14 +400,6 @@ export async function deleteBookmark(
       // Delete bookmark-tag relationships first
       await tx.bookmarksTags.delete(eq(bookmarksTags.bookmarkId, id));
 
-      // Delete the processing job
-      await tx.assetProcessingJobs.delete(
-        and(
-          eq(assetProcessingJobs.assetType, "bookmarks"),
-          eq(assetProcessingJobs.assetId, id),
-        ),
-      );
-
       // Delete the bookmark itself
       await tx.bookmarks.delete(
         and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)),
@@ -428,6 +420,9 @@ export async function deleteBookmark(
         timestamp: new Date(),
       });
     });
+
+    // Delete queue job outside transaction (non-critical, like storage)
+    await db.delete(queueJobs).where(eq(queueJobs.key, `bookmarks:${id}`));
 
     // Delete the entire asset folder if deleteStorage is true
     // (outside transaction - external side-effect)
@@ -600,15 +595,12 @@ export async function getAllBookmarks(userId: string) {
         flagColor: bookmarks.flagColor,
         isPinned: bookmarks.isPinned,
         enabled: bookmarks.enabled,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(bookmarks)
       .leftJoin(
-        assetProcessingJobs,
-        and(
-          eq(bookmarks.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "bookmarks"),
-        ),
+        queueJobs,
+        eq(queueJobs.key, sql`'bookmarks:' || ${bookmarks.id}`),
       )
       .where(eq(bookmarks.userId, userId))
       .orderBy(desc(bookmarks.createdAt));
@@ -674,15 +666,12 @@ export async function getBookmarkById(bookmarkId: string, userId: string) {
         flagColor: bookmarks.flagColor,
         isPinned: bookmarks.isPinned,
         enabled: bookmarks.enabled,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(bookmarks)
       .leftJoin(
-        assetProcessingJobs,
-        and(
-          eq(bookmarks.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "bookmarks"),
-        ),
+        queueJobs,
+        eq(queueJobs.key, sql`'bookmarks:' || ${bookmarks.id}`),
       )
       .where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)));
 
@@ -845,15 +834,12 @@ export async function findBookmarks(
         flagColor: bookmarks.flagColor,
         isPinned: bookmarks.isPinned,
         enabled: bookmarks.enabled,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(bookmarks)
       .leftJoin(
-        assetProcessingJobs,
-        and(
-          eq(bookmarks.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "bookmarks"),
-        ),
+        queueJobs,
+        eq(queueJobs.key, sql`'bookmarks:' || ${bookmarks.id}`),
       )
       .where(and(...conditions))
       .orderBy(desc(bookmarks.createdAt))

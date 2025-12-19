@@ -13,28 +13,36 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { db, txManager, schema } from "../../db/index.js";
+import { db, txManager, schema, queueJobs } from "../../db/index.js";
 import { generateHistoryId, generateTaskId, type TaskStatus } from "@eclaire/core";
 
 const {
-  assetProcessingJobs,
   tags,
   taskComments,
   tasks,
   tasksTags,
   users,
 } = schema;
-import { getNextExecutionTime, isValidCronExpression } from "../cron-utils.js";
+import {
+  getNextExecutionTime,
+  isValidCronExpression,
+  getQueue,
+  QueueNames,
+  getCurrentTimestamp,
+  getQueueAdapter,
+  getScheduler,
+  getRecurringTaskScheduleKey,
+} from "../queue/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { ValidationError } from "../errors.js";
-import { getQueue, QueueNames } from "../queues.js";
 import { getQueueMode } from "../env-validation.js";
-import { getCurrentTimestamp } from "../db-queue-helpers.js";
-import { getQueueAdapter } from "../queue-adapter.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:tasks");
+
+// Queue name for task tag_generation jobs (maps to old jobType="tag_generation")
+const TASK_PROCESSING_QUEUE = "task-processing";
 
 /**
  * Validates an assignedToId and returns the validated user ID
@@ -169,7 +177,7 @@ export type { TaskStatus };
 
 /**
  * Creates or updates a scheduler for a recurring task
- * Uses BullMQ scheduler
+ * Uses unified scheduler (works with both Redis/BullMQ and Database modes)
  *
  * @param taskId - The task ID
  * @param cronExpression - Valid cron expression
@@ -187,71 +195,29 @@ async function upsertTaskScheduler(
   limit?: number,
   immediately?: boolean,
 ): Promise<boolean> {
-  const queueMode = getQueueMode();
-
   try {
-    if (queueMode === "redis") {
-      // Redis mode: Use BullMQ scheduler
-      const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
-      if (!queue) {
-        logger.error(
-          { taskId },
-          "Failed to get task execution queue for scheduler",
-        );
-        return false;
-      }
+    const scheduler = await getScheduler();
+    const scheduleKey = getRecurringTaskScheduleKey(taskId);
 
-      const schedulerId = `recurring-task-${taskId}`;
+    await scheduler.upsert({
+      key: scheduleKey,
+      queue: QueueNames.TASK_EXECUTION_PROCESSING,
+      cron: cronExpression,
+      data: {
+        ...taskData,
+        isRecurringExecution: true,
+        jobType: "execution",
+      },
+      enabled: true,
+      limit: limit || undefined,
+      endDate: endDate || undefined,
+      immediately: immediately || false,
+    });
 
-      await queue.upsertJobScheduler(
-        schedulerId,
-        {
-          pattern: cronExpression,
-          endDate: endDate || undefined,
-          limit: limit,
-          immediately: immediately,
-        },
-        {
-          name: `recurring-task-job-${taskId}`,
-          data: {
-            ...taskData,
-            isRecurring: true,
-            cronExpression: cronExpression,
-          },
-          opts: {
-            removeOnComplete: 1000,
-            removeOnFail: 100,
-          },
-        },
-      );
-
-      logger.info(
-        { taskId, cronExpression, schedulerId: `recurring-task-${taskId}`, limit, immediately, queueMode },
-        "Created/updated task scheduler (Redis/BullMQ)",
-      );
-    } else {
-      // Database mode: Update task record, scheduler loop will pick it up
-      const now = getCurrentTimestamp();
-      const nextRunAt = immediately ? now : getNextExecutionTime(cronExpression);
-
-      await db
-        .update(tasks)
-        .set({
-          isRecurring: true,
-          cronExpression: cronExpression,
-          recurrenceEndDate: endDate,
-          recurrenceLimit: limit,
-          runImmediately: immediately || false,
-          nextRunAt: nextRunAt,
-          updatedAt: now,
-        })
-        .where(eq(tasks.id, taskId));
-
-      logger.info(
-        { taskId, cronExpression, nextRunAt, limit, immediately, queueMode },
-        "Updated task scheduler (Database mode)",
-      );
-    }
+    logger.info(
+      { taskId, cronExpression, scheduleKey, limit, immediately },
+      "Created/updated task scheduler",
+    );
 
     return true;
   } catch (error) {
@@ -261,7 +227,6 @@ async function upsertTaskScheduler(
         cronExpression,
         limit,
         immediately,
-        queueMode,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Failed to create/update task scheduler",
@@ -324,13 +289,12 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
       }
     } else {
       // Database mode: Delete pending jobs for this task
-      const result = await db
-        .delete(assetProcessingJobs)
+      await db
+        .delete(queueJobs)
         .where(
           and(
-            eq(assetProcessingJobs.assetType, "tasks"),
-            eq(assetProcessingJobs.assetId, taskId),
-            eq(assetProcessingJobs.status, "pending")
+            eq(queueJobs.key, `tasks:${taskId}`),
+            eq(queueJobs.status, "pending")
           )
         );
 
@@ -353,57 +317,24 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
 
 /**
  * Removes a scheduler for a recurring task
- * In Redis mode: removes BullMQ scheduler
- * In Database mode: clears recurrence fields on task
+ * Uses unified scheduler (works with both Redis/BullMQ and Database modes)
  *
  * @param taskId - The task ID
  * @returns Promise<boolean> - Success status
  */
 async function removeTaskScheduler(taskId: string): Promise<boolean> {
-  const queueMode = getQueueMode();
-
   try {
-    logger.info({ taskId, queueMode }, "Starting scheduler removal process");
+    const scheduler = await getScheduler();
+    const scheduleKey = getRecurringTaskScheduleKey(taskId);
 
-    if (queueMode === "redis") {
-      // Redis mode: Remove BullMQ scheduler
-      const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
-      if (!queue) {
-        logger.error(
-          { taskId },
-          "Failed to get task execution queue to remove scheduler",
-        );
-        return false;
-      }
+    logger.info({ taskId, scheduleKey }, "Starting scheduler removal process");
 
-      const schedulerId = `recurring-task-${taskId}`;
-      await queue.removeJobScheduler(schedulerId);
+    const removed = await scheduler.remove(scheduleKey);
 
-      logger.info(
-        { taskId, schedulerId, queueMode },
-        "Successfully removed task scheduler (Redis)",
-      );
+    if (removed) {
+      logger.info({ taskId, scheduleKey }, "Successfully removed task scheduler");
     } else {
-      // Database mode: Clear recurrence fields
-      const now = getCurrentTimestamp();
-
-      await db
-        .update(tasks)
-        .set({
-          isRecurring: false,
-          cronExpression: null,
-          recurrenceEndDate: null,
-          recurrenceLimit: null,
-          runImmediately: false,
-          nextRunAt: null,
-          updatedAt: now,
-        })
-        .where(eq(tasks.id, taskId));
-
-      logger.info(
-        { taskId, queueMode },
-        "Successfully removed task scheduler (Database)",
-      );
+      logger.debug({ taskId, scheduleKey }, "No scheduler found to remove");
     }
 
     return true;
@@ -411,7 +342,6 @@ async function removeTaskScheduler(taskId: string): Promise<boolean> {
     logger.error(
       {
         taskId,
-        queueMode,
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       },
@@ -481,31 +411,83 @@ function validateRecurrenceParams(
 }
 
 /**
+ * Fetches recurrence schedule data for a task from the scheduler
+ * @param taskId - The task ID
+ * @returns Schedule data or null if no schedule exists
+ */
+async function getTaskScheduleData(taskId: string): Promise<{
+  isRecurring: boolean;
+  cronExpression: string | null;
+  recurrenceEndDate: Date | null;
+  recurrenceLimit: number | null;
+} | null> {
+  try {
+    const scheduler = await getScheduler();
+    const scheduleKey = getRecurringTaskScheduleKey(taskId);
+    const schedule = await scheduler.get(scheduleKey);
+
+    if (!schedule) {
+      return null;
+    }
+
+    return {
+      isRecurring: true,
+      cronExpression: schedule.cron,
+      recurrenceEndDate: schedule.endDate || null,
+      recurrenceLimit: schedule.limit || null,
+    };
+  } catch (error) {
+    logger.error(
+      { taskId, error: error instanceof Error ? error.message : "Unknown error" },
+      "Failed to fetch task schedule data",
+    );
+    return null;
+  }
+}
+
+/**
+ * Schedule data for task response enrichment
+ */
+interface TaskScheduleData {
+  isRecurring: boolean;
+  cronExpression: string | null;
+  recurrenceEndDate: Date | null;
+  recurrenceLimit: number | null;
+}
+
+/**
  * Cleans a task object for API response by removing DB-specific fields
  * and adding properly formatted date fields.
+ * If scheduleData is provided, it overrides the recurrence fields from the task.
  */
 function cleanTaskForResponse(
   task: any,
   tags: string[],
   processingStatus?: string | null,
   comments: any[] = [],
+  scheduleData?: TaskScheduleData | null,
 ) {
   const dueDate = task.dueDate != null ? formatToISO8601(task.dueDate) : null;
-  const nextRunAt =
-    task.nextRunAt != null ? formatToISO8601(task.nextRunAt) : null;
-  const lastRunAt =
-    task.lastRunAt != null ? formatToISO8601(task.lastRunAt) : null;
+  const lastExecutedAt =
+    task.lastExecutedAt != null ? formatToISO8601(task.lastExecutedAt) : null;
   const completedAt =
     task.completedAt != null ? formatToISO8601(task.completedAt) : null;
 
   // Create a new object excluding the timestamp fields
   const { createdAt, updatedAt, ...cleanedTask } = task;
 
+  // Use schedule data from scheduler if provided, otherwise use task fields (legacy)
+  const recurrenceData = scheduleData ?? {
+    isRecurring: task.isRecurring ?? false,
+    cronExpression: task.cronExpression ?? null,
+    recurrenceEndDate: task.recurrenceEndDate ?? null,
+    recurrenceLimit: task.recurrenceLimit ?? null,
+  };
+
   return {
     ...cleanedTask,
     dueDate, // Now correctly formatted ISO string or null
-    nextRunAt, // Formatted ISO string or null
-    lastRunAt, // Formatted ISO string or null
+    lastExecutedAt, // Formatted ISO string or null (renamed from lastRunAt)
     completedAt, // Formatted ISO string or null
     // createdAt and updatedAt are already Date objects
     createdAt: createdAt ? formatToISO8601(createdAt) : null,
@@ -513,8 +495,13 @@ function cleanTaskForResponse(
     processingStatus: processingStatus || "pending",
     tags: tags,
     comments: comments,
-    // Ensure dueDate in the cleaned task is the formatted string or null
-    // The original Date dueDate from the DB is now replaced
+    // Recurrence data from scheduler
+    isRecurring: recurrenceData.isRecurring,
+    cronExpression: recurrenceData.cronExpression,
+    recurrenceEndDate: recurrenceData.recurrenceEndDate
+      ? formatToISO8601(recurrenceData.recurrenceEndDate)
+      : null,
+    recurrenceLimit: recurrenceData.recurrenceLimit,
   };
 }
 
@@ -633,47 +620,23 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
     // Queue task execution processing if task is assigned to an AI assistant
     const isAssignedToAI = await isAIAssistant(assignedToUserId);
     if (isAssignedToAI) {
-      const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
-      if (queue) {
-        // Redis/BullMQ mode
-        const delay = calculateAIAssistantJobDelay(dueDateValue);
-        await queue.add("process-task-execution", {
-          taskId: taskId,
-          userId: userId,
-          dueDate: dueDateValue ?? undefined,
-          isAssignedToAI: true,
-        }, {
-          delay,
-          removeOnComplete: {
-            age: 3600 * 24,
-            count: 1000,
-          },
-          removeOnFail: false,
-        });
-        logger.info(
-          { taskId, userId, assignedToId: assignedToUserId, delay },
-          "Queued task for execution processing (Redis)",
-        );
-      } else {
-        // Database queue mode - use queueAdapter with execution jobType
-        const delay = calculateAIAssistantJobDelay(dueDateValue);
-        const scheduledFor = delay > 0 ? new Date(Date.now() + delay) : undefined;
-        await queueAdapter.enqueueTask({
-          taskId: taskId,
-          userId: userId,
-          title: taskData.title,
-          description: taskData.description || "",
-          isAssignedToAI: true,
-          assignedToId: assignedToUserId,
-          dueDate: dueDateValue ?? undefined,
-          scheduledFor,
-          jobType: "execution",
-        });
-        logger.info(
-          { taskId, userId, assignedToId: assignedToUserId, delay },
-          "Queued task for execution processing (Database)",
-        );
-      }
+      const delay = calculateAIAssistantJobDelay(dueDateValue);
+      const scheduledFor = delay > 0 ? new Date(Date.now() + delay) : undefined;
+      await queueAdapter.enqueueTask({
+        taskId: taskId,
+        userId: userId,
+        title: taskData.title,
+        description: taskData.description || "",
+        isAssignedToAI: true,
+        assignedToId: assignedToUserId,
+        dueDate: dueDateValue ?? undefined,
+        scheduledFor,
+        jobType: "execution",
+      });
+      logger.info(
+        { taskId, userId, assignedToId: assignedToUserId, delay },
+        "Queued task for execution processing",
+      );
     }
 
     // Set up recurring task scheduler if task is recurring
@@ -748,17 +711,20 @@ export async function updateTask(
       "recurrenceEndDate" in taskData ||
       "recurrenceLimit" in taskData
     ) {
-      // For partial updates, use existing task values as defaults
-      const finalIsRecurring = taskData.isRecurring ?? existingTask.isRecurring;
+      // Fetch existing schedule data from scheduler for partial updates
+      const existingSchedule = await getTaskScheduleData(id);
+
+      // For partial updates, use existing schedule values as defaults
+      const finalIsRecurring = taskData.isRecurring ?? existingSchedule?.isRecurring ?? false;
       const finalCronExpression =
-        taskData.cronExpression ?? existingTask.cronExpression;
+        taskData.cronExpression ?? existingSchedule?.cronExpression ?? null;
       const finalRecurrenceEndDate =
         taskData.recurrenceEndDate ??
-        (existingTask.recurrenceEndDate
-          ? existingTask.recurrenceEndDate.toISOString()
+        (existingSchedule?.recurrenceEndDate
+          ? existingSchedule.recurrenceEndDate.toISOString()
           : null);
       const finalRecurrenceLimit =
-        taskData.recurrenceLimit ?? existingTask.recurrenceLimit;
+        taskData.recurrenceLimit ?? existingSchedule?.recurrenceLimit ?? null;
 
       const recurrenceValidation = validateRecurrenceParams(
         finalIsRecurring,
@@ -1004,9 +970,8 @@ export async function updateTask(
     const dueDateChanged =
       includeDueDateUpdate &&
       dueDateValue?.getTime() !== existingTask.dueDate?.getTime();
-    const nextRunAtChanged =
-      includeNextRunAtUpdate &&
-      nextRunAtValue?.getTime() !== existingTask.nextRunAt?.getTime();
+    // Fetch existing schedule data from scheduler once for use throughout
+    const existingSchedule = await getTaskScheduleData(id);
 
     if (assignmentChanged || dueDateChanged) {
       // Cancel existing task execution job before creating new one
@@ -1019,47 +984,24 @@ export async function updateTask(
             ? dueDateValue
             : existingTask.dueDate;
           const delay = calculateAIAssistantJobDelay(finalDueDate);
+          const scheduledFor = delay > 0 ? new Date(Date.now() + delay) : undefined;
 
-          const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
-          if (queue) {
-            // Redis/BullMQ mode
-            await queue.add("process-task-execution", {
-              taskId: id,
-              userId: userId,
-              dueDate: finalDueDate ?? undefined,
-              isAssignedToAI: true,
-            }, {
-              delay,
-              removeOnComplete: {
-                age: 3600 * 24,
-                count: 1000,
-              },
-              removeOnFail: false,
-            });
-            logger.info(
-              { taskId: id, userId, assignedToId: finalAssignedToId, delay },
-              "Queued updated task for execution processing (Redis)",
-            );
-          } else {
-            // Database queue mode - use queueAdapter with execution jobType
-            const queueAdapter = await getQueueAdapter();
-            const scheduledFor = delay > 0 ? new Date(Date.now() + delay) : undefined;
-            await queueAdapter.enqueueTask({
-              taskId: id,
-              userId: userId,
-              title: existingTask.title,
-              description: existingTask.description || "",
-              isAssignedToAI: true,
-              assignedToId: finalAssignedToId,
-              dueDate: finalDueDate ?? undefined,
-              scheduledFor,
-              jobType: "execution",
-            });
-            logger.info(
-              { taskId: id, userId, assignedToId: finalAssignedToId, delay },
-              "Queued updated task for execution processing (Database)",
-            );
-          }
+          const queueAdapter = await getQueueAdapter();
+          await queueAdapter.enqueueTask({
+            taskId: id,
+            userId: userId,
+            title: existingTask.title,
+            description: existingTask.description || "",
+            isAssignedToAI: true,
+            assignedToId: finalAssignedToId,
+            dueDate: finalDueDate ?? undefined,
+            scheduledFor,
+            jobType: "execution",
+          });
+          logger.info(
+            { taskId: id, userId, assignedToId: finalAssignedToId, delay },
+            "Queued updated task for execution processing",
+          );
         }
       }
     }
@@ -1072,11 +1014,11 @@ export async function updateTask(
       "recurrenceLimit" in taskUpdateData ||
       "runImmediately" in taskUpdateData;
 
-    // Determine final recurrence state
+    // Determine final recurrence state using schedule data from scheduler
     const finalIsRecurring =
-      taskUpdateData.isRecurring ?? existingTask.isRecurring;
+      taskUpdateData.isRecurring ?? existingSchedule?.isRecurring ?? false;
     const finalCronExpression =
-      taskUpdateData.cronExpression ?? existingTask.cronExpression;
+      taskUpdateData.cronExpression ?? existingSchedule?.cronExpression ?? null;
 
     // Check if we need to update recurring scheduler due to:
     // 1. Recurrence parameters changed (cron, end date, recurring flag)
@@ -1086,13 +1028,13 @@ export async function updateTask(
     const shouldUpdateRecurringScheduler =
       recurrenceChanged ||
       (assignmentChanged &&
-        (existingTask.isRecurring || finalIsRecurring) &&
-        existingTask.cronExpression);
+        (existingSchedule?.isRecurring || finalIsRecurring) &&
+        existingSchedule?.cronExpression);
 
     if (shouldUpdateRecurringScheduler) {
       const finalRecurrenceEndDate = includeRecurrenceEndDateUpdate
         ? recurrenceEndDateValue
-        : existingTask.recurrenceEndDate;
+        : existingSchedule?.recurrenceEndDate ?? null;
 
       logger.info(
         {
@@ -1101,8 +1043,8 @@ export async function updateTask(
           recurrenceChanged,
           finalIsRecurring,
           finalCronExpression,
-          existingIsRecurring: existingTask.isRecurring,
-          existingCronExpression: existingTask.cronExpression,
+          existingIsRecurring: existingSchedule?.isRecurring ?? false,
+          existingCronExpression: existingSchedule?.cronExpression ?? null,
           finalAssignedToId,
           existingAssignedToId: existingTask.assignedToId,
         },
@@ -1116,10 +1058,11 @@ export async function updateTask(
           : false;
         const finalRecurrenceLimit = includeRecurrenceLimitUpdate
           ? recurrenceLimitValue
-          : existingTask.recurrenceLimit;
+          : existingSchedule?.recurrenceLimit ?? null;
+        // Note: runImmediately is only used when first creating the schedule
         const finalRunImmediately = includeRunImmediatelyUpdate
           ? runImmediatelyValue
-          : existingTask.runImmediately;
+          : false;
 
         const success = await upsertTaskScheduler(
           id,
@@ -1420,12 +1363,15 @@ export async function deleteTask(id: string, userId: string) {
       throw new Error("Task not found");
     }
 
+    // Fetch schedule data to check if task has recurring schedule
+    const existingSchedule = await getTaskScheduleData(id);
+
     logger.info(
       {
         taskId: id,
-        isRecurring: existingTask.isRecurring,
-        cronExpression: existingTask.cronExpression,
-        recurrenceEndDate: existingTask.recurrenceEndDate,
+        isRecurring: existingSchedule?.isRecurring ?? false,
+        cronExpression: existingSchedule?.cronExpression ?? null,
+        recurrenceEndDate: existingSchedule?.recurrenceEndDate ?? null,
       },
       "Task data retrieved for deletion",
     );
@@ -1435,7 +1381,7 @@ export async function deleteTask(id: string, userId: string) {
 
     // Remove recurring task scheduler if exists - BEFORE deleting task data
     // (outside transaction - external side-effect)
-    if (existingTask.isRecurring) {
+    if (existingSchedule?.isRecurring) {
       logger.info({ taskId: id }, "Removing recurring task scheduler");
       const schedulerRemoved = await removeTaskScheduler(id);
       logger.info({ taskId: id, schedulerRemoved }, "Scheduler removal result");
@@ -1460,14 +1406,6 @@ export async function deleteTask(id: string, userId: string) {
       // Delete task-tag relationships first
       await tx.tasksTags.delete(eq(tasksTags.taskId, id));
 
-      // Delete processing jobs for this task
-      await tx.assetProcessingJobs.delete(
-        and(
-          eq(assetProcessingJobs.assetType, "tasks"),
-          eq(assetProcessingJobs.assetId, id),
-        ),
-      );
-
       // Delete the task
       await tx.tasks.delete(and(eq(tasks.id, id), eq(tasks.userId, userId)));
 
@@ -1486,6 +1424,9 @@ export async function deleteTask(id: string, userId: string) {
         timestamp: new Date(),
       });
     });
+
+    // Delete queue job outside transaction (non-critical)
+    await db.delete(queueJobs).where(eq(queueJobs.key, `tasks:${id}`));
 
     return { success: true };
   } catch (error) {
@@ -1509,15 +1450,14 @@ export async function getAllTasks(userId: string) {
     const tasksList = await db
       .select({
         task: tasks,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(tasks)
       .leftJoin(
-        assetProcessingJobs,
+        queueJobs,
         and(
-          eq(tasks.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "tasks"),
-          eq(assetProcessingJobs.jobType, "tag_generation"),
+          eq(queueJobs.key, sql`'tasks:' || ${tasks.id}`),
+          eq(queueJobs.queue, TASK_PROCESSING_QUEUE),
         ),
       )
       .where(eq(tasks.userId, userId));
@@ -1552,15 +1492,14 @@ export async function getTaskById(taskId: string, userId: string) {
     const [result] = await db
       .select({
         task: tasks,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(tasks)
       .leftJoin(
-        assetProcessingJobs,
+        queueJobs,
         and(
-          eq(tasks.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "tasks"),
-          eq(assetProcessingJobs.jobType, "tag_generation"),
+          eq(queueJobs.key, sql`'tasks:' || ${tasks.id}`),
+          eq(queueJobs.queue, TASK_PROCESSING_QUEUE),
         ),
       )
       .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
@@ -1572,17 +1511,19 @@ export async function getTaskById(taskId: string, userId: string) {
 
     const task = result.task;
 
-    // Get tags for the task
-    const taskTagNames = await getTaskTags(taskId);
-
-    // Get comments for the task
-    const taskCommentsData = await getTaskCommentsWithUsers(taskId);
+    // Fetch data in parallel
+    const [taskTagNames, taskCommentsData, scheduleData] = await Promise.all([
+      getTaskTags(taskId),
+      getTaskCommentsWithUsers(taskId),
+      getTaskScheduleData(taskId),
+    ]);
 
     return cleanTaskForResponse(
       task,
       taskTagNames,
       result.status,
       taskCommentsData,
+      scheduleData,
     );
   } catch (error) {
     logger.error(
@@ -1776,15 +1717,14 @@ export async function findTasks(
     const query = db
       .select({
         task: tasks,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(tasks)
       .leftJoin(
-        assetProcessingJobs,
+        queueJobs,
         and(
-          eq(tasks.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "tasks"),
-          eq(assetProcessingJobs.jobType, "tag_generation"),
+          eq(queueJobs.key, sql`'tasks:' || ${tasks.id}`),
+          eq(queueJobs.queue, TASK_PROCESSING_QUEUE),
         ),
       )
       .where(and(...conditions))

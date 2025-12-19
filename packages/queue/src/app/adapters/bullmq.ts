@@ -38,7 +38,10 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
       }
 
       // Job options inherited from queue's defaultJobOptions
-      await queue.add("process-bookmark", data);
+      await queue.add("process-bookmark", {
+        ...data,
+        __metadata: { assetType: "bookmark", assetId: data.bookmarkId, userId: data.userId },
+      });
 
       logger.info(
         { bookmarkId: data.bookmarkId, userId: data.userId },
@@ -53,7 +56,10 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         throw new Error("Queue not available");
       }
 
-      await queue.add("process-image", data);
+      await queue.add("process-image", {
+        ...data,
+        __metadata: { assetType: "image", assetId: data.imageId, userId: data.userId },
+      });
 
       logger.info(
         { imageId: data.imageId, userId: data.userId },
@@ -68,7 +74,10 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         throw new Error("Queue not available");
       }
 
-      await queue.add("process-document", data);
+      await queue.add("process-document", {
+        ...data,
+        __metadata: { assetType: "document", assetId: data.documentId, userId: data.userId },
+      });
 
       logger.info(
         { documentId: data.documentId, userId: data.userId },
@@ -83,7 +92,10 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         throw new Error("Queue not available");
       }
 
-      await queue.add("process-note", data);
+      await queue.add("process-note", {
+        ...data,
+        __metadata: { assetType: "note", assetId: data.noteId, userId: data.userId },
+      });
 
       logger.info(
         { noteId: data.noteId, userId: data.userId },
@@ -98,7 +110,10 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         throw new Error("Queue not available");
       }
 
-      await queue.add("process-task", data);
+      await queue.add("process-task", {
+        ...data,
+        __metadata: { assetType: "task", assetId: data.taskId, userId: data.userId },
+      });
 
       logger.info(
         { taskId: data.taskId, userId: data.userId },

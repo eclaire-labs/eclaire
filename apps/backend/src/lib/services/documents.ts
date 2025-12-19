@@ -17,17 +17,15 @@ import {
 } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { Readable } from "stream";
-import { db, txManager, schema } from "../../db/index.js";
+import { db, txManager, schema, queueJobs } from "../../db/index.js";
 
 const {
-  assetProcessingJobs,
   documentsTags,
   documents: schemaDocuments,
   tags,
 } = schema;
 import { formatToISO8601, formatRequiredTimestamp, getOrCreateTags } from "../db-helpers.js";
-import { getQueue, QueueNames } from "../queues.js";
-import { getQueueAdapter } from "../queue-adapter.js";
+import { getQueue, QueueNames, getQueueAdapter } from "../queue/index.js";
 import { objectStorage, type StorageInfo } from "../storage.js";
 import type { ProcessingStatus } from "../../types/assets.js";
 import { generateDocumentId, generateHistoryId } from "@eclaire/core";
@@ -145,15 +143,12 @@ async function getDocumentWithDetails(
   const [result] = await db
     .select({
       document: schemaDocuments,
-      status: assetProcessingJobs.status,
+      status: queueJobs.status,
     })
     .from(schemaDocuments)
     .leftJoin(
-      assetProcessingJobs,
-      and(
-        eq(schemaDocuments.id, assetProcessingJobs.assetId),
-        eq(assetProcessingJobs.assetType, "documents"),
-      ),
+      queueJobs,
+      eq(queueJobs.key, sql`'documents:' || ${schemaDocuments.id}`),
     )
     .where(
       and(
@@ -485,16 +480,13 @@ export async function deleteDocument(
 
     await txManager.withTransaction(async (tx) => {
       await tx.documentsTags.delete(eq(documentsTags.documentId, id));
-      await tx.assetProcessingJobs.delete(
-        and(
-          eq(assetProcessingJobs.assetType, "documents"),
-          eq(assetProcessingJobs.assetId, id),
-        ),
-      );
       await tx.documents.delete(
         and(eq(schemaDocuments.id, id), eq(schemaDocuments.userId, userId)),
       );
     });
+
+    // Delete queue job outside transaction (non-critical, like storage)
+    await db.delete(queueJobs).where(eq(queueJobs.key, `documents:${id}`));
 
     if (deleteStorage) {
       await objectStorage
@@ -521,15 +513,12 @@ export async function getAllDocuments(
     const documentsList = await db
       .select({
         document: schemaDocuments,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(schemaDocuments)
       .leftJoin(
-        assetProcessingJobs,
-        and(
-          eq(schemaDocuments.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "documents"),
-        ),
+        queueJobs,
+        eq(queueJobs.key, sql`'documents:' || ${schemaDocuments.id}`),
       )
       .where(eq(schemaDocuments.userId, userId))
       .orderBy(desc(schemaDocuments.createdAt));
@@ -692,15 +681,12 @@ export async function findDocuments(
     const documentsWithStatus = await db
       .select({
         document: schemaDocuments,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(schemaDocuments)
       .leftJoin(
-        assetProcessingJobs,
-        and(
-          eq(schemaDocuments.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "documents"),
-        ),
+        queueJobs,
+        eq(queueJobs.key, sql`'documents:' || ${schemaDocuments.id}`),
       )
       .where(inArray(schemaDocuments.id, finalDocIds));
 

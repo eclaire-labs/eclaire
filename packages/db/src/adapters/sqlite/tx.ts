@@ -82,7 +82,6 @@ function wrapSqliteTx(
 		photosTags: createRepository("photosTags"),
 		notes: createRepository("notes"),
 		notesTags: createRepository("notesTags"),
-		assetProcessingJobs: createRepository("assetProcessingJobs"),
 		tags: createRepository("tags"),
 		history: createRepository("history"),
 		conversations: createRepository("conversations"),

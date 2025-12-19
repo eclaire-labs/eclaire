@@ -241,7 +241,7 @@ describe.skipIf(!pgliteConfig)(
 
       expect(claimed).not.toBeNull();
       expect(claimed!.id).toBe(queueAId);
-      expect(claimed!.name).toBe("queue-a");
+      expect(claimed!.queue).toBe("queue-a");
 
       // Queue-b job should still be pending
       const jobB = await client.getJob(queueBId);

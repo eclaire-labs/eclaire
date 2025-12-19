@@ -15,7 +15,6 @@ import {
 } from "drizzle-orm/pg-core";
 import {
 	generateApiKeyId,
-	generateAssetProcessingJobId,
 	generateBookmarkId,
 	generateChannelId,
 	generateConversationId,
@@ -160,13 +159,9 @@ export const tasks = pgTable(
 			enum: ["red", "yellow", "orange", "green", "blue"],
 		}),
 		isPinned: boolean("is_pinned").notNull().default(false),
-		isRecurring: boolean("is_recurring").notNull().default(false),
-		cronExpression: text("cron_expression"),
-		recurrenceEndDate: timestamp("recurrence_end_date"),
-		recurrenceLimit: integer("recurrence_limit"),
-		runImmediately: boolean("run_immediately").notNull().default(false),
-		nextRunAt: timestamp("next_run_at"),
-		lastRunAt: timestamp("last_run_at"),
+		// Note: Recurrence data (isRecurring, cronExpression, recurrenceEndDate, recurrenceLimit)
+		// is now stored in queue_schedules table and fetched via scheduler.get()
+		lastExecutedAt: timestamp("last_executed_at"), // When task was last executed (for display)
 		completedAt: timestamp("completed_at"),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -176,9 +171,6 @@ export const tasks = pgTable(
 		statusIdx: index("tasks_status_idx").on(table.status),
 		dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
 		isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
-		isRecurringIdx: index("tasks_is_recurring_idx").on(table.isRecurring),
-		nextRunAtIdx: index("tasks_next_run_at_idx").on(table.nextRunAt),
-		lastRunAtIdx: index("tasks_last_run_at_idx").on(table.lastRunAt),
 		completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
 	}),
 );
@@ -417,71 +409,6 @@ export const notes = pgTable(
 	}),
 );
 
-export const assetProcessingJobs = pgTable(
-	"asset_processing_jobs",
-	{
-		id: text("id")
-			.primaryKey()
-			.$defaultFn(() => generateAssetProcessingJobId()),
-
-		assetType: text("asset_type", {
-			enum: ["photos", "documents", "bookmarks", "notes", "tasks"],
-		}).notNull(),
-		assetId: text("asset_id").notNull(),
-		userId: text("user_id")
-			.notNull()
-			.references(() => users.id, { onDelete: "cascade" }),
-
-		jobType: text("job_type").default("processing"),
-
-		status: text("status", {
-			enum: ["pending", "processing", "completed", "failed", "retry_pending"],
-		})
-			.notNull()
-			.default("pending"),
-
-		stages: jsonb("stages"),
-
-		currentStage: text("current_stage"),
-		overallProgress: integer("overall_progress").default(0),
-
-		errorMessage: text("error_message"),
-		errorDetails: jsonb("error_details"),
-
-		retryCount: integer("retry_count").default(0),
-		maxRetries: integer("max_retries").default(3),
-
-		nextRetryAt: timestamp("next_retry_at"),
-		startedAt: timestamp("started_at"),
-		completedAt: timestamp("completed_at"),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
-
-		jobData: jsonb("job_data"),
-		lockedBy: text("locked_by"),
-		lockedAt: timestamp("locked_at"),
-		expiresAt: timestamp("expires_at"),
-		scheduledFor: timestamp("scheduled_for"),
-		priority: integer("priority").default(0),
-	},
-	(table) => ({
-		assetJobTypeUnique: uniqueIndex("asset_jobs_asset_job_type_unique_idx").on(
-			table.assetType,
-			table.assetId,
-			table.jobType,
-		),
-		statusRetryIdx: index("asset_jobs_status_retry_idx").on(
-			table.status,
-			table.nextRetryAt,
-		),
-		queuePollIdx: index("asset_jobs_queue_poll_idx").on(
-			table.status,
-			table.scheduledFor,
-			table.priority,
-		),
-	}),
-);
-
 export const tags = pgTable(
 	"tags",
 	{
@@ -609,7 +536,6 @@ export const usersRelations = relations(users, ({ many }) => ({
 	photos: many(photos),
 	notes: many(notes),
 	tags: many(tags),
-	assetProcessingJobs: many(assetProcessingJobs),
 	history: many(history),
 	conversations: many(conversations),
 	channels: many(channels),
@@ -630,59 +556,29 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 		fields: [tasks.assignedToId],
 		references: [users.id],
 	}),
-	processingJob: one(assetProcessingJobs, {
-		fields: [tasks.id],
-		references: [assetProcessingJobs.assetId],
-	}),
 	tags: many(tasksTags),
 	comments: many(taskComments),
 }));
 
 export const bookmarksRelations = relations(bookmarks, ({ one, many }) => ({
 	user: one(users, { fields: [bookmarks.userId], references: [users.id] }),
-	processingJob: one(assetProcessingJobs, {
-		fields: [bookmarks.id],
-		references: [assetProcessingJobs.assetId],
-	}),
 	tags: many(bookmarksTags),
 }));
 
 export const documentsRelations = relations(documents, ({ one, many }) => ({
 	user: one(users, { fields: [documents.userId], references: [users.id] }),
-	processingJob: one(assetProcessingJobs, {
-		fields: [documents.id],
-		references: [assetProcessingJobs.assetId],
-	}),
 	tags: many(documentsTags),
 }));
 
 export const photosRelations = relations(photos, ({ one, many }) => ({
 	user: one(users, { fields: [photos.userId], references: [users.id] }),
-	processingJob: one(assetProcessingJobs, {
-		fields: [photos.id],
-		references: [assetProcessingJobs.assetId],
-	}),
 	tags: many(photosTags),
 }));
 
 export const notesRelations = relations(notes, ({ one, many }) => ({
 	user: one(users, { fields: [notes.userId], references: [users.id] }),
-	processingJob: one(assetProcessingJobs, {
-		fields: [notes.id],
-		references: [assetProcessingJobs.assetId],
-	}),
 	tags: many(notesTags),
 }));
-
-export const assetProcessingJobsRelations = relations(
-	assetProcessingJobs,
-	({ one }) => ({
-		user: one(users, {
-			fields: [assetProcessingJobs.userId],
-			references: [users.id],
-		}),
-	}),
-);
 
 export const tagsRelations = relations(tags, ({ one, many }) => ({
 	user: one(users, { fields: [tags.userId], references: [users.id] }),

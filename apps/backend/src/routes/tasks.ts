@@ -6,10 +6,9 @@ import z from "zod/v4";
 import { db, schema } from "../db/index.js";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 
-const { assetProcessingJobs, tasks } = schema;
-import { getNextExecutionTime } from "../lib/cron-utils.js";
+const { tasks } = schema;
+import { getNextExecutionTime, getQueueAdapter } from "../lib/queue/index.js";
 import { ValidationError } from "../lib/errors.js";
-import { getQueueAdapter } from "../lib/queue-adapter.js";
 import {
   createTaskComment,
   deleteTaskComment,
@@ -633,18 +632,15 @@ tasksRoutes.patch(
 );
 
 // PUT /api/tasks/:id/execution-tracking - Update task execution tracking
+// Note: nextRunAt is now managed by the queue scheduler, not stored on the task
 tasksRoutes.put(
   "/:id/execution-tracking",
   describeRoute(putTaskExecutionTrackingRouteDescription),
   zValidator(
     "json",
     z.object({
-      lastRunAt: z.string().optional().meta({
-        description: "ISO 8601 timestamp when task execution started",
-      }),
-      nextRunAt: z.string().nullable().optional().meta({
-        description:
-          "ISO 8601 timestamp for next scheduled run (for recurring tasks)",
+      lastExecutedAt: z.string().optional().meta({
+        description: "ISO 8601 timestamp when task was last executed",
       }),
     }),
   ),
@@ -656,7 +652,7 @@ tasksRoutes.put(
       }
 
       const taskId = c.req.param("id");
-      const { lastRunAt, nextRunAt } = c.req.valid("json");
+      const { lastExecutedAt } = c.req.valid("json");
 
       // Get the task to verify it exists and user has permission to update it
       const task = await db.query.tasks.findFirst({
@@ -665,9 +661,6 @@ tasksRoutes.put(
           id: true,
           userId: true,
           assignedToId: true,
-          isRecurring: true,
-          cronExpression: true,
-          recurrenceEndDate: true,
         },
       });
 
@@ -684,6 +677,7 @@ tasksRoutes.put(
       }
 
       // Log execution tracking update for security/auditing
+      // Note: lastRunAt is now lastExecutedAt, nextRunAt is managed by scheduler
       logger.info(
         {
           taskId,
@@ -691,32 +685,17 @@ tasksRoutes.put(
           taskOwnerId: task.userId,
           taskAssignedToId: task.assignedToId,
           isTaskWorker,
-          updates: { lastRunAt, nextRunAt },
+          updates: { lastExecutedAt },
         },
         "Task execution tracking update",
       );
 
-      // Prepare update data
+      // Prepare update data - only lastExecutedAt is still in the task table
+      // nextRunAt is now managed by the queue scheduler
       const updateData: any = {};
 
-      if (lastRunAt !== undefined) {
-        updateData.lastRunAt = new Date(lastRunAt);
-      }
-
-      if (nextRunAt !== undefined) {
-        if (nextRunAt === null) {
-          updateData.nextRunAt = null;
-        } else {
-          updateData.nextRunAt = new Date(nextRunAt);
-        }
-      }
-
-      // If no explicit nextRunAt provided but task is recurring, calculate it
-      if (nextRunAt === undefined && task.isRecurring && task.cronExpression) {
-        const nextExecution = getNextExecutionTime(task.cronExpression);
-        if (nextExecution) {
-          updateData.nextRunAt = nextExecution;
-        }
+      if (lastExecutedAt !== undefined) {
+        updateData.lastExecutedAt = new Date(lastExecutedAt);
       }
 
       // Update the task

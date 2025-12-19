@@ -1,11 +1,14 @@
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import type { Redis } from "ioredis";
+import postgres from "postgres";
 import { createRedisConnection } from "@eclaire/queue";
+import { createPostgresClient, getDatabaseUrl, getDatabaseType } from "@eclaire/db";
 import type { RouteVariables } from "../types/route-variables.js";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
 import { getQueueMode } from "../lib/env-validation.js";
+import { sanitizeChannelName } from "../workers/lib/postgres-publisher.js";
 
 const logger = createChildLogger("processing-events");
 
@@ -16,6 +19,11 @@ export const processingEventsRoutes = new Hono<{ Variables: RouteVariables }>();
 // - "backend"/"worker" → redis mode (requires Redis)
 const queueBackend = getQueueMode();
 const useRedisPubSub = queueBackend === "redis";
+
+// Database type for Postgres LISTEN (used when not in Redis mode)
+const dbType = getDatabaseType();
+const usePostgresListen = !useRedisPubSub && dbType === "postgresql";
+const postgresUrl = usePostgresListen ? getDatabaseUrl() : null;
 
 // Redis connection for pub/sub (only used in redis mode)
 const redisUrl = process.env.REDIS_URL;
@@ -80,6 +88,8 @@ processingEventsRoutes.get("/stream", async (c) => {
       userStreams.add(streamRef);
 
       let subscriber: Redis | null = null;
+      let pgSubscriber: postgres.Sql | null = null;
+      let pgListenSubscription: { unlisten: () => Promise<void> } | null = null;
       let keepAliveInterval: NodeJS.Timeout | null = null;
 
       try {
@@ -112,8 +122,45 @@ processingEventsRoutes.get("/stream", async (c) => {
 
             logger.info({ userId }, "Redis subscriber active for processing events");
           }
+        } else if (usePostgresListen && postgresUrl) {
+          // Create Postgres LISTEN subscriber for remote database workers
+          // Uses a dedicated connection per SSE client for LISTEN
+          try {
+            pgSubscriber = createPostgresClient(postgresUrl, {
+              max: 1, // Single connection for this listener
+            });
+
+            const channel = sanitizeChannelName(userId);
+
+            // Subscribe to Postgres notifications
+            // listen() returns a subscription object with an unlisten() method
+            pgListenSubscription = await pgSubscriber.listen(channel, (payload) => {
+              try {
+                // Send the payload as SSE data (already JSON stringified by publisher)
+                stream.write(`data: ${payload}\n\n`);
+              } catch (error) {
+                logger.error(
+                  {
+                    userId,
+                    error: error instanceof Error ? error.message : "Unknown error",
+                  },
+                  "Error sending SSE message from Postgres NOTIFY",
+                );
+              }
+            });
+
+            logger.info({ userId, channel }, "Postgres LISTEN subscriber active for processing events");
+          } catch (pgError) {
+            logger.error(
+              {
+                userId,
+                error: pgError instanceof Error ? pgError.message : "Unknown error",
+              },
+              "Failed to set up Postgres LISTEN subscriber",
+            );
+          }
         } else {
-          logger.info({ userId, queueBackend }, "Using in-memory events only (database queue mode)");
+          logger.info({ userId, queueBackend, dbType }, "Using in-memory events only (unified mode)");
         }
 
         // Send initial connection confirmation
@@ -190,7 +237,41 @@ processingEventsRoutes.get("/stream", async (c) => {
                     ? cleanupError.message
                     : "Unknown error",
               },
-              "Error during SSE cleanup",
+              "Error during Redis SSE cleanup",
+            );
+          }
+        }
+
+        // Cleanup Postgres LISTEN subscriber
+        if (pgListenSubscription) {
+          try {
+            await pgListenSubscription.unlisten();
+          } catch (cleanupError) {
+            logger.warn(
+              {
+                userId,
+                error:
+                  cleanupError instanceof Error
+                    ? cleanupError.message
+                    : "Unknown error",
+              },
+              "Error during Postgres LISTEN cleanup",
+            );
+          }
+        }
+        if (pgSubscriber) {
+          try {
+            await pgSubscriber.end();
+          } catch (cleanupError) {
+            logger.warn(
+              {
+                userId,
+                error:
+                  cleanupError instanceof Error
+                    ? cleanupError.message
+                    : "Unknown error",
+              },
+              "Error closing Postgres connection",
             );
           }
         }

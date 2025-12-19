@@ -325,7 +325,7 @@ describe.each(DB_TEST_CONFIGS)(
         // 2. Upsert a schedule
         await scheduler.upsert({
           key: "test-schedule",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "0 * * * *", // Every hour
           data: { type: "test" },
         });
@@ -425,7 +425,7 @@ describe.each(DB_TEST_CONFIGS)(
         // 4. Create schedule
         await scheduler.upsert({
           key: "lifecycle-test",
-          name: "queue-1",
+          queue: "queue-1",
           cron: "0 0 * * *",
           data: {},
         });

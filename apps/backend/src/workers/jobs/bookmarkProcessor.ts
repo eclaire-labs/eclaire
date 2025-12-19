@@ -1,7 +1,7 @@
-import { type Job, Worker } from "bullmq";
 import { type BrowserContext, chromium, type Page } from "patchright";
 import sharp from "sharp";
 import { Readable } from "stream";
+import type { JobContext } from "@eclaire/queue/core";
 import { config } from "../config.js";
 import {
   type BookmarkHandlerType,
@@ -18,10 +18,6 @@ import { processRedditApiBookmark } from "../lib/bookmarks/reddit-api.js";
 import { domainRateLimiter } from "../lib/domainRateLimiter.js";
 import { createRateLimitError } from "../lib/job-utils.js";
 import { createChildLogger } from "../../lib/logger.js";
-import {
-  createProcessingReporter,
-  type ProcessingReporter,
-} from "../lib/processing-reporter.js";
 import { objectStorage } from "../../lib/storage.js";
 import { TimeoutError, withTimeout } from "../lib/utils/timeout.js";
 
@@ -31,13 +27,12 @@ const logger = createChildLogger("bookmark-processor");
 validateApiCredentials();
 
 /**
- * Regular bookmark processing handler using the new reporter pattern.
+ * Regular bookmark processing handler using ctx methods.
  */
 async function processRegularBookmarkJob(
-  job: Job<BookmarkJobData>,
-  reporter: ProcessingReporter,
+  ctx: JobContext<BookmarkJobData>,
 ) {
-  const { bookmarkId, url: originalUrl, userId } = job.data;
+  const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with REGULAR handler");
   let browser: any = null;
   let context: BrowserContext | null = null;
@@ -49,11 +44,12 @@ async function processRegularBookmarkJob(
     currentStage = "validation";
     const processUrl = normalizeUrl(originalUrl);
 
-    await reporter.updateStage("validation", "processing", 10);
-    await reporter.completeStage("validation");
+    await ctx.startStage("validation");
+    await ctx.updateStageProgress("validation", 10);
+    await ctx.completeStage("validation");
 
     currentStage = "content_extraction";
-    await reporter.updateStage("content_extraction", "processing", 0);
+    await ctx.startStage("content_extraction");
 
     // Browser launch with hard timeout
     try {
@@ -372,11 +368,11 @@ async function processRegularBookmarkJob(
       allArtifacts.lang = "en";
     }
 
-    await reporter.completeStage("content_extraction");
+    await ctx.completeStage("content_extraction");
 
     // AI tagging with error handling
     currentStage = "ai_tagging";
-    await reporter.updateStage("ai_tagging", "processing", 0);
+    await ctx.startStage("ai_tagging");
     try {
       logger.debug({ bookmarkId }, "Attempting AI tag generation...");
       allArtifacts.tags = await generateBookmarkTags(
@@ -393,14 +389,13 @@ async function processRegularBookmarkJob(
       // Use fallback tags based on domain or basic content
       allArtifacts.tags = ["webpage", "bookmark"];
     }
-    await reporter.completeStage("ai_tagging");
-
     // Keep extractedText in artifacts for database storage, but limit its size to avoid issues
     const finalArtifacts = {
       ...allArtifacts,
       extractedText: allArtifacts.extractedText?.substring(0, 1024000) || null, // Limit to 1MB
     };
-    await reporter.completeJob(finalArtifacts);
+    await ctx.completeStage("ai_tagging", finalArtifacts);
+    // Job completes implicitly when handler returns successfully
   } catch (error: any) {
     logger.error(
       {
@@ -413,7 +408,7 @@ async function processRegularBookmarkJob(
     );
 
     // Report the error with stage context
-    await reporter.reportError(error, currentStage);
+    await ctx.failStage(currentStage, error);
     throw error;
   } finally {
     logger.debug(
@@ -469,18 +464,17 @@ async function processRegularBookmarkJob(
 
 /**
  * Main job processor entry point with domain-aware rate limiting and handler routing.
+ * Now uses JobContext for stage tracking and progress reporting.
  */
 async function processBookmarkJob(
-  job: Job<BookmarkJobData>,
-  token?: string,
-  worker?: Worker,
+  ctx: JobContext<BookmarkJobData>,
 ) {
-  const { bookmarkId, url: originalUrl, userId } = job.data;
+  const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
 
   // Validate required job data
   if (!bookmarkId || !originalUrl || !userId) {
     logger.error(
-      { jobId: job.id, bookmarkId, originalUrl, userId, jobData: job.data },
+      { jobId: ctx.job.id, bookmarkId, originalUrl, userId, jobData: ctx.job.data },
       "Missing required job data - cannot process bookmark"
     );
     throw new Error(
@@ -488,14 +482,13 @@ async function processBookmarkJob(
     );
   }
 
-  const jobId = job.id?.toString() || `${bookmarkId}-${Date.now()}`;
+  const jobId = ctx.job.id || `${bookmarkId}-${Date.now()}`;
 
   logger.info(
     { jobId, bookmarkId, originalUrl },
     "Starting bookmark processing job",
   );
 
-  const reporter = await createProcessingReporter("bookmarks", bookmarkId, userId);
   let availability: ReturnType<
     typeof domainRateLimiter.checkDomainAvailability
   > | null = null;
@@ -517,9 +510,9 @@ async function processBookmarkJob(
           { jobId, bookmarkId, domain: availability.domain },
           errorMessage,
         );
-        await reporter.initializeJob(["validation"]);
-        await reporter.failJob(errorMessage);
-        return;
+        await ctx.initStages(["validation"]);
+        await ctx.failStage("validation", new Error(errorMessage));
+        throw new Error(errorMessage);
       }
 
       logger.info(
@@ -532,21 +525,14 @@ async function processBookmarkJob(
         "Rate limited, applying delay",
       );
 
-      // Use proper BullMQ rate limiting instead of adding a new job
-      if (worker) {
-        await worker.rateLimit(availability.delayMs);
-        // Throw RateLimitError to properly move the job back to waiting state
-        throw Worker.RateLimitError();
-      } else {
-        // In database mode, throw error with delay information
-        throw createRateLimitError(availability.delayMs);
-      }
+      // Throw rate limit error to signal queue to reschedule
+      throw createRateLimitError(availability.delayMs);
     }
 
     domainRateLimiter.markDomainProcessing(originalUrl, jobId);
 
     try {
-      await reporter.initializeJob([
+      await ctx.initStages([
         "validation",
         "content_extraction",
         "ai_tagging",
@@ -561,11 +547,11 @@ async function processBookmarkJob(
       );
 
       if (handlerType === "github") {
-        await processGitHubBookmark(job, reporter);
+        await processGitHubBookmark(ctx);
       } else if (handlerType === "reddit") {
-        await processRedditApiBookmark(job, reporter);
+        await processRedditApiBookmark(ctx);
       } else {
-        await processRegularBookmarkJob(job, reporter);
+        await processRegularBookmarkJob(ctx);
       }
     } finally {
       domainRateLimiter.markDomainComplete(originalUrl, jobId);
@@ -611,16 +597,8 @@ async function processBookmarkJob(
       }
     }
 
-    // Ensure the job is properly failed with error details
-    try {
-      await reporter.failJob(error.message);
-    } catch (reportError: any) {
-      logger.error(
-        { jobId, bookmarkId, reportError: reportError.message },
-        "Failed to report job failure",
-      );
-    }
-
+    // Job failure is handled implicitly when the handler throws
+    // The queue driver will mark the job as failed
     throw error;
   }
 }

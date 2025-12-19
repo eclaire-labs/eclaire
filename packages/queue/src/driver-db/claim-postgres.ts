@@ -19,7 +19,7 @@ import type { DbInstance, ClaimedJob, ClaimOptions } from "./types.js";
  *
  * @param db - Database instance
  * @param queueJobs - Queue jobs table
- * @param name - Queue name to claim from
+ * @param queue - Queue name to claim from
  * @param options - Claim options (workerId, lockDuration)
  * @param logger - Logger instance
  * @returns Claimed job or null if none available
@@ -27,7 +27,7 @@ import type { DbInstance, ClaimedJob, ClaimOptions } from "./types.js";
 export async function claimJobPostgres(
   db: DbInstance,
   queueJobs: any,
-  name: string,
+  queue: string,
   options: ClaimOptions,
   logger: QueueLogger,
 ): Promise<ClaimedJob | null> {
@@ -53,7 +53,7 @@ export async function claimJobPostgres(
         updated_at = ${now}
       WHERE id = (
         SELECT id FROM ${queueJobs}
-        WHERE name = ${name}
+        WHERE queue = ${queue}
         AND (
           (status = 'pending' AND (scheduled_for IS NULL OR scheduled_for <= ${now}))
           OR (status = 'retry_pending' AND (next_retry_at IS NULL OR next_retry_at <= ${now}))
@@ -76,7 +76,7 @@ export async function claimJobPostgres(
     }
 
     logger.debug(
-      { jobId: job.id, name, workerId, attempts: job.attempts },
+      { jobId: job.id, queue, workerId, attempts: job.attempts },
       "Job claimed (PostgreSQL)",
     );
 
@@ -84,7 +84,7 @@ export async function claimJobPostgres(
   } catch (error) {
     logger.error(
       {
-        name,
+        queue,
         workerId,
         error: error instanceof Error ? error.message : "Unknown error",
       },
@@ -111,7 +111,7 @@ function toDate(value: unknown): Date | null {
 function formatClaimedJob(row: any): ClaimedJob {
   return {
     id: row.id,
-    name: row.name,
+    queue: row.queue,
     key: row.key,
     data: row.data,
     status: row.status,
@@ -131,5 +131,10 @@ function formatClaimedJob(row: any): ClaimedJob {
     createdAt: toDate(row.createdAt ?? row.created_at)!,
     updatedAt: toDate(row.updatedAt ?? row.updated_at)!,
     completedAt: toDate(row.completedAt ?? row.completed_at),
+    // Multi-stage progress tracking
+    stages: row.stages ?? null,
+    currentStage: row.currentStage ?? row.current_stage ?? null,
+    overallProgress: row.overallProgress ?? row.overall_progress ?? null,
+    metadata: row.metadata ?? null,
   };
 }

@@ -58,7 +58,7 @@ describe.each(DB_TEST_CONFIGS)(
 
     describe("C1: Fixed Backoff Timing", () => {
       it("should wait at least backoffMs between retry attempts", async () => {
-        const backoffDelay = 100; // 100ms fixed backoff
+        const backoffDelay = 200; // 200ms fixed backoff
         const attemptTimestamps: number[] = [];
 
         const jobId = await client.enqueue(
@@ -104,8 +104,8 @@ describe.each(DB_TEST_CONFIGS)(
 
         // Verify the gap between attempts is at least the backoff delay
         const gap = attemptTimestamps[1] - attemptTimestamps[0];
-        // Allow for poll interval variance but expect at least backoffDelay
-        expect(gap).toBeGreaterThanOrEqual(backoffDelay);
+        // Allow 50ms tolerance for poll interval variance
+        expect(gap).toBeGreaterThanOrEqual(backoffDelay - 50);
       });
     });
 
@@ -115,7 +115,7 @@ describe.each(DB_TEST_CONFIGS)(
 
     describe("C2: Exponential Backoff Timing", () => {
       it("should increase delay exponentially between retries", async () => {
-        const baseDelay = 50; // 50ms base delay
+        const baseDelay = 150; // 150ms base delay
         const attemptTimestamps: number[] = [];
 
         const jobId = await client.enqueue(
@@ -167,13 +167,13 @@ describe.each(DB_TEST_CONFIGS)(
         const gap2 = attemptTimestamps[2] - attemptTimestamps[1]; // After attempt 2
 
         // Verify delays are non-decreasing (gap2 >= gap1)
-        // With exponential backoff: attempt1 -> 50ms delay, attempt2 -> 100ms delay
-        expect(gap1).toBeGreaterThanOrEqual(baseDelay);
+        // With exponential backoff: attempt1 -> 150ms delay, attempt2 -> 300ms delay
+        // Allow 50ms tolerance for poll interval variance
+        expect(gap1).toBeGreaterThanOrEqual(baseDelay - 50);
         expect(gap2).toBeGreaterThanOrEqual(gap1);
 
         // Verify exponential growth: second gap should be approximately 2x first
-        // Use lower bound assertion for flake resistance
-        expect(gap2).toBeGreaterThanOrEqual(baseDelay * 2);
+        expect(gap2).toBeGreaterThanOrEqual(baseDelay * 2 - 50);
       });
     });
 
@@ -185,13 +185,11 @@ describe.each(DB_TEST_CONFIGS)(
       it("should process ready jobs before scheduled jobs", async () => {
         const processedOrder: string[] = [];
 
-        // Enqueue scheduled job FIRST (will be ready in 2 seconds)
-        // NOTE: SQLite stores timestamps as seconds, so we need >1 second delay
-        // to reliably test scheduling behavior
+        // Enqueue scheduled job FIRST (will be ready in 500ms)
         const scheduledJobId = await client.enqueue(
           "test-queue",
           { type: "scheduled" },
-          { delay: 2000 },
+          { delay: 500 },
         );
 
         // Enqueue ready job SECOND
@@ -226,7 +224,7 @@ describe.each(DB_TEST_CONFIGS)(
               scheduledJob?.status === "completed"
             );
           },
-          { timeout: 5000 },
+          { timeout: 2000 },
         );
 
         // Ready job should be processed first despite being enqueued second
@@ -241,9 +239,7 @@ describe.each(DB_TEST_CONFIGS)(
 
     describe("C4: Rate-Limit Reschedule Timing", () => {
       it("should not claim job before rate-limit delay expires", async () => {
-        // NOTE: SQLite stores timestamps as seconds, so we need >1 second delay
-        // to reliably test scheduling behavior
-        const rateLimitDelay = 1500; // 1.5 seconds
+        const rateLimitDelay = 500; // 500ms
         const attemptTimestamps: number[] = [];
 
         const jobId = await client.enqueue(
@@ -281,16 +277,16 @@ describe.each(DB_TEST_CONFIGS)(
             const job = await client.getJob(jobId);
             return job?.status === "completed";
           },
-          { timeout: 5000 },
+          { timeout: 2000 },
         );
 
         // Verify we had 2 attempts
         expect(attemptTimestamps.length).toBe(2);
 
         // Verify the gap between attempts respects the rate-limit delay
-        // Allow some tolerance for second-level granularity in SQLite
         const gap = attemptTimestamps[1] - attemptTimestamps[0];
-        expect(gap).toBeGreaterThanOrEqual(rateLimitDelay - 1000); // Allow 1 second tolerance for rounding
+        // Allow 100ms tolerance for poll interval variance
+        expect(gap).toBeGreaterThanOrEqual(rateLimitDelay - 100);
       });
     });
   },

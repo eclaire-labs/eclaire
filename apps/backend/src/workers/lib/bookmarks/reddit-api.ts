@@ -1,9 +1,8 @@
-import type { Job } from "bullmq";
 import { type BrowserContext, chromium } from "patchright";
 import sharp from "sharp";
 import { Readable } from "stream";
+import type { JobContext } from "@eclaire/queue/core";
 import { createChildLogger } from "../../../lib/logger.js";
-import type { ProcessingReporter } from "../processing-reporter.js";
 import { createRedditApiClient } from "../reddit-api-client.js";
 import { extractRedditData } from "../reddit-extractor.js";
 import {
@@ -29,10 +28,9 @@ const logger = createChildLogger("reddit-api-bookmark-handler");
  * Reddit API-based bookmark processing handler
  */
 export async function processRedditApiBookmark(
-  job: Job<BookmarkJobData>,
-  reporter: ProcessingReporter,
+  ctx: JobContext<BookmarkJobData>,
 ): Promise<void> {
-  const { bookmarkId, url: originalUrl, userId } = job.data;
+  const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with REDDIT-API handler");
 
   let browser: any = null;
@@ -46,10 +44,11 @@ export async function processRedditApiBookmark(
       : `https://${originalUrl}`;
     allArtifacts.normalizedUrl = normalizedUrl;
 
-    await reporter.updateStage("validation", "processing", 50);
-    await reporter.completeStage("validation");
+    await ctx.startStage("validation");
+    await ctx.updateStageProgress("validation", 50);
+    await ctx.completeStage("validation");
 
-    await reporter.updateStage("content_extraction", "processing", 0);
+    await ctx.startStage("content_extraction");
 
     // Stage 1: Fetch raw Reddit data via API
     logger.info({ bookmarkId }, "Fetching Reddit data via API");
@@ -76,7 +75,7 @@ export async function processRedditApiBookmark(
       })
     ).storageId;
 
-    await reporter.updateStage("content_extraction", "processing", 25);
+    await ctx.updateStageProgress("content_extraction", 25);
 
     // Stage 2: Extract and transform Reddit data
     logger.info({ bookmarkId }, "Extracting Reddit data");
@@ -102,7 +101,7 @@ export async function processRedditApiBookmark(
       })
     ).storageId;
 
-    await reporter.updateStage("content_extraction", "processing", 50);
+    await ctx.updateStageProgress("content_extraction", 50);
 
     // Stage 3: Generate HTML versions
     logger.info({ bookmarkId }, "Generating HTML renders");
@@ -135,7 +134,7 @@ export async function processRedditApiBookmark(
       })
     ).storageId;
 
-    await reporter.updateStage("content_extraction", "processing", 75);
+    await ctx.updateStageProgress("content_extraction", 75);
 
     // Stage 4: Generate screenshots and PDFs using browser automation
     logger.info({ bookmarkId }, "Generating screenshots and PDFs");
@@ -286,10 +285,10 @@ export async function processRedditApiBookmark(
       },
     });
 
-    await reporter.completeStage("content_extraction");
+    await ctx.completeStage("content_extraction");
 
     // Generate tags combining Reddit-specific and AI tags
-    await reporter.updateStage("ai_tagging", "processing", 0);
+    await ctx.startStage("ai_tagging");
 
     // Generate Reddit-specific tags
     const redditTags = generateRedditTags(redditData.redditMetadata);
@@ -304,15 +303,14 @@ export async function processRedditApiBookmark(
     // Combine Reddit tags with AI tags, removing duplicates
     allArtifacts.tags = Array.from(new Set([...redditTags, ...aiTags]));
 
-    await reporter.completeStage("ai_tagging");
-
     // Prepare final artifacts with size limit
     const finalArtifacts = {
       ...allArtifacts,
       extractedText: allArtifacts.extractedText?.substring(0, 50000) || null, // Limit to 50KB
     };
 
-    await reporter.completeJob(finalArtifacts);
+    // Complete the final stage with artifacts - job completion is implicit when handler returns
+    await ctx.completeStage("ai_tagging", finalArtifacts);
   } catch (error: any) {
     logger.error(
       { bookmarkId, error: error.message },
@@ -343,10 +341,9 @@ export class RedditApiBookmarkHandler implements BookmarkHandler {
   }
 
   async processBookmark(
-    job: Job<BookmarkJobData>,
-    reporter: ProcessingReporter,
+    ctx: JobContext<BookmarkJobData>,
   ): Promise<void> {
-    return processRedditApiBookmark(job, reporter);
+    return processRedditApiBookmark(ctx);
   }
 }
 

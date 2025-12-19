@@ -1,7 +1,7 @@
-import type { Job } from "bullmq";
 import { type BrowserContext, chromium } from "patchright";
 import sharp from "sharp";
 import { Readable } from "stream";
+import type { JobContext } from "@eclaire/queue/core";
 import {
   fetchGitHubRepoInfo,
   type GitHubRepoInfo,
@@ -10,7 +10,6 @@ import {
   parseGitHubUrl,
 } from "../github-api.js";
 import { createChildLogger } from "../../../lib/logger.js";
-import type { ProcessingReporter } from "../processing-reporter.js";
 import { objectStorage } from "../../../lib/storage.js";
 import type {
   BookmarkHandler,
@@ -29,10 +28,9 @@ const logger = createChildLogger("github-bookmark-handler");
  * GitHub specific bookmark processing handler
  */
 export async function processGitHubBookmark(
-  job: Job<BookmarkJobData>,
-  reporter: ProcessingReporter,
+  ctx: JobContext<BookmarkJobData>,
 ): Promise<void> {
-  const { bookmarkId, url: originalUrl, userId } = job.data;
+  const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with GITHUB handler");
 
   let browser: any = null;
@@ -46,7 +44,8 @@ export async function processGitHubBookmark(
       : `https://${originalUrl}`;
     allArtifacts.normalizedUrl = normalizedUrl;
 
-    await reporter.updateStage("validation", "processing", 10);
+    await ctx.startStage("validation");
+    await ctx.updateStageProgress("validation", 10);
 
     // Parse GitHub URL to get owner and repo
     const githubInfo = parseGitHubUrl(normalizedUrl);
@@ -57,9 +56,9 @@ export async function processGitHubBookmark(
     const { owner, repo } = githubInfo;
     logger.info({ owner, repo }, `Parsed GitHub URL: ${normalizedUrl}`);
 
-    await reporter.completeStage("validation");
+    await ctx.completeStage("validation");
 
-    await reporter.updateStage("content_extraction", "processing", 0);
+    await ctx.startStage("content_extraction");
 
     // Standard browser-based content extraction
     browser = await chromium.launch({
@@ -255,9 +254,9 @@ export async function processGitHubBookmark(
       }
     }
 
-    await reporter.completeStage("content_extraction");
+    await ctx.completeStage("content_extraction");
 
-    await reporter.updateStage("ai_tagging", "processing", 0);
+    await ctx.startStage("ai_tagging");
 
     // Generate GitHub-specific tags
     let githubTags: string[] = [];
@@ -275,15 +274,14 @@ export async function processGitHubBookmark(
     // Combine GitHub tags with AI tags, removing duplicates
     allArtifacts.tags = Array.from(new Set([...githubTags, ...aiTags]));
 
-    await reporter.completeStage("ai_tagging");
-
     // Keep extractedText in artifacts for database storage, but limit its size to avoid issues
     const finalArtifacts = {
       ...allArtifacts,
       extractedText: allArtifacts.extractedText?.substring(0, 512000) || null, // Limit to 512KB for GitHub repos
     };
 
-    await reporter.completeJob(finalArtifacts);
+    // Complete the final stage with artifacts - job completion is implicit when handler returns
+    await ctx.completeStage("ai_tagging", finalArtifacts);
   } finally {
     if (context) await context.close();
     if (browser) await browser.close();
@@ -303,10 +301,9 @@ export class GitHubBookmarkHandler implements BookmarkHandler {
   }
 
   async processBookmark(
-    job: Job<BookmarkJobData>,
-    reporter: ProcessingReporter,
+    ctx: JobContext<BookmarkJobData>,
   ): Promise<void> {
-    return processGitHubBookmark(job, reporter);
+    return processGitHubBookmark(ctx);
   }
 }
 

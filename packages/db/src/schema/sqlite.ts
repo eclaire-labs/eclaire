@@ -10,7 +10,6 @@ import {
 } from "drizzle-orm/sqlite-core";
 import {
 	generateApiKeyId,
-	generateAssetProcessingJobId,
 	generateBookmarkId,
 	generateChannelId,
 	generateConversationId,
@@ -197,17 +196,9 @@ export const tasks = sqliteTable(
 			enum: ["red", "yellow", "orange", "green", "blue"],
 		}),
 		isPinned: integer("is_pinned", { mode: "boolean" }).notNull().default(false),
-		isRecurring: integer("is_recurring", { mode: "boolean" })
-			.notNull()
-			.default(false),
-		cronExpression: text("cron_expression"),
-		recurrenceEndDate: integer("recurrence_end_date", { mode: "timestamp_ms" }),
-		recurrenceLimit: integer("recurrence_limit"),
-		runImmediately: integer("run_immediately", { mode: "boolean" })
-			.notNull()
-			.default(false),
-		nextRunAt: integer("next_run_at", { mode: "timestamp_ms" }),
-		lastRunAt: integer("last_run_at", { mode: "timestamp_ms" }),
+		// Note: Recurrence data (isRecurring, cronExpression, recurrenceEndDate, recurrenceLimit)
+		// is now stored in queue_schedules table and fetched via scheduler.get()
+		lastExecutedAt: integer("last_executed_at", { mode: "timestamp_ms" }), // When task was last executed (for display)
 		completedAt: integer("completed_at", { mode: "timestamp_ms" }),
 		createdAt: integer("created_at", { mode: "timestamp_ms" })
 			.notNull()
@@ -221,9 +212,6 @@ export const tasks = sqliteTable(
 		statusIdx: index("tasks_status_idx").on(table.status),
 		dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
 		isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
-		isRecurringIdx: index("tasks_is_recurring_idx").on(table.isRecurring),
-		nextRunAtIdx: index("tasks_next_run_at_idx").on(table.nextRunAt),
-		lastRunAtIdx: index("tasks_last_run_at_idx").on(table.lastRunAt),
 		completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
 	}),
 );
@@ -482,75 +470,6 @@ export const notes = sqliteTable(
 	}),
 );
 
-export const assetProcessingJobs = sqliteTable(
-	"asset_processing_jobs",
-	{
-		id: text("id")
-			.primaryKey()
-			.$defaultFn(() => generateAssetProcessingJobId()),
-
-		assetType: text("asset_type", {
-			enum: ["photos", "documents", "bookmarks", "notes", "tasks"],
-		}).notNull(),
-		assetId: text("asset_id").notNull(),
-		userId: text("user_id")
-			.notNull()
-			.references(() => users.id, { onDelete: "cascade" }),
-
-		jobType: text("job_type").default("processing"),
-
-		status: text("status", {
-			enum: ["pending", "processing", "completed", "failed", "retry_pending"],
-		})
-			.notNull()
-			.default("pending"),
-
-		stages: text("stages", { mode: "json" }).$type<StageInfo[]>(),
-
-		currentStage: text("current_stage"),
-		overallProgress: integer("overall_progress").default(0),
-
-		errorMessage: text("error_message"),
-		errorDetails: text("error_details", { mode: "json" }).$type<ErrorDetails>(),
-
-		retryCount: integer("retry_count").default(0),
-		maxRetries: integer("max_retries").default(3),
-
-		nextRetryAt: integer("next_retry_at", { mode: "timestamp_ms" }),
-		startedAt: integer("started_at", { mode: "timestamp_ms" }),
-		completedAt: integer("completed_at", { mode: "timestamp_ms" }),
-		createdAt: integer("created_at", { mode: "timestamp_ms" })
-			.notNull()
-			.default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
-		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-			.notNull()
-			.default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
-
-		jobData: text("job_data", { mode: "json" }).$type<JobData>(),
-		lockedBy: text("locked_by"),
-		lockedAt: integer("locked_at", { mode: "timestamp_ms" }),
-		expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
-		scheduledFor: integer("scheduled_for", { mode: "timestamp_ms" }),
-		priority: integer("priority").default(0),
-	},
-	(table) => ({
-		assetJobTypeUnique: uniqueIndex("asset_jobs_asset_job_type_unique_idx").on(
-			table.assetType,
-			table.assetId,
-			table.jobType,
-		),
-		statusRetryIdx: index("asset_jobs_status_retry_idx").on(
-			table.status,
-			table.nextRetryAt,
-		),
-		queuePollIdx: index("asset_jobs_queue_poll_idx").on(
-			table.status,
-			table.scheduledFor,
-			table.priority,
-		),
-	}),
-);
-
 export const tags = sqliteTable(
 	"tags",
 	{
@@ -793,7 +712,6 @@ export const usersRelations = relations(users, ({ many }) => ({
 	photos: many(photos),
 	notes: many(notes),
 	tags: many(tags),
-	assetProcessingJobs: many(assetProcessingJobs),
 	history: many(history),
 	conversations: many(conversations),
 	channels: many(channels),
@@ -814,59 +732,29 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 		fields: [tasks.assignedToId],
 		references: [users.id],
 	}),
-	processingJob: one(assetProcessingJobs, {
-		fields: [tasks.id],
-		references: [assetProcessingJobs.assetId],
-	}),
 	tags: many(tasksTags),
 	comments: many(taskComments),
 }));
 
 export const bookmarksRelations = relations(bookmarks, ({ one, many }) => ({
 	user: one(users, { fields: [bookmarks.userId], references: [users.id] }),
-	processingJob: one(assetProcessingJobs, {
-		fields: [bookmarks.id],
-		references: [assetProcessingJobs.assetId],
-	}),
 	tags: many(bookmarksTags),
 }));
 
 export const documentsRelations = relations(documents, ({ one, many }) => ({
 	user: one(users, { fields: [documents.userId], references: [users.id] }),
-	processingJob: one(assetProcessingJobs, {
-		fields: [documents.id],
-		references: [assetProcessingJobs.assetId],
-	}),
 	tags: many(documentsTags),
 }));
 
 export const photosRelations = relations(photos, ({ one, many }) => ({
 	user: one(users, { fields: [photos.userId], references: [users.id] }),
-	processingJob: one(assetProcessingJobs, {
-		fields: [photos.id],
-		references: [assetProcessingJobs.assetId],
-	}),
 	tags: many(photosTags),
 }));
 
 export const notesRelations = relations(notes, ({ one, many }) => ({
 	user: one(users, { fields: [notes.userId], references: [users.id] }),
-	processingJob: one(assetProcessingJobs, {
-		fields: [notes.id],
-		references: [assetProcessingJobs.assetId],
-	}),
 	tags: many(notesTags),
 }));
-
-export const assetProcessingJobsRelations = relations(
-	assetProcessingJobs,
-	({ one }) => ({
-		user: one(users, {
-			fields: [assetProcessingJobs.userId],
-			references: [users.id],
-		}),
-	}),
-);
 
 export const tagsRelations = relations(tags, ({ one, many }) => ({
 	user: one(users, { fields: [tags.userId], references: [users.id] }),

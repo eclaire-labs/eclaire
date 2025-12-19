@@ -2,7 +2,7 @@
  * @eclaire/queue/driver-db - Types for the database driver
  */
 
-import type { QueueLogger, BackoffStrategy } from "../core/types.js";
+import type { QueueLogger, BackoffStrategy, JobEventCallbacks, JobStage } from "../core/types.js";
 
 // ============================================================================
 // Database Types (generic, works with any drizzle db)
@@ -121,6 +121,14 @@ export interface DbWorkerConfig {
    * even if jobs are still active.
    */
   gracefulShutdownTimeout?: number;
+
+  /**
+   * Event callbacks for job lifecycle events (optional)
+   *
+   * These are called when jobs start/complete stages or finish processing.
+   * Typically used to publish real-time updates via SSE or WebSocket.
+   */
+  eventCallbacks?: JobEventCallbacks;
 }
 
 // ============================================================================
@@ -176,7 +184,7 @@ export interface NotifyListener {
  */
 export interface ClaimedJob {
   id: string;
-  name: string;
+  queue: string;
   key: string | null;
   data: unknown;
   status: string;
@@ -197,6 +205,11 @@ export interface ClaimedJob {
   createdAt: Date;
   updatedAt: Date;
   completedAt: Date | null;
+  // Multi-stage progress tracking
+  stages: JobStage[] | null;
+  currentStage: string | null;
+  overallProgress: number | null;
+  metadata: Record<string, unknown> | null;
 }
 
 /**

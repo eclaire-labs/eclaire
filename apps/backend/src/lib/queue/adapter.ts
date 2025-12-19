@@ -13,9 +13,9 @@ import {
   type JobData,
   type AssetType,
 } from "@eclaire/queue/app";
-import { db, schema } from "../db/index.js";
-import { createChildLogger } from "./logger.js";
-import { getQueueMode } from "./env-validation.js";
+import { db, dbType } from "../../db/index.js";
+import { createChildLogger } from "../logger.js";
+import { getQueueMode } from "../env-validation.js";
 import { getQueue, QueueNames } from "./queues.js";
 
 const logger = createChildLogger("queue-adapter");
@@ -57,7 +57,7 @@ async function initializeQueueAdapter(): Promise<QueueAdapter> {
     // Use package's database adapter with waitlist
     const { adapter } = await createQueueAdapterWithWaitlist({
       mode: "database",
-      database: { db, schema },
+      database: { db, dbType: dbType as "postgres" | "sqlite" },
       logger,
     });
     logger.info({}, "Using database-backed queue adapter");

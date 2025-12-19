@@ -8,6 +8,7 @@ import type {
   QueueStats,
   Job,
   JobOptions,
+  JobStage,
   BackoffStrategy,
 } from "../core/types.js";
 import {
@@ -15,6 +16,10 @@ import {
   calculateBackoff,
   DEFAULT_BACKOFF,
 } from "../core/utils.js";
+import {
+  initializeStages,
+  calculateOverallProgress,
+} from "../core/progress.js";
 import {
   RateLimitError,
   PermanentError,
@@ -56,7 +61,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
      * Enqueue a job
      */
     async enqueue<T>(
-      name: string,
+      queue: string,
       data: T,
       options: JobOptions = {},
     ): Promise<string> {
@@ -68,6 +73,8 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
         attempts = defaultMaxAttempts,
         backoff = defaultBackoff,
         replace,
+        initialStages,
+        metadata,
       } = options;
 
       const id = generateJobId();
@@ -81,9 +88,12 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
         scheduledFor = new Date(now.getTime() + delay);
       }
 
+      // Initialize stages if provided
+      const stages = initialStages ? initializeStages(initialStages) : null;
+
       const jobValues = {
         id,
-        name,
+        queue,
         key: key || null,
         data,
         status: "pending" as const,
@@ -95,6 +105,11 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
         backoffType: backoff.type,
         createdAt: now,
         updatedAt: now,
+        // Multi-stage progress tracking
+        stages,
+        currentStage: null,
+        overallProgress: 0,
+        metadata: metadata || null,
       };
 
       try {
@@ -105,13 +120,13 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
           await (db as any).insert(queueJobs).values(jobValues);
           actualId = id;
 
-          logger.debug({ name, id: actualId }, "Job enqueued");
+          logger.debug({ queue, id: actualId }, "Job enqueued");
         } else if (replace === "if_not_active") {
           // Conditional replace - check job state before replacing
           actualId = await enqueueIfNotActive(
             db,
             queueJobs,
-            name,
+            queue,
             key,
             jobValues,
             logger,
@@ -122,7 +137,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
             .insert(queueJobs)
             .values(jobValues)
             .onConflictDoUpdate({
-              target: [queueJobs.name, queueJobs.key],
+              target: [queueJobs.queue, queueJobs.key],
               set: {
                 data: sql`EXCLUDED.data`,
                 status: sql`'pending'`,
@@ -145,12 +160,12 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
 
           actualId = result.id;
 
-          logger.debug({ name, key, id: actualId }, "Job enqueued (upsert)");
+          logger.debug({ queue, key, id: actualId }, "Job enqueued (upsert)");
         }
 
         // Notify waiting workers
         if (notifyEmitter) {
-          await notifyEmitter.emit(name);
+          await notifyEmitter.emit(queue);
         }
 
         return actualId;
@@ -161,7 +176,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
         }
         logger.error(
           {
-            name,
+            queue,
             key,
             error: error instanceof Error ? error.message : "Unknown error",
           },
@@ -262,15 +277,15 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
 
           // Notify waiting workers
           if (notifyEmitter) {
-            // Get the job name to notify the right queue
+            // Get the queue name to notify the right queue
             const [job] = await (db as any)
-              .select({ name: queueJobs.name })
+              .select({ queue: queueJobs.queue })
               .from(queueJobs)
               .where(eq(queueJobs.id, result[0].id))
               .limit(1);
 
             if (job) {
-              await notifyEmitter.emit(job.name);
+              await notifyEmitter.emit(job.queue);
             }
           }
         } else {
@@ -326,9 +341,9 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
     /**
      * Get queue statistics
      */
-    async stats(name?: string): Promise<QueueStats> {
+    async stats(queue?: string): Promise<QueueStats> {
       try {
-        const conditions = name ? eq(queueJobs.name, name) : undefined;
+        const conditions = queue ? eq(queueJobs.queue, queue) : undefined;
 
         const results = await (db as any)
           .select({
@@ -371,7 +386,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
       } catch (error) {
         logger.error(
           {
-            name,
+            queue,
             error: error instanceof Error ? error.message : "Unknown error",
           },
           "Failed to get stats",
@@ -661,10 +676,30 @@ export async function extendJobLock(
  * Format database row to Job interface
  */
 function formatJob(row: any): Job {
+  // Parse stages if stored as JSON string (SQLite) or already an array (PostgreSQL)
+  let stages: JobStage[] | undefined;
+  if (row.stages) {
+    const parsedStages = typeof row.stages === "string" ? JSON.parse(row.stages) : row.stages;
+    // Convert date strings to Date objects in stages
+    if (Array.isArray(parsedStages)) {
+      stages = parsedStages.map((stage: any) => ({
+        ...stage,
+        startedAt: stage.startedAt ? new Date(stage.startedAt) : undefined,
+        completedAt: stage.completedAt ? new Date(stage.completedAt) : undefined,
+      }));
+    }
+  }
+
+  // Parse metadata if stored as JSON string
+  let metadata: Record<string, unknown> | undefined;
+  if (row.metadata) {
+    metadata = typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata;
+  }
+
   return {
     id: row.id,
     key: row.key || undefined,
-    name: row.name,
+    queue: row.queue,
     data: row.data,
     status: row.status,
     priority: row.priority,
@@ -677,6 +712,11 @@ function formatJob(row: any): Job {
         : new Date(row.scheduledFor)
       : undefined,
     updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
+    // Multi-stage progress tracking
+    stages,
+    currentStage: row.currentStage || undefined,
+    overallProgress: row.overallProgress ?? undefined,
+    metadata,
   };
 }
 
@@ -694,7 +734,7 @@ function formatJob(row: any): Job {
 async function enqueueIfNotActive(
   db: any,
   queueJobs: any,
-  name: string,
+  queue: string,
   key: string,
   jobValues: any,
   logger: any,
@@ -723,7 +763,7 @@ async function enqueueIfNotActive(
     })
     .where(
       and(
-        eq(queueJobs.name, name),
+        eq(queueJobs.queue, queue),
         eq(queueJobs.key, key),
         or(eq(queueJobs.status, "pending"), eq(queueJobs.status, "retry_pending")),
       ),
@@ -733,7 +773,7 @@ async function enqueueIfNotActive(
   if (updateResult.length > 0) {
     // Updated existing pending/retry_pending job
     logger.debug(
-      { name, key, id: updateResult[0].id },
+      { queue, key, id: updateResult[0].id },
       "Job enqueued (replaced pending)",
     );
     return updateResult[0].id;
@@ -743,20 +783,20 @@ async function enqueueIfNotActive(
   const [existing] = await db
     .select({ id: queueJobs.id, status: queueJobs.status })
     .from(queueJobs)
-    .where(and(eq(queueJobs.name, name), eq(queueJobs.key, key)))
+    .where(and(eq(queueJobs.queue, queue), eq(queueJobs.key, key)))
     .limit(1);
 
   if (!existing) {
     // No job exists - insert new
     await db.insert(queueJobs).values(jobValues);
-    logger.debug({ name, key, id: jobValues.id }, "Job enqueued (new)");
+    logger.debug({ queue, key, id: jobValues.id }, "Job enqueued (new)");
     return jobValues.id;
   }
 
   // Step 3: Job exists - check status
   if (existing.status === "processing") {
     // Job is actively being processed - throw error
-    throw new JobAlreadyActiveError(name, key, existing.id);
+    throw new JobAlreadyActiveError(queue, key, existing.id);
   }
 
   // Terminal state (completed/failed) - delete old, insert fresh
@@ -764,8 +804,93 @@ async function enqueueIfNotActive(
   await db.insert(queueJobs).values(jobValues);
 
   logger.debug(
-    { name, key, id: jobValues.id, previousStatus: existing.status },
+    { queue, key, id: jobValues.id, previousStatus: existing.status },
     "Job enqueued (replaced terminal)",
   );
   return jobValues.id;
+}
+
+/**
+ * Update job stages (used by worker for progress tracking)
+ *
+ * @param db - Database instance
+ * @param queueJobs - Queue jobs table
+ * @param jobId - Job ID
+ * @param workerId - Worker ID that owns the lock
+ * @param lockToken - Fencing token that was set when the job was claimed
+ * @param stages - Updated stages array
+ * @param currentStage - Name of the stage currently being processed
+ * @param logger - Logger instance
+ * @returns true if stages were updated, false if lock was lost
+ */
+export async function updateJobStages(
+  db: any,
+  queueJobs: any,
+  jobId: string,
+  workerId: string,
+  lockToken: string,
+  stages: JobStage[],
+  currentStage: string | null,
+  logger: any,
+): Promise<boolean> {
+  const overallProgress = calculateOverallProgress(stages);
+
+  const result = await db
+    .update(queueJobs)
+    .set({
+      stages,
+      currentStage,
+      overallProgress,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(queueJobs.id, jobId),
+        eq(queueJobs.lockedBy, workerId),
+        eq(queueJobs.lockToken, lockToken),
+        eq(queueJobs.status, "processing"),
+      ),
+    )
+    .returning({ id: queueJobs.id });
+
+  const updated = result.length > 0;
+
+  if (!updated) {
+    logger.warn({ jobId, workerId }, "Failed to update job stages - lock lost");
+  }
+
+  return updated;
+}
+
+/**
+ * Get job stages (used by worker to read current stage state)
+ *
+ * @param db - Database instance
+ * @param queueJobs - Queue jobs table
+ * @param jobId - Job ID
+ * @returns Current stages array or null if job not found
+ */
+export async function getJobStages(
+  db: any,
+  queueJobs: any,
+  jobId: string,
+): Promise<JobStage[] | null> {
+  const [row] = await db
+    .select({ stages: queueJobs.stages })
+    .from(queueJobs)
+    .where(eq(queueJobs.id, jobId))
+    .limit(1);
+
+  if (!row || !row.stages) {
+    return null;
+  }
+
+  const stages = typeof row.stages === "string" ? JSON.parse(row.stages) : row.stages;
+
+  // Convert date strings to Date objects
+  return stages.map((stage: any) => ({
+    ...stage,
+    startedAt: stage.startedAt ? new Date(stage.startedAt) : undefined,
+    completedAt: stage.completedAt ? new Date(stage.completedAt) : undefined,
+  }));
 }

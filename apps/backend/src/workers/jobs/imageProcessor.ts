@@ -1,14 +1,10 @@
 import { Buffer } from "buffer";
-import type { Job } from "bullmq";
 import heicConvert from "heic-convert";
 import sharp from "sharp";
+import type { JobContext } from "@eclaire/queue/core";
 import { config } from "../config.js";
 import { type AIMessage, callAI } from "../../lib/ai-client.js";
 import { createChildLogger } from "../../lib/logger.js";
-import {
-  createProcessingReporter,
-  type ProcessingReporter,
-} from "../lib/processing-reporter.js";
 import { objectStorage } from "../../lib/storage.js";
 
 const logger = createChildLogger("image-processor");
@@ -84,17 +80,18 @@ Respond with JSON: {"image_type": "exact_type_from_list", "description": "brief 
 };
 
 /**
- * NEW: Generic conversion function for all unsupported formats to JPEG.
+ * Generic conversion function for all unsupported formats to JPEG.
  */
 async function executeImageConversion(
   imageBuffer: Buffer,
   sourceMimeType: string,
   photoId: string,
   userId: string,
-  reporter: ProcessingReporter,
+  ctx: JobContext<ImageJobData>,
 ): Promise<{ convertedJpgStorageId: string; imageBuffer: Buffer }> {
   const stageName = STAGES.CONVERSION;
-  await reporter.updateStage(stageName, "processing", 10);
+  await ctx.startStage(stageName);
+  await ctx.updateStageProgress(stageName, 10);
 
   try {
     let jpegBuffer: Buffer;
@@ -119,7 +116,7 @@ async function executeImageConversion(
       jpegBuffer = await sharp(imageBuffer).jpeg({ quality: 90 }).toBuffer();
     }
 
-    await reporter.updateProgress(stageName, 50);
+    await ctx.updateStageProgress(stageName, 50);
 
     // Save the converted JPEG and use the required artifact name.
     const savedAsset = await objectStorage.saveAssetBuffer(
@@ -131,7 +128,7 @@ async function executeImageConversion(
     );
     const artifacts = { convertedJpgStorageId: savedAsset.storageId };
 
-    await reporter.completeStage(stageName, artifacts);
+    await ctx.completeStage(stageName, artifacts);
     logger.info(
       { photoId, storageId: savedAsset.storageId, from: sourceMimeType },
       "Successfully converted image to JPEG",
@@ -143,7 +140,7 @@ async function executeImageConversion(
       { photoId, from: sourceMimeType, error: error.message },
       "Image conversion failed",
     );
-    await reporter.reportError(error, stageName);
+    await ctx.failStage(stageName, error);
     throw error;
   }
 }
@@ -155,10 +152,11 @@ async function executeThumbnailGeneration(
   imageBuffer: Buffer,
   photoId: string,
   userId: string,
-  reporter: ProcessingReporter,
+  ctx: JobContext<ImageJobData>,
 ): Promise<{ thumbnailStorageId: string }> {
   const stageName = STAGES.THUMBNAIL;
-  await reporter.updateStage(stageName, "processing", 10);
+  await ctx.startStage(stageName);
+  await ctx.updateStageProgress(stageName, 10);
 
   try {
     const thumbnailBuffer = await sharp(imageBuffer)
@@ -166,7 +164,7 @@ async function executeThumbnailGeneration(
       .jpeg({ quality: 85 })
       .toBuffer();
 
-    await reporter.updateProgress(stageName, 50);
+    await ctx.updateStageProgress(stageName, 50);
     const savedAsset = await objectStorage.saveAssetBuffer(
       thumbnailBuffer,
       userId,
@@ -176,7 +174,7 @@ async function executeThumbnailGeneration(
     );
     const artifacts = { thumbnailStorageId: savedAsset.storageId };
 
-    await reporter.completeStage(stageName, artifacts);
+    await ctx.completeStage(stageName, artifacts);
     logger.info(
       { photoId, storageId: savedAsset.storageId },
       "Successfully generated thumbnail.",
@@ -188,7 +186,7 @@ async function executeThumbnailGeneration(
       { photoId, error: error.message },
       "Thumbnail generation failed",
     );
-    await reporter.reportError(error, stageName);
+    await ctx.failStage(stageName, error);
     throw error;
   }
 }
@@ -200,9 +198,10 @@ async function executeAIWorkflowStep(
   stageName: Stage,
   imageBase64: string,
   photoId: string,
-  reporter: ProcessingReporter,
+  ctx: JobContext<ImageJobData>,
 ): Promise<any> {
-  await reporter.updateStage(stageName, "processing", 10);
+  await ctx.startStage(stageName);
+  await ctx.updateStageProgress(stageName, 10);
 
   const prompt = PROMPTS[stageName];
   if (!prompt) {
@@ -316,17 +315,17 @@ async function executeAIWorkflowStep(
       );
     }
 
-    await reporter.updateProgress(stageName, 80);
+    await ctx.updateStageProgress(stageName, 80);
     const parsedResponse = parseModelResponse(modelResponse);
 
-    await reporter.completeStage(stageName, parsedResponse);
+    await ctx.completeStage(stageName, parsedResponse);
     return parsedResponse;
   } catch (error: any) {
     logger.error(
       { photoId, step: stageName, error: error.message },
       "AI workflow step failed",
     );
-    await reporter.reportError(error, stageName);
+    await ctx.failStage(stageName, error);
     throw error;
   }
 }
@@ -397,17 +396,17 @@ function parseModelResponse(responseText: string | any): any {
 /**
  * Main processing function for an image.
  */
-async function processImageJob(job: Job<ImageJobData>): Promise<void> {
-  const { photoId, storageId, mimeType, userId } = job.data;
+async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
+  const { photoId, storageId, mimeType, userId, originalFilename } = ctx.job.data;
   logger.info(
-    { photoId, jobId: job.id, userId, mimeType, storageId },
+    { photoId, jobId: ctx.job.id, userId, mimeType, storageId },
     "Starting image processing job",
   );
 
   // Validate required job data
   if (!storageId || storageId.trim() === "") {
     const errorMsg = `Invalid or missing storageId for photo ${photoId}. Received: ${storageId}`;
-    logger.error({ photoId, jobId: job.id, storageId }, errorMsg);
+    logger.error({ photoId, jobId: ctx.job.id, storageId }, errorMsg);
     throw new Error(errorMsg);
   }
 
@@ -419,28 +418,26 @@ async function processImageJob(job: Job<ImageJobData>): Promise<void> {
     ...(needsConversion ? [STAGES.CONVERSION] : []),
     STAGES.THUMBNAIL,
     STAGES.CLASSIFICATION,
-    //STAGES.FINALIZATION,
   ];
 
-  const reporter = await createProcessingReporter("photos", photoId, userId);
-  await reporter.initializeJob(initialStages);
+  await ctx.initStages(initialStages);
 
   const allArtifacts: Record<string, any> = {};
   const extractedData: Record<string, any> = {
     photoId,
     mimeType,
-    originalFilename: job.data.originalFilename,
+    originalFilename,
     processedAt: new Date().toISOString(),
     aiAnalysis: {},
   };
 
   try {
     // STAGE: IMAGE PREPARATION
-    await reporter.updateStage(STAGES.PREPARATION, "processing", 0);
+    await ctx.startStage(STAGES.PREPARATION);
     let imageBuffer = await objectStorage.getBuffer(storageId);
     if (imageBuffer.length === 0)
       throw new Error("Fetched image file is empty.");
-    await reporter.completeStage(STAGES.PREPARATION);
+    await ctx.completeStage(STAGES.PREPARATION);
 
     // STAGE: CONVERSION (Conditional)
     if (needsConversion) {
@@ -451,7 +448,7 @@ async function processImageJob(job: Job<ImageJobData>): Promise<void> {
           mimeType,
           photoId,
           userId,
-          reporter,
+          ctx,
         );
       // The rest of the workflow will use the converted JPEG buffer.
       imageBuffer = Buffer.from(convertedBuffer);
@@ -470,7 +467,7 @@ async function processImageJob(job: Job<ImageJobData>): Promise<void> {
       imageBuffer,
       photoId,
       userId,
-      reporter,
+      ctx,
     );
     Object.assign(allArtifacts, thumbArtifacts);
     extractedData.thumbnail = {
@@ -484,7 +481,7 @@ async function processImageJob(job: Job<ImageJobData>): Promise<void> {
       STAGES.CLASSIFICATION,
       imageBase64,
       photoId,
-      reporter,
+      ctx,
     );
     Object.assign(allArtifacts, {
       photoType: classificationResult.image_type,
@@ -504,7 +501,7 @@ async function processImageJob(job: Job<ImageJobData>): Promise<void> {
       { photoId, imageType: classificationResult.image_type, stagesToAdd },
       "Dynamically adding new stages in correct order.",
     );
-    await reporter.addStages(stagesToAdd);
+    await ctx.addStages(stagesToAdd);
 
     // Execute dynamic steps
     const tags: string[] = [];
@@ -513,7 +510,7 @@ async function processImageJob(job: Job<ImageJobData>): Promise<void> {
         stepName,
         imageBase64,
         photoId,
-        reporter,
+        ctx,
       );
 
       // Store the raw AI analysis results
@@ -541,7 +538,8 @@ async function processImageJob(job: Job<ImageJobData>): Promise<void> {
     extractedData.processedTags = allArtifacts.tags;
 
     // FINAL STAGE: FINALIZATION
-    await reporter.updateStage(STAGES.FINALIZATION, "processing", 50);
+    await ctx.startStage(STAGES.FINALIZATION);
+    await ctx.updateStageProgress(STAGES.FINALIZATION, 50);
 
     // Save the extracted JSON data to storage
     const extractedJsonBuffer = Buffer.from(
@@ -561,21 +559,19 @@ async function processImageJob(job: Job<ImageJobData>): Promise<void> {
       "Successfully saved extracted analysis data as JSON",
     );
 
-    await reporter.completeStage(STAGES.FINALIZATION);
-
-    // Mark the overall job as complete, sending all collected artifacts.
-    await reporter.completeJob(allArtifacts);
+    // Complete the final stage with all artifacts - job completion is implicit when handler returns
+    await ctx.completeStage(STAGES.FINALIZATION, allArtifacts);
 
     logger.info(
-      { photoId, jobId: job.id },
+      { photoId, jobId: ctx.job.id },
       "Successfully completed image processing job.",
     );
   } catch (error: any) {
     logger.error(
-      { photoId, jobId: job.id, error: error.message, stack: error.stack },
+      { photoId, jobId: ctx.job.id, error: error.message, stack: error.stack },
       "FAILED image processing job",
     );
-    await reporter.failJob(error.message);
+    // Re-throw so queue knows the job failed
     throw error;
   }
 }

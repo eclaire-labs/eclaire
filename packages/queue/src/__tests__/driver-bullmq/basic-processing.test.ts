@@ -41,7 +41,7 @@ describe("BullMQ: Basic Processing", () => {
     const job = await client.getJob(jobId);
     expect(job).toBeDefined();
     expect(job?.id).toBe(jobId);
-    expect(job?.name).toBe("test-queue");
+    expect(job?.queue).toBe("test-queue");
     expect(job?.data).toEqual({ value: 42 });
   });
 

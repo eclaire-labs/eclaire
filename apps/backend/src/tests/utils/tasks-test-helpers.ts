@@ -702,7 +702,7 @@ export const RecurrenceTestHelpers = {
     }
 
     if (!taskExecutionQueue) {
-      const { QueueNames } = await import("../../lib/queues.js");
+      const { QueueNames } = await import("../../lib/queue/index.js");
       taskExecutionQueue = new Queue(QueueNames.TASK_EXECUTION_PROCESSING, {
         connection: redisConnection,
       });
@@ -811,7 +811,7 @@ export const globalTestCleanup = async () => {
   if (getQueueMode() === "redis") {
     // Try to clear task processing queues if available
     try {
-      const { getQueue, QueueNames } = await import("../../lib/queues.js");
+      const { getQueue, QueueNames } = await import("../../lib/queue/index.js");
       const taskQueue = getQueue(QueueNames.TASK_PROCESSING);
       const executionQueue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
 

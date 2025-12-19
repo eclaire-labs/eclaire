@@ -8,12 +8,23 @@ import type {
   JobHandler,
   JobContext,
   Job,
+  JobStage,
+  JobEventCallbacks,
 } from "../core/types.js";
 import { createWorkerId, sleep, cancellableSleep, createDeferred } from "../core/utils.js";
+import {
+  initializeStages,
+  startStageInList,
+  completeStageInList,
+  failStageInList,
+  updateStageProgressInList,
+  addStagesToList,
+  calculateOverallProgress,
+} from "../core/progress.js";
 import type { DbWorkerConfig, ClaimedJob } from "./types.js";
 import { claimJobPostgres } from "./claim-postgres.js";
 import { claimJobSqlite } from "./claim-sqlite.js";
-import { markJobCompleted, markJobFailed, extendJobLock } from "./client.js";
+import { markJobCompleted, markJobFailed, extendJobLock, updateJobStages } from "./client.js";
 
 /**
  * Default configuration values
@@ -30,14 +41,14 @@ const DEFAULTS = {
 /**
  * Create a database-backed Worker
  *
- * @param name - Queue name to process
+ * @param queue - Queue name to process
  * @param handler - Job handler function
  * @param config - Worker configuration
  * @param options - Worker options
  * @returns Worker instance
  */
 export function createDbWorker<T = unknown>(
-  name: string,
+  queue: string,
   handler: JobHandler<T>,
   config: DbWorkerConfig,
   options: WorkerOptions = {},
@@ -54,6 +65,7 @@ export function createDbWorker<T = unknown>(
     notifyWaitTimeout = DEFAULTS.notifyWaitTimeout,
     notifyListener,
     gracefulShutdownTimeout = DEFAULTS.gracefulShutdownTimeout,
+    eventCallbacks,
   } = config;
 
   const { concurrency = DEFAULTS.concurrency } = options;
@@ -109,11 +121,18 @@ export function createDbWorker<T = unknown>(
         }
       }, heartbeatInterval);
 
-      // Create job context
+      // Create job context with stage tracking
+      // Parse stages from claimed job (may be JSON string from SQLite)
+      let currentStages: JobStage[] = claimed.stages
+        ? typeof claimed.stages === "string"
+          ? JSON.parse(claimed.stages)
+          : claimed.stages
+        : [];
+
       const job: Job<T> = {
         id: claimed.id,
         key: claimed.key || undefined,
-        name: claimed.name,
+        queue: claimed.queue,
         data: claimed.data as T,
         status: claimed.status as Job["status"],
         priority: claimed.priority,
@@ -122,6 +141,29 @@ export function createDbWorker<T = unknown>(
         createdAt: claimed.createdAt,
         scheduledFor: claimed.scheduledFor || undefined,
         updatedAt: claimed.updatedAt,
+        stages: currentStages.length > 0 ? currentStages : undefined,
+        currentStage: claimed.currentStage || undefined,
+        overallProgress: claimed.overallProgress ?? undefined,
+        metadata: claimed.metadata || undefined,
+      };
+
+      // Helper to persist stage updates to DB
+      const persistStages = async (stages: JobStage[], currentStageName: string | null) => {
+        currentStages = stages;
+        job.stages = stages;
+        job.currentStage = currentStageName || undefined;
+        job.overallProgress = calculateOverallProgress(stages);
+
+        await updateJobStages(
+          db,
+          queueJobs,
+          claimed.id,
+          workerId,
+          lockToken,
+          stages,
+          currentStageName,
+          logger,
+        );
       };
 
       const ctx: JobContext<T> = {
@@ -134,6 +176,51 @@ export function createDbWorker<T = unknown>(
         },
         progress(percent: number) {
           logger.debug({ jobId: claimed.id, progress: percent }, "Job progress");
+          // Also call event callback if provided
+          eventCallbacks?.onStageProgress?.(claimed.id, job.currentStage || "", percent, claimed.metadata || undefined);
+        },
+
+        // Multi-stage progress tracking methods
+        async initStages(stageNames: string[]) {
+          const stages = initializeStages(stageNames);
+          await persistStages(stages, null);
+          logger.debug({ jobId: claimed.id, stages: stageNames }, "Job stages initialized");
+        },
+
+        async startStage(stageName: string) {
+          const updatedStages = startStageInList(currentStages, stageName);
+          await persistStages(updatedStages, stageName);
+          logger.debug({ jobId: claimed.id, stage: stageName }, "Stage started");
+          eventCallbacks?.onStageStart?.(claimed.id, stageName, claimed.metadata || undefined);
+        },
+
+        async updateStageProgress(stageName: string, percent: number) {
+          // This is a lightweight operation - only update local state and emit event
+          // Don't persist to DB to avoid excessive writes
+          currentStages = updateStageProgressInList(currentStages, stageName, percent);
+          job.stages = currentStages;
+          job.overallProgress = calculateOverallProgress(currentStages);
+          eventCallbacks?.onStageProgress?.(claimed.id, stageName, percent, claimed.metadata || undefined);
+        },
+
+        async completeStage(stageName: string, artifacts?: Record<string, unknown>) {
+          const updatedStages = completeStageInList(currentStages, stageName, artifacts);
+          await persistStages(updatedStages, null); // Clear current stage since this one is done
+          logger.debug({ jobId: claimed.id, stage: stageName }, "Stage completed");
+          eventCallbacks?.onStageComplete?.(claimed.id, stageName, artifacts, claimed.metadata || undefined);
+        },
+
+        async failStage(stageName: string, error: Error) {
+          const updatedStages = failStageInList(currentStages, stageName, error.message);
+          await persistStages(updatedStages, null);
+          logger.debug({ jobId: claimed.id, stage: stageName, error: error.message }, "Stage failed");
+          eventCallbacks?.onStageFail?.(claimed.id, stageName, error.message, claimed.metadata || undefined);
+        },
+
+        async addStages(stageNames: string[]) {
+          const updatedStages = addStagesToList(currentStages, stageNames);
+          await persistStages(updatedStages, job.currentStage || null);
+          logger.debug({ jobId: claimed.id, addedStages: stageNames }, "Stages added");
         },
       };
 
@@ -146,9 +233,11 @@ export function createDbWorker<T = unknown>(
         logger.warn({ jobId: claimed.id }, "Job completion failed - lock was lost");
       } else {
         logger.info(
-          { jobId: claimed.id, name, attempts: claimed.attempts },
+          { jobId: claimed.id, queue, attempts: claimed.attempts },
           "Job completed successfully",
         );
+        // Call onJobComplete callback
+        eventCallbacks?.onJobComplete?.(claimed.id, claimed.metadata || undefined);
       }
     } catch (error) {
       // Mark as failed (handles retry logic internally, with ownership verification)
@@ -166,15 +255,18 @@ export function createDbWorker<T = unknown>(
         logger.warn({ jobId: claimed.id }, "Job failure marking failed - lock was lost");
       }
 
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error(
         {
           jobId: claimed.id,
-          name,
+          queue,
           attempts: claimed.attempts,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMessage,
         },
         "Job failed",
       );
+      // Call onJobFail callback
+      eventCallbacks?.onJobFail?.(claimed.id, errorMessage, claimed.metadata || undefined);
     } finally {
       // Stop heartbeat
       if (heartbeatTimer) {
@@ -188,7 +280,7 @@ export function createDbWorker<T = unknown>(
    * Main worker loop
    */
   async function runLoop(): Promise<void> {
-    logger.info({ name, workerId, concurrency }, "Worker started");
+    logger.info({ queue, workerId, concurrency }, "Worker started");
 
     while (running && !stopRequested) {
       // Check if we can take more jobs
@@ -202,7 +294,7 @@ export function createDbWorker<T = unknown>(
         const claimed = await claimJob(
           db,
           queueJobs,
-          name,
+          queue,
           { workerId, lockDuration },
           logger,
         );
@@ -219,7 +311,7 @@ export function createDbWorker<T = unknown>(
           // No job available, wait for notification or poll interval
           if (notifyListener) {
             // Wait for notification (use separate timeout for Postgres NOTIFY)
-            await waitForNotification(name, notifyWaitTimeout, abortController?.signal);
+            await waitForNotification(queue, notifyWaitTimeout, abortController?.signal);
           } else {
             // Fall back to polling
             await cancellableSleep(pollInterval, abortController?.signal);
@@ -228,7 +320,7 @@ export function createDbWorker<T = unknown>(
       } catch (error) {
         logger.error(
           {
-            name,
+            queue,
             workerId,
             error: error instanceof Error ? error.message : "Unknown error",
           },
@@ -241,11 +333,11 @@ export function createDbWorker<T = unknown>(
 
     // Wait for active jobs to complete (NOT interruptible - we want jobs to finish)
     while (activeJobs > 0) {
-      logger.debug({ name, workerId, activeJobs }, "Waiting for active jobs to complete");
+      logger.debug({ queue, workerId, activeJobs }, "Waiting for active jobs to complete");
       await sleep(100);
     }
 
-    logger.info({ name, workerId }, "Worker stopped");
+    logger.info({ queue, workerId }, "Worker stopped");
     stopDeferred.resolve();
   }
 
@@ -296,7 +388,7 @@ export function createDbWorker<T = unknown>(
   return {
     async start(): Promise<void> {
       if (running) {
-        logger.warn({ name, workerId }, "Worker already running");
+        logger.warn({ queue, workerId }, "Worker already running");
         return;
       }
 
@@ -314,7 +406,7 @@ export function createDbWorker<T = unknown>(
         return;
       }
 
-      logger.info({ name, workerId }, "Stopping worker...");
+      logger.info({ queue, workerId }, "Stopping worker...");
       stopRequested = true;
 
       // Signal sleep/wait calls to cancel immediately
@@ -324,7 +416,7 @@ export function createDbWorker<T = unknown>(
       const timeoutPromise = new Promise<void>((resolve) => {
         setTimeout(() => {
           logger.warn(
-            { name, workerId, activeJobs },
+            { queue, workerId, activeJobs },
             "Worker shutdown timeout reached - forcing stop",
           );
           resolve();
@@ -346,7 +438,7 @@ export function createDbWorker<T = unknown>(
  * Factory function type for creating DB workers
  */
 export type DbWorkerFactory<T = unknown> = (
-  name: string,
+  queue: string,
   handler: JobHandler<T>,
   options?: WorkerOptions,
 ) => Worker;
@@ -361,10 +453,10 @@ export function createDbWorkerFactory(
   config: Omit<DbWorkerConfig, "workerId">,
 ): DbWorkerFactory {
   return <T>(
-    name: string,
+    queue: string,
     handler: JobHandler<T>,
     options?: WorkerOptions,
   ): Worker => {
-    return createDbWorker(name, handler, config, options);
+    return createDbWorker(queue, handler, config, options);
   };
 }

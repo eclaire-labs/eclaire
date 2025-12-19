@@ -10,7 +10,11 @@ const pglitePath = process.env.PGLITE_DATA_DIR || "./data/pglite";
 const sqlitePath = process.env.SQLITE_DB_PATH || "./data/sqlite/sqlite.db";
 
 export default {
-	schema: isSqlite ? "./src/schema/sqlite.ts" : "./src/schema/postgres.ts",
+	// Include both app schema AND queue schema for migrations
+	// Queue schema is split by dialect to avoid mixing pgTable and sqliteTable
+	schema: isSqlite
+		? ["./src/schema/sqlite.ts", "../queue/src/driver-db/schema/sqlite.ts"]
+		: ["./src/schema/postgres.ts", "../queue/src/driver-db/schema/postgres.ts"],
 	out: isSqlite ? "./src/migrations/sqlite" : "./src/migrations/postgres",
 	dialect: isSqlite ? "sqlite" : "postgresql",
 	dbCredentials: isSqlite

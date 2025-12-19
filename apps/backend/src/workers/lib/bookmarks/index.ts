@@ -1,5 +1,4 @@
-import type { Job } from "bullmq";
-import type { ProcessingReporter } from "../processing-reporter.js";
+import type { JobContext } from "@eclaire/queue/core";
 import { createChildLogger } from "../../../lib/logger.js";
 
 export * from "./github.js";
@@ -46,10 +45,7 @@ export interface BookmarkHandler {
   /**
    * Process a bookmark job with platform-specific handling
    */
-  processBookmark(
-    job: Job<BookmarkJobData>,
-    reporter: ProcessingReporter,
-  ): Promise<void>;
+  processBookmark(ctx: JobContext<BookmarkJobData>): Promise<void>;
 
   /**
    * Check if this handler can process the given URL

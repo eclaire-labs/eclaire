@@ -81,7 +81,7 @@ describe.each(DB_TEST_CONFIGS)(
 
         await scheduler.upsert({
           key: "end-date-schedule",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { type: "end-date-test" },
           endDate: pastEndDate,
@@ -107,7 +107,7 @@ describe.each(DB_TEST_CONFIGS)(
 
         await scheduler.upsert({
           key: "end-date-disable",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { type: "end-date-disable" },
           endDate: pastEndDate,
@@ -146,7 +146,7 @@ describe.each(DB_TEST_CONFIGS)(
 
         await scheduler.upsert({
           key: "end-date-sequence",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { type: "end-date-sequence" },
           endDate: futureEndDate,
@@ -206,7 +206,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Create schedule with limit=3, starting immediately
         await scheduler.upsert({
           key: "limited-schedule-3",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { run: true },
           limit: 3,
@@ -268,7 +268,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Create schedule with hourly pattern (not immediately)
         await scheduler.upsert({
           key: "update-pattern",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "0 * * * *", // Hourly
           data: { version: 1 },
         });
@@ -287,7 +287,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Update to every minute pattern with immediately=true
         await scheduler.upsert({
           key: "update-pattern",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *", // Every minute
           data: { version: 2 },
           immediately: true,
@@ -315,7 +315,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Create schedule that runs immediately
         await scheduler.upsert({
           key: "no-dup-update",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { version: 1 },
           immediately: true,
@@ -335,7 +335,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Update the schedule (same key, different pattern)
         await scheduler.upsert({
           key: "no-dup-update",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "*/5 * * * *", // Every 5 minutes
           data: { version: 2 },
           immediately: true,
@@ -365,7 +365,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Create schedule with immediately=true
         await scheduler.upsert({
           key: "dedup-restart",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { dedup: true },
           immediately: true,
@@ -416,7 +416,7 @@ describe.each(DB_TEST_CONFIGS)(
         const startTime = new Date();
         await scheduler.upsert({
           key: "key-check",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { keyCheck: true },
           immediately: true,
@@ -441,7 +441,7 @@ describe.each(DB_TEST_CONFIGS)(
         const jobs = await testDb.db
           .select()
           .from(queueJobs)
-          .where(eq(queueJobs.name, "test-queue"));
+          .where(eq(queueJobs.queue, "test-queue"));
 
         expect(jobs).toHaveLength(1);
         // Job key should be schedule:{scheduleKey}:{nextRunAt.getTime()}

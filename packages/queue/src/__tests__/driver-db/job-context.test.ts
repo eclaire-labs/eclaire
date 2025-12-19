@@ -202,7 +202,7 @@ describe.each(DB_TEST_CONFIGS)(
       // Verify job properties
       expect(receivedJob).not.toBeNull();
       expect(receivedJob.id).toBe(jobId);
-      expect(receivedJob.name).toBe("test-queue");
+      expect(receivedJob.queue).toBe("test-queue");
       expect(receivedJob.data).toEqual({ value: "test-data", nested: { foo: "bar" } });
       expect(receivedJob.priority).toBe(5);
       expect(receivedJob.maxAttempts).toBe(3);

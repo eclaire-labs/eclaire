@@ -267,7 +267,7 @@ describe("BullMQ: Job Context", () => {
       worker = harness.createWorker("test-queue", async (ctx) => {
         jobInfo = {
           id: ctx.job.id,
-          name: ctx.job.name,
+          queue: ctx.job.queue,
           attempts: ctx.job.attempts,
         };
       });
@@ -280,7 +280,7 @@ describe("BullMQ: Job Context", () => {
 
       expect(jobInfo).not.toBeNull();
       expect(jobInfo!.id).toBe("context-test");
-      expect(jobInfo!.name).toBe("test-queue");
+      expect(jobInfo!.queue).toBe("test-queue");
       expect(jobInfo!.attempts).toBe(1); // First attempt
     });
 

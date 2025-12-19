@@ -1,8 +1,8 @@
 import type { Queue } from "bullmq";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
-import { db, schema, txManager } from "../../db/index.js";
+import { db, schema, txManager, queueJobs } from "../../db/index.js";
+import { generateJobId } from "@eclaire/queue/core";
 const {
-  assetProcessingJobs,
   bookmarks,
   documents,
   notes,
@@ -12,10 +12,29 @@ const {
 import { publishProcessingEvent } from "../../routes/processing-events.js";
 import type { AssetType, ProcessingStatus } from "../../types/assets.js";
 import { createChildLogger } from "../logger.js";
-import { getQueue, QueueNames } from "../queues.js";
+import { getQueue, QueueNames } from "../queue/index.js";
 import { processArtifacts } from "./artifact-processor.js";
 
 const logger = createChildLogger("processing-status");
+
+/**
+ * Build queue name for an asset type and optional job type
+ * Maps to queue names like "bookmark-processing", "task-tag_generation", etc.
+ */
+function buildQueueName(assetType: AssetType, jobType?: string): string {
+  if (jobType && assetType === "tasks") {
+    return `task-${jobType}`;
+  }
+  // photos -> photo-processing, bookmarks -> bookmark-processing, etc.
+  return `${assetType.slice(0, -1)}-processing`;
+}
+
+/**
+ * Build job key for an asset: "{assetType}:{assetId}"
+ */
+function buildJobKey(assetType: AssetType, assetId: string): string {
+  return `${assetType}:${assetId}`;
+}
 
 export interface ProcessingStage {
   name: string;
@@ -58,6 +77,7 @@ export interface ProcessingSummary {
 
 /**
  * Creates or updates a processing job for an asset
+ * Uses queueJobs table with key pattern: "{assetType}:{assetId}"
  */
 export async function createOrUpdateProcessingJob(
   assetType: AssetType,
@@ -67,17 +87,15 @@ export async function createOrUpdateProcessingJob(
   jobType?: string,
 ): Promise<ProcessingJobDetails> {
   try {
-    // For tasks with multiple job types, filter by jobType too
-    const whereConditions = [
-      eq(assetProcessingJobs.assetType, assetType),
-      eq(assetProcessingJobs.assetId, assetId),
-    ];
-    if (jobType && assetType === "tasks") {
-      whereConditions.push(eq(assetProcessingJobs.jobType, jobType));
-    }
-    const existingJob = await db.query.assetProcessingJobs.findFirst({
-      where: and(...whereConditions),
-    });
+    const jobKey = buildJobKey(assetType, assetId);
+    const queueName = buildQueueName(assetType, jobType);
+
+    // Check for existing job
+    const existingJob = await db
+      .select()
+      .from(queueJobs)
+      .where(and(eq(queueJobs.queue, queueName), eq(queueJobs.key, jobKey)))
+      .limit(1);
 
     const stages: ProcessingStage[] = initialStages.map((stageName) => ({
       name: stageName,
@@ -85,22 +103,24 @@ export async function createOrUpdateProcessingJob(
       progress: 0,
     }));
 
-    if (existingJob) {
+    const metadata = { userId, assetType, assetId };
+
+    if (existingJob.length > 0) {
       const [updatedJob] = await db
-        .update(assetProcessingJobs)
+        .update(queueJobs)
         .set({
           status: "pending",
           stages: stages,
-          currentStage: null, // <-- FIX 1: Set to null for pending status
+          currentStage: null,
           overallProgress: 0,
           errorMessage: null,
           errorDetails: null,
-          retryCount: 0,
-          startedAt: null,
-          completedAt: null, // Ensure this is also reset on retry/re-initialization
+          attempts: 0,
+          completedAt: null,
           updatedAt: new Date(),
+          metadata,
         })
-        .where(eq(assetProcessingJobs.id, existingJob.id))
+        .where(eq(queueJobs.id, existingJob[0]!.id))
         .returning();
 
       const formattedJob = formatJobDetails(updatedJob);
@@ -125,33 +145,35 @@ export async function createOrUpdateProcessingJob(
       return formattedJob;
     } else {
       // Use INSERT with ON CONFLICT to handle race conditions
+      const jobId = generateJobId();
       const [newJob] = await db
-        .insert(assetProcessingJobs)
+        .insert(queueJobs)
         .values({
-          assetType,
-          assetId,
-          userId,
-          jobType: jobType ?? "processing",
+          id: jobId,
+          queue: queueName,
+          key: jobKey,
+          data: {}, // Job data can be empty for processing status tracking
           status: "pending",
           stages: stages,
           currentStage: null,
           overallProgress: 0,
-          retryCount: 0,
-          maxRetries: 3,
+          attempts: 0,
+          maxAttempts: 3,
+          metadata,
         })
         .onConflictDoUpdate({
-          target: [assetProcessingJobs.assetType, assetProcessingJobs.assetId, assetProcessingJobs.jobType],
+          target: [queueJobs.queue, queueJobs.key],
           set: {
             status: "pending",
             stages: stages,
             currentStage: null,
             overallProgress: 0,
-            retryCount: 0,
+            attempts: 0,
             errorMessage: null,
             errorDetails: null,
-            startedAt: null,
             completedAt: null,
-            // updatedAt removed - handled by schema defaults
+            updatedAt: new Date(),
+            metadata,
           },
         })
         .returning();
@@ -200,12 +222,16 @@ export async function addStagesToProcessingJob(
   newStages: string[],
 ): Promise<ProcessingJobDetails | null> {
   try {
-    const job = await db.query.assetProcessingJobs.findFirst({
-      where: and(
-        eq(assetProcessingJobs.assetType, assetType),
-        eq(assetProcessingJobs.assetId, assetId),
-      ),
-    });
+    const jobKey = buildJobKey(assetType, assetId);
+
+    // Find job by key (without name filter to find any job for this asset)
+    const jobs = await db
+      .select()
+      .from(queueJobs)
+      .where(eq(queueJobs.key, jobKey))
+      .limit(1);
+
+    const job = jobs[0];
 
     if (!job) {
       logger.warn(
@@ -229,12 +255,12 @@ export async function addStagesToProcessingJob(
     const updatedStages = [...existingStages, ...stagesToAdd];
 
     const [updatedJob] = await db
-      .update(assetProcessingJobs)
+      .update(queueJobs)
       .set({
         stages: updatedStages,
         updatedAt: new Date(),
       })
-      .where(eq(assetProcessingJobs.id, job.id))
+      .where(eq(queueJobs.id, job.id))
       .returning();
 
     logger.info(
@@ -274,20 +300,17 @@ export async function updateProcessingJobStatus(
   jobType?: string,
 ): Promise<ProcessingJobDetails | null> {
   try {
-    // 1. Fetch the current state of the job BEFORE transaction.
-    // NOTE: This introduces a small race condition window, but it's necessary
-    // for SQLite compatibility. The transaction still ensures atomicity of the update itself.
-    // For tasks with multiple job types, filter by jobType too
-    const whereConditions = [
-      eq(assetProcessingJobs.assetType, assetType),
-      eq(assetProcessingJobs.assetId, assetId),
-    ];
-    if (jobType && assetType === "tasks") {
-      whereConditions.push(eq(assetProcessingJobs.jobType, jobType));
-    }
-    const job = await db.query.assetProcessingJobs.findFirst({
-      where: and(...whereConditions),
-    });
+    // 1. Fetch the current state of the job
+    const jobKey = buildJobKey(assetType, assetId);
+    const queueName = buildQueueName(assetType, jobType);
+
+    const jobs = await db
+      .select()
+      .from(queueJobs)
+      .where(and(eq(queueJobs.queue, queueName), eq(queueJobs.key, jobKey)))
+      .limit(1);
+
+    const job = jobs[0];
 
     if (!job) {
       logger.warn(
@@ -303,17 +326,17 @@ export async function updateProcessingJobStatus(
     const now = Math.floor(Date.now() / 1000);
     const nowDate = new Date();
 
+    // Get existing metadata to preserve and extend
+    const existingMetadata = (job.metadata as Record<string, any>) || {};
+
     // Initialize updateData with a flexible type to handle SQL expressions
     const updateData: Record<string, any> = {
       updatedAt: new Date(),
     };
 
     // 3. (RACE CONDITION FIX) Handle adding new stages first, if requested.
-    // This logic runs before any other status update, ensuring the stage list is
-    // up-to-date within the same transaction.
     if (addStages && addStages.length > 0) {
       const stagesToAdd: ProcessingStage[] = addStages
-        // Filter out stages that might already exist to be safe
         .filter((newName) => !existingStages.some((s) => s.name === newName))
         .map((stageName) => ({
           name: stageName,
@@ -330,8 +353,6 @@ export async function updateProcessingJobStatus(
     if (stage) {
       const stageIndex = existingStages.findIndex((s) => s.name === stage);
 
-      // This check is important for the race condition fix.
-      // The stage now exists in `existingStages` because step 3 ran first.
       if (stageIndex >= 0) {
         const stageToUpdate = existingStages[stageIndex];
         if (!stageToUpdate) {
@@ -346,7 +367,6 @@ export async function updateProcessingJobStatus(
         stageToUpdate.progress = progress ?? stageToUpdate.progress;
         if (error) stageToUpdate.error = error;
 
-        // Set stage-specific timestamps
         if (status === "processing" && !stageToUpdate.startedAt) {
           stageToUpdate.startedAt = now;
         }
@@ -360,25 +380,21 @@ export async function updateProcessingJobStatus(
         );
       }
 
-      // The job's current stage is the one being actively updated.
       updateData.currentStage = stage;
     }
 
     // 5. Determine the overall job status and manage job-level timestamps.
     if (status === "failed") {
-      // If any stage fails, the entire job fails.
       updateData.status = "failed";
-      updateData.completedAt = nowDate; // A failed job is also a completed job.
-      updateData.currentStage = stage || job.currentStage; // Keep context of what failed.
+      updateData.completedAt = nowDate;
+      updateData.currentStage = stage || job.currentStage;
       updateData.errorMessage = error || null;
       updateData.errorDetails = errorDetails || null;
     } else if (status === "completed" && !stage) {
-      // This block handles a 'completeJob()' call (no specific stage).
       updateData.status = "completed";
       updateData.completedAt = nowDate;
-      updateData.currentStage = null; // No current stage when the job is fully done.
+      updateData.currentStage = null;
       updateData.overallProgress = 100;
-      // Mark any pending stages as completed as well
       for (const s of existingStages) {
         if (s.status !== "completed") {
           s.status = "completed";
@@ -387,18 +403,17 @@ export async function updateProcessingJobStatus(
         }
       }
     } else {
-      // Any other update (e.g., stage 'processing', stage 'completed') means the job is 'processing'.
       updateData.status = "processing";
-      updateData.completedAt = null; // (PREMATURE `completedAt` FIX) Explicitly nullify on processing.
-      if (!job.startedAt) {
-        updateData.startedAt = nowDate;
+      updateData.completedAt = null;
+      // Store startedAt in metadata since queueJobs doesn't have this column
+      if (!existingMetadata.startedAt) {
+        updateData.metadata = { ...existingMetadata, startedAt: nowDate.toISOString() };
       }
     }
 
     // 6. Recalculate overall progress and finalize the update payload.
     updateData.stages = existingStages;
     if (updateData.status !== "completed") {
-      // Avoid overwriting 100% on final completion
       updateData.overallProgress =
         existingStages.length > 0
           ? Math.round(
@@ -421,19 +436,12 @@ export async function updateProcessingJobStatus(
       "About to update processing job with cleaned data",
     );
 
-    // 8. Execute transaction to commit all collected changes
-    let updatedJob: any;
-    await txManager.withTransaction(async (tx) => {
-      await tx.assetProcessingJobs.update(
-        eq(assetProcessingJobs.id, job.id),
-        cleanUpdateData
-      );
-    });
-
-    // 9. Fetch the updated job to return (since we can't use .returning() in sync transaction)
-    updatedJob = await db.query.assetProcessingJobs.findFirst({
-      where: eq(assetProcessingJobs.id, job.id),
-    });
+    // 8. Execute update (queueJobs is not in transaction manager, use direct update)
+    const [updatedJob] = await db
+      .update(queueJobs)
+      .set(cleanUpdateData)
+      .where(eq(queueJobs.id, job.id))
+      .returning();
 
     if (!updatedJob) {
       return null;
@@ -441,29 +449,34 @@ export async function updateProcessingJobStatus(
 
     const formattedJob = formatJobDetails(updatedJob);
 
+    // Get userId from metadata for SSE
+    const userId = (updatedJob.metadata as any)?.userId;
+
     // Publish SSE event for status update with full data
     try {
-      const summary = await getUserProcessingSummary(updatedJob.userId);
+      if (userId) {
+        const summary = await getUserProcessingSummary(userId);
 
-      let eventType = "job_update";
-      if (formattedJob.status === "completed") {
-        eventType = "job_completed";
-      } else if (formattedJob.status === "failed") {
-        eventType = "job_failed";
-      } else if (stage) {
-        eventType = "stage_update";
+        let eventType = "job_update";
+        if (formattedJob.status === "completed") {
+          eventType = "job_completed";
+        } else if (formattedJob.status === "failed") {
+          eventType = "job_failed";
+        } else if (stage) {
+          eventType = "stage_update";
+        }
+
+        await publishProcessingEvent(userId, {
+          type: eventType,
+          payload: {
+            job: formattedJob,
+            summary,
+          },
+        });
       }
-
-      await publishProcessingEvent(updatedJob.userId, {
-        type: eventType,
-        payload: {
-          job: formattedJob,
-          summary,
-        },
-      });
     } catch (sseError) {
       logger.warn(
-        { assetType, assetId, userId: updatedJob.userId, sseError },
+        { assetType, assetId, userId, sseError },
         "Failed to publish SSE event for status update",
       );
     }
@@ -495,19 +508,23 @@ export async function getProcessingJob(
   jobType?: string,
 ): Promise<ProcessingJobDetails | null> {
   try {
-    // For tasks with multiple job types, filter by jobType too
-    const whereConditions = [
-      eq(assetProcessingJobs.assetType, assetType),
-      eq(assetProcessingJobs.assetId, assetId),
-      eq(assetProcessingJobs.userId, userId),
-    ];
-    if (jobType && assetType === "tasks") {
-      whereConditions.push(eq(assetProcessingJobs.jobType, jobType));
-    }
-    const job = await db.query.assetProcessingJobs.findFirst({
-      where: and(...whereConditions),
-    });
+    const jobKey = buildJobKey(assetType, assetId);
+    const queueName = buildQueueName(assetType, jobType);
 
+    // Query by key and optionally by name (for tasks with multiple job types)
+    const jobs = await db
+      .select()
+      .from(queueJobs)
+      .where(
+        and(
+          eq(queueJobs.key, jobKey),
+          eq(queueJobs.queue, queueName),
+          sql`${queueJobs.metadata}->>'userId' = ${userId}`
+        )
+      )
+      .limit(1);
+
+    const job = jobs[0];
     return job ? formatJobDetails(job) : null;
   } catch (error) {
     logger.error(
@@ -529,75 +546,72 @@ export async function getProcessingJob(
 export async function getUserProcessingSummary(
   userId: string,
 ): Promise<ProcessingSummary> {
-  //logger.debug({ userId }, "getUserProcessingSummary called");
-
   try {
-    //logger.debug({ userId }, "Executing database query for processing jobs");
-
-    // Use the same filtering logic as getUserProcessingJobs to exclude disabled assets
+    // Use queueJobs with jsonb metadata for filtering
+    // Join with asset tables to filter by enabled status
     const jobs = await db
       .select({
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
-      .from(assetProcessingJobs)
+      .from(queueJobs)
       .leftJoin(
         photos,
         and(
-          eq(assetProcessingJobs.assetType, "photos"),
-          eq(assetProcessingJobs.assetId, photos.id),
+          sql`${queueJobs.metadata}->>'assetType' = 'photos'`,
+          sql`${queueJobs.metadata}->>'assetId' = ${photos.id}`,
         ),
       )
       .leftJoin(
         documents,
         and(
-          eq(assetProcessingJobs.assetType, "documents"),
-          eq(assetProcessingJobs.assetId, documents.id),
+          sql`${queueJobs.metadata}->>'assetType' = 'documents'`,
+          sql`${queueJobs.metadata}->>'assetId' = ${documents.id}`,
         ),
       )
       .leftJoin(
         bookmarks,
         and(
-          eq(assetProcessingJobs.assetType, "bookmarks"),
-          eq(assetProcessingJobs.assetId, bookmarks.id),
+          sql`${queueJobs.metadata}->>'assetType' = 'bookmarks'`,
+          sql`${queueJobs.metadata}->>'assetId' = ${bookmarks.id}`,
         ),
       )
       .leftJoin(
         notes,
         and(
-          eq(assetProcessingJobs.assetType, "notes"),
-          eq(assetProcessingJobs.assetId, notes.id),
+          sql`${queueJobs.metadata}->>'assetType' = 'notes'`,
+          sql`${queueJobs.metadata}->>'assetId' = ${notes.id}`,
         ),
       )
       .leftJoin(
         tasks,
         and(
-          eq(assetProcessingJobs.assetType, "tasks"),
-          eq(assetProcessingJobs.assetId, tasks.id),
+          sql`${queueJobs.metadata}->>'assetType' = 'tasks'`,
+          sql`${queueJobs.metadata}->>'assetId' = ${tasks.id}`,
         ),
       )
       .where(
         and(
-          eq(assetProcessingJobs.userId, userId),
+          sql`${queueJobs.metadata}->>'userId' = ${userId}`,
           // Only include jobs for enabled assets
           or(
             and(
-              eq(assetProcessingJobs.assetType, "photos"),
+              sql`${queueJobs.metadata}->>'assetType' = 'photos'`,
               photos.enabled,
             ),
             and(
-              eq(assetProcessingJobs.assetType, "documents"),
+              sql`${queueJobs.metadata}->>'assetType' = 'documents'`,
               documents.enabled,
             ),
             and(
-              eq(assetProcessingJobs.assetType, "bookmarks"),
+              sql`${queueJobs.metadata}->>'assetType' = 'bookmarks'`,
               bookmarks.enabled,
             ),
             and(
-              eq(assetProcessingJobs.assetType, "notes"),
+              sql`${queueJobs.metadata}->>'assetType' = 'notes'`,
               notes.enabled,
             ),
             and(
-              eq(assetProcessingJobs.assetType, "tasks"),
+              sql`${queueJobs.metadata}->>'assetType' = 'tasks'`,
               tasks.enabled,
             ),
           ),
@@ -694,93 +708,88 @@ export async function getUserProcessingJobs(
   logger.debug({ userId, filters }, "getUserProcessingJobs called");
 
   try {
-    const { status, assetType, search, limit = 100, offset = 0 } = filters;
+    const { status, assetType, search, limit: queryLimit = 100, offset: queryOffset = 0 } = filters;
 
-    // Build where conditions
-    const conditions = [eq(assetProcessingJobs.userId, userId)];
+    // Build where conditions using SQL for jsonb metadata access
+    const conditions: ReturnType<typeof sql>[] = [
+      sql`${queueJobs.metadata}->>'userId' = ${userId}`
+    ];
 
     if (status) {
-      conditions.push(eq(assetProcessingJobs.status, status));
+      conditions.push(sql`${queueJobs.status} = ${status}`);
     }
 
     if (assetType) {
-      conditions.push(eq(assetProcessingJobs.assetType, assetType));
+      conditions.push(sql`${queueJobs.metadata}->>'assetType' = ${assetType}`);
     }
 
     if (search) {
-      conditions.push(like(assetProcessingJobs.assetId, `%${search}%`));
+      conditions.push(sql`${queueJobs.metadata}->>'assetId' LIKE ${'%' + search + '%'}`);
     }
 
     logger.debug(
       {
         userId,
         conditionsCount: conditions.length,
-        parsedFilters: { status, assetType, search, limit, offset },
+        parsedFilters: { status, assetType, search, limit: queryLimit, offset: queryOffset },
       },
       "Built query conditions for processing jobs",
     );
 
-    logger.debug(
-      { userId },
-      "Executing database query for user processing jobs",
-    );
-
-    // We need to use db.select with joins to filter by enabled status
-    // since we need to join with multiple asset tables based on assetType
+    // Use queueJobs with joins to filter by enabled status
     const jobs = await db
       .select({
-        id: assetProcessingJobs.id,
-        assetType: assetProcessingJobs.assetType,
-        assetId: assetProcessingJobs.assetId,
-        userId: assetProcessingJobs.userId,
-        status: assetProcessingJobs.status,
-        stages: assetProcessingJobs.stages,
-        currentStage: assetProcessingJobs.currentStage,
-        overallProgress: assetProcessingJobs.overallProgress,
-        errorMessage: assetProcessingJobs.errorMessage,
-        errorDetails: assetProcessingJobs.errorDetails,
-        retryCount: assetProcessingJobs.retryCount,
-        maxRetries: assetProcessingJobs.maxRetries,
-        nextRetryAt: assetProcessingJobs.nextRetryAt,
-        startedAt: assetProcessingJobs.startedAt,
-        completedAt: assetProcessingJobs.completedAt,
-        createdAt: assetProcessingJobs.createdAt,
-        updatedAt: assetProcessingJobs.updatedAt,
+        id: queueJobs.id,
+        queue: queueJobs.queue,
+        key: queueJobs.key,
+        status: queueJobs.status,
+        stages: queueJobs.stages,
+        currentStage: queueJobs.currentStage,
+        overallProgress: queueJobs.overallProgress,
+        errorMessage: queueJobs.errorMessage,
+        errorDetails: queueJobs.errorDetails,
+        attempts: queueJobs.attempts,
+        maxAttempts: queueJobs.maxAttempts,
+        nextRetryAt: queueJobs.nextRetryAt,
+        completedAt: queueJobs.completedAt,
+        createdAt: queueJobs.createdAt,
+        updatedAt: queueJobs.updatedAt,
+        metadata: queueJobs.metadata,
       })
-      .from(assetProcessingJobs)
+      .from(queueJobs)
       .leftJoin(
         photos,
         and(
-          eq(assetProcessingJobs.assetType, "photos"),
-          eq(assetProcessingJobs.assetId, photos.id),
+          sql`${queueJobs.metadata}->>'assetType' = 'photos'`,
+          sql`${queueJobs.metadata}->>'assetId' = ${photos.id}`,
         ),
       )
       .leftJoin(
         documents,
         and(
-          eq(assetProcessingJobs.assetType, "documents"),
-          eq(assetProcessingJobs.assetId, documents.id),
+          sql`${queueJobs.metadata}->>'assetType' = 'documents'`,
+          sql`${queueJobs.metadata}->>'assetId' = ${documents.id}`,
         ),
       )
       .leftJoin(
         bookmarks,
         and(
-          eq(assetProcessingJobs.assetType, "bookmarks"),
-          eq(assetProcessingJobs.assetId, bookmarks.id),
+          sql`${queueJobs.metadata}->>'assetType' = 'bookmarks'`,
+          sql`${queueJobs.metadata}->>'assetId' = ${bookmarks.id}`,
         ),
       )
       .leftJoin(
         notes,
         and(
-          eq(assetProcessingJobs.assetType, "notes"),
-          eq(assetProcessingJobs.assetId, notes.id),
+          sql`${queueJobs.metadata}->>'assetType' = 'notes'`,
+          sql`${queueJobs.metadata}->>'assetId' = ${notes.id}`,
         ),
       )
       .leftJoin(
         tasks,
         and(
-          eq(assetProcessingJobs.assetType, "tasks"),
-          eq(assetProcessingJobs.assetId, tasks.id),
+          sql`${queueJobs.metadata}->>'assetType' = 'tasks'`,
+          sql`${queueJobs.metadata}->>'assetId' = ${tasks.id}`,
         ),
       )
       .where(
@@ -789,31 +798,31 @@ export async function getUserProcessingJobs(
           // Only include jobs for enabled assets
           or(
             and(
-              eq(assetProcessingJobs.assetType, "photos"),
+              sql`${queueJobs.metadata}->>'assetType' = 'photos'`,
               photos.enabled,
             ),
             and(
-              eq(assetProcessingJobs.assetType, "documents"),
+              sql`${queueJobs.metadata}->>'assetType' = 'documents'`,
               documents.enabled,
             ),
             and(
-              eq(assetProcessingJobs.assetType, "bookmarks"),
+              sql`${queueJobs.metadata}->>'assetType' = 'bookmarks'`,
               bookmarks.enabled,
             ),
             and(
-              eq(assetProcessingJobs.assetType, "notes"),
+              sql`${queueJobs.metadata}->>'assetType' = 'notes'`,
               notes.enabled,
             ),
             and(
-              eq(assetProcessingJobs.assetType, "tasks"),
+              sql`${queueJobs.metadata}->>'assetType' = 'tasks'`,
               tasks.enabled,
             ),
           ),
         ),
       )
-      .orderBy(desc(assetProcessingJobs.createdAt))
-      .limit(limit)
-      .offset(offset);
+      .orderBy(desc(queueJobs.createdAt))
+      .limit(queryLimit)
+      .offset(queryOffset);
 
     logger.info(
       {
@@ -1119,89 +1128,8 @@ export async function retryAssetProcessing(
       return await retryDocumentProcessing(assetId, userId);
     }
 
-    // For other asset types, use the legacy approach for now
-    const job = await db.query.assetProcessingJobs.findFirst({
-      where: and(
-        eq(assetProcessingJobs.assetType, assetType),
-        eq(assetProcessingJobs.assetId, assetId),
-        eq(assetProcessingJobs.userId, userId),
-      ),
-    });
-
-    if (!job) {
-      return { success: false, error: "Processing job not found" };
-    }
-
-    // Check status restrictions unless force is enabled
-    if (!force) {
-      if (job.status !== "failed") {
-        return { success: false, error: "Job is not in failed state" };
-      }
-
-      if ((job.retryCount || 0) >= (job.maxRetries || 3)) {
-        return { success: false, error: "Maximum retries exceeded" };
-      }
-    }
-
-    // Reset job for retry
-    const stages: ProcessingStage[] = (job.stages as ProcessingStage[]) || [];
-    const resetStages = stages.map((stage) => ({
-      ...stage,
-      status: "pending" as ProcessingStatus,
-      progress: 0,
-      startedAt: undefined,
-      completedAt: undefined,
-      error: undefined,
-    }));
-
-    const newRetryCount = force ? 0 : (job.retryCount || 0) + 1;
-
-    await db
-      .update(assetProcessingJobs)
-      .set({
-        status: "retry_pending",
-        stages: resetStages,
-        currentStage: resetStages[0]?.name,
-        overallProgress: 0,
-        retryCount: newRetryCount,
-        errorMessage: null,
-        errorDetails: null,
-        startedAt: null,
-        completedAt: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(assetProcessingJobs.id, job.id));
-
-    // Queue the appropriate job based on asset type
-    const queueResult = await queueRetryJob(assetType, assetId, userId);
-
-    if (!queueResult.success) {
-      // Revert status if queueing failed
-      await db
-        .update(assetProcessingJobs)
-        .set({
-          status: job.status, // Revert to original status
-          updatedAt: new Date(),
-        })
-        .where(eq(assetProcessingJobs.id, job.id));
-
-      return { success: false, error: queueResult.error };
-    }
-
-    logger.info(
-      {
-        assetType,
-        assetId,
-        userId,
-        retryCount: newRetryCount,
-        force,
-      },
-      force
-        ? "Successfully queued processing re-run"
-        : "Successfully queued processing retry",
-    );
-
-    return { success: true };
+    // Unknown asset type
+    return { success: false, error: `Unknown asset type: ${assetType}` };
   } catch (error) {
     logger.error(
       {
@@ -1226,15 +1154,9 @@ async function resetProcessingJobState(
   userId: string,
 ): Promise<void> {
   try {
-    // Delete existing processing job record completely
-    await db
-      .delete(assetProcessingJobs)
-      .where(
-        and(
-          eq(assetProcessingJobs.assetType, assetType),
-          eq(assetProcessingJobs.assetId, assetId),
-        ),
-      );
+    // Delete existing processing job record completely using queueJobs key
+    const jobKey = buildJobKey(assetType, assetId);
+    await db.delete(queueJobs).where(eq(queueJobs.key, jobKey));
 
     logger.info(
       { assetType, assetId, userId },
@@ -1307,7 +1229,7 @@ async function retryPhotoProcessing(
     }
 
     // Queue unified image processing job using Queue Adapter (supports both Redis and Database backends)
-    const { getQueueAdapter } = await import("../queue-adapter.js");
+    const { getQueueAdapter } = await import("../queue/index.js");
     const queueAdapter = await getQueueAdapter();
 
     await queueAdapter.enqueueImage({
@@ -1469,7 +1391,7 @@ async function retryBookmarkProcessing(
     }
 
     // Queue new bookmark processing job using Queue Adapter (supports both Redis and Database backends)
-    const { getQueueAdapter } = await import("../queue-adapter.js");
+    const { getQueueAdapter } = await import("../queue/index.js");
     const queueAdapter = await getQueueAdapter();
 
     await queueAdapter.enqueueBookmark({
@@ -1522,7 +1444,7 @@ async function retryDocumentProcessing(
     }
 
     // Queue new document processing job using Queue Adapter (supports both Redis and Database backends)
-    const { getQueueAdapter } = await import("../queue-adapter.js");
+    const { getQueueAdapter } = await import("../queue/index.js");
     const queueAdapter = await getQueueAdapter();
 
     await queueAdapter.enqueueDocument({
@@ -1578,7 +1500,7 @@ async function retryNoteProcessing(
     }
 
     // Queue new note processing job using Queue Adapter (supports both Redis and Database backends)
-    const { getQueueAdapter } = await import("../queue-adapter.js");
+    const { getQueueAdapter } = await import("../queue/index.js");
     const queueAdapter = await getQueueAdapter();
 
     await queueAdapter.enqueueNote({
@@ -1629,7 +1551,7 @@ async function retryTaskProcessing(
     }
 
     // Queue new task processing job using Queue Adapter (supports both Redis and Database backends)
-    const { getQueueAdapter } = await import("../queue-adapter.js");
+    const { getQueueAdapter } = await import("../queue/index.js");
     const queueAdapter = await getQueueAdapter();
 
     await queueAdapter.enqueueTask({
@@ -1657,28 +1579,41 @@ async function retryTaskProcessing(
 
 /**
  * Formats raw database job data into ProcessingJobDetails
+ * Formats queueJobs data (metadata stored in jsonb)
  */
 function formatJobDetails(job: any): ProcessingJobDetails {
   const stages: ProcessingStage[] = (job.stages as ProcessingStage[]) || [];
 
+  // Handle queueJobs format (metadata contains userId, assetType, assetId, startedAt)
+  const metadata = job.metadata as { userId?: string; assetType?: string; assetId?: string; startedAt?: string } | null;
+  const assetType = job.assetType || metadata?.assetType || parseAssetTypeFromKey(job.key);
+  const assetId = job.assetId || metadata?.assetId || parseAssetIdFromKey(job.key);
+  const userId = job.userId || metadata?.userId;
+
+  // Map queueJobs field names to legacy names
+  const retryCount = job.retryCount ?? job.attempts ?? 0;
+  const maxRetries = job.maxRetries ?? job.maxAttempts ?? 3;
+
+  // Handle startedAt from either column or metadata
+  const startedAtValue = job.startedAt || metadata?.startedAt;
+
   return {
     id: job.id,
-    assetType: job.assetType,
-    assetId: job.assetId,
-    userId: job.userId,
+    assetType,
+    assetId,
+    userId,
     status: job.status,
     stages,
     currentStage: job.currentStage || undefined,
     overallProgress: job.overallProgress || 0,
     errorMessage: job.errorMessage || undefined,
     errorDetails: job.errorDetails || undefined,
-    retryCount: job.retryCount || 0,
-    maxRetries: job.maxRetries || 3,
-    canRetry:
-      job.status === "failed" && (job.retryCount || 0) < (job.maxRetries || 3),
+    retryCount,
+    maxRetries,
+    canRetry: job.status === "failed" && retryCount < maxRetries,
     nextRetryAt: job.nextRetryAt || undefined,
-    startedAt: job.startedAt
-      ? Math.floor(new Date(job.startedAt).getTime() / 1000)
+    startedAt: startedAtValue
+      ? Math.floor(new Date(startedAtValue).getTime() / 1000)
       : undefined,
     completedAt: job.completedAt
       ? Math.floor(new Date(job.completedAt).getTime() / 1000)
@@ -1686,4 +1621,22 @@ function formatJobDetails(job: any): ProcessingJobDetails {
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
   };
+}
+
+/**
+ * Parse assetType from queueJobs key format: "{assetType}:{assetId}"
+ */
+function parseAssetTypeFromKey(key: string | null | undefined): string {
+  if (!key) return "";
+  const [assetType] = key.split(":");
+  return assetType || "";
+}
+
+/**
+ * Parse assetId from queueJobs key format: "{assetType}:{assetId}"
+ */
+function parseAssetIdFromKey(key: string | null | undefined): string {
+  if (!key) return "";
+  const parts = key.split(":");
+  return parts.slice(1).join(":") || ""; // Handle IDs that might contain ":"
 }

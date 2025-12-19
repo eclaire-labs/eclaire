@@ -78,7 +78,7 @@ describe.each(DB_TEST_CONFIGS)(
 
         const key = await scheduler.upsert({
           key: "daily-cleanup",
-          name: "cleanup-queue",
+          queue: "cleanup-queue",
           cron: "0 0 * * *", // Daily at midnight
           data: { type: "cleanup" },
         });
@@ -88,7 +88,7 @@ describe.each(DB_TEST_CONFIGS)(
         const schedules = await scheduler.list();
         expect(schedules).toHaveLength(1);
         expect(schedules[0].key).toBe("daily-cleanup");
-        expect(schedules[0].name).toBe("cleanup-queue");
+        expect(schedules[0].queue).toBe("cleanup-queue");
         expect(schedules[0].cron).toBe("0 0 * * *");
         expect(schedules[0].data).toEqual({ type: "cleanup" });
       });
@@ -99,7 +99,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Create initial schedule
         await scheduler.upsert({
           key: "my-schedule",
-          name: "queue-a",
+          queue: "queue-a",
           cron: "0 * * * *", // Hourly
           data: { version: 1 },
         });
@@ -107,7 +107,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Update with same key
         await scheduler.upsert({
           key: "my-schedule",
-          name: "queue-b", // Changed
+          queue: "queue-b", // Changed
           cron: "*/5 * * * *", // Changed to every 5 minutes
           data: { version: 2 }, // Changed
         });
@@ -115,7 +115,7 @@ describe.each(DB_TEST_CONFIGS)(
         const schedules = await scheduler.list();
         expect(schedules).toHaveLength(1); // Not duplicated
         expect(schedules[0].key).toBe("my-schedule");
-        expect(schedules[0].name).toBe("queue-b");
+        expect(schedules[0].queue).toBe("queue-b");
         expect(schedules[0].cron).toBe("*/5 * * * *");
         expect(schedules[0].data).toEqual({ version: 2 });
       });
@@ -125,7 +125,7 @@ describe.each(DB_TEST_CONFIGS)(
 
         await scheduler.upsert({
           key: "to-remove",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: {},
         });
@@ -149,21 +149,21 @@ describe.each(DB_TEST_CONFIGS)(
 
         await scheduler.upsert({
           key: "schedule-a",
-          name: "queue-a",
+          queue: "queue-a",
           cron: "* * * * *",
           data: { queue: "a" },
         });
 
         await scheduler.upsert({
           key: "schedule-b",
-          name: "queue-b",
+          queue: "queue-b",
           cron: "* * * * *",
           data: { queue: "b" },
         });
 
         await scheduler.upsert({
           key: "schedule-a2",
-          name: "queue-a",
+          queue: "queue-a",
           cron: "*/5 * * * *",
           data: { queue: "a2" },
         });
@@ -175,12 +175,115 @@ describe.each(DB_TEST_CONFIGS)(
         // Filter by queue-a
         const queueA = await scheduler.list("queue-a");
         expect(queueA).toHaveLength(2);
-        expect(queueA.every((s) => s.name === "queue-a")).toBe(true);
+        expect(queueA.every((s) => s.queue === "queue-a")).toBe(true);
 
         // Filter by queue-b
         const queueB = await scheduler.list("queue-b");
         expect(queueB).toHaveLength(1);
         expect(queueB[0].key).toBe("schedule-b");
+      });
+    });
+
+    // =========================================================================
+    // get() Tests
+    // =========================================================================
+
+    describe("get()", () => {
+      it("should return schedule by key", async () => {
+        scheduler = createTestScheduler();
+
+        await scheduler.upsert({
+          key: "get-test",
+          queue: "test-queue",
+          cron: "0 * * * *",
+          data: { version: 1 },
+        });
+
+        const schedule = await scheduler.get("get-test");
+        expect(schedule).not.toBeNull();
+        expect(schedule?.key).toBe("get-test");
+        expect(schedule?.queue).toBe("test-queue");
+        expect(schedule?.cron).toBe("0 * * * *");
+        expect(schedule?.data).toEqual({ version: 1 });
+        expect(schedule?.enabled).toBe(true);
+      });
+
+      it("should return null for non-existent key", async () => {
+        scheduler = createTestScheduler();
+        const schedule = await scheduler.get("non-existent");
+        expect(schedule).toBeNull();
+      });
+
+      it("should return updated data after upsert", async () => {
+        scheduler = createTestScheduler();
+
+        await scheduler.upsert({
+          key: "update-test",
+          queue: "test-queue",
+          cron: "0 * * * *",
+          data: { version: 1 },
+        });
+
+        await scheduler.upsert({
+          key: "update-test",
+          queue: "test-queue",
+          cron: "0 0 * * *",
+          data: { version: 2 },
+        });
+
+        const schedule = await scheduler.get("update-test");
+        expect(schedule?.cron).toBe("0 0 * * *");
+        expect(schedule?.data).toEqual({ version: 2 });
+      });
+
+      it("should return disabled schedules with enabled: false", async () => {
+        scheduler = createTestScheduler();
+
+        await scheduler.upsert({
+          key: "disabled-test",
+          queue: "test-queue",
+          cron: "0 * * * *",
+          data: {},
+          enabled: false,
+        });
+
+        const schedule = await scheduler.get("disabled-test");
+        expect(schedule?.enabled).toBe(false);
+      });
+
+      it("should return optional fields when set", async () => {
+        scheduler = createTestScheduler();
+        const endDate = new Date("2025-12-31");
+
+        await scheduler.upsert({
+          key: "full-test",
+          queue: "test-queue",
+          cron: "0 * * * *",
+          data: {},
+          limit: 10,
+          endDate,
+        });
+
+        const schedule = await scheduler.get("full-test");
+        expect(schedule?.limit).toBe(10);
+        expect(schedule?.endDate).toEqual(endDate);
+      });
+
+      it("should return null after schedule is removed", async () => {
+        scheduler = createTestScheduler();
+
+        await scheduler.upsert({
+          key: "remove-test",
+          queue: "test-queue",
+          cron: "0 * * * *",
+          data: {},
+        });
+
+        expect(await scheduler.get("remove-test")).not.toBeNull();
+
+        await scheduler.remove("remove-test");
+
+        expect(await scheduler.get("remove-test")).toBeNull();
       });
     });
 
@@ -195,7 +298,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Create schedule that runs immediately
         await scheduler.upsert({
           key: "immediate-job",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *", // Every minute
           data: { scheduled: true },
           immediately: true,
@@ -221,7 +324,7 @@ describe.each(DB_TEST_CONFIGS)(
         // This way it will disable after the very first run
         await scheduler.upsert({
           key: "limited-schedule",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { run: true },
           limit: 1,
@@ -277,7 +380,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Create disabled schedule
         await scheduler.upsert({
           key: "disabled-schedule",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { disabled: true },
           enabled: false,
@@ -300,7 +403,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Create enabled schedule
         await scheduler.upsert({
           key: "toggle-schedule",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { toggle: true },
           enabled: true,
@@ -331,7 +434,7 @@ describe.each(DB_TEST_CONFIGS)(
         // Create disabled schedule
         await scheduler.upsert({
           key: "resume-schedule",
-          name: "test-queue",
+          queue: "test-queue",
           cron: "* * * * *",
           data: { resume: true },
           enabled: false,

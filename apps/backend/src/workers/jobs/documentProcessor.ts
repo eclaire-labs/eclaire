@@ -1,7 +1,6 @@
 // src/workers/document-processor.ts
 import { Readability } from "@mozilla/readability";
 import axios from "axios";
-import type { Job } from "bullmq";
 import { spawn } from "child_process";
 import { execa } from "execa";
 import FormData from "form-data";
@@ -15,10 +14,10 @@ import { chromium } from "patchright";
 import path from "path";
 import sharp from "sharp";
 import { Readable } from "stream";
+import type { JobContext } from "@eclaire/queue/core";
 import { config } from "../config.js";
 import { type AIMessage, callAI } from "../../lib/ai-client.js";
 import { createChildLogger } from "../../lib/logger.js";
-import { createProcessingReporter } from "../lib/processing-reporter.js";
 import { objectStorage } from "../../lib/storage.js";
 
 // Use createRequire for CJS-only packages in ESM context
@@ -176,11 +175,11 @@ interface DocumentArtifacts {
 
 // --- Main Job Processor ---
 
-export async function processDocumentJob(job: Job<DocumentJobData>) {
+export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
   const { documentId, storageId, mimeType, userId, originalFilename } =
-    job.data;
+    ctx.job.data;
   const jobLogger = logger.child({
-    jobId: job.id,
+    jobId: ctx.job.id,
     documentId,
     userId,
     storageId,
@@ -189,11 +188,10 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
   // Validate required job data
   if (!storageId || storageId.trim() === "") {
     const errorMsg = `Invalid or missing storageId for document ${documentId}. Received: ${storageId}`;
-    jobLogger.error({ documentId, jobId: job.id, storageId }, errorMsg);
+    jobLogger.error({ documentId, jobId: ctx.job.id, storageId }, errorMsg);
     throw new Error(errorMsg);
   }
 
-  const reporter = await createProcessingReporter("documents", documentId, userId);
   const allArtifacts: DocumentArtifacts = {};
 
   let tempDir: string | null = null;
@@ -217,11 +215,11 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
     else stages.push("thumbnail_generation");
 
     stages.push("finalization");
-    await reporter.initializeJob(stages);
+    await ctx.initStages(stages);
 
     // 2. Preparation Stage
     currentStage = "preparation";
-    await reporter.updateStage(currentStage, "processing");
+    await ctx.startStage(currentStage);
     jobLogger.info("Starting preparation stage.");
     tempDir = await fs.mkdtemp(path.join(tmpdir(), `doc-proc-${documentId}-`));
     const documentBuffer = await objectStorage.getBuffer(storageId);
@@ -229,13 +227,13 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
       { bufferSize: documentBuffer.length },
       "Document downloaded.",
     );
-    await reporter.completeStage(currentStage);
+    await ctx.completeStage(currentStage);
 
     // 3. Content Extraction Stage
     let extractedText = "";
     if (useDocling) {
       currentStage = "docling_processing";
-      await reporter.updateStage(currentStage, "processing");
+      await ctx.startStage(currentStage);
       jobLogger.info("Starting Docling processing.");
       const doclingResult = await processWithDoclingServer(
         documentBuffer,
@@ -307,7 +305,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
       );
     } else {
       currentStage = "content_extraction";
-      await reporter.updateStage(currentStage, "processing");
+      await ctx.startStage(currentStage);
       jobLogger.info("Starting standard content extraction.");
       extractedText = await extractTextFromDocument(
         documentBuffer,
@@ -320,12 +318,12 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
         "Standard content extraction complete.",
       );
     }
-    await reporter.completeStage(currentStage);
+    await ctx.completeStage(currentStage);
     allArtifacts.extractedText = extractedText;
 
     // 4. AI Analysis Stage
     currentStage = "ai_analysis";
-    await reporter.updateStage(currentStage, "processing");
+    await ctx.startStage(currentStage);
     if (extractedText && extractedText.length > 50) {
       jobLogger.info("Starting AI metadata analysis.");
       const aiMetadata = await generateDocumentMetadata(
@@ -337,13 +335,13 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
     } else {
       jobLogger.info("Skipping AI analysis due to insufficient text.");
     }
-    await reporter.completeStage(currentStage);
+    await ctx.completeStage(currentStage);
 
     // 5. PDF Generation Stage (if needed)
     let pdfBuffer: Buffer | null = null;
     if (needsPdf) {
       currentStage = "pdf_generation";
-      await reporter.updateStage(currentStage, "processing");
+      await ctx.startStage(currentStage);
       jobLogger.info("Starting PDF generation.");
       const tempDocPath = path.join(
         tempDir,
@@ -366,7 +364,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
       );
       allArtifacts.pdfStorageId = pdfResult.storageId;
       jobLogger.info({ pdfStorageId: pdfResult.storageId }, "PDF generation and storage complete");
-      await reporter.completeStage(currentStage);
+      await ctx.completeStage(currentStage);
     } else {
       pdfBuffer = documentBuffer;
     }
@@ -374,7 +372,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
     // 6. Thumbnail Generation Stage
     if (isHtml) {
       currentStage = "html_thumbnail_generation";
-      await reporter.updateStage(currentStage, "processing");
+      await ctx.startStage(currentStage);
       jobLogger.info("Starting HTML thumbnail and screenshot generation.");
 
       // Generate thumbnail
@@ -403,10 +401,10 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
         { thumbnailStorageId: thumbnailResult.storageId, screenshotStorageId: screenshotResult.storageId },
         "HTML thumbnail and screenshot generation complete",
       );
-      await reporter.completeStage(currentStage);
+      await ctx.completeStage(currentStage);
     } else {
       currentStage = "thumbnail_generation";
-      await reporter.updateStage(currentStage, "processing");
+      await ctx.startStage(currentStage);
       if (pdfBuffer) {
         jobLogger.info(
           "Starting thumbnail and screenshot generation from PDF.",
@@ -443,12 +441,12 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
       } else {
         jobLogger.warn("Skipping thumbnail generation, no PDF available.");
       }
-      await reporter.completeStage(currentStage);
+      await ctx.completeStage(currentStage);
     }
 
     // 7. Finalization and Delivery
     currentStage = "finalization";
-    await reporter.updateStage(currentStage, "processing");
+    await ctx.startStage(currentStage);
     jobLogger.info("Finalizing job and delivering all artifacts.");
 
     // Save extracted text as extracted.txt for non-Docling processed documents
@@ -464,7 +462,8 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
       });
       allArtifacts.extractedTxtStorageId = txtResult.storageId;
     }
-    await reporter.completeJob(allArtifacts);
+    // Complete the final stage with all artifacts - job completion is implicit when handler returns
+    await ctx.completeStage(currentStage, allArtifacts as Record<string, unknown>);
     jobLogger.info("Job completed successfully.");
   } catch (error: any) {
     jobLogger.error(
@@ -494,7 +493,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
           tags: ["document", "processing-failed"],
           extractedText: `Failed to extract text from ${originalFilename}`,
         };
-        await reporter.completeJob(fallbackArtifacts);
+        await ctx.completeStage(currentStage, fallbackArtifacts);
         return; // Don't throw error for recoverable module issues
       } catch (fallbackError: any) {
         jobLogger.error(
@@ -504,10 +503,9 @@ export async function processDocumentJob(job: Job<DocumentJobData>) {
       }
     }
 
-    // Report the error with enhanced context
+    // Report the error on the current stage
     try {
-      await reporter.reportError(error, currentStage);
-      await reporter.failJob(errorMessage);
+      await ctx.failStage(currentStage, error);
     } catch (reportError: any) {
       jobLogger.error(
         { documentId, reportError: reportError.message },

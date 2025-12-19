@@ -29,8 +29,8 @@ export interface Job<T = unknown> {
   /** Idempotency key for deduplication (optional, user-provided) */
   key?: string;
 
-  /** Queue/job type name (e.g., "bookmark-processing", "image-resize") */
-  name: string;
+  /** Queue name (e.g., "bookmark-processing", "image-resize") */
+  queue: string;
 
   /** Job payload data */
   data: T;
@@ -55,6 +55,20 @@ export interface Job<T = unknown> {
 
   /** When the job was last updated */
   updatedAt: Date;
+
+  // ---- Multi-stage progress tracking (optional) ----
+
+  /** Processing stages for multi-stage jobs */
+  stages?: JobStage[];
+
+  /** Name of the stage currently being processed */
+  currentStage?: string;
+
+  /** Overall progress across all stages (0-100) */
+  overallProgress?: number;
+
+  /** Application-specific metadata (e.g., userId, assetType, assetId) */
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -66,6 +80,103 @@ export type JobStatus =
   | "completed" // Successfully completed
   | "failed" // Permanently failed (exhausted retries)
   | "retry_pending"; // Waiting for retry after failure
+
+// ============================================================================
+// Multi-Stage Progress Tracking
+// ============================================================================
+
+/**
+ * Status values for individual processing stages
+ */
+export type JobStageStatus = "pending" | "processing" | "completed" | "failed";
+
+/**
+ * Represents a single stage in a multi-stage job
+ *
+ * Jobs can optionally have multiple stages to track granular progress.
+ * For example, a bookmark processing job might have stages:
+ * ["validation", "content_extraction", "ai_tagging", "storage"]
+ */
+export interface JobStage {
+  /** Stage identifier (e.g., "validation", "content_extraction") */
+  name: string;
+
+  /** Current status of this stage */
+  status: JobStageStatus;
+
+  /** Progress within this stage (0-100) */
+  progress: number;
+
+  /** When this stage started processing */
+  startedAt?: Date;
+
+  /** When this stage completed (success or failure) */
+  completedAt?: Date;
+
+  /** Error message if stage failed */
+  error?: string;
+
+  /** Artifacts produced by this stage (e.g., file paths, counts) */
+  artifacts?: Record<string, unknown>;
+}
+
+// ============================================================================
+// Event Callbacks (for SSE/real-time updates)
+// ============================================================================
+
+/**
+ * Callbacks for job lifecycle events
+ *
+ * These allow applications to receive real-time notifications about job progress
+ * without polling. Typically wired to SSE or WebSocket publishing.
+ *
+ * All callbacks receive the job metadata for routing (e.g., userId for SSE targeting).
+ */
+export interface JobEventCallbacks {
+  /** Called when a stage begins processing */
+  onStageStart?: (
+    jobId: string,
+    stage: string,
+    metadata?: Record<string, unknown>,
+  ) => void;
+
+  /** Called when stage progress is updated (may be called frequently) */
+  onStageProgress?: (
+    jobId: string,
+    stage: string,
+    percent: number,
+    metadata?: Record<string, unknown>,
+  ) => void;
+
+  /** Called when a stage completes successfully */
+  onStageComplete?: (
+    jobId: string,
+    stage: string,
+    artifacts?: Record<string, unknown>,
+    metadata?: Record<string, unknown>,
+  ) => void;
+
+  /** Called when a stage fails */
+  onStageFail?: (
+    jobId: string,
+    stage: string,
+    error: string,
+    metadata?: Record<string, unknown>,
+  ) => void;
+
+  /** Called when the entire job completes successfully */
+  onJobComplete?: (
+    jobId: string,
+    metadata?: Record<string, unknown>,
+  ) => void;
+
+  /** Called when the entire job fails permanently */
+  onJobFail?: (
+    jobId: string,
+    error: string,
+    metadata?: Record<string, unknown>,
+  ) => void;
+}
 
 /**
  * Backoff strategy for retries
@@ -111,6 +222,39 @@ export interface JobOptions {
    *   Pending/retry_pending jobs are updated with new payload and options.
    */
   replace?: "if_not_active";
+
+  // ---- Multi-stage progress tracking (optional) ----
+
+  /**
+   * Initial stages for multi-stage progress tracking
+   *
+   * If provided, the job will be created with these stages initialized
+   * in "pending" status. Workers can then use ctx.startStage() to begin each stage.
+   *
+   * @example
+   * ```typescript
+   * await client.enqueue('bookmark-processing', data, {
+   *   initialStages: ['validation', 'content_extraction', 'ai_tagging'],
+   * });
+   * ```
+   */
+  initialStages?: string[];
+
+  /**
+   * Application-specific metadata stored with the job
+   *
+   * This is useful for storing routing information (e.g., userId for SSE targeting)
+   * or domain-specific identifiers (e.g., assetType, assetId) without polluting
+   * the job data payload.
+   *
+   * @example
+   * ```typescript
+   * await client.enqueue('bookmark-processing', { bookmarkId, url }, {
+   *   metadata: { userId: 'user_123', assetType: 'bookmarks', assetId: bookmarkId },
+   * });
+   * ```
+   */
+  metadata?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -147,7 +291,7 @@ export interface QueueClient {
   /**
    * Add a job to the queue
    *
-   * @param name - Queue/job type name
+   * @param queue - Queue name
    * @param data - Job payload
    * @param options - Optional job configuration
    * @returns The job ID
@@ -164,7 +308,7 @@ export interface QueueClient {
    * });
    * ```
    */
-  enqueue<T>(name: string, data: T, options?: JobOptions): Promise<string>;
+  enqueue<T>(queue: string, data: T, options?: JobOptions): Promise<string>;
 
   /**
    * Cancel a pending job
@@ -193,10 +337,10 @@ export interface QueueClient {
   /**
    * Get queue statistics
    *
-   * @param name - Optional queue name filter (all queues if not specified)
+   * @param queue - Optional queue name filter (all queues if not specified)
    * @returns Queue statistics
    */
-  stats(name?: string): Promise<QueueStats>;
+  stats(queue?: string): Promise<QueueStats>;
 
   /**
    * Close the client and release resources
@@ -239,6 +383,76 @@ export interface JobContext<T = unknown> {
    * @param percent - Progress percentage
    */
   progress(percent: number): void;
+
+  // ---- Multi-stage progress tracking methods ----
+
+  /**
+   * Initialize job with processing stages
+   *
+   * Call this at the start of job processing to define the stages.
+   * Each stage will be created with "pending" status and 0 progress.
+   *
+   * @param stages - Array of stage names in processing order
+   *
+   * @example
+   * ```typescript
+   * await ctx.initStages(['validation', 'content_extraction', 'ai_tagging']);
+   * ```
+   */
+  initStages(stages: string[]): Promise<void>;
+
+  /**
+   * Begin processing a stage
+   *
+   * Sets the stage status to "processing" and records the start time.
+   * Triggers onStageStart callback if configured.
+   *
+   * @param stage - Stage name to start
+   */
+  startStage(stage: string): Promise<void>;
+
+  /**
+   * Update progress within a stage
+   *
+   * This is a lightweight operation that only triggers the onStageProgress
+   * callback without persisting to the database (to avoid excessive writes).
+   *
+   * @param stage - Stage name
+   * @param percent - Progress percentage (0-100)
+   */
+  updateStageProgress(stage: string, percent: number): Promise<void>;
+
+  /**
+   * Mark a stage as completed
+   *
+   * Sets the stage status to "completed", progress to 100, and records
+   * the completion time. Optionally stores artifacts produced by this stage.
+   *
+   * @param stage - Stage name to complete
+   * @param artifacts - Optional artifacts produced by this stage
+   */
+  completeStage(stage: string, artifacts?: Record<string, unknown>): Promise<void>;
+
+  /**
+   * Mark a stage as failed
+   *
+   * Sets the stage status to "failed" and records the error.
+   * This does not automatically fail the entire job.
+   *
+   * @param stage - Stage name that failed
+   * @param error - Error that caused the failure
+   */
+  failStage(stage: string, error: Error): Promise<void>;
+
+  /**
+   * Add additional stages to an existing job
+   *
+   * Useful when the full list of stages isn't known upfront and stages
+   * are discovered during processing (e.g., dynamic workflows).
+   *
+   * @param stages - Additional stage names to add
+   */
+  addStages(stages: string[]): Promise<void>;
 }
 
 /**
@@ -289,7 +503,7 @@ export interface Worker {
  * Factory function type for creating workers
  */
 export type WorkerFactory<T = unknown> = (
-  name: string,
+  queue: string,
   handler: JobHandler<T>,
   options?: WorkerOptions,
 ) => Worker;
@@ -306,7 +520,7 @@ export interface ScheduleConfig {
   key: string;
 
   /** Queue name to enqueue jobs to */
-  name: string;
+  queue: string;
 
   /** Cron expression (e.g., "0 * * * *" for hourly) */
   cron: string;
@@ -348,6 +562,14 @@ export interface Scheduler {
   remove(key: string): Promise<boolean>;
 
   /**
+   * Get a schedule by key
+   *
+   * @param key - Schedule key
+   * @returns The schedule config, or null if not found
+   */
+  get(key: string): Promise<ScheduleConfig | null>;
+
+  /**
    * Enable or disable a schedule
    *
    * @param key - Schedule key
@@ -358,9 +580,9 @@ export interface Scheduler {
   /**
    * Get all schedules
    *
-   * @param name - Optional queue name filter
+   * @param queue - Optional queue name filter
    */
-  list(name?: string): Promise<ScheduleConfig[]>;
+  list(queue?: string): Promise<ScheduleConfig[]>;
 
   /**
    * Start the scheduler (begins processing schedules)

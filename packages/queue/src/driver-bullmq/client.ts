@@ -12,6 +12,7 @@ import type {
   BackoffStrategy,
 } from "../core/types.js";
 import { DEFAULT_BACKOFF } from "../core/utils.js";
+import { initializeStages } from "../core/progress.js";
 import { JobAlreadyActiveError } from "../core/errors.js";
 import type { BullMQClientConfig } from "./types.js";
 import { createRedisConnection, closeRedisConnection } from "./connection.js";
@@ -132,21 +133,21 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
      *   which may cause "job already exists" errors.
      */
     async enqueue<T>(
-      name: string,
+      queue: string,
       data: T,
       options: JobOptions = {},
     ): Promise<string> {
-      const queue = getQueue(name);
+      const bullmqQueue = getQueue(queue);
       const bullmqOptions = toBullMQOptions(options);
 
       try {
         // Handle replace: 'if_not_active' semantics
         if (options.replace === "if_not_active" && options.key) {
-          const existing = await queue.getJob(options.key);
+          const existing = await bullmqQueue.getJob(options.key);
           if (existing) {
             const state = await existing.getState();
             if (state === "active") {
-              throw new JobAlreadyActiveError(name, options.key, existing.id!);
+              throw new JobAlreadyActiveError(queue, options.key, existing.id!);
             }
             // Remove non-active jobs so we can recreate with new data.
             // BullMQ doesn't allow adding a job with an existing ID, even for
@@ -162,7 +163,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
                 // Re-check state and throw JobAlreadyActiveError if now active.
                 const newState = await existing.getState().catch(() => "unknown");
                 if (newState === "active") {
-                  throw new JobAlreadyActiveError(name, options.key, existing.id!);
+                  throw new JobAlreadyActiveError(queue, options.key, existing.id!);
                 }
                 // Not a race to active state, re-throw original error
                 throw removeError;
@@ -171,8 +172,19 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           }
         }
 
-        const job = await queue.add(name, data, bullmqOptions);
-        logger.debug({ name, jobId: job.id, key: options.key }, "Job enqueued");
+        // Wrap data with stage/metadata fields if provided (matches DB driver behavior)
+        const { initialStages, metadata } = options;
+        const wrappedData = {
+          ...data,
+          ...(initialStages && {
+            __stages: initializeStages(initialStages),
+            __currentStage: null,
+          }),
+          ...(metadata && { __metadata: metadata }),
+        } as T;
+
+        const job = await bullmqQueue.add(queue, wrappedData, bullmqOptions);
+        logger.debug({ queue, jobId: job.id, key: options.key }, "Job enqueued");
         return job.id!;
       } catch (error) {
         // Re-throw JobAlreadyActiveError as-is
@@ -190,11 +202,11 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           error.message.includes("already exists")
         ) {
           try {
-            const racedJob = await queue.getJob(options.key);
+            const racedJob = await bullmqQueue.getJob(options.key);
             if (racedJob) {
               const racedState = await racedJob.getState();
               if (racedState === "active") {
-                throw new JobAlreadyActiveError(name, options.key, racedJob.id!);
+                throw new JobAlreadyActiveError(queue, options.key, racedJob.id!);
               }
             }
           } catch (checkError) {
@@ -208,7 +220,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
 
         logger.error(
           {
-            name,
+            queue,
             key: options.key,
             error: error instanceof Error ? error.message : "Unknown",
           },
@@ -225,20 +237,20 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
       // We need to find which queue the job is in
       // BullMQ doesn't provide a way to look up jobs across queues
       // So we try each known queue
-      for (const [name, queue] of queues) {
+      for (const [queueName, bullmqQueue] of queues) {
         try {
-          const job = await queue.getJob(jobIdOrKey);
+          const job = await bullmqQueue.getJob(jobIdOrKey);
           if (job) {
             const state = await job.getState();
             if (state === "waiting" || state === "delayed") {
               await job.remove();
-              logger.info({ jobId: jobIdOrKey, queue: name }, "Job cancelled");
+              logger.info({ jobId: jobIdOrKey, queue: queueName }, "Job cancelled");
               return true;
             }
           }
         } catch (error) {
           logger.debug(
-            { queue: name, jobIdOrKey, error: error instanceof Error ? error.message : "Unknown" },
+            { queue: queueName, jobIdOrKey, error: error instanceof Error ? error.message : "Unknown" },
             "Queue lookup error during cancel",
           );
         }
@@ -252,20 +264,20 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
      * Retry a failed job
      */
     async retry(jobIdOrKey: string): Promise<boolean> {
-      for (const [name, queue] of queues) {
+      for (const [queueName, bullmqQueue] of queues) {
         try {
-          const job = await queue.getJob(jobIdOrKey);
+          const job = await bullmqQueue.getJob(jobIdOrKey);
           if (job) {
             const state = await job.getState();
             if (state === "failed") {
               await job.retry();
-              logger.info({ jobId: jobIdOrKey, queue: name }, "Job retried");
+              logger.info({ jobId: jobIdOrKey, queue: queueName }, "Job retried");
               return true;
             }
           }
         } catch (error) {
           logger.debug(
-            { queue: name, jobIdOrKey, error: error instanceof Error ? error.message : "Unknown" },
+            { queue: queueName, jobIdOrKey, error: error instanceof Error ? error.message : "Unknown" },
             "Queue lookup error during retry",
           );
         }
@@ -279,9 +291,9 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
      * Get job by ID or key
      */
     async getJob(jobIdOrKey: string): Promise<Job | null> {
-      for (const [name, queue] of queues) {
+      for (const [queueName, bullmqQueue] of queues) {
         try {
-          const bullmqJob = await queue.getJob(jobIdOrKey);
+          const bullmqJob = await bullmqQueue.getJob(jobIdOrKey);
           if (bullmqJob) {
             // Map BullMQ state to our JobStatus
             const state = await bullmqJob.getState();
@@ -307,7 +319,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
               id: bullmqJob.id!,
               // Only set key if user originally provided one (via opts.jobId)
               key: bullmqJob.opts.jobId ? bullmqJob.id : undefined,
-              name: bullmqJob.name,
+              queue: bullmqJob.name,
               data: bullmqJob.data,
               status,
               priority: bullmqJob.opts.priority || 0,
@@ -322,7 +334,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           }
         } catch (error) {
           logger.debug(
-            { queue: name, jobIdOrKey, error: error instanceof Error ? error.message : "Unknown" },
+            { queue: queueName, jobIdOrKey, error: error instanceof Error ? error.message : "Unknown" },
             "Queue lookup error during getJob",
           );
         }
@@ -334,7 +346,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
     /**
      * Get queue statistics
      */
-    async stats(name?: string): Promise<QueueStats> {
+    async stats(queue?: string): Promise<QueueStats> {
       const stats: QueueStats = {
         pending: 0,
         processing: 0,
@@ -343,13 +355,13 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
         retryPending: 0,
       };
 
-      const queuesToCheck = name ? [queues.get(name)].filter(Boolean) : Array.from(queues.values());
+      const queuesToCheck = queue ? [queues.get(queue)].filter(Boolean) : Array.from(queues.values());
 
-      for (const queue of queuesToCheck) {
-        if (!queue) continue;
+      for (const bullmqQueue of queuesToCheck) {
+        if (!bullmqQueue) continue;
 
         try {
-          const counts = await queue.getJobCounts(
+          const counts = await bullmqQueue.getJobCounts(
             "waiting",
             "active",
             "completed",
@@ -369,7 +381,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
         } catch (error) {
           logger.error(
             {
-              queue: queue.name,
+              queue: bullmqQueue.name,
               error: error instanceof Error ? error.message : "Unknown",
             },
             "Failed to get queue stats",
@@ -385,13 +397,13 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
      */
     async close(): Promise<void> {
       // Close all queues
-      for (const [name, queue] of queues) {
+      for (const [queueName, bullmqQueue] of queues) {
         try {
-          await queue.close();
-          logger.debug({ name }, "BullMQ queue closed");
+          await bullmqQueue.close();
+          logger.debug({ queue: queueName }, "BullMQ queue closed");
         } catch (error) {
           logger.error(
-            { name, error: error instanceof Error ? error.message : "Unknown" },
+            { queue: queueName, error: error instanceof Error ? error.message : "Unknown" },
             "Error closing queue",
           );
         }

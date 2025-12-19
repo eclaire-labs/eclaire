@@ -49,7 +49,7 @@ describe("BullMQ: Scheduler Advanced", () => {
       // Schedule with limit of 2 executions
       await scheduler.upsert({
         key: "limited-schedule",
-        name: "limited-queue",
+        queue: "limited-queue",
         cron: "* * * * * *", // Every second
         data: { limited: true },
         limit: 2,
@@ -86,7 +86,7 @@ describe("BullMQ: Scheduler Advanced", () => {
 
       await scheduler.upsert({
         key: "ending-schedule",
-        name: "ending-queue",
+        queue: "ending-queue",
         cron: "* * * * * *", // Every second
         data: { ending: true },
         endDate,
@@ -130,7 +130,7 @@ describe("BullMQ: Scheduler Advanced", () => {
       // Schedule with immediately: true
       await scheduler.upsert({
         key: "immediate-schedule",
-        name: "immediate-queue",
+        queue: "immediate-queue",
         cron: "0 0 1 1 *", // January 1st at midnight (won't trigger naturally)
         data: { immediate: true },
         immediately: true,
@@ -162,7 +162,7 @@ describe("BullMQ: Scheduler Advanced", () => {
       // Schedule without immediately (cron won't trigger in test timeframe)
       await scheduler.upsert({
         key: "not-immediate-schedule",
-        name: "no-immediate-queue",
+        queue: "no-immediate-queue",
         cron: "0 0 1 1 *", // January 1st at midnight
         data: { notImmediate: true },
         immediately: false,
@@ -190,7 +190,7 @@ describe("BullMQ: Scheduler Advanced", () => {
       // Schedule with both immediately and limit
       await scheduler.upsert({
         key: "combo-schedule",
-        name: "combo-queue",
+        queue: "combo-queue",
         cron: "* * * * * *", // Every second
         data: { combo: true },
         immediately: true,
@@ -224,7 +224,7 @@ describe("BullMQ: Scheduler Advanced", () => {
 
       await scheduler.upsert({
         key: "end-immediate-schedule",
-        name: "end-immediate-queue",
+        queue: "end-immediate-queue",
         cron: "* * * * * *",
         data: {},
         immediately: true,
@@ -270,7 +270,7 @@ describe("BullMQ: Scheduler Advanced", () => {
 
       await scheduler.upsert({
         key: "data-schedule",
-        name: "data-queue",
+        queue: "data-queue",
         cron: "* * * * * *",
         data: jobData,
       });

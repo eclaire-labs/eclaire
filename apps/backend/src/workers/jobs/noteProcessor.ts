@@ -1,7 +1,6 @@
-import type { Job } from "bullmq";
+import type { JobContext } from "@eclaire/queue/core";
 import { type AIMessage, callAI } from "../../lib/ai-client.js";
 import { createChildLogger } from "../../lib/logger.js";
-import { createProcessingReporter } from "../lib/processing-reporter.js";
 
 const logger = createChildLogger("note-processor");
 
@@ -106,36 +105,43 @@ async function generateNoteTags(
   }
 }
 
+interface NoteJobData {
+  noteId: string;
+  title: string;
+  content: string;
+  userId: string;
+}
+
 /**
  * Main note processing job handler.
  */
-async function processNoteJob(job: Job) {
-  const { noteId, title, content, userId } = job.data;
+async function processNoteJob(ctx: JobContext<NoteJobData>) {
+  const { noteId, title, content, userId } = ctx.job.data;
   logger.info(
-    { jobId: job.id, noteId, userId },
+    { jobId: ctx.job.id, noteId, userId },
     "Starting note processing job",
   );
 
   // A note has a very simple, single stage.
   const STAGE_NAME = "ai_tagging";
-  const reporter = await createProcessingReporter("notes", noteId, userId);
-  await reporter.initializeJob([STAGE_NAME]);
+  await ctx.initStages([STAGE_NAME]);
 
   try {
-    await reporter.updateStage(STAGE_NAME, "processing", 10);
+    await ctx.startStage(STAGE_NAME);
+    await ctx.updateStageProgress(STAGE_NAME, 10);
 
     let tags: string[] = [];
     try {
-      await reporter.updateProgress(STAGE_NAME, 25);
+      await ctx.updateStageProgress(STAGE_NAME, 25);
       tags = await generateNoteTags(
         title,
         content,
         noteId,
         userId,
-        job.id?.toString(),
+        ctx.job.id,
       );
       logger.info({ noteId, tags }, "Generated AI tags");
-      await reporter.updateProgress(STAGE_NAME, 75);
+      await ctx.updateStageProgress(STAGE_NAME, 75);
     } catch (aiError: any) {
       // If AI fails, we no longer just continue. We let the job fail
       // so it can be retried. The user will see the error on the UI.
@@ -152,25 +158,20 @@ async function processNoteJob(job: Job) {
       tags: tags,
     };
 
-    // Mark the stage as complete. We don't need to pass artifacts here
-    // as we'll send them with completeJob().
-    await reporter.completeStage(STAGE_NAME);
+    // Complete the final stage with artifacts - job completion is implicit when handler returns
+    await ctx.completeStage(STAGE_NAME, finalArtifacts);
 
-    // Complete the job and deliver the final artifacts in one go.
-    await reporter.completeJob(finalArtifacts);
-
-    logger.info({ jobId: job.id, noteId }, "Job completed successfully");
+    logger.info({ jobId: ctx.job.id, noteId }, "Job completed successfully");
   } catch (error: any) {
     logger.error(
-      { jobId: job.id, noteId, error: error.message },
+      { jobId: ctx.job.id, noteId, error: error.message },
       "FAILED note processing job",
     );
 
-    // Report the error on the specific stage and then fail the overall job.
-    await reporter.reportError(error as Error, STAGE_NAME);
-    await reporter.failJob(error.message);
+    // Report the error on the specific stage
+    await ctx.failStage(STAGE_NAME, error);
 
-    // It's important to re-throw so BullMQ knows the job failed.
+    // Re-throw so the queue knows the job failed
     throw error;
   }
 }

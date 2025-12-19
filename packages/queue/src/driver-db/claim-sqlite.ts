@@ -9,7 +9,7 @@
  */
 
 import { sql } from "drizzle-orm";
-import type { QueueLogger } from "../core/types.js";
+import type { QueueLogger, JobStage } from "../core/types.js";
 import { generateJobId } from "../core/utils.js";
 import type { DbInstance, ClaimedJob, ClaimOptions } from "./types.js";
 
@@ -22,7 +22,7 @@ import type { DbInstance, ClaimedJob, ClaimOptions } from "./types.js";
  *
  * @param db - Database instance
  * @param queueJobs - Queue jobs table
- * @param name - Queue name to claim from
+ * @param queue - Queue name to claim from
  * @param options - Claim options (workerId, lockDuration)
  * @param logger - Logger instance
  * @returns Claimed job or null if none available
@@ -30,7 +30,7 @@ import type { DbInstance, ClaimedJob, ClaimOptions } from "./types.js";
 export async function claimJobSqlite(
   db: DbInstance,
   queueJobs: any,
-  name: string,
+  queue: string,
   options: ClaimOptions,
   logger: QueueLogger,
 ): Promise<ClaimedJob | null> {
@@ -57,7 +57,7 @@ export async function claimJobSqlite(
         updated_at = ${nowMs}
       WHERE id = (
         SELECT id FROM ${queueJobs}
-        WHERE name = ${name}
+        WHERE queue = ${queue}
         AND (
           (status = 'pending' AND (scheduled_for IS NULL OR scheduled_for <= ${nowMs}))
           OR (status = 'retry_pending' AND (next_retry_at IS NULL OR next_retry_at <= ${nowMs}))
@@ -80,7 +80,7 @@ export async function claimJobSqlite(
     const job = result[0];
 
     logger.debug(
-      { jobId: job.id, name, workerId, attempts: job.attempts },
+      { jobId: job.id, queue, workerId, attempts: job.attempts },
       "Job claimed (SQLite)",
     );
 
@@ -89,7 +89,7 @@ export async function claimJobSqlite(
   } catch (error) {
     logger.error(
       {
-        name,
+        queue,
         workerId,
         error: error instanceof Error ? error.message : "Unknown error",
       },
@@ -131,7 +131,7 @@ function parseJson(value: unknown): unknown {
 function formatClaimedJob(row: any): ClaimedJob {
   return {
     id: row.id,
-    name: row.name,
+    queue: row.queue,
     key: row.key,
     data: parseJson(row.data),
     status: row.status,
@@ -151,5 +151,10 @@ function formatClaimedJob(row: any): ClaimedJob {
     createdAt: toDate(row.createdAt ?? row.created_at)!,
     updatedAt: toDate(row.updatedAt ?? row.updated_at)!,
     completedAt: toDate(row.completedAt ?? row.completed_at),
+    // Multi-stage progress tracking
+    stages: (parseJson(row.stages) as JobStage[] | null) ?? null,
+    currentStage: row.currentStage ?? row.current_stage ?? null,
+    overallProgress: row.overallProgress ?? row.overall_progress ?? null,
+    metadata: (parseJson(row.metadata) as Record<string, unknown> | null) ?? null,
   };
 }

@@ -142,8 +142,8 @@ describe.each(DB_TEST_CONFIGS)(
 
       const job1 = await client.getJob(jobId1);
       const job2 = await client.getJob(jobId2);
-      expect(job1?.name).toBe("queue-a");
-      expect(job2?.name).toBe("queue-b");
+      expect(job1?.queue).toBe("queue-a");
+      expect(job2?.queue).toBe("queue-b");
     });
 
     it("should be able to retrieve job by key", async () => {

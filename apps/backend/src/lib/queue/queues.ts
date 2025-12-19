@@ -6,14 +6,14 @@
  */
 
 import type { Queue } from "bullmq";
-import { createChildLogger } from "./logger.js";
+import { createChildLogger } from "../logger.js";
 import {
   createQueueManager,
   QueueNames,
   type QueueManager,
   type QueueName,
 } from "@eclaire/queue/app";
-import { getQueueMode } from "./env-validation.js";
+import { getQueueMode } from "../env-validation.js";
 
 const logger = createChildLogger("queues");
 

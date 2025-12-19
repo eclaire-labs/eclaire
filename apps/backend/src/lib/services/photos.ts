@@ -14,20 +14,20 @@ import exifr from "exifr"; // <-- Import exifr
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 import { Readable } from "stream";
-import { db, txManager, schema } from "../../db/index.js";
+import { db, txManager, schema, queueJobs } from "../../db/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 
 const {
-  assetProcessingJobs,
   photos,
   photosTags,
   tags,
   users,
 } = schema;
-import { getQueue, QueueNames } from "../queues.js"; // Import queue utilities
-import { getQueueAdapter } from "../queue-adapter.js";
+
+import { getQueue, QueueNames, getQueueAdapter } from "../queue/index.js";
 import { objectStorage, type StorageInfo } from "../storage.js";
 import { generateHistoryId, generatePhotoId } from "@eclaire/core";
+
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js"; // Assuming this service exists and is configured
 import { createOrUpdateProcessingJob } from "./processing-status.js";
@@ -629,14 +629,6 @@ export async function deletePhoto(
       // Delete photo-tag relationships first
       await tx.photosTags.delete(eq(photosTags.photoId, id));
 
-      // Delete processing jobs for this photo
-      await tx.assetProcessingJobs.delete(
-        and(
-          eq(assetProcessingJobs.assetType, "photos"),
-          eq(assetProcessingJobs.assetId, id),
-        ),
-      );
-
       // Delete the photo record from the database
       await tx.photos.delete(
         and(eq(photos.id, id), eq(photos.userId, userId)),
@@ -657,6 +649,9 @@ export async function deletePhoto(
         timestamp: new Date(),
       });
     });
+
+    // Delete queue job outside transaction (non-critical, like storage)
+    await db.delete(queueJobs).where(eq(queueJobs.key, `photos:${id}`));
 
     // Delete the entire asset folder if deleteStorage is true
     // (outside transaction - external side-effect)
@@ -703,15 +698,12 @@ async function getPhotoWithDetails(photoId: string, userId: string) {
   const [result] = await db
     .select({
       photo: photos,
-      status: assetProcessingJobs.status,
+      status: queueJobs.status,
     })
     .from(photos)
     .leftJoin(
-      assetProcessingJobs,
-      and(
-        eq(photos.id, assetProcessingJobs.assetId),
-        eq(assetProcessingJobs.assetType, "photos"),
-      ),
+      queueJobs,
+      eq(queueJobs.key, sql`'photos:' || ${photos.id}`),
     )
     .where(and(eq(photos.id, photoId), eq(photos.userId, userId)));
 
@@ -806,15 +798,12 @@ export async function getAllPhotos(userId: string) {
     const entriesList = await db
       .select({
         photo: photos,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(photos)
       .leftJoin(
-        assetProcessingJobs,
-        and(
-          eq(photos.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "photos"),
-        ),
+        queueJobs,
+        eq(queueJobs.key, sql`'photos:' || ${photos.id}`),
       )
       .where(eq(photos.userId, userId))
       .orderBy(desc(photos.createdAt)); // Order by creation date
@@ -1095,15 +1084,12 @@ export async function findPhotos(
     const entriesList = await db
       .select({
         photo: photos,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(photos)
       .leftJoin(
-        assetProcessingJobs,
-        and(
-          eq(photos.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "photos"),
-        ),
+        queueJobs,
+        eq(queueJobs.key, sql`'photos:' || ${photos.id}`),
       )
       .where(inArray(photos.id, finalPhotoIds))
       .orderBy(desc(orderByColumn)); // Maintain the same ordering
@@ -1736,15 +1722,12 @@ export async function getPhotoStreamDetailsForViewing(
         mimeType: photos.mimeType,
         convertedJpgStorageId: photos.convertedJpgStorageId,
       },
-      status: assetProcessingJobs.status,
+      status: queueJobs.status,
     })
     .from(photos)
     .leftJoin(
-      assetProcessingJobs,
-      and(
-        eq(photos.id, assetProcessingJobs.assetId),
-        eq(assetProcessingJobs.assetType, "photos"),
-      ),
+      queueJobs,
+      eq(queueJobs.key, sql`'photos:' || ${photos.id}`),
     )
     .where(and(eq(photos.id, photoId), eq(photos.userId, userId)))
     .limit(1);

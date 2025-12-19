@@ -1,9 +1,7 @@
 import { createJobWaitlist, type AssetType, type JobWaitlistInterface } from "@eclaire/queue/app";
-import { createChildLogger } from "./logger.js";
-import { db, schema } from "../db/index.js";
-import { and, or, eq, gt } from "drizzle-orm";
-
-const { assetProcessingJobs } = schema;
+import { createChildLogger } from "../logger.js";
+import { db, queueJobs } from "../../db/index.js";
+import { and, or, eq, gt, sql } from "drizzle-orm";
 
 const logger = createChildLogger("job-waitlist");
 
@@ -16,19 +14,19 @@ export type { AssetType };
  */
 async function findNextScheduledJob(assetType: AssetType): Promise<Date | null> {
   const result = await db
-    .select({ scheduledFor: assetProcessingJobs.scheduledFor })
-    .from(assetProcessingJobs)
+    .select({ scheduledFor: queueJobs.scheduledFor })
+    .from(queueJobs)
     .where(
       and(
-        eq(assetProcessingJobs.assetType, assetType),
+        sql`${queueJobs.metadata}->>'assetType' = ${assetType}`,
         or(
-          eq(assetProcessingJobs.status, "pending"),
-          eq(assetProcessingJobs.status, "retry_pending")
+          eq(queueJobs.status, "pending"),
+          eq(queueJobs.status, "retry_pending")
         ),
-        gt(assetProcessingJobs.scheduledFor, new Date())
+        gt(queueJobs.scheduledFor, new Date())
       )
     )
-    .orderBy(assetProcessingJobs.scheduledFor)
+    .orderBy(queueJobs.scheduledFor)
     .limit(1);
 
   return result.length > 0 && result[0]?.scheduledFor

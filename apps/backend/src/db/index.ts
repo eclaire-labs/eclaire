@@ -18,6 +18,7 @@ import {
 	type DbCapabilities,
 	type DbDialect,
 } from "@eclaire/db";
+import { queueJobsPg, queueSchedulesPg } from "@eclaire/queue/driver-db";
 import { createChildLogger } from "../lib/logger.js";
 
 // Re-export types for convenience
@@ -45,3 +46,13 @@ export const db = dbExport as ReturnType<typeof import("drizzle-orm/postgres-js"
 export const txManager = txMgr;
 export const dbCapabilities = capabilities;
 export const schema = activeSchema as typeof pgSchema;
+
+/**
+ * Queue schema exports for service files.
+ *
+ * Queue schema is owned by @eclaire/queue package (reusable).
+ * Re-exported here with PostgreSQL types to match the `db` type cast.
+ * Service files should import queueJobs from here, not directly from @eclaire/queue.
+ */
+export const queueJobs = queueJobsPg;
+export const queueSchedules = queueSchedulesPg;

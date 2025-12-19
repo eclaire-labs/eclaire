@@ -36,7 +36,6 @@ export type {
 	DocumentInsert,
 	PhotoInsert,
 	NoteInsert,
-	AssetProcessingJobInsert,
 	TagInsert,
 	HistoryInsert,
 } from "@eclaire/core/types";
@@ -114,9 +113,6 @@ export interface Tx {
 	// Note repositories
 	notes: BaseRepository<any, any, any>;
 	notesTags: BaseRepository<any, any, any>;
-
-	// Asset processing
-	assetProcessingJobs: BaseRepository<any, any, any>;
 
 	// Tags
 	tags: BaseRepository<any, any, any>;

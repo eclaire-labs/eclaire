@@ -1,6 +1,6 @@
 // lib/cron-utils.ts
 import { CronExpressionParser } from "cron-parser";
-import { createChildLogger } from "./logger.js";
+import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("cron-utils");
 

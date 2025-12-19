@@ -67,8 +67,8 @@ describe("BullMQ: Idempotent Enqueue", () => {
 
     expect(job1).toBeDefined();
     expect(job2).toBeDefined();
-    expect(job1?.name).toBe("queue-a");
-    expect(job2?.name).toBe("queue-b");
+    expect(job1?.queue).toBe("queue-a");
+    expect(job2?.queue).toBe("queue-b");
   });
 
   it("should allow re-enqueue after job is completed", async () => {

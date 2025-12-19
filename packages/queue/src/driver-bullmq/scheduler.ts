@@ -65,7 +65,7 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
     async upsert(scheduleConfig: ScheduleConfig): Promise<string> {
       const {
         key,
-        name,
+        queue: queueName,
         cron,
         data,
         enabled = true,
@@ -74,13 +74,13 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
         immediately = false,
       } = scheduleConfig;
 
-      const queue = getQueue(name);
+      const bullmqQueue = getQueue(queueName);
 
       try {
         // Only create in BullMQ if enabled
         if (enabled) {
           // BullMQ's upsertJobScheduler API
-          await queue.upsertJobScheduler(
+          await bullmqQueue.upsertJobScheduler(
             key, // Schedule ID
             {
               pattern: cron,
@@ -89,23 +89,23 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
               immediately,
             },
             {
-              name,
+              name: queueName,
               data,
             },
           );
-          logger.info({ key, name, cron, enabled }, "Schedule upserted");
+          logger.info({ key, queue: queueName, cron, enabled }, "Schedule upserted");
         } else {
           // If disabled, ensure it's removed from BullMQ (in case it existed before)
           try {
-            await queue.removeJobScheduler(key);
+            await bullmqQueue.removeJobScheduler(key);
           } catch {
             // Ignore if it doesn't exist
           }
-          logger.info({ key, name, cron, enabled }, "Schedule stored (disabled)");
+          logger.info({ key, queue: queueName, cron, enabled }, "Schedule stored (disabled)");
         }
 
-        // Store for list functionality
-        schedules.set(key, scheduleConfig);
+        // Store for list functionality (with defaults applied)
+        schedules.set(key, { ...scheduleConfig, enabled });
 
         return key;
       } catch (error) {
@@ -125,10 +125,10 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
         return false;
       }
 
-      const queue = getQueue(schedule.name);
+      const bullmqQueue = getQueue(schedule.queue);
 
       try {
-        await queue.removeJobScheduler(key);
+        await bullmqQueue.removeJobScheduler(key);
         schedules.delete(key);
         logger.info({ key }, "Schedule removed");
         return true;
@@ -153,8 +153,8 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
         await this.upsert({ ...schedule, enabled: true });
       } else {
         // Remove but keep in our cache
-        const queue = getQueue(schedule.name);
-        await queue.removeJobScheduler(key);
+        const bullmqQueue = getQueue(schedule.queue);
+        await bullmqQueue.removeJobScheduler(key);
       }
 
       // Update cache
@@ -163,11 +163,15 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
       logger.info({ key, enabled }, "Schedule enabled state changed");
     },
 
-    async list(name?: string): Promise<ScheduleConfig[]> {
+    async get(key: string): Promise<ScheduleConfig | null> {
+      return schedules.get(key) ?? null;
+    },
+
+    async list(queue?: string): Promise<ScheduleConfig[]> {
       const results: ScheduleConfig[] = [];
 
       for (const [_, schedule] of schedules) {
-        if (!name || schedule.name === name) {
+        if (!queue || schedule.queue === queue) {
           results.push(schedule);
         }
       }
@@ -182,12 +186,12 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
 
     async stop(): Promise<void> {
       // Close all queues
-      for (const [name, queue] of queues) {
+      for (const [queueName, bullmqQueue] of queues) {
         try {
-          await queue.close();
+          await bullmqQueue.close();
         } catch (error) {
           logger.error(
-            { name, error: error instanceof Error ? error.message : "Unknown" },
+            { queue: queueName, error: error instanceof Error ? error.message : "Unknown" },
             "Error closing queue",
           );
         }

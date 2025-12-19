@@ -139,7 +139,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
 
           // Enqueue the job with a deterministic key based on scheduled time
           // This ensures idempotency if scheduler restarts before updating nextRunAt
-          await queueClient.enqueue(schedule.name, schedule.data, {
+          await queueClient.enqueue(schedule.queue, schedule.data, {
             key: `schedule:${schedule.key}:${schedule.nextRunAt.getTime()}`,
           });
 
@@ -156,7 +156,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
             .where(eq(queueSchedules.id, schedule.id));
 
           logger.info(
-            { scheduleKey: schedule.key, name: schedule.name, nextRunAt },
+            { scheduleKey: schedule.key, queue: schedule.queue, nextRunAt },
             "Scheduled job enqueued",
           );
         } catch (error) {
@@ -196,7 +196,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
     async upsert(scheduleConfig: ScheduleConfig): Promise<string> {
       const {
         key,
-        name,
+        queue,
         cron,
         data,
         enabled = true,
@@ -220,7 +220,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
           .values({
             id: generateScheduleId(),
             key,
-            name,
+            queue,
             cron,
             data,
             enabled,
@@ -234,7 +234,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
           .onConflictDoUpdate({
             target: [queueSchedules.key],
             set: {
-              name: sql`EXCLUDED.name`,
+              queue: sql`EXCLUDED.queue`,
               cron: sql`EXCLUDED.cron`,
               data: sql`EXCLUDED.data`,
               enabled: sql`EXCLUDED.enabled`,
@@ -245,7 +245,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
             },
           });
 
-        logger.info({ key, name, cron, nextRunAt }, "Schedule upserted");
+        logger.info({ key, queue, cron, nextRunAt }, "Schedule upserted");
         return key;
       } catch (error) {
         logger.error(
@@ -299,9 +299,40 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
       }
     },
 
-    async list(name?: string): Promise<ScheduleConfig[]> {
+    async get(key: string): Promise<ScheduleConfig | null> {
       try {
-        const conditions = name ? eq(queueSchedules.name, name) : undefined;
+        const rows = await (db as any)
+          .select()
+          .from(queueSchedules)
+          .where(eq(queueSchedules.key, key))
+          .limit(1);
+
+        if (rows.length === 0) {
+          return null;
+        }
+
+        const row = rows[0];
+        return {
+          key: row.key,
+          queue: row.queue,
+          cron: row.cron,
+          data: row.data,
+          enabled: row.enabled,
+          limit: row.runLimit || undefined,
+          endDate: row.endDate || undefined,
+        };
+      } catch (error) {
+        logger.error(
+          { key, error: error instanceof Error ? error.message : "Unknown" },
+          "Failed to get schedule",
+        );
+        throw error;
+      }
+    },
+
+    async list(queue?: string): Promise<ScheduleConfig[]> {
+      try {
+        const conditions = queue ? eq(queueSchedules.queue, queue) : undefined;
 
         const rows = await (db as any)
           .select()
@@ -310,7 +341,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
 
         return rows.map((row: any) => ({
           key: row.key,
-          name: row.name,
+          queue: row.queue,
           cron: row.cron,
           data: row.data,
           enabled: row.enabled,
@@ -319,7 +350,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
         }));
       } catch (error) {
         logger.error(
-          { name, error: error instanceof Error ? error.message : "Unknown" },
+          { queue, error: error instanceof Error ? error.message : "Unknown" },
           "Failed to list schedules",
         );
         throw error;

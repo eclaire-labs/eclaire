@@ -35,6 +35,11 @@ export type {
   JobOptions,
   BackoffStrategy,
 
+  // Multi-stage progress types
+  JobStage,
+  JobStageStatus,
+  JobEventCallbacks,
+
   // Queue client
   QueueClient,
   QueueStats,
@@ -112,3 +117,26 @@ export {
   withTimeout,
   retry,
 } from "./utils.js";
+
+// Re-export progress utilities
+export {
+  // Stage initialization
+  initializeStages,
+
+  // Progress calculation
+  calculateOverallProgress,
+
+  // Stage operations
+  updateStageInList,
+  findStage,
+  startStageInList,
+  completeStageInList,
+  failStageInList,
+  updateStageProgressInList,
+  addStagesToList,
+
+  // Stage queries
+  getCurrentStageName,
+  areAllStagesCompleted,
+  hasFailedStage,
+} from "./progress.js";

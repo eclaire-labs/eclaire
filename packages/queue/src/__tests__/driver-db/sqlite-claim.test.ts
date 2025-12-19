@@ -231,7 +231,7 @@ describe.skipIf(!sqliteConfig)(
 
       expect(claimed).not.toBeNull();
       expect(claimed!.id).toBe(queueAId);
-      expect(claimed!.name).toBe("queue-a");
+      expect(claimed!.queue).toBe("queue-a");
     });
   },
 );

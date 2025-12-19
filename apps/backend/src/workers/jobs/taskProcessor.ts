@@ -1,7 +1,6 @@
-import type { Job } from "bullmq";
+import type { JobContext } from "@eclaire/queue/core";
 import { type AIMessage, callAI } from "../../lib/ai-client.js";
 import { createChildLogger } from "../../lib/logger.js";
-import { createProcessingReporter } from "../lib/processing-reporter.js";
 
 const logger = createChildLogger("task-processor");
 
@@ -84,27 +83,26 @@ async function generateTaskTags(
 /**
  * Main task processing job handler.
  */
-async function processTaskJob(job: Job<TaskJobData>) {
-  const { taskId, title, description, userId } = job.data;
+async function processTaskJob(ctx: JobContext<TaskJobData>) {
+  const { taskId, title, description, userId } = ctx.job.data;
   logger.info(
-    { jobId: job.id, taskId, userId },
+    { jobId: ctx.job.id, taskId, userId },
     "Starting task processing job",
   );
 
   const STAGE_NAME = "ai_tagging";
-  // Pass jobType to ensure we update the correct job row (tag_generation vs execution)
-  const reporter = await createProcessingReporter("tasks", taskId, userId, "tag_generation");
-  await reporter.initializeJob([STAGE_NAME]);
+  await ctx.initStages([STAGE_NAME]);
 
   try {
-    await reporter.updateStage(STAGE_NAME, "processing", 10);
+    await ctx.startStage(STAGE_NAME);
+    await ctx.updateStageProgress(STAGE_NAME, 10);
 
     const tags = await generateTaskTags(
       title,
       description,
       taskId,
       userId,
-      job.id?.toString(),
+      ctx.job.id,
     );
     logger.info({ taskId, tags }, "Generated AI tags for task");
 
@@ -112,20 +110,16 @@ async function processTaskJob(job: Job<TaskJobData>) {
       tags: tags,
     };
 
-    // Mark the stage as complete.
-    await reporter.completeStage(STAGE_NAME);
+    // Complete the final stage with artifacts - job completion is implicit when handler returns
+    await ctx.completeStage(STAGE_NAME, finalArtifacts);
 
-    // Complete the job and deliver the final artifacts.
-    await reporter.completeJob(finalArtifacts);
-
-    logger.info({ jobId: job.id, taskId }, "Task job completed successfully");
+    logger.info({ jobId: ctx.job.id, taskId }, "Task job completed successfully");
   } catch (error: any) {
     logger.error(
-      { jobId: job.id, taskId, error: error.message },
+      { jobId: ctx.job.id, taskId, error: error.message },
       "FAILED task processing job",
     );
-    await reporter.reportError(error as Error, STAGE_NAME);
-    await reporter.failJob(error.message);
+    await ctx.failStage(STAGE_NAME, error);
     throw error;
   }
 }

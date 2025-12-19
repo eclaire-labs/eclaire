@@ -94,7 +94,7 @@ async function main() {
   // Gracefully close any Redis/BullMQ connections that may have been opened
   // Import closeQueues only when needed to avoid initializing Redis during build
   try {
-    const { closeQueues } = await import("../src/lib/queues.js");
+    const { closeQueues } = await import("../src/lib/queue/index.js");
     await closeQueues();
   } catch (err) {
     console.warn("⚠️  Failed to close queues cleanly:", err);
@@ -108,7 +108,7 @@ main().catch(async (err) => {
   console.error("❌ Failed to generate OpenAPI spec:", err);
   // Attempt to close queues before exiting with error
   try {
-    const { closeQueues } = await import("../src/lib/queues.js");
+    const { closeQueues } = await import("../src/lib/queue/index.js");
     await closeQueues();
   } catch {
     // Ignore cleanup errors during error handling

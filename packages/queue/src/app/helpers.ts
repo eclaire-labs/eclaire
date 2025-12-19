@@ -41,7 +41,7 @@ export function isJobReady(scheduledFor: Date | null): boolean {
 
 /**
  * Format a database row into a ClaimedJob result
- * @param row - Database row from assetProcessingJobs
+ * @param row - Database row from queueJobs
  * @returns Formatted ClaimedJob or null
  */
 export function formatJobResult(row: any): ClaimedJob | null {

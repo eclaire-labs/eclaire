@@ -29,7 +29,7 @@ import { validateAIConfigOnStartup } from "./lib/ai-client.js";
 import { auth } from "./lib/auth.js";
 import { validateEncryptionService } from "./lib/encryption.js";
 import { logger, smartLogger } from "./lib/logger.js";
-import { closeQueues } from "./lib/queues.js";
+import { closeQueues, startScheduler, stopScheduler } from "./lib/queue/index.js";
 import {
   recordLoginHistory,
   recordLogoutHistory,
@@ -38,7 +38,6 @@ import {
   startAllTelegramBots,
   stopAllTelegramBots,
 } from "./lib/services/telegram.js";
-import { startTaskScheduler, stopTaskScheduler } from "./lib/task-scheduler.js";
 
 import { allRoutes } from "./routes/all.js";
 import { bookmarksRoutes } from "./routes/bookmarks.js";
@@ -47,7 +46,6 @@ import { conversationsRoutes } from "./routes/conversations.js";
 import { documentsRoutes } from "./routes/documents.js";
 import { feedbackRoutes } from "./routes/feedback.js";
 import { historyRoutes } from "./routes/history.js";
-import { jobsRoutes } from "./routes/jobs.js";
 import { modelRoutes } from "./routes/model.js";
 import { notesRoutes } from "./routes/notes.js";
 import { notificationsRoutes } from "./routes/notifications.js";
@@ -353,7 +351,6 @@ app.route("/api/model", modelRoutes);
 app.route("/api/prompt", promptRoutes);
 app.route("/api/processing-status", processingStatusRoutes);
 app.route("/api/processing-events", processingEventsRoutes);
-app.route("/api/jobs", jobsRoutes);
 
 // SPA middleware - serves frontend static files and falls back to index.html
 // Must be registered AFTER all API routes
@@ -419,10 +416,11 @@ const start = async () => {
         logger.info("Skipping Telegram bot startup - encryption not configured");
       }
 
-      // In unified mode with database queue, start the task scheduler
-      if (SERVICE_ROLE === "unified" && QUEUE_MODE === "database") {
-        logger.info("Starting task scheduler for recurring tasks (unified + database mode)");
-        await startTaskScheduler();
+      // In unified mode, start the scheduler for recurring tasks
+      // (Works for both database and redis modes - redis start is a no-op)
+      if (SERVICE_ROLE === "unified") {
+        logger.info("Starting scheduler for recurring tasks");
+        await startScheduler();
       }
     }
 
@@ -475,13 +473,13 @@ const shutdown = async (signal: string) => {
     logger.error({ error }, "Error stopping Telegram bots");
   }
 
-  // Stop task scheduler if running (unified mode)
-  if (SERVICE_ROLE === "unified" && QUEUE_MODE === "database") {
+  // Stop scheduler if running (unified mode)
+  if (SERVICE_ROLE === "unified") {
     try {
-      stopTaskScheduler();
-      logger.info("Task scheduler stopped");
+      await stopScheduler();
+      logger.info("Scheduler stopped");
     } catch (error) {
-      logger.error({ error }, "Error stopping task scheduler");
+      logger.error({ error }, "Error stopping scheduler");
     }
   }
 

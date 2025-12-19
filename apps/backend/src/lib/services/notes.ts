@@ -14,13 +14,12 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { db, txManager, schema } from "../../db/index.js";
+import { db, txManager, schema, queueJobs } from "../../db/index.js";
 import { generateHistoryId, generateNoteId } from "@eclaire/core";
 
-const { assetProcessingJobs, notes, notesTags, tags } = schema;
+const { notes, notesTags, tags } = schema;
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
-import { getQueue, QueueNames } from "../queues.js";
-import { getQueueAdapter } from "../queue-adapter.js";
+import { getQueue, QueueNames, getQueueAdapter } from "../queue/index.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
 
@@ -289,14 +288,6 @@ export async function deleteNoteEntry(id: string, userId: string) {
       // Delete note-tag relationships first
       await tx.notesTags.delete(eq(notesTags.noteId, id));
 
-      // Delete processing jobs for this note
-      await tx.assetProcessingJobs.delete(
-        and(
-          eq(assetProcessingJobs.assetType, "notes"),
-          eq(assetProcessingJobs.assetId, id),
-        ),
-      );
-
       // Delete the note entry
       await tx.notes.delete(and(eq(notes.id, id), eq(notes.userId, userId)));
 
@@ -315,6 +306,9 @@ export async function deleteNoteEntry(id: string, userId: string) {
         timestamp: new Date(),
       });
     });
+
+    // Delete queue job outside transaction (non-critical)
+    await db.delete(queueJobs).where(eq(queueJobs.key, `notes:${id}`));
 
     return { success: true };
   } catch (error) {
@@ -338,15 +332,12 @@ export async function getAllNoteEntries(userId: string) {
     const entriesList = await db
       .select({
         note: notes,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(notes)
       .leftJoin(
-        assetProcessingJobs,
-        and(
-          eq(notes.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "notes"),
-        ),
+        queueJobs,
+        eq(queueJobs.key, sql`'notes:' || ${notes.id}`),
       )
       .where(eq(notes.userId, userId));
 
@@ -398,15 +389,12 @@ export async function getNoteEntryById(entryId: string, userId: string) {
     const [result] = await db
       .select({
         note: notes,
-        status: assetProcessingJobs.status,
+        status: queueJobs.status,
       })
       .from(notes)
       .leftJoin(
-        assetProcessingJobs,
-        and(
-          eq(notes.id, assetProcessingJobs.assetId),
-          eq(assetProcessingJobs.assetType, "notes"),
-        ),
+        queueJobs,
+        eq(queueJobs.key, sql`'notes:' || ${notes.id}`),
       )
       .where(and(eq(notes.id, entryId), eq(notes.userId, userId)));
 
@@ -481,15 +469,12 @@ async function getNoteEntryWithTags(entryId: string) {
   const [result] = await db
     .select({
       note: notes,
-      status: assetProcessingJobs.status,
+      status: queueJobs.status,
     })
     .from(notes)
     .leftJoin(
-      assetProcessingJobs,
-      and(
-        eq(notes.id, assetProcessingJobs.assetId),
-        eq(assetProcessingJobs.assetType, "notes"),
-      ),
+      queueJobs,
+      eq(queueJobs.key, sql`'notes:' || ${notes.id}`),
     )
     .where(eq(notes.id, entryId))
     .limit(1);
@@ -605,15 +590,12 @@ export async function findNotes(
       query = db
         .selectDistinct({
           note: notes,
-          status: assetProcessingJobs.status,
+          status: queueJobs.status,
         })
         .from(notes)
         .leftJoin(
-          assetProcessingJobs,
-          and(
-            eq(notes.id, assetProcessingJobs.assetId),
-            eq(assetProcessingJobs.assetType, "notes"),
-          ),
+          queueJobs,
+          eq(queueJobs.key, sql`'notes:' || ${notes.id}`),
         )
         .innerJoin(notesTags, eq(notes.id, notesTags.noteId))
         .innerJoin(tags, eq(notesTags.tagId, tags.id))
@@ -624,7 +606,7 @@ export async function findNotes(
             inArray(tags.name, tagsList),
           ),
         )
-        .groupBy(notes.id, assetProcessingJobs.status)
+        .groupBy(notes.id, queueJobs.status)
         .having(eq(countDistinct(tags.id), tagsList.length)) // Ensure all tags are present
         .orderBy(desc(notes.createdAt))
         .limit(limit)
@@ -634,15 +616,12 @@ export async function findNotes(
       query = db
         .select({
           note: notes,
-          status: assetProcessingJobs.status,
+          status: queueJobs.status,
         })
         .from(notes)
         .leftJoin(
-          assetProcessingJobs,
-          and(
-            eq(notes.id, assetProcessingJobs.assetId),
-            eq(assetProcessingJobs.assetType, "notes"),
-          ),
+          queueJobs,
+          eq(queueJobs.key, sql`'notes:' || ${notes.id}`),
         )
         .where(and(...baseConditions))
         .orderBy(desc(notes.createdAt))

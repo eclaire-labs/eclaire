@@ -2,12 +2,15 @@
  * Database Queue Adapter
  *
  * Database-backed queue implementation for zero-Redis deployments.
- * Uses the assetProcessingJobs table for job storage.
+ * Uses the queue_jobs table (via driver-db) for job storage.
  */
 
-import { sql } from "drizzle-orm";
 import type { Logger } from "@eclaire/logger";
 import type { DbInstance } from "@eclaire/db";
+import type { QueueClient } from "../../core/types.js";
+import { createDbQueueClient } from "../../driver-db/client.js";
+import { getQueueSchema } from "../../driver-db/schema.js";
+import { QueueNames } from "../queue-names.js";
 import type {
   QueueAdapter,
   BookmarkJobData,
@@ -15,7 +18,6 @@ import type {
   DocumentJobData,
   NoteJobData,
   TaskJobData,
-  JobData,
   AssetType,
   JobWaitlistInterface,
 } from "../types.js";
@@ -23,8 +25,8 @@ import type {
 export interface DatabaseAdapterConfig {
   /** Drizzle database instance */
   db: DbInstance;
-  /** Database schema (postgres or sqlite) */
-  schema: any;
+  /** Database type: 'postgres' or 'sqlite' */
+  dbType: "postgres" | "sqlite";
   /** Logger instance */
   logger: Logger;
   /** Optional job waitlist for push notifications */
@@ -32,65 +34,82 @@ export interface DatabaseAdapterConfig {
 }
 
 /**
+ * Map asset type to queue name
+ */
+function getQueueName(assetType: AssetType, jobType?: string): string {
+  if (assetType === "tasks" && jobType === "execution") {
+    return QueueNames.TASK_EXECUTION_PROCESSING;
+  }
+
+  const mapping: Record<AssetType, string> = {
+    bookmarks: QueueNames.BOOKMARK_PROCESSING,
+    photos: QueueNames.IMAGE_PROCESSING,
+    documents: QueueNames.DOCUMENT_PROCESSING,
+    notes: QueueNames.NOTE_PROCESSING,
+    tasks: QueueNames.TASK_PROCESSING,
+  };
+
+  return mapping[assetType];
+}
+
+/**
  * Creates a database-backed queue adapter
  */
 export function createDatabaseAdapter(config: DatabaseAdapterConfig): QueueAdapter {
-  const { db, schema, logger, waitlist } = config;
-  const { assetProcessingJobs } = schema;
+  const { db, dbType, logger, waitlist } = config;
 
+  // Get the appropriate schema for the database type
+  const schema = getQueueSchema(dbType);
+
+  // Create the underlying queue client
+  const queueClient: QueueClient = createDbQueueClient({
+    db,
+    schema,
+    capabilities: {
+      skipLocked: dbType === "postgres",
+      notify: false, // Will be handled via waitlist instead
+      jsonb: dbType === "postgres",
+      type: dbType,
+    },
+    logger,
+  });
+
+  /**
+   * Enqueue a job with metadata for SSE notifications
+   */
   async function enqueueJob(
     assetType: AssetType,
     assetId: string,
     userId: string,
-    jobData: JobData,
+    data: Record<string, unknown>,
     options: {
       scheduledFor?: Date;
       priority?: number;
       jobType?: string;
     } = {},
   ): Promise<void> {
-    const scheduledFor = options.scheduledFor || new Date();
-    const priority = options.priority || 0;
-    const jobType = options.jobType || "processing";
+    const queueName = getQueueName(assetType, options.jobType);
+
+    // Use assetType:assetId as the idempotency key
+    // This replaces the old (assetType, assetId, jobType) unique constraint
+    const key = `${assetType}:${assetId}`;
 
     try {
-      // Insert or update the job in the database
-      // Use upsert pattern: if job exists, update it
-      // All asset types use (assetType, assetId, jobType) as unique constraint
-      await (db as any)
-        .insert(assetProcessingJobs)
-        .values({
+      await queueClient.enqueue(queueName, data, {
+        key,
+        priority: options.priority || 0,
+        runAt: options.scheduledFor,
+        // Store asset info in metadata for SSE event callbacks
+        metadata: {
+          userId,
           assetType,
           assetId,
-          userId,
-          jobType,
-          status: "pending",
-          jobData,
-          scheduledFor,
-          priority,
-          retryCount: 0,
-          maxRetries: 3,
-        })
-        .onConflictDoUpdate({
-          target: [assetProcessingJobs.assetType, assetProcessingJobs.assetId, assetProcessingJobs.jobType],
-          set: {
-            status: sql`'pending'`,
-            jobData: sql`EXCLUDED.job_data`,
-            scheduledFor: sql`EXCLUDED.scheduled_for`,
-            priority: sql`EXCLUDED.priority`,
-            retryCount: 0,
-            errorMessage: null,
-            errorDetails: null,
-            lockedBy: null,
-            lockedAt: null,
-            expiresAt: null,
-            updatedAt: new Date(),
-          },
-        });
+        },
+      });
 
       logger.info(
-        { assetType, assetId, userId, jobType },
-        "Job enqueued to database queue",
+        { queueName, assetType, assetId, userId, key },
+        "Job enqueued to queue_jobs",
       );
 
       // Notify waiting workers immediately (push-based notification)
@@ -104,20 +123,21 @@ export function createDatabaseAdapter(config: DatabaseAdapterConfig): QueueAdapt
         }
 
         // Schedule wakeup for next scheduled job if applicable
-        if (scheduledFor && scheduledFor > new Date()) {
+        if (options.scheduledFor && options.scheduledFor > new Date()) {
           await waitlist.scheduleNextWakeup(assetType);
         }
       }
     } catch (error) {
       logger.error(
         {
+          queueName,
           assetType,
           assetId,
           userId,
-          jobType,
+          key,
           error: error instanceof Error ? error.message : "Unknown error",
         },
-        "Failed to enqueue job to database",
+        "Failed to enqueue job",
       );
       throw error;
     }
@@ -148,7 +168,8 @@ export function createDatabaseAdapter(config: DatabaseAdapterConfig): QueueAdapt
     },
 
     async close(): Promise<void> {
-      logger.info({}, "Database queue adapter close requested (no-op)");
+      await queueClient.close();
+      logger.info({}, "Database queue adapter closed");
     },
   };
 }

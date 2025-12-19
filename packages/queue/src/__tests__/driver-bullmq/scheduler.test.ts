@@ -46,7 +46,7 @@ describe("BullMQ: Scheduler", () => {
 
       const key = await scheduler.upsert({
         key: "test-schedule",
-        name: "scheduled-queue",
+        queue: "scheduled-queue",
         cron: "0 0 * * *", // Daily at midnight
         data: { type: "daily" },
       });
@@ -56,7 +56,7 @@ describe("BullMQ: Scheduler", () => {
       const schedules = await scheduler.list();
       expect(schedules).toHaveLength(1);
       expect(schedules[0].key).toBe("test-schedule");
-      expect(schedules[0].name).toBe("scheduled-queue");
+      expect(schedules[0].queue).toBe("scheduled-queue");
       expect(schedules[0].cron).toBe("0 0 * * *");
     });
 
@@ -67,7 +67,7 @@ describe("BullMQ: Scheduler", () => {
       // Create initial schedule
       await scheduler.upsert({
         key: "update-schedule",
-        name: "scheduled-queue",
+        queue: "scheduled-queue",
         cron: "0 0 * * *",
         data: { version: 1 },
       });
@@ -75,7 +75,7 @@ describe("BullMQ: Scheduler", () => {
       // Update with new data
       await scheduler.upsert({
         key: "update-schedule",
-        name: "scheduled-queue",
+        queue: "scheduled-queue",
         cron: "0 12 * * *", // Changed to noon
         data: { version: 2 },
       });
@@ -92,7 +92,7 @@ describe("BullMQ: Scheduler", () => {
 
       await scheduler.upsert({
         key: "disabled-schedule",
-        name: "scheduled-queue",
+        queue: "scheduled-queue",
         cron: "* * * * * *", // Every second
         data: { type: "disabled" },
         enabled: false,
@@ -111,7 +111,7 @@ describe("BullMQ: Scheduler", () => {
 
       await scheduler.upsert({
         key: "to-remove",
-        name: "scheduled-queue",
+        queue: "scheduled-queue",
         cron: "0 0 * * *",
         data: {},
       });
@@ -142,19 +142,19 @@ describe("BullMQ: Scheduler", () => {
 
       await scheduler.upsert({
         key: "schedule-1",
-        name: "queue-a",
+        queue: "queue-a",
         cron: "0 0 * * *",
         data: {},
       });
       await scheduler.upsert({
         key: "schedule-2",
-        name: "queue-b",
+        queue: "queue-b",
         cron: "0 12 * * *",
         data: {},
       });
       await scheduler.upsert({
         key: "schedule-3",
-        name: "queue-a",
+        queue: "queue-a",
         cron: "0 6 * * *",
         data: {},
       });
@@ -169,13 +169,13 @@ describe("BullMQ: Scheduler", () => {
 
       await scheduler.upsert({
         key: "schedule-1",
-        name: "queue-a",
+        queue: "queue-a",
         cron: "0 0 * * *",
         data: {},
       });
       await scheduler.upsert({
         key: "schedule-2",
-        name: "queue-b",
+        queue: "queue-b",
         cron: "0 12 * * *",
         data: {},
       });
@@ -194,6 +194,93 @@ describe("BullMQ: Scheduler", () => {
     });
   });
 
+  describe("get()", () => {
+    it("should return schedule by key", async () => {
+      scheduler = harness.createScheduler();
+      await scheduler.start();
+
+      await scheduler.upsert({
+        key: "get-test",
+        queue: "test-queue",
+        cron: "0 * * * *",
+        data: { version: 1 },
+      });
+
+      const schedule = await scheduler.get("get-test");
+      expect(schedule).not.toBeNull();
+      expect(schedule?.key).toBe("get-test");
+      expect(schedule?.queue).toBe("test-queue");
+      expect(schedule?.cron).toBe("0 * * * *");
+      expect(schedule?.data).toEqual({ version: 1 });
+      expect(schedule?.enabled).toBe(true);
+    });
+
+    it("should return null for non-existent key", async () => {
+      scheduler = harness.createScheduler();
+      await scheduler.start();
+
+      const schedule = await scheduler.get("non-existent");
+      expect(schedule).toBeNull();
+    });
+
+    it("should return updated data after upsert", async () => {
+      scheduler = harness.createScheduler();
+      await scheduler.start();
+
+      await scheduler.upsert({
+        key: "update-test",
+        queue: "test-queue",
+        cron: "0 * * * *",
+        data: { version: 1 },
+      });
+
+      await scheduler.upsert({
+        key: "update-test",
+        queue: "test-queue",
+        cron: "0 0 * * *",
+        data: { version: 2 },
+      });
+
+      const schedule = await scheduler.get("update-test");
+      expect(schedule?.cron).toBe("0 0 * * *");
+      expect(schedule?.data).toEqual({ version: 2 });
+    });
+
+    it("should return disabled schedules with enabled: false", async () => {
+      scheduler = harness.createScheduler();
+      await scheduler.start();
+
+      await scheduler.upsert({
+        key: "disabled-test",
+        queue: "test-queue",
+        cron: "0 * * * *",
+        data: {},
+        enabled: false,
+      });
+
+      const schedule = await scheduler.get("disabled-test");
+      expect(schedule?.enabled).toBe(false);
+    });
+
+    it("should return null after schedule is removed", async () => {
+      scheduler = harness.createScheduler();
+      await scheduler.start();
+
+      await scheduler.upsert({
+        key: "remove-test",
+        queue: "test-queue",
+        cron: "0 * * * *",
+        data: {},
+      });
+
+      expect(await scheduler.get("remove-test")).not.toBeNull();
+
+      await scheduler.remove("remove-test");
+
+      expect(await scheduler.get("remove-test")).toBeNull();
+    });
+  });
+
   describe("setEnabled", () => {
     it("should disable an active schedule", async () => {
       scheduler = harness.createScheduler();
@@ -201,7 +288,7 @@ describe("BullMQ: Scheduler", () => {
 
       await scheduler.upsert({
         key: "toggle-schedule",
-        name: "scheduled-queue",
+        queue: "scheduled-queue",
         cron: "0 0 * * *",
         data: {},
         enabled: true,
@@ -219,7 +306,7 @@ describe("BullMQ: Scheduler", () => {
 
       await scheduler.upsert({
         key: "toggle-schedule",
-        name: "scheduled-queue",
+        queue: "scheduled-queue",
         cron: "0 0 * * *",
         data: {},
         enabled: false,
@@ -257,7 +344,7 @@ describe("BullMQ: Scheduler", () => {
 
       await scheduler.upsert({
         key: "frequent-schedule",
-        name: "scheduled-queue",
+        queue: "scheduled-queue",
         cron: "* * * * * *", // Every second (6-field cron)
         data: { scheduled: true },
       });
@@ -284,7 +371,7 @@ describe("BullMQ: Scheduler", () => {
 
       await scheduler.upsert({
         key: "disabled-schedule",
-        name: "scheduled-queue",
+        queue: "scheduled-queue",
         cron: "* * * * * *",
         data: { scheduled: true },
         enabled: false,

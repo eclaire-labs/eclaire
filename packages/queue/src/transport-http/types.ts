@@ -86,7 +86,7 @@ export interface HttpRoutesHandler {
  */
 export interface HttpJobResponse {
   id: string;
-  name: string;
+  queue: string;
   key?: string;
   data: unknown;
   priority: number;

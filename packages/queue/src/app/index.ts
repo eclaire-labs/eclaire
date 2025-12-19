@@ -25,6 +25,15 @@ export * from "./queue-names.js";
 export { createBullMQAdapter, type BullMQAdapterConfig } from "./adapters/bullmq.js";
 export { createDatabaseAdapter, type DatabaseAdapterConfig } from "./adapters/database.js";
 
+// Re-export event callbacks
+export {
+  createEventCallbacks,
+  type EventCallbacksConfig,
+  type SSEPublisher,
+  type ProcessingSSEEvent,
+  type JobAssetMetadata,
+} from "./event-callbacks.js";
+
 // Re-export job adapters (now local)
 export { adaptDatabaseJob } from "./job-adapters.js";
 export {
@@ -137,14 +146,14 @@ export async function createQueueAdapter(config: QueueConfig): Promise<QueueAdap
     logger.info({}, "Using Redis/BullMQ queue adapter");
     return _createBullMQAdapter({ queueManager, logger });
   } else if (mode === "database") {
-    if (!config.database?.db || !config.database?.schema) {
-      throw new Error("Database instance and schema are required for database mode");
+    if (!config.database?.db || !config.database?.dbType) {
+      throw new Error("Database instance and dbType are required for database mode");
     }
 
     logger.info({}, "Using database-backed queue adapter");
     return _createDatabaseAdapter({
       db: config.database.db,
-      schema: config.database.schema,
+      dbType: config.database.dbType,
       logger,
     });
   } else {
@@ -168,8 +177,8 @@ export async function createQueueAdapterWithWaitlist(
 ): Promise<{ adapter: QueueAdapter; waitlist: JobWaitlistInterface }> {
   const { logger, database } = config;
 
-  if (!database?.db || !database?.schema) {
-    throw new Error("Database instance and schema are required for database mode");
+  if (!database?.db || !database?.dbType) {
+    throw new Error("Database instance and dbType are required for database mode");
   }
 
   const waitlist = _createJobWaitlist({
@@ -179,7 +188,7 @@ export async function createQueueAdapterWithWaitlist(
 
   const adapter = _createDatabaseAdapter({
     db: database.db,
-    schema: database.schema,
+    dbType: database.dbType,
     logger,
     waitlist,
   });
