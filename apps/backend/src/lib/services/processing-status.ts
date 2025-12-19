@@ -1336,15 +1336,12 @@ async function queueRetryJob(
         break;
       }
       case "bookmarks": {
-        // Use the new safe bookmark retry logic instead of legacy approach
         return await retryBookmarkProcessing(assetId, userId);
       }
       case "notes": {
-        // Use the new safe note retry logic instead of legacy approach
         return await retryNoteProcessing(assetId, userId);
       }
       case "tasks": {
-        // Use the new safe task retry logic instead of legacy approach
         return await retryTaskProcessing(assetId, userId);
       }
       default:
@@ -1590,9 +1587,8 @@ function formatJobDetails(job: any): ProcessingJobDetails {
   const assetId = job.assetId || metadata?.assetId || parseAssetIdFromKey(job.key);
   const userId = job.userId || metadata?.userId;
 
-  // Map queueJobs field names to legacy names
-  const retryCount = job.retryCount ?? job.attempts ?? 0;
-  const maxRetries = job.maxRetries ?? job.maxAttempts ?? 3;
+  const retryCount = job.attempts ?? 0;
+  const maxRetries = job.maxAttempts ?? 3;
 
   // Handle startedAt from either column or metadata
   const startedAtValue = job.startedAt || metadata?.startedAt;

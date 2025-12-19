@@ -536,7 +536,7 @@ async function initDatabase(env, questionFn) {
 
     // Run migrations
     console.log('  Running database migrations...');
-    const migrateResult = exec('docker exec eclaire-backend pnpm db:migrate:apply:prod:force');
+    const migrateResult = exec('docker exec eclaire-backend pnpm db:migrate:apply:force');
 
     if (!migrateResult.success) {
       console.log(`  ${colors.red}❌ Migration failed${colors.reset}`);

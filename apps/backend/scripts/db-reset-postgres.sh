@@ -86,7 +86,7 @@ if [ "$CONTAINER_MODE" = true ]; then
     echo "✅ Database cleaned successfully!"
 
     echo "🏗️  Step 2: Applying database migrations..."
-    pnpm run db:migrate:apply:prod:force
+    pnpm run db:migrate:apply:force
 
     echo "🌱 Step 3: Seeding with '$SEED_TYPE' data..."
     pnpm run "db:seed:$SEED_TYPE:prod"

@@ -94,17 +94,6 @@ export const DocumentResponseSchema = z
       description: "URL to access the original document file",
     }),
 
-    // Content availability flags (deprecated - use contentUrl instead)
-    hasExtractedText: z.boolean().optional().meta({
-      description:
-        "Whether text content has been extracted from the document (deprecated)",
-    }),
-
-    hasOcr: z.boolean().optional().meta({
-      description:
-        "Whether OCR processing has been completed for image-based documents (deprecated)",
-    }),
-
     // Optional extracted content metadata
     extractedText: z.string().nullable().meta({
       description:

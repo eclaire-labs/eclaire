@@ -32,6 +32,7 @@ import {
   getQueueAdapter,
   getScheduler,
   getRecurringTaskScheduleKey,
+  RECURRING_TASK_KEY_PREFIX,
 } from "../queue/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { ValidationError } from "../errors.js";
@@ -456,9 +457,40 @@ interface TaskScheduleData {
 }
 
 /**
+ * Batch fetch schedule data for all recurring tasks
+ * Returns a map of taskId -> TaskScheduleData for efficient lookup
+ */
+async function getTaskSchedulesMap(): Promise<Map<string, TaskScheduleData>> {
+  try {
+    const scheduler = await getScheduler();
+    const schedules = await scheduler.list(QueueNames.TASK_EXECUTION_PROCESSING);
+
+    const map = new Map<string, TaskScheduleData>();
+    for (const schedule of schedules) {
+      if (schedule.key.startsWith(RECURRING_TASK_KEY_PREFIX)) {
+        const taskId = schedule.key.slice(RECURRING_TASK_KEY_PREFIX.length);
+        map.set(taskId, {
+          isRecurring: true,
+          cronExpression: schedule.cron,
+          recurrenceEndDate: schedule.endDate || null,
+          recurrenceLimit: schedule.limit || null,
+        });
+      }
+    }
+    return map;
+  } catch (error) {
+    logger.error(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      "Failed to fetch task schedules map",
+    );
+    return new Map();
+  }
+}
+
+/**
  * Cleans a task object for API response by removing DB-specific fields
  * and adding properly formatted date fields.
- * If scheduleData is provided, it overrides the recurrence fields from the task.
+ * Recurrence data is fetched from the scheduler (queue_schedules table).
  */
 function cleanTaskForResponse(
   task: any,
@@ -476,20 +508,19 @@ function cleanTaskForResponse(
   // Create a new object excluding the timestamp fields
   const { createdAt, updatedAt, ...cleanedTask } = task;
 
-  // Use schedule data from scheduler if provided, otherwise use task fields (legacy)
+  // Recurrence data comes from the scheduler; default to non-recurring if not provided
   const recurrenceData = scheduleData ?? {
-    isRecurring: task.isRecurring ?? false,
-    cronExpression: task.cronExpression ?? null,
-    recurrenceEndDate: task.recurrenceEndDate ?? null,
-    recurrenceLimit: task.recurrenceLimit ?? null,
+    isRecurring: false,
+    cronExpression: null,
+    recurrenceEndDate: null,
+    recurrenceLimit: null,
   };
 
   return {
     ...cleanedTask,
-    dueDate, // Now correctly formatted ISO string or null
-    lastExecutedAt, // Formatted ISO string or null (renamed from lastRunAt)
-    completedAt, // Formatted ISO string or null
-    // createdAt and updatedAt are already Date objects
+    dueDate,
+    lastExecutedAt,
+    completedAt,
     createdAt: createdAt ? formatToISO8601(createdAt) : null,
     updatedAt: updatedAt ? formatToISO8601(updatedAt) : null,
     processingStatus: processingStatus || "pending",
@@ -1446,28 +1477,32 @@ export async function deleteTask(id: string, userId: string) {
 // Get all tasks for a user with their tags
 export async function getAllTasks(userId: string) {
   try {
-    // Get all tasks for the user with processing status
-    const tasksList = await db
-      .select({
-        task: tasks,
-        status: queueJobs.status,
-      })
-      .from(tasks)
-      .leftJoin(
-        queueJobs,
-        and(
-          eq(queueJobs.key, sql`'tasks:' || ${tasks.id}`),
-          eq(queueJobs.queue, TASK_PROCESSING_QUEUE),
-        ),
-      )
-      .where(eq(tasks.userId, userId));
+    // Fetch tasks and schedule data in parallel
+    const [tasksList, schedulesMap] = await Promise.all([
+      db
+        .select({
+          task: tasks,
+          status: queueJobs.status,
+        })
+        .from(tasks)
+        .leftJoin(
+          queueJobs,
+          and(
+            eq(queueJobs.key, sql`'tasks:' || ${tasks.id}`),
+            eq(queueJobs.queue, TASK_PROCESSING_QUEUE),
+          ),
+        )
+        .where(eq(tasks.userId, userId)),
+      getTaskSchedulesMap(),
+    ]);
 
-    // For each task, get its tags
+    // For each task, get its tags and schedule data
     const tasksWithTags = await Promise.all(
       tasksList.map(async (result) => {
         const task = result.task;
         const taskTagNames = await getTaskTags(task.id);
-        return cleanTaskForResponse(task, taskTagNames, result.status);
+        const scheduleData = schedulesMap.get(task.id) || null;
+        return cleanTaskForResponse(task, taskTagNames, result.status, [], scheduleData);
       }),
     );
 
@@ -1601,9 +1636,13 @@ async function getTaskWithTags(taskId: string) {
 
   if (!task) return null;
 
-  const taskTagNames = await getTaskTags(taskId);
+  // Fetch tags and schedule data in parallel
+  const [taskTagNames, scheduleData] = await Promise.all([
+    getTaskTags(taskId),
+    getTaskScheduleData(taskId),
+  ]);
 
-  return cleanTaskForResponse(task, taskTagNames);
+  return cleanTaskForResponse(task, taskTagNames, null, [], scheduleData);
 }
 
 /**
@@ -1731,7 +1770,13 @@ export async function findTasks(
       .orderBy(desc(tasks.createdAt))
       .limit(limit);
 
-    let entriesList = await query;
+    // Fetch query results and schedule data in parallel
+    const [entriesListInitial, schedulesMap] = await Promise.all([
+      query,
+      getTaskSchedulesMap(),
+    ]);
+
+    let entriesList = entriesListInitial;
 
     if (tagsList && tagsList.length > 0) {
       const entryIds = entriesList.map((e) => e.task.id);
@@ -1761,7 +1806,8 @@ export async function findTasks(
       entriesList.map(async (result) => {
         const task = result.task;
         const entryTagNames = await getTaskTags(task.id);
-        return cleanTaskForResponse(task, entryTagNames, result.status);
+        const scheduleData = schedulesMap.get(task.id) || null;
+        return cleanTaskForResponse(task, entryTagNames, result.status, [], scheduleData);
       }),
     );
 

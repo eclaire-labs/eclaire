@@ -43,8 +43,6 @@ interface DocumentResponse {
   // Optional content metadata
   extractedText: string | null;
   pageCount: number | null;
-  hasExtractedText?: boolean;
-  hasOcr?: boolean;
 }
 
 // Helper to check if a string is a valid ISO 8601 datetime string

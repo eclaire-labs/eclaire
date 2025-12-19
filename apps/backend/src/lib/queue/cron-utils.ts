@@ -130,7 +130,7 @@ export function describeCronExpression(cronExpression: string): string {
     "0 0 17 * * 5": "Every Friday at 5:00 PM",
     "0 0 9 1 * *": "Monthly on the 1st at 9:00 AM",
 
-    // 5-field patterns (legacy support)
+    // 5-field patterns (standard cron format without seconds)
     "* * * * *": "Every minute",
     "0 * * * *": "Every hour",
     "0 9 * * *": "Daily at 9:00 AM",

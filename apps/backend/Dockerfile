@@ -65,16 +65,21 @@ ENV APP_VERSION=${APP_VERSION} \
     APP_GIT_HASH=${APP_GIT_HASH}
 
 # Install all deps (including dev) with cache
-# Copy workspace root files and backend package.json
+# Copy workspace root files and package.json files
 COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
 COPY apps/backend/package.json ./apps/backend/
+COPY packages/db/package.json ./packages/db/
+COPY packages/queue/package.json ./packages/queue/
+COPY packages/core/package.json ./packages/core/
+COPY packages/logger/package.json ./packages/logger/
 
-# Install dependencies for backend workspace
+# Install dependencies for backend workspace (includes workspace packages)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     SHARP_IGNORE_GLOBAL_LIBVIPS=1 pnpm install --frozen-lockfile --filter=@eclaire/backend...
 
-# Copy backend source and build
+# Copy source code
 COPY apps/backend ./apps/backend/
+COPY packages ./packages/
 WORKDIR /app/apps/backend
 # If you generate code (e.g., drizzle generate/prisma generate), do it here before build
 # RUN pnpm run db:generate
@@ -160,9 +165,10 @@ COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/tool-signatures.j
 # --- Optional runtime DB tooling (only if used at container runtime) ---
 # If your entrypoint or ops scripts call these, keep them; otherwise omit.
 COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/scripts ./scripts
-COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/src/db/migrations-postgres ./src/db/migrations-postgres
-COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/src/db/migrations-sqlite ./src/db/migrations-sqlite
-COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/drizzle.config.ts ./
+# Note: Migrations are bundled in @eclaire/db package via pnpm deploy (node_modules/@eclaire/db/src/migrations/)
+# These copies provide fallback/explicit access if needed by scripts
+COPY --from=builder  --chown=nodeapp:nodeapp /app/packages/db/src/migrations/postgres ./migrations/postgres
+COPY --from=builder  --chown=nodeapp:nodeapp /app/packages/db/src/migrations/sqlite ./migrations/sqlite
 
 # Install runtime dependencies for worker functionality (document/image processing, browsers)
 RUN apt-get update && apt-get install -y --no-install-recommends \
