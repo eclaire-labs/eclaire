@@ -70,6 +70,7 @@
     "@types/better-sqlite3": "7.6.13",
     "@types/node": "^24.10.1",
     "better-sqlite3": "12.5.0",
+    "postgres": "^3.4.5",
     "typescript": "^5.9.3",
     "vitest": "4.0.15"
   }

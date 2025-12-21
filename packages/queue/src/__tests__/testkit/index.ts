@@ -85,3 +85,15 @@ export {
   createDeferred,
   type Deferred,
 } from "./utils.js";
+
+// Subprocess utilities (for H-series multi-process tests)
+export {
+  spawnWorker,
+  waitForAllReady,
+  waitForJobsProcessed,
+  collectResults,
+  killAllWorkers,
+  type WorkerConfig,
+  type WorkerProcess,
+  type ProcessedJob,
+} from "./subprocess.js";
