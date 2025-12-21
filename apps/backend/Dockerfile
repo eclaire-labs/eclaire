@@ -83,6 +83,13 @@ COPY packages ./packages/
 WORKDIR /app/apps/backend
 # If you generate code (e.g., drizzle generate/prisma generate), do it here before build
 # RUN pnpm run db:generate
+
+# Build workspace packages first (backend depends on their compiled dist/ output)
+RUN pnpm --filter @eclaire/core build && \
+    pnpm --filter @eclaire/logger build && \
+    pnpm --filter @eclaire/db build && \
+    pnpm --filter @eclaire/queue build
+
 RUN pnpm build
 
 # ===== Production deps (pruned) =====
@@ -198,6 +205,10 @@ RUN mkdir -p /app/data /app/logs /app/browser-data /app/tmp \
  && chown -R nodeapp:nodeapp /app /home/nodeapp \
  && chmod 1777 /tmp
 
+# Copy entrypoint script (path relative to repo root - the build context)
+COPY --chown=nodeapp:nodeapp apps/backend/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 USER nodeapp
 EXPOSE 3001
 # Also expose 3002 for Bull Board when SERVICE_ROLE=worker
@@ -207,5 +218,5 @@ EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
   CMD curl -fsS -A "Docker-Health-Check" http://localhost:3001/health 2>/dev/null || exit 1
 
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/src/index.js"]
+ENTRYPOINT ["dumb-init", "--", "/app/docker-entrypoint.sh"]
+CMD []

@@ -37,7 +37,7 @@
     "dev": "pnpm dev:backend & pnpm dev:frontend",
     "dev:backend": "cd apps/backend && pnpm dev",
     "dev:frontend": "cd apps/frontend && pnpm dev",
-    "build": "cd apps/backend && pnpm build && cd ../frontend && pnpm build",
+    "build": "pnpm -r --filter './packages/*' build && pnpm -r --filter './apps/*' build",
     "test": "cd apps/backend && pnpm test && cd ../frontend && pnpm test",
     "lint": "cd apps/backend && pnpm lint && cd ../frontend && pnpm lint",
     "format": "cd apps/backend && pnpm format && cd ../frontend && pnpm format",
