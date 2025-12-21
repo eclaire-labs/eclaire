@@ -19,6 +19,8 @@ import {
 import type { JobContext, Worker, JobEventCallbacks } from "@eclaire/queue/core";
 import { db, dbType, dbCapabilities } from "../../db/index.js";
 import { publishDirectSSEEvent } from "../../routes/processing-events.js";
+import { processArtifacts } from "../../lib/services/artifact-processor.js";
+import type { AssetType } from "../../types/assets.js";
 import { createChildLogger } from "../../lib/logger.js";
 
 // Import job processors
@@ -57,11 +59,13 @@ function getCapabilities(): QueueDbCapabilities {
 }
 
 /**
- * Create event callbacks for SSE publishing
+ * Create event callbacks for SSE publishing and artifact processing
  */
 function createSSEEventCallbacks(): JobEventCallbacks {
   return createEventCallbacks({
     publisher: publishDirectSSEEvent,
+    artifactProcessor: (assetType, assetId, artifacts) =>
+      processArtifacts(assetType as AssetType, assetId, artifacts),
     logger,
   });
 }

@@ -26,20 +26,38 @@ export type ProcessingStatus =
   | "retry_pending"
   | "unknown";
 
+/**
+ * SSE event structure for real-time processing updates
+ *
+ * Event types follow a symmetric `{scope}_{action}` pattern:
+ * - job_*: Job-level events
+ * - stage_*: Stage-level events
+ */
 export interface ProcessingEvent {
   type:
-    | "connected"
-    | "ping"
-    | "job_created"
-    | "job_update"
-    | "job_completed"
-    | "job_failed"
-    | "stage_update"
-    | "error";
-  payload?: {
-    job?: any;
-    summary?: any;
-  };
+    | "connected" // System: SSE connection established
+    | "ping" // System: Keep-alive ping
+    | "job_queued" // Job created, waiting in queue
+    | "stage_started" // Stage began processing
+    | "stage_progress" // Progress update within stage (0-100)
+    | "stage_completed" // Stage finished successfully
+    | "stage_failed" // Stage failed
+    | "job_completed" // All stages done, job succeeded
+    | "job_failed"; // Job in terminal failure state
+
+  // Asset identity (for processing events)
+  assetType?: AssetType;
+  assetId?: string;
+
+  // Stage name (for stage_* events)
+  stage?: string;
+
+  // Progress 0-100 (for stage_progress)
+  progress?: number;
+
+  // Error message (for *_failed events)
+  error?: string;
+
   timestamp: number;
   userId?: string;
 }
@@ -107,108 +125,105 @@ export function ProcessingEventsProvider({
             // Add to events list (keep last 50 events)
             setEvents((prev) => [...prev.slice(-49), data]);
 
-            // Handle different event types by directly updating query data
-            if (data.payload) {
-              // Update processing summary if included
-              if (data.payload.summary) {
-                queryClient.setQueryData(
-                  ["processing-summary"],
-                  data.payload.summary,
-                );
-              }
+            // Handle different event types
+            const { type, assetType, assetId, progress } = data;
 
-              // Update processing jobs list
-              if (data.payload.job) {
-                const job = data.payload.job;
+            // Skip system events (connected, ping)
+            if (type === "connected" || type === "ping") {
+              return;
+            }
 
-                // Update individual processing status query
-                queryClient.setQueryData(
-                  ["processing-status", job.assetType, job.assetId],
-                  {
-                    status: job.status,
-                    stages: job.stages,
-                    currentStage: job.currentStage,
-                    overallProgress: job.overallProgress,
-                    error: job.errorMessage,
-                    errorDetails: job.errorDetails,
-                    retryCount: job.retryCount,
-                    canRetry: job.canRetry,
-                    estimatedCompletion: job.estimatedCompletion,
-                  },
-                );
+            // All processing events should have assetType and assetId
+            if (!assetType || !assetId) {
+              console.warn("Processing event missing assetType or assetId:", data);
+              return;
+            }
 
-                // Update or add job in processing jobs list
-                queryClient.setQueryData(
-                  ["processing-jobs"],
-                  (oldData: any) => {
-                    if (!oldData) return [job];
+            switch (type) {
+              case "job_queued":
+                // Invalidate processing status and asset query (for detail page)
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-status", assetType, assetId],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: [assetType, assetId],
+                });
+                break;
 
-                    const existingIndex = oldData.findIndex(
-                      (j: any) => j.id === job.id,
+              case "stage_started":
+                // Invalidate to refetch fresh status
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-status", assetType, assetId],
+                });
+                // Optimistically update the asset's processingStatus in the list
+                // This ensures the UI shows "processing" immediately without a list refetch
+                queryClient.setQueriesData<any[]>(
+                  { queryKey: [assetType] },
+                  (oldData) => {
+                    if (!oldData || !Array.isArray(oldData)) return oldData;
+                    return oldData.map((item: any) =>
+                      item.id === assetId
+                        ? { ...item, processingStatus: "processing" }
+                        : item
                     );
-                    if (existingIndex >= 0) {
-                      // Update existing job
-                      const newData = [...oldData];
-                      newData[existingIndex] = job;
-                      return newData;
-                    } else {
-                      // Add new job (for job_created events)
-                      return [job, ...oldData];
-                    }
-                  },
+                  }
                 );
+                break;
 
-                // If processing is completed, invalidate asset content queries for fresh data
-                if (
-                  data.type === "job_completed" &&
-                  job.status === "completed"
-                ) {
-                  // Invalidate general asset list queries to get updated content
-                  queryClient.invalidateQueries({
-                    queryKey: [job.assetType],
-                  });
+              case "stage_completed":
+                // Invalidate to refetch fresh status
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-status", assetType, assetId],
+                });
+                break;
 
-                  // Invalidate specific asset queries
-                  queryClient.invalidateQueries({
-                    queryKey: [job.assetType, job.assetId],
-                  });
-
-                  // For photos, also invalidate the AI analysis cache
-                  if (job.assetType === "photos") {
-                    queryClient.invalidateQueries({
-                      queryKey: ["photo-analysis", job.assetId],
-                    });
-                  }
-
-                  // Trigger any registered refresh callbacks for this asset type
-                  const callback = refreshCallbacksRef.current.get(
-                    job.assetType,
+              case "stage_progress":
+                // Optimistic progress update (frequent, no refetch needed)
+                if (typeof progress === "number") {
+                  queryClient.setQueryData(
+                    ["processing-status", assetType, assetId],
+                    (old: any) =>
+                      old ? { ...old, overallProgress: progress } : old,
                   );
-                  if (callback) {
-                    callback();
-                  }
-                } else if (
-                  job.assetType === "bookmarks" ||
-                  job.assetType === "documents" ||
-                  job.assetType === "photos" ||
-                  job.assetType === "notes" ||
-                  job.assetType === "tasks"
-                ) {
-                  // Also invalidate on status changes for bookmarks, documents, photos, notes, and tasks (not just completion)
-                  // This ensures real-time processing status updates
-                  queryClient.invalidateQueries({
-                    queryKey: [job.assetType, job.assetId],
-                  });
-
-                  // When status changes to "processing", also invalidate the list query
-                  // so the UI can display the processing state immediately
-                  if (job.status === "processing") {
-                    queryClient.invalidateQueries({
-                      queryKey: [job.assetType],
-                    });
-                  }
                 }
-              }
+                break;
+
+              case "job_completed":
+                // Invalidate processing status
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-status", assetType, assetId],
+                });
+                // Invalidate asset list and individual asset to get fresh data
+                queryClient.invalidateQueries({
+                  queryKey: [assetType],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: [assetType, assetId],
+                });
+                // For photos, also invalidate AI analysis cache
+                if (assetType === "photos") {
+                  queryClient.invalidateQueries({
+                    queryKey: ["photo-analysis", assetId],
+                  });
+                }
+                // Trigger registered refresh callbacks
+                const callback = refreshCallbacksRef.current.get(assetType);
+                if (callback) {
+                  callback();
+                }
+                break;
+
+              case "stage_failed":
+              case "job_failed":
+                // Invalidate to show error state
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-status", assetType, assetId],
+                });
+                // Also refresh the asset list to show failure
+                queryClient.invalidateQueries({
+                  queryKey: [assetType],
+                });
+                break;
             }
           } catch (parseError) {
             console.error("Failed to parse global SSE message:", parseError);

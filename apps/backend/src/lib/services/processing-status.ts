@@ -19,14 +19,24 @@ const logger = createChildLogger("processing-status");
 
 /**
  * Build queue name for an asset type and optional job type
- * Maps to queue names like "bookmark-processing", "task-tag_generation", etc.
+ * Uses QueueNames constants to ensure consistency with queue adapter
  */
 function buildQueueName(assetType: AssetType, jobType?: string): string {
-  if (jobType && assetType === "tasks") {
-    return `task-${jobType}`;
+  if (assetType === "tasks") {
+    return jobType === "execution"
+      ? QueueNames.TASK_EXECUTION_PROCESSING
+      : QueueNames.TASK_PROCESSING;
   }
-  // photos -> photo-processing, bookmarks -> bookmark-processing, etc.
-  return `${assetType.slice(0, -1)}-processing`;
+
+  const mapping: Record<AssetType, string> = {
+    photos: QueueNames.IMAGE_PROCESSING,
+    bookmarks: QueueNames.BOOKMARK_PROCESSING,
+    documents: QueueNames.DOCUMENT_PROCESSING,
+    notes: QueueNames.NOTE_PROCESSING,
+    tasks: QueueNames.TASK_PROCESSING,
+  };
+
+  return mapping[assetType];
 }
 
 /**
@@ -125,15 +135,12 @@ export async function createOrUpdateProcessingJob(
 
       const formattedJob = formatJobDetails(updatedJob);
 
-      // Publish SSE event for job creation/reset with full data
+      // Publish SSE event for job reset (re-queued)
       try {
-        const summary = await getUserProcessingSummary(userId);
         await publishProcessingEvent(userId, {
-          type: "job_update",
-          payload: {
-            job: formattedJob,
-            summary,
-          },
+          type: "job_queued",
+          assetType,
+          assetId,
         });
       } catch (error) {
         logger.warn(
@@ -146,6 +153,7 @@ export async function createOrUpdateProcessingJob(
     } else {
       // Use INSERT with ON CONFLICT to handle race conditions
       const jobId = generateJobId();
+      const now = new Date();
       const [newJob] = await db
         .insert(queueJobs)
         .values({
@@ -160,6 +168,8 @@ export async function createOrUpdateProcessingJob(
           attempts: 0,
           maxAttempts: 3,
           metadata,
+          createdAt: now,
+          updatedAt: now,
         })
         .onConflictDoUpdate({
           target: [queueJobs.queue, queueJobs.key],
@@ -180,15 +190,12 @@ export async function createOrUpdateProcessingJob(
 
       const formattedJob = formatJobDetails(newJob);
 
-      // Publish SSE event for new job creation with full data
+      // Publish SSE event for new job creation
       try {
-        const summary = await getUserProcessingSummary(userId);
         await publishProcessingEvent(userId, {
-          type: "job_created",
-          payload: {
-            job: formattedJob,
-            summary,
-          },
+          type: "job_queued",
+          assetType,
+          assetId,
         });
       } catch (error) {
         logger.warn(
@@ -452,27 +459,27 @@ export async function updateProcessingJobStatus(
     // Get userId from metadata for SSE
     const userId = (updatedJob.metadata as any)?.userId;
 
-    // Publish SSE event for status update with full data
+    // Publish SSE event for status update (simple format)
+    // Note: Stage-level events are handled by queue callbacks in event-callbacks.ts
+    // This function only emits job-level terminal events
     try {
       if (userId) {
-        const summary = await getUserProcessingSummary(userId);
-
-        let eventType = "job_update";
         if (formattedJob.status === "completed") {
-          eventType = "job_completed";
+          await publishProcessingEvent(userId, {
+            type: "job_completed",
+            assetType,
+            assetId,
+            progress: 100,
+          });
         } else if (formattedJob.status === "failed") {
-          eventType = "job_failed";
-        } else if (stage) {
-          eventType = "stage_update";
+          await publishProcessingEvent(userId, {
+            type: "job_failed",
+            assetType,
+            assetId,
+            error: error || formattedJob.errorMessage,
+          });
         }
-
-        await publishProcessingEvent(userId, {
-          type: eventType,
-          payload: {
-            job: formattedJob,
-            summary,
-          },
-        });
+        // Stage updates are handled by queue callbacks, no need to emit here
       }
     } catch (sseError) {
       logger.warn(
@@ -1241,6 +1248,13 @@ async function retryPhotoProcessing(
       originalFilename: photo.originalFilename || undefined,
     });
 
+    // Emit job_queued event so frontend updates immediately
+    await publishProcessingEvent(userId, {
+      type: "job_queued",
+      assetType: "photos",
+      assetId,
+    });
+
     logger.info(
       { assetId, userId },
       "Queued unified image processing job for retry",
@@ -1397,6 +1411,13 @@ async function retryBookmarkProcessing(
       userId: userId,
     });
 
+    // Emit job_queued event so frontend updates immediately
+    await publishProcessingEvent(userId, {
+      type: "job_queued",
+      assetType: "bookmarks",
+      assetId,
+    });
+
     logger.info(
       { assetId, userId },
       "Queued bookmark processing job for retry",
@@ -1453,6 +1474,13 @@ async function retryDocumentProcessing(
       originalFilename: document.originalFilename || undefined,
     });
 
+    // Emit job_queued event so frontend updates immediately
+    await publishProcessingEvent(userId, {
+      type: "job_queued",
+      assetType: "documents",
+      assetId,
+    });
+
     logger.info(
       { assetId, userId },
       "Queued document processing job for retry",
@@ -1507,6 +1535,13 @@ async function retryNoteProcessing(
       userId: userId,
     });
 
+    // Emit job_queued event so frontend updates immediately
+    await publishProcessingEvent(userId, {
+      type: "job_queued",
+      assetType: "notes",
+      assetId,
+    });
+
     logger.info({ assetId, userId }, "Queued note processing job for retry");
 
     return { success: true };
@@ -1558,6 +1593,13 @@ async function retryTaskProcessing(
       userId: userId,
     });
 
+    // Emit job_queued event so frontend updates immediately
+    await publishProcessingEvent(userId, {
+      type: "job_queued",
+      assetType: "tasks",
+      assetId,
+    });
+
     logger.info({ assetId, userId }, "Queued task processing job for retry");
 
     return { success: true };
@@ -1579,7 +1621,20 @@ async function retryTaskProcessing(
  * Formats queueJobs data (metadata stored in jsonb)
  */
 function formatJobDetails(job: any): ProcessingJobDetails {
-  const stages: ProcessingStage[] = (job.stages as ProcessingStage[]) || [];
+  const rawStages = (job.stages as ProcessingStage[]) || [];
+  const stages: ProcessingStage[] = rawStages.map((stage) => ({
+    ...stage,
+    startedAt: stage.startedAt
+      ? typeof stage.startedAt === "number"
+        ? stage.startedAt
+        : Math.floor(new Date(stage.startedAt as unknown as string).getTime() / 1000)
+      : undefined,
+    completedAt: stage.completedAt
+      ? typeof stage.completedAt === "number"
+        ? stage.completedAt
+        : Math.floor(new Date(stage.completedAt as unknown as string).getTime() / 1000)
+      : undefined,
+  }));
 
   // Handle queueJobs format (metadata contains userId, assetType, assetId, startedAt)
   const metadata = job.metadata as { userId?: string; assetType?: string; assetId?: string; startedAt?: string } | null;

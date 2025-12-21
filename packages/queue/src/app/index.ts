@@ -32,6 +32,7 @@ export {
   type SSEPublisher,
   type ProcessingSSEEvent,
   type JobAssetMetadata,
+  type ArtifactProcessor,
 } from "./event-callbacks.js";
 
 // Re-export job adapters (now local)
