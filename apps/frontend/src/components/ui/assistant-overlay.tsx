@@ -110,53 +110,97 @@ export function AssistantOverlay({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Ripple effect - only show if not interacted */}
-        {!hasInteracted && (
-          <div className="absolute bottom-0 right-0 w-16 h-16 rounded-full pointer-events-none z-20 opacity-100 transition-opacity duration-500">
-            <div
-              className="absolute top-1/2 left-1/2 w-full h-full border-2 rounded-full opacity-0 -translate-x-1/2 -translate-y-1/2 animate-[ripple-pulse_4s_infinite_ease-out]"
-              style={{ borderColor: "hsl(var(--brand-400))" }}
-            />
-            <div
-              className="absolute top-1/2 left-1/2 w-full h-full border-2 rounded-full opacity-0 -translate-x-1/2 -translate-y-1/2 animate-[ripple-pulse_4s_infinite_ease-out] [animation-delay:0.5s]"
-              style={{ borderColor: "hsl(var(--brand-400))" }}
-            />
-            <div
-              className="absolute top-1/2 left-1/2 w-full h-full border-2 rounded-full opacity-0 -translate-x-1/2 -translate-y-1/2 animate-[ripple-pulse_4s_infinite_ease-out] [animation-delay:1s]"
-              style={{ borderColor: "hsl(var(--brand-400))" }}
-            />
-          </div>
-        )}
+        <div
+          className={cn(
+            "relative w-16 h-16 flex items-center justify-center",
+            !hasInteracted && "animate-[gentle-bounce_4s_infinite_ease-in-out]",
+          )}
+        >
+          {/* Ripple effect - only show if not interacted */}
+          {!hasInteracted && (
+            <div className="absolute inset-0 rounded-full pointer-events-none z-20 opacity-100 transition-opacity duration-500">
+              <div className="absolute top-1/2 left-1/2 w-full h-full -translate-x-1/2 -translate-y-1/2">
+                <div
+                  className="w-full h-full border-2 rounded-full opacity-0 animate-[ripple-pulse_4s_infinite_ease-out]"
+                  style={{ borderColor: "hsl(var(--brand-400))" }}
+                />
+              </div>
+              <div className="absolute top-1/2 left-1/2 w-full h-full -translate-x-1/2 -translate-y-1/2">
+                <div
+                  className="w-full h-full border-2 rounded-full opacity-0 animate-[ripple-pulse_4s_infinite_ease-out] [animation-delay:0.5s]"
+                  style={{ borderColor: "hsl(var(--brand-400))" }}
+                />
+              </div>
+              <div className="absolute top-1/2 left-1/2 w-full h-full -translate-x-1/2 -translate-y-1/2">
+                <div
+                  className="w-full h-full border-2 rounded-full opacity-0 animate-[ripple-pulse_4s_infinite_ease-out] [animation-delay:1s]"
+                  style={{ borderColor: "hsl(var(--brand-400))" }}
+                />
+              </div>
+            </div>
+          )}
 
-        {/* Floating particles - only show if not interacted */}
-        {!hasInteracted && (
-          <div className="absolute bottom-0 right-0 w-16 h-16 rounded-full pointer-events-none z-10 overflow-hidden opacity-100 transition-opacity duration-500">
-            <div
-              className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[20%]"
-              style={{ backgroundColor: "hsl(var(--brand-400))" }}
-            />
-            <div
-              className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[40%] [animation-delay:0.5s]"
-              style={{ backgroundColor: "hsl(var(--brand-400))" }}
-            />
-            <div
-              className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[60%] [animation-delay:1s]"
-              style={{ backgroundColor: "hsl(var(--brand-400))" }}
-            />
-            <div
-              className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[80%] [animation-delay:1.5s]"
-              style={{ backgroundColor: "hsl(var(--brand-400))" }}
-            />
-            <div
-              className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[30%] [animation-delay:2s]"
-              style={{ backgroundColor: "hsl(var(--brand-400))" }}
-            />
-            <div
-              className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[70%] [animation-delay:2.5s]"
-              style={{ backgroundColor: "hsl(var(--brand-400))" }}
-            />
-          </div>
-        )}
+          {/* Floating particles - only show if not interacted */}
+          {!hasInteracted && (
+            <div className="absolute inset-0 rounded-full pointer-events-none z-10 overflow-hidden opacity-100 transition-opacity duration-500">
+              <div
+                className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[20%]"
+                style={{ backgroundColor: "hsl(var(--brand-400))" }}
+              />
+              <div
+                className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[40%] [animation-delay:0.5s]"
+                style={{ backgroundColor: "hsl(var(--brand-400))" }}
+              />
+              <div
+                className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[60%] [animation-delay:1s]"
+                style={{ backgroundColor: "hsl(var(--brand-400))" }}
+              />
+              <div
+                className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[80%] [animation-delay:1.5s]"
+                style={{ backgroundColor: "hsl(var(--brand-400))" }}
+              />
+              <div
+                className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[30%] [animation-delay:2s]"
+                style={{ backgroundColor: "hsl(var(--brand-400))" }}
+              />
+              <div
+                className="absolute w-1 h-1 rounded-full opacity-0 animate-[float-up_3s_infinite_ease-out] left-[70%] [animation-delay:2.5s]"
+                style={{ backgroundColor: "hsl(var(--brand-400))" }}
+              />
+            </div>
+          )}
+
+          {/* Main assistant button */}
+          <button
+            className={cn(
+              "relative z-30 w-16 h-16 rounded-full border-none cursor-pointer shadow-lg flex items-center justify-center transition-all duration-300",
+              "hover:scale-110 hover:shadow-xl",
+            )}
+            aria-label="Open AI Assistant Menu"
+            style={{
+              background:
+                "linear-gradient(to bottom right, hsl(var(--brand-400)), hsl(var(--brand-500)))",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background =
+                "linear-gradient(to bottom right, hsl(var(--brand-300)), hsl(var(--brand-400)))";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background =
+                "linear-gradient(to bottom right, hsl(var(--brand-400)), hsl(var(--brand-500)))";
+            }}
+          >
+            <svg
+              className="w-9 h-9 text-white filter drop-shadow-sm"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M19 6h-2.28a3 3 0 0 0-5.44 0H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3ZM7.5 15a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" />
+              <path d="M12 5a1 1 0 0 1-1-1V2a1 1 0 0 1 2 0v2a1 1 0 0 1-1 1Z" />
+            </svg>
+          </button>
+        </div>
 
         {/* Action items */}
         {actions.map((action, index) => {
@@ -201,38 +245,6 @@ export function AssistantOverlay({
         >
           {hoveredAction}
         </div>
-
-        {/* Main assistant button */}
-        <button
-          className={cn(
-            "relative z-30 w-16 h-16 rounded-full border-none cursor-pointer shadow-lg flex items-center justify-center transition-all duration-300",
-            "hover:scale-110 hover:shadow-xl",
-            !hasInteracted && "animate-[gentle-bounce_4s_infinite_ease-in-out]",
-          )}
-          aria-label="Open AI Assistant Menu"
-          style={{
-            background:
-              "linear-gradient(to bottom right, hsl(var(--brand-400)), hsl(var(--brand-500)))",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background =
-              "linear-gradient(to bottom right, hsl(var(--brand-300)), hsl(var(--brand-400)))";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background =
-              "linear-gradient(to bottom right, hsl(var(--brand-400)), hsl(var(--brand-500)))";
-          }}
-        >
-          <svg
-            className="w-9 h-9 text-white filter drop-shadow-sm"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M19 6h-2.28a3 3 0 0 0-5.44 0H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3ZM7.5 15a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" />
-            <path d="M12 5a1 1 0 0 1-1-1V2a1 1 0 0 1 2 0v2a1 1 0 0 1-1 1Z" />
-          </svg>
-        </button>
       </div>
     </div>
   );

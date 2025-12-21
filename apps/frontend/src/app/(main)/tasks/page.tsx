@@ -25,6 +25,7 @@ import { useRouter, useSearchParams } from "@/lib/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
+import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
 import { AIAvatar } from "@/components/ui/ai-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -2740,7 +2741,7 @@ function TaskTileItem({
                 );
               })()}
             </div>
-            <CardDescription className="text-xs">
+            <CardDescription className="flex items-center text-xs">
               {task.dueDate ? (
                 <span className="flex items-center text-muted-foreground">
                   <Calendar className="mr-1 h-3 w-3" />{" "}
@@ -2751,6 +2752,12 @@ function TaskTileItem({
                   <Calendar className="mr-1 h-3 w-3" /> No due date
                 </span>
               )}
+              <div className="ml-2">
+                <SimpleProcessingStatusIcon
+                  status={task.processingStatus}
+                  enabled={task.enabled}
+                />
+              </div>
             </CardDescription>
           </div>
           <div className="flex items-center gap-1">
@@ -2949,7 +2956,7 @@ function TaskListItem({
       // Add data-index={index} and tabIndex={-1} if needed for keyboard nav
     >
       <TableCell className="hidden sm:table-cell pl-4 pr-2">
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full relative">
           <Button
             variant="ghost"
             size="icon"
@@ -2962,6 +2969,13 @@ function TaskListItem({
           >
             {statusIcon}
           </Button>
+          <div className="absolute -top-1 -right-1">
+            <SimpleProcessingStatusIcon
+              status={task.processingStatus}
+              enabled={task.enabled}
+              className="bg-white/90 dark:bg-black/90 rounded-full p-0.5"
+            />
+          </div>
         </div>
       </TableCell>
       <TableCell className="py-2 align-middle">

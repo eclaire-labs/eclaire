@@ -12,6 +12,7 @@ import {
   FileText, // Lucide icons
   Filter,
   GalleryHorizontalEnd,
+  Image as ImageIcon, // Placeholder icon for photos without thumbnails
   LayoutGrid,
   Link as LinkIcon, // Lucide icons
   List,
@@ -1960,7 +1961,6 @@ function PhotoTileItem({
     photo.locationCountryName,
   );
   const displayDate = formatDate(photo.dateTaken ?? photo.createdAt);
-  const imgSrc = photo.thumbnailUrl || "/placeholder.svg";
 
   return (
     <Card
@@ -1972,22 +1972,28 @@ function PhotoTileItem({
     >
       <CardHeader className="p-0">
         <div className="aspect-video relative overflow-hidden bg-muted">
-          <img
-            src={imgSrc}
-            alt={photo.title}
-            className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-            onError={(e) => {
-              const img = e.target as HTMLImageElement;
-              // Prevent infinite error loops by tracking retry count
-              const retryCount = parseInt(img.dataset.retryCount || "0", 10);
-              if (retryCount < 1) {
-                img.dataset.retryCount = String(retryCount + 1);
-                img.src = "/placeholder.svg";
-                img.classList.add("opacity-50");
-              }
-            }}
-          />
+          {photo.thumbnailUrl ? (
+            <img
+              src={photo.thumbnailUrl}
+              alt={photo.title}
+              className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+              loading="lazy"
+              onError={(e) => {
+                const img = e.target as HTMLImageElement;
+                // Prevent infinite error loops by tracking retry count
+                const retryCount = parseInt(img.dataset.retryCount || "0", 10);
+                if (retryCount < 1) {
+                  img.dataset.retryCount = String(retryCount + 1);
+                  img.src = "/placeholder.svg";
+                  img.classList.add("opacity-50");
+                }
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <ImageIcon className="w-12 h-12 text-muted-foreground" />
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
 
           {/* Processing Status Icon */}
@@ -2353,9 +2359,8 @@ function GalleryView({
   const currentPhoto = photos[currentIndex];
   if (!currentPhoto) return null; // Should not happen if index is valid
 
-  // Prefer full image, fall back to thumbnail, then placeholder
-  const imgSrc =
-    currentPhoto.imageUrl || currentPhoto.thumbnailUrl || "/placeholder.svg";
+  // Prefer full image, fall back to thumbnail
+  const imgSrc = currentPhoto.imageUrl || currentPhoto.thumbnailUrl;
 
   // Touch/swipe navigation state
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(
@@ -2483,14 +2488,20 @@ function GalleryView({
           <ChevronLeft className="h-6 w-6 md:h-8 md:w-8" />
         </Button>
 
-        <img
-          src={imgSrc}
-          alt={currentPhoto.title}
-          className="max-w-full max-h-full object-contain block"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = "/placeholder.svg";
-          }}
-        />
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            alt={currentPhoto.title}
+            className="max-w-full max-h-full object-contain block"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "/placeholder.svg";
+            }}
+          />
+        ) : (
+          <div className="w-64 h-64 flex items-center justify-center bg-muted/20 rounded-lg">
+            <ImageIcon className="w-24 h-24 text-muted-foreground" />
+          </div>
+        )}
 
         {/* Next Button */}
         <Button
@@ -2524,7 +2535,6 @@ function GalleryView({
           <div className="flex justify-center gap-1 md:gap-2 overflow-x-auto pb-2 md:pb-4">
             {thumbIndices.map((idx) => {
               const thumbPhoto = photos[idx];
-              const thumbSrc = thumbPhoto.thumbnailUrl || "/placeholder.svg";
               return (
                 <div
                   key={thumbPhoto.id}
@@ -2534,24 +2544,30 @@ function GalleryView({
                     onNavigateToIndex(idx); // Call the new prop
                   }}
                 >
-                  <img
-                    src={thumbSrc}
-                    alt={`Thumbnail ${idx + 1}`}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      // Prevent infinite error loops by tracking retry count
-                      const retryCount = parseInt(
-                        img.dataset.retryCount || "0",
-                        10,
-                      );
-                      if (retryCount < 1) {
-                        img.dataset.retryCount = String(retryCount + 1);
-                        img.src = "/placeholder.svg";
-                      }
-                    }}
-                  />
+                  {thumbPhoto.thumbnailUrl ? (
+                    <img
+                      src={thumbPhoto.thumbnailUrl}
+                      alt={`Thumbnail ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        // Prevent infinite error loops by tracking retry count
+                        const retryCount = parseInt(
+                          img.dataset.retryCount || "0",
+                          10,
+                        );
+                        if (retryCount < 1) {
+                          img.dataset.retryCount = String(retryCount + 1);
+                          img.src = "/placeholder.svg";
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
               );
             })}

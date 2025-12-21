@@ -303,14 +303,14 @@
 /* Assistant Overlay Animations (kept from your original) */
 @keyframes ripple-pulse {
   0% {
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
     opacity: 1;
   }
   50% {
     opacity: 0.3;
   }
   100% {
-    transform: translate(-50%, -50%) scale(1.8);
+    transform: scale(1.8);
     opacity: 0;
   }
 }
