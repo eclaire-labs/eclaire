@@ -223,13 +223,13 @@ COPY --chown=nodeapp:nodeapp apps/backend/docker-entrypoint.sh /app/docker-entry
 RUN chmod +x /app/docker-entrypoint.sh
 
 USER nodeapp
-EXPOSE 3001
+EXPOSE 3000
 # Also expose 3002 for Bull Board when SERVICE_ROLE=worker
 EXPOSE 3002
 
 # Healthcheck (give app time to boot)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
-  CMD curl -fsS -A "Docker-Health-Check" http://localhost:3001/health 2>/dev/null || exit 1
+  CMD curl -fsS -A "Docker-Health-Check" http://localhost:3000/health 2>/dev/null || exit 1
 
 ENTRYPOINT ["dumb-init", "--", "/app/docker-entrypoint.sh"]
 CMD []
