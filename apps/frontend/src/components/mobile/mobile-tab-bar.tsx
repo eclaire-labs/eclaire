@@ -1,7 +1,6 @@
 
 import { Bell, FolderOpen, Home, MessageSquare, Settings } from "lucide-react";
-import { Link } from "@/lib/navigation";
-import { usePathname } from "@/lib/navigation";
+import { Link, useLocation } from "@tanstack/react-router";
 import { useDueNowCount } from "@/hooks/use-due-now-count";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +19,7 @@ export function MobileTabBar({
   onChatToggle,
   onFoldersToggle,
 }: MobileTabBarProps) {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const { count: dueNowCount } = useDueNowCount();
 
   const handleTabClick = (tab: MobileTab) => {
@@ -69,7 +68,7 @@ export function MobileTabBar({
             return (
               <Link
                 key={tab.id}
-                href={tab.href}
+                to={tab.href}
                 role="tab"
                 aria-selected={isActive}
                 aria-label={`${tab.label} tab`}

@@ -6,7 +6,7 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
-import { useRouter } from "@/lib/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Tooltip,
@@ -34,7 +34,7 @@ export function SimpleProcessingStatusIcon({
   enabled = true,
   className = "",
 }: SimpleProcessingStatusIconProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [showCompleted, setShowCompleted] = useState(true);
 
   // Hide completed status after 10 seconds
@@ -66,7 +66,7 @@ export function SimpleProcessingStatusIcon({
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    router.push("/processing");
+    navigate({ to: "/processing" });
   };
 
   const getStatusIcon = () => {

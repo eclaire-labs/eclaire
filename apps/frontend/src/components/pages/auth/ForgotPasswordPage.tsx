@@ -1,6 +1,6 @@
 
 import { ArrowLeft, Mail } from "lucide-react";
-import { Link } from "@/lib/navigation";
+import { Link } from "@tanstack/react-router";
 import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,8 @@ export default function ForgotPasswordPage() {
   return (
     <div className="container relative flex min-h-screen flex-col items-center justify-center">
       <Link
-        href="/auth/login"
+        to="/auth/login"
+        search={{ callbackUrl: "/dashboard" }}
         className="absolute left-4 top-4 md:left-8 md:top-8 flex items-center text-sm font-medium text-muted-foreground"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -91,7 +92,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <div className="space-y-4">
             <Button variant="outline" className="w-full" asChild>
-              <Link href="/auth/login">Return to login</Link>
+              <Link to="/auth/login" search={{ callbackUrl: "/dashboard" }}>Return to login</Link>
             </Button>
             <div className="text-center text-sm">
               Didn't receive the email?{" "}

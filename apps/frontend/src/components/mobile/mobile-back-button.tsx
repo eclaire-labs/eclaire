@@ -1,11 +1,11 @@
 
 import { ChevronLeft } from "lucide-react";
-import { useRouter } from "@/lib/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 interface MobileBackButtonProps {
-  /** Optional custom back action. If not provided, uses router.back() */
+  /** Optional custom back action. If not provided, uses window.history.back() */
   onBack?: () => void;
   /** Optional custom route to navigate to instead of going back */
   href?: string;
@@ -21,7 +21,7 @@ export function MobileBackButton({
   className,
   showOnDesktop = false,
 }: MobileBackButtonProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
 
   // Don't render on desktop unless explicitly requested
@@ -33,13 +33,13 @@ export function MobileBackButton({
     if (onBack) {
       onBack();
     } else if (href) {
-      router.push(href);
+      navigate({ to: href });
     } else {
       // Fallback: if no history, go to dashboard
       if (window.history.length <= 1) {
-        router.push("/dashboard");
+        navigate({ to: "/dashboard" });
       } else {
-        router.back();
+        window.history.back();
       }
     }
   };

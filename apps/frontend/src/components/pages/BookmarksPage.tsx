@@ -25,7 +25,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useRouter } from "@/lib/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import React, {
   useCallback,
   useEffect,
@@ -183,7 +183,7 @@ const normalizeUrl = (url: string): string => {
 export default function BookmarksPage() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   // --- React Query Hook ---
   const {
@@ -502,9 +502,9 @@ export default function BookmarksPage() {
   const handleBookmarkClick = useCallback(
     (bookmark: Bookmark) => {
       // Navigate to the dedicated bookmark page instead of opening modal
-      router.push(`/bookmarks/${bookmark.id}`);
+      navigate({ to: `/bookmarks/${bookmark.id}` });
     },
-    [router],
+    [navigate],
   );
   const openEditDialog = useCallback((bookmark: Bookmark) => {
     setSelectedBookmark(bookmark);

@@ -8,7 +8,7 @@ import {
   Folder,
   StickyNote,
 } from "lucide-react";
-import { Link } from "@/lib/navigation";
+import { Link } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { ActivityTimelineChart } from "@/components/dashboard/ActivityTimelineChart";
 import { AssetOverviewCards } from "@/components/dashboard/AssetOverviewCards";
@@ -245,7 +245,7 @@ export function DashboardClientContent({
             </div>
             {recentActivities?.length > 5 && (
               <CardFooter className="px-0 pt-4">
-                <Link href="/history" className="w-full">
+                <Link to="/history" className="w-full">
                   <Button variant="outline" className="w-full">
                     View All Activity
                     <ArrowRight className="h-4 w-4 ml-2" />

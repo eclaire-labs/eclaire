@@ -6,7 +6,7 @@ import {
   FileText,
   StickyNote,
 } from "lucide-react";
-import { Link } from "@/lib/navigation";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface AssetOverviewCardsProps {
@@ -86,7 +86,7 @@ export function AssetOverviewCards({ stats }: AssetOverviewCardsProps) {
       {assetTypes.map((asset) => {
         const Icon = asset.icon;
         return (
-          <Link key={asset.name} href={asset.href}>
+          <Link key={asset.name} to={asset.href}>
             <Card
               className={`transition-all duration-200 hover:shadow-lg cursor-pointer border-l-4 border-l-transparent hover:border-l-current ${asset.bgColor} ${asset.darkBgColor}`}
             >

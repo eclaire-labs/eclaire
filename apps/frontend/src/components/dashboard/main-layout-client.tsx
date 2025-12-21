@@ -15,7 +15,7 @@ import {
   Settings,
   Upload,
 } from "lucide-react";
-import { Link, usePathname, useRouter } from "@/lib/navigation";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   type ReactNode,
   useCallback,
@@ -117,8 +117,8 @@ interface MainLayoutClientProps {
 }
 
 export function MainLayoutClient({ children }: MainLayoutClientProps) {
-  const pathname = usePathname();
-  const router = useRouter();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantFullScreen, setAssistantFullScreen] = useState(false);
@@ -432,7 +432,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     // Handle navigation for tabs that have routes
     const route = getRouteForMobileTab(tab);
     if (route && pathname !== route) {
-      router.push(route);
+      navigate({ to: route });
     }
 
     // Handle tab-specific state changes
@@ -1149,7 +1149,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
                     />
                   ) : (
                     <Link
-                      href={item.href}
+                      to={item.href}
                       className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm ${
                         isActive(item.href)
                           ? "font-medium"
@@ -1289,7 +1289,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
           }}
           onAssignTask={() => {
             // Navigate to tasks page with parameter to open dialog
-            router.push("/tasks?openDialog=ai");
+            navigate({ to: "/tasks", search: { openDialog: "ai" } });
           }}
         />
       )}

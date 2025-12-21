@@ -21,7 +21,7 @@ import {
   XCircle, // Upload status icons
 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useRouter } from "@/lib/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import React, {
   useCallback,
   useEffect,
@@ -283,7 +283,7 @@ const getGroupDateLabel = (
 export default function DocumentsPage() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   // --- React Query Hook ---
   const {
@@ -475,7 +475,7 @@ export default function DocumentsPage() {
 
   const openViewDialog = (doc: Document) => {
     // Navigate to the dedicated document page instead of opening modal
-    router.push(`/documents/${doc.id}`);
+    navigate({ to: `/documents/${doc.id}` });
   };
 
   const openEditDialog = (doc: Document) => {

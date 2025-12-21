@@ -1,5 +1,7 @@
 import { ChevronLeft } from "lucide-react";
-import { Link, useRouter, useSearchParams } from "@/lib/navigation";
+import { Link, useNavigate, getRouteApi } from "@tanstack/react-router";
+
+const routeApi = getRouteApi("/_authenticated/settings");
 import { useEffect, useState } from "react";
 import AccountSettings from "@/components/settings/AccountSettings";
 import AssistantSettings from "@/components/settings/AssistantSettings";
@@ -46,11 +48,12 @@ function formatBuildDate(isoString: string): string {
   });
 }
 
+type SettingsTab = "profile" | "account" | "assistant" | "notifications" | "api-keys" | "about";
+
 export default function SettingsContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState(tabParam || "profile");
+  const navigate = useNavigate();
+  const { tab: tabParam } = routeApi.useSearch();
+  const [activeTab, setActiveTab] = useState<SettingsTab>(tabParam || "profile");
   const isMobile = useIsMobile();
   const [healthData, setHealthData] = useState({
     version: "Loading...",
@@ -241,7 +244,7 @@ export default function SettingsContent() {
       <div className="space-y-6">
         <header className="flex items-center gap-4">
           <Link
-            href="/settings"
+            to="/settings"
             className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -288,8 +291,8 @@ export default function SettingsContent() {
         defaultValue="profile"
         value={activeTab}
         onValueChange={(newTab) => {
-          setActiveTab(newTab);
-          router.push(`/settings?tab=${newTab}`);
+          setActiveTab(newTab as SettingsTab);
+          navigate({ to: `/settings?tab=${newTab}` });
         }}
         className="space-y-4"
       >

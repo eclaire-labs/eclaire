@@ -33,7 +33,9 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { useParams, useRouter } from "@/lib/navigation";
+import { useNavigate, getRouteApi } from "@tanstack/react-router";
+
+const routeApi = getRouteApi("/_authenticated/bookmarks/$id");
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -149,8 +151,8 @@ const isRedditBookmark = (
 };
 
 export function BookmarkDetailClient() {
-  const params = useParams();
-  const router = useRouter();
+  const { id: bookmarkId } = routeApi.useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [localBookmark, setLocalBookmark] = useState<Bookmark | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -162,8 +164,6 @@ export function BookmarkDetailClient() {
   const [bookmarkToDelete, setBookmarkToDelete] = useState<Bookmark | null>(
     null,
   );
-
-  const bookmarkId = params.id as string;
 
   // Use React Query hook for data fetching
   const { bookmark, isLoading, error, refresh } = useBookmark(bookmarkId);
@@ -297,7 +297,7 @@ export function BookmarkDetailClient() {
           title: "Bookmark deleted",
           description: "Your bookmark has been deleted.",
         });
-        router.push("/bookmarks");
+        navigate({ to: "/bookmarks" });
       } else {
         toast({
           title: "Error",
@@ -437,7 +437,7 @@ export function BookmarkDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -462,7 +462,7 @@ export function BookmarkDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Bookmark not found</h1>
@@ -473,7 +473,7 @@ export function BookmarkDetailClient() {
           <p className="text-muted-foreground mb-4">
             The bookmark you're looking for doesn't exist or couldn't be loaded.
           </p>
-          <Button onClick={() => router.push("/bookmarks")}>
+          <Button onClick={() => navigate({ to: "/bookmarks" })}>
             Go to Bookmarks
           </Button>
         </div>
@@ -496,7 +496,7 @@ export function BookmarkDetailClient() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
@@ -804,9 +804,9 @@ export function BookmarkDetailClient() {
                       onClick={
                         bookmark.enabled !== false
                           ? () => {
-                              router.push(
-                                `/processing?assetType=bookmarks&assetId=${bookmark.id}`,
-                              );
+                              navigate({
+                                to: `/processing?assetType=bookmarks&assetId=${bookmark.id}`,
+                              });
                             }
                           : undefined
                       }

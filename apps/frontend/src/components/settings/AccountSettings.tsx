@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Database, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import z from "zod/v4";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,

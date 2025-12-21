@@ -7,7 +7,7 @@ import {
   Monitor,
   StickyNote,
 } from "lucide-react";
-import { Link } from "@/lib/navigation";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import type { ContentLink } from "@/types/message";
 
@@ -98,7 +98,7 @@ export const ContentLinkPreview = ({ link }: ContentLinkPreviewProps) => {
       className="mt-1.5 w-full justify-start h-auto p-2.5 text-left"
       asChild
     >
-      <Link href={link.url}>
+      <Link to={link.url}>
         <div className="flex items-center gap-2.5 w-full min-w-0">
           <div className="flex-shrink-0 flex items-center">
             {showFavicon && faviconUrl ? (

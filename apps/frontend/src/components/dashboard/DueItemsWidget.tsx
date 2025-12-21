@@ -7,7 +7,7 @@ import {
   CheckSquare,
   Clock,
 } from "lucide-react";
-import { Link } from "@/lib/navigation";
+import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +41,7 @@ function DueItemRow({ item }: { item: DueItem }) {
     item.type === "bookmark" ? `/bookmarks/${item.id}` : `/tasks/${item.id}`;
 
   return (
-    <Link href={href}>
+    <Link to={href}>
       <div className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer">
         <Icon className="h-4 w-4 text-muted-foreground" />
         <div className="flex-1 min-w-0">
@@ -173,7 +173,7 @@ export function DueItemsWidget({ dueItems }: DueItemsWidgetProps) {
 
         {totalDue > 0 && (
           <div className="pt-4 mt-auto">
-            <Link href="/tasks">
+            <Link to="/tasks">
               <Button variant="outline" size="sm" className="w-full">
                 View All Due Items
               </Button>

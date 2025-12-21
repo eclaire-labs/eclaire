@@ -27,8 +27,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { nanoid } from "nanoid"; // For unique upload IDs
-import { Link } from "@/lib/navigation";
-import { useRouter } from "@/lib/navigation";
+import { Link, useNavigate } from "@tanstack/react-router";
 import React, {
   useCallback,
   useEffect,
@@ -221,7 +220,7 @@ const getGroupDateLabel = (dateString: string | null | undefined): string => {
 export default function PhotosPage() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   // --- React Query Hook ---
   const {
@@ -445,7 +444,7 @@ export default function PhotosPage() {
 
   const openViewDialog = (photo: Photo) => {
     // Navigate to the dedicated photo detail page instead of opening modal
-    router.push(`/photos/${photo.id}`);
+    navigate({ to: `/photos/${photo.id}` });
   };
 
   const openEditDialog = (photo: Photo) => {
@@ -1463,7 +1462,7 @@ export default function PhotosPage() {
                         <Label className="text-xs text-muted-foreground font-medium">
                           Coordinates
                         </Label>
-                        <Link
+                        <a
                           href={`https://www.google.com/maps/search/?api=1&query=${selectedPhoto.latitude},${selectedPhoto.longitude}`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -1474,7 +1473,7 @@ export default function PhotosPage() {
                             {selectedPhoto.latitude.toFixed(5)},{" "}
                             {selectedPhoto.longitude.toFixed(5)}
                           </span>
-                        </Link>
+                        </a>
                       </div>
                     )}
                   </div>

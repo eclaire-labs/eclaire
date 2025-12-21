@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useRouter } from "@/lib/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { MarkdownPreview } from "@/components/markdown-preview";
@@ -311,7 +311,7 @@ FilterSortDialog.displayName = "FilterSortDialog";
 export default function NotesPage() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   // --- React Query Hook ---
   const {
@@ -505,9 +505,9 @@ export default function NotesPage() {
   const handleEntryClick = useCallback(
     (entry: NoteEntry) => {
       // Navigate to the dedicated note page instead of opening modal
-      router.push(`/notes/${entry.id}`);
+      navigate({ to: `/notes/${entry.id}` });
     },
-    [router],
+    [navigate],
   );
 
   const openEditDialog = useCallback((entry: NoteEntry) => {

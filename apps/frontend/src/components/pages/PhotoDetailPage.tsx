@@ -19,7 +19,9 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useParams, useRouter } from "@/lib/navigation";
+import { useNavigate, getRouteApi } from "@tanstack/react-router";
+
+const routeApi = getRouteApi("/_authenticated/photos/$id");
 import React, { useEffect, useState } from "react";
 import { PhotoAnalysisCard } from "@/components/photo-analysis";
 import { Badge } from "@/components/ui/badge";
@@ -117,10 +119,9 @@ const formatCoordinate = (
 };
 
 export function PhotoDetailClient() {
-  const params = useParams();
-  const router = useRouter();
+  const { id: photoId } = routeApi.useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const photoId = params.id as string;
   const queryClient = useQueryClient();
 
   // Use React Query hook for data fetching
@@ -174,10 +175,10 @@ export function PhotoDetailClient() {
         variant: "destructive",
       });
       if (error.message.includes("not found")) {
-        router.push("/photos");
+        navigate({ to: "/photos" });
       }
     }
-  }, [error, toast, router]);
+  }, [error, toast, navigate]);
 
   // Handle save changes
   const handleSave = async () => {
@@ -251,7 +252,7 @@ export function PhotoDetailClient() {
           title: "Photo deleted",
           description: "The photo has been deleted successfully.",
         });
-        router.push("/photos");
+        navigate({ to: "/photos" });
       } else {
         throw new Error("Failed to delete photo");
       }
@@ -477,7 +478,7 @@ export function PhotoDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -502,7 +503,7 @@ export function PhotoDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Photo not found</h1>
@@ -513,7 +514,7 @@ export function PhotoDetailClient() {
           <p className="text-muted-foreground mb-4">
             The photo you're looking for doesn't exist or couldn't be loaded.
           </p>
-          <Button onClick={() => router.push("/photos")}>Go to Photos</Button>
+          <Button onClick={() => navigate({ to: "/photos" })}>Go to Photos</Button>
         </div>
       </div>
     );
@@ -531,7 +532,7 @@ export function PhotoDetailClient() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push("/photos")}
+              onClick={() => navigate({ to: "/photos" })}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -864,9 +865,9 @@ export function PhotoDetailClient() {
                       onClick={
                         photo.enabled !== false
                           ? () => {
-                              router.push(
-                                `/processing?assetType=photos&assetId=${photo.id}`,
-                              );
+                              navigate({
+                                to: `/processing?assetType=photos&assetId=${photo.id}`,
+                              });
                             }
                           : undefined
                       }

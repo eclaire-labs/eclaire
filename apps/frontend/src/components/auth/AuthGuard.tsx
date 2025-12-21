@@ -1,5 +1,5 @@
 
-import { useRouter, usePathname } from "@/lib/navigation";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { useSession } from "@/lib/auth";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,8 +14,8 @@ interface AuthGuardProps {
  * Shows a loading skeleton while checking authentication status.
  */
 export function AuthGuard({ children }: AuthGuardProps) {
-  const router = useRouter();
-  const pathname = usePathname();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { data: session, isPending } = useSession();
 
   useEffect(() => {
@@ -25,9 +25,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
     // If no session, redirect to login with callback URL
     if (!session?.user) {
       const callbackUrl = encodeURIComponent(pathname);
-      router.replace(`/auth/login?callbackUrl=${callbackUrl}`);
+      navigate({ to: `/auth/login?callbackUrl=${callbackUrl}`, replace: true });
     }
-  }, [session, isPending, router, pathname]);
+  }, [session, isPending, navigate, pathname]);
 
   // Show loading state while checking session
   if (isPending) {

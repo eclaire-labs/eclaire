@@ -1,17 +1,17 @@
 
-import { useRouter } from "@/lib/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { signOut } from "@/lib/auth";
 
 export default function LogoutPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Sign out using Better Auth and redirect to the home page
     signOut().then(() => {
-      router.push("/");
+      navigate({ to: "/" });
     });
-  }, [router]);
+  }, [navigate]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">

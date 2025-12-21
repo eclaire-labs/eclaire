@@ -14,7 +14,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useParams, useRouter } from "@/lib/navigation";
+import { useNavigate, getRouteApi } from "@tanstack/react-router";
+
+const routeApi = getRouteApi("/_authenticated/documents/$id");
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,10 +94,9 @@ const formatFileSize = (bytes: number | null) => {
 };
 
 export function DocumentDetailClient() {
-  const params = useParams();
-  const router = useRouter();
+  const { id: documentId } = routeApi.useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const documentId = params.id as string;
 
   // Use React Query hook for data fetching
   const { document, isLoading, error, refresh } = useDocument(documentId);
@@ -140,10 +141,10 @@ export function DocumentDetailClient() {
         variant: "destructive",
       });
       if (error.message.includes("not found")) {
-        router.push("/documents");
+        navigate({ to: "/documents" });
       }
     }
-  }, [error, toast, router]);
+  }, [error, toast, navigate]);
 
   // Handle save changes
   const handleSave = async () => {
@@ -217,7 +218,7 @@ export function DocumentDetailClient() {
           title: "Document deleted",
           description: "The document has been deleted successfully.",
         });
-        router.push("/documents");
+        navigate({ to: "/documents" });
       } else {
         throw new Error("Failed to delete document");
       }
@@ -455,7 +456,7 @@ export function DocumentDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -480,7 +481,7 @@ export function DocumentDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Document not found</h1>
@@ -491,7 +492,7 @@ export function DocumentDetailClient() {
           <p className="text-muted-foreground mb-4">
             The document you're looking for doesn't exist or couldn't be loaded.
           </p>
-          <Button onClick={() => router.push("/documents")}>
+          <Button onClick={() => navigate({ to: "/documents" })}>
             Go to Documents
           </Button>
         </div>
@@ -511,7 +512,7 @@ export function DocumentDetailClient() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push("/documents")}
+              onClick={() => navigate({ to: "/documents" })}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -826,9 +827,9 @@ export function DocumentDetailClient() {
                       onClick={
                         document.enabled !== false
                           ? () => {
-                              router.push(
-                                `/processing?assetType=documents&assetId=${document.id}`,
-                              );
+                              navigate({
+                                to: `/processing?assetType=documents&assetId=${document.id}`,
+                              });
                             }
                           : undefined
                       }

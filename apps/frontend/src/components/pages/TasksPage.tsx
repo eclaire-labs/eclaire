@@ -21,7 +21,9 @@ import {
   User as UserIcon,
   X,
 } from "lucide-react";
-import { useRouter, useSearchParams } from "@/lib/navigation";
+import { useNavigate, getRouteApi } from "@tanstack/react-router";
+
+const routeApi = getRouteApi("/_authenticated/tasks");
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
@@ -321,8 +323,8 @@ const getStatusBadge = (status: string) => {
 // --- Component ---
 export default function TasksPage() {
   const { toast } = useToast();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const { openDialog } = routeApi.useSearch();
   const { data: auth } = useAuth();
 
   // --- React Query Hook ---
@@ -480,7 +482,6 @@ export default function TasksPage() {
 
   // Handle URL parameter to open dialog with AI Assistant
   useEffect(() => {
-    const openDialog = searchParams.get("openDialog");
     if (openDialog === "ai" && allAssignees.length > 0) {
       // Find the first AI Assistant user
       const aiAssistant = allAssignees.find(
@@ -495,11 +496,9 @@ export default function TasksPage() {
       setIsNewTaskDialogOpen(true);
 
       // Clear the URL parameter to prevent reopening on refresh
-      const url = new URL(window.location.href);
-      url.searchParams.delete("openDialog");
-      router.replace(url.pathname + url.search);
+      navigate({ to: "/tasks", replace: true });
     }
-  }, [searchParams, allAssignees, router]);
+  }, [openDialog, allAssignees, navigate]);
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -700,9 +699,9 @@ export default function TasksPage() {
   const handleTaskClick = useCallback(
     (task: Task) => {
       // Navigate to the dedicated task page instead of opening modal
-      router.push(`/tasks/${task.id}`);
+      navigate({ to: `/tasks/${task.id}` });
     },
-    [router],
+    [navigate],
   );
 
   const openEditDialog = useCallback((task: Task) => {

@@ -11,7 +11,9 @@ import {
   Type,
   X,
 } from "lucide-react";
-import { useParams, useRouter } from "@/lib/navigation";
+import { useNavigate, getRouteApi } from "@tanstack/react-router";
+
+const routeApi = getRouteApi("/_authenticated/notes/$id");
 import React, { useEffect, useState } from "react";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { Badge } from "@/components/ui/badge";
@@ -71,8 +73,8 @@ const formatDateForInput = (isoString: string | null | undefined): string => {
 };
 
 export function NoteDetailClient() {
-  const router = useRouter();
-  const params = useParams();
+  const navigate = useNavigate();
+  const { id: noteId } = routeApi.useParams();
   const { toast } = useToast();
   const [localNote, setLocalNote] = useState<Note | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -82,8 +84,6 @@ export function NoteDetailClient() {
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] =
     useState(false);
   const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
-
-  const noteId = params.id as string;
 
   // Use React Query hook for data fetching
   const { note, isLoading, error, refresh } = useNote(noteId);
@@ -164,7 +164,7 @@ export function NoteDetailClient() {
           title: "Note deleted",
           description: "Your note has been deleted.",
         });
-        router.push("/notes");
+        navigate({ to: "/notes" });
       } else {
         toast({
           title: "Error",
@@ -360,7 +360,7 @@ export function NoteDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -385,7 +385,7 @@ export function NoteDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Note not found</h1>
@@ -395,7 +395,7 @@ export function NoteDetailClient() {
           <p className="text-muted-foreground mb-4">
             The note you're looking for doesn't exist or couldn't be loaded.
           </p>
-          <Button onClick={() => router.push("/notes")}>Go to Notes</Button>
+          <Button onClick={() => navigate({ to: "/notes" })}>Go to Notes</Button>
         </div>
       </div>
     );
@@ -410,7 +410,7 @@ export function NoteDetailClient() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
@@ -652,9 +652,9 @@ export function NoteDetailClient() {
                             onClick={
                               note.enabled !== false
                                 ? () => {
-                                    router.push(
-                                      `/processing?assetType=notes&assetId=${note.id}`,
-                                    );
+                                    navigate({
+                                      to: `/processing?assetType=notes&assetId=${note.id}`,
+                                    });
                                   }
                                 : undefined
                             }

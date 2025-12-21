@@ -12,7 +12,9 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { useRouter, useSearchParams } from "@/lib/navigation";
+import { useNavigate, getRouteApi } from "@tanstack/react-router";
+
+const routeApi = getRouteApi("/_authenticated/processing");
 import { useEffect, useState } from "react";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { ProcessingSummaryDashboard } from "@/components/processing/ProcessingSummaryDashboard";
@@ -161,7 +163,7 @@ function getFriendlyCurrentStage(stage?: string, status?: string): string {
 }
 
 function JobDetailsDialog({ job }: { job: ProcessingJob }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [assetDetails, setAssetDetails] = useState<AssetDetails | null>(null);
   const [isLoadingAsset, setIsLoadingAsset] = useState(false);
 
@@ -351,8 +353,8 @@ function JobDetailsDialog({ job }: { job: ProcessingJob }) {
 
 export default function ProcessingContent() {
   const isMobile = useIsMobile();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const { assetType, assetId } = routeApi.useSearch();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [assetTypeFilter, setAssetTypeFilter] = useState("all");
@@ -382,9 +384,6 @@ export default function ProcessingContent() {
 
   // Handle auto-opening job details dialog based on URL parameters
   useEffect(() => {
-    const assetType = searchParams.get("assetType");
-    const assetId = searchParams.get("assetId");
-
     if (assetType && assetId && jobs) {
       // Find the job that matches the asset type and ID
       const targetJob = jobs.find(
@@ -396,13 +395,10 @@ export default function ProcessingContent() {
         setAutoOpenJobId(targetJob.id);
         setManualOpenJobId(null); // Clear any manual open state
         // Clear the URL parameters after finding the job
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.delete("assetType");
-        newUrl.searchParams.delete("assetId");
-        router.replace(newUrl.pathname + newUrl.search);
+        navigate({ to: "/processing", replace: true });
       }
     }
-  }, [jobs, searchParams, router]);
+  }, [jobs, assetType, assetId, navigate]);
 
   const handleRetry = async (
     assetType: string,
@@ -457,7 +453,7 @@ export default function ProcessingContent() {
   const handleRowClick = (job: ProcessingJob) => {
     // Navigate to the asset details page
     const detailsUrl = `/${job.assetType}/${job.assetId}`;
-    router.push(detailsUrl);
+    navigate({ to: detailsUrl });
   };
 
   const formatTimestamp = (timestamp?: number) => {

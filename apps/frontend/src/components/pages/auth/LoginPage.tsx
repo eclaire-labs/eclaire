@@ -1,12 +1,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearch } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { Github, Globe, Twitter } from "lucide-react";
-import { Link } from "@/lib/navigation";
-import { useRouter } from "@/lib/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import z from "zod/v4";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -31,7 +29,6 @@ const formSchema = z.object({
 });
 
 export default function LoginPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const { callbackUrl } = useSearch({ from: "/auth/login" });
   const [isLoading, setIsLoading] = useState(false);
@@ -97,14 +94,14 @@ export default function LoginPage() {
               © 2025 Eclaire Labs. Open source under the MIT License.
             </p>
             <div className="flex items-center gap-4">
-              <Link
+              <a
                 href="https://eclaire.co"
                 className="text-white/60 hover:text-white transition-colors"
                 aria-label="Website"
               >
                 <Globe className="h-5 w-5" />
-              </Link>
-              <Link
+              </a>
+              <a
                 href="https://x.com/eclaire_labs"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -112,8 +109,8 @@ export default function LoginPage() {
                 aria-label="X (Twitter)"
               >
                 <Twitter className="h-5 w-5" />
-              </Link>
-              <Link
+              </a>
+              <a
                 href="https://github.com/eclaire-labs/eclaire"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -121,7 +118,7 @@ export default function LoginPage() {
                 aria-label="GitHub"
               >
                 <Github className="h-5 w-5" />
-              </Link>
+              </a>
             </div>
           </div>
         </div>
@@ -177,7 +174,7 @@ export default function LoginPage() {
           <div className="text-center text-sm">
             Don't have an account?{" "}
             <Link
-              href="/auth/register"
+              to="/auth/register"
               className="text-primary hover:underline"
             >
               Create an account

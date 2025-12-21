@@ -8,7 +8,9 @@ import {
   Settings,
   User,
 } from "lucide-react";
-import { Link, usePathname, useSearchParams } from "@/lib/navigation";
+import { Link, useLocation, getRouteApi } from "@tanstack/react-router";
+
+const routeApi = getRouteApi("/_authenticated/settings");
 import { cn } from "@/lib/utils";
 
 interface SettingsMenuItem {
@@ -65,9 +67,9 @@ const settingsMenuItems: SettingsMenuItem[] = [
 ];
 
 export function MobileSettingsMenu() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const currentTab = searchParams.get("tab") || "profile";
+  const { pathname } = useLocation();
+  const { tab } = routeApi.useSearch();
+  const currentTab = tab || "profile";
 
   return (
     <div className="space-y-1">
@@ -78,7 +80,7 @@ export function MobileSettingsMenu() {
         return (
           <Link
             key={item.id}
-            href={item.href}
+            to={item.href}
             className={cn(
               "flex items-center justify-between p-4 rounded-lg transition-colors",
               isActive

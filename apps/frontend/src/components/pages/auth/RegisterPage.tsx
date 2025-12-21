@@ -1,11 +1,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Github, Globe, Twitter } from "lucide-react";
-import { Link } from "@/lib/navigation";
-import { useRouter } from "@/lib/navigation";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import z from "zod/v4";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -39,7 +38,7 @@ const formSchema = z
   });
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -71,8 +70,7 @@ export default function RegisterPage() {
         title: "Account created!",
         description: "Welcome to Eclaire! You're now signed in.",
       });
-      router.push("/dashboard");
-      router.refresh();
+      navigate({ to: "/dashboard" });
     } catch (error) {
       toast({
         title: "Registration failed",
@@ -98,14 +96,14 @@ export default function RegisterPage() {
               © 2025 Eclaire Labs. Open source under the MIT License.
             </p>
             <div className="flex items-center gap-4">
-              <Link
+              <a
                 href="https://eclaire.co"
                 className="text-white/60 hover:text-white transition-colors"
                 aria-label="Website"
               >
                 <Globe className="h-5 w-5" />
-              </Link>
-              <Link
+              </a>
+              <a
                 href="https://x.com/eclaire_labs"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -113,8 +111,8 @@ export default function RegisterPage() {
                 aria-label="X (Twitter)"
               >
                 <Twitter className="h-5 w-5" />
-              </Link>
-              <Link
+              </a>
+              <a
                 href="https://github.com/eclaire-labs/eclaire"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -122,7 +120,7 @@ export default function RegisterPage() {
                 aria-label="GitHub"
               >
                 <Github className="h-5 w-5" />
-              </Link>
+              </a>
             </div>
           </div>
         </div>
@@ -198,7 +196,7 @@ export default function RegisterPage() {
           </Form>
           <div className="text-center text-sm">
             Already have an account?{" "}
-            <Link href="/auth/login" className="text-primary hover:underline">
+            <Link to="/auth/login" search={{ callbackUrl: "/dashboard" }} className="text-primary hover:underline">
               Sign in
             </Link>
           </div>

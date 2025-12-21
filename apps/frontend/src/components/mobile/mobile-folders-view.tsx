@@ -16,8 +16,7 @@ import {
   Search,
   Upload,
 } from "lucide-react";
-import { Link } from "@/lib/navigation";
-import { usePathname } from "@/lib/navigation";
+import { Link, useLocation } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 
 interface MobileFoldersViewProps {
@@ -61,7 +60,7 @@ const navigationGroups = [
 ];
 
 export function MobileFoldersView({ open, onClose }: MobileFoldersViewProps) {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
 
   const isActive = (path: string) => {
     // Handle exact matches first for specificity
@@ -98,7 +97,7 @@ export function MobileFoldersView({ open, onClose }: MobileFoldersViewProps) {
                 {group.items.map((item) => (
                   <li key={item.name}>
                     <Link
-                      href={item.href}
+                      to={item.href}
                       className={cn(
                         "flex items-center justify-between px-4 py-3 rounded-lg text-base transition-colors",
                         isActive(item.href)

@@ -1,14 +1,13 @@
 
 import { ArrowLeft, Mail } from "lucide-react";
-import { Link } from "@/lib/navigation";
-import { useRouter } from "@/lib/navigation";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
 export default function VerifyEmailPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [isResending, setIsResending] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
@@ -39,14 +38,15 @@ export default function VerifyEmailPage() {
         title: "Email verified",
         description: "Your email has been successfully verified.",
       });
-      router.push("/dashboard");
+      navigate({ to: "/dashboard" });
     }, 1500);
   };
 
   return (
     <div className="container relative flex min-h-screen flex-col items-center justify-center">
       <Link
-        href="/auth/login"
+        to="/auth/login"
+        search={{ callbackUrl: "/dashboard" }}
         className="absolute left-4 top-4 md:left-8 md:top-8 flex items-center text-sm font-medium text-muted-foreground"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />

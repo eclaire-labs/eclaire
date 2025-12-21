@@ -1,5 +1,5 @@
 import { ArrowLeft, Mail, MessageSquare, Phone } from "lucide-react";
-import { Link } from "@/lib/navigation";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,7 +19,7 @@ export default function SupportPage() {
       <header className="border-b">
         <div className="container mx-auto px-4 md:px-6 max-w-7xl py-4 flex items-center">
           <Button variant="ghost" size="icon" asChild className="mr-2">
-            <Link href="/">
+            <Link to="/">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>

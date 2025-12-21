@@ -30,7 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { useApiKeys } from "@/hooks/useApiKeys";
+import { useApiKeys } from "@/hooks/use-api-keys";
 
 export default function ApiKeyManager() {
   const {

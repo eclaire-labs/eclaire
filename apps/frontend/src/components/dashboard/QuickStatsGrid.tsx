@@ -1,6 +1,6 @@
 
 import { Eye, Flag, Pin, Zap } from "lucide-react";
-import { Link } from "@/lib/navigation";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface QuickStatsGridProps {
@@ -58,7 +58,7 @@ export function QuickStatsGrid({ quickStats }: QuickStatsGridProps) {
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
-          <Link key={stat.title} href={stat.href}>
+          <Link key={stat.title} to={stat.href}>
             <Card className="transition-all duration-200 hover:shadow-lg cursor-pointer hover:bg-muted/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">

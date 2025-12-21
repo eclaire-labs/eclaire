@@ -1,5 +1,5 @@
 import { CheckSquare, Maximize2, MessageSquare, Upload } from "lucide-react";
-import { useRouter } from "@/lib/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -20,13 +20,13 @@ export function AssistantOverlay({
   const [hasInteracted, setHasInteracted] = useState(false);
   const [hoveredAction, setHoveredAction] = useState<string | null>(null);
   const hideMenuTimer = useRef<NodeJS.Timeout | null>(null);
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const actions = [
     {
       name: "Upload Document",
       icon: Upload,
-      action: () => router.push("/upload"),
+      action: () => navigate({ to: "/upload" }),
     },
     {
       name: "Assign Task",

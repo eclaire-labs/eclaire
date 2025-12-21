@@ -15,7 +15,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useParams, useRouter } from "@/lib/navigation";
+import { useNavigate, getRouteApi } from "@tanstack/react-router";
+
+const routeApi = getRouteApi("/_authenticated/tasks/$id");
 import React, { useEffect, useState } from "react";
 import { MarkdownDisplayWithAssets } from "@/components/markdown-display-with-assets";
 import { Badge } from "@/components/ui/badge";
@@ -64,10 +66,9 @@ import {
 import type { Task, TaskComment, TaskStatus, User } from "@/types/task";
 
 export function TaskDetailClient() {
-  const params = useParams();
-  const router = useRouter();
+  const { id: taskId } = routeApi.useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const taskId = params.id as string;
 
   // Use React Query hook for data fetching
   const { task, isLoading, error, refresh } = useTask(taskId);
@@ -393,7 +394,7 @@ export function TaskDetailClient() {
         description: "The task has been deleted successfully.",
       });
 
-      router.push("/tasks");
+      navigate({ to: "/tasks" });
     } catch (error) {
       console.error("Error deleting task:", error);
       toast({
@@ -562,7 +563,7 @@ export function TaskDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -587,7 +588,7 @@ export function TaskDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Task not found</h1>
@@ -598,7 +599,7 @@ export function TaskDetailClient() {
           <p className="text-muted-foreground mb-4">
             The task you're looking for doesn't exist or couldn't be loaded.
           </p>
-          <Button onClick={() => router.push("/tasks")}>Go to Tasks</Button>
+          <Button onClick={() => navigate({ to: "/tasks" })}>Go to Tasks</Button>
         </div>
       </div>
     );
@@ -616,7 +617,7 @@ export function TaskDetailClient() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/tasks")}
+            onClick={() => navigate({ to: "/tasks" })}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -1176,9 +1177,9 @@ export function TaskDetailClient() {
                           onClick={
                             task.enabled !== false
                               ? () => {
-                                  router.push(
-                                    `/processing?assetType=tasks&assetId=${task.id}`,
-                                  );
+                                  navigate({
+                                    to: `/processing?assetType=tasks&assetId=${task.id}`,
+                                  });
                                 }
                               : undefined
                           }

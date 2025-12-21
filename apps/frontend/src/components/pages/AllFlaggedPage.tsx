@@ -11,7 +11,7 @@ import {
   StickyNote,
   X,
 } from "lucide-react";
-import { Link } from "@/lib/navigation";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { Badge } from "@/components/ui/badge";
@@ -646,7 +646,7 @@ export default function FlaggedItemsPage() {
                 }`}
               >
                 <Link
-                  href={getItemUrl(item)}
+                  to={getItemUrl(item)}
                   className="flex items-start gap-3 flex-1 min-w-0"
                 >
                   <div className="p-2 rounded-md bg-muted flex items-center justify-center">

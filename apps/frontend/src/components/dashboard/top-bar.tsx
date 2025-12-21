@@ -10,8 +10,7 @@ import {
   Minimize2,
   User,
 } from "lucide-react";
-import { Link } from "@/lib/navigation";
-import { usePathname, useRouter } from "@/lib/navigation";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -42,14 +41,14 @@ export function TopBar({
   onAssistantFullScreenToggle,
   assistantFullScreen,
 }: TopBarProps) {
-  const pathname = usePathname();
-  const router = useRouter();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { count: dueNowCount } = useDueNowCount();
   const { data: auth } = useAuth();
 
   const handleBellClick = () => {
-    router.push("/all/due-now");
+    navigate({ to: "/all/due-now" });
   };
 
   return (
@@ -173,44 +172,44 @@ export function TopBar({
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/settings?tab=profile">
+              <Link to="/settings" search={{ tab: "profile" }}>
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings?tab=account">
+              <Link to="/settings" search={{ tab: "account" }}>
                 <CreditCard className="mr-2 h-4 w-4" />
                 Account
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings?tab=assistant">
+              <Link to="/settings" search={{ tab: "assistant" }}>
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Assistant
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings?tab=notifications">
+              <Link to="/settings" search={{ tab: "notifications" }}>
                 <Bell className="mr-2 h-4 w-4" />
                 Notifications
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings?tab=api-keys">
+              <Link to="/settings" search={{ tab: "api-keys" }}>
                 <Key className="mr-2 h-4 w-4" />
                 API Keys
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings?tab=about">
+              <Link to="/settings" search={{ tab: "about" }}>
                 <Info className="mr-2 h-4 w-4" />
                 About
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/auth/logout">
+              <Link to="/auth/logout">
                 <LogOut className="mr-2 h-4 w-4" />
                 Log out
               </Link>
