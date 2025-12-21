@@ -18,7 +18,12 @@ import {
 	type DbCapabilities,
 	type DbDialect,
 } from "@eclaire/db";
-import { queueJobsPg, queueSchedulesPg } from "@eclaire/queue/driver-db";
+import {
+	queueJobsPg,
+	queueSchedulesPg,
+	queueJobsSqlite,
+	queueSchedulesSqlite,
+} from "@eclaire/queue/driver-db";
 import { createChildLogger } from "../lib/logger.js";
 
 // Re-export types for convenience
@@ -51,8 +56,12 @@ export const schema = activeSchema as typeof pgSchema;
  * Queue schema exports for service files.
  *
  * Queue schema is owned by @eclaire/queue package (reusable).
- * Re-exported here with PostgreSQL types to match the `db` type cast.
+ * Re-exported here with types matching the active database.
  * Service files should import queueJobs from here, not directly from @eclaire/queue.
  */
-export const queueJobs = queueJobsPg;
-export const queueSchedules = queueSchedulesPg;
+export const queueJobs = detectedDbType === "sqlite"
+	? (queueJobsSqlite as unknown as typeof queueJobsPg)
+	: queueJobsPg;
+export const queueSchedules = detectedDbType === "sqlite"
+	? (queueSchedulesSqlite as unknown as typeof queueSchedulesPg)
+	: queueSchedulesPg;

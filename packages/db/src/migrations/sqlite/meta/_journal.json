@@ -8,6 +8,13 @@
       "when": 1765009380641,
       "tag": "0000_aspiring_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1766236303497,
+      "tag": "0001_curved_morlun",
+      "breakpoints": true
     }
   ]
 }

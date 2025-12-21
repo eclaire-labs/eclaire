@@ -8,6 +8,13 @@
       "when": 1762864033494,
       "tag": "0000_dear_la_nuit",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766236313648,
+      "tag": "0001_wonderful_proteus",
+      "breakpoints": true
     }
   ]
 }

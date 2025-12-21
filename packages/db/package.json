@@ -70,6 +70,7 @@
     "@electric-sql/pglite": "0.3.14",
     "async-mutex": "^0.5.0",
     "better-sqlite3": "12.5.0",
+    "dotenv": "^16.4.7",
     "drizzle-orm": "0.45.0",
     "postgres": "3.4.7"
   },
