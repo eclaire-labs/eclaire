@@ -26,7 +26,7 @@ const {
 } = schema;
 import { formatToISO8601, formatRequiredTimestamp, getOrCreateTags } from "../db-helpers.js";
 import { getQueue, QueueNames, getQueueAdapter } from "../queue/index.js";
-import { objectStorage, type StorageInfo } from "../storage.js";
+import { getStorage, buildKey, assetPrefix } from "../storage/index.js";
 import type { ProcessingStatus } from "../../types/assets.js";
 import { generateDocumentId, generateHistoryId } from "@eclaire/core";
 import { createChildLogger } from "../logger.js";
@@ -255,7 +255,7 @@ export async function createDocument(
   // Generate document ID first so we can use it for storage
   const documentId = generateDocumentId();
   const { metadata, content, originalMimeType, userAgent } = data;
-  let storageInfo: StorageInfo | undefined;
+  let storageInfo: { storageId: string } | undefined;
 
   try {
     const fileTypeResult = await fileTypeFromBuffer(content);
@@ -270,17 +270,14 @@ export async function createDocument(
       ? originalFilename.split(".").pop()?.toLowerCase()
       : "bin";
 
-    const assetResult = await objectStorage.saveAsset({
-      userId,
-      assetType: "documents",
-      assetId: documentId,
-      fileName: `original.${fileExtension}`,
-      fileStream: Readable.from(content),
+    const storage = getStorage();
+    const storageKey = buildKey(userId, "documents", documentId, `original.${fileExtension}`);
+    await storage.write(storageKey, Readable.from(content) as unknown as NodeJS.ReadableStream, {
       contentType: verifiedMimeType,
     });
 
     // Create storageInfo for backward compatibility
-    storageInfo = { storageId: assetResult.storageId };
+    storageInfo = { storageId: storageKey };
 
     // Now create the document record with the actual storage ID in a single operation
     const [newDocument] = await db
@@ -291,7 +288,7 @@ export async function createDocument(
         title: metadata.title || originalFilename,
         description: metadata.description || null,
         dueDate: dueDateValue,
-        storageId: assetResult.storageId, // Use the actual storage ID from the save operation
+        storageId: storageKey, // Use the actual storage ID from the save operation
         originalFilename,
         mimeType: verifiedMimeType,
         fileSize,
@@ -370,7 +367,8 @@ export async function createDocument(
         `Attempting to clean up stored file ${storageInfo.storageId} after DB error.`,
       );
       try {
-        await objectStorage.delete(storageInfo.storageId);
+        const storageForCleanup = getStorage();
+        await storageForCleanup.delete(storageInfo.storageId);
       } catch (cleanupError) {
         logger.error({ err: cleanupError }, "Document file cleanup failed");
       }
@@ -489,8 +487,9 @@ export async function deleteDocument(
     await db.delete(queueJobs).where(eq(queueJobs.key, `documents:${id}`));
 
     if (deleteStorage) {
-      await objectStorage
-        .deleteAsset(userId, "documents", id)
+      const storageForDelete = getStorage();
+      await storageForDelete
+        .deletePrefix(assetPrefix(userId, "documents", id))
         .catch((storageError: any) => {
           logger.warn(
             { documentId: id, storageError: storageError.message || storageError },
@@ -940,11 +939,12 @@ export async function getDocumentAsset(
   }
 
   try {
-    const { stream, contentLength } = await objectStorage.getStream(storageId);
-    return { stream, contentLength, mimeType, filename };
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(storageId);
+    return { stream, contentLength: metadata.size, mimeType, filename };
   } catch (error: any) {
     // If the file is missing from storage (e.g., deleted manually or processing failed)
-    if (error.code === "ENOENT") {
+    if (error.code === "ENOENT" || error.name === "StorageNotFoundError") {
       logger.warn(
         `Storage file not found for document ${documentId}, asset ${assetType}, storageId ${storageId}`,
       );

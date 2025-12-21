@@ -10,7 +10,7 @@ import {
   parseGitHubUrl,
 } from "../github-api.js";
 import { createChildLogger } from "../../../lib/logger.js";
-import { objectStorage } from "../../../lib/storage.js";
+import { getStorage, buildKey } from "../../../lib/storage/index.js";
 import type {
   BookmarkHandler,
   BookmarkHandlerType,
@@ -113,79 +113,45 @@ export async function processGitHubBookmark(
     const ssDesktopBuffer = await page.screenshot({ type: "png" });
 
     // Generate thumbnail (lower resolution, 400x400, 85% quality)
+    const storage = getStorage();
     const thumbnailBuffer = await sharp(ssDesktopBuffer)
       .resize(400, 400, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 85 })
       .toBuffer();
-    allArtifacts.thumbnailStorageId = (
-      await objectStorage.saveAsset({
-        userId,
-        assetType: "bookmarks",
-        assetId: bookmarkId,
-        fileName: "thumbnail.jpg",
-        fileStream: Readable.from(thumbnailBuffer),
-        contentType: "image/jpeg",
-      })
-    ).storageId;
+    const thumbnailKey = buildKey(userId, "bookmarks", bookmarkId, "thumbnail.jpg");
+    await storage.writeBuffer(thumbnailKey, thumbnailBuffer, { contentType: "image/jpeg" });
+    allArtifacts.thumbnailStorageId = thumbnailKey;
 
     // Generate screenshot (higher resolution, 1920x1440, 90% quality)
     const screenshotBuffer = await sharp(ssDesktopBuffer)
       .resize(1920, 1440, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 90 })
       .toBuffer();
-    allArtifacts.screenshotDesktopStorageId = (
-      await objectStorage.saveAsset({
-        userId,
-        assetType: "bookmarks",
-        assetId: bookmarkId,
-        fileName: "screenshot.jpg",
-        fileStream: Readable.from(screenshotBuffer),
-        contentType: "image/jpeg",
-      })
-    ).storageId;
+    const screenshotKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot.jpg");
+    await storage.writeBuffer(screenshotKey, screenshotBuffer, { contentType: "image/jpeg" });
+    allArtifacts.screenshotDesktopStorageId = screenshotKey;
 
     const ssFullPageBuffer = await page.screenshot({
       type: "png",
       fullPage: true,
     });
-    allArtifacts.screenshotFullPageStorageId = (
-      await objectStorage.saveAsset({
-        userId,
-        assetType: "bookmarks",
-        assetId: bookmarkId,
-        fileName: "screenshot-fullpage.png",
-        fileStream: Readable.from(ssFullPageBuffer),
-        contentType: "image/png",
-      })
-    ).storageId;
+    const fullpageKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot-fullpage.png");
+    await storage.writeBuffer(fullpageKey, ssFullPageBuffer, { contentType: "image/png" });
+    allArtifacts.screenshotFullPageStorageId = fullpageKey;
 
     await page.setViewportSize({ width: 375, height: 667 });
     const ssMobileBuffer = await page.screenshot({ type: "png" });
-    allArtifacts.screenshotMobileStorageId = (
-      await objectStorage.saveAsset({
-        userId,
-        assetType: "bookmarks",
-        assetId: bookmarkId,
-        fileName: "screenshot-mobile.png",
-        fileStream: Readable.from(ssMobileBuffer),
-        contentType: "image/png",
-      })
-    ).storageId;
+    const mobileKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot-mobile.png");
+    await storage.writeBuffer(mobileKey, ssMobileBuffer, { contentType: "image/png" });
+    allArtifacts.screenshotMobileStorageId = mobileKey;
 
     // Reset viewport for PDF generation
     await page.setViewportSize({ width: 1920, height: 1080 });
 
     const pdfBuffer = await generateOptimizedPdf(page, bookmarkId);
-    allArtifacts.pdfStorageId = (
-      await objectStorage.saveAsset({
-        userId,
-        assetType: "bookmarks",
-        assetId: bookmarkId,
-        fileName: "content.pdf",
-        fileStream: Readable.from(pdfBuffer),
-        contentType: "application/pdf",
-      })
-    ).storageId;
+    const pdfKey = buildKey(userId, "bookmarks", bookmarkId, "content.pdf");
+    await storage.writeBuffer(pdfKey, pdfBuffer, { contentType: "application/pdf" });
+    allArtifacts.pdfStorageId = pdfKey;
 
     // Extract HTML content
     const rawHtml = await page.content();
@@ -237,16 +203,9 @@ export async function processGitHubBookmark(
 
       // Save README content if available
       if (repoInfo.readmeContent) {
-        allArtifacts.readmeStorageId = (
-          await objectStorage.saveAsset({
-            userId,
-            assetType: "bookmarks",
-            assetId: bookmarkId,
-            fileName: "readme.md",
-            fileStream: Readable.from(Buffer.from(repoInfo.readmeContent)),
-            contentType: "text/markdown",
-          })
-        ).storageId;
+        const readmeKey = buildKey(userId, "bookmarks", bookmarkId, "readme.md");
+        await storage.writeBuffer(readmeKey, Buffer.from(repoInfo.readmeContent), { contentType: "text/markdown" });
+        allArtifacts.readmeStorageId = readmeKey;
 
         // Include README content in extracted text for better AI processing
         allArtifacts.extractedText =

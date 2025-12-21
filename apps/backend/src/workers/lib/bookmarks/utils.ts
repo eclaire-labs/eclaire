@@ -7,7 +7,7 @@ import { Readable } from "stream";
 import TurndownService from "turndown";
 import { type AIMessage, callAI } from "../../../lib/ai-client.js";
 import { createChildLogger } from "../../../lib/logger.js";
-import { objectStorage } from "../../../lib/storage.js";
+import { getStorage, buildKey } from "../../../lib/storage/index.js";
 
 const logger = createChildLogger("bookmark-utils");
 
@@ -129,16 +129,10 @@ export async function extractContentFromHtml(
             contentType,
           );
 
-          faviconStorageId = (
-            await objectStorage.saveAsset({
-              userId,
-              assetType: "bookmarks",
-              assetId: bookmarkId,
-              fileName,
-              fileStream: Readable.from(faviconBuffer),
-              contentType,
-            })
-          ).storageId;
+          const storage = getStorage();
+          const faviconKey = buildKey(userId, "bookmarks", bookmarkId, fileName);
+          await storage.writeBuffer(faviconKey, faviconBuffer, { contentType });
+          faviconStorageId = faviconKey;
 
           logger.debug(
             { fileName, contentType },
@@ -157,16 +151,10 @@ export async function extractContentFromHtml(
           const contentType =
             response.headers["content-type"] || "image/x-icon";
 
-          faviconStorageId = (
-            await objectStorage.saveAsset({
-              userId,
-              assetType: "bookmarks",
-              assetId: bookmarkId,
-              fileName: "favicon.ico",
-              fileStream: Readable.from(faviconBuffer),
-              contentType,
-            })
-          ).storageId;
+          const storage = getStorage();
+          const faviconKey = buildKey(userId, "bookmarks", bookmarkId, "favicon.ico");
+          await storage.writeBuffer(faviconKey, faviconBuffer, { contentType });
+          faviconStorageId = faviconKey;
         }
       }
     } catch (error: any) {
@@ -181,27 +169,14 @@ export async function extractContentFromHtml(
     }
 
     // Save raw and readable HTML content
-    const rawHtmlStorageId = (
-      await objectStorage.saveAsset({
-        userId,
-        assetType: "bookmarks",
-        assetId: bookmarkId,
-        fileName: "content-raw.html",
-        fileStream: Readable.from(Buffer.from(rawHtml)),
-        contentType: "text/html",
-      })
-    ).storageId;
+    const storageForHtml = getStorage();
+    const rawHtmlKey = buildKey(userId, "bookmarks", bookmarkId, "content-raw.html");
+    await storageForHtml.writeBuffer(rawHtmlKey, Buffer.from(rawHtml), { contentType: "text/html" });
+    const rawHtmlStorageId = rawHtmlKey;
 
-    const readableHtmlStorageId = (
-      await objectStorage.saveAsset({
-        userId,
-        assetType: "bookmarks",
-        assetId: bookmarkId,
-        fileName: "content-readable.html",
-        fileStream: Readable.from(Buffer.from(readableHtml)),
-        contentType: "text/html",
-      })
-    ).storageId;
+    const readableHtmlKey = buildKey(userId, "bookmarks", bookmarkId, "content-readable.html");
+    await storageForHtml.writeBuffer(readableHtmlKey, Buffer.from(readableHtml), { contentType: "text/html" });
+    const readableHtmlStorageId = readableHtmlKey;
 
     // Initialize turndown service for markdown conversion
     const turndownService = new TurndownService({
@@ -222,27 +197,13 @@ export async function extractContentFromHtml(
     });
 
     // Save both versions to storage
-    const extractedMdStorageId = (
-      await objectStorage.saveAsset({
-        userId,
-        assetType: "bookmarks",
-        assetId: bookmarkId,
-        fileName: "extracted.md",
-        fileStream: Readable.from(Buffer.from(markdownContent)),
-        contentType: "text/markdown",
-      })
-    ).storageId;
+    const mdKey = buildKey(userId, "bookmarks", bookmarkId, "extracted.md");
+    await storageForHtml.writeBuffer(mdKey, Buffer.from(markdownContent), { contentType: "text/markdown" });
+    const extractedMdStorageId = mdKey;
 
-    const extractedTxtStorageId = (
-      await objectStorage.saveAsset({
-        userId,
-        assetType: "bookmarks",
-        assetId: bookmarkId,
-        fileName: "extracted.txt",
-        fileStream: Readable.from(Buffer.from(plainTextContent)),
-        contentType: "text/plain",
-      })
-    ).storageId;
+    const txtKey = buildKey(userId, "bookmarks", bookmarkId, "extracted.txt");
+    await storageForHtml.writeBuffer(txtKey, Buffer.from(plainTextContent), { contentType: "text/plain" });
+    const extractedTxtStorageId = txtKey;
 
     return {
       title: article?.title || document.title || "",

@@ -428,8 +428,9 @@ export async function deleteBookmark(
     // (outside transaction - external side-effect)
     if (deleteStorage) {
       try {
-        const { objectStorage } = await import("../storage.js");
-        await objectStorage.deleteAsset(userId, "bookmarks", id);
+        const { getStorage, assetPrefix } = await import("../storage/index.js");
+        const storage = getStorage();
+        await storage.deletePrefix(assetPrefix(userId, "bookmarks", id));
         logger.info(
           `Successfully deleted storage for bookmark ${id} (user: ${userId})`,
         );

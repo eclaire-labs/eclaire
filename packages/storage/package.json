@@ -1,0 +1,32 @@
+{
+  "name": "@eclaire/storage",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Storage abstraction - local filesystem and S3-compatible backends with zero-dependency core",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./core": "./src/core/index.ts",
+    "./local": "./src/adapters/local/index.ts",
+    "./memory": "./src/adapters/memory/index.ts",
+    "./s3": "./src/adapters/s3/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@eclaire/logger": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "4.0.15"
+  }
+}

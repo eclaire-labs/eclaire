@@ -25,7 +25,7 @@ const {
 } = schema;
 
 import { getQueue, QueueNames, getQueueAdapter } from "../queue/index.js";
-import { objectStorage, type StorageInfo } from "../storage.js";
+import { getStorage, buildKey, assetPrefix } from "../storage/index.js";
 import { generateHistoryId, generatePhotoId } from "@eclaire/core";
 
 import { createChildLogger } from "../logger.js";
@@ -228,7 +228,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
   const { metadata, content, originalMimeType, userAgent, extractedMetadata } =
     data;
 
-  let storageInfo: StorageInfo | undefined;
+  let storageInfo: { storageId: string } | undefined;
   try {
     // Use the originalMimeType passed from the route (already corrected for SVG)
     // as it may have been corrected by the route handler for special cases like SVG
@@ -304,18 +304,15 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
       ? originalFilename.split(".").pop()?.toLowerCase()
       : "jpg";
 
-    const assetResult = await objectStorage.saveAsset({
-      userId: userId,
-      assetType: "photos",
-      assetId: photoId,
-      fileName: `original.${fileExtension}`,
-      fileStream: Readable.from(content),
+    const storage = getStorage();
+    const storageKey = buildKey(userId, "photos", photoId, `original.${fileExtension}`);
+    await storage.write(storageKey, Readable.from(content) as unknown as NodeJS.ReadableStream, {
       contentType: verifiedMimeType,
     });
 
     // Create storageInfo for backward compatibility
     storageInfo = {
-      storageId: assetResult.storageId,
+      storageId: storageKey,
     };
 
     // 3. Now create the photo record with the actual storage ID in a single operation
@@ -328,7 +325,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
         description: metadata.description || null,
         dueDate: dueDateValue,
         originalFilename: originalFilename,
-        storageId: assetResult.storageId, // Use the actual storage ID from the save operation
+        storageId: storageKey, // Use the actual storage ID from the save operation
         mimeType: verifiedMimeType,
         fileSize: fileSize,
         deviceId: metadata.deviceId || null,
@@ -471,7 +468,8 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
     // Attempt cleanup if storage succeeded but DB failed
     if (storageInfo?.storageId) {
       try {
-        await objectStorage.delete(storageInfo.storageId);
+        const storageForCleanup = getStorage();
+        await storageForCleanup.delete(storageInfo.storageId);
       } catch (cleanupError) {
         logger.error(
           {
@@ -657,7 +655,8 @@ export async function deletePhoto(
     // (outside transaction - external side-effect)
     if (deleteStorage) {
       try {
-        await objectStorage.deleteAsset(userId, "photos", id);
+        const storageForDelete = getStorage();
+        await storageForDelete.deletePrefix(assetPrefix(userId, "photos", id));
         logger.info({ photoId: id, userId }, "Successfully deleted storage for photo");
       } catch (storageError) {
         // Log that storage deletion failed but DB entry is gone. Don't fail the whole operation.

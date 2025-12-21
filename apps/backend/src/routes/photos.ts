@@ -21,7 +21,7 @@ import {
   reprocessPhoto,
   updatePhotoMetadata,
 } from "../lib/services/photos.js";
-import { objectStorage } from "../lib/storage.js";
+import { getStorage } from "../lib/storage/index.js";
 // Import schemas
 import {
   PartialPhotoSchema,
@@ -513,16 +513,14 @@ photosRoutes.get(
         userId,
       );
 
-      // Get the file stream from ObjectStorage
-      const { stream, contentLength } =
-        await objectStorage.getStream(storageId);
+      // Get the file stream from storage
+      const storage = getStorage();
+      const { stream, metadata } = await storage.read(storageId);
 
       // Set response headers
       const headers = new Headers();
       headers.set("Content-Type", mimeType);
-      if (contentLength !== undefined) {
-        headers.set("Content-Length", String(contentLength));
-      }
+      headers.set("Content-Length", String(metadata.size));
       headers.set("Cache-Control", "private, max-age=3600");
 
       // Return the file stream
@@ -579,16 +577,14 @@ photosRoutes.get(
         userId,
       );
 
-      // Get the thumbnail stream from ObjectStorage
-      const { stream, contentLength } =
-        await objectStorage.getStream(storageId);
+      // Get the thumbnail stream from storage
+      const storage = getStorage();
+      const { stream, metadata } = await storage.read(storageId);
 
       // Set response headers
       const headers = new Headers();
       headers.set("Content-Type", mimeType);
-      if (contentLength !== undefined) {
-        headers.set("Content-Length", String(contentLength));
-      }
+      headers.set("Content-Length", String(metadata.size));
       headers.set("Cache-Control", "public, max-age=86400");
 
       // Return the thumbnail stream
@@ -652,15 +648,13 @@ photosRoutes.get(
       try {
         // Try to get the extracted analysis file (created by the worker)
         const analysisStorageId = `${userId}/photos/${photoId}/extracted.json`;
-        const { stream, contentLength } =
-          await objectStorage.getStream(analysisStorageId);
+        const storage = getStorage();
+        const { stream, metadata } = await storage.read(analysisStorageId);
 
         // Set response headers
         const headers = new Headers();
         headers.set("Content-Type", "application/json; charset=utf-8");
-        if (contentLength !== undefined) {
-          headers.set("Content-Length", String(contentLength));
-        }
+        headers.set("Content-Length", String(metadata.size));
         // Disable caching since analysis can be updated when photos are reprocessed
         headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
         headers.set("Pragma", "no-cache");
@@ -743,17 +737,14 @@ photosRoutes.get("/:id/original", async (c) => {
       return c.json({ error: "Original file not found" }, 404);
     }
 
-    // Get the file stream from ObjectStorage
-    const { stream, contentLength } = await objectStorage.getStream(
-      photo.storageId,
-    );
+    // Get the file stream from storage
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(photo.storageId);
 
     // Set response headers
     const headers = new Headers();
     headers.set("Content-Type", photo.mimeType || "application/octet-stream");
-    if (contentLength !== undefined) {
-      headers.set("Content-Length", String(contentLength));
-    }
+    headers.set("Content-Length", String(metadata.size));
     headers.set("Cache-Control", "private, max-age=3600");
 
     // Set filename for download
@@ -816,17 +807,14 @@ photosRoutes.get("/:id/converted", async (c) => {
       return c.json({ error: "Converted JPG file not available" }, 404);
     }
 
-    // Get the file stream from ObjectStorage
-    const { stream, contentLength } = await objectStorage.getStream(
-      photo.convertedJpgStorageId,
-    );
+    // Get the file stream from storage
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(photo.convertedJpgStorageId);
 
     // Set response headers
     const headers = new Headers();
     headers.set("Content-Type", "image/jpeg");
-    if (contentLength !== undefined) {
-      headers.set("Content-Length", String(contentLength));
-    }
+    headers.set("Content-Length", String(metadata.size));
     headers.set("Cache-Control", "private, max-age=3600");
 
     // Set filename for download
@@ -888,15 +876,13 @@ photosRoutes.get(
       try {
         // Try to get the content markdown file
         const contentStorageId = `${userId}/photos/${photoId}/content.md`;
-        const { stream, contentLength } =
-          await objectStorage.getStream(contentStorageId);
+        const storage = getStorage();
+        const { stream, metadata } = await storage.read(contentStorageId);
 
         // Set response headers
         const headers = new Headers();
         headers.set("Content-Type", "text/markdown; charset=utf-8");
-        if (contentLength !== undefined) {
-          headers.set("Content-Length", String(contentLength));
-        }
+        headers.set("Content-Length", String(metadata.size));
         headers.set("Cache-Control", "private, max-age=3600");
 
         // Check if inline viewing is requested

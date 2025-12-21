@@ -21,7 +21,7 @@ import {
   getQuickStats,
   getUserDataSummary,
 } from "../lib/services/user-data.js";
-import { objectStorage } from "../lib/storage.js";
+import { getStorage } from "../lib/storage/index.js";
 import { getUserProfile } from "../lib/user.js";
 // Import schemas
 import {
@@ -501,8 +501,9 @@ userRoutes.post("/avatar", async (c) => {
       .toBuffer();
 
     // Store the processed image directly in user root directory
+    const storage = getStorage();
     const avatarPath = path.join(userId, "avatar.jpg");
-    await objectStorage.saveBuffer(processedBuffer, avatarPath);
+    await storage.writeBuffer(avatarPath, processedBuffer, { contentType: "image/jpeg" });
     const storageResult = { storageId: avatarPath };
 
     // Update user with new avatar storage ID
@@ -560,7 +561,8 @@ userRoutes.delete("/avatar", async (c) => {
 
     // Delete avatar file from storage
     try {
-      await objectStorage.delete(user.avatarStorageId);
+      const storage = getStorage();
+      await storage.delete(user.avatarStorageId);
     } catch (error) {
       // Log but don't fail if file doesn't exist
       logger.warn(
@@ -802,16 +804,13 @@ userRoutes.get("/:userId/avatar", async (c) => {
     }
 
     // Get avatar from storage
-    const { stream, contentLength } = await objectStorage.getStream(
-      user.avatarStorageId,
-    );
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(user.avatarStorageId);
 
     // Set appropriate headers
     const headers = new Headers();
-    headers.set("Content-Type", "image/jpeg");
-    if (contentLength !== undefined) {
-      headers.set("Content-Length", String(contentLength));
-    }
+    headers.set("Content-Type", metadata.contentType || "image/jpeg");
+    headers.set("Content-Length", String(metadata.size));
     headers.set("Cache-Control", "public, max-age=86400"); // Cache for 24 hours
 
     return new Response(stream, { status: 200, headers });

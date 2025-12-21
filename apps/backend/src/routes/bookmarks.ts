@@ -14,7 +14,7 @@ import {
   reprocessBookmark,
   updateBookmark,
 } from "../lib/services/bookmarks.js";
-import { objectStorage } from "../lib/storage.js";
+import { getStorage } from "../lib/storage/index.js";
 // Import schemas
 import {
   BookmarkSchema,
@@ -320,7 +320,8 @@ const serveBookmarkAsset = async (c: any, assetType: BookmarkAssetType) => {
       assetType,
     );
 
-    const { stream, contentLength } = await objectStorage.getStream(storageId);
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(storageId);
 
     const headers = new Headers();
     // Add charset for text-based content types
@@ -330,9 +331,7 @@ const serveBookmarkAsset = async (c: any, assetType: BookmarkAssetType) => {
       "Content-Type",
       needsCharset ? `${mimeType}; charset=utf-8` : mimeType,
     );
-    if (contentLength !== undefined) {
-      headers.set("Content-Length", String(contentLength));
-    }
+    headers.set("Content-Length", String(metadata.size));
     // Set aggressive caching for favicons and screenshots
     if (assetType === "favicon" || assetType === "screenshot") {
       headers.set("Cache-Control", "public, max-age=604800, immutable"); // Cache for 1 week

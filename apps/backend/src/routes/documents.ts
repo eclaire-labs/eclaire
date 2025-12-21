@@ -781,8 +781,9 @@ const serveDocumentAsset = async (c: any, assetType: DocumentAssetType) => {
       assetType,
     );
 
-    const { objectStorage } = await import("../lib/storage.js");
-    const { stream, contentLength } = await objectStorage.getStream(storageId);
+    const { getStorage } = await import("../lib/storage/index.js");
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(storageId);
 
     const headers = new Headers();
     // Add charset for text-based content types
@@ -792,9 +793,7 @@ const serveDocumentAsset = async (c: any, assetType: DocumentAssetType) => {
       "Content-Type",
       needsCharset ? `${mimeType}; charset=utf-8` : mimeType,
     );
-    if (contentLength !== undefined) {
-      headers.set("Content-Length", String(contentLength));
-    }
+    headers.set("Content-Length", String(metadata.size));
     headers.set("Cache-Control", "private, max-age=3600");
 
     return new Response(stream, { status: 200, headers });

@@ -18,7 +18,7 @@ const {
   tasksTags,
   users,
 } = schema;
-import { LocalObjectStorage, objectStorage } from "../storage.js";
+import { getStorage, userPrefix, categoryPrefix } from "../storage/index.js";
 
 // Individual delete services are no longer needed for bulk deletion
 // We use bulk transactions instead for better performance and SQLite safety
@@ -180,7 +180,8 @@ export async function deleteAllUserData(
     // 5. Clean up storage (outside transactions - can be parallel)
     // Delete the entire user folder at once for efficiency
     try {
-      await objectStorage.deleteAsset(userId, "", "");
+      const storage = getStorage();
+      await storage.deletePrefix(userPrefix(userId));
       logger.info({ userId }, "Cleaned up user storage folder");
     } catch (storageError) {
       logger.warn({ err: storageError, userId }, "Failed to clean user storage folder");
@@ -305,51 +306,56 @@ export async function getDashboardStatistics(userId: string) {
       db.select({ count: count() }).from(tasks).where(eq(tasks.userId, userId)),
     ]);
 
-    // Get storage statistics
-    const storageStats = await objectStorage.getUserStorageStats(userId);
+    // Get storage statistics using the new storage API
+    const storage = getStorage();
+    const [bookmarksStorage, documentsStorage, photosStorage, notesStorage, tasksStorage] = await Promise.all([
+      storage.stats(categoryPrefix(userId, "bookmarks")),
+      storage.stats(categoryPrefix(userId, "documents")),
+      storage.stats(categoryPrefix(userId, "photos")),
+      storage.stats(categoryPrefix(userId, "notes")),
+      storage.stats(categoryPrefix(userId, "tasks")),
+    ]);
+
+    // Helper function to format bytes
+    const formatBytes = (bytes: number): string => {
+      if (bytes === 0) return "0 B";
+      const sizes = ["B", "KB", "MB", "GB", "TB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+    };
 
     // Combine the data
     const stats = {
       assets: {
         bookmarks: {
           count: bookmarksCount[0]?.count || 0,
-          storageSize: storageStats.bookmarks.size,
+          storageSize: bookmarksStorage.size,
           storageSizeFormatted:
-            storageStats.bookmarks.size > 0
-              ? LocalObjectStorage.formatBytes(storageStats.bookmarks.size)
-              : "0 B",
+            bookmarksStorage.size > 0 ? formatBytes(bookmarksStorage.size) : "0 B",
         },
         documents: {
           count: documentsCount[0]?.count || 0,
-          storageSize: storageStats.documents.size,
+          storageSize: documentsStorage.size,
           storageSizeFormatted:
-            storageStats.documents.size > 0
-              ? LocalObjectStorage.formatBytes(storageStats.documents.size)
-              : "0 B",
+            documentsStorage.size > 0 ? formatBytes(documentsStorage.size) : "0 B",
         },
         photos: {
           count: photosCount[0]?.count || 0,
-          storageSize: storageStats.photos.size,
+          storageSize: photosStorage.size,
           storageSizeFormatted:
-            storageStats.photos.size > 0
-              ? LocalObjectStorage.formatBytes(storageStats.photos.size)
-              : "0 B",
+            photosStorage.size > 0 ? formatBytes(photosStorage.size) : "0 B",
         },
         notes: {
           count: notesCount[0]?.count || 0,
-          storageSize: storageStats.notes.size,
+          storageSize: notesStorage.size,
           storageSizeFormatted:
-            storageStats.notes.size > 0
-              ? LocalObjectStorage.formatBytes(storageStats.notes.size)
-              : "0 B",
+            notesStorage.size > 0 ? formatBytes(notesStorage.size) : "0 B",
         },
         tasks: {
           count: tasksCount[0]?.count || 0,
-          storageSize: storageStats.tasks.size,
+          storageSize: tasksStorage.size,
           storageSizeFormatted:
-            storageStats.tasks.size > 0
-              ? LocalObjectStorage.formatBytes(storageStats.tasks.size)
-              : "0 B",
+            tasksStorage.size > 0 ? formatBytes(tasksStorage.size) : "0 B",
         },
         total: {
           count:
@@ -358,11 +364,10 @@ export async function getDashboardStatistics(userId: string) {
             (photosCount[0]?.count || 0) +
             (notesCount[0]?.count || 0) +
             (tasksCount[0]?.count || 0),
-          storageSize: storageStats.total.size,
-          storageSizeFormatted:
-            storageStats.total.size > 0
-              ? LocalObjectStorage.formatBytes(storageStats.total.size)
-              : "0 B",
+          storageSize: bookmarksStorage.size + documentsStorage.size + photosStorage.size + notesStorage.size + tasksStorage.size,
+          storageSizeFormatted: formatBytes(
+            bookmarksStorage.size + documentsStorage.size + photosStorage.size + notesStorage.size + tasksStorage.size
+          ),
         },
       },
     };

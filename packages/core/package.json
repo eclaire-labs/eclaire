@@ -5,38 +5,15 @@
   "description": "Core utilities for Eclaire applications - ID generation, encryption, types",
   "license": "MIT",
   "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./id": {
-      "import": "./dist/id-generator.js",
-      "require": "./dist/id-generator.js",
-      "types": "./dist/id-generator.d.ts"
-    },
-    "./encryption": {
-      "import": "./dist/encryption.js",
-      "require": "./dist/encryption.js",
-      "types": "./dist/encryption.d.ts"
-    },
-    "./types": {
-      "import": "./dist/types.js",
-      "require": "./dist/types.js",
-      "types": "./dist/types.d.ts"
-    },
-    "./utils": {
-      "import": "./dist/utils.js",
-      "require": "./dist/utils.js",
-      "types": "./dist/utils.d.ts"
-    }
+    ".": "./src/index.ts",
+    "./id": "./src/id-generator.ts",
+    "./encryption": "./src/encryption.ts",
+    "./types": "./src/types.ts",
+    "./utils": "./src/utils.ts"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",

@@ -80,6 +80,7 @@
     "@eclaire/db": "workspace:*",
     "@eclaire/logger": "workspace:*",
     "@eclaire/queue": "workspace:*",
+    "@eclaire/storage": "workspace:*",
     "@bull-board/api": "6.15.0",
     "@bull-board/hono": "6.15.0",
     "@bull-board/ui": "6.15.0",

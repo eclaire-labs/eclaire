@@ -18,7 +18,7 @@ import { processRedditApiBookmark } from "../lib/bookmarks/reddit-api.js";
 import { domainRateLimiter } from "../lib/domainRateLimiter.js";
 import { createRateLimitError } from "../lib/job-utils.js";
 import { createChildLogger } from "../../lib/logger.js";
-import { objectStorage } from "../../lib/storage.js";
+import { getStorage, buildKey } from "../../lib/storage/index.js";
 import { TimeoutError, withTimeout } from "../lib/utils/timeout.js";
 
 const logger = createChildLogger("bookmark-processor");
@@ -157,36 +157,23 @@ async function processRegularBookmarkJob(
       );
 
       // Generate thumbnail (lower resolution, 400x400, 85% quality)
+      const storage = getStorage();
       const thumbnailBuffer = await sharp(ssDesktopBuffer)
         .resize(400, 400, { fit: "inside", withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toBuffer();
-      allArtifacts.thumbnailStorageId = (
-        await objectStorage.saveAsset({
-          userId,
-          assetType: "bookmarks",
-          assetId: bookmarkId,
-          fileName: "thumbnail.jpg",
-          fileStream: Readable.from(thumbnailBuffer),
-          contentType: "image/jpeg",
-        })
-      ).storageId;
+      const thumbnailKey = buildKey(userId, "bookmarks", bookmarkId, "thumbnail.jpg");
+      await storage.writeBuffer(thumbnailKey, thumbnailBuffer, { contentType: "image/jpeg" });
+      allArtifacts.thumbnailStorageId = thumbnailKey;
 
       // Generate screenshot (higher resolution, 1920x1440, 90% quality)
       const screenshotBuffer = await sharp(ssDesktopBuffer)
         .resize(1920, 1440, { fit: "inside", withoutEnlargement: true })
         .jpeg({ quality: 90 })
         .toBuffer();
-      allArtifacts.screenshotDesktopStorageId = (
-        await objectStorage.saveAsset({
-          userId,
-          assetType: "bookmarks",
-          assetId: bookmarkId,
-          fileName: "screenshot.jpg",
-          fileStream: Readable.from(screenshotBuffer),
-          contentType: "image/jpeg",
-        })
-      ).storageId;
+      const screenshotKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot.jpg");
+      await storage.writeBuffer(screenshotKey, screenshotBuffer, { contentType: "image/jpeg" });
+      allArtifacts.screenshotDesktopStorageId = screenshotKey;
     } catch (screenshotError: any) {
       const errorMessage =
         screenshotError instanceof TimeoutError
@@ -205,16 +192,10 @@ async function processRegularBookmarkJob(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
         "base64",
       );
-      allArtifacts.thumbnailStorageId = (
-        await objectStorage.saveAsset({
-          userId,
-          assetType: "bookmarks",
-          assetId: bookmarkId,
-          fileName: "thumbnail-fallback.jpg",
-          fileStream: Readable.from(fallbackBuffer),
-          contentType: "image/jpeg",
-        })
-      ).storageId;
+      const storage = getStorage();
+      const fallbackKey = buildKey(userId, "bookmarks", bookmarkId, "thumbnail-fallback.jpg");
+      await storage.writeBuffer(fallbackKey, fallbackBuffer, { contentType: "image/jpeg" });
+      allArtifacts.thumbnailStorageId = fallbackKey;
       ssDesktopBuffer = fallbackBuffer;
     }
 
@@ -234,16 +215,10 @@ async function processRegularBookmarkJob(
         { bookmarkId },
         "Full page screenshot completed successfully.",
       );
-      allArtifacts.screenshotFullPageStorageId = (
-        await objectStorage.saveAsset({
-          userId,
-          assetType: "bookmarks",
-          assetId: bookmarkId,
-          fileName: "screenshot-fullpage.png",
-          fileStream: Readable.from(ssFullPageBuffer),
-          contentType: "image/png",
-        })
-      ).storageId;
+      const storageForFullPage = getStorage();
+      const fullpageKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot-fullpage.png");
+      await storageForFullPage.writeBuffer(fullpageKey, ssFullPageBuffer, { contentType: "image/png" });
+      allArtifacts.screenshotFullPageStorageId = fullpageKey;
     } catch (fullPageError: any) {
       const errorMessage =
         fullPageError instanceof TimeoutError
@@ -273,16 +248,10 @@ async function processRegularBookmarkJob(
         "Mobile screenshot",
       );
       logger.debug({ bookmarkId }, "Mobile screenshot completed successfully.");
-      allArtifacts.screenshotMobileStorageId = (
-        await objectStorage.saveAsset({
-          userId,
-          assetType: "bookmarks",
-          assetId: bookmarkId,
-          fileName: "screenshot-mobile.png",
-          fileStream: Readable.from(ssMobileBuffer),
-          contentType: "image/png",
-        })
-      ).storageId;
+      const storageForMobile = getStorage();
+      const mobileKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot-mobile.png");
+      await storageForMobile.writeBuffer(mobileKey, ssMobileBuffer, { contentType: "image/png" });
+      allArtifacts.screenshotMobileStorageId = mobileKey;
     } catch (mobileError: any) {
       const errorMessage =
         mobileError instanceof TimeoutError
@@ -312,16 +281,10 @@ async function processRegularBookmarkJob(
         "PDF generation",
       );
       logger.debug({ bookmarkId }, "PDF generation completed successfully.");
-      allArtifacts.pdfStorageId = (
-        await objectStorage.saveAsset({
-          userId,
-          assetType: "bookmarks",
-          assetId: bookmarkId,
-          fileName: "content.pdf",
-          fileStream: Readable.from(pdfBuffer),
-          contentType: "application/pdf",
-        })
-      ).storageId;
+      const storageForPdf = getStorage();
+      const pdfKey = buildKey(userId, "bookmarks", bookmarkId, "content.pdf");
+      await storageForPdf.writeBuffer(pdfKey, pdfBuffer, { contentType: "application/pdf" });
+      allArtifacts.pdfStorageId = pdfKey;
     } catch (pdfError: any) {
       const errorMessage =
         pdfError instanceof TimeoutError

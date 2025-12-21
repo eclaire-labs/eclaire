@@ -5,54 +5,18 @@
   "description": "Database abstraction for Eclaire applications - schemas, transactions, migrations",
   "license": "MIT",
   "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./types": {
-      "import": "./dist/types.js",
-      "require": "./dist/types.js",
-      "types": "./dist/types.d.ts"
-    },
-    "./config": {
-      "import": "./dist/config.js",
-      "require": "./dist/config.js",
-      "types": "./dist/config.d.ts"
-    },
-    "./utils": {
-      "import": "./dist/utils.js",
-      "require": "./dist/utils.js",
-      "types": "./dist/utils.d.ts"
-    },
-    "./schema/postgres": {
-      "import": "./dist/schema/postgres.js",
-      "require": "./dist/schema/postgres.js",
-      "types": "./dist/schema/postgres.d.ts"
-    },
-    "./schema/sqlite": {
-      "import": "./dist/schema/sqlite.js",
-      "require": "./dist/schema/sqlite.js",
-      "types": "./dist/schema/sqlite.d.ts"
-    },
-    "./adapters/postgres/tx": {
-      "import": "./dist/adapters/postgres/tx.js",
-      "require": "./dist/adapters/postgres/tx.js",
-      "types": "./dist/adapters/postgres/tx.d.ts"
-    },
-    "./adapters/sqlite/tx": {
-      "import": "./dist/adapters/sqlite/tx.js",
-      "require": "./dist/adapters/sqlite/tx.js",
-      "types": "./dist/adapters/sqlite/tx.d.ts"
-    }
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./config": "./src/config.ts",
+    "./utils": "./src/utils.ts",
+    "./schema/postgres": "./src/schema/postgres.ts",
+    "./schema/sqlite": "./src/schema/sqlite.ts",
+    "./adapters/postgres/tx": "./src/adapters/postgres/tx.ts",
+    "./adapters/sqlite/tx": "./src/adapters/sqlite/tx.ts"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist",
-    "src/migrations"
-  ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",

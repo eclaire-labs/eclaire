@@ -5,7 +5,7 @@ import type { JobContext } from "@eclaire/queue/core";
 import { config } from "../config.js";
 import { type AIMessage, callAI } from "../../lib/ai-client.js";
 import { createChildLogger } from "../../lib/logger.js";
-import { objectStorage } from "../../lib/storage.js";
+import { getStorage, buildKey } from "../../lib/storage/index.js";
 
 const logger = createChildLogger("image-processor");
 
@@ -119,18 +119,14 @@ async function executeImageConversion(
     await ctx.updateStageProgress(stageName, 50);
 
     // Save the converted JPEG and use the required artifact name.
-    const savedAsset = await objectStorage.saveAssetBuffer(
-      jpegBuffer,
-      userId,
-      "photos",
-      photoId,
-      "converted.jpg",
-    );
-    const artifacts = { convertedJpgStorageId: savedAsset.storageId };
+    const storage = getStorage();
+    const convertedKey = buildKey(userId, "photos", photoId, "converted.jpg");
+    await storage.writeBuffer(convertedKey, jpegBuffer, { contentType: "image/jpeg" });
+    const artifacts = { convertedJpgStorageId: convertedKey };
 
     await ctx.completeStage(stageName, artifacts);
     logger.info(
-      { photoId, storageId: savedAsset.storageId, from: sourceMimeType },
+      { photoId, storageId: convertedKey, from: sourceMimeType },
       "Successfully converted image to JPEG",
     );
 
@@ -165,18 +161,14 @@ async function executeThumbnailGeneration(
       .toBuffer();
 
     await ctx.updateStageProgress(stageName, 50);
-    const savedAsset = await objectStorage.saveAssetBuffer(
-      thumbnailBuffer,
-      userId,
-      "photos",
-      photoId,
-      "thumbnail.jpg",
-    );
-    const artifacts = { thumbnailStorageId: savedAsset.storageId };
+    const storage = getStorage();
+    const thumbnailKey = buildKey(userId, "photos", photoId, "thumbnail.jpg");
+    await storage.writeBuffer(thumbnailKey, thumbnailBuffer, { contentType: "image/jpeg" });
+    const artifacts = { thumbnailStorageId: thumbnailKey };
 
     await ctx.completeStage(stageName, artifacts);
     logger.info(
-      { photoId, storageId: savedAsset.storageId },
+      { photoId, storageId: thumbnailKey },
       "Successfully generated thumbnail.",
     );
 
@@ -434,7 +426,9 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
   try {
     // STAGE: IMAGE PREPARATION
     await ctx.startStage(STAGES.PREPARATION);
-    let imageBuffer = await objectStorage.getBuffer(storageId);
+    const storage = getStorage();
+    const { buffer: imageBufferRaw } = await storage.readBuffer(storageId);
+    let imageBuffer = imageBufferRaw;
     if (imageBuffer.length === 0)
       throw new Error("Fetched image file is empty.");
     await ctx.completeStage(STAGES.PREPARATION);
@@ -545,17 +539,12 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
     const extractedJsonBuffer = Buffer.from(
       JSON.stringify(extractedData, null, 2),
     );
-    const savedExtractedJson = await objectStorage.saveAssetBuffer(
-      extractedJsonBuffer,
-      userId,
-      "photos",
-      photoId,
-      "extracted.json",
-    );
-    allArtifacts.extractedJsonStorageId = savedExtractedJson.storageId;
+    const extractedJsonKey = buildKey(userId, "photos", photoId, "extracted.json");
+    await storage.writeBuffer(extractedJsonKey, extractedJsonBuffer, { contentType: "application/json" });
+    allArtifacts.extractedJsonStorageId = extractedJsonKey;
 
     logger.info(
-      { photoId, storageId: savedExtractedJson.storageId },
+      { photoId, storageId: extractedJsonKey },
       "Successfully saved extracted analysis data as JSON",
     );
 

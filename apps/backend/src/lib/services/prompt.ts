@@ -25,7 +25,7 @@ import {
   updateConversationActivity,
 } from "./conversations.js";
 import { buildAIMessageArray, createMessage } from "./messages.js";
-import { objectStorage } from "../storage.js";
+import { getStorage } from "../storage/index.js";
 import { toolRegistry } from "../tool-registry.js";
 import { getUserContextForPrompt } from "../user.js";
 import type {
@@ -130,7 +130,8 @@ export async function fetchAssetContent(
         // Try to get content from storage file
         if (bookmark.extractedTxtStorageId) {
           try {
-            const buffer = await objectStorage.getBuffer(
+            const storage = getStorage();
+            const { buffer } = await storage.readBuffer(
               bookmark.extractedTxtStorageId,
             );
             const content = buffer.toString("utf-8");
@@ -200,7 +201,8 @@ export async function fetchAssetContent(
         // Try to get markdown content first (from Docling processor)
         if (document.extractedMdStorageId) {
           try {
-            const buffer = await objectStorage.getBuffer(
+            const storage = getStorage();
+            const { buffer } = await storage.readBuffer(
               document.extractedMdStorageId,
             );
             const markdownContent = buffer.toString("utf-8");
@@ -229,7 +231,8 @@ export async function fetchAssetContent(
         // Try to get plain text content from storage file
         if (document.extractedTxtStorageId) {
           try {
-            const buffer = await objectStorage.getBuffer(
+            const storageForText = getStorage();
+            const { buffer } = await storageForText.readBuffer(
               document.extractedTxtStorageId,
             );
             const textContent = buffer.toString("utf-8");
