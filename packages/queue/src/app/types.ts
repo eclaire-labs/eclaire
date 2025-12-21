@@ -9,6 +9,8 @@ import type { Redis } from "ioredis";
 // --- Job Data Types ---
 
 export interface JobData {
+  /** Request ID for tracing - propagated from HTTP request that triggered the job */
+  requestId?: string;
   [key: string]: any;
 }
 

@@ -5,7 +5,7 @@
  * Uses the queue_jobs table (via driver-db) for job storage.
  */
 
-import type { Logger } from "@eclaire/logger";
+import { type Logger, getRequestId } from "@eclaire/logger";
 import type { DbInstance } from "@eclaire/db";
 import type { QueueClient } from "../../core/types.js";
 import { createDbQueueClient } from "../../driver-db/client.js";
@@ -94,8 +94,11 @@ export function createDatabaseAdapter(config: DatabaseAdapterConfig): QueueAdapt
     // This replaces the old (assetType, assetId, jobType) unique constraint
     const key = `${assetType}:${assetId}`;
 
+    // Get requestId from AsyncLocalStorage (set by HTTP middleware)
+    const requestId = getRequestId();
+
     try {
-      await queueClient.enqueue(queueName, data, {
+      await queueClient.enqueue(queueName, { ...data, requestId }, {
         key,
         priority: options.priority || 0,
         runAt: options.scheduledFor,

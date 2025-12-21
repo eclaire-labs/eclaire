@@ -4,7 +4,7 @@
  * Redis-backed queue implementation using BullMQ for high-throughput job processing.
  */
 
-import type { Logger } from "@eclaire/logger";
+import { type Logger, getRequestId } from "@eclaire/logger";
 import type { QueueManager } from "../queues.js";
 import { QueueNames } from "../queue-names.js";
 import type {
@@ -37,9 +37,13 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         throw new Error("Queue not available");
       }
 
+      // Get requestId from AsyncLocalStorage (set by HTTP middleware)
+      const requestId = getRequestId();
+
       // Job options inherited from queue's defaultJobOptions
       await queue.add("process-bookmark", {
         ...data,
+        requestId,
         __metadata: { assetType: "bookmark", assetId: data.bookmarkId, userId: data.userId },
       });
 
@@ -56,8 +60,11 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         throw new Error("Queue not available");
       }
 
+      const requestId = getRequestId();
+
       await queue.add("process-image", {
         ...data,
+        requestId,
         __metadata: { assetType: "image", assetId: data.imageId, userId: data.userId },
       });
 
@@ -74,8 +81,11 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         throw new Error("Queue not available");
       }
 
+      const requestId = getRequestId();
+
       await queue.add("process-document", {
         ...data,
+        requestId,
         __metadata: { assetType: "document", assetId: data.documentId, userId: data.userId },
       });
 
@@ -92,8 +102,11 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         throw new Error("Queue not available");
       }
 
+      const requestId = getRequestId();
+
       await queue.add("process-note", {
         ...data,
+        requestId,
         __metadata: { assetType: "note", assetId: data.noteId, userId: data.userId },
       });
 
@@ -110,8 +123,11 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         throw new Error("Queue not available");
       }
 
+      const requestId = getRequestId();
+
       await queue.add("process-task", {
         ...data,
+        requestId,
         __metadata: { assetType: "task", assetId: data.taskId, userId: data.userId },
       });
 

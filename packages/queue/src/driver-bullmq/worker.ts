@@ -66,6 +66,7 @@ export function createBullMQWorker<T = unknown>(
     prefix = DEFAULTS.prefix,
     eventCallbacks,
     bullmqOptions,
+    wrapJobExecution,
   } = config;
 
   const {
@@ -87,6 +88,8 @@ export function createBullMQWorker<T = unknown>(
     __stages?: JobStage[];
     __currentStage?: string;
     __metadata?: Record<string, unknown>;
+    /** Request ID propagated from the HTTP request that triggered this job */
+    requestId?: string;
     [key: string]: unknown;
   }
 
@@ -126,118 +129,130 @@ export function createBullMQWorker<T = unknown>(
     const job = toJob(bullmqJob);
     const jobData = bullmqJob.data as ExtendedJobData;
 
-    // Track current stages locally
-    let currentStages: JobStage[] = jobData.__stages || [];
-    const metadata = jobData.__metadata;
+    // Extract requestId from job data (propagated from HTTP request)
+    const requestId = jobData.requestId;
 
-    // Helper to persist stage updates
-    const persistStages = async (stages: JobStage[], currentStageName: string | null) => {
-      currentStages = stages;
-      job.stages = stages;
-      job.currentStage = currentStageName || undefined;
-      job.overallProgress = calculateOverallProgress(stages);
+    // Core job execution logic
+    const executeJob = async (): Promise<void> => {
+      // Track current stages locally
+      let currentStages: JobStage[] = jobData.__stages || [];
+      const metadata = jobData.__metadata;
 
-      // Update job data with new stages
-      await bullmqJob.updateData({
-        ...jobData,
-        __stages: stages,
-        __currentStage: currentStageName,
-      } as T);
+      // Helper to persist stage updates
+      const persistStages = async (stages: JobStage[], currentStageName: string | null) => {
+        currentStages = stages;
+        job.stages = stages;
+        job.currentStage = currentStageName || undefined;
+        job.overallProgress = calculateOverallProgress(stages);
 
-      // Update progress as overall percentage
-      await bullmqJob.updateProgress(job.overallProgress);
+        // Update job data with new stages
+        await bullmqJob.updateData({
+          ...jobData,
+          __stages: stages,
+          __currentStage: currentStageName,
+        } as T);
+
+        // Update progress as overall percentage
+        await bullmqJob.updateProgress(job.overallProgress);
+      };
+
+      const ctx: JobContext<T> = {
+        job,
+        async heartbeat() {
+          // BullMQ handles lock extension automatically via lockDuration
+          // But we can update progress to show activity
+          await bullmqJob.updateProgress(bullmqJob.progress || 0);
+        },
+        log(message: string) {
+          bullmqJob.log(message);
+          logger.info({ jobId: job.id }, message);
+        },
+        progress(percent: number) {
+          bullmqJob.updateProgress(percent);
+          logger.debug({ jobId: job.id, progress: percent }, "Job progress");
+          eventCallbacks?.onStageProgress?.(job.id, job.currentStage || "", percent, metadata);
+        },
+
+        // Multi-stage progress tracking methods
+        async initStages(stageNames: string[]) {
+          const stages = initializeStages(stageNames);
+          await persistStages(stages, null);
+          logger.debug({ jobId: job.id, stages: stageNames }, "Job stages initialized");
+        },
+
+        async startStage(stageName: string) {
+          const updatedStages = startStageInList(currentStages, stageName);
+          await persistStages(updatedStages, stageName);
+          logger.debug({ jobId: job.id, stage: stageName }, "Stage started");
+          eventCallbacks?.onStageStart?.(job.id, stageName, metadata);
+        },
+
+        async updateStageProgress(stageName: string, percent: number) {
+          // Lightweight operation - only update local state and emit event
+          currentStages = updateStageProgressInList(currentStages, stageName, percent);
+          job.stages = currentStages;
+          job.overallProgress = calculateOverallProgress(currentStages);
+          eventCallbacks?.onStageProgress?.(job.id, stageName, percent, metadata);
+        },
+
+        async completeStage(stageName: string, artifacts?: Record<string, unknown>) {
+          const updatedStages = completeStageInList(currentStages, stageName, artifacts);
+          await persistStages(updatedStages, null);
+          logger.debug({ jobId: job.id, stage: stageName }, "Stage completed");
+          eventCallbacks?.onStageComplete?.(job.id, stageName, artifacts, metadata);
+        },
+
+        async failStage(stageName: string, error: Error) {
+          const updatedStages = failStageInList(currentStages, stageName, error.message);
+          await persistStages(updatedStages, null);
+          logger.debug({ jobId: job.id, stage: stageName, error: error.message }, "Stage failed");
+          eventCallbacks?.onStageFail?.(job.id, stageName, error.message, metadata);
+        },
+
+        async addStages(stageNames: string[]) {
+          const updatedStages = addStagesToList(currentStages, stageNames);
+          await persistStages(updatedStages, job.currentStage || null);
+          logger.debug({ jobId: job.id, addedStages: stageNames }, "Stages added");
+        },
+      };
+
+      try {
+        await handler(ctx);
+        // Call onJobComplete callback
+        eventCallbacks?.onJobComplete?.(job.id, metadata);
+      } catch (error) {
+        // Handle rate limit errors: reschedule just this job without consuming attempt
+        // Note: We use moveToDelayed instead of worker.rateLimit() because rateLimit()
+        // throttles the entire worker/queue, not just the delayed job. This matches
+        // DB semantics where only the affected job is delayed.
+        if (isRateLimitError(error)) {
+          const rateLimitError = error as RateLimitError;
+          const delayUntil = Date.now() + rateLimitError.retryAfter;
+          // Move just this job to delayed state
+          await bullmqJob.moveToDelayed(delayUntil, bullmqJob.token);
+          // Throw DelayedError to signal completion without incrementing attempts
+          throw new DelayedError(
+            `Rate limited, retry after ${rateLimitError.retryAfter}ms`,
+          );
+        }
+
+        // Handle permanent errors: fail immediately, no retries
+        if (isPermanentError(error)) {
+          throw new UnrecoverableError(
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+
+        // RetryableError and generic errors: let BullMQ handle retry with backoff
+        throw error;
+      }
     };
 
-    const ctx: JobContext<T> = {
-      job,
-      async heartbeat() {
-        // BullMQ handles lock extension automatically via lockDuration
-        // But we can update progress to show activity
-        await bullmqJob.updateProgress(bullmqJob.progress || 0);
-      },
-      log(message: string) {
-        bullmqJob.log(message);
-        logger.info({ jobId: job.id }, message);
-      },
-      progress(percent: number) {
-        bullmqJob.updateProgress(percent);
-        logger.debug({ jobId: job.id, progress: percent }, "Job progress");
-        eventCallbacks?.onStageProgress?.(job.id, job.currentStage || "", percent, metadata);
-      },
-
-      // Multi-stage progress tracking methods
-      async initStages(stageNames: string[]) {
-        const stages = initializeStages(stageNames);
-        await persistStages(stages, null);
-        logger.debug({ jobId: job.id, stages: stageNames }, "Job stages initialized");
-      },
-
-      async startStage(stageName: string) {
-        const updatedStages = startStageInList(currentStages, stageName);
-        await persistStages(updatedStages, stageName);
-        logger.debug({ jobId: job.id, stage: stageName }, "Stage started");
-        eventCallbacks?.onStageStart?.(job.id, stageName, metadata);
-      },
-
-      async updateStageProgress(stageName: string, percent: number) {
-        // Lightweight operation - only update local state and emit event
-        currentStages = updateStageProgressInList(currentStages, stageName, percent);
-        job.stages = currentStages;
-        job.overallProgress = calculateOverallProgress(currentStages);
-        eventCallbacks?.onStageProgress?.(job.id, stageName, percent, metadata);
-      },
-
-      async completeStage(stageName: string, artifacts?: Record<string, unknown>) {
-        const updatedStages = completeStageInList(currentStages, stageName, artifacts);
-        await persistStages(updatedStages, null);
-        logger.debug({ jobId: job.id, stage: stageName }, "Stage completed");
-        eventCallbacks?.onStageComplete?.(job.id, stageName, artifacts, metadata);
-      },
-
-      async failStage(stageName: string, error: Error) {
-        const updatedStages = failStageInList(currentStages, stageName, error.message);
-        await persistStages(updatedStages, null);
-        logger.debug({ jobId: job.id, stage: stageName, error: error.message }, "Stage failed");
-        eventCallbacks?.onStageFail?.(job.id, stageName, error.message, metadata);
-      },
-
-      async addStages(stageNames: string[]) {
-        const updatedStages = addStagesToList(currentStages, stageNames);
-        await persistStages(updatedStages, job.currentStage || null);
-        logger.debug({ jobId: job.id, addedStages: stageNames }, "Stages added");
-      },
-    };
-
-    try {
-      await handler(ctx);
-      // Call onJobComplete callback
-      eventCallbacks?.onJobComplete?.(job.id, metadata);
-    } catch (error) {
-      // Handle rate limit errors: reschedule just this job without consuming attempt
-      // Note: We use moveToDelayed instead of worker.rateLimit() because rateLimit()
-      // throttles the entire worker/queue, not just the delayed job. This matches
-      // DB semantics where only the affected job is delayed.
-      if (isRateLimitError(error)) {
-        const rateLimitError = error as RateLimitError;
-        const delayUntil = Date.now() + rateLimitError.retryAfter;
-        // Move just this job to delayed state
-        await bullmqJob.moveToDelayed(delayUntil, bullmqJob.token);
-        // Throw DelayedError to signal completion without incrementing attempts
-        throw new DelayedError(
-          `Rate limited, retry after ${rateLimitError.retryAfter}ms`,
-        );
-      }
-
-      // Handle permanent errors: fail immediately, no retries
-      if (isPermanentError(error)) {
-        throw new UnrecoverableError(
-          error instanceof Error ? error.message : String(error),
-        );
-      }
-
-      // RetryableError and generic errors: let BullMQ handle retry with backoff
-      throw error;
+    // Use wrapper if provided (e.g., for request tracing), otherwise execute directly
+    if (wrapJobExecution) {
+      return wrapJobExecution(requestId, executeJob);
     }
+    return executeJob();
   }
 
   return {

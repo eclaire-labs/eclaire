@@ -22,6 +22,7 @@ import { publishDirectSSEEvent } from "../../routes/processing-events.js";
 import { processArtifacts } from "../../lib/services/artifact-processor.js";
 import type { AssetType } from "../../types/assets.js";
 import { createChildLogger } from "../../lib/logger.js";
+import { runWithRequestId } from "@eclaire/logger";
 
 // Import job processors
 import processBookmarkJob from "../jobs/bookmarkProcessor.js";
@@ -83,6 +84,13 @@ function getWorkerConfig(): Omit<DbWorkerConfig, "eventCallbacks"> {
     heartbeatInterval: 60000, // 1 minute
     pollInterval: 5000, // 5 seconds
     gracefulShutdownTimeout: 30000, // 30 seconds
+    // Wrap job execution in AsyncLocalStorage context for request tracing
+    wrapJobExecution: async (requestId, execute) => {
+      if (requestId) {
+        return runWithRequestId(requestId, execute);
+      }
+      return execute();
+    },
   };
 }
 

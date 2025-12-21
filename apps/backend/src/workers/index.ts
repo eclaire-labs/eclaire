@@ -24,6 +24,7 @@ import { validateAIConfigOnStartup } from "../lib/ai-client.js";
 import { startDirectDbWorkers, stopDirectDbWorkers } from "./lib/direct-db-workers.js";
 import { createRedisPublisher } from "./lib/redis-publisher.js";
 import { createChildLogger } from "../lib/logger.js";
+import { runWithRequestId } from "@eclaire/logger";
 import {
   closeQueues,
   getAllQueues,
@@ -99,6 +100,13 @@ export async function startBullMQWorkers(): Promise<void> {
     logger,
     prefix: "queue",
     eventCallbacks,
+    // Wrap job execution in AsyncLocalStorage context for request tracing
+    wrapJobExecution: async (requestId, execute) => {
+      if (requestId) {
+        return runWithRequestId(requestId, execute);
+      }
+      return execute();
+    },
   };
 
   // Long task options (5 min lock, 1 min heartbeat)

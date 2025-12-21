@@ -68,6 +68,27 @@ export interface BullMQWorkerConfig {
    * These are spread into the underlying BullMQ Worker construction.
    */
   bullmqOptions?: Partial<BullMQWorkerOptions>;
+
+  /**
+   * Optional wrapper for job execution context (e.g., for request tracing).
+   *
+   * Receives the requestId from job data (if present) and a function to execute.
+   * Use this to wrap job processing in AsyncLocalStorage or similar context.
+   *
+   * @example
+   * ```typescript
+   * wrapJobExecution: async (requestId, execute) => {
+   *   if (requestId) {
+   *     return runWithRequestId(requestId, execute);
+   *   }
+   *   return execute();
+   * }
+   * ```
+   */
+  wrapJobExecution?: <R>(
+    requestId: string | undefined,
+    execute: () => Promise<R>,
+  ) => Promise<R>;
 }
 
 /**

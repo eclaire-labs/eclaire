@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { createLoggerFactory } from "@eclaire/logger";
+import { createLoggerFactory, runWithRequestId } from "@eclaire/logger";
 
 // Re-export Logger type for convenience
 export type { Logger } from "@eclaire/logger";
@@ -88,55 +88,59 @@ export const smartLogger = () => {
       }
     }
 
-    logger.info(logData, "Request started");
+    // Wrap entire request in AsyncLocalStorage context
+    // This propagates requestId to all async operations, including queue enqueue calls
+    return runWithRequestId(requestId, async () => {
+      logger.info(logData, "Request started");
 
-    try {
-      await next();
+      try {
+        await next();
 
-      const duration = Date.now() - start;
+        const duration = Date.now() - start;
 
-      // Get user info if available (after auth middleware has run)
-      const user = c.get("user");
-      const userId = user?.id;
+        // Get user info if available (after auth middleware has run)
+        const user = c.get("user");
+        const userId = user?.id;
 
-      logger.info(
-        {
-          requestId,
-          method: c.req.method,
-          path: url.pathname,
-          query: url.search || undefined,
-          status: c.res.status,
-          duration: `${duration}ms`,
-          userId: userId || undefined,
-          responseContentLength:
-            c.res.headers.get("content-length") || undefined,
-          responseContentType: c.res.headers.get("content-type") || undefined,
-        },
-        "Request completed",
-      );
-    } catch (error) {
-      const duration = Date.now() - start;
+        logger.info(
+          {
+            requestId,
+            method: c.req.method,
+            path: url.pathname,
+            query: url.search || undefined,
+            status: c.res.status,
+            duration: `${duration}ms`,
+            userId: userId || undefined,
+            responseContentLength:
+              c.res.headers.get("content-length") || undefined,
+            responseContentType: c.res.headers.get("content-type") || undefined,
+          },
+          "Request completed",
+        );
+      } catch (error) {
+        const duration = Date.now() - start;
 
-      // Get user info if available (even for failed requests)
-      const user = c.get("user");
-      const userId = user?.id;
+        // Get user info if available (even for failed requests)
+        const user = c.get("user");
+        const userId = user?.id;
 
-      logger.error(
-        {
-          requestId,
-          method: c.req.method,
-          path: url.pathname,
-          query: url.search || undefined,
-          userId: userId || undefined,
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-          duration: `${duration}ms`,
-        },
-        "Request failed",
-      );
+        logger.error(
+          {
+            requestId,
+            method: c.req.method,
+            path: url.pathname,
+            query: url.search || undefined,
+            userId: userId || undefined,
+            error: error instanceof Error ? error.message : "Unknown error",
+            stack: error instanceof Error ? error.stack : undefined,
+            duration: `${duration}ms`,
+          },
+          "Request failed",
+        );
 
-      throw error;
-    }
+        throw error;
+      }
+    });
   };
 };
 

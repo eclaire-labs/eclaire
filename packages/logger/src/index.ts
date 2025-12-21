@@ -1,6 +1,15 @@
 import pino, { type Logger, type LoggerOptions } from "pino";
+import { getRequestId } from "./context.js";
 
 export type { Logger } from "pino";
+
+// Re-export context utilities for consumers
+export {
+  asyncLocalStorage,
+  getRequestId,
+  runWithRequestId,
+  type RequestContext,
+} from "./context.js";
 
 export interface LoggerConfig {
   /** Service name for log identification */
@@ -41,6 +50,11 @@ export function createLogger(config: LoggerConfig): Logger {
 
   const options: LoggerOptions = {
     level,
+    // Mixin automatically adds requestId from AsyncLocalStorage to every log entry
+    mixin() {
+      const requestId = getRequestId();
+      return requestId ? { requestId } : {};
+    },
     formatters: {
       level: (label) => ({ level: label }),
       log: (object) => ({

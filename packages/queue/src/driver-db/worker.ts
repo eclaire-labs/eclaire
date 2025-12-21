@@ -66,6 +66,7 @@ export function createDbWorker<T = unknown>(
     notifyListener,
     gracefulShutdownTimeout = DEFAULTS.gracefulShutdownTimeout,
     eventCallbacks,
+    wrapJobExecution,
   } = config;
 
   const { concurrency = DEFAULTS.concurrency } = options;
@@ -97,183 +98,196 @@ export function createDbWorker<T = unknown>(
       return;
     }
 
-    try {
-      // Start heartbeat
-      heartbeatTimer = setInterval(async () => {
-        try {
-          const extended = await extendJobLock(
+    // Extract requestId from job data (propagated from HTTP request)
+    const jobData = claimed.data as Record<string, unknown>;
+    const requestId = jobData?.requestId as string | undefined;
+
+    // Core job execution logic
+    const executeJob = async (): Promise<void> => {
+      try {
+        // Start heartbeat
+        heartbeatTimer = setInterval(async () => {
+          try {
+            const extended = await extendJobLock(
+              db,
+              queueJobs,
+              claimed.id,
+              workerId,
+              lockToken,
+              lockDuration,
+              logger,
+            );
+            if (!extended) {
+              logger.warn({ jobId: claimed.id }, "Lock extension failed - lock may be lost");
+            }
+          } catch (err) {
+            logger.error(
+              { jobId: claimed.id, error: err instanceof Error ? err.message : "Unknown" },
+              "Heartbeat failed",
+            );
+          }
+        }, heartbeatInterval);
+
+        // Create job context with stage tracking
+        // Parse stages from claimed job (may be JSON string from SQLite)
+        let currentStages: JobStage[] = claimed.stages
+          ? typeof claimed.stages === "string"
+            ? JSON.parse(claimed.stages)
+            : claimed.stages
+          : [];
+
+        const job: Job<T> = {
+          id: claimed.id,
+          key: claimed.key || undefined,
+          queue: claimed.queue,
+          data: claimed.data as T,
+          status: claimed.status as Job["status"],
+          priority: claimed.priority,
+          attempts: claimed.attempts,
+          maxAttempts: claimed.maxAttempts,
+          createdAt: claimed.createdAt,
+          scheduledFor: claimed.scheduledFor || undefined,
+          updatedAt: claimed.updatedAt,
+          stages: currentStages.length > 0 ? currentStages : undefined,
+          currentStage: claimed.currentStage || undefined,
+          overallProgress: claimed.overallProgress ?? undefined,
+          metadata: claimed.metadata || undefined,
+        };
+
+        // Helper to persist stage updates to DB
+        const persistStages = async (stages: JobStage[], currentStageName: string | null) => {
+          currentStages = stages;
+          job.stages = stages;
+          job.currentStage = currentStageName || undefined;
+          job.overallProgress = calculateOverallProgress(stages);
+
+          await updateJobStages(
             db,
             queueJobs,
             claimed.id,
             workerId,
             lockToken,
-            lockDuration,
+            stages,
+            currentStageName,
             logger,
           );
-          if (!extended) {
-            logger.warn({ jobId: claimed.id }, "Lock extension failed - lock may be lost");
-          }
-        } catch (err) {
-          logger.error(
-            { jobId: claimed.id, error: err instanceof Error ? err.message : "Unknown" },
-            "Heartbeat failed",
+        };
+
+        const ctx: JobContext<T> = {
+          job,
+          async heartbeat() {
+            await extendJobLock(db, queueJobs, claimed.id, workerId, lockToken, lockDuration, logger);
+          },
+          log(message: string) {
+            logger.info({ jobId: claimed.id }, message);
+          },
+          progress(percent: number) {
+            logger.debug({ jobId: claimed.id, progress: percent }, "Job progress");
+            // Also call event callback if provided
+            eventCallbacks?.onStageProgress?.(claimed.id, job.currentStage || "", percent, claimed.metadata || undefined);
+          },
+
+          // Multi-stage progress tracking methods
+          async initStages(stageNames: string[]) {
+            const stages = initializeStages(stageNames);
+            await persistStages(stages, null);
+            logger.debug({ jobId: claimed.id, stages: stageNames }, "Job stages initialized");
+          },
+
+          async startStage(stageName: string) {
+            const updatedStages = startStageInList(currentStages, stageName);
+            await persistStages(updatedStages, stageName);
+            logger.debug({ jobId: claimed.id, stage: stageName }, "Stage started");
+            eventCallbacks?.onStageStart?.(claimed.id, stageName, claimed.metadata || undefined);
+          },
+
+          async updateStageProgress(stageName: string, percent: number) {
+            // This is a lightweight operation - only update local state and emit event
+            // Don't persist to DB to avoid excessive writes
+            currentStages = updateStageProgressInList(currentStages, stageName, percent);
+            job.stages = currentStages;
+            job.overallProgress = calculateOverallProgress(currentStages);
+            eventCallbacks?.onStageProgress?.(claimed.id, stageName, percent, claimed.metadata || undefined);
+          },
+
+          async completeStage(stageName: string, artifacts?: Record<string, unknown>) {
+            const updatedStages = completeStageInList(currentStages, stageName, artifacts);
+            await persistStages(updatedStages, null); // Clear current stage since this one is done
+            logger.debug({ jobId: claimed.id, stage: stageName }, "Stage completed");
+            eventCallbacks?.onStageComplete?.(claimed.id, stageName, artifacts, claimed.metadata || undefined);
+          },
+
+          async failStage(stageName: string, error: Error) {
+            const updatedStages = failStageInList(currentStages, stageName, error.message);
+            await persistStages(updatedStages, null);
+            logger.debug({ jobId: claimed.id, stage: stageName, error: error.message }, "Stage failed");
+            eventCallbacks?.onStageFail?.(claimed.id, stageName, error.message, claimed.metadata || undefined);
+          },
+
+          async addStages(stageNames: string[]) {
+            const updatedStages = addStagesToList(currentStages, stageNames);
+            await persistStages(updatedStages, job.currentStage || null);
+            logger.debug({ jobId: claimed.id, addedStages: stageNames }, "Stages added");
+          },
+        };
+
+        // Execute handler
+        await handler(ctx);
+
+        // Mark as completed (with ownership verification)
+        const completed = await markJobCompleted(db, queueJobs, claimed.id, workerId, lockToken, logger);
+        if (!completed) {
+          logger.warn({ jobId: claimed.id }, "Job completion failed - lock was lost");
+        } else {
+          logger.info(
+            { jobId: claimed.id, queue, attempts: claimed.attempts },
+            "Job completed successfully",
           );
+          // Call onJobComplete callback
+          eventCallbacks?.onJobComplete?.(claimed.id, claimed.metadata || undefined);
         }
-      }, heartbeatInterval);
-
-      // Create job context with stage tracking
-      // Parse stages from claimed job (may be JSON string from SQLite)
-      let currentStages: JobStage[] = claimed.stages
-        ? typeof claimed.stages === "string"
-          ? JSON.parse(claimed.stages)
-          : claimed.stages
-        : [];
-
-      const job: Job<T> = {
-        id: claimed.id,
-        key: claimed.key || undefined,
-        queue: claimed.queue,
-        data: claimed.data as T,
-        status: claimed.status as Job["status"],
-        priority: claimed.priority,
-        attempts: claimed.attempts,
-        maxAttempts: claimed.maxAttempts,
-        createdAt: claimed.createdAt,
-        scheduledFor: claimed.scheduledFor || undefined,
-        updatedAt: claimed.updatedAt,
-        stages: currentStages.length > 0 ? currentStages : undefined,
-        currentStage: claimed.currentStage || undefined,
-        overallProgress: claimed.overallProgress ?? undefined,
-        metadata: claimed.metadata || undefined,
-      };
-
-      // Helper to persist stage updates to DB
-      const persistStages = async (stages: JobStage[], currentStageName: string | null) => {
-        currentStages = stages;
-        job.stages = stages;
-        job.currentStage = currentStageName || undefined;
-        job.overallProgress = calculateOverallProgress(stages);
-
-        await updateJobStages(
+      } catch (error) {
+        // Mark as failed (handles retry logic internally, with ownership verification)
+        const marked = await markJobFailed(
           db,
           queueJobs,
           claimed.id,
           workerId,
           lockToken,
-          stages,
-          currentStageName,
+          error instanceof Error ? error : new Error(String(error)),
           logger,
         );
-      };
 
-      const ctx: JobContext<T> = {
-        job,
-        async heartbeat() {
-          await extendJobLock(db, queueJobs, claimed.id, workerId, lockToken, lockDuration, logger);
-        },
-        log(message: string) {
-          logger.info({ jobId: claimed.id }, message);
-        },
-        progress(percent: number) {
-          logger.debug({ jobId: claimed.id, progress: percent }, "Job progress");
-          // Also call event callback if provided
-          eventCallbacks?.onStageProgress?.(claimed.id, job.currentStage || "", percent, claimed.metadata || undefined);
-        },
+        if (!marked) {
+          logger.warn({ jobId: claimed.id }, "Job failure marking failed - lock was lost");
+        }
 
-        // Multi-stage progress tracking methods
-        async initStages(stageNames: string[]) {
-          const stages = initializeStages(stageNames);
-          await persistStages(stages, null);
-          logger.debug({ jobId: claimed.id, stages: stageNames }, "Job stages initialized");
-        },
-
-        async startStage(stageName: string) {
-          const updatedStages = startStageInList(currentStages, stageName);
-          await persistStages(updatedStages, stageName);
-          logger.debug({ jobId: claimed.id, stage: stageName }, "Stage started");
-          eventCallbacks?.onStageStart?.(claimed.id, stageName, claimed.metadata || undefined);
-        },
-
-        async updateStageProgress(stageName: string, percent: number) {
-          // This is a lightweight operation - only update local state and emit event
-          // Don't persist to DB to avoid excessive writes
-          currentStages = updateStageProgressInList(currentStages, stageName, percent);
-          job.stages = currentStages;
-          job.overallProgress = calculateOverallProgress(currentStages);
-          eventCallbacks?.onStageProgress?.(claimed.id, stageName, percent, claimed.metadata || undefined);
-        },
-
-        async completeStage(stageName: string, artifacts?: Record<string, unknown>) {
-          const updatedStages = completeStageInList(currentStages, stageName, artifacts);
-          await persistStages(updatedStages, null); // Clear current stage since this one is done
-          logger.debug({ jobId: claimed.id, stage: stageName }, "Stage completed");
-          eventCallbacks?.onStageComplete?.(claimed.id, stageName, artifacts, claimed.metadata || undefined);
-        },
-
-        async failStage(stageName: string, error: Error) {
-          const updatedStages = failStageInList(currentStages, stageName, error.message);
-          await persistStages(updatedStages, null);
-          logger.debug({ jobId: claimed.id, stage: stageName, error: error.message }, "Stage failed");
-          eventCallbacks?.onStageFail?.(claimed.id, stageName, error.message, claimed.metadata || undefined);
-        },
-
-        async addStages(stageNames: string[]) {
-          const updatedStages = addStagesToList(currentStages, stageNames);
-          await persistStages(updatedStages, job.currentStage || null);
-          logger.debug({ jobId: claimed.id, addedStages: stageNames }, "Stages added");
-        },
-      };
-
-      // Execute handler
-      await handler(ctx);
-
-      // Mark as completed (with ownership verification)
-      const completed = await markJobCompleted(db, queueJobs, claimed.id, workerId, lockToken, logger);
-      if (!completed) {
-        logger.warn({ jobId: claimed.id }, "Job completion failed - lock was lost");
-      } else {
-        logger.info(
-          { jobId: claimed.id, queue, attempts: claimed.attempts },
-          "Job completed successfully",
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error(
+          {
+            jobId: claimed.id,
+            queue,
+            attempts: claimed.attempts,
+            error: errorMessage,
+          },
+          "Job failed",
         );
-        // Call onJobComplete callback
-        eventCallbacks?.onJobComplete?.(claimed.id, claimed.metadata || undefined);
+        // Call onJobFail callback
+        eventCallbacks?.onJobFail?.(claimed.id, errorMessage, claimed.metadata || undefined);
+      } finally {
+        // Stop heartbeat
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+        }
+        activeJobs--;
       }
-    } catch (error) {
-      // Mark as failed (handles retry logic internally, with ownership verification)
-      const marked = await markJobFailed(
-        db,
-        queueJobs,
-        claimed.id,
-        workerId,
-        lockToken,
-        error instanceof Error ? error : new Error(String(error)),
-        logger,
-      );
+    };
 
-      if (!marked) {
-        logger.warn({ jobId: claimed.id }, "Job failure marking failed - lock was lost");
-      }
-
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(
-        {
-          jobId: claimed.id,
-          queue,
-          attempts: claimed.attempts,
-          error: errorMessage,
-        },
-        "Job failed",
-      );
-      // Call onJobFail callback
-      eventCallbacks?.onJobFail?.(claimed.id, errorMessage, claimed.metadata || undefined);
-    } finally {
-      // Stop heartbeat
-      if (heartbeatTimer) {
-        clearInterval(heartbeatTimer);
-      }
-      activeJobs--;
+    // Use wrapper if provided (e.g., for request tracing), otherwise execute directly
+    if (wrapJobExecution) {
+      return wrapJobExecution(requestId, executeJob);
     }
+    return executeJob();
   }
 
   /**
