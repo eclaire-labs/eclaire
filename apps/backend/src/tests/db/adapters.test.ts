@@ -9,7 +9,7 @@ import {
 	DB_TEST_CONFIGS,
 	type TestDatabase,
 } from "./setup.js";
-import type { Tx } from "../../ports/tx.js";
+import type { Tx } from "@eclaire/db";
 
 describe.each(DB_TEST_CONFIGS)(
 	"$label - Adapter Integration Tests",
