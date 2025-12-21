@@ -5,7 +5,7 @@ import { router } from "./router";
 import { useSession } from "@/lib/auth";
 import { SessionProvider } from "@/providers/SessionProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
-import "./app/globals.css";
+import "./styles/globals.css";
 
 function InnerApp() {
   const { data: session, isPending } = useSession();

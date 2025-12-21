@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -9,6 +10,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   plugins: [
+    TanStackRouterVite(),
     react(),
     VitePWA({
       registerType: "autoUpdate",

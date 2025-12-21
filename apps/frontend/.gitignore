@@ -1,11 +1,9 @@
-# Next.js specific
-.next/
-out/
-.vercel
+# Vite / TanStack Router
+dist/
+src/routeTree.gen.ts
 
 # TypeScript
 *.tsbuildinfo
-next-env.d.ts
 
 # Testing
 coverage/
@@ -21,6 +19,3 @@ coverage/
 # PWA
 public/sw.js
 public/workbox-*.js
-
-# Build artifacts
-dist/

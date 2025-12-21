@@ -1,5 +1,5 @@
 import { createRouter } from "@tanstack/react-router";
-import { routeTree } from "./routeTree";
+import { routeTree } from "./routeTree.gen";
 
 export interface RouterContext {
   auth: {
