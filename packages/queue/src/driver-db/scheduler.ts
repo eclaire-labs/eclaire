@@ -13,7 +13,7 @@ import type { DbInstance } from "./types.js";
 
 // We'll use a simple cron parser - users can provide their own
 // For now, this is a minimal implementation
-import { CronExpression, parseExpression } from "cron-parser";
+import { CronExpressionParser } from "cron-parser";
 
 /**
  * Configuration for the database scheduler
@@ -72,7 +72,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
    */
   function getNextRunTime(cron: string, fromDate: Date = new Date()): Date {
     try {
-      const interval = parseExpression(cron, { currentDate: fromDate });
+      const interval = CronExpressionParser.parse(cron, { currentDate: fromDate });
       return interval.next().toDate();
     } catch (error) {
       logger.error({ cron, error: error instanceof Error ? error.message : "Unknown" }, "Invalid cron expression");

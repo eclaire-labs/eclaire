@@ -29,6 +29,14 @@
     "./app": {
       "import": "./dist/app/index.js",
       "types": "./dist/app/index.d.ts"
+    },
+    "./driver-db/schema/sqlite": {
+      "import": "./dist/driver-db/schema/sqlite.js",
+      "types": "./dist/driver-db/schema/sqlite.d.ts"
+    },
+    "./driver-db/schema/postgres": {
+      "import": "./dist/driver-db/schema/postgres.js",
+      "types": "./dist/driver-db/schema/postgres.d.ts"
     }
   },
   "main": "./dist/index.js",
@@ -52,7 +60,7 @@
     "@eclaire/db": "workspace:*",
     "@eclaire/logger": "workspace:*",
     "bullmq": "^5.65.1",
-    "cron-parser": "^4.9.0",
+    "cron-parser": "^5.4.0",
     "ioredis": "^5.8.2",
     "axios": "^1.13.2",
     "drizzle-orm": "^0.45.0"

@@ -515,6 +515,9 @@ importers:
       better-sqlite3:
         specifier: 12.5.0
         version: 12.5.0
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
       drizzle-orm:
         specifier: 0.45.0
         version: 0.45.0(@electric-sql/pglite@0.3.14)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.6)(better-sqlite3@12.5.0)(gel@2.2.0)(kysely@0.28.8)(pg@8.16.3)(postgres@3.4.7)
@@ -572,8 +575,8 @@ importers:
         specifier: ^5.65.1
         version: 5.65.1
       cron-parser:
-        specifier: ^4.9.0
-        version: 4.9.0
+        specifier: ^5.4.0
+        version: 5.4.0
       drizzle-orm:
         specifier: ^0.45.0
         version: 0.45.0(@electric-sql/pglite@0.3.14)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.6)(better-sqlite3@12.5.0)(gel@2.2.0)(kysely@0.28.8)(pg@8.16.3)(postgres@3.4.7)
@@ -4320,6 +4323,10 @@ packages:
 
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
+
+  dotenv@16.6.1:
+    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
+    engines: {node: '>=12'}
 
   dotenv@17.2.3:
     resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
@@ -10570,6 +10577,8 @@ snapshots:
       dom-serializer: 2.0.0
       domelementtype: 2.3.0
       domhandler: 5.0.3
+
+  dotenv@16.6.1: {}
 
   dotenv@17.2.3: {}
 

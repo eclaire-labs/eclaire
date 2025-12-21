@@ -1,7 +1,7 @@
 // main-api/src/lib/storage.ts
 
 // Import env-loader first to ensure environment variables are loaded
-import "./env-loader";
+import "./env-loader.js";
 import fs, { promises as fsPromises } from "fs";
 import path from "path";
 import { Readable } from "stream";

@@ -49,7 +49,7 @@ if (!publisherConnection) {
 // Map to track active SSE streams by userId
 const activeStreams = new Map<
   string,
-  Set<{ write: (data: string) => void; closed: boolean }>
+  Set<{ write: (data: string) => Promise<unknown>; closed: boolean }>
 >();
 
 /**
@@ -82,7 +82,7 @@ processingEventsRoutes.get("/stream", async (c) => {
       }
       const userStreams = activeStreams.get(userId)!;
       const streamRef = {
-        write: stream.write.bind(stream),
+        write: stream.write.bind(stream) as (data: string) => Promise<unknown>,
         closed: stream.closed,
       };
       userStreams.add(streamRef);
@@ -412,7 +412,7 @@ export async function publishDirectSSEEvent(
           streamsToRemove.push(streamRef);
           continue;
         }
-        streamRef.write(sseData);
+        await streamRef.write(sseData);
       } catch (error) {
         logger.warn(
           {
