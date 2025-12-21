@@ -15,7 +15,7 @@ import {
 } from "@eclaire/queue/app";
 import { db, dbType } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
-import { getQueueMode } from "../env-validation.js";
+import { getQueueBackend } from "../env-validation.js";
 import { getQueue, QueueNames } from "./queues.js";
 
 const logger = createChildLogger("queue-adapter");
@@ -51,22 +51,13 @@ export async function getQueueAdapter(): Promise<QueueAdapter> {
 }
 
 async function initializeQueueAdapter(): Promise<QueueAdapter> {
-  const queueBackend = getQueueMode();
+  const queueBackend = getQueueBackend();
 
-  if (queueBackend === "database") {
-    // Use package's database adapter with waitlist
-    const { adapter } = await createQueueAdapterWithWaitlist({
-      mode: "database",
-      database: { db, dbType: dbType as "postgres" | "sqlite" },
-      logger,
-    });
-    logger.info({}, "Using database-backed queue adapter");
-    queueAdapterInstance = adapter;
-  } else {
+  if (queueBackend === "redis") {
     // Use package's Redis/BullMQ adapter
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) {
-      throw new Error("REDIS_URL is required for redis queue mode");
+      throw new Error("REDIS_URL is required for QUEUE_BACKEND=redis");
     }
     queueAdapterInstance = await createPkgQueueAdapter({
       mode: "redis",
@@ -74,6 +65,15 @@ async function initializeQueueAdapter(): Promise<QueueAdapter> {
       logger,
     });
     logger.info({}, "Using Redis/BullMQ queue adapter");
+  } else {
+    // postgres or sqlite backend - use database adapter with waitlist
+    const { adapter } = await createQueueAdapterWithWaitlist({
+      mode: "database",
+      database: { db, dbType: dbType as "postgres" | "sqlite" },
+      logger,
+    });
+    logger.info({ queueBackend }, "Using database-backed queue adapter");
+    queueAdapterInstance = adapter;
   }
 
   return queueAdapterInstance;

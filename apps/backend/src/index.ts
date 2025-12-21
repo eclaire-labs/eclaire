@@ -12,13 +12,13 @@ process.on("uncaughtException", (error) => {
 
 // CRITICAL: Load environment variables FIRST, before any other imports
 import "./lib/env-loader.js";
-import { validateRequiredEnvVars, getServiceRole, getQueueMode } from "./lib/env-validation.js";
+import { validateRequiredEnvVars, getServiceRole, getQueueBackend } from "./lib/env-validation.js";
 
 // Validate required environment variables before starting
 validateRequiredEnvVars();
 
 const SERVICE_ROLE = getServiceRole();
-const QUEUE_MODE = getQueueMode();
+const QUEUE_BACKEND = getQueueBackend();
 
 // Now import modules that depend on environment variables
 import { serve } from "@hono/node-server";
@@ -360,10 +360,10 @@ app.use("*", createSpaMiddleware());
 // Start the server
 const start = async () => {
   try {
-    logger.info({ SERVICE_ROLE, QUEUE_MODE }, "Starting service");
+    logger.info({ SERVICE_ROLE, QUEUE_BACKEND }, "Starting service");
 
-    // Only start HTTP server if role includes backend functionality
-    if (SERVICE_ROLE === "backend" || SERVICE_ROLE === "unified") {
+    // Only start HTTP server if role includes API functionality
+    if (SERVICE_ROLE === "api" || SERVICE_ROLE === "all") {
       // Validate configurations first - fail fast if not properly configured
       validateAIConfigOnStartup();
 
@@ -385,7 +385,7 @@ const start = async () => {
           port,
           host,
           serviceRole: SERVICE_ROLE,
-          queueMode: QUEUE_MODE,
+          queueBackend: QUEUE_BACKEND,
           endpoints: {
             auth: `http://${host}:${port}/api/auth`,
             session: `http://${host}:${port}/api/session`,
@@ -406,7 +406,7 @@ const start = async () => {
         hostname: host,
       });
 
-      logger.info({ port, host, SERVICE_ROLE, QUEUE_MODE }, "HTTP server running successfully");
+      logger.info({ port, host, SERVICE_ROLE, QUEUE_BACKEND }, "HTTP server running successfully");
 
       // Start Telegram bots after server is running
       if (process.env.MASTER_ENCRYPTION_KEY) {
@@ -416,29 +416,28 @@ const start = async () => {
         logger.info("Skipping Telegram bot startup - encryption not configured");
       }
 
-      // In unified mode, start the scheduler for recurring tasks
-      // (Works for both database and redis modes - redis start is a no-op)
-      if (SERVICE_ROLE === "unified") {
+      // In 'all' mode, start the scheduler for recurring tasks
+      if (SERVICE_ROLE === "all") {
         logger.info("Starting scheduler for recurring tasks");
         await startScheduler();
       }
     }
 
-    // In unified mode, also start the database workers
-    if (SERVICE_ROLE === "unified") {
-      logger.info("Starting database queue workers (unified mode)");
-      const { startDatabaseWorkers } = await import("./workers/index.js");
-      await startDatabaseWorkers();
+    // Start workers based on SERVICE_ROLE and QUEUE_BACKEND
+    if (SERVICE_ROLE === "all" || SERVICE_ROLE === "worker") {
+      if (QUEUE_BACKEND === "redis") {
+        logger.info("Starting BullMQ workers (redis backend)");
+        const { startBullMQWorkers } = await import("./workers/index.js");
+        await startBullMQWorkers();
+      } else {
+        // postgres or sqlite backend
+        logger.info({ queueBackend: QUEUE_BACKEND }, "Starting database queue workers");
+        const { startDatabaseWorkers } = await import("./workers/index.js");
+        await startDatabaseWorkers();
+      }
     }
 
-  // If SERVICE_ROLE=worker, start BullMQ workers only (no HTTP server)
-  if (SERVICE_ROLE === "worker") {
-    logger.info("Starting BullMQ workers (worker mode)");
-    const { startBullMQWorkers } = await import("./workers/index.js");
-    await startBullMQWorkers();
-  }
-
-  logger.info({ SERVICE_ROLE, QUEUE_MODE }, "Service startup complete");
+    logger.info({ SERVICE_ROLE, QUEUE_BACKEND }, "Service startup complete");
   } catch (err) {
     logger.error(
       {
@@ -446,7 +445,7 @@ const start = async () => {
         stack: err instanceof Error ? err.stack : undefined,
         errorType: err?.constructor?.name,
         SERVICE_ROLE,
-        QUEUE_MODE
+        QUEUE_BACKEND,
       },
       "Failed to start service"
     );
@@ -461,7 +460,7 @@ start();
 // Graceful shutdown handling
 const shutdown = async (signal: string) => {
   logger.info(
-    { signal, SERVICE_ROLE, QUEUE_MODE },
+    { signal, SERVICE_ROLE, QUEUE_BACKEND },
     "Shutdown signal received. Shutting down gracefully...",
   );
 
@@ -473,8 +472,8 @@ const shutdown = async (signal: string) => {
     logger.error({ error }, "Error stopping Telegram bots");
   }
 
-  // Stop scheduler if running (unified mode)
-  if (SERVICE_ROLE === "unified") {
+  // Stop scheduler if running (all mode)
+  if (SERVICE_ROLE === "all") {
     try {
       await stopScheduler();
       logger.info("Scheduler stopped");
@@ -483,8 +482,8 @@ const shutdown = async (signal: string) => {
     }
   }
 
-  // Stop workers if running (worker or unified mode)
-  if (SERVICE_ROLE === "worker" || SERVICE_ROLE === "unified") {
+  // Stop workers if running (worker or all mode)
+  if (SERVICE_ROLE === "worker" || SERVICE_ROLE === "all") {
     try {
       const { shutdownWorkers } = await import("./workers/index.js");
       await shutdownWorkers();

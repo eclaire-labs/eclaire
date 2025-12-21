@@ -10,7 +10,7 @@ import { createBullMQScheduler } from "@eclaire/queue/driver-bullmq";
 import { createDbScheduler, createDbQueueClient, getQueueSchema } from "@eclaire/queue/driver-db";
 import { db, dbType } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
-import { getQueueMode } from "../env-validation.js";
+import { getQueueBackend } from "../env-validation.js";
 
 const logger = createChildLogger("scheduler");
 
@@ -25,9 +25,9 @@ let schedulerInitPromise: Promise<Scheduler> | null = null;
 /**
  * Get the singleton scheduler instance
  *
- * Creates the appropriate scheduler based on queue mode:
+ * Creates the appropriate scheduler based on queue backend:
  * - redis: BullMQ scheduler using Redis
- * - database: Database scheduler using queue_schedules table
+ * - postgres/sqlite: Database scheduler using queue_schedules table
  */
 export async function getScheduler(): Promise<Scheduler> {
   if (schedulerInstance) {
@@ -43,12 +43,12 @@ export async function getScheduler(): Promise<Scheduler> {
 }
 
 async function initializeScheduler(): Promise<Scheduler> {
-  const queueMode = getQueueMode();
+  const queueBackend = getQueueBackend();
 
-  if (queueMode === "redis") {
+  if (queueBackend === "redis") {
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) {
-      throw new Error("REDIS_URL is required for redis queue mode");
+      throw new Error("REDIS_URL is required for QUEUE_BACKEND=redis");
     }
 
     schedulerInstance = createBullMQScheduler({
@@ -58,9 +58,9 @@ async function initializeScheduler(): Promise<Scheduler> {
 
     logger.info({}, "Using BullMQ scheduler");
   } else {
-    // Database mode - create scheduler with queueClient
-    // Map DbDialect to queue driver type
-    const queueDbType = dbType === "sqlite" ? "sqlite" : "postgres";
+    // postgres or sqlite backend - create scheduler with queueClient
+    // Use queueBackend directly since it's already "postgres" or "sqlite"
+    const queueDbType = queueBackend === "sqlite" ? "sqlite" : "postgres";
     const schema = getQueueSchema(queueDbType);
 
     const queueClient = createDbQueueClient({

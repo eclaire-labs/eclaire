@@ -13,15 +13,16 @@ import {
   type QueueManager,
   type QueueName,
 } from "@eclaire/queue/app";
-import { getQueueMode } from "../env-validation.js";
+import { getQueueBackend } from "../env-validation.js";
 
 const logger = createChildLogger("queues");
 
 // --- Configuration ---
-// Queue mode is derived from SERVICE_ROLE:
-// - "unified" → database mode (no Redis dependency)
-// - "backend"/"worker" → redis mode (requires Redis)
-const queueBackend = getQueueMode();
+// Queue backend from QUEUE_BACKEND env var:
+// - "redis" → Redis/BullMQ
+// - "postgres" → PostgreSQL database queue
+// - "sqlite" → SQLite database queue (single process only)
+const queueBackend = getQueueBackend();
 
 // Re-export QueueNames for backwards compatibility
 export { QueueNames };

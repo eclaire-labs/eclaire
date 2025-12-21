@@ -36,7 +36,7 @@ import {
 } from "../queue/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { ValidationError } from "../errors.js";
-import { getQueueMode } from "../env-validation.js";
+import { getQueueBackend } from "../env-validation.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
 
@@ -245,10 +245,10 @@ async function upsertTaskScheduler(
  * @returns Promise<boolean> - Success status
  */
 async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
-  const queueMode = getQueueMode();
+  const queueBackend = getQueueBackend();
 
   try {
-    if (queueMode === "redis") {
+    if (queueBackend === "redis") {
       // Redis mode: Remove BullMQ job
       const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
       if (!queue) {
@@ -266,7 +266,7 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
       if (job) {
         try {
           await job.remove();
-          logger.info({ taskId, jobId, queueMode }, "Cancelled task execution job (Redis)");
+          logger.info({ taskId, jobId, queueBackend }, "Cancelled task execution job (Redis)");
         } catch (removeError) {
           // Job might be locked by another worker - this is expected during execution
           const errorMessage =
@@ -299,7 +299,7 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
           )
         );
 
-      logger.info({ taskId, queueMode }, "Cancelled pending task execution jobs (Database)");
+      logger.info({ taskId, queueBackend }, "Cancelled pending task execution jobs (Database)");
     }
 
     return true;
@@ -307,7 +307,7 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
     logger.error(
       {
         taskId,
-        queueMode,
+        queueBackend,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Failed to cancel task execution job",

@@ -686,8 +686,8 @@ export const RecurrenceTestHelpers = {
    */
   inspectScheduler: async (taskId: string) => {
     // Skip Redis operations in database queue mode
-    const { getQueueMode } = await import("../../lib/env-validation.js");
-    if (getQueueMode() === "database") {
+    const { getQueueBackend } = await import("../../lib/env-validation.js");
+    if (getQueueBackend() !== "redis") {
       return null;
     }
 
@@ -807,8 +807,8 @@ export const globalTestCleanup = async () => {
   allRecurringTaskIds = [];
 
   // Only attempt Redis queue cleanup if in redis mode
-  const { getQueueMode } = await import("../../lib/env-validation.js");
-  if (getQueueMode() === "redis") {
+  const { getQueueBackend } = await import("../../lib/env-validation.js");
+  if (getQueueBackend() === "redis") {
     // Try to clear task processing queues if available
     try {
       const { getQueue, QueueNames } = await import("../../lib/queue/index.js");

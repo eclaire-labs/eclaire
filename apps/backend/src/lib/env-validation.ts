@@ -2,52 +2,82 @@ import { createChildLogger } from "./logger.js";
 
 const logger = createChildLogger("env-validation");
 
+export type QueueBackend = "redis" | "postgres" | "sqlite";
+export type ServiceRole = "api" | "worker" | "all";
+
 /**
- * Get the current queue mode based on SERVICE_ROLE
- * - unified → database mode (no Redis dependency)
- * - backend/worker → redis mode (requires Redis)
+ * Get the queue backend from QUEUE_BACKEND env var
  */
-export function getQueueMode(): "redis" | "database" {
-  const serviceRole = process.env.SERVICE_ROLE || "backend";
-  return serviceRole === "unified" ? "database" : "redis";
+export function getQueueBackend(): QueueBackend {
+  const queueBackend = process.env.QUEUE_BACKEND;
+  if (!queueBackend || !["redis", "postgres", "sqlite"].includes(queueBackend)) {
+    throw new Error(
+      `QUEUE_BACKEND must be set to one of: redis, postgres, sqlite. Got: ${queueBackend ?? "(not set)"}`,
+    );
+  }
+  return queueBackend as QueueBackend;
 }
 
 /**
- * Get the current service role
+ * Get the current service role from SERVICE_ROLE env var
  */
-export function getServiceRole(): "backend" | "worker" | "unified" {
-  return (process.env.SERVICE_ROLE || "backend") as "backend" | "worker" | "unified";
+export function getServiceRole(): ServiceRole {
+  const serviceRole = process.env.SERVICE_ROLE;
+  if (!serviceRole || !["api", "worker", "all"].includes(serviceRole)) {
+    throw new Error(
+      `SERVICE_ROLE must be set to one of: api, worker, all. Got: ${serviceRole ?? "(not set)"}`,
+    );
+  }
+  return serviceRole as ServiceRole;
 }
 
 export function validateRequiredEnvVars() {
   const allowDevKeys = process.env.ALLOW_DEV_KEYS === "true";
 
   // Validate SERVICE_ROLE
-  const serviceRole = process.env.SERVICE_ROLE || "backend";
-  const validRoles = ["backend", "worker", "unified"];
-  if (!validRoles.includes(serviceRole)) {
+  const serviceRole = process.env.SERVICE_ROLE;
+  const validRoles: ServiceRole[] = ["api", "worker", "all"];
+  if (!serviceRole || !validRoles.includes(serviceRole as ServiceRole)) {
     logger.error(
       { serviceRole, validRoles },
-      `Invalid SERVICE_ROLE: ${serviceRole}. Must be one of: ${validRoles.join(", ")}`,
+      `SERVICE_ROLE must be set to one of: ${validRoles.join(", ")}. Got: ${serviceRole ?? "(not set)"}`,
     );
     throw new Error(
-      `Invalid SERVICE_ROLE: ${serviceRole}. Must be one of: ${validRoles.join(", ")}`,
+      `SERVICE_ROLE must be set to one of: ${validRoles.join(", ")}. Got: ${serviceRole ?? "(not set)"}`,
     );
   }
 
-  // Determine queue mode based on SERVICE_ROLE
-  // unified = database mode (no Redis), backend/worker = redis mode (requires Redis)
-  const queueMode = serviceRole === "unified" ? "database" : "redis";
-
-  // Validate REDIS_URL when in redis mode
-  if (queueMode === "redis" && !process.env.REDIS_URL) {
+  // Validate QUEUE_BACKEND
+  const queueBackend = process.env.QUEUE_BACKEND;
+  const validBackends: QueueBackend[] = ["redis", "postgres", "sqlite"];
+  if (!queueBackend || !validBackends.includes(queueBackend as QueueBackend)) {
     logger.error(
-      { serviceRole, queueMode },
-      `REDIS_URL is required when SERVICE_ROLE is 'backend' or 'worker'`,
+      { queueBackend, validBackends },
+      `QUEUE_BACKEND must be set to one of: ${validBackends.join(", ")}. Got: ${queueBackend ?? "(not set)"}`,
     );
     throw new Error(
-      `REDIS_URL is required when SERVICE_ROLE is 'backend' or 'worker'`,
+      `QUEUE_BACKEND must be set to one of: ${validBackends.join(", ")}. Got: ${queueBackend ?? "(not set)"}`,
     );
+  }
+
+  // Validate: sqlite only works with SERVICE_ROLE=all (single process, no remote workers)
+  if (queueBackend === "sqlite" && serviceRole !== "all") {
+    logger.error(
+      { serviceRole, queueBackend },
+      `QUEUE_BACKEND=sqlite requires SERVICE_ROLE=all (SQLite cannot support remote workers)`,
+    );
+    throw new Error(
+      `QUEUE_BACKEND=sqlite requires SERVICE_ROLE=all (SQLite cannot support remote workers)`,
+    );
+  }
+
+  // Validate REDIS_URL when using redis backend
+  if (queueBackend === "redis" && !process.env.REDIS_URL) {
+    logger.error(
+      { serviceRole, queueBackend },
+      `REDIS_URL is required when QUEUE_BACKEND=redis`,
+    );
+    throw new Error(`REDIS_URL is required when QUEUE_BACKEND=redis`);
   }
 
   // Validate presence of all required variables
@@ -57,9 +87,9 @@ export function validateRequiredEnvVars() {
     "API_KEY_HMAC_KEY_V1",
   ];
 
-  // Add worker-specific keys when running as worker or unified
+  // Add worker-specific keys when running as worker or all (which includes workers)
   const workerRequired =
-    serviceRole === "worker" || serviceRole === "unified"
+    serviceRole === "worker" || serviceRole === "all"
       ? ["WORKER_API_KEY", "AI_ASSISTANT_API_KEY"]
       : [];
 
@@ -159,7 +189,7 @@ export function validateRequiredEnvVars() {
       environment: process.env.NODE_ENV,
       allowDevKeys,
       serviceRole,
-      queueMode,
+      queueBackend,
     },
     "Environment validation complete",
   );

@@ -7,17 +7,18 @@ import { createPostgresClient, getDatabaseUrl, getDatabaseType } from "@eclaire/
 import type { RouteVariables } from "../types/route-variables.js";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
-import { getQueueMode } from "../lib/env-validation.js";
+import { getQueueBackend } from "../lib/env-validation.js";
 import { sanitizeChannelName } from "../workers/lib/postgres-publisher.js";
 
 const logger = createChildLogger("processing-events");
 
 export const processingEventsRoutes = new Hono<{ Variables: RouteVariables }>();
 
-// Queue mode is derived from SERVICE_ROLE:
-// - "unified" → database mode (no Redis dependency)
-// - "backend"/"worker" → redis mode (requires Redis)
-const queueBackend = getQueueMode();
+// Queue backend determines how we receive events:
+// - "redis" → Redis pub/sub
+// - "postgres" → PostgreSQL LISTEN/NOTIFY
+// - "sqlite" → In-memory only (single process)
+const queueBackend = getQueueBackend();
 const useRedisPubSub = queueBackend === "redis";
 
 // Database type for Postgres LISTEN (used when not in Redis mode)
