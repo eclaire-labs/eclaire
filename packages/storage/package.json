@@ -8,11 +8,26 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./core": "./src/core/index.ts",
-    "./local": "./src/adapters/local/index.ts",
-    "./memory": "./src/adapters/memory/index.ts",
-    "./s3": "./src/adapters/s3/index.ts"
+    ".": {
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./core": {
+      "development": "./src/core/index.ts",
+      "default": "./dist/core/index.js"
+    },
+    "./local": {
+      "development": "./src/adapters/local/index.ts",
+      "default": "./dist/adapters/local/index.js"
+    },
+    "./memory": {
+      "development": "./src/adapters/memory/index.ts",
+      "default": "./dist/adapters/memory/index.js"
+    },
+    "./s3": {
+      "development": "./src/adapters/s3/index.ts",
+      "default": "./dist/adapters/s3/index.js"
+    }
   },
   "scripts": {
     "build": "tsc",
