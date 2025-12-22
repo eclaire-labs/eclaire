@@ -19,7 +19,7 @@ export {
 } from "./adapter.js";
 
 // Queue names
-export { QueueNames, type QueueName } from "./names.js";
+export { QueueNames, type QueueName } from "@eclaire/queue/app";
 
 // BullMQ queue access (for Redis mode)
 export { getQueue, closeQueues } from "./queues.js";
@@ -47,7 +47,7 @@ export {
 export { jobWaitlist } from "./job-waitlist.js";
 
 // Redis connection
-export { createRedisConnection, type RedisConnectionOptions } from "./redis-connection.js";
+export { createRedisConnection, type RedisConnectionOptions } from "@eclaire/queue";
 
 // Scheduler
 export {
