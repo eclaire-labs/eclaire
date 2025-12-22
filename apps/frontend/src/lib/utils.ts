@@ -16,11 +16,14 @@ export function generateApiKey(): string {
 }
 
 /**
- * Get the API base URL - now uses relative URLs through Next.js proxy
- * All API requests go through the frontend /api routes which proxy to the backend
+ * Get the API base URL based on the current origin
+ * Returns the full URL for use in examples (e.g., curl commands)
  */
 export function getApiBaseUrl(): string {
-  return ""; // Use relative URLs - requests go through Next.js proxy
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return ""; // SSR fallback - use relative URLs
 }
 
 const mimeMap: { [key: string]: string } = {
