@@ -62,7 +62,7 @@
       "provider": "llamacpp",
       "modelShortName": "gemma-3-4b",
       "modelUrl": "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF",
-      "providerUrl": "${AI_LOCAL_PROVIDER_URL}",
+      "providerUrl": "${WORKER_AI_LOCAL_PROVIDER_URL}",
       "capabilities": {
         "stream": true,
         "thinking": {
