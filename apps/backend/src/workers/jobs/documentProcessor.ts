@@ -165,7 +165,7 @@ interface DocumentArtifacts {
   title?: string | null;
   description?: string | null;
   tags?: string[];
-  extractedText?: string;
+  // extractedText is stored in blob storage via extractedTxtStorageId, not inline
   extractedMdStorageId?: string;
   extractedTxtStorageId?: string;
   pdfStorageId?: string;
@@ -310,7 +310,7 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
       );
     }
     await ctx.completeStage(currentStage);
-    allArtifacts.extractedText = extractedText;
+    // extractedText is stored via extractedTxtStorageId, not inline in artifacts
 
     // 4. AI Analysis Stage
     currentStage = "ai_analysis";
@@ -417,11 +417,11 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
 
     // Save extracted text as extracted.txt for non-Docling processed documents
     // (Docling-processed documents already have their extracted.txt saved above)
-    if (allArtifacts.extractedText && !useDocling) {
+    if (extractedText && !useDocling) {
       const txtKey = buildKey(userId, "documents", documentId, "extracted.txt");
       await storage.write(
         txtKey,
-        Readable.from([allArtifacts.extractedText]) as unknown as NodeJS.ReadableStream,
+        Readable.from([extractedText]) as unknown as NodeJS.ReadableStream,
         { contentType: "text/plain" },
       );
       allArtifacts.extractedTxtStorageId = txtKey;
@@ -455,7 +455,7 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
           description:
             "Content extraction failed due to JavaScript module error",
           tags: ["document", "processing-failed"],
-          extractedText: `Failed to extract text from ${originalFilename}`,
+          // No extractedText - it would be stored in blob storage if extraction succeeded
         };
         await ctx.completeStage(currentStage, fallbackArtifacts);
         return; // Don't throw error for recoverable module issues

@@ -802,7 +802,7 @@ export async function updateDocumentArtifacts(
     title?: string | null;
     description?: string | null;
     tags?: string[];
-    extractedText?: string;
+    // extractedText is loaded from storage, not passed inline
     extractedMdStorageId?: string;
     extractedTxtStorageId?: string;
     pdfStorageId?: string;
@@ -812,6 +812,25 @@ export async function updateDocumentArtifacts(
 ): Promise<void> {
   try {
     logger.info({ documentId }, "Saving final artifacts for document");
+
+    // Load extractedText from storage if storage ID is provided
+    let extractedText: string | null = null;
+    if (artifacts.extractedTxtStorageId) {
+      try {
+        const storage = getStorage();
+        const { buffer } = await storage.readBuffer(artifacts.extractedTxtStorageId);
+        extractedText = buffer.toString("utf-8");
+        logger.debug(
+          { documentId, storageId: artifacts.extractedTxtStorageId, textLength: extractedText.length },
+          "Loaded extractedText from storage",
+        );
+      } catch (storageError) {
+        logger.warn(
+          { documentId, storageId: artifacts.extractedTxtStorageId, error: storageError },
+          "Failed to load extractedText from storage, continuing without it",
+        );
+      }
+    }
 
     // Get or create tags BEFORE transaction if tags are provided
     let tagList: { id: string; name: string }[] = [];
@@ -832,8 +851,8 @@ export async function updateDocumentArtifacts(
       if (artifacts.title) updatePayload.title = artifacts.title;
       if (artifacts.description)
         updatePayload.description = artifacts.description;
-      if (artifacts.extractedText)
-        updatePayload.extractedText = artifacts.extractedText;
+      if (extractedText)
+        updatePayload.extractedText = extractedText;
       if (artifacts.extractedMdStorageId)
         updatePayload.extractedMdStorageId = artifacts.extractedMdStorageId;
       if (artifacts.extractedTxtStorageId)

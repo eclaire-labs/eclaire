@@ -352,11 +352,9 @@ async function processRegularBookmarkJob(
       // Use fallback tags based on domain or basic content
       allArtifacts.tags = ["webpage", "bookmark"];
     }
-    // Keep extractedText in artifacts for database storage, but limit its size to avoid issues
-    const finalArtifacts = {
-      ...allArtifacts,
-      extractedText: allArtifacts.extractedText?.substring(0, 1024000) || null, // Limit to 1MB
-    };
+    // Remove extractedText from artifacts - it's stored in blob storage via extractedTxtStorageId
+    // The artifact processor will load it from storage when updating the domain table
+    const { extractedText: _excludeText, ...finalArtifacts } = allArtifacts;
     await ctx.completeStage("ai_tagging", finalArtifacts);
     // Job completes implicitly when handler returns successfully
   } catch (error: any) {

@@ -233,11 +233,9 @@ export async function processGitHubBookmark(
     // Combine GitHub tags with AI tags, removing duplicates
     allArtifacts.tags = Array.from(new Set([...githubTags, ...aiTags]));
 
-    // Keep extractedText in artifacts for database storage, but limit its size to avoid issues
-    const finalArtifacts = {
-      ...allArtifacts,
-      extractedText: allArtifacts.extractedText?.substring(0, 512000) || null, // Limit to 512KB for GitHub repos
-    };
+    // Remove extractedText from artifacts - it's stored in blob storage via extractedTxtStorageId
+    // The artifact processor will load it from storage when updating the domain table
+    const { extractedText: _excludeText, ...finalArtifacts } = allArtifacts;
 
     // Complete the final stage with artifacts - job completion is implicit when handler returns
     await ctx.completeStage("ai_tagging", finalArtifacts);

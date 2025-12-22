@@ -711,6 +711,25 @@ export async function updateBookmarkArtifacts(
   try {
     const { tags: tagNames, ...bookmarkUpdateData } = artifacts;
 
+    // Load extractedText from storage if storage ID is provided (not inline in artifacts)
+    if (artifacts.extractedTxtStorageId && !artifacts.extractedText) {
+      try {
+        const { getStorage } = await import("../storage/index.js");
+        const storage = getStorage();
+        const { buffer } = await storage.readBuffer(artifacts.extractedTxtStorageId);
+        bookmarkUpdateData.extractedText = buffer.toString("utf-8");
+        logger.debug(
+          { bookmarkId, storageId: artifacts.extractedTxtStorageId, textLength: bookmarkUpdateData.extractedText.length },
+          "Loaded extractedText from storage",
+        );
+      } catch (storageError) {
+        logger.warn(
+          { bookmarkId, storageId: artifacts.extractedTxtStorageId, error: storageError },
+          "Failed to load extractedText from storage, continuing without it",
+        );
+      }
+    }
+
     // Get or create tags BEFORE transaction if tags are provided
     let tagList: { id: string; name: string }[] = [];
     if (tagNames !== undefined && Array.isArray(tagNames) && tagNames.length > 0) {

@@ -241,11 +241,9 @@ export async function processRedditApiBookmark(
     // Combine Reddit tags with AI tags, removing duplicates
     allArtifacts.tags = Array.from(new Set([...redditTags, ...aiTags]));
 
-    // Prepare final artifacts with size limit
-    const finalArtifacts = {
-      ...allArtifacts,
-      extractedText: allArtifacts.extractedText?.substring(0, 50000) || null, // Limit to 50KB
-    };
+    // Remove extractedText from artifacts - it's stored in blob storage via extractedTxtStorageId
+    // The artifact processor will load it from storage when updating the domain table
+    const { extractedText: _excludeText, ...finalArtifacts } = allArtifacts;
 
     // Complete the final stage with artifacts - job completion is implicit when handler returns
     await ctx.completeStage("ai_tagging", finalArtifacts);
