@@ -7,13 +7,13 @@ export interface EncryptionService {
   /**
    * Encrypts a plaintext string using AES-256-GCM encryption
    * @param text - The plaintext to encrypt
-   * @returns Encrypted string in format: iv:authTag:encryptedData (all hex-encoded)
+   * @returns Encrypted string in format: v1:iv:authTag:encryptedData (all hex-encoded)
    */
   encrypt(text: string): string;
 
   /**
    * Decrypts an encrypted string using AES-256-GCM decryption
-   * @param encryptedText - The encrypted text in format: iv:authTag:encryptedData
+   * @param encryptedText - The encrypted text in format: v1:iv:authTag:encryptedData
    * @returns Decrypted plaintext string, or null if decryption fails
    */
   decrypt(encryptedText: string): string | null;
@@ -64,7 +64,8 @@ export function createEncryption(
       const authTag = cipher.getAuthTag();
 
       // Return a single string containing all parts, separated by colons
-      return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted.toString("hex")}`;
+      // Format: v1:iv:authTag:encryptedData (version prefix for future key rotation)
+      return `v1:${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted.toString("hex")}`;
     } catch (error) {
       logger?.error(
         { error: error instanceof Error ? error.message : "Unknown error" },
@@ -76,15 +77,17 @@ export function createEncryption(
 
   function decrypt(encryptedText: string): string | null {
     try {
-      const [ivHex, authTagHex, encryptedHex] = encryptedText.split(":");
+      const parts = encryptedText.split(":");
 
-      if (!ivHex || !authTagHex || !encryptedHex) {
+      if (parts.length !== 4 || parts[0] !== "v1") {
         logger?.error(
-          { error: "Invalid encrypted text format - missing components" },
+          { error: "Invalid encrypted text format - expected v1:iv:tag:data" },
           "Decryption failed",
         );
         throw new Error("Invalid encrypted text format.");
       }
+
+      const [, ivHex, authTagHex, encryptedHex] = parts;
 
       const iv = Buffer.from(ivHex, "hex");
       const authTag = Buffer.from(authTagHex, "hex");
