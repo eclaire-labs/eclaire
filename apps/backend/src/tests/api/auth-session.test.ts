@@ -608,4 +608,206 @@ describe("Better Auth Session Integration Tests", () => {
       );
     });
   });
+
+  // Password Change Tests
+  describe("Password Change", () => {
+    const passwordChangeUser = {
+      email: `pwchange-${Date.now()}@example.com`,
+      password: "OriginalPassword@123",
+      name: "Password Change Test User",
+    };
+    const newPassword = "NewPassword@456";
+
+    it("POST /api/auth/change-password - should change password for authenticated user", async () => {
+      // First, create and sign in as a test user
+      cookieUtils.clearCookies();
+
+      const signUpResponse = await loggedFetch(`${BASE_URL}/auth/sign-up/email`, {
+        method: "POST",
+        body: JSON.stringify(passwordChangeUser),
+      });
+      expect(signUpResponse.status).toBe(200);
+
+      // Now change the password
+      const changeResponse = await loggedFetch(`${BASE_URL}/auth/change-password`, {
+        method: "POST",
+        body: JSON.stringify({
+          currentPassword: passwordChangeUser.password,
+          newPassword: newPassword,
+          revokeOtherSessions: false,
+        }),
+      });
+
+      expect(changeResponse.status).toBe(200);
+      const changeData = (await changeResponse.json()) as any;
+      expect(changeData.status).toBe(true);
+
+      console.log("✅ Password changed successfully");
+
+      // Verify: sign out and sign back in with new password
+      await loggedFetch(`${BASE_URL}/auth/sign-out`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      cookieUtils.clearCookies();
+
+      const signInResponse = await loggedFetch(`${BASE_URL}/auth/sign-in/email`, {
+        method: "POST",
+        body: JSON.stringify({
+          email: passwordChangeUser.email,
+          password: newPassword,
+        }),
+      });
+
+      expect(signInResponse.status).toBe(200);
+      console.log("✅ Successfully signed in with new password");
+    });
+
+    it("POST /api/auth/change-password - should fail with wrong current password", async () => {
+      // Sign in with the new password first
+      cookieUtils.clearCookies();
+
+      const signInResponse = await loggedFetch(`${BASE_URL}/auth/sign-in/email`, {
+        method: "POST",
+        body: JSON.stringify({
+          email: passwordChangeUser.email,
+          password: newPassword,
+        }),
+      });
+      expect(signInResponse.status).toBe(200);
+
+      // Try to change password with wrong current password
+      const changeResponse = await loggedFetch(`${BASE_URL}/auth/change-password`, {
+        method: "POST",
+        body: JSON.stringify({
+          currentPassword: "WrongPassword@999",
+          newPassword: "AnotherPassword@789",
+          revokeOtherSessions: false,
+        }),
+      });
+
+      expect(changeResponse.status).toBe(400);
+      const changeData = (await changeResponse.json()) as any;
+      expect(changeData.code).toBe("INVALID_PASSWORD");
+
+      console.log("✅ Password change correctly rejected with wrong current password");
+    });
+
+    it("POST /api/auth/change-password - should fail when not authenticated", async () => {
+      cookieUtils.clearCookies();
+
+      const changeResponse = await loggedFetch(`${BASE_URL}/auth/change-password`, {
+        method: "POST",
+        body: JSON.stringify({
+          currentPassword: "SomePassword@123",
+          newPassword: "NewPassword@456",
+          revokeOtherSessions: false,
+        }),
+      });
+
+      expect(changeResponse.status).toBe(401);
+
+      console.log("✅ Password change correctly rejected when not authenticated");
+    });
+  });
+
+  // Account Deletion Tests
+  describe("Account Deletion", () => {
+    it("POST /api/auth/delete-user - should delete user with correct password", async () => {
+      // Create a new user specifically for deletion
+      const deleteTestUser = {
+        email: `delete-${Date.now()}@example.com`,
+        password: "DeleteMe@123",
+        name: "Delete Test User",
+      };
+
+      cookieUtils.clearCookies();
+
+      const signUpResponse = await loggedFetch(`${BASE_URL}/auth/sign-up/email`, {
+        method: "POST",
+        body: JSON.stringify(deleteTestUser),
+      });
+      expect(signUpResponse.status).toBe(200);
+
+      // Delete the user
+      const deleteResponse = await loggedFetch(`${BASE_URL}/auth/delete-user`, {
+        method: "POST",
+        body: JSON.stringify({
+          password: deleteTestUser.password,
+        }),
+      });
+
+      expect(deleteResponse.status).toBe(200);
+
+      console.log("✅ User deleted successfully");
+
+      // Verify: user can no longer sign in
+      cookieUtils.clearCookies();
+
+      const signInResponse = await loggedFetch(`${BASE_URL}/auth/sign-in/email`, {
+        method: "POST",
+        body: JSON.stringify({
+          email: deleteTestUser.email,
+          password: deleteTestUser.password,
+        }),
+      });
+
+      expect(signInResponse.status).toBe(401);
+      console.log("✅ Deleted user can no longer sign in");
+    });
+
+    it("POST /api/auth/delete-user - should fail with wrong password", async () => {
+      // Create a new user
+      const wrongPwUser = {
+        email: `wrongpw-delete-${Date.now()}@example.com`,
+        password: "CorrectPassword@123",
+        name: "Wrong Password Delete Test",
+      };
+
+      cookieUtils.clearCookies();
+
+      const signUpResponse = await loggedFetch(`${BASE_URL}/auth/sign-up/email`, {
+        method: "POST",
+        body: JSON.stringify(wrongPwUser),
+      });
+      expect(signUpResponse.status).toBe(200);
+
+      // Try to delete with wrong password
+      const deleteResponse = await loggedFetch(`${BASE_URL}/auth/delete-user`, {
+        method: "POST",
+        body: JSON.stringify({
+          password: "WrongPassword@999",
+        }),
+      });
+
+      expect(deleteResponse.status).toBe(400);
+      const deleteData = (await deleteResponse.json()) as any;
+      expect(deleteData.code).toBe("INVALID_PASSWORD");
+
+      console.log("✅ Account deletion correctly rejected with wrong password");
+
+      // Clean up: delete the user with correct password
+      await loggedFetch(`${BASE_URL}/auth/delete-user`, {
+        method: "POST",
+        body: JSON.stringify({
+          password: wrongPwUser.password,
+        }),
+      });
+    });
+
+    it("POST /api/auth/delete-user - should fail when not authenticated", async () => {
+      cookieUtils.clearCookies();
+
+      const deleteResponse = await loggedFetch(`${BASE_URL}/auth/delete-user`, {
+        method: "POST",
+        body: JSON.stringify({
+          password: "SomePassword@123",
+        }),
+      });
+
+      expect(deleteResponse.status).toBe(401);
+
+      console.log("✅ Account deletion correctly rejected when not authenticated");
+    });
+  });
 });
