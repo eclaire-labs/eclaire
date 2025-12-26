@@ -363,7 +363,7 @@ export function buildConfig(): EclaireConfig {
       password: dbPassword,
       name: dbName,
       url: databaseUrl,
-      sqlitePath: env.SQLITE_DB_PATH || `${dataDir}/sqlite/sqlite.db`,
+      sqlitePath: env.SQLITE_DATA_DIR ? `${env.SQLITE_DATA_DIR}/sqlite.db` : `${dataDir}/sqlite/sqlite.db`,
       pgliteDir: env.PGLITE_DATA_DIR || `${dataDir}/pglite`,
     },
 

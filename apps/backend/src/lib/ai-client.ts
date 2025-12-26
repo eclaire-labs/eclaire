@@ -46,20 +46,48 @@ export interface ModelsConfiguration {
 let modelsConfigCache: ModelsConfiguration | null = null;
 
 /**
+ * TODO, WORKAROUND: Config fallbacks for env vars used in models.json
+ *
+ * This is a temporary solution. The proper fix is to refactor to a
+ * provider registry pattern (like Vercel AI SDK) where:
+ * - Providers define connection config (URLs, API keys) from schema.ts
+ * - Models.json only defines model metadata (capabilities, contexts)
+ * - No env var interpolation needed in JSON files
+ *
+ * See: https://ai-sdk.dev/docs/foundations/providers-and-models
+ */
+const configFallbacks: Record<string, () => string | undefined> = {
+  AI_LOCAL_PROVIDER_URL: () => config.ai.localProviderUrl,
+  WORKER_AI_LOCAL_PROVIDER_URL: () => config.ai.workerLocalProviderUrl,
+  AI_PROXY_PROVIDER_URL: () => config.ai.proxyProviderUrl,
+  AI_PROXY_API_KEY: () => config.ai.proxyApiKey,
+};
+
+/**
  * Interpolate environment variables in a string
  * Replaces ${VAR_NAME} with the actual environment variable value
+ * Falls back to config values for known AI-related env vars
  */
 function interpolateEnvVars(str: string): string {
   return str.replace(/\$\{([^}]+)\}/g, (match, varName) => {
-    const value = process.env[varName];
-    if (value === undefined) {
-      logger.warn(
-        { varName, match },
-        "Environment variable not found for interpolation",
-      );
-      return match; // Return original if env var not found
+    // First try environment variable
+    const envValue = process.env[varName];
+    if (envValue !== undefined) {
+      return envValue;
     }
-    return value;
+    // Fall back to config value if available
+    const fallback = configFallbacks[varName];
+    if (fallback) {
+      const configValue = fallback();
+      if (configValue !== undefined) {
+        return configValue;
+      }
+    }
+    logger.warn(
+      { varName, match },
+      "Environment variable not found for interpolation",
+    );
+    return match;
   });
 }
 

@@ -4,6 +4,13 @@
  * Reads configuration from environment variables with sensible defaults.
  */
 
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
+
+// ESM-compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 export const isDev = process.env.NODE_ENV === "development";
 
 /**
@@ -34,27 +41,44 @@ export function getDatabaseAuthToken(): string | undefined {
 
 /**
  * Get the database type from environment.
- * Defaults to PostgreSQL if not specified.
+ * Defaults to SQLite if not specified.
  */
 export function getDatabaseType(): "postgresql" | "pglite" | "sqlite" {
 	const type = process.env.DATABASE_TYPE?.toLowerCase();
+	if (type === "postgresql") return "postgresql";
 	if (type === "pglite") return "pglite";
-	if (type === "sqlite") return "sqlite";
-	return "postgresql";
+	return "sqlite";
 }
 
 /**
  * Get the PGlite data directory path.
- * Defaults to ./data/pglite
+ * Defaults to data/pglite in repo root.
  */
 export function getPGlitePath(): string {
-	return process.env.PGLITE_DATA_DIR || "./data/pglite";
+	if (process.env.PGLITE_DATA_DIR) {
+		return process.env.PGLITE_DATA_DIR;
+	}
+	// Use absolute path relative to repo root to avoid CWD issues
+	// From packages/db/src/ -> repo root is ../../../
+	return resolve(__dirname, "../../../data/pglite");
+}
+
+/**
+ * Get the SQLite data directory path.
+ * Defaults to data/sqlite in repo root.
+ */
+export function getSqliteDataDir(): string {
+	if (process.env.SQLITE_DATA_DIR) {
+		return process.env.SQLITE_DATA_DIR;
+	}
+	// Use absolute path relative to repo root to avoid CWD issues
+	// From packages/db/src/ -> repo root is ../../../
+	return resolve(__dirname, "../../../data/sqlite");
 }
 
 /**
  * Get the SQLite database file path.
- * Defaults to ./data/sqlite/sqlite.db
  */
 export function getSqlitePath(): string {
-	return process.env.SQLITE_DB_PATH || "./data/sqlite/sqlite.db";
+	return resolve(getSqliteDataDir(), "sqlite.db");
 }

@@ -6,8 +6,9 @@ const isSqlite = dbType === "sqlite";
 // For PGlite, use the configured path or default
 const pglitePath = process.env.PGLITE_DATA_DIR || "./data/pglite";
 
-// For SQLite, use the configured path or default
-const sqlitePath = process.env.SQLITE_DB_PATH || "./data/sqlite/sqlite.db";
+// For SQLite, use the configured directory or default, then append filename
+const sqliteDataDir = process.env.SQLITE_DATA_DIR || "./data/sqlite";
+const sqlitePath = `${sqliteDataDir}/sqlite.db`;
 
 export default {
 	// Include both app schema AND queue schema for migrations

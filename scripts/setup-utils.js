@@ -104,9 +104,9 @@ async function configureDatabaseInEnv(databaseType, questionFn) {
   let content = fs.readFileSync(envPath, 'utf-8');
 
   if (databaseType === 'postgresql') {
-    // Uncomment and set DATABASE_TYPE=postgresql
+    // Set DATABASE_TYPE=postgresql (handles commented or any existing value)
     content = content.replace(
-      /^#DATABASE_TYPE=sqlite$/m,
+      /^#?DATABASE_TYPE=\w*$/m,
       'DATABASE_TYPE=postgresql'
     );
     fs.writeFileSync(envPath, content);
@@ -131,7 +131,13 @@ async function configureDatabaseInEnv(databaseType, questionFn) {
       console.log(`  ${colors.cyan}Start manually: docker compose --profile postgres up postgres docling -d${colors.reset}`);
     }
   } else {
-    console.log(`  ✅ Using SQLite (default, no configuration needed)`);
+    // Set DATABASE_TYPE=sqlite (handles commented or any existing value)
+    content = content.replace(
+      /^#?DATABASE_TYPE=\w*$/m,
+      'DATABASE_TYPE=sqlite'
+    );
+    fs.writeFileSync(envPath, content);
+    console.log(`  ✅ Configured DATABASE_TYPE=sqlite in .env`);
   }
 }
 

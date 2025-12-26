@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$BACKEND_DIR"
 
-# Load environment variables for SQLITE_DB_PATH
+# Load environment variables for SQLITE_DATA_DIR
 # Use .env.prod for container, .env.dev for local development
 if [ "$RUNNING_IN_CONTAINER" = "true" ]; then
     envfiles=(".env.prod" ".env")
@@ -18,7 +18,7 @@ fi
 
 for envfile in "${envfiles[@]}"; do
     if [ -f "$envfile" ]; then
-        export $(grep -v '^#' "$envfile" | grep SQLITE_DB_PATH | xargs)
+        export $(grep -v '^#' "$envfile" | grep SQLITE_DATA_DIR | xargs)
         break
     fi
 done
@@ -44,7 +44,8 @@ fi
 echo ""
 
 # Get SQLite database path from environment or use default
-SQLITE_PATH="${SQLITE_DB_PATH:-./data/sqlite/sqlite.db}"
+SQLITE_DATA_DIR="${SQLITE_DATA_DIR:-./data/sqlite}"
+SQLITE_PATH="${SQLITE_DATA_DIR}/sqlite.db"
 echo "📂 SQLite database: $SQLITE_PATH"
 
 # 1. Delete the SQLite database file
