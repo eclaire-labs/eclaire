@@ -27,8 +27,7 @@ const rtf2text = require("rtf2text");
 // Removed pdfjs-dist and canvas dependencies - using pdftocairo instead
 
 const logger = createChildLogger("document-processor");
-const DOCLING_SERVER_URL =
-  process.env.DOCLING_SERVER_URL || "http://localhost:5001";
+const DOCLING_SERVER_URL = config.docling.url;
 
 // Check if pdftocairo is available on the system
 async function isPdftocairoAvailable(): Promise<boolean> {

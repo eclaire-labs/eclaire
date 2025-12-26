@@ -12,13 +12,14 @@ process.on("uncaughtException", (error) => {
 
 // CRITICAL: Load environment variables FIRST, before any other imports
 import "./lib/env-loader.js";
-import { validateRequiredEnvVars, getServiceRole, getQueueBackend } from "./lib/env-validation.js";
+// Config system initializes immediately on import, auto-generating secrets if needed
+import { initConfig, config } from "./config/index.js";
 
-// Validate required environment variables before starting
-validateRequiredEnvVars();
+// Validate configuration (logs warnings in dev, fails fast in production)
+initConfig();
 
-const SERVICE_ROLE = getServiceRole();
-const QUEUE_BACKEND = getQueueBackend();
+const SERVICE_ROLE = config.serviceRole;
+const QUEUE_BACKEND = config.queueBackend;
 
 // Now import modules that depend on environment variables
 import { serve } from "@hono/node-server";
@@ -70,9 +71,9 @@ app.use("*", smartLogger());
 
 // Define allowed origins
 const getAllowedOrigins = () => {
-  return process.env.NODE_ENV === "production"
+  return config.isProduction
     ? [
-        process.env.FRONTEND_URL || "http://localhost:3000",
+        config.services.frontendUrl,
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://frontend:3000",
@@ -295,6 +296,7 @@ app.all("/api/auth/*", async (c) => {
 
 // Health check handler
 const healthHandler = (c: Context<{ Variables: Variables }>) => {
+  // Build info comes from environment set during Docker build
   const buildInfo = {
     version: process.env.APP_VERSION || "N/A",
     fullVersion: process.env.APP_FULL_VERSION || "N/A",
@@ -304,14 +306,14 @@ const healthHandler = (c: Context<{ Variables: Variables }>) => {
 
   return c.json({
     status: "ok",
-    service: "eclaire-backend",
+    service: "eclaire",
     version: buildInfo.version,
     fullVersion: buildInfo.fullVersion,
     gitHash: buildInfo.gitHash,
     buildTimestamp: buildInfo.buildTimestamp,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || "development",
+    environment: config.nodeEnv,
   });
 };
 
@@ -368,7 +370,7 @@ const start = async () => {
       validateAIConfigOnStartup();
 
       // Validate encryption service if MASTER_ENCRYPTION_KEY is provided
-      if (process.env.MASTER_ENCRYPTION_KEY) {
+      if (config.security.masterEncryptionKey) {
         validateEncryptionService();
         logger.info("Encryption service validated successfully");
       } else {
@@ -377,8 +379,8 @@ const start = async () => {
         );
       }
 
-      const port = Number(process.env.PORT) || 3001;
-      const host = process.env.HOST || "0.0.0.0";
+      const port = config.port;
+      const host = config.host;
 
       logger.info(
         {
@@ -409,7 +411,7 @@ const start = async () => {
       logger.info({ port, host, SERVICE_ROLE, QUEUE_BACKEND }, "HTTP server running successfully");
 
       // Start Telegram bots after server is running
-      if (process.env.MASTER_ENCRYPTION_KEY) {
+      if (config.security.masterEncryptionKey) {
         logger.info("Starting Telegram bots...");
         await startAllTelegramBots();
       } else {

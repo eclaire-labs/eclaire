@@ -36,7 +36,7 @@ import {
 } from "../queue/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { ValidationError } from "../errors.js";
-import { getQueueBackend } from "../env-validation.js";
+import { config } from "../../config/index.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
 
@@ -245,7 +245,7 @@ async function upsertTaskScheduler(
  * @returns Promise<boolean> - Success status
  */
 async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
-  const queueBackend = getQueueBackend();
+  const queueBackend = config.queueBackend;
 
   try {
     if (queueBackend === "redis") {

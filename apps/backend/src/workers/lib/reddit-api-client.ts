@@ -78,6 +78,7 @@ export class RedditApiClient {
   private fetchSubredditData: boolean;
 
   constructor(options: RedditClientOptions = {}) {
+    // Note: External API credentials are intentionally read from process.env, not the config system
     this.clientId = process.env.REDDIT_CLIENT_ID || "";
     this.clientSecret = process.env.REDDIT_CLIENT_SECRET || "";
 

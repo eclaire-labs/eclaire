@@ -75,6 +75,8 @@ export type AssetType = "bookmarks" | "photos" | "documents" | "notes" | "tasks"
 export interface RedisQueueConfig {
   /** Redis connection URL */
   url: string;
+  /** Redis key prefix for BullMQ (default: "eclaire") */
+  prefix?: string;
 }
 
 export interface DatabaseQueueConfig {

@@ -16,6 +16,8 @@ export interface QueueManagerConfig {
   logger: Logger;
   /** Service name for logging */
   serviceName?: string;
+  /** Redis key prefix for BullMQ (default: "eclaire") */
+  prefix?: string;
 }
 
 export interface QueueManager {
@@ -31,7 +33,7 @@ export interface QueueManager {
  * Creates a BullMQ queue manager with Redis connection
  */
 export function createQueueManager(config: QueueManagerConfig): QueueManager {
-  const { redisUrl, logger, serviceName = "Queue Service" } = config;
+  const { redisUrl, logger, serviceName = "Queue Service", prefix = "eclaire" } = config;
 
   // Store queue instances to avoid recreating them
   const queues: Record<string, Queue> = {};
@@ -75,9 +77,10 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
       // Get or create queue
       if (!queues[name]) {
         try {
-          logger.info({ queueName: name }, "Initializing queue");
+          logger.info({ queueName: name, prefix }, "Initializing queue");
           queues[name] = new Queue(name, {
             connection: connection,
+            prefix,
             defaultJobOptions: getDefaultJobOptions(name),
           });
           logger.info({ queueName: name }, "Queue initialized successfully");

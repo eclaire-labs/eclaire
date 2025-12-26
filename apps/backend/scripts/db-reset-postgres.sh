@@ -66,7 +66,7 @@ if [ "$CONTAINER_MODE" = true ]; then
     else
         # Fall back to individual environment variables with defaults
         echo "   Using individual DB_* environment variables"
-        DB_HOST="${DB_HOST:-localhost}"
+        DB_HOST="${DB_HOST:-127.0.0.1}"
         DB_USER="${DB_USER:-eclaire}"
         DB_PASSWORD="${DB_PASSWORD:-eclaire}"
         DB_NAME="${DB_NAME:-eclaire}"

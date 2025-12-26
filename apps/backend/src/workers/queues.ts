@@ -21,7 +21,7 @@ import {
   type QueueManager,
   type QueueName,
 } from "@eclaire/queue/app";
-import { getQueueBackend } from "../lib/env-validation.js";
+import { config as appConfig } from "../config/index.js";
 
 const logger = createChildLogger("queues");
 
@@ -30,7 +30,7 @@ const logger = createChildLogger("queues");
 // - "redis" → Redis/BullMQ
 // - "postgres" → PostgreSQL database queue
 // - "sqlite" → SQLite database queue (single process only)
-const queueBackend = getQueueBackend();
+const queueBackend = appConfig.queueBackend;
 
 // --- Conditional Redis Connection ---
 export let redisConnection: Redis | null = null;

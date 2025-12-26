@@ -7,6 +7,8 @@ const { execSync } = require('child_process');
 const {
   checkDependencies,
   copyEnvFiles,
+  chooseDatabaseType,
+  configureDatabaseInEnv,
   createDataDirectories,
   checkModels,
   installDependencies,
@@ -87,23 +89,30 @@ async function showPreflightSummary(env) {
   if (!flags.skipDeps) {
     console.log(`  1. ${colors.blue}Check system dependencies${colors.reset} (Node.js, Docker, PM2, LibreOffice, Poppler, etc.)`);
   }
-  console.log(`  2. ${colors.blue}Copy environment files${colors.reset} (.env.${env} files, models.json)`);
-  console.log(`  3. ${colors.blue}Create data directories${colors.reset} (logs, database, redis, user data)`);
+  console.log(`  2. ${colors.blue}Copy environment files${colors.reset} (.env, models.json)`);
+  if (env === 'dev') {
+    console.log(`  3. ${colors.blue}Choose database${colors.reset} (SQLite or PostgreSQL)`);
+  }
+  console.log(`  ${env === 'dev' ? '4' : '3'}. ${colors.blue}Create data directories${colors.reset} (logs, database, user data)`);
 
   if (!flags.skipModels) {
-    console.log(`  4. ${colors.blue}Check AI models${colors.reset} (show download commands for llama.cpp)`);
+    console.log(`  ${env === 'dev' ? '5' : '4'}. ${colors.blue}Check AI models${colors.reset} (show download commands for llama.cpp)`);
   }
 
   if (!flags.skipDb) {
-    console.log(`  5. ${colors.blue}Install pnpm dependencies${colors.reset} (backend)`);
-    if (env === 'prod' && flags.build) {
-      console.log(`  6. ${colors.blue}Build Docker containers${colors.reset} (--build flag detected)`);
-    } else if (env === 'prod') {
-      console.log(`  6. ${colors.blue}Skip Docker build${colors.reset} (will use official GHCR images)`);
+    console.log(`  ${env === 'dev' ? '6' : '5'}. ${colors.blue}Install pnpm dependencies${colors.reset}`);
+    if (env === 'prod') {
+      if (flags.build) {
+        console.log(`  6. ${colors.blue}Build Docker containers${colors.reset} (--build flag detected)`);
+      } else {
+        console.log(`  6. ${colors.blue}Skip Docker build${colors.reset} (will use official GHCR images)`);
+      }
+      console.log(`  7. ${colors.blue}Start dependencies${colors.reset} (PostgreSQL, Redis via PM2)`);
+      console.log(`  8. ${colors.blue}Initialize database${colors.reset} (migrations, essential seed data)`);
+    } else {
+      // Dev environment - simpler flow
+      console.log(`  7. ${colors.blue}Initialize database${colors.reset} (migrations, demo seed data)`);
     }
-    console.log(`  ${env === 'prod' ? '7' : '6'}. ${colors.blue}Start dependencies${colors.reset} (PostgreSQL, Redis, AI models via PM2)`);
-    console.log(`     ${colors.yellow}Note: AI models will download on first start (may take 5-10 minutes)${colors.reset}`);
-    console.log(`  ${env === 'prod' ? '8' : '7'}. ${colors.blue}Initialize database${colors.reset} (migrations, ${env === 'dev' ? 'demo' : 'essential'} seed data)`);
   }
 
   if (flags.yes) {
@@ -198,8 +207,22 @@ async function setup() {
       console.log(`${colors.yellow}Skipping environment file setup${colors.reset}`);
     }
 
-    // Step 3: Create data directories
-    if (await confirm('\nStep 3: Create required data directories?')) {
+    // Step 3: Choose database type (dev only)
+    if (env === 'dev' && results.envFiles) {
+      console.log(`\n${colors.blue}Step 3: Choose database type${colors.reset}`);
+      try {
+        results.databaseType = await chooseDatabaseType();
+        await configureDatabaseInEnv(results.databaseType, question);
+      } catch (error) {
+        console.log(`  ${colors.red}❌ Database configuration failed: ${error.message}${colors.reset}`);
+        results.databaseType = 'sqlite'; // Default to SQLite on error
+      }
+    } else if (env === 'dev') {
+      results.databaseType = 'sqlite'; // Default if env files were skipped
+    }
+
+    // Step 4: Create data directories
+    if (await confirm('\nStep 4: Create required data directories?')) {
       console.log(`\n${colors.blue}Creating data directories...${colors.reset}`);
       try {
         results.directories = await createDataDirectories();
@@ -211,9 +234,9 @@ async function setup() {
       console.log(`${colors.yellow}Skipping directory creation${colors.reset}`);
     }
 
-    // Step 4: Check AI models
+    // Step 5: Check AI models
     if (!flags.skipModels) {
-      if (await confirm('\nStep 4: Check if AI models are downloaded?')) {
+      if (await confirm('\nStep 5: Check if AI models are downloaded?')) {
         console.log(`\n${colors.blue}Checking AI models...${colors.reset}`);
         try {
           results.models = await checkModels();
@@ -226,9 +249,9 @@ async function setup() {
       }
     }
 
-    // Step 5: Install npm dependencies
+    // Step 6: Install npm dependencies
     if (!flags.skipDb) {
-      if (await confirm('\nStep 5: Install pnpm dependencies?')) {
+      if (await confirm('\nStep 6: Install pnpm dependencies?')) {
         console.log(`\n${colors.blue}Installing pnpm dependencies...${colors.reset}`);
         try {
           results.npmDependencies = await installDependencies(env);
@@ -269,8 +292,8 @@ async function setup() {
       console.log(`${colors.yellow}Skipping container build (pnpm dependencies not installed)${colors.reset}`);
     }
 
-    // Step 7: Start dependencies (needed for database)
-    if (!flags.skipDb && results.npmDependencies && (env === 'dev' || results.containersBuilt)) {
+    // Step 7: Start dependencies (prod only - dev uses SQLite or docker compose started in Step 2)
+    if (!flags.skipDb && results.npmDependencies && env === 'prod' && results.containersBuilt) {
       if (await confirm('\nStep 7: Start dependencies (PostgreSQL, Redis)?', false)) {
         console.log(`\n${colors.blue}Starting dependencies...${colors.reset}`);
         try {
@@ -286,16 +309,19 @@ async function setup() {
         console.log(`${colors.yellow}Skipping dependency start (assuming already running)${colors.reset}`);
         results.dependenciesStarted = true; // Mark as done so database init can proceed
       }
+    } else if (!flags.skipDb && env === 'dev' && results.npmDependencies) {
+      // Dev environment: SQLite needs no deps, PostgreSQL was started in Step 2
+      results.dependenciesStarted = true;
     } else if (!flags.skipDb && !results.npmDependencies) {
       console.log(`${colors.yellow}Skipping dependency start (npm dependencies not installed)${colors.reset}`);
     }
 
-    // Step 8: Initialize database
+    // Step 7: Initialize database
     if (!flags.skipDb && results.dependenciesStarted) {
-      if (await confirm('\nStep 8: Initialize database?')) {
+      if (await confirm('\nStep 7: Initialize database?')) {
         console.log(`\n${colors.blue}Initializing database...${colors.reset}`);
         try {
-          results.database = await initDatabase(env, question);
+          results.database = await initDatabase(env, question, results.databaseType || 'sqlite');
           if (!results.database) {
             results.databaseFailed = true;
           }

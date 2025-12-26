@@ -178,19 +178,36 @@ Choose the setup path that matches your needs:
 pnpm setup:prod
 ```
 This will:
-- Copy configuration files
+- Copy `.env.example` to `.env` and generate secure secrets
 - Create required directories
 - Check system dependencies
 - Install pnpm dependencies (needed for database migrations)
-- Start PostgreSQL and Redis
 - Initialize the database with essential seed data
 
-The setup will **automatically use official GHCR images** and skip local Docker builds.
+2. **Start your LLM backend** (Ollama, llama.cpp, or similar)
+```bash
+ollama serve  # Or your preferred LLM server on port 11434
+```
 
-2. **Start Eclaire**
+3. **Start Eclaire**
 ```bash
 docker compose up
 ```
+
+This starts the backend (with SQLite by default) and Docling for document processing.
+
+**Alternative: Run without Docker Compose**
+
+```bash
+docker run -p 3000:3000 --env-file ./.env ghcr.io/eclaire-labs/eclaire:latest
+```
+
+**Using PostgreSQL instead of SQLite**
+
+```bash
+docker compose --profile postgres up
+```
+Then set `DATABASE_TYPE=postgresql` in your `.env`.
 
 Access the application:
 - Frontend: http://localhost:3000
@@ -304,9 +321,9 @@ Eclaire is designed to work with various LLM backends and models. By default we 
 
 - Support for llama.cpp / llama-server, vLLM, mlx_lm, mlx_vlm, ollama and more.
 - Uses the OpenAI-compatible /v1/chat/completions endpoint.
-- eclaire-backend expects a text model with decent tool calling / agentic capabilities
-- eclaire-workers expects a multi-modal model with support for text + images
-- Both eclaire-backend and eclaire-workers can point to same or different endpoints as long as the model meets the requirements mentioned above. 
+- The server expects a text model with decent tool calling / agentic capabilities for the AI assistant
+- For document processing, a multi-modal model with support for text + images is recommended
+- You can configure separate endpoints for assistant vs worker models, or use the same endpoint for both. 
 - You may choose LLM backend and models to best take advantage of your hardware depending how much GPU memory is available, whether you are running on Apple silicon and want to use MLX, etc. Larger and more powerful models should produce better results but require more memory and run more slowly.
 
 ### Steps for changing LLM backends

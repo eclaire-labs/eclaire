@@ -60,6 +60,15 @@ export interface QueueTestHarness {
 
   /** Clean up all resources - call in afterEach */
   cleanup(): Promise<void>;
+
+  /** Get the Redis key prefix (BullMQ only) */
+  getPrefix?(): string;
+
+  /** Scan Redis keys matching a pattern (BullMQ only) */
+  scanRedisKeys?(pattern: string): Promise<string[]>;
+
+  /** Get the Redis URL (BullMQ only) */
+  getRedisUrl?(): string;
 }
 
 /**
@@ -214,7 +223,7 @@ function generateTestRunId(): string {
 export async function createBullMQTestHarness(): Promise<QueueTestHarness> {
   const testRunId = generateTestRunId();
   const prefix = `queue-test:${testRunId}`;
-  const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+  const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
   const logger = createTestLogger();
 
@@ -286,6 +295,31 @@ export async function createBullMQTestHarness(): Promise<QueueTestHarness> {
       });
       schedulers.push(scheduler);
       return scheduler;
+    },
+
+    getPrefix() {
+      return prefix;
+    },
+
+    getRedisUrl() {
+      return redisUrl;
+    },
+
+    async scanRedisKeys(pattern: string): Promise<string[]> {
+      const keys: string[] = [];
+      let cursor = "0";
+      do {
+        const [nextCursor, matchedKeys] = await cleanupRedis.scan(
+          cursor,
+          "MATCH",
+          pattern,
+          "COUNT",
+          100,
+        );
+        cursor = nextCursor;
+        keys.push(...matchedKeys);
+      } while (cursor !== "0");
+      return keys;
     },
 
     async cleanup() {

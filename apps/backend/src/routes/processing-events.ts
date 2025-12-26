@@ -7,7 +7,7 @@ import { createPostgresClient, getDatabaseUrl, getDatabaseType } from "@eclaire/
 import type { RouteVariables } from "../types/route-variables.js";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
-import { getQueueBackend } from "../lib/env-validation.js";
+import { config } from "../config/index.js";
 import { sanitizeChannelName } from "../workers/lib/postgres-publisher.js";
 
 const logger = createChildLogger("processing-events");
@@ -18,7 +18,7 @@ export const processingEventsRoutes = new Hono<{ Variables: RouteVariables }>();
 // - "redis" → Redis pub/sub
 // - "postgres" → PostgreSQL LISTEN/NOTIFY
 // - "sqlite" → In-memory only (single process)
-const queueBackend = getQueueBackend();
+const queueBackend = config.queueBackend;
 const useRedisPubSub = queueBackend === "redis";
 
 // Database type for Postgres LISTEN (used when not in Redis mode)
@@ -27,15 +27,16 @@ const usePostgresListen = !useRedisPubSub && dbType === "postgresql";
 const postgresUrl = usePostgresListen ? getDatabaseUrl() : null;
 
 // Redis connection for pub/sub (only used in redis mode)
-const redisUrl = process.env.REDIS_URL;
+// Use config.queue.redisUrl - includes fallback construction from REDIS_HOST+REDIS_PORT
+const redisUrl = config.queue.redisUrl;
 
-// Warn if redis mode but no URL
-if (useRedisPubSub && !redisUrl) {
-  logger.warn({}, "REDIS_URL not set but queue mode is 'redis' - pub/sub will not work");
+// Warn if redis mode but no valid URL
+if (useRedisPubSub && (!redisUrl || !redisUrl.startsWith("redis://"))) {
+  logger.warn({}, "Redis URL not available but queue mode is 'redis' - pub/sub will not work");
 }
 
-// Reusable Redis publisher connection (only created in redis mode)
-let publisherConnection: Redis | null = useRedisPubSub && redisUrl
+// Reusable Redis publisher connection (only created in redis mode with valid URL)
+let publisherConnection: Redis | null = useRedisPubSub && redisUrl && redisUrl.startsWith("redis://")
   ? createRedisConnection({
       url: redisUrl,
       logger,
@@ -94,8 +95,8 @@ processingEventsRoutes.get("/stream", async (c) => {
       let keepAliveInterval: NodeJS.Timeout | null = null;
 
       try {
-        // Create Redis subscriber only if in redis mode
-        if (useRedisPubSub && redisUrl) {
+        // Create Redis subscriber only if in redis mode with valid URL
+        if (useRedisPubSub && redisUrl && redisUrl.startsWith("redis://")) {
           subscriber = createRedisConnection({
             url: redisUrl,
             logger,

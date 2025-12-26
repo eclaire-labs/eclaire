@@ -10,7 +10,7 @@ import { createBullMQScheduler } from "@eclaire/queue/driver-bullmq";
 import { createDbScheduler, createDbQueueClient, getQueueSchema } from "@eclaire/queue/driver-db";
 import { db, dbType } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
-import { getQueueBackend } from "../env-validation.js";
+import { config } from "../../config/index.js";
 
 const logger = createChildLogger("scheduler");
 
@@ -43,10 +43,10 @@ export async function getScheduler(): Promise<Scheduler> {
 }
 
 async function initializeScheduler(): Promise<Scheduler> {
-  const queueBackend = getQueueBackend();
+  const queueBackend = config.queueBackend;
 
   if (queueBackend === "redis") {
-    const redisUrl = process.env.REDIS_URL;
+    const redisUrl = config.queue.redisUrl;
     if (!redisUrl) {
       throw new Error("REDIS_URL is required for QUEUE_BACKEND=redis");
     }

@@ -830,3 +830,15 @@ export const channelsRelations = relations(channels, ({ one }) => ({
 export const feedbackRelations = relations(feedback, ({ one }) => ({
 	user: one(users, { fields: [feedback.userId], references: [users.id] }),
 }));
+
+// =============================================================================
+// App Metadata (for upgrade system)
+// =============================================================================
+
+export const appMeta = sqliteTable("_app_meta", {
+	key: text("key").primaryKey(),
+	value: text("value").notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`(unixepoch())`),
+});

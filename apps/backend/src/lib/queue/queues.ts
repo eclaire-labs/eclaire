@@ -13,7 +13,7 @@ import {
   type QueueManager,
   type QueueName,
 } from "@eclaire/queue/app";
-import { getQueueBackend } from "../env-validation.js";
+import { config } from "../../config/index.js";
 
 const logger = createChildLogger("queues");
 
@@ -22,7 +22,7 @@ const logger = createChildLogger("queues");
 // - "redis" → Redis/BullMQ
 // - "postgres" → PostgreSQL database queue
 // - "sqlite" → SQLite database queue (single process only)
-const queueBackend = getQueueBackend();
+const queueBackend = config.queueBackend;
 
 // Re-export QueueNames for backwards compatibility
 export { QueueNames };
@@ -31,12 +31,13 @@ export { QueueNames };
 let queueManager: QueueManager | null = null;
 
 if (queueBackend === "redis") {
-  const redisUrl = process.env.REDIS_URL;
+  // Use config.queue.redisUrl - this includes fallback construction from REDIS_HOST+REDIS_PORT
+  const redisUrl = config.queue.redisUrl;
 
-  if (!redisUrl) {
+  if (!redisUrl || !redisUrl.startsWith("redis://")) {
     logger.error(
       {},
-      "FATAL: REDIS_URL environment variable is not set but queue mode is 'redis'. Queue functionality will fail",
+      "FATAL: Redis URL not available but queue mode is 'redis'. Queue functionality will fail",
     );
   } else {
     queueManager = createQueueManager({

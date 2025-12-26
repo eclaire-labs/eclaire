@@ -164,8 +164,6 @@ ENV NODE_ENV=production \
     APP_COMMITS_SINCE_TAG=${APP_COMMITS_SINCE_TAG} \
     APP_BUILD_TIMESTAMP=${APP_BUILD_TIMESTAMP} \
     APP_GIT_HASH=${APP_GIT_HASH} \
-    PORT=3001 \
-    HOST=0.0.0.0 \
     PLAYWRIGHT_BROWSERS_PATH=/home/nodeapp/.cache/ms-playwright \
     NODE_OPTIONS=--enable-source-maps
 
@@ -229,7 +227,7 @@ EXPOSE 3002
 
 # Healthcheck (give app time to boot)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
-  CMD curl -fsS -A "Docker-Health-Check" http://localhost:3000/health 2>/dev/null || exit 1
+  CMD curl -fsS -A "Docker-Health-Check" http://127.0.0.1:3000/health 2>/dev/null || exit 1
 
 ENTRYPOINT ["dumb-init", "--", "/app/docker-entrypoint.sh"]
 CMD []

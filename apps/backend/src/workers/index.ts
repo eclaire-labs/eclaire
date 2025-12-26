@@ -14,6 +14,7 @@ import { createBullMQWorker, type BullMQWorkerConfig } from "@eclaire/queue/driv
 import { QueueNames } from "@eclaire/queue/app";
 import type { Worker } from "@eclaire/queue/core";
 import { config } from "./config.js";
+import { config as appConfig } from "../config/index.js";
 import processBookmarkJob from "./jobs/bookmarkProcessor.js";
 import { processDocumentJob } from "./jobs/documentProcessor.js";
 import processImageJob from "./jobs/imageProcessor.js";
@@ -46,7 +47,7 @@ export async function startBullMQWorkers(): Promise<void> {
   logger.info("Starting BullMQ workers (Redis mode)");
 
   // Ensure browser data directory exists
-  const browserDataDir = process.env.BROWSER_DATA_DIR || "./browser-data";
+  const browserDataDir = appConfig.dirs.browserData;
   try {
     fs.mkdirSync(browserDataDir, { recursive: true });
     logger.info({ browserDataDir }, "Browser data directory ensured");
@@ -81,7 +82,7 @@ export async function startBullMQWorkers(): Promise<void> {
   app.get("/health", (c) => {
     return c.json({
       status: "ok",
-      service: "eclaire-workers",
+      service: "eclaire",
       mode: "bullmq",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
@@ -98,7 +99,7 @@ export async function startBullMQWorkers(): Promise<void> {
   const workerConfig: BullMQWorkerConfig = {
     redis: { url: config.redis.url },
     logger,
-    prefix: "queue",
+    prefix: config.redis.keyPrefix,
     eventCallbacks,
     // Wrap job execution in AsyncLocalStorage context for request tracing
     wrapJobExecution: async (requestId, execute) => {
@@ -222,7 +223,7 @@ export async function startDatabaseWorkers(): Promise<void> {
   logger.info("Starting database queue workers (Database mode)");
 
   // Ensure browser data directory exists
-  const browserDataDir = process.env.BROWSER_DATA_DIR || "./browser-data";
+  const browserDataDir = appConfig.dirs.browserData;
   try {
     fs.mkdirSync(browserDataDir, { recursive: true });
     logger.info({ browserDataDir }, "Browser data directory ensured");

@@ -19,7 +19,8 @@ import {
   createPgliteClient,
   createPostgresClient,
 } from "@eclaire/db";
-import { hmacBase64 } from "../src/lib/api-key-security.js";
+import { hmacBase64, parseApiKey } from "../src/lib/api-key-security.js";
+import { config } from "../src/config/index.js";
 
 // Determine which schema to use
 const dbType = getDatabaseType();
@@ -37,26 +38,17 @@ function computeApiKeyHash(fullKey: string): {
   keyHash: string;
   hashVersion: number;
 } {
-  // Use the HMAC key from environment
-  const pepperKey = process.env.API_KEY_HMAC_KEY_V1;
-  const allowDevKeys = process.env.ALLOW_DEV_KEYS === "true";
+  // Use the HMAC key from config (single source of truth)
+  const pepperKey = config.security.apiKeyHmacKeyV1;
 
   if (!pepperKey) {
-    throw new Error("API_KEY_HMAC_KEY_V1 environment variable is required");
-  }
-
-  // Check for dev-only patterns
-  if (pepperKey.toLowerCase().startsWith("devonly")) {
-    if (!allowDevKeys) {
-      throw new Error(
-        "API_KEY_HMAC_KEY_V1 contains dev-only pattern. Set ALLOW_DEV_KEYS=true to allow this in development.",
-      );
-    }
-    console.warn("⚠️  Using dev-only HMAC key (ALLOW_DEV_KEYS is true)");
+    throw new Error(
+      "API key HMAC key not available. Config should provide this based on NODE_ENV.",
+    );
   }
 
   const keyHash = hmacBase64(fullKey, pepperKey);
-  const hashVersion = parseInt(process.env.API_KEY_HMAC_VERSION || "1");
+  const hashVersion = parseInt(config.security.apiKeyHmacVersion);
   return { keyHash, hashVersion };
 }
 
@@ -71,6 +63,23 @@ function generateSecureApiKey(): {
   const fullKey = `sk-${keyId}-${secret}`;
   const keySuffix = secret.substring(secret.length - 4);
   return { fullKey, keyId, keySuffix };
+}
+
+// Extract key parts from a full API key (for config-derived keys)
+function extractKeyParts(fullKey: string): {
+  fullKey: string;
+  keyId: string;
+  keySuffix: string;
+} {
+  const parsed = parseApiKey(fullKey);
+  if (!parsed || !parsed.keyId || !parsed.secret) {
+    throw new Error(`Invalid API key format: ${fullKey.substring(0, 10)}...`);
+  }
+  return {
+    fullKey,
+    keyId: parsed.keyId,
+    keySuffix: parsed.secret.slice(-4),
+  };
 }
 
 // Check if running in production mode based on seed type
@@ -165,7 +174,7 @@ async function main() {
   } else {
     // PostgreSQL setup using client helper
     const dbUrl = process.env.DATABASE_URL || getDatabaseUrl();
-    console.log(`Connecting to PostgreSQL database: ${dbUrl.includes("localhost") ? "local" : "remote"}`);
+    console.log(`Connecting to PostgreSQL database: ${dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1") ? "local" : "remote"}`);
 
     const client = createPostgresClient(dbUrl);
     db = drizzlePostgres(client, { schema: pgSchema }) as Database;
@@ -309,13 +318,25 @@ async function main() {
     console.log("🔑 Creating API keys...");
 
     // Essential API keys (worker and AI assistant)
-    // Use real secure keys for production, fixed keys for dev/demo
-    workerKey = isProductionSeed
-      ? generateSecureApiKey()
-      : FIXED_TEST_KEYS.worker;
-    aiAssistantKey = isProductionSeed
-      ? generateSecureApiKey()
-      : FIXED_TEST_KEYS.aiAssistant;
+    // Key source depends on environment:
+    // - Test mode: fixed keys for reproducible tests
+    // - Production seed: newly generated secure keys
+    // - Development: config keys (matches what workers will use at runtime)
+    const isTest = process.env.NODE_ENV === "test";
+
+    if (isTest) {
+      // Test mode: use fixed keys for reproducibility
+      workerKey = FIXED_TEST_KEYS.worker;
+      aiAssistantKey = FIXED_TEST_KEYS.aiAssistant;
+    } else if (isProductionSeed) {
+      // Production: generate new secure keys
+      workerKey = generateSecureApiKey();
+      aiAssistantKey = generateSecureApiKey();
+    } else {
+      // Development: use config keys (ensures DB matches runtime config)
+      workerKey = extractKeyParts(config.worker.apiKey);
+      aiAssistantKey = extractKeyParts(config.worker.aiAssistantApiKey);
+    }
 
     const workerHash = computeApiKeyHash(workerKey.fullKey);
     const aiAssistantHash = computeApiKeyHash(aiAssistantKey.fullKey);

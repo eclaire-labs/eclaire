@@ -3,6 +3,7 @@ import * as path from "path";
 import { file as tmpFile } from "tmp-promise";
 import { encoding_for_model, get_encoding } from "tiktoken";
 import { createChildLogger } from "./logger.js";
+import { config } from "../config/index.js";
 
 const logger = createChildLogger("ai-client");
 
@@ -91,13 +92,7 @@ function loadModelConfiguration(): ModelsConfiguration {
   }
 
   try {
-    const configDir = process.env.CONFIG_DIR;
-    if (!configDir) {
-      throw new Error(
-        "CONFIG_DIR environment variable not set. Please set CONFIG_DIR in your environment file.",
-      );
-    }
-
+    const configDir = config.dirs.config;
     const configPath = path.join(configDir, "models.json");
     logger.debug({ configPath }, "Loading model configuration");
 
@@ -105,33 +100,37 @@ function loadModelConfiguration(): ModelsConfiguration {
     const rawConfig = JSON.parse(configContent) as ModelsConfiguration;
 
     // Interpolate environment variables in the configuration
-    const config = interpolateConfigObject(rawConfig) as ModelsConfiguration;
+    const modelsConfig = interpolateConfigObject(rawConfig) as ModelsConfiguration;
 
     // Validate configuration structure
     if (
-      !config.models ||
-      !Array.isArray(config.models) ||
-      config.models.length === 0
+      !modelsConfig.models ||
+      !Array.isArray(modelsConfig.models) ||
+      modelsConfig.models.length === 0
     ) {
       throw new Error("Invalid models configuration: no models defined");
     }
 
-    modelsConfigCache = config;
+    modelsConfigCache = modelsConfig;
     logger.info(
       {
-        modelsCount: config.models.length,
-        modelsList: config.models.map(
+        modelsCount: modelsConfig.models.length,
+        modelsList: modelsConfig.models.map(
           (m) => `${m.provider}:${m.modelShortName}`,
         ),
       },
       "Model configuration loaded successfully",
     );
 
-    return config;
+    return modelsConfig;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const isFileNotFound = errorMessage.includes("ENOENT");
     logger.error(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to load model configuration, falling back to environment variables",
+      { error: errorMessage },
+      isFileNotFound
+        ? "Failed to load model configuration. Run 'pnpm setup:dev' to create config/models.json"
+        : "Failed to load model configuration, falling back to environment variables",
     );
     throw error;
   }

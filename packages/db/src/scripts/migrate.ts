@@ -267,7 +267,7 @@ async function runPgliteMigrations(statusFlag: boolean, forceFlag: boolean) {
 
 async function runPostgresMigrations(statusFlag: boolean, forceFlag: boolean) {
 	const dbUrl = process.env.DATABASE_URL || getDatabaseUrl();
-	console.log(`Connecting to PostgreSQL database: ${dbUrl.includes("localhost") ? "local" : "remote"}`);
+	console.log(`Connecting to PostgreSQL database: ${dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1") ? "local" : "remote"}`);
 
 	const client = createPostgresClient(dbUrl, {
 		onnotice: () => {}, // Suppress NOTICE messages

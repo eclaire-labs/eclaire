@@ -1,4 +1,4 @@
-export const BASE_URL = "http://localhost:3001/api";
+export const BASE_URL = "http://127.0.0.1:3001/api";
 export const TEST_API_KEY =
   "sk-DEVONLYUSER0001-DEVONLY2222222222222222222222222";
 export const TEST_API_KEY_2 =

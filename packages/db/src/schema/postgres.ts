@@ -753,3 +753,13 @@ export const feedback = pgTable(
 export const feedbackRelations = relations(feedback, ({ one }) => ({
 	user: one(users, { fields: [feedback.userId], references: [users.id] }),
 }));
+
+// =============================================================================
+// App Metadata (for upgrade system)
+// =============================================================================
+
+export const appMeta = pgTable("_app_meta", {
+	key: text("key").primaryKey(),
+	value: text("value").notNull(),
+	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

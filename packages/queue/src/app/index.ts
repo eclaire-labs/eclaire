@@ -142,9 +142,10 @@ export async function createQueueAdapter(config: QueueConfig): Promise<QueueAdap
       redisUrl: config.redis.url,
       logger,
       serviceName: "Queue Service",
+      prefix: config.redis.prefix,
     });
 
-    logger.info({}, "Using Redis/BullMQ queue adapter");
+    logger.info({ prefix: config.redis.prefix || "eclaire" }, "Using Redis/BullMQ queue adapter");
     return _createBullMQAdapter({ queueManager, logger });
   } else if (mode === "database") {
     if (!config.database?.db || !config.database?.dbType) {

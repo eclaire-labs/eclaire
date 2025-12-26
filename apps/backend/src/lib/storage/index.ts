@@ -2,12 +2,13 @@
  * Storage factory for the backend
  *
  * Provides a centralized way to get a storage instance with proper configuration.
- * Supports multiple backends via STORAGE_BACKEND environment variable.
+ * Supports multiple backends via config.storage.backend.
  */
 
 import type { Storage, StorageLogger } from "@eclaire/storage/core";
 import { LocalStorage } from "@eclaire/storage/local";
 import { createChildLogger } from "../logger.js";
+import { config } from "../../config/index.js";
 
 // Re-export key utilities for convenience
 export {
@@ -49,27 +50,17 @@ const storageLogger: StorageLogger = {
 let storageInstance: Storage | null = null;
 
 /**
- * Get the storage base directory from environment variables
+ * Get the storage base directory from config
  */
 function getBaseDir(): string {
-  // Priority: STORAGE_PATH > USERS_DIR > WORKER_SHARED_DATA_PATH > ./data
-  return (
-    process.env.STORAGE_PATH ||
-    process.env.USERS_DIR ||
-    process.env.WORKER_SHARED_DATA_PATH ||
-    "./data"
-  );
+  return config.dirs.users;
 }
 
 /**
  * Get the configured storage backend
  */
 function getBackend(): "local" | "s3" {
-  const backend = process.env.STORAGE_BACKEND || "local";
-  if (backend !== "local" && backend !== "s3") {
-    throw new Error(`Unknown storage backend: ${backend}. Supported: local, s3`);
-  }
-  return backend;
+  return config.storage.backend;
 }
 
 /**

@@ -12,7 +12,7 @@ export default defineConfig({
   },
   test: {
     env: {
-      NODE_ENV: "development",
+      NODE_ENV: "test",
     },
     setupFiles: ["./src/lib/env-loader.ts"],
     exclude: [

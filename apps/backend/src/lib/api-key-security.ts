@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { generateCleanId } from "@eclaire/core";
 import { createChildLogger } from "./logger.js";
+import { config } from "../config/index.js";
 
 const logger = createChildLogger("api-key-security");
 
@@ -10,14 +11,13 @@ const SECRET_ALPHABET =
 const generateSecret = customAlphabet(SECRET_ALPHABET, 32);
 
 function currentPepper() {
-  const version = Number(process.env.API_KEY_HMAC_VERSION ?? "1");
-  const key = process.env[`API_KEY_HMAC_KEY_V${version}`];
+  const version = Number(config.security.apiKeyHmacVersion);
+  // Currently only V1 is supported
+  const key = config.security.apiKeyHmacKeyV1;
 
   if (!key) {
     throw new Error("Missing HMAC pepper key");
   }
-
-  // Key validation is handled at startup in env-validation.ts
 
   return { version, key };
 }
@@ -43,7 +43,9 @@ export function verifyApiKeyHash(
   hash: string,
   version: number,
 ) {
-  const key = process.env[`API_KEY_HMAC_KEY_V${version}`];
+  // Currently only V1 is supported
+  if (version !== 1) return false;
+  const key = config.security.apiKeyHmacKeyV1;
   if (!key) return false;
   return hmacBase64(apiKey, key) === hash;
 }

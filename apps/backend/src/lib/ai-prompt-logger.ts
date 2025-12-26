@@ -1,6 +1,5 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { fileURLToPath } from "url";
 import type {
   Trace,
   TraceAICall,
@@ -9,9 +8,7 @@ import type {
 } from "../schemas/prompt-params.js";
 import type { ToolCallSummary } from "../schemas/prompt-responses.js";
 import { createChildLogger } from "./logger.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { config } from "../config/index.js";
 
 const logger = createChildLogger("ai-prompt-logger");
 
@@ -62,12 +59,8 @@ export class AIPromptLogger {
   private readonly isEnabled: boolean;
 
   private constructor() {
-    // Use the LOGS_DIR environment variable if available, otherwise fallback to relative path
-    const logsDir =
-      process.env.LOGS_DIR ||
-      path.join(__dirname, "..", "..", "..", "..", "data", "logs");
-    this.logsDir = path.join(logsDir, "backend-ai");
-    this.isEnabled = process.env.AI_PROMPT_LOGGING_ENABLED === "true";
+    this.logsDir = path.join(config.dirs.logs, "backend-ai");
+    this.isEnabled = config.ai.promptLoggingEnabled;
 
     if (this.isEnabled) {
       logger.info({ logsDir: this.logsDir }, "AI Prompt logging enabled");

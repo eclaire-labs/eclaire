@@ -193,7 +193,7 @@ export function initializeDatabase(config?: DatabaseConfig): DatabaseInitResult 
 		// Initialize PostgreSQL (with connection pooling)
 		const dbUrl = config?.url ?? getDatabaseUrl();
 		logger?.info(
-			{ dbUrl: dbUrl.includes("localhost") ? "local" : "remote" },
+			{ dbUrl: dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1") ? "local" : "remote" },
 			"Initializing PostgreSQL database connection",
 		);
 
@@ -204,7 +204,7 @@ export function initializeDatabase(config?: DatabaseConfig): DatabaseInitResult 
 		);
 
 		logger?.info(
-			{ dbUrl: dbUrl.includes("localhost") ? "local" : "remote" },
+			{ dbUrl: dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1") ? "local" : "remote" },
 			"PostgreSQL database connection initialized",
 		);
 

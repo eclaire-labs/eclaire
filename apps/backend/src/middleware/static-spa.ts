@@ -10,6 +10,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import { config } from "../config/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,12 +56,12 @@ function getIndexHtml(frontendDistPath: string): string | null {
 }
 
 /**
- * Determines the frontend dist path based on environment
+ * Determines the frontend dist path based on config or auto-detection
  */
 function getFrontendDistPath(): string {
-  // Check environment variable first (set in Docker)
-  if (process.env.FRONTEND_DIST_PATH) {
-    return process.env.FRONTEND_DIST_PATH;
+  // Check config first (set via FRONTEND_DIST_PATH env var)
+  if (config.dirs.frontendDist) {
+    return config.dirs.frontendDist;
   }
 
   // Development: look for frontend/dist relative to backend

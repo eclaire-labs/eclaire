@@ -4,6 +4,7 @@ import z from "zod/v4";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { config } from "../config/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -84,8 +85,8 @@ You can authenticate using either:
     },
     servers: [
       {
-        url: process.env.API_URL || "http://localhost:3001",
-        description: "Development Server",
+        url: config.services.backendUrl,
+        description: config.isProduction ? "Production Server" : "Development Server",
       },
     ],
     components: {

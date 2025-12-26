@@ -1,8 +1,8 @@
 {
   "name": "@eclaire/monorepo",
-  "version": "0.0.0",
+  "version": "0.6.0",
   "private": true,
-  "packageManager": "pnpm@10.24.0",
+  "packageManager": "pnpm@10.26.2",
   "license": "MIT",
   "description": "Eclaire - AI-powered productivity platform",
   "repository": {
@@ -43,6 +43,9 @@
     "format": "cd apps/backend && pnpm format && cd ../frontend && pnpm format",
     "typecheck": "cd apps/backend && pnpm typecheck && cd ../frontend && pnpm typecheck",
     "typecheck:backend": "cd apps/backend && pnpm typecheck",
-    "typecheck:frontend": "cd apps/frontend && pnpm typecheck"
+    "typecheck:frontend": "cd apps/frontend && pnpm typecheck",
+    "config:show": "pnpm --filter @eclaire/backend config:show",
+    "upgrade": "pnpm --filter @eclaire/backend upgrade",
+    "upgrade:check": "pnpm --filter @eclaire/backend upgrade:check"
   }
 }

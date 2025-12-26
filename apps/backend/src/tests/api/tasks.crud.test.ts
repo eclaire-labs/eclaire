@@ -6,7 +6,7 @@ import {
   type TaskEntry,
   TaskSearchResponse,
 } from "../utils/tasks-test-helpers.js";
-import { delay, TEST_API_KEY } from "../utils/test-helpers.js";
+import { BASE_URL, delay, TEST_API_KEY } from "../utils/test-helpers.js";
 
 describe("Task CRUD Operations", { timeout: 30000 }, () => {
   let createdTaskId: string | null = null;
@@ -328,7 +328,7 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
 
       // Use standard fetch directly for this test case
       const response = await fetch(
-        `http://localhost:3001/api/tasks/${createdTaskId}`,
+        `${BASE_URL}/tasks/${createdTaskId}`,
         {
           method: "GET",
           headers: {

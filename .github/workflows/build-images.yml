@@ -29,13 +29,10 @@ env:
 jobs:
   build:
     concurrency:
-      group: build-images-${{ inputs.ref }}-${{ matrix.service }}
+      group: build-images-${{ inputs.ref }}
       cancel-in-progress: true
 
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        service: [backend, frontend]
 
     steps:
       - name: Validate ref exists
@@ -118,16 +115,16 @@ jobs:
           sem='${{ steps.vsh.outputs.semver }}'
 
           check_tag() {
-            local svc="$1" tag="$2"
+            local pkg="$1" tag="$2"
             # Try org; if 404, try user; use --paginate to avoid missing older tags
             set +e
             existing=$(gh api -H "Accept: application/vnd.github+json" \
-                        --paginate "/orgs/$owner/packages/container/eclaire-${svc}/versions" 2>/dev/null \
+                        --paginate "/orgs/$owner/packages/container/${pkg}/versions" 2>/dev/null \
                       | jq -r '.[].metadata.container.tags[]' 2>/dev/null \
                       | grep -E "^${tag}$")
             if [[ -z "$existing" ]]; then
               existing=$(gh api -H "Accept: application/vnd.github+json" \
-                          --paginate "/users/$owner/packages/container/eclaire-${svc}/versions" 2>/dev/null \
+                          --paginate "/users/$owner/packages/container/${pkg}/versions" 2>/dev/null \
                         | jq -r '.[].metadata.container.tags[]' 2>/dev/null \
                         | grep -E "^${tag}$")
             fi
@@ -135,12 +132,10 @@ jobs:
             [[ -n "$existing" ]]
           }
 
-          for svc in backend frontend; do
-            if check_tag "$svc" "$sem"; then
-              echo "❌ Refusing to overwrite eclaire-${svc}:${sem} in GHCR."
-              exit 2
-            fi
-          done
+          if check_tag "eclaire" "$sem"; then
+            echo "❌ Refusing to overwrite eclaire:${sem} in GHCR."
+            exit 2
+          fi
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -159,7 +154,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ steps.who.outputs.lc }}/eclaire-${{ matrix.service }}
+          images: ${{ env.REGISTRY }}/${{ steps.who.outputs.lc }}/eclaire
           tags: |
             # Release: X.Y.Z, X.Y, latest, sha-<7>
             type=raw,value=${{ steps.vsh.outputs.semver }},enable=${{ steps.vsh.outputs.release_mode == 'true' }}
@@ -170,7 +165,7 @@ jobs:
             type=raw,value=${{ steps.vsh.outputs.channel_tag }},enable=${{ steps.vsh.outputs.release_mode != 'true' }}
             type=raw,value=${{ steps.vsh.outputs.semver }}-${{ steps.vsh.outputs.channel_tag }}-sha-${{ steps.vsh.outputs.short_sha }},enable=${{ steps.vsh.outputs.release_mode != 'true' }}
           labels: |
-            org.opencontainers.image.title=Eclaire-${{ matrix.service }}
+            org.opencontainers.image.title=Eclaire
             org.opencontainers.image.version=${{ steps.vsh.outputs.full }}
             org.opencontainers.image.revision=${{ steps.vsh.outputs.hash }}
             org.opencontainers.image.url=https://eclaire.co
@@ -183,11 +178,11 @@ jobs:
             co.eclaire.ci_run_id=${{ github.run_id }}
             co.eclaire.ci_run_number=${{ github.run_number }}
 
-      - name: Build & (optionally) Push ${{ matrix.service }}
+      - name: Build & (optionally) Push
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./apps/${{ matrix.service }}/Dockerfile
+          file: ./apps/backend/Dockerfile
           push: ${{ inputs.push_images }}
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
@@ -198,7 +193,7 @@ jobs:
             APP_COMMITS_SINCE_TAG=${{ steps.vsh.outputs.commits_since_tag }}
             APP_BUILD_TIMESTAMP=${{ steps.vsh.outputs.ts }}
             APP_GIT_HASH=${{ steps.vsh.outputs.hash }}
-            APP_SERVICE=${{ matrix.service }}
+            APP_SERVICE=eclaire
             APP_ORIGIN=ci
             APP_CHANNEL=${{ steps.vsh.outputs.channel }}
             APP_CHANNEL_TAG=${{ steps.vsh.outputs.channel_tag }}

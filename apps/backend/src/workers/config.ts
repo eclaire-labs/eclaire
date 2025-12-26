@@ -1,53 +1,38 @@
-import { createChildLogger } from "../lib/logger.js";
+import { config as appConfig } from "../config/index.js";
 import { QueueNames } from "../lib/queue/index.js";
 
-const logger = createChildLogger("config");
-
+// Worker-specific config that wraps the central config and adds worker-only properties
 export const config = {
+  // Redis config from central config
   redis: {
-    url: process.env.REDIS_URL || "redis://127.0.0.1:6379",
+    url: appConfig.queue.redisUrl,
+    keyPrefix: appConfig.queue.redisKeyPrefix,
   },
+  // Backend URL from central config
   backend: {
-    url: process.env.BACKEND_URL || "http://backend:3001", // URL of the backend API service - use Docker service name
+    url: appConfig.services.backendUrl,
   },
-  // Single API key for all workers
-  apiKey: process.env.WORKER_API_KEY,
+  // Docling URL from central config
+  docling: {
+    url: appConfig.services.doclingUrl,
+  },
+  // Single API key for all workers (from central config)
+  apiKey: appConfig.worker.apiKey,
+  // AI Assistant API key for task execution (from central config)
+  aiAssistantApiKey: appConfig.worker.aiAssistantApiKey,
+  // Worker settings from central config
   worker: {
-    // Default concurrency, can be overridden per worker if needed
-    concurrency: Number.parseInt(process.env.WORKER_CONCURRENCY || "5", 10),
-    aiTimeout: Number.parseInt(process.env.AI_TIMEOUT || "180000", 10), // 2 minutes timeout
+    concurrency: appConfig.worker.concurrency,
+    aiTimeout: appConfig.ai.timeout,
   },
-  // Timeout configuration for browser operations
-  timeouts: {
-    browserContext: Number.parseInt(
-      process.env.BROWSER_CONTEXT_TIMEOUT || "30000",
-      10,
-    ), // 30 seconds
-    pageNavigation: Number.parseInt(
-      process.env.PAGE_NAVIGATION_TIMEOUT || "65000",
-      10,
-    ), // 65 seconds
-    screenshotDesktop: Number.parseInt(
-      process.env.SCREENSHOT_DESKTOP_TIMEOUT || "35000",
-      10,
-    ), // 35 seconds
-    screenshotFullpage: Number.parseInt(
-      process.env.SCREENSHOT_FULLPAGE_TIMEOUT || "50000",
-      10,
-    ), // 50 seconds
-    screenshotMobile: Number.parseInt(
-      process.env.SCREENSHOT_MOBILE_TIMEOUT || "35000",
-      10,
-    ), // 35 seconds
-    pdfGeneration: Number.parseInt(
-      process.env.PDF_GENERATION_TIMEOUT || "90000",
-      10,
-    ), // 90 seconds
-  },
+  // Timeouts from central config
+  timeouts: appConfig.timeouts,
+  // Worker server settings
   server: {
-    port: Number.parseInt(process.env.WORKER_PORT || "3002", 10), // Port for Fastify/Bull Board
+    port: appConfig.worker.port,
     basePath: "/ui", // Base path for Bull Board UI
   },
+  // Queue names
   queues: {
     bookmarkProcessing: QueueNames.BOOKMARK_PROCESSING,
     imageProcessing: QueueNames.IMAGE_PROCESSING,
@@ -56,7 +41,7 @@ export const config = {
     taskProcessing: QueueNames.TASK_PROCESSING,
     taskExecutionProcessing: QueueNames.TASK_EXECUTION_PROCESSING,
   },
-  // Domain-specific rate limiting configuration
+  // Domain-specific rate limiting configuration (worker-specific)
   domains: {
     // Default rate limit for all domains (same domain requests)
     defaultRateLimit: {
@@ -93,6 +78,3 @@ export const config = {
     >,
   },
 };
-
-// Note: Environment validation is now handled in env-validation.ts during startup
-// This ensures proper security validation beyond just checking if values exist

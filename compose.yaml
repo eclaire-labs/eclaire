@@ -1,0 +1,119 @@
+# =============================================================================
+# Eclaire Docker Compose
+# =============================================================================
+# Default: SQLite database + in-process queue (simplest setup)
+#
+# Usage:
+#   docker compose up                           # Default (SQLite)
+#   docker compose --profile postgres up        # With PostgreSQL
+#
+# Prerequisites:
+#   1. Copy .env.example to .env and generate secrets
+#   2. Start your LLM backend on the host (e.g., ollama serve)
+#
+# LLM backends run on the host (not in containers) because they need GPU access.
+# The app connects to them via host.docker.internal.
+# =============================================================================
+
+name: eclaire
+
+services:
+  # ===========================================================================
+  # Core Application
+  # ===========================================================================
+  eclaire:
+    image: ghcr.io/eclaire-labs/eclaire:${ECLAIRE_VERSION:-latest}
+    container_name: eclaire
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      # Runtime context - schema.ts derives all other defaults from this
+      ECLAIRE_RUNTIME: container
+      ECLAIRE_HOME: /app
+      NODE_ENV: production
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      docling:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-A", "Docker-Health-Check", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 45s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================================================
+  # Document Processing
+  # ===========================================================================
+  docling:
+    image: ds4sd/docling-serve:latest
+    container_name: eclaire-docling
+    ports:
+      - "5001:5001"
+    # CPU mode by default (no GPU passthrough needed)
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================================================
+  # Optional: PostgreSQL
+  # ===========================================================================
+  # Enable with: docker compose --profile postgres up
+  # Then set DATABASE_TYPE=postgresql in your .env
+  postgres:
+    image: postgres:16-alpine
+    container_name: eclaire-postgres
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-eclaire}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-eclaire}
+      POSTGRES_DB: ${DATABASE_NAME:-eclaire}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-eclaire}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Optional: Redis (for advanced distributed queue)
+  # ===========================================================================
+  # Enable with: docker compose --profile redis up
+  # Then set QUEUE_BACKEND=redis in your .env
+  redis:
+    image: redis:7-alpine
+    container_name: eclaire-redis
+    profiles: ["redis"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: eclaire-net

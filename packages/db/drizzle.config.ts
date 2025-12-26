@@ -28,7 +28,7 @@ export default {
 			: {
 					url:
 						process.env.DATABASE_URL ||
-						"postgresql://eclaire:eclaire@localhost:5432/eclaire",
+						"postgresql://eclaire:eclaire@127.0.0.1:5432/eclaire",
 				},
 	verbose: true,
 	strict: true,

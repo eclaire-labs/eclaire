@@ -354,5 +354,69 @@ describe("BullMQ: Driver-Specific Features", () => {
 
       expect(processedIds.length).toBe(3);
     });
+
+    it("should create Redis keys with the configured prefix", async () => {
+      // Verify that jobs are actually stored with the correct prefix in Redis
+      const prefix = harness.getPrefix!();
+
+      // Enqueue a job
+      await client.enqueue("prefix-test-queue", { data: "test" });
+
+      // Scan Redis for keys with our prefix
+      const keys = await harness.scanRedisKeys!(`${prefix}:*`);
+
+      // Should find keys with our prefix
+      expect(keys.length).toBeGreaterThan(0);
+      expect(keys.every((key) => key.startsWith(prefix))).toBe(true);
+
+      // Keys should include our queue name
+      const hasQueueKey = keys.some((key) =>
+        key.includes("prefix-test-queue"),
+      );
+      expect(hasQueueKey).toBe(true);
+    });
+
+    it("should isolate queues with different prefixes", async () => {
+      // Create a second client with a different prefix
+      const prefix1 = harness.getPrefix!();
+      const prefix2 = `queue-test:isolation-${Date.now()}`;
+      const redisUrl = harness.getRedisUrl!();
+
+      // Import createBullMQClient to create a second client
+      const { createBullMQClient } = await import(
+        "../../driver-bullmq/index.js"
+      );
+      const { createTestLogger } = await import("../testkit/utils.js");
+
+      const client2 = createBullMQClient({
+        redis: { url: redisUrl },
+        logger: createTestLogger(),
+        prefix: prefix2,
+      });
+
+      try {
+        // Enqueue to same queue name but different prefixes
+        await client.enqueue("shared-name", { source: "client1" });
+        await client2.enqueue("shared-name", { source: "client2" });
+
+        // Each client should only see its own job
+        const stats1 = await client.stats("shared-name");
+        const stats2 = await client2.stats("shared-name");
+
+        expect(stats1.pending).toBe(1);
+        expect(stats2.pending).toBe(1);
+
+        // Verify the keys are actually different in Redis
+        const keys1 = await harness.scanRedisKeys!(`${prefix1}:shared-name:*`);
+        const keys2 = await harness.scanRedisKeys!(`${prefix2}:shared-name:*`);
+
+        expect(keys1.length).toBeGreaterThan(0);
+        expect(keys2.length).toBeGreaterThan(0);
+        expect(keys1.every((k) => k.startsWith(prefix1))).toBe(true);
+        expect(keys2.every((k) => k.startsWith(prefix2))).toBe(true);
+      } finally {
+        await client2.close();
+      }
+    });
   });
 });

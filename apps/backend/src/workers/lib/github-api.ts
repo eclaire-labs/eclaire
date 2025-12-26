@@ -5,6 +5,7 @@ import { createChildLogger } from "../../lib/logger.js";
 const logger = createChildLogger("github-api");
 
 // GitHub API configuration
+// Note: External API credentials are intentionally read from process.env, not the config system
 const GITHUB_API_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_GENERAL_DELAY_MS = 1000;
 

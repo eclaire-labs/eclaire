@@ -103,7 +103,7 @@ clean_old_eclaire_images() {
     
     # List of current image names that should be kept
     local current_images=(
-        "eclaire-backend"
+        "eclaire"
     )
     
     # Find and remove old/duplicate Eclaire images

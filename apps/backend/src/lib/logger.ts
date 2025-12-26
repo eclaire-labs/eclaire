@@ -1,17 +1,16 @@
 import type { Context, Next } from "hono";
 import { createLoggerFactory, runWithRequestId } from "@eclaire/logger";
+import { config } from "../config/index.js";
 
 // Re-export Logger type for convenience
 export type { Logger } from "@eclaire/logger";
 
-// Determine service name based on SERVICE_ROLE env var or default to "eclaire-backend"
-// This allows the same logger to be used by both backend and workers
-const serviceName =
-  process.env.SERVICE_ROLE === "worker" ? "eclaire-workers" : "eclaire-backend";
+// Service name is always "eclaire" for the consolidated container
+const serviceName = "eclaire";
 
 // Support both backend (requestId/method/path) and worker (worker/module) formats
 const messageFormat =
-  serviceName === "eclaire-workers"
+  config.serviceRole === "worker"
     ? "[{worker}{module}] {msg}"
     : "[{requestId}] {method} {path} - {msg}";
 
@@ -19,7 +18,7 @@ const messageFormat =
 // Factory auto-detects contextKey from messageFormat ({worker} → "worker", else → "module")
 const { logger, createChildLogger } = createLoggerFactory({
   service: serviceName,
-  level: process.env.LOG_LEVEL || "debug",
+  level: config.logLevel,
   version: process.env.APP_VERSION || process.env.npm_package_version || "0.1.0",
   environment: process.env.NODE_ENV || "development",
   messageFormat,

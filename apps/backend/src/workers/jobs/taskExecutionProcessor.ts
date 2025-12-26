@@ -28,7 +28,7 @@ async function updateTaskStatus(
   assignedAssistantId?: string,
 ): Promise<void> {
   const backendUrl = config.backend.url;
-  const apiKey = process.env.AI_ASSISTANT_API_KEY!; // Validated during startup
+  const apiKey = config.aiAssistantApiKey; // From central config
   const url = `${backendUrl}/api/tasks/${taskId}/assistant-status`;
 
   const updates: any = {
@@ -281,7 +281,7 @@ async function generatePromptAIResponse(
   );
 
   const backendUrl = config.backend.url;
-  const apiKey = process.env.AI_ASSISTANT_API_KEY!; // Validated during startup
+  const apiKey = config.aiAssistantApiKey; // From central config
   const url = `${backendUrl}/api/prompt`;
 
   const taskContent = `Title: ${title}\nDescription: ${description || "No description provided."}`;
@@ -356,8 +356,8 @@ async function createTaskComment(
   taskId: string,
   content: string,
 ): Promise<void> {
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
-  const apiKey = process.env.AI_ASSISTANT_API_KEY!; // Validated during startup
+  const backendUrl = config.backend.url;
+  const apiKey = config.aiAssistantApiKey; // From central config
   const url = `${backendUrl}/api/tasks/${taskId}/comments`;
 
   logger.info(

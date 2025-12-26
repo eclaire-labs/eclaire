@@ -15,7 +15,7 @@ import {
 } from "@eclaire/queue/app";
 import { db, dbType } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
-import { getQueueBackend } from "../env-validation.js";
+import { config } from "../../config/index.js";
 import { getQueue, QueueNames } from "./queues.js";
 
 const logger = createChildLogger("queue-adapter");
@@ -51,17 +51,17 @@ export async function getQueueAdapter(): Promise<QueueAdapter> {
 }
 
 async function initializeQueueAdapter(): Promise<QueueAdapter> {
-  const queueBackend = getQueueBackend();
+  const queueBackend = config.queueBackend;
 
   if (queueBackend === "redis") {
     // Use package's Redis/BullMQ adapter
-    const redisUrl = process.env.REDIS_URL;
+    const redisUrl = config.queue.redisUrl;
     if (!redisUrl) {
       throw new Error("REDIS_URL is required for QUEUE_BACKEND=redis");
     }
     queueAdapterInstance = await createPkgQueueAdapter({
       mode: "redis",
-      redis: { url: redisUrl },
+      redis: { url: redisUrl, prefix: config.queue.redisKeyPrefix },
       logger,
     });
     logger.info({}, "Using Redis/BullMQ queue adapter");

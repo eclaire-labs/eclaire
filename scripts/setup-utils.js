@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const readline = require('readline');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
 
@@ -14,6 +15,125 @@ const colors = {
   cyan: '\x1b[36m',
   white: '\x1b[37m'
 };
+
+// Arrow key selection menu
+async function selectFromList(prompt, options, defaultIndex = 0) {
+  return new Promise((resolve) => {
+    let selectedIndex = defaultIndex;
+
+    const renderMenu = () => {
+      // Move cursor up to overwrite previous menu
+      if (selectedIndex !== defaultIndex || options.length > 0) {
+        process.stdout.write(`\x1b[${options.length}A`);
+      }
+
+      options.forEach((option, index) => {
+        const isSelected = index === selectedIndex;
+        const prefix = isSelected ? `${colors.cyan}❯${colors.reset}` : ' ';
+        const text = isSelected ? `${colors.cyan}${option.label}${colors.reset}` : option.label;
+        const desc = option.description ? ` ${colors.yellow}(${option.description})${colors.reset}` : '';
+        console.log(`  ${prefix} ${text}${desc}`);
+      });
+    };
+
+    console.log(prompt);
+    options.forEach((option, index) => {
+      const isSelected = index === selectedIndex;
+      const prefix = isSelected ? `${colors.cyan}❯${colors.reset}` : ' ';
+      const text = isSelected ? `${colors.cyan}${option.label}${colors.reset}` : option.label;
+      const desc = option.description ? ` ${colors.yellow}(${option.description})${colors.reset}` : '';
+      console.log(`  ${prefix} ${text}${desc}`);
+    });
+
+    readline.emitKeypressEvents(process.stdin);
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+    }
+
+    const onKeypress = (str, key) => {
+      if (key.name === 'up') {
+        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : options.length - 1;
+        renderMenu();
+      } else if (key.name === 'down') {
+        selectedIndex = selectedIndex < options.length - 1 ? selectedIndex + 1 : 0;
+        renderMenu();
+      } else if (key.name === 'return') {
+        process.stdin.removeListener('keypress', onKeypress);
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(false);
+        }
+        resolve(options[selectedIndex]);
+      } else if (key.name === 'escape' || (key.ctrl && key.name === 'c')) {
+        process.stdin.removeListener('keypress', onKeypress);
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(false);
+        }
+        process.exit(0);
+      }
+    };
+
+    process.stdin.on('keypress', onKeypress);
+    process.stdin.resume();
+  });
+}
+
+// Choose database type with arrow key selection
+async function chooseDatabaseType() {
+  console.log(`\n  ${colors.cyan}Database Configuration${colors.reset}`);
+
+  const options = [
+    { label: 'SQLite', value: 'sqlite', description: 'default, no external DB needed' },
+    { label: 'PostgreSQL', value: 'postgresql', description: 'requires Docker' }
+  ];
+
+  const selected = await selectFromList('\n  Use arrow keys to select, Enter to confirm:', options, 0);
+  console.log(`\n  → Selected: ${colors.green}${selected.label}${colors.reset}`);
+
+  return selected.value;
+}
+
+// Configure database in .env file
+async function configureDatabaseInEnv(databaseType, questionFn) {
+  const envPath = path.join(process.cwd(), '.env');
+
+  if (!fs.existsSync(envPath)) {
+    console.log(`  ${colors.yellow}⚠️  .env file not found, skipping database configuration${colors.reset}`);
+    return;
+  }
+
+  let content = fs.readFileSync(envPath, 'utf-8');
+
+  if (databaseType === 'postgresql') {
+    // Uncomment and set DATABASE_TYPE=postgresql
+    content = content.replace(
+      /^#DATABASE_TYPE=sqlite$/m,
+      'DATABASE_TYPE=postgresql'
+    );
+    fs.writeFileSync(envPath, content);
+    console.log(`  ✅ Configured DATABASE_TYPE=postgresql in .env`);
+
+    // Offer to start PostgreSQL via Docker Compose
+    console.log(`\n  ${colors.cyan}PostgreSQL Setup${colors.reset}`);
+    console.log(`  PostgreSQL can be started via Docker Compose.`);
+    const startPg = await questionFn(`\n  Start PostgreSQL with Docker Compose? [Y/n]: `);
+    if (startPg.toLowerCase() !== 'n' && startPg.toLowerCase() !== 'no') {
+      console.log(`\n  Starting PostgreSQL and Docling via Docker Compose...`);
+      const result = exec('docker compose --profile postgres up postgres docling -d', true);
+      if (result.success) {
+        console.log(`  ${colors.green}✅ PostgreSQL and Docling started${colors.reset}`);
+        console.log(`  ${colors.cyan}Check status with: docker compose ps${colors.reset}`);
+      } else {
+        console.log(`  ${colors.red}❌ Failed to start Docker Compose${colors.reset}`);
+        console.log(`  ${colors.cyan}Try manually: docker compose --profile postgres up postgres docling -d${colors.reset}`);
+      }
+    } else {
+      console.log(`  ${colors.yellow}Skipping Docker Compose startup${colors.reset}`);
+      console.log(`  ${colors.cyan}Start manually: docker compose --profile postgres up postgres docling -d${colors.reset}`);
+    }
+  } else {
+    console.log(`  ✅ Using SQLite (default, no configuration needed)`);
+  }
+}
 
 // Generate secure random values for production
 function generateSecureValue(bytes) {
@@ -234,11 +354,16 @@ async function checkDependencies(env = 'dev') {
 
 // Copy environment files
 async function copyEnvFiles(env, force = false) {
+  // Use the appropriate template based on environment:
+  // - dev: .env.dev.example (localhost defaults)
+  // - prod: .env.example (Docker/host.docker.internal defaults)
+  const envTemplate = env === 'prod' ? '.env.example' : '.env.dev.example';
+
   const filesToCopy = [
     {
-      source: `apps/backend/.env.${env}.example`,
-      dest: `apps/backend/.env.${env}`,
-      isBackend: true
+      source: envTemplate,
+      dest: '.env',
+      generateSecrets: true
     },
     {
       source: 'config/models.json.example',
@@ -248,7 +373,6 @@ async function copyEnvFiles(env, force = false) {
 
   let copiedCount = 0;
   let skippedCount = 0;
-  const generatedValues = {};
 
   for (const file of filesToCopy) {
     const sourcePath = path.join(process.cwd(), file.source);
@@ -268,30 +392,42 @@ async function copyEnvFiles(env, force = false) {
     try {
       let content = fs.readFileSync(sourcePath, 'utf-8');
 
-      // For production backend, generate secure values
-      if (env === 'prod' && file.isBackend) {
-        console.log(`  🔐 Generating secure values for backend...`);
+      // Generate secure values for .env
+      if (file.generateSecrets) {
+        console.log(`  🔐 Generating secure values...`);
 
-        const betterAuthSecret = generateSecureValue(64);
+        const betterAuthSecret = generateSecureValue(32);
         const masterEncryptionKey = generateSecureValue(32);
         const apiKeyHmacSecret = generateSecureValue(32);
+        const workerApiKey = generateApiKey();
+        const aiAssistantApiKey = generateApiKey();
 
         content = content.replace(
-          /BETTER_AUTH_SECRET=$/m,
+          /^BETTER_AUTH_SECRET=$/m,
           `BETTER_AUTH_SECRET=${betterAuthSecret}`
         );
         content = content.replace(
-          /MASTER_ENCRYPTION_KEY=$/m,
+          /^MASTER_ENCRYPTION_KEY=$/m,
           `MASTER_ENCRYPTION_KEY=${masterEncryptionKey}`
         );
         content = content.replace(
-          /API_KEY_HMAC_KEY_V1=$/m,
+          /^API_KEY_HMAC_KEY_V1=$/m,
           `API_KEY_HMAC_KEY_V1=${apiKeyHmacSecret}`
         );
+        content = content.replace(
+          /^WORKER_API_KEY=$/m,
+          `WORKER_API_KEY=${workerApiKey}`
+        );
+        content = content.replace(
+          /^AI_ASSISTANT_API_KEY=$/m,
+          `AI_ASSISTANT_API_KEY=${aiAssistantApiKey}`
+        );
 
-        console.log(`  ✅ Generated secure BETTER_AUTH_SECRET`);
-        console.log(`  ✅ Generated secure MASTER_ENCRYPTION_KEY`);
-        console.log(`  ✅ Generated secure API_KEY_HMAC_KEY_V1`);
+        console.log(`  ✅ Generated BETTER_AUTH_SECRET`);
+        console.log(`  ✅ Generated MASTER_ENCRYPTION_KEY`);
+        console.log(`  ✅ Generated API_KEY_HMAC_KEY_V1`);
+        console.log(`  ✅ Generated WORKER_API_KEY`);
+        console.log(`  ✅ Generated AI_ASSISTANT_API_KEY`);
       }
 
       fs.writeFileSync(destPath, content);
@@ -376,32 +512,16 @@ async function checkModels() {
   return true;
 }
 
-// Install pnpm dependencies for all apps
+// Install pnpm dependencies from monorepo root
 async function installDependencies(env = 'dev') {
-  console.log('\n  Installing pnpm dependencies...');
+  console.log('\n  Installing pnpm dependencies from monorepo root...');
 
-  const apps = ['apps/backend'];
-  let successCount = 0;
-  let failedApps = [];
+  const result = exec('pnpm install', true);
 
-  for (const app of apps) {
-    console.log(`  Installing dependencies for ${app}...`);
-
-    const result = exec(`cd ${app} && pnpm install`, true);
-
-    if (result.success) {
-      console.log(`  ✅ ${app}: Dependencies installed`);
-      successCount++;
-    } else {
-      console.log(`  ❌ ${app}: Failed to install dependencies`);
-      console.log(`     Error: ${result.error}`);
-      failedApps.push(app);
-    }
-  }
-
-  if (failedApps.length > 0) {
-    console.log(`\n  ${colors.red}❌ Failed to install dependencies for: ${failedApps.join(', ')}${colors.reset}`);
-    console.log(`  ${colors.cyan}Try running manually: cd <app> && pnpm install${colors.reset}`);
+  if (!result.success) {
+    console.log(`\n  ${colors.red}❌ Failed to install dependencies${colors.reset}`);
+    console.log(`     Error: ${result.error}`);
+    console.log(`  ${colors.cyan}Try running manually: pnpm install${colors.reset}`);
     return false;
   }
 
@@ -470,18 +590,22 @@ async function startDependencies() {
 }
 
 // Initialize database
-async function initDatabase(env, questionFn) {
-  console.log('\n  Checking if dependencies are running...');
+async function initDatabase(env, questionFn, databaseType = 'sqlite') {
+  // For PostgreSQL, check if it's running
+  if (databaseType === 'postgresql') {
+    console.log('\n  Checking if PostgreSQL is running...');
 
-  // Check if Postgres is accessible
-  const pgCheck = exec('docker ps | grep eclaire-postgres', true);
-  if (!pgCheck.success) {
-    console.log(`  ${colors.yellow}⚠️  PostgreSQL is not running${colors.reset}`);
-    console.log(`  ${colors.cyan}Start dependencies with: pm2 start pm2.deps.config.js${colors.reset}`);
-    return false;
+    const pgCheck = exec('docker ps | grep eclaire-postgres', true);
+    if (!pgCheck.success) {
+      console.log(`  ${colors.yellow}⚠️  PostgreSQL is not running${colors.reset}`);
+      console.log(`  ${colors.cyan}Start with: docker compose --profile postgres up postgres -d${colors.reset}`);
+      return false;
+    }
+
+    console.log('  ✓ PostgreSQL is running');
+  } else {
+    console.log('\n  Using SQLite database (no external dependencies needed)');
   }
-
-  console.log('  ✓ PostgreSQL is running');
 
   if (env === 'prod') {
     // Production: Use containerized approach
@@ -490,7 +614,7 @@ async function initDatabase(env, questionFn) {
     exec('docker compose down', true);
 
     // Check if old containers still exist
-    const checkContainers = exec('docker ps -a --filter name=eclaire-backend --format "{{.Names}}"', true);
+    const checkContainers = exec('docker ps -a --filter name=eclaire --format "{{.Names}}"', true);
 
     if (checkContainers.success && checkContainers.output && checkContainers.output.trim()) {
       const existingContainers = checkContainers.output.trim().split('\n');
@@ -507,9 +631,9 @@ async function initDatabase(env, questionFn) {
       }
     }
 
-    console.log('  Starting backend container for migrations...');
+    console.log('  Starting server container for migrations...');
     console.log(`  ${colors.cyan}Note: Docker will pull images from GHCR if not available locally (may take a few minutes)${colors.reset}`);
-    const startResult = exec('docker compose up -d backend');
+    const startResult = exec('docker compose up -d eclaire');
 
     if (!startResult.success) {
       console.log(`  ${colors.red}❌ Failed to start backend container${colors.reset}`);
@@ -536,7 +660,7 @@ async function initDatabase(env, questionFn) {
 
     // Run migrations
     console.log('  Running database migrations...');
-    const migrateResult = exec('docker exec eclaire-backend pnpm db:migrate:apply:force');
+    const migrateResult = exec('docker exec eclaire pnpm db:migrate:apply:force');
 
     if (!migrateResult.success) {
       console.log(`  ${colors.red}❌ Migration failed${colors.reset}`);
@@ -550,7 +674,7 @@ async function initDatabase(env, questionFn) {
     console.log(`  Seeding database with ${seedType} data...`);
 
     // Capture output for production to extract API keys
-    const seedResult = exec('docker exec -e GENERATE_SECURE_KEYS=true eclaire-backend pnpm db:seed:essential:prod', true);
+    const seedResult = exec('docker exec -e GENERATE_SECURE_KEYS=true eclaire pnpm db:seed:essential:prod', true);
 
     if (!seedResult.success) {
       console.log(`  ${colors.red}❌ Seeding failed${colors.reset}`);
@@ -599,7 +723,7 @@ async function initDatabase(env, questionFn) {
       }
     } else {
       console.log(`  ${colors.yellow}⚠️  Could not extract API keys from seed output${colors.reset}`);
-      console.log(`  ${colors.cyan}Please run 'docker exec eclaire-backend pnpm db:seed:essential:prod' manually${colors.reset}`);
+      console.log(`  ${colors.cyan}Please run 'docker exec eclaire pnpm db:seed:essential:prod' manually${colors.reset}`);
       console.log(`  ${colors.cyan}and copy the API keys to apps/backend/.env.prod${colors.reset}`);
     }
   } else {
@@ -756,6 +880,8 @@ function printSummary(results, env, flags = {}) {
 module.exports = {
   checkDependencies,
   copyEnvFiles,
+  chooseDatabaseType,
+  configureDatabaseInEnv,
   createDataDirectories,
   checkModels,
   installDependencies,

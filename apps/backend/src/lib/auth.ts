@@ -4,6 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db, dbType, schema } from "../db/index.js"; // Your drizzle database instance and conditional schema
 import { generateSecurityId, generateUserId } from "@eclaire/core";
 import { createChildLogger } from "./logger.js";
+import { config } from "../config/index.js";
 
 const logger = createChildLogger("auth");
 
@@ -102,21 +103,14 @@ export const auth = betterAuth({
   verification: {
     fields: { value: "token" },
   },
-  secret: (() => {
-    if (!process.env.BETTER_AUTH_SECRET) {
-      throw new Error("BETTER_AUTH_SECRET environment variable is required");
-    }
-
-    // Additional security validation is handled in env-validation.ts
-    // This ensures the secret is not using insecure development patterns
-    return process.env.BETTER_AUTH_SECRET;
-  })(),
+  // Secret is provided by config system (auto-generated in dev, required in production)
+  secret: config.security.betterAuthSecret,
   //basePath: "/api/auth", // Keep this commented out as per previous advice
   trustedOrigins: [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://frontend:3000", // Docker container name
-    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+    config.services.frontendUrl,
   ],
   advanced: {
     database: {
