@@ -33,6 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { authClient } from "@/lib/auth";
 import { apiFetch } from "@/lib/frontend-api";
 
 const passwordFormSchema = z
@@ -102,11 +103,13 @@ export default function AccountSettings() {
 
   const updatePasswordMutation = useMutation({
     mutationFn: async (values: PasswordFormValues) => {
-      const res = await apiFetch("/api/user/password", {
-        method: "PUT",
-        body: JSON.stringify(values),
+      const { data, error } = await authClient.changePassword({
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword,
+        revokeOtherSessions: false,
       });
-      return await res.json();
+      if (error) throw new Error(error.message ?? "Failed to change password");
+      return data;
     },
     onSuccess: () => {
       toast({
@@ -126,22 +129,20 @@ export default function AccountSettings() {
 
   const deleteAccountMutation = useMutation({
     mutationFn: async (values: DeleteAccountFormValues) => {
-      const res = await apiFetch("/api/user/delete", {
-        method: "POST",
-        body: JSON.stringify(values),
+      const { data, error } = await authClient.deleteUser({
+        password: values.password,
       });
-      return await res.json();
+      if (error) throw new Error(error.message ?? "Failed to delete account");
+      return data;
     },
     onSuccess: () => {
       toast({
         title: "Account deleted",
-        description:
-          "Your account has been marked for deletion. Logging out now.",
+        description: "Your account has been deleted. Redirecting to login...",
       });
       setIsDeleteDialogOpen(false);
-      // Logout after a short delay
+      // Redirect after a short delay
       setTimeout(() => {
-        // TODO: Replace with proper logout from Better Auth
         window.location.href = "/auth/login";
       }, 1500);
     },
