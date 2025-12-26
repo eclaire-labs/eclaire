@@ -213,6 +213,8 @@ Access the application:
 - Frontend: http://localhost:3000
 - Backend health: curl http://localhost:3000/health
 
+**First login:** Open http://localhost:3000 and click "Sign up" to create your account.
+
 
 #### Option B — Development (For contributors)
 
@@ -259,6 +261,8 @@ Access the application:
 - Frontend: http://localhost:3000
 - Backend health: curl http://localhost:3001/health
 
+**First login:** Open http://localhost:3000 and click "Sign up" to create your account.
+
 
 #### Option C — Building Docker Locally (Advanced)
 **For users who want to customize and build their own Docker containers**
@@ -287,6 +291,8 @@ The build script creates `docker-compose.local.yml` that overrides the image ref
 Access the application:
 - Frontend: http://localhost:3000
 - Backend health: curl http://localhost:3000/health
+
+**First login:** Open http://localhost:3000 and click "Sign up" to create your account.
 
 
 ### Stopping & Cleanup
