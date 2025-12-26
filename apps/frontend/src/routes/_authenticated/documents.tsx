@@ -1,21 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-
-const DocumentsIndexPage = lazy(() => import("@/components/pages/DocumentsPage"));
-
-function PageLoading() {
-  return (
-    <div className="flex items-center justify-center p-8">
-      <Skeleton className="h-8 w-32" />
-    </div>
-  );
-}
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/documents")({
-  component: () => (
-    <Suspense fallback={<PageLoading />}>
-      <DocumentsIndexPage />
-    </Suspense>
-  ),
+  component: () => <Outlet />,
 });
