@@ -5,6 +5,7 @@ import { db, dbType, schema } from "../db/index.js"; // Your drizzle database in
 import { generateSecurityId, generateUserId } from "@eclaire/core";
 import { createChildLogger } from "./logger.js";
 import { config } from "../config/index.js";
+import { deleteQueueJobsByUserId } from "./services/user-data.js";
 
 const logger = createChildLogger("auth");
 
@@ -82,6 +83,14 @@ export const auth = betterAuth({
     },
   },
   user: {
+    deleteUser: {
+      enabled: true,
+      beforeDelete: async (user) => {
+        // Clean up queue jobs for this user (userId stored in metadata JSON)
+        await deleteQueueJobsByUserId(user.id);
+        logger.info({ userId: user.id }, "Cleaned up queue jobs for deleted user");
+      },
+    },
     fields: {
       name: "displayName", // Map Better Auth's "name" field to our "displayName" column
     },

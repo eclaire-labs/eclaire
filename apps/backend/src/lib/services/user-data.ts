@@ -1,6 +1,6 @@
 import { verifyPassword } from "better-auth/crypto";
 import { and, count, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
-import { db, txManager, schema, queueJobs } from "../../db/index.js";
+import { db, dbType, txManager, schema, queueJobs } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 
 const {
@@ -24,6 +24,25 @@ import { getStorage, userPrefix, categoryPrefix } from "../storage/index.js";
 // We use bulk transactions instead for better performance and SQLite safety
 
 const logger = createChildLogger("services:user-data");
+
+/**
+ * Helper to build cross-database condition for querying queue jobs by userId
+ * Handles both SQLite (json_extract) and PostgreSQL (->>) JSON syntax
+ */
+function queueJobsByUserIdCondition(userId: string) {
+  return dbType === "sqlite"
+    ? sql`json_extract(${queueJobs.metadata}, '$.userId') = ${userId}`
+    : sql`${queueJobs.metadata}->>'userId' = ${userId}`;
+}
+
+/**
+ * Delete all queue jobs for a user by userId in metadata
+ * Handles both SQLite and PostgreSQL JSON syntax
+ * @param userId - The ID of the user whose queue jobs should be deleted
+ */
+export async function deleteQueueJobsByUserId(userId: string): Promise<void> {
+  await db.delete(queueJobs).where(queueJobsByUserIdCondition(userId));
+}
 
 /**
  * Bulk delete all user data but keep the account intact
@@ -174,7 +193,7 @@ export async function deleteAllUserData(
       await tx.history.delete(eq(history.userId, userId));
     });
     // Clean up any orphaned queue jobs (outside transaction, non-critical)
-    await db.delete(queueJobs).where(sql`${queueJobs.metadata}->>'userId' = ${userId}`);
+    await deleteQueueJobsByUserId(userId);
     logger.info({ userId }, "Deleted history and system data");
 
     // 5. Clean up storage (outside transactions - can be parallel)
@@ -240,7 +259,7 @@ export async function getUserDataSummary(userId: string) {
       db
         .select({ count: count() })
         .from(queueJobs)
-        .where(sql`${queueJobs.metadata}->>'userId' = ${userId}`),
+        .where(queueJobsByUserIdCondition(userId)),
     ]);
 
     const assetsTotal =
@@ -751,7 +770,7 @@ export async function getQuickStats(userId: string) {
       db
         .select({ count: count() })
         .from(queueJobs)
-        .where(sql`${queueJobs.metadata}->>'userId' = ${userId}`),
+        .where(queueJobsByUserIdCondition(userId)),
     ]);
 
     return {
