@@ -1,7 +1,12 @@
 import type { JobContext } from "@eclaire/queue/core";
-import { config } from "../config.js";
 import { type AIMessage, callAI } from "../../lib/ai-client.js";
 import { createChildLogger } from "../../lib/logger.js";
+import {
+  updateTaskStatusAsAssistant,
+  updateTaskExecutionTracking,
+} from "../../lib/services/tasks.js";
+import { processPromptRequest } from "../../lib/services/prompt.js";
+import { createTaskComment as createTaskCommentService } from "../../lib/services/taskComments.js";
 
 const logger = createChildLogger("task-execution-processor");
 
@@ -9,17 +14,8 @@ const logger = createChildLogger("task-execution-processor");
 // Set to false for simple AI (default), true for prompt AI with tool access
 const USE_PROMPT_AI = true;
 
-interface PromptApiResponse {
-  status: string;
-  requestId: string;
-  type: string;
-  response: string;
-  conversationId?: string;
-  trace?: any;
-}
-
 /**
- * Update task status in the backend using assistant-specific endpoint
+ * Update task status using direct service call
  */
 async function updateTaskStatus(
   taskId: string,
@@ -27,90 +23,28 @@ async function updateTaskStatus(
   userId: string,
   assignedAssistantId?: string,
 ): Promise<void> {
-  const backendUrl = config.backend.url;
-  const apiKey = config.aiAssistantApiKey; // From central config
-  const url = `${backendUrl}/api/tasks/${taskId}/assistant-status`;
-
-  const updates: any = {
-    status,
-    assignedAssistantId: assignedAssistantId || "user-ai-assistant", // Default assistant ID
-  };
-
-  // Set completedAt timestamp when marking as completed
-  if (status === "completed") {
-    updates.completedAt = new Date().toISOString();
-  }
+  const assistantId = assignedAssistantId || "user-ai-assistant";
+  const completedAt = status === "completed" ? new Date().toISOString() : null;
 
   logger.info(
-    {
-      taskId,
-      status,
-      updates,
-      url,
-      apiKeyPrefix: apiKey.substring(0, 8) + "...",
-    },
+    { taskId, status, assignedAssistantId: assistantId },
     "Updating task status",
   );
 
   try {
-    const response = await fetch(url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(updates),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-
-      // If task was deleted during execution, log a warning but don't fail the job
-      if (response.status === 404 && errorText.includes("Task not found")) {
-        logger.warn(
-          {
-            taskId,
-            status: response.status,
-            errorText,
-            url,
-          },
-          "Task was deleted during execution, skipping status update",
-        );
-        return; // Gracefully skip the update
-      }
-
-      logger.error(
-        {
-          taskId,
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-          url,
-        },
-        "Task status update failed",
-      );
-      throw new Error(
-        `Failed to update task status: ${response.status} ${errorText}`,
-      );
-    }
-
-    const responseData = await response.json();
-    logger.info(
-      {
-        taskId,
-        status,
-        responseData,
-      },
-      "Task status updated successfully",
-    );
+    await updateTaskStatusAsAssistant(taskId, status, assistantId, completedAt);
+    logger.info({ taskId, status }, "Task status updated successfully");
   } catch (error) {
+    // If task was deleted during execution, log a warning but don't fail the job
+    if (error instanceof Error && error.message.includes("Task not found")) {
+      logger.warn({ taskId }, "Task was deleted during execution, skipping status update");
+      return;
+    }
     logger.error(
       {
         taskId,
         status,
-        updates,
         error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
       },
       "Exception occurred while updating task status",
     );
@@ -119,84 +53,28 @@ async function updateTaskStatus(
 }
 
 /**
- * Update lastExecutedAt timestamp on the task
+ * Update lastExecutedAt timestamp on the task using direct service call
  * Note: Recurrence scheduling is now handled by the queue_schedules table,
  * so we only update lastExecutedAt for display purposes.
  */
 async function updateLastExecutedAt(taskId: string): Promise<void> {
-  const backendUrl = config.backend.url;
-  const apiKey = config.apiKey!; // Validated during startup
-  const url = `${backendUrl}/api/tasks/${taskId}/execution-tracking`;
+  const now = new Date();
 
-  const updates = { lastExecutedAt: new Date().toISOString() };
-
-  logger.info(
-    {
-      taskId,
-      updates,
-      url,
-      apiKeyPrefix: apiKey.substring(0, 8) + "...",
-    },
-    "Updating task lastExecutedAt",
-  );
+  logger.info({ taskId }, "Updating task lastExecutedAt");
 
   try {
-    const response = await fetch(url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(updates),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-
-      // If task was deleted during execution, log a warning but don't fail the job
-      if (response.status === 404 && errorText.includes("Task not found")) {
-        logger.warn(
-          {
-            taskId,
-            status: response.status,
-            errorText,
-            url,
-          },
-          "Task was deleted during execution, skipping lastExecutedAt update",
-        );
-        return; // Gracefully skip the update
-      }
-
-      logger.error(
-        {
-          taskId,
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-          url,
-        },
-        "Task lastExecutedAt update failed",
-      );
-      throw new Error(
-        `Failed to update lastExecutedAt: ${response.status} ${errorText}`,
-      );
+    const found = await updateTaskExecutionTracking(taskId, now);
+    if (!found) {
+      // Task was deleted during execution - log a warning but don't fail
+      logger.warn({ taskId }, "Task was deleted during execution, skipping lastExecutedAt update");
+      return;
     }
-
-    const responseData = await response.json();
-    logger.info(
-      {
-        taskId,
-        responseData,
-      },
-      "Task lastExecutedAt updated successfully",
-    );
+    logger.info({ taskId }, "Task lastExecutedAt updated successfully");
   } catch (error) {
     logger.error(
       {
         taskId,
-        updates,
         error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
       },
       "Exception occurred while updating task lastExecutedAt",
     );
@@ -267,7 +145,7 @@ async function generateAIAssistantResponse(
 }
 
 /**
- * Generate AI assistant response for a task using the prompt API with tool access.
+ * Generate AI assistant response for a task using direct service call with tool access.
  */
 async function generatePromptAIResponse(
   title: string,
@@ -277,64 +155,39 @@ async function generatePromptAIResponse(
 ): Promise<string> {
   logger.info(
     { taskId, userId },
-    "Calling prompt API for task response generation",
+    "Calling prompt service for task response generation",
   );
-
-  const backendUrl = config.backend.url;
-  const apiKey = config.aiAssistantApiKey; // From central config
-  const url = `${backendUrl}/api/prompt`;
 
   const taskContent = `Title: ${title}\nDescription: ${description || "No description provided."}`;
   const prompt = `You have been assigned to work on this task. You need to analyze it and take the necessary actions to complete it using the available tools.\n\nTask Details:\n${taskContent}\n\nPlease complete this task now by searching for relevant information and providing the results.`;
 
-  const requestBody = {
-    prompt,
-    context: {
-      backgroundTaskExecution: true,
-    },
-    trace: false,
-    targetUserId: userId, // Specify that tools should run as the task owner
+  const context = {
+    agent: "eclaire",
+    backgroundTaskExecution: true,
   };
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
+    const requestId = `task-exec-${taskId}-${Date.now()}`;
+    const result = await processPromptRequest(
+      userId,
+      prompt,
+      context,
+      requestId,
+      false, // trace
+      undefined, // conversationId
+      false, // enableThinking
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error(
-        {
-          taskId,
-          userId,
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-          url,
-        },
-        "Prompt API call failed",
-      );
-      throw new Error(
-        `Failed to call prompt API: ${response.status} ${errorText}`,
-      );
-    }
-
-    const responseData = (await response.json()) as PromptApiResponse;
     logger.info(
       {
         taskId,
         userId,
-        responseLength: responseData.response?.length || 0,
+        responseLength: result.response?.length || 0,
       },
       "Prompt AI response generated successfully for task",
     );
 
-    return responseData.response || "AI response processing completed.";
+    return result.response || "AI response processing completed.";
   } catch (error) {
     logger.error(
       {
@@ -350,73 +203,25 @@ async function generatePromptAIResponse(
 }
 
 /**
- * Create a task comment from AI assistant.
+ * Create a task comment from AI assistant using direct service call.
  */
 async function createTaskComment(
   taskId: string,
   content: string,
 ): Promise<void> {
-  const backendUrl = config.backend.url;
-  const apiKey = config.aiAssistantApiKey; // From central config
-  const url = `${backendUrl}/api/tasks/${taskId}/comments`;
+  // Use a system user ID for the assistant comment author
+  const assistantUserId = "user-ai-assistant";
 
   logger.info(
-    {
-      taskId,
-      url,
-      apiKeyPrefix: apiKey.substring(0, 8) + "...",
-      contentLength: content.length,
-    },
+    { taskId, contentLength: content.length },
     "About to create task comment",
   );
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ content }),
-    });
-
-    logger.info(
-      {
-        taskId,
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        url,
-      },
-      "Received response from task comment API",
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error(
-        {
-          taskId,
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-          url,
-          apiKeyPrefix: apiKey.substring(0, 8) + "...",
-        },
-        "Task comment API call failed - response details",
-      );
-      throw new Error(
-        `Failed to create comment: ${response.status} ${errorText}`,
-      );
-    }
-
-    const responseData = await response.json();
-    logger.info(
-      {
-        taskId,
-        responseData,
-        url,
-      },
-      "Task comment created successfully with response data",
+    await createTaskCommentService(
+      { taskId, content },
+      assistantUserId,
+      "assistant", // explicit actor override
     );
 
     logger.info({ taskId }, "AI assistant comment created successfully");
@@ -424,19 +229,10 @@ async function createTaskComment(
     logger.error(
       {
         taskId,
-        url,
-        apiKeyPrefix: apiKey.substring(0, 8) + "...",
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       },
       "Exception occurred while creating task comment",
-    );
-    logger.error(
-      {
-        taskId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Failed to create AI assistant comment",
     );
     throw error;
   }

@@ -58,7 +58,7 @@ services:
   # Document Processing
   # ===========================================================================
   docling:
-    image: ds4sd/docling-serve:latest
+    image: ghcr.io/docling-project/docling-serve:latest
     container_name: eclaire-docling
     ports:
       - "5001:5001"

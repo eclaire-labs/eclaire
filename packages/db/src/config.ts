@@ -4,12 +4,7 @@
  * Reads configuration from environment variables with sensible defaults.
  */
 
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
-
-// ESM-compatible __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { resolve } from "path";
 
 export const isDev = process.env.NODE_ENV === "development";
 
@@ -58,9 +53,13 @@ export function getPGlitePath(): string {
 	if (process.env.PGLITE_DATA_DIR) {
 		return process.env.PGLITE_DATA_DIR;
 	}
-	// Use absolute path relative to repo root to avoid CWD issues
-	// From packages/db/src/ -> repo root is ../../../
-	return resolve(__dirname, "../../../data/pglite");
+	// Use ECLAIRE_HOME if set (container mode), otherwise use __dirname relative path (dev mode)
+	const home = process.env.ECLAIRE_HOME;
+	if (home) {
+		return resolve(home, "data/pglite");
+	}
+	// Dev mode: relative to repo root from packages/db/src/
+	return resolve(import.meta.dirname, "../../../data/pglite");
 }
 
 /**
@@ -71,9 +70,13 @@ export function getSqliteDataDir(): string {
 	if (process.env.SQLITE_DATA_DIR) {
 		return process.env.SQLITE_DATA_DIR;
 	}
-	// Use absolute path relative to repo root to avoid CWD issues
-	// From packages/db/src/ -> repo root is ../../../
-	return resolve(__dirname, "../../../data/sqlite");
+	// Use ECLAIRE_HOME if set (container mode), otherwise use __dirname relative path (dev mode)
+	const home = process.env.ECLAIRE_HOME;
+	if (home) {
+		return resolve(home, "data/sqlite");
+	}
+	// Dev mode: relative to repo root from packages/db/src/
+	return resolve(import.meta.dirname, "../../../data/sqlite");
 }
 
 /**

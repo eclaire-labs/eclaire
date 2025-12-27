@@ -16,10 +16,6 @@ export const config = {
   docling: {
     url: appConfig.services.doclingUrl,
   },
-  // Single API key for all workers (from central config)
-  apiKey: appConfig.worker.apiKey,
-  // AI Assistant API key for task execution (from central config)
-  aiAssistantApiKey: appConfig.worker.aiAssistantApiKey,
   // Worker settings from central config
   worker: {
     concurrency: appConfig.worker.concurrency,

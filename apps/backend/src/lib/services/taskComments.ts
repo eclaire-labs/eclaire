@@ -30,6 +30,7 @@ function cleanTaskCommentForResponse(comment: any) {
 export async function createTaskComment(
   commentData: CreateTaskCommentParams,
   userId: string,
+  actorOverride?: "user" | "assistant" | "system",
 ) {
   try {
     // Verify the task exists
@@ -41,7 +42,7 @@ export async function createTaskComment(
       throw new Error("Task not found");
     }
 
-    // Get user info to determine actor type
+    // Get user info to determine actor type (optional if actorOverride provided)
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
       columns: {
@@ -51,7 +52,8 @@ export async function createTaskComment(
       },
     });
 
-    if (!user) {
+    // User lookup is required unless actorOverride is provided
+    if (!user && !actorOverride) {
       throw new Error("User not found");
     }
 
@@ -86,13 +88,14 @@ export async function createTaskComment(
       throw new Error("Failed to retrieve created comment");
     }
 
-    // Record history
+    // Record history - use actorOverride if provided, otherwise determine from user type
     const actor =
-      user.userType === "assistant"
+      actorOverride ??
+      (user?.userType === "assistant"
         ? "assistant"
-        : user.userType === "worker"
+        : user?.userType === "worker"
           ? "system"
-          : "user";
+          : "user");
     await recordHistory({
       action: "create",
       itemType: "task_comment",
@@ -107,8 +110,8 @@ export async function createTaskComment(
       userId: task.userId,
       metadata: {
         commentCreatedBy: userId,
-        commentCreatedByName: user.displayName,
-        commentCreatedByType: user.userType,
+        commentCreatedByName: user?.displayName ?? "AI Assistant",
+        commentCreatedByType: user?.userType ?? "assistant",
       },
     });
 

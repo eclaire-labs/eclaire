@@ -187,9 +187,11 @@ cat > compose.local.yaml << EOF
 services:
 EOF
 
-cat >> docker-compose.local.yml << EOF
+cat >> compose.local.yaml << EOF
   eclaire:
     image: eclaire:${DOCKER_TAG}
+    environment:
+      ECLAIRE_LOCAL_BUILD: "true"
 EOF
 
 echo -e "\n✅ Build complete: ${SEMVER} (${COMMITS_SINCE_TAG} commits since tag, sha ${SHORT_SHA})"

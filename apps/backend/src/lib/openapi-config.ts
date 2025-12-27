@@ -2,17 +2,13 @@ import type { Hono, MiddlewareHandler } from "hono";
 import { generateSpecs, type GenerateSpecOptions } from "hono-openapi";
 import z from "zod/v4";
 import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { config } from "../config/index.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Read version from build-info.json (generated during build) or fallback to package.json
 let version = "0.0.0";
 try {
-  const buildInfoPath = resolve(__dirname, "../../../../build-info.json");
+  const buildInfoPath = resolve(import.meta.dirname, "../../../../build-info.json");
   const buildInfo = JSON.parse(readFileSync(buildInfoPath, "utf8"));
   version = buildInfo.version || "0.0.0";
 } catch {

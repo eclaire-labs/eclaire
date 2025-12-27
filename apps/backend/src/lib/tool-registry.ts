@@ -1,11 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
 import * as tools from "./tools/index.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 interface PreGeneratedSignatures {
   generatedAt: string;
@@ -37,7 +32,7 @@ export class ToolRegistry {
 
     // Fallback to reading TypeScript source files (development)
     try {
-      const toolsFilePath = path.join(__dirname, "tools", "index.ts");
+      const toolsFilePath = path.join(import.meta.dirname, "tools", "index.ts");
       const sourceCode = fs.readFileSync(toolsFilePath, "utf-8");
 
       // Parse JSDoc comments and associated function names
@@ -144,7 +139,7 @@ export class ToolRegistry {
     try {
       // Look for tool-signatures.json in the project root
       const signaturesPath = path.join(
-        __dirname,
+        import.meta.dirname,
         "..",
         "..",
         "..",
@@ -186,7 +181,7 @@ export class ToolRegistry {
 
     // Fallback to reading TypeScript source (development mode)
     try {
-      const toolsFilePath = path.join(__dirname, "tools", "index.ts");
+      const toolsFilePath = path.join(import.meta.dirname, "tools", "index.ts");
       const sourceCode = fs.readFileSync(toolsFilePath, "utf-8");
 
       // Find the function definition in the source

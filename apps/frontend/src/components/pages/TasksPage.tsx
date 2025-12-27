@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useNavigate, getRouteApi } from "@tanstack/react-router";
 
-const routeApi = getRouteApi("/_authenticated/tasks");
+const routeApi = getRouteApi("/_authenticated/tasks/");
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";

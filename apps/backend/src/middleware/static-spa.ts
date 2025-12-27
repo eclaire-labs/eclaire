@@ -9,11 +9,7 @@ import { type Context, type Next } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import path from "node:path";
 import fs from "node:fs";
-import { fileURLToPath } from "node:url";
 import { config } from "../config/index.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Static file extensions to serve directly
 const STATIC_EXTENSIONS = new Set([
@@ -65,13 +61,13 @@ function getFrontendDistPath(): string {
   }
 
   // Development: look for frontend/dist relative to backend
-  const devPath = path.resolve(__dirname, "../../../frontend/dist");
+  const devPath = path.resolve(import.meta.dirname, "../../../frontend/dist");
   if (fs.existsSync(devPath)) {
     return devPath;
   }
 
   // Docker production: frontend-dist in app root
-  const prodPath = path.resolve(__dirname, "../../frontend-dist");
+  const prodPath = path.resolve(import.meta.dirname, "../../frontend-dist");
   if (fs.existsSync(prodPath)) {
     return prodPath;
   }

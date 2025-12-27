@@ -10,6 +10,13 @@
 
 const isContainer = process.env.ECLAIRE_RUNTIME === "container";
 
+// Track which env files were loaded (exported for config to determine secrets source)
+export const envLoadInfo = {
+  isContainer,
+  envLoaded: false,
+  envLocalLoaded: false,
+};
+
 if (!isContainer) {
   // Local development - load .env from repo root
   const dotenv = await import("dotenv");
@@ -42,7 +49,9 @@ if (!isContainer) {
     dotenv.config({
       path: envPath,
       override: true,
+      quiet: true,
     });
+    envLoadInfo.envLoaded = true;
   }
 
   // Load .env.local second (auto-generated secrets, gitignored)
@@ -53,7 +62,9 @@ if (!isContainer) {
     dotenv.config({
       path: envLocalPath,
       override: true,
+      quiet: true,
     });
+    envLoadInfo.envLocalLoaded = true;
   }
 
   // Set local defaults if not already set

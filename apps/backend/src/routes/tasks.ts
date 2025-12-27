@@ -669,22 +669,19 @@ tasksRoutes.put(
       }
 
       // Check if user has permission to update execution tracking
-      const isTaskWorker = userId === "user-svc-worker";
-      const canUpdate =
-        task.userId === userId || task.assignedToId === userId || isTaskWorker;
+      // Note: In-process workers use direct service calls, so this route is primarily for external access
+      const canUpdate = task.userId === userId || task.assignedToId === userId;
       if (!canUpdate) {
         return c.json({ error: "Unauthorized to update this task" }, 403);
       }
 
       // Log execution tracking update for security/auditing
-      // Note: lastRunAt is now lastExecutedAt, nextRunAt is managed by scheduler
       logger.info(
         {
           taskId,
           userId,
           taskOwnerId: task.userId,
           taskAssignedToId: task.assignedToId,
-          isTaskWorker,
           updates: { lastExecutedAt },
         },
         "Task execution tracking update",

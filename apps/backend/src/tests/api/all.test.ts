@@ -1,6 +1,5 @@
 import { readFile } from "fs/promises";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
+import { resolve } from "path";
 import { describe, expect, it } from "vitest";
 import {
   BASE_URL,
@@ -8,9 +7,6 @@ import {
   delay,
   TEST_API_KEY,
 } from "../utils/test-helpers.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Create authenticated fetch function
 const loggedFetch = createAuthenticatedFetch(TEST_API_KEY);
@@ -184,7 +180,7 @@ describe("POST /api/all Integration Tests", () => {
   it("should create a photo from a JPEG file", async () => {
     await delay(100);
     const formData = new FormData();
-    const photoPath = resolve(__dirname, "../fixtures/photos/photo1.jpg");
+    const photoPath = resolve(import.meta.dirname, "../fixtures/photos/photo1.jpg");
     const photoBuffer = await readFile(photoPath);
     const metadata = {
       title: "Test Landscape",
@@ -217,7 +213,7 @@ describe("POST /api/all Integration Tests", () => {
   it("should create a document from a PDF file", async () => {
     await delay(100);
     const formData = new FormData();
-    const docPath = resolve(__dirname, "../fixtures/documents/document2.pdf");
+    const docPath = resolve(import.meta.dirname, "../fixtures/documents/document2.pdf");
     const docBuffer = await readFile(docPath);
     const metadata = { title: "Test PDF Document", tags: ["pdf", "test-doc"] };
 

@@ -1,11 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import type { ModelsConfig, Model } from '../types/index.js';
-
-// Get the directory where this script is located
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Initialize config path from CONFIG_DIR environment variable or fallback to relative path
 function getDefaultConfigPath(): string {
@@ -15,7 +10,7 @@ function getDefaultConfigPath(): string {
   }
 
   // Fallback to relative path from CLI location
-  return path.join(__dirname, '..', '..', '..', '..', '..', 'config', 'models.json');
+  return path.join(import.meta.dirname, '..', '..', '..', '..', '..', 'config', 'models.json');
 }
 
 // Path to the models.json config file

@@ -8,8 +8,7 @@
  *   pnpm --filter @eclaire/db db:migrate --force
  */
 
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { config } from "dotenv";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
@@ -32,9 +31,7 @@ import * as pgSchema from "../schema/postgres.js";
 import * as sqliteSchema from "../schema/sqlite.js";
 
 // Resolve backend directory to load environment files
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const backendDir = resolve(__dirname, "../../../../apps/backend");
+const backendDir = resolve(import.meta.dirname, "../../../../apps/backend");
 
 // Load env file based on NODE_ENV (matching seed script pattern)
 // dotenv.config() does NOT override existing env vars
@@ -42,8 +39,8 @@ const envFile = process.env.NODE_ENV === "production" ? ".env.prod" : ".env.dev"
 config({ path: resolve(backendDir, envFile) });
 
 // Migration folders relative to this script (from dist/scripts/ back to src/migrations/)
-const SQLITE_MIGRATIONS = resolve(__dirname, "../../src/migrations/sqlite");
-const POSTGRES_MIGRATIONS = resolve(__dirname, "../../src/migrations/postgres");
+const SQLITE_MIGRATIONS = resolve(import.meta.dirname, "../../src/migrations/sqlite");
+const POSTGRES_MIGRATIONS = resolve(import.meta.dirname, "../../src/migrations/postgres");
 
 // ============================================================================
 // Queue tables SQL (from @eclaire/queue - these don't have pre-generated migrations)

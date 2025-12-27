@@ -15,6 +15,20 @@
       "when": 1766236313648,
       "tag": "0001_wonderful_proteus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766816341635,
+      "tag": "0002_public_mojo",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767917000000,
+      "tag": "0003_system_users",
+      "breakpoints": true
     }
   ]
 }

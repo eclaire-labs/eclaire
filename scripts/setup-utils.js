@@ -405,8 +405,6 @@ async function copyEnvFiles(env, force = false) {
         const betterAuthSecret = generateSecureValue(32);
         const masterEncryptionKey = generateSecureValue(32);
         const apiKeyHmacSecret = generateSecureValue(32);
-        const workerApiKey = generateApiKey();
-        const aiAssistantApiKey = generateApiKey();
 
         content = content.replace(
           /^BETTER_AUTH_SECRET=$/m,
@@ -420,20 +418,10 @@ async function copyEnvFiles(env, force = false) {
           /^API_KEY_HMAC_KEY_V1=$/m,
           `API_KEY_HMAC_KEY_V1=${apiKeyHmacSecret}`
         );
-        content = content.replace(
-          /^WORKER_API_KEY=$/m,
-          `WORKER_API_KEY=${workerApiKey}`
-        );
-        content = content.replace(
-          /^AI_ASSISTANT_API_KEY=$/m,
-          `AI_ASSISTANT_API_KEY=${aiAssistantApiKey}`
-        );
 
         console.log(`  ✅ Generated BETTER_AUTH_SECRET`);
         console.log(`  ✅ Generated MASTER_ENCRYPTION_KEY`);
         console.log(`  ✅ Generated API_KEY_HMAC_KEY_V1`);
-        console.log(`  ✅ Generated WORKER_API_KEY`);
-        console.log(`  ✅ Generated AI_ASSISTANT_API_KEY`);
       }
 
       fs.writeFileSync(destPath, content);
@@ -675,63 +663,12 @@ async function initDatabase(env, questionFn, databaseType = 'sqlite') {
       return false;
     }
 
-    // Run seed
-    const seedType = 'essential';
-    console.log(`  Seeding database with ${seedType} data...`);
-
-    // Capture output for production to extract API keys
-    const seedResult = exec('docker exec -e GENERATE_SECURE_KEYS=true eclaire pnpm db:seed:essential:prod', true);
-
-    if (!seedResult.success) {
-      console.log(`  ${colors.red}❌ Seeding failed${colors.reset}`);
-      // Stop container before returning
-      exec('docker compose down');
-      return false;
-    }
-
-    console.log(`  ✅ Database seeded successfully`);
+    // Note: No seeding required - AI assistant user is created by migration
+    // Demo users can be seeded later with: docker exec eclaire pnpm db:seed --demo
 
     // Stop backend container after migrations
     console.log('  Stopping backend container...');
     exec('docker compose down');
-
-    // Extract API keys from seed output and update backend .env.prod
-    const backendEnvPath = path.join(process.cwd(), 'apps/backend/.env.prod');
-    console.log(`  🔑 Extracting API keys from seed output...`);
-
-    const output = seedResult.output || '';
-    const workerKeyMatch = output.match(/Worker API Key:\s*(sk-[\w-]+)/);
-    const assistantKeyMatch = output.match(/AI Assistant API Key:\s*(sk-[\w-]+)/);
-
-    if (workerKeyMatch && assistantKeyMatch) {
-      const workerApiKey = workerKeyMatch[1];
-      const assistantApiKey = assistantKeyMatch[1];
-
-      try {
-        let backendEnvContent = fs.readFileSync(backendEnvPath, 'utf-8');
-
-        backendEnvContent = backendEnvContent.replace(
-          /WORKER_API_KEY=$/m,
-          `WORKER_API_KEY=${workerApiKey}`
-        );
-        backendEnvContent = backendEnvContent.replace(
-          /AI_ASSISTANT_API_KEY=$/m,
-          `AI_ASSISTANT_API_KEY=${assistantApiKey}`
-        );
-
-        fs.writeFileSync(backendEnvPath, backendEnvContent);
-        console.log(`  ✅ Updated backend .env.prod with API keys`);
-      } catch (error) {
-        console.log(`  ${colors.yellow}⚠️  Could not update backend .env.prod with API keys${colors.reset}`);
-        console.log(`  ${colors.cyan}Please manually add these keys to apps/backend/.env.prod:${colors.reset}`);
-        console.log(`    WORKER_API_KEY=${workerApiKey}`);
-        console.log(`    AI_ASSISTANT_API_KEY=${assistantApiKey}`);
-      }
-    } else {
-      console.log(`  ${colors.yellow}⚠️  Could not extract API keys from seed output${colors.reset}`);
-      console.log(`  ${colors.cyan}Please run 'docker exec eclaire pnpm db:seed:essential:prod' manually${colors.reset}`);
-      console.log(`  ${colors.cyan}and copy the API keys to apps/backend/.env.prod${colors.reset}`);
-    }
   } else {
     // Development: Use host-based approach (existing logic)
     console.log('  Running database migrations...');

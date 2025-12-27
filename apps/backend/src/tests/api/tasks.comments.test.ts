@@ -4,7 +4,6 @@ import {
   type CommentDeleteResponse,
   globalTestCleanup,
   loggedFetch,
-  loggedFetchAsAssistant,
   type TaskComment,
   type TaskDeleteResponse,
   type TaskEntry,
@@ -165,64 +164,9 @@ describe("Task Comments", { timeout: 30000 }, () => {
     });
   });
 
-  describe("AI Assistant Comments", () => {
-    it("POST /api/tasks/:id/comments - AI assistant should create a comment", async () => {
-      expect(commentTaskId).not.toBeNull();
-
-      const aiCommentData = {
-        content: "This comment is from the AI assistant.",
-      };
-
-      const response = await loggedFetchAsAssistant(
-        `/tasks/${commentTaskId}/comments`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(aiCommentData),
-        },
-      );
-
-      expect(response.status).toBe(201);
-      const comment = (await response.json()) as TaskComment;
-
-      expect(comment.content).toBe(aiCommentData.content);
-      expect(comment.user.userType).toBe("assistant");
-      expect(comment.user.id).toBe(AI_ASSISTANT_USER_ID);
-    });
-
-    it("GET /api/tasks/:id/comments - should return multiple comments in correct order", async () => {
-      expect(commentTaskId).not.toBeNull();
-
-      const response = await loggedFetch(`/tasks/${commentTaskId}/comments`, {
-        method: "GET",
-      });
-
-      expect(response.status).toBe(200);
-      const comments = (await response.json()) as TaskComment[];
-
-      expect(comments).toHaveLength(1);
-      // Only AI assistant comment should remain (user comment was deleted)
-      expect(comments[0]).toBeDefined();
-      expect(comments[0]!.user.userType).toBe("assistant");
-    });
-
-    it("GET /api/tasks/:id/comments - should not include deleted comment", async () => {
-      expect(commentTaskId).not.toBeNull();
-
-      const response = await loggedFetch(`/tasks/${commentTaskId}/comments`, {
-        method: "GET",
-      });
-
-      expect(response.status).toBe(200);
-      const comments = (await response.json()) as TaskComment[];
-
-      expect(comments).toHaveLength(1);
-      expect(comments[0]).toBeDefined();
-      expect(comments[0]!.user.userType).toBe("assistant");
-    });
-  });
+  // Note: AI Assistant comment creation is now done via direct service calls
+  // in taskExecutionProcessor.ts, not via HTTP API. Tests for this functionality
+  // should use unit tests with mocked services.
 
   describe("AI Assistant Task Assignment", () => {
     let assignmentTaskId: string | null = null;

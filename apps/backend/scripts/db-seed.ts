@@ -2,12 +2,10 @@
 import "../src/lib/env-loader";
 
 import { hashPassword } from "better-auth/crypto";
-import { randomBytes } from "crypto";
 import type { InferInsertModel } from "drizzle-orm";
 import { drizzle as drizzlePostgres, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
 import { drizzle as drizzleSqlite, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { v4 as uuid } from "uuid";
 import {
   getDatabaseUrl,
   getDatabaseType,
@@ -19,7 +17,7 @@ import {
   createPgliteClient,
   createPostgresClient,
 } from "@eclaire/db";
-import { hmacBase64, parseApiKey } from "../src/lib/api-key-security.js";
+import { hmacBase64 } from "../src/lib/api-key-security.js";
 import { config } from "../src/config/index.js";
 
 // Determine which schema to use
@@ -52,56 +50,10 @@ function computeApiKeyHash(fullKey: string): {
   return { keyHash, hashVersion };
 }
 
-// Generate secure API key for production
-function generateSecureApiKey(): {
-  fullKey: string;
-  keyId: string;
-  keySuffix: string;
-} {
-  const keyId = randomBytes(8).toString("hex").substring(0, 15).toUpperCase();
-  const secret = randomBytes(16).toString("hex");
-  const fullKey = `sk-${keyId}-${secret}`;
-  const keySuffix = secret.substring(secret.length - 4);
-  return { fullKey, keyId, keySuffix };
-}
-
-// Extract key parts from a full API key (for config-derived keys)
-function extractKeyParts(fullKey: string): {
-  fullKey: string;
-  keyId: string;
-  keySuffix: string;
-} {
-  const parsed = parseApiKey(fullKey);
-  if (!parsed || !parsed.keyId || !parsed.secret) {
-    throw new Error(`Invalid API key format: ${fullKey.substring(0, 10)}...`);
-  }
-  return {
-    fullKey,
-    keyId: parsed.keyId,
-    keySuffix: parsed.secret.slice(-4),
-  };
-}
-
-// Check if running in production mode based on seed type
-const isProductionSeed =
-  process.argv.includes("--essential") &&
-  (process.env.NODE_ENV === "production" ||
-    process.env.GENERATE_SECURE_KEYS === "true");
-
 // --- Fixed Test API Keys (Development/Testing Only) ---
 // These values are pre-calculated and NEVER change
 // They are for testing only and should NEVER be used in production
 const FIXED_TEST_KEYS = {
-  worker: {
-    fullKey: "sk-DEVONLYWORKER01-DEVONLY0000000000000000000000000",
-    keyId: "DEVONLYWORKER01",
-    keySuffix: "0000",
-  },
-  aiAssistant: {
-    fullKey: "sk-DEVONLYAIASST01-DEVONLY1111111111111111111111111",
-    keyId: "DEVONLYAIASST01",
-    keySuffix: "1111",
-  },
   // Demo user API keys (15 char keyId, 32 char secret)
   demoUser1: {
     fullKey: "sk-DEVONLYUSER0001-DEVONLY2222222222222222222222222",
@@ -116,13 +68,6 @@ const FIXED_TEST_KEYS = {
 };
 
 // --- Constants ---
-const WORKER_USER_ID = "user-svc-worker";
-const WORKER_EMAIL = "service-worker@system.local";
-const WORKER_API_KEY_NAME = "Worker API Key";
-
-const AI_ASSISTANT_USER_ID = "user-ai-assistant";
-const AI_ASSISTANT_EMAIL = "ai-assistant@system.local";
-const AI_ASSISTANT_API_KEY_NAME = "AI Assistant Key";
 
 const DEMO_USER1_ID = "user-demo-1";
 const DEMO_USER1_EMAIL = "demo@example.com";
@@ -141,12 +86,17 @@ async function main() {
   const args = process.argv.slice(2);
   const demo = args.includes("--demo");
 
-  // Default to essential only (unless --demo is specified)
-  if (demo) {
-    console.log("🌱 Seeding database with essential users and demo users...");
-  } else {
-    console.log("🌱 Seeding database with essential users only...");
+  // Determine what to seed:
+  // - Default: Nothing (AI assistant created by migration)
+  // - --demo: Demo users (admin, demo1, demo2) with accounts and API keys
+  if (!demo) {
+    console.log("ℹ️  No seeding required.");
+    console.log("   AI assistant user is created by migration.");
+    console.log("   Use --demo to seed demo users for testing.");
+    return;
   }
+
+  console.log("🌱 Seeding database with demo users...");
 
   let db: Database;
   let cleanup: () => Promise<void>;
@@ -183,40 +133,13 @@ async function main() {
     };
   }
 
-  // Variables to store the generated keys (needed for output at the end)
-  let workerKey: { fullKey: string; keyId: string; keySuffix: string };
-  let aiAssistantKey: { fullKey: string; keyId: string; keySuffix: string };
-
   try {
     // Use current timestamp - with mode: 'timestamp_ms', all databases expect Date objects
     const now = new Date();
 
-    // 1. Create Users
-    console.log("👤 Creating users...");
+    // 1. Create Demo Users
+    console.log("👤 Creating demo users...");
 
-    // Essential users (worker and AI assistant)
-    const essentialUsersData: InsertUser[] = [
-      {
-        id: WORKER_USER_ID,
-        userType: "worker",
-        email: WORKER_EMAIL,
-        displayName: "Worker Service",
-        emailVerified: true,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: AI_ASSISTANT_USER_ID,
-        userType: "assistant",
-        email: AI_ASSISTANT_EMAIL,
-        displayName: "AI Assistant",
-        emailVerified: true,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ];
-
-    // Demo users (admin + demo)
     const demoUsersData: InsertUser[] = [
       {
         id: ADMIN_USER_ID,
@@ -247,38 +170,12 @@ async function main() {
       },
     ];
 
-    let usersData = essentialUsersData;
-    if (demo) {
-      usersData = [...essentialUsersData, ...demoUsersData];
-    }
+    await (db as any).insert(schema.users).values(demoUsersData).onConflictDoNothing();
+    console.log(`-> ${demoUsersData.length} demo users ensured.`);
 
-    await (db as any).insert(schema.users).values(usersData).onConflictDoNothing();
-    console.log(`-> ${usersData.length} users ensured.`);
+    // 2. Create Demo Accounts
+    console.log("🔑 Creating demo accounts...");
 
-    // 2. Create Accounts
-    console.log("🔑 Creating accounts...");
-
-    // Essential accounts (worker and AI assistant)
-    const essentialAccountsData: InsertAccount[] = [
-      {
-        accountId: WORKER_EMAIL,
-        providerId: "credential",
-        userId: WORKER_USER_ID,
-        passwordHash: await hashPassword(uuid()), // Random password for service account
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        accountId: AI_ASSISTANT_EMAIL,
-        providerId: "credential",
-        userId: AI_ASSISTANT_USER_ID,
-        passwordHash: await hashPassword(uuid()), // Random password for service account
-        createdAt: now,
-        updatedAt: now,
-      },
-    ];
-
-    // Demo accounts (admin + demo)
     const demoAccountsData: InsertAccount[] = [
       {
         accountId: ADMIN_USER_EMAIL,
@@ -306,63 +203,12 @@ async function main() {
       },
     ];
 
-    let accountsData = essentialAccountsData;
-    if (demo) {
-      accountsData = [...essentialAccountsData, ...demoAccountsData];
-    }
+    await (db as any).insert(schema.accounts).values(demoAccountsData).onConflictDoNothing();
+    console.log(`-> ${demoAccountsData.length} demo accounts ensured.`);
 
-    await (db as any).insert(schema.accounts).values(accountsData).onConflictDoNothing();
-    console.log(`-> ${accountsData.length} accounts ensured.`);
+    // 3. Create Demo API Keys
+    console.log("🔑 Creating demo API keys...");
 
-    // 3. Create API Keys
-    console.log("🔑 Creating API keys...");
-
-    // Essential API keys (worker and AI assistant)
-    // Key source depends on environment:
-    // - Test mode: fixed keys for reproducible tests
-    // - Production seed: newly generated secure keys
-    // - Development: config keys (matches what workers will use at runtime)
-    const isTest = process.env.NODE_ENV === "test";
-
-    if (isTest) {
-      // Test mode: use fixed keys for reproducibility
-      workerKey = FIXED_TEST_KEYS.worker;
-      aiAssistantKey = FIXED_TEST_KEYS.aiAssistant;
-    } else if (isProductionSeed) {
-      // Production: generate new secure keys
-      workerKey = generateSecureApiKey();
-      aiAssistantKey = generateSecureApiKey();
-    } else {
-      // Development: use config keys (ensures DB matches runtime config)
-      workerKey = extractKeyParts(config.worker.apiKey);
-      aiAssistantKey = extractKeyParts(config.worker.aiAssistantApiKey);
-    }
-
-    const workerHash = computeApiKeyHash(workerKey.fullKey);
-    const aiAssistantHash = computeApiKeyHash(aiAssistantKey.fullKey);
-
-    const essentialApiKeysData: InsertApiKey[] = [
-      {
-        keyId: workerKey.keyId,
-        keyHash: workerHash.keyHash,
-        hashVersion: workerHash.hashVersion,
-        keySuffix: workerKey.keySuffix,
-        userId: WORKER_USER_ID,
-        name: WORKER_API_KEY_NAME,
-        createdAt: now,
-      },
-      {
-        keyId: aiAssistantKey.keyId,
-        keyHash: aiAssistantHash.keyHash,
-        hashVersion: aiAssistantHash.hashVersion,
-        keySuffix: aiAssistantKey.keySuffix,
-        userId: AI_ASSISTANT_USER_ID,
-        name: AI_ASSISTANT_API_KEY_NAME,
-        createdAt: now,
-      },
-    ];
-
-    // Demo API keys - using fixed test keys
     const demoUser1Hash = computeApiKeyHash(FIXED_TEST_KEYS.demoUser1.fullKey);
     const demoUser2Hash = computeApiKeyHash(FIXED_TEST_KEYS.demoUser2.fullKey);
 
@@ -387,38 +233,20 @@ async function main() {
       },
     ];
 
-    let apiKeysToInsert = essentialApiKeysData;
-    if (demo) {
-      apiKeysToInsert = [...essentialApiKeysData, ...demoApiKeysData];
-    }
-
     await (db as any)
       .insert(schema.apiKeys)
-      .values(apiKeysToInsert)
+      .values(demoApiKeysData)
       .onConflictDoNothing();
-    console.log(`-> ${apiKeysToInsert.length} API keys ensured.`);
+    console.log(`-> ${demoApiKeysData.length} demo API keys ensured.`);
 
     // 4. Log Success & Credentials
     console.log("✅ Seeding completed successfully!");
-
-    if (demo) {
-      console.log("--- Test Accounts ---");
-      console.log(`  Admin: ${ADMIN_USER_EMAIL} / ${ADMIN_USER_PASSWORD}`);
-      console.log(`  Demo:  ${DEMO_USER1_EMAIL} / ${DEMO_USER1_PASSWORD}`);
-      console.log(`  Demo API Key: ${FIXED_TEST_KEYS.demoUser1.fullKey}`);
-      console.log(`  Demo2: ${DEMO_USER2_EMAIL} / ${DEMO_USER2_PASSWORD}`);
-      console.log(`  Demo2 API Key: ${FIXED_TEST_KEYS.demoUser2.fullKey}`);
-      console.log("---------------------");
-    }
-
-    console.log("--- Service Accounts ---");
-    if (isProductionSeed) {
-      console.log(
-        `  ⚠️  IMPORTANT: Save these API keys securely - they won't be shown again!`,
-      );
-    }
-    console.log(`  Worker API Key: ${workerKey.fullKey}`);
-    console.log(`  AI Assistant API Key: ${aiAssistantKey.fullKey}`);
+    console.log("--- Demo Accounts ---");
+    console.log(`  Admin: ${ADMIN_USER_EMAIL} / ${ADMIN_USER_PASSWORD}`);
+    console.log(`  Demo:  ${DEMO_USER1_EMAIL} / ${DEMO_USER1_PASSWORD}`);
+    console.log(`  Demo API Key: ${FIXED_TEST_KEYS.demoUser1.fullKey}`);
+    console.log(`  Demo2: ${DEMO_USER2_EMAIL} / ${DEMO_USER2_PASSWORD}`);
+    console.log(`  Demo2 API Key: ${FIXED_TEST_KEYS.demoUser2.fullKey}`);
     console.log("---------------------");
   } catch (error) {
     console.error("❌ Seeding failed:", error);

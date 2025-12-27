@@ -15,14 +15,8 @@ export const loggedFetch = (url: string, options?: RequestInit) => {
   return createAuthenticatedFetch(TEST_API_KEY)(fullUrl, options);
 };
 
-// AI Assistant constants (from seed data)
+// AI Assistant user ID (created by migration)
 export const AI_ASSISTANT_USER_ID = "user-ai-assistant";
-export const AI_ASSISTANT_API_KEY =
-  "sk-DEVONLYAIASST01-DEVONLY1111111111111111111111111";
-export const loggedFetchAsAssistant = (url: string, options?: RequestInit) => {
-  const fullUrl = url.startsWith("http") ? url : `${BASE_URL}${url}`;
-  return createAuthenticatedFetch(AI_ASSISTANT_API_KEY)(fullUrl, options);
-};
 
 // Comment user interface
 export interface CommentUser {

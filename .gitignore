@@ -59,6 +59,7 @@ apps/*/versions.json
 # build info (generated)
 build-info.json
 docker-compose.local.yml
+compose.local.yaml
 
 # Local model configuration (use models.json.example as template)
 config/models.json

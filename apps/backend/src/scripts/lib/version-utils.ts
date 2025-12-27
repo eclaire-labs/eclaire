@@ -5,11 +5,7 @@
  */
 
 import { readFileSync, existsSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { resolve } from "path";
 
 /**
  * Get the app version from the best available source:
@@ -38,7 +34,7 @@ export function getAppVersion(): string {
 
 	// Fallback to package.json (local dev)
 	// Path: lib/version-utils.ts -> scripts -> src -> backend -> apps -> monorepo root
-	const rootPackageJson = resolve(__dirname, "../../../../../package.json");
+	const rootPackageJson = resolve(import.meta.dirname, "../../../../../package.json");
 	try {
 		return JSON.parse(readFileSync(rootPackageJson, "utf-8")).version;
 	} catch {
@@ -62,7 +58,7 @@ export function getAppVersion(): string {
  */
 function getMigrationPaths(): string[] {
 	// Path: lib/version-utils.ts -> scripts -> src -> backend
-	const backendRoot = resolve(__dirname, "../../../..");
+	const backendRoot = resolve(import.meta.dirname, "../../../..");
 
 	return [
 		// Container: pnpm deploy bundles @eclaire/db with src/

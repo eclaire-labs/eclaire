@@ -3,7 +3,7 @@
  * Upgrade script for Eclaire
  *
  * Usage:
- *   pnpm upgrade                    # Run all pending upgrades
+ *   pnpm app:upgrade                # Run all pending upgrades
  *   docker compose run --rm backend upgrade
  *
  * This script:
@@ -15,18 +15,17 @@
 // Load environment first
 import "../lib/env-loader.js";
 
+// Suppress noisy db initialization logs for this script
+process.env.LOG_LEVEL = "error";
+
 import { readFileSync, existsSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
+import { resolve } from "path";
 import { execSync } from "child_process";
 import * as semver from "semver";
 import { sql, eq } from "drizzle-orm";
-import { db, dbType, schema } from "../db/index.js";
+import { executeQuery } from "@eclaire/db";
 import { getUpgradeSteps } from "./upgrades/index.js";
 import { getAppVersion, findMigrationJournal } from "./lib/version-utils.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Get app version (uses APP_VERSION env in containers, package.json in dev)
 const appVersion = getAppVersion();
@@ -44,7 +43,18 @@ interface Journal {
 	entries: JournalEntry[];
 }
 
+// Dynamically imported db module (to respect LOG_LEVEL set above)
+let db: Awaited<typeof import("../db/index.js")>["db"];
+let dbType: Awaited<typeof import("../db/index.js")>["dbType"];
+let schema: Awaited<typeof import("../db/index.js")>["schema"];
+
 async function main() {
+	// Dynamic import to respect LOG_LEVEL setting
+	const dbModule = await import("../db/index.js");
+	db = dbModule.db;
+	dbType = dbModule.dbType;
+	schema = dbModule.schema;
+
 	console.log(`Eclaire Upgrade`);
 	console.log(`===============`);
 	console.log(`App version: ${appVersion}`);
@@ -81,7 +91,7 @@ async function main() {
 			process.exit(0);
 		}
 
-		// Step 2: Run migrations if needed
+		// Step 2: Run migrations if needed (creates _app_meta table via Drizzle)
 		if (needsMigrations) {
 			console.log("Running database migrations...");
 			await runMigrations();
@@ -89,10 +99,7 @@ async function main() {
 			console.log("");
 		}
 
-		// Step 3: Ensure _app_meta table exists
-		await ensureAppMetaTable();
-
-		// Step 4: Run version-specific upgrade steps
+		// Step 3: Run version-specific upgrade steps
 		if (needsVersionUpgrade) {
 			const fromVersion = installedVersion || "0.0.0";
 			const steps = getUpgradeSteps(fromVersion, appVersion);
@@ -110,10 +117,15 @@ async function main() {
 			}
 		}
 
-		// Step 5: Update installed version
+		// Step 4: Update installed version
 		await setInstalledVersion(appVersion);
 
-		console.log(`Upgraded to ${appVersion}`);
+		// Print success message
+		console.log("");
+		console.log("═══════════════════════════════════════");
+		console.log(`  Upgraded to ${appVersion}`);
+		console.log("═══════════════════════════════════════");
+		console.log("");
 	} catch (error) {
 		console.error("Upgrade failed:", error);
 		process.exit(1);
@@ -142,17 +154,12 @@ async function checkMigrations(): Promise<{
 
 async function getAppliedMigrationCount(): Promise<number> {
 	try {
-		const result = await db.execute(
+		const result = await executeQuery<{ count: number }>(
+			db,
+			dbType,
 			sql`SELECT COUNT(*) as count FROM __drizzle_migrations`,
 		);
-
-		const row = Array.isArray(result)
-			? result[0]
-			: (result as { rows?: unknown[] }).rows?.[0];
-		if (row && typeof row === "object" && "count" in row) {
-			return Number(row.count);
-		}
-		return 0;
+		return Number(result[0]?.count ?? 0);
 	} catch {
 		return 0;
 	}
@@ -176,52 +183,22 @@ async function getInstalledVersion(): Promise<string | null> {
 async function runMigrations(): Promise<void> {
 	// Call the existing migration script
 	const migrateScript = resolve(
-		__dirname,
+		import.meta.dirname,
 		"../../../node_modules/@eclaire/db/dist/scripts/migrate.js",
 	);
 
 	// Check if dist version exists, otherwise use source
 	const scriptPath = existsSync(migrateScript)
 		? migrateScript
-		: resolve(__dirname, "../../../../packages/db/src/scripts/migrate.ts");
+		: resolve(import.meta.dirname, "../../../../packages/db/src/scripts/migrate.ts");
 
 	const isTs = scriptPath.endsWith(".ts");
-	const cmd = isTs ? `npx tsx ${scriptPath} --force` : `node ${scriptPath} --force`;
+	const cmd = isTs ? `pnpm exec tsx ${scriptPath} --force` : `node ${scriptPath} --force`;
 
 	execSync(cmd, {
 		stdio: "inherit",
 		env: process.env,
 	});
-}
-
-async function ensureAppMetaTable(): Promise<void> {
-	// The _app_meta table should be created by migrations since it's in the schema.
-	// But if running before migrations are applied, we need to create it manually.
-	try {
-		// Try to select from the table to see if it exists
-		await db.select().from(schema.appMeta).limit(1);
-	} catch {
-		// Table doesn't exist, create it
-		console.log("Creating _app_meta table...");
-
-		if (dbType === "sqlite") {
-			await db.execute(sql`
-				CREATE TABLE IF NOT EXISTS "_app_meta" (
-					"key" text PRIMARY KEY NOT NULL,
-					"value" text NOT NULL,
-					"updated_at" integer NOT NULL DEFAULT (unixepoch())
-				)
-			`);
-		} else {
-			await db.execute(sql`
-				CREATE TABLE IF NOT EXISTS "_app_meta" (
-					"key" text PRIMARY KEY NOT NULL,
-					"value" text NOT NULL,
-					"updated_at" timestamp NOT NULL DEFAULT now()
-				)
-			`);
-		}
-	}
 }
 
 async function setInstalledVersion(version: string): Promise<void> {

@@ -1311,6 +1311,51 @@ export async function updateTaskStatusAsAssistant(
   }
 }
 
+/**
+ * Updates the lastExecutedAt timestamp for a task.
+ * Used by task execution processor for internal tracking - no history recorded.
+ * Returns true if task was found and updated, false if task was not found.
+ */
+export async function updateTaskExecutionTracking(
+  taskId: string,
+  lastExecutedAt: Date,
+): Promise<boolean> {
+  try {
+    const result = await db
+      .update(tasks)
+      .set({
+        lastExecutedAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, taskId))
+      .returning({ id: tasks.id });
+
+    if (result.length === 0) {
+      logger.warn(
+        { taskId },
+        "Task not found when updating execution tracking",
+      );
+      return false;
+    }
+
+    logger.debug(
+      { taskId, lastExecutedAt },
+      "Task execution tracking updated",
+    );
+    return true;
+  } catch (error) {
+    logger.error(
+      {
+        taskId,
+        lastExecutedAt,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Failed to update task execution tracking",
+    );
+    throw error;
+  }
+}
+
 export async function updateTaskArtifacts(
   taskId: string,
   artifacts: {

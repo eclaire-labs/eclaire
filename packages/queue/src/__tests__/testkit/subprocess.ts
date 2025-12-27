@@ -6,14 +6,10 @@
 
 import { fork, type ChildProcess } from "child_process";
 import { createInterface } from "readline";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { join } from "path";
 
 // Path to the worker subprocess script
-const WORKER_SCRIPT = join(__dirname, "../fixtures/worker-subprocess.ts");
+const WORKER_SCRIPT = join(import.meta.dirname, "../fixtures/worker-subprocess.ts");
 
 export interface WorkerConfig {
   /** Unique identifier for this worker */

@@ -45,7 +45,7 @@
     "typecheck:backend": "cd apps/backend && pnpm typecheck",
     "typecheck:frontend": "cd apps/frontend && pnpm typecheck",
     "config:show": "pnpm --filter @eclaire/backend config:show",
-    "upgrade": "pnpm --filter @eclaire/backend upgrade",
-    "upgrade:check": "pnpm --filter @eclaire/backend upgrade:check"
+    "app:upgrade": "pnpm --filter @eclaire/backend app:upgrade",
+    "app:upgrade-check": "pnpm --filter @eclaire/backend app:upgrade-check"
   }
 }

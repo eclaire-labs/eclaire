@@ -2,10 +2,6 @@
 
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "node:url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 interface ToolSignature {
   name: string;
@@ -21,14 +17,14 @@ interface ToolSignature {
 async function generateToolSignatures() {
   try {
     const toolsFilePath = path.join(
-      __dirname,
+      import.meta.dirname,
       "..",
       "src",
       "lib",
       "tools",
       "index.ts",
     );
-    const outputPath = path.join(__dirname, "..", "tool-signatures.json");
+    const outputPath = path.join(import.meta.dirname, "..", "tool-signatures.json");
 
     console.log("📖 Reading tools from:", toolsFilePath);
 

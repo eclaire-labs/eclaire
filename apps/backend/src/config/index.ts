@@ -18,6 +18,7 @@ import {
   type DatabaseType,
   type QueueBackend,
   type ServiceRole,
+  type SecretsSource,
 } from "./schema.js";
 
 // Build the configuration from environment
@@ -33,6 +34,7 @@ export type {
   DatabaseType,
   QueueBackend,
   ServiceRole,
+  SecretsSource,
 };
 
 // Re-export utilities
@@ -46,7 +48,18 @@ export { validateConfig, getConfigSummary, buildConfig };
 export function initConfig(): EclaireConfig {
   const warnings = validateConfig(_config);
 
-  // Log warnings (e.g., auto-generated secrets in development)
+  // Log where secrets came from
+  const sourceMessages: Record<SecretsSource, string> = {
+    "auto-generated": "auto-generated (saved to .env.local)",
+    "env-local": "loaded from .env.local",
+    env: "loaded from .env",
+    environment: "loaded from environment",
+  };
+  console.log(
+    `ℹ️  Secrets: ${sourceMessages[_config.security.secretsSource]}`,
+  );
+
+  // Log warnings
   if (warnings.length > 0) {
     console.log("\n⚠️  Configuration Warnings:");
     for (const warning of warnings) {

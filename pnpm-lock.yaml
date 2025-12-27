@@ -8832,7 +8832,7 @@ snapshots:
 
   '@npmcli/fs@5.0.0':
     dependencies:
-      semver: 7.7.2
+      semver: 7.7.3
 
   '@octokit/auth-token@6.0.0': {}
 
