@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RELEASE_MODE=false
-FORCE_DEV_MODE=false
+RELEASE_MODE_FLAG=false
 PARSED_ARGS=()
 
 # Parse CLI
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --release)     RELEASE_MODE=true; shift ;;
-    --dev)         FORCE_DEV_MODE=true; shift ;;
+    --release)     RELEASE_MODE_FLAG=true; shift ;;
     *)             PARSED_ARGS+=("$1"); shift ;;
   esac
 done
@@ -18,8 +16,10 @@ if [[ ${#PARSED_ARGS[@]} -gt 0 ]]; then set -- "${PARSED_ARGS[@]}"; else set --;
 # Compute version/build from git (and optionally CI env)
 source ./scripts/version.sh
 
-# Override RELEASE_MODE if --dev flag was used
-if [ "$FORCE_DEV_MODE" = true ]; then
+# Default to dev mode unless --release was explicitly passed
+if [ "$RELEASE_MODE_FLAG" = "true" ]; then
+  RELEASE_MODE=true
+else
   RELEASE_MODE=false
 fi
 
