@@ -9,7 +9,11 @@
  */
 
 import { existsSync } from "fs";
+import { createRequire } from "module";
 import { getDatabaseType, getSqlitePath, getPGlitePath } from "@eclaire/db";
+
+// Create require for CommonJS modules in ESM context
+const require = createRequire(import.meta.url);
 
 export interface DatabaseReadyResult {
 	ready: boolean;
@@ -59,7 +63,6 @@ function checkSqliteReady(): DatabaseReadyResult {
 
 	// Use better-sqlite3 directly (synchronous) to check for tables
 	// This avoids initializing Drizzle ORM
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	const Database = require("better-sqlite3");
 	const db = new Database(sqlitePath, { readonly: true });
 

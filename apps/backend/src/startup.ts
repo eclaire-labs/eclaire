@@ -39,7 +39,7 @@ if (process.env.ECLAIRE_RUNTIME !== "container") {
 	if (!readyResult.ready) {
 		// Database doesn't exist at all - need full setup
 		console.error(`Database check: ${readyResult.message}`);
-		await handleFreshInstall();
+		handleFreshInstall();
 	} else {
 		// Database exists - do full async upgrade check
 		const { checkUpgradeStatus } = await import("./lib/upgrade-check.js");
@@ -51,11 +51,11 @@ if (process.env.ECLAIRE_RUNTIME !== "container") {
 				break;
 
 			case "fresh-install":
-				await handleFreshInstall();
+				handleFreshInstall();
 				break;
 
 			case "needs-upgrade":
-				await handleUpgradeNeeded(upgradeResult);
+				handleUpgradeNeeded(upgradeResult);
 				break;
 
 			case "downgrade":
@@ -70,7 +70,7 @@ await import("./index.js");
 
 // --- Handler functions ---
 
-async function handleFreshInstall(): Promise<void> {
+function handleFreshInstall(): never {
 	console.error("");
 	console.error("===============================================================");
 	console.error("  DATABASE NOT INITIALIZED");
@@ -82,27 +82,10 @@ async function handleFreshInstall(): Promise<void> {
 	console.error("");
 	console.error("===============================================================");
 	console.error("");
-
-	// Check if running in interactive terminal
-	if (process.stdin.isTTY) {
-		const proceed = await promptUser("Run pnpm setup:dev now? (Y/n): ");
-		if (proceed.toLowerCase() !== "n") {
-			const { execSync } = await import("child_process");
-			try {
-				execSync("pnpm setup:dev", { stdio: "inherit", cwd: process.cwd() });
-				console.log("\nSetup complete. Continuing startup...\n");
-				return; // Let the app continue
-			} catch {
-				console.error("\nSetup failed. Please fix the issue and try again.\n");
-				process.exit(1);
-			}
-		}
-	}
-
 	process.exit(1);
 }
 
-async function handleUpgradeNeeded(result: UpgradeCheckResult): Promise<void> {
+function handleUpgradeNeeded(result: UpgradeCheckResult): never {
 	console.error("");
 	console.error("===============================================================");
 	console.error("  UPGRADE REQUIRED");
@@ -119,23 +102,6 @@ async function handleUpgradeNeeded(result: UpgradeCheckResult): Promise<void> {
 	console.error("");
 	console.error("===============================================================");
 	console.error("");
-
-	// Check if running in interactive terminal
-	if (process.stdin.isTTY) {
-		const proceed = await promptUser("Run pnpm app:upgrade now? (Y/n): ");
-		if (proceed.toLowerCase() !== "n") {
-			const { execSync } = await import("child_process");
-			try {
-				execSync("pnpm app:upgrade", { stdio: "inherit", cwd: process.cwd() });
-				console.log("\nUpgrade complete. Continuing startup...\n");
-				return; // Let the app continue
-			} catch {
-				console.error("\nUpgrade failed. Please fix the issue and try again.\n");
-				process.exit(1);
-			}
-		}
-	}
-
 	process.exit(1);
 }
 
@@ -156,19 +122,4 @@ function handleDowngrade(result: UpgradeCheckResult): never {
 	console.error("");
 
 	process.exit(1);
-}
-
-async function promptUser(question: string): Promise<string> {
-	const readline = await import("readline");
-	const rl = readline.createInterface({
-		input: process.stdin,
-		output: process.stdout,
-	});
-
-	return new Promise((resolve) => {
-		rl.question(question, (answer) => {
-			rl.close();
-			resolve(answer);
-		});
-	});
 }

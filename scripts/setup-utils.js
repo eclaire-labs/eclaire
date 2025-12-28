@@ -141,17 +141,9 @@ async function configureDatabaseInEnv(databaseType, questionFn) {
   }
 }
 
-// Generate secure random values for production
+// Generate secure random values
 function generateSecureValue(bytes) {
   return crypto.randomBytes(bytes).toString('hex');
-}
-
-// Generate API keys for production
-function generateApiKey() {
-  const prefix = 'sk';
-  const part1 = crypto.randomBytes(8).toString('hex').substring(0, 15);
-  const part2 = crypto.randomBytes(16).toString('hex');
-  return `${prefix}-${part1}-${part2}`;
 }
 
 // Helper to execute commands and return output
@@ -186,7 +178,7 @@ function getVersion(command, versionFlag = '--version') {
 }
 
 // Check all required dependencies
-async function checkDependencies(env = 'dev') {
+async function checkDependencies() {
   const deps = [
     {
       name: 'Node.js',
@@ -247,67 +239,60 @@ async function checkDependencies(env = 'dev') {
         exists: commandExists('docling-serve'),
         version: commandExists('docling-serve') ? 'installed' : 'not installed'
       })
+    },
+    {
+      name: 'LibreOffice',
+      command: 'soffice',
+      check: () => ({
+        exists: commandExists('soffice'),
+        version: commandExists('soffice') ? getVersion('soffice', '--version') : 'not installed'
+      })
+    },
+    {
+      name: 'Poppler Utils (pdftocairo)',
+      command: 'pdftocairo',
+      check: () => ({
+        exists: commandExists('pdftocairo'),
+        version: commandExists('pdftocairo') ? getVersion('pdftocairo', '-v') : 'not installed'
+      })
+    },
+    {
+      name: 'GraphicsMagick',
+      command: 'gm',
+      optional: true,
+      check: () => ({
+        exists: commandExists('gm'),
+        version: commandExists('gm') ? getVersion('gm', 'version') : 'not installed'
+      })
+    },
+    {
+      name: 'ImageMagick',
+      command: 'magick',
+      optional: true,
+      check: () => ({
+        exists: commandExists('magick'),
+        version: commandExists('magick') ? getVersion('magick', '-version') : 'not installed'
+      })
+    },
+    {
+      name: 'Ghostscript',
+      command: 'gs',
+      optional: true,
+      check: () => ({
+        exists: commandExists('gs'),
+        version: commandExists('gs') ? getVersion('gs', '--version') : 'not installed'
+      })
+    },
+    {
+      name: 'libheif (HEIC support)',
+      command: 'heif-convert',
+      optional: true,
+      check: () => ({
+        exists: commandExists('heif-convert'),
+        version: commandExists('heif-convert') ? 'installed' : 'not installed'
+      })
     }
   ];
-
-  // Add document/image processing dependencies only for dev mode
-  // (prod uses Docker containers with everything pre-installed)
-  if (env === 'dev') {
-    deps.push(
-      {
-        name: 'LibreOffice',
-        command: 'soffice',
-        check: () => ({
-          exists: commandExists('soffice'),
-          version: commandExists('soffice') ? getVersion('soffice', '--version') : 'not installed'
-        })
-      },
-      {
-        name: 'Poppler Utils (pdftocairo)',
-        command: 'pdftocairo',
-        check: () => ({
-          exists: commandExists('pdftocairo'),
-          version: commandExists('pdftocairo') ? getVersion('pdftocairo', '-v') : 'not installed'
-        })
-      },
-      {
-        name: 'GraphicsMagick',
-        command: 'gm',
-        optional: true,
-        check: () => ({
-          exists: commandExists('gm'),
-          version: commandExists('gm') ? getVersion('gm', 'version') : 'not installed'
-        })
-      },
-      {
-        name: 'ImageMagick',
-        command: 'magick',
-        optional: true,
-        check: () => ({
-          exists: commandExists('magick'),
-          version: commandExists('magick') ? getVersion('magick', '-version') : 'not installed'
-        })
-      },
-      {
-        name: 'Ghostscript',
-        command: 'gs',
-        optional: true,
-        check: () => ({
-          exists: commandExists('gs'),
-          version: commandExists('gs') ? getVersion('gs', '--version') : 'not installed'
-        })
-      },
-      {
-        name: 'libheif (HEIC support)',
-        command: 'heif-convert',
-        optional: true,
-        check: () => ({
-          exists: commandExists('heif-convert'),
-          version: commandExists('heif-convert') ? 'installed' : 'not installed'
-        })
-      }
-    );
-  }
 
   let allGood = true;
   console.log(`\n${colors.cyan}Checking dependencies:${colors.reset}`);
@@ -359,15 +344,10 @@ async function checkDependencies(env = 'dev') {
 }
 
 // Copy environment files
-async function copyEnvFiles(env, force = false) {
-  // Use the appropriate template based on environment:
-  // - dev: .env.dev.example (localhost defaults)
-  // - prod: .env.example (Docker/host.docker.internal defaults)
-  const envTemplate = env === 'prod' ? '.env.example' : '.env.dev.example';
-
+async function copyEnvFiles(force = false) {
   const filesToCopy = [
     {
-      source: envTemplate,
+      source: '.env.dev.example',
       dest: '.env',
       generateSecrets: true
     },
@@ -507,7 +487,7 @@ async function checkModels() {
 }
 
 // Install pnpm dependencies from monorepo root
-async function installDependencies(env = 'dev') {
+async function installDependencies() {
   console.log('\n  Installing pnpm dependencies from monorepo root...');
 
   const result = exec('pnpm install', true);
@@ -521,70 +501,23 @@ async function installDependencies(env = 'dev') {
 
   console.log(`\n  ${colors.green}✅ All dependencies installed successfully${colors.reset}`);
 
-  // Install patchright browsers for backend (dev only - prod uses Docker with pre-installed browsers)
-  if (env === 'dev') {
-    console.log('\n  Installing Patchright browsers for backend...');
-    const patchrightResult = exec('cd apps/backend && pnpm dlx patchright install chromium', true);
+  // Install patchright browsers for backend
+  console.log('\n  Installing Patchright browsers for backend...');
+  const patchrightResult = exec('cd apps/backend && pnpm dlx patchright install chromium', true);
 
-    if (patchrightResult.success) {
-      console.log(`  ✅ Patchright browsers installed successfully`);
-    } else {
-      console.log(`  ${colors.yellow}⚠️  Patchright browser installation failed${colors.reset}`);
-      console.log(`     ${colors.cyan}Run manually: cd apps/backend && pnpm dlx patchright install chromium${colors.reset}`);
-      console.log(`     This is needed for web scraping functionality`);
-    }
+  if (patchrightResult.success) {
+    console.log(`  ✅ Patchright browsers installed successfully`);
+  } else {
+    console.log(`  ${colors.yellow}⚠️  Patchright browser installation failed${colors.reset}`);
+    console.log(`     ${colors.cyan}Run manually: cd apps/backend && pnpm dlx patchright install chromium${colors.reset}`);
+    console.log(`     This is needed for web scraping functionality`);
   }
-
-  return true;
-}
-
-// Build containers for production
-async function buildContainers() {
-  console.log('\n  Building Docker containers...');
-
-  const result = exec('./scripts/build.sh');
-
-  if (!result.success) {
-    console.log(`  ${colors.red}❌ Container build failed${colors.reset}`);
-    console.log(`  ${colors.cyan}Try running manually: ./scripts/build.sh${colors.reset}`);
-    return false;
-  }
-
-  console.log(`  ${colors.green}✅ Containers built successfully${colors.reset}`);
-  return true;
-}
-
-// Start dependencies with PM2
-async function startDependencies() {
-  console.log('\n  Starting dependencies with PM2...');
-
-  // Check if PM2 is installed
-  if (!commandExists('pm2')) {
-    console.log(`  ${colors.red}❌ PM2 is not installed${colors.reset}`);
-    console.log(`  ${colors.cyan}Install with: pnpm add -g pm2${colors.reset}`);
-    return false;
-  }
-
-  // Start dependencies
-  const result = exec('pm2 start pm2.deps.config.js');
-
-  if (!result.success) {
-    console.log(`  ${colors.red}❌ Failed to start dependencies${colors.reset}`);
-    return false;
-  }
-
-  console.log(`  ${colors.green}✅ Dependencies started${colors.reset}`);
-  console.log(`  ${colors.cyan}Check logs with: pm2 logs --lines 50${colors.reset}`);
-
-  // Wait a bit for services to initialize
-  console.log('  Waiting for services to initialize...');
-  await new Promise(resolve => setTimeout(resolve, 5000));
 
   return true;
 }
 
 // Initialize database
-async function initDatabase(env, questionFn, databaseType = 'sqlite') {
+async function initDatabase(databaseType = 'sqlite') {
   // For PostgreSQL, check if it's running
   if (databaseType === 'postgresql') {
     console.log('\n  Checking if PostgreSQL is running...');
@@ -601,97 +534,13 @@ async function initDatabase(env, questionFn, databaseType = 'sqlite') {
     console.log('\n  Using SQLite database (no external dependencies needed)');
   }
 
-  if (env === 'prod') {
-    // Production: Use containerized approach
-    // Remove any existing containers (even if stopped)
-    console.log('  Cleaning up any existing containers...');
-    exec('docker compose down', true);
+  // Run app:upgrade which handles migrations AND sets installed_version
+  console.log('  Running database upgrade (migrations + version)...');
+  const upgradeResult = exec('pnpm app:upgrade');
 
-    // Check if old containers still exist
-    const checkContainers = exec('docker ps -a --filter name=eclaire --format "{{.Names}}"', true);
-
-    if (checkContainers.success && checkContainers.output && checkContainers.output.trim()) {
-      const existingContainers = checkContainers.output.trim().split('\n');
-      console.log(`\n  ${colors.yellow}⚠️  Found existing containers: ${existingContainers.join(', ')}${colors.reset}`);
-
-      const answer = await questionFn('  Remove these containers? [y/N] ');
-
-      if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
-        console.log('  Removing old containers...');
-        exec('docker rm -f ' + existingContainers.join(' '));
-      } else {
-        console.log(`  ${colors.red}❌ Cannot proceed with existing containers${colors.reset}`);
-        return false;
-      }
-    }
-
-    console.log('  Starting server container for migrations...');
-    console.log(`  ${colors.cyan}Note: Docker will pull images from GHCR if not available locally (may take a few minutes)${colors.reset}`);
-    const startResult = exec('docker compose up -d eclaire');
-
-    if (!startResult.success) {
-      console.log(`  ${colors.red}❌ Failed to start backend container${colors.reset}`);
-      return false;
-    }
-
-    // Wait a moment for container to fully start
-    console.log('  Waiting for backend container to initialize...');
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // Ensure database exists (POSTGRES_DB env var only works on first init)
-    console.log('  Ensuring eclaire database exists...');
-    const dbCheck = exec('docker exec eclaire-postgres psql -U eclaire -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname=\'eclaire\'"', true);
-
-    if (!dbCheck.output || dbCheck.output.trim() !== '1') {
-      console.log('  Creating eclaire database...');
-      const createDb = exec('docker exec eclaire-postgres psql -U eclaire -d postgres -c "CREATE DATABASE eclaire;"');
-      if (!createDb.success) {
-        console.log(`  ${colors.red}❌ Failed to create database${colors.reset}`);
-        exec('docker compose down');
-        return false;
-      }
-    }
-
-    // Run migrations
-    console.log('  Running database migrations...');
-    const migrateResult = exec('docker exec eclaire pnpm db:migrate:apply:force');
-
-    if (!migrateResult.success) {
-      console.log(`  ${colors.red}❌ Migration failed${colors.reset}`);
-      // Stop container before returning
-      exec('docker compose down');
-      return false;
-    }
-
-    // Note: No seeding required - AI assistant user is created by migration
-    // Demo users can be seeded later with: docker exec eclaire pnpm db:seed --demo
-
-    // Stop backend container after migrations
-    console.log('  Stopping backend container...');
-    exec('docker compose down');
-  } else {
-    // Development: Use host-based approach (existing logic)
-    console.log('  Running database migrations...');
-    const migrateScript = 'db:migrate:apply';
-    const migrateResult = exec(`cd apps/backend && pnpm ${migrateScript}`);
-
-    if (!migrateResult.success) {
-      console.log(`  ${colors.red}❌ Migration failed${colors.reset}`);
-      return false;
-    }
-
-    // Run seed
-    const seedType = 'demo';
-    const seedScript = `db:seed:${seedType}`;
-    console.log(`  Seeding database with ${seedType} data...`);
-
-    const seedCommand = `cd apps/backend && pnpm ${seedScript}`;
-    const seedResult = exec(seedCommand);
-
-    if (!seedResult.success) {
-      console.log(`  ${colors.red}❌ Seeding failed${colors.reset}`);
-      return false;
-    }
+  if (!upgradeResult.success) {
+    console.log(`  ${colors.red}❌ Upgrade failed${colors.reset}`);
+    return false;
   }
 
   console.log(`  ${colors.green}✅ Database initialized successfully${colors.reset}`);
@@ -699,12 +548,12 @@ async function initDatabase(env, questionFn, databaseType = 'sqlite') {
 }
 
 // Print setup summary
-function printSummary(results, env, flags = {}) {
+function printSummary(results) {
   console.log(`${colors.cyan}╔══════════════════════════════════════════════╗${colors.reset}`);
   console.log(`${colors.cyan}║              Setup Summary                   ║${colors.reset}`);
   console.log(`${colors.cyan}╚══════════════════════════════════════════════╝${colors.reset}`);
 
-  console.log(`\nEnvironment: ${colors.green}${env}${colors.reset}`);
+  console.log(`\nEnvironment: ${colors.green}development${colors.reset}`);
   console.log('\nSteps completed:');
 
   const steps = [
@@ -713,8 +562,6 @@ function printSummary(results, env, flags = {}) {
     { name: 'Data directories', key: 'directories' },
     { name: 'AI models check', key: 'models' },
     { name: 'NPM dependencies', key: 'npmDependencies' },
-    { name: 'Containers built', key: 'containersBuilt' },
-    { name: 'Dependencies started', key: 'dependenciesStarted' },
     { name: 'Database initialized', key: 'database' }
   ];
 
@@ -762,62 +609,17 @@ function printSummary(results, env, flags = {}) {
   }
 
   console.log('\nNext steps:');
-
-  if (!results.dependenciesStarted) {
-    console.log(`  ⚠️  Dependencies were not started. You need to start them first:`);
-    console.log(`     ${colors.cyan}pm2 start pm2.deps.config.js${colors.reset}`);
-    console.log(`     ${colors.cyan}pm2 logs --lines 50${colors.reset}  # Check if models are downloading`);
-    console.log('');
-  }
-
-  if (env === 'dev') {
-    console.log(`  🚀 ${colors.green}Your development environment is ready!${colors.reset}`);
-    console.log('');
-    console.log(`  To start the application:`);
-    console.log(`     ${colors.cyan}pnpm dev${colors.reset}`);
-    console.log('');
-    console.log(`  Access the app at:`);
-    console.log(`     Frontend: ${colors.blue}http://localhost:3000${colors.reset}`);
-    console.log(`     Backend:  ${colors.blue}http://localhost:3001/health${colors.reset}`);
-    console.log('');
-    console.log(`  Monitor dependencies:`);
-    console.log(`     ${colors.cyan}pm2 logs --lines 50${colors.reset}`);
-    console.log(`     ${colors.cyan}pm2 monit${colors.reset}  # Interactive monitor`);
-    console.log('');
-    console.log(`  Login credentials:`);
-    console.log(`     Email:    ${colors.cyan}demo@example.com${colors.reset}`);
-    console.log(`     Password: ${colors.cyan}Demo@123${colors.reset}`);
-    console.log(`     Or create a new account at the frontend`);
-  } else {
-    console.log(`  🚀 ${colors.green}Your production environment is ready!${colors.reset}`);
-    console.log('');
-
-    if (flags.build && results.containersBuilt && !results.containersBuildFailed) {
-      // Option C: Built Docker containers locally
-      console.log(`  ${colors.yellow}Using locally-built Docker images${colors.reset}`);
-      console.log('');
-      console.log(`  To start the application:`);
-      console.log(`     ${colors.cyan}docker compose -f docker-compose.yml -f docker-compose.local.yml up${colors.reset}`);
-      console.log('');
-      console.log(`  Note: docker-compose.local.yml was generated to use your local images`);
-    } else {
-      // Option A: Using official GHCR images
-      console.log(`  ${colors.yellow}Using official GHCR images${colors.reset}`);
-      console.log('');
-      console.log(`  To start the application:`);
-      console.log(`     ${colors.cyan}docker compose up${colors.reset}`);
-      console.log('');
-      console.log(`  Note: Docker will pull official images from ghcr.io/eclaire-labs`);
-    }
-
-    console.log('');
-    console.log(`  Access the app at:`);
-    console.log(`     Frontend: ${colors.blue}http://localhost:3000${colors.reset}`);
-    console.log(`     Backend:  ${colors.blue}http://localhost:3001/health${colors.reset}`);
-    console.log('');
-    console.log(`  First-time setup:`);
-    console.log(`     Create an account at the frontend`);
-  }
+  console.log(`  🚀 ${colors.green}Your development environment is ready!${colors.reset}`);
+  console.log('');
+  console.log(`  To start the application:`);
+  console.log(`     ${colors.cyan}pnpm dev${colors.reset}`);
+  console.log('');
+  console.log(`  Access the app at:`);
+  console.log(`     Frontend: ${colors.blue}http://localhost:3000${colors.reset}`);
+  console.log(`     Backend:  ${colors.blue}http://localhost:3001/health${colors.reset}`);
+  console.log('');
+  console.log(`  Create an account at the frontend to get started.`);
+  console.log('');
 }
 
 module.exports = {
@@ -828,8 +630,6 @@ module.exports = {
   createDataDirectories,
   checkModels,
   installDependencies,
-  buildContainers,
-  startDependencies,
   initDatabase,
   printSummary,
   colors,

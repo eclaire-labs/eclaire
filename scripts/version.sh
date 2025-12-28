@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Outputs (exported):
-#   SEMVER, MAJOR, MINOR, PATCH  -> base semver (bumped for prereleases)
+#   SEMVER, MAJOR, MINOR, PATCH  -> base semver (from package.json for dev, git tag for release)
 #   RELEASE_MODE                 -> "true" iff exactly on a vX.Y.Z tag
 #   COMMITS_SINCE_TAG            -> commits since last version tag (both CI and local)
 #   GIT_HASH                     -> full 40-char SHA
@@ -72,18 +72,14 @@ if [[ "$CHANNEL" == feature/* ]]; then
   CHANNEL_TAG_SAFE="feature-${FEATURE_NAME//\//-}"
 fi
 
-# --- bump for next-version prerelease semantics (default = patch) ---
-# Only bump when not exactly on a release tag.
+# --- for non-release builds, use package.json version ---
+# This ensures dev/local builds use the version from package.json (e.g., 0.6.0)
+# rather than bumping the last git tag (e.g., 0.5.2 -> 0.5.3)
 if [[ "$RELEASE_MODE" != "true" ]]; then
-  BUMP="${PRE_BUMP:-patch}"
-  case "$BUMP" in
-    major)
-      MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-    minor)
-      MINOR=$((MINOR + 1)); PATCH=0 ;;
-    *)
-      PATCH=$((PATCH + 1)) ;;
-  esac
+  PKG_VERSION=$(node -p "require('./package.json').version" 2>/dev/null || echo "")
+  if [[ -n "$PKG_VERSION" ]]; then
+    IFS='.' read -r MAJOR MINOR PATCH <<< "$PKG_VERSION"
+  fi
 fi
 
 SEMVER="${MAJOR}.${MINOR}.${PATCH}"
