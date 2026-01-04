@@ -1,5 +1,6 @@
 // schemas/photos-responses.ts
 import z from "zod/v4";
+import { reviewStatusSchema } from "./common.js";
 
 // Full photo response schema
 export const PhotoResponseSchema = z
@@ -187,7 +188,7 @@ export const PhotoResponseSchema = z
       }),
 
     // Review and Workflow
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "Review status of the photo",
     }),
 

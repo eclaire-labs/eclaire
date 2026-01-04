@@ -34,6 +34,35 @@ import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:photos");
 
+// ============================================================================
+// Error Classes
+// ============================================================================
+
+export class PhotoNotFoundError extends Error {
+  constructor(message = "Photo not found") {
+    super(message);
+    this.name = "PhotoNotFoundError";
+  }
+}
+
+export class PhotoForbiddenError extends Error {
+  constructor(message = "Access denied") {
+    super(message);
+    this.name = "PhotoForbiddenError";
+  }
+}
+
+export class PhotoFileNotFoundError extends Error {
+  constructor(message = "File not found in storage") {
+    super(message);
+    this.name = "PhotoFileNotFoundError";
+  }
+}
+
+// ============================================================================
+// Interfaces
+// ============================================================================
+
 // Photo interface for API responses
 export interface Photo {
   id: string;
@@ -507,7 +536,7 @@ export async function updatePhotoMetadata(
     const existingPhoto = await db.query.photos.findFirst({
       where: and(eq(photos.id, id), eq(photos.userId, userId)),
     });
-    if (!existingPhoto) throw createNotFoundError();
+    if (!existingPhoto) throw new PhotoNotFoundError();
 
     const currentPhotoTags = await getPhotoTags(id); // For history
 
@@ -615,7 +644,7 @@ export async function deletePhoto(
       },
       where: and(eq(photos.id, id), eq(photos.userId, userId)),
     });
-    if (!existingPhoto) throw createNotFoundError();
+    if (!existingPhoto) throw new PhotoNotFoundError();
 
     const photoTags = await getPhotoTags(id); // For history
 
@@ -707,7 +736,7 @@ async function getPhotoWithDetails(photoId: string, userId: string) {
     .where(and(eq(photos.id, photoId), eq(photos.userId, userId)));
 
   if (!result) {
-    throw createNotFoundError("Photo not found or access denied.");
+    throw new PhotoNotFoundError("Photo not found or access denied");
   }
 
   const photo = result.photo;
@@ -1320,26 +1349,14 @@ async function addTagsToPhoto(
   }
 }
 
-/** Creates a standard "Not Found" error */
-function createNotFoundError(message = "Resource not found"): Error {
-  const error = new Error(message);
-  error.name = "NotFoundError";
-  return error;
-}
-
-/** Creates a standard "Forbidden" error */
-function createForbiddenError(message = "Access denied"): Error {
-  const error = new Error(message);
-  error.name = "ForbiddenError";
-  return error;
-}
-
 /** Standardizes error handling for service functions */
 function handleServiceError(error: unknown, defaultMessage: string): never {
-  if (error instanceof Error) {
-    if (error.name === "NotFoundError" || error.name === "ForbiddenError") {
-      throw error;
-    }
+  if (
+    error instanceof PhotoNotFoundError ||
+    error instanceof PhotoForbiddenError ||
+    error instanceof PhotoFileNotFoundError
+  ) {
+    throw error;
   }
   logger.error(
     {
@@ -1708,7 +1725,8 @@ export async function updatePhotoArtifacts(
  * @throws {NotFoundError} if photo not found or user not authorized.
  * @throws {Error} if essential storageId is missing.
  */
-export async function getPhotoStreamDetailsForViewing(
+// Internal helper - use getViewStream() for external access
+async function getPhotoStreamDetailsForViewing(
   photoId: string,
   userId: string,
 ): Promise<PhotoStreamDetails> {
@@ -1732,7 +1750,7 @@ export async function getPhotoStreamDetailsForViewing(
     .limit(1);
 
   if (!result || !result.photo) {
-    throw createNotFoundError("Photo not found or access denied.");
+    throw new PhotoNotFoundError("Photo not found or access denied");
   }
 
   const photoMeta = result.photo;
@@ -1740,13 +1758,13 @@ export async function getPhotoStreamDetailsForViewing(
 
   if (photoMeta.userId !== userId) {
     // Double check, though query should handle
-    throw createForbiddenError("Access denied.");
+    throw new PhotoForbiddenError("Access denied");
   }
 
   // If the photo has failed processing and has no storageId, return a specific error
   if (processingStatus === "failed" && !photoMeta.storageId) {
-    throw createNotFoundError(
-      "Photo processing failed and file is not available.",
+    throw new PhotoFileNotFoundError(
+      "Photo processing failed and file is not available",
     );
   }
 
@@ -1809,7 +1827,8 @@ export async function getPhotoStreamDetailsForViewing(
  * @returns Object with storageId and mimeType for the thumbnail.
  * @throws {NotFoundError} if photo/thumbnail not found or user not authorized.
  */
-export async function getThumbnailStreamDetails(
+// Internal helper - use getThumbnailStream() for external access
+async function getThumbnailStreamDetails(
   photoId: string,
   userId: string,
 ): Promise<PhotoStreamDetails> {
@@ -1819,13 +1838,13 @@ export async function getThumbnailStreamDetails(
   });
 
   if (!photoMeta) {
-    throw createNotFoundError("Photo not found or access denied.");
+    throw new PhotoNotFoundError("Photo not found or access denied");
   }
   if (photoMeta.userId !== userId) {
-    throw createForbiddenError("Access denied.");
+    throw new PhotoForbiddenError("Access denied");
   }
   if (!photoMeta.thumbnailStorageId) {
-    throw createNotFoundError("Thumbnail not available for this photo.");
+    throw new PhotoFileNotFoundError("Thumbnail not available for this photo");
   }
 
   // Assuming thumbnails are JPEGs. If not, you might need to store thumbnailMimeType
@@ -1881,5 +1900,344 @@ export async function reprocessPhoto(
       "Error reprocessing photo",
     );
     return { success: false, error: "Failed to reprocess photo" };
+  }
+}
+
+// ============================================================================
+// Stream Functions (for route layer - returns streams directly)
+// ============================================================================
+
+export interface PhotoStreamResult {
+  stream: ReadableStream<Uint8Array>;
+  metadata: { size: number; contentType: string };
+  filename: string;
+}
+
+/**
+ * Gets the original photo file as a stream.
+ * @param photoId The ID of the photo.
+ * @param userId The ID of the user requesting (for authorization).
+ * @returns Object with stream, metadata, and filename.
+ * @throws {PhotoNotFoundError} if photo not found or user not authorized.
+ * @throws {PhotoFileNotFoundError} if file not found in storage.
+ */
+export async function getOriginalStream(
+  photoId: string,
+  userId: string,
+): Promise<PhotoStreamResult> {
+  const photo = await db.query.photos.findFirst({
+    columns: {
+      id: true,
+      userId: true,
+      storageId: true,
+      mimeType: true,
+      originalFilename: true,
+    },
+    where: and(eq(photos.id, photoId), eq(photos.userId, userId)),
+  });
+
+  if (!photo) {
+    throw new PhotoNotFoundError("Photo not found or access denied");
+  }
+
+  if (!photo.storageId) {
+    throw new PhotoFileNotFoundError("Original file not found");
+  }
+
+  try {
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(photo.storageId);
+
+    return {
+      stream,
+      metadata: {
+        size: metadata.size,
+        contentType: photo.mimeType || "application/octet-stream",
+      },
+      filename: photo.originalFilename || `${photo.id}-original`,
+    };
+  } catch (error: any) {
+    if (error.code === "ENOENT") {
+      throw new PhotoFileNotFoundError("Original file not found in storage");
+    }
+    throw error;
+  }
+}
+
+/**
+ * Gets the converted JPG file as a stream.
+ * @param photoId The ID of the photo.
+ * @param userId The ID of the user requesting (for authorization).
+ * @returns Object with stream, metadata, and filename.
+ * @throws {PhotoNotFoundError} if photo not found or user not authorized.
+ * @throws {PhotoFileNotFoundError} if converted file not available.
+ */
+export async function getConvertedStream(
+  photoId: string,
+  userId: string,
+): Promise<PhotoStreamResult> {
+  const photo = await db.query.photos.findFirst({
+    columns: {
+      id: true,
+      userId: true,
+      convertedJpgStorageId: true,
+      originalFilename: true,
+    },
+    where: and(eq(photos.id, photoId), eq(photos.userId, userId)),
+  });
+
+  if (!photo) {
+    throw new PhotoNotFoundError("Photo not found or access denied");
+  }
+
+  if (!photo.convertedJpgStorageId) {
+    throw new PhotoFileNotFoundError("Converted JPG file not available");
+  }
+
+  try {
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(photo.convertedJpgStorageId);
+
+    const baseFilename = photo.originalFilename?.replace(/\.[^/.]+$/, "") || photo.id;
+
+    return {
+      stream,
+      metadata: {
+        size: metadata.size,
+        contentType: "image/jpeg",
+      },
+      filename: `${baseFilename}-converted.jpg`,
+    };
+  } catch (error: any) {
+    if (error.code === "ENOENT") {
+      throw new PhotoFileNotFoundError("Converted file not found in storage");
+    }
+    throw error;
+  }
+}
+
+/**
+ * Gets the AI analysis JSON file as a stream.
+ * @param photoId The ID of the photo.
+ * @param userId The ID of the user requesting (for authorization).
+ * @returns Object with stream, metadata, and filename.
+ * @throws {PhotoNotFoundError} if photo not found or user not authorized.
+ * @throws {PhotoFileNotFoundError} if analysis file not found.
+ */
+export async function getAnalysisStream(
+  photoId: string,
+  userId: string,
+): Promise<PhotoStreamResult> {
+  const photo = await db.query.photos.findFirst({
+    columns: { id: true, userId: true },
+    where: and(eq(photos.id, photoId), eq(photos.userId, userId)),
+  });
+
+  if (!photo) {
+    throw new PhotoNotFoundError("Photo not found or access denied");
+  }
+
+  try {
+    const analysisStorageId = `${userId}/photos/${photoId}/extracted.json`;
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(analysisStorageId);
+
+    return {
+      stream,
+      metadata: {
+        size: metadata.size,
+        contentType: "application/json",
+      },
+      filename: `${photo.id}-analysis.json`,
+    };
+  } catch (error: any) {
+    if (error.code === "ENOENT") {
+      throw new PhotoFileNotFoundError("AI analysis not found or not yet generated");
+    }
+    throw error;
+  }
+}
+
+/**
+ * Gets the content markdown file as a stream.
+ * @param photoId The ID of the photo.
+ * @param userId The ID of the user requesting (for authorization).
+ * @returns Object with stream, metadata, filename, and title.
+ * @throws {PhotoNotFoundError} if photo not found or user not authorized.
+ * @throws {PhotoFileNotFoundError} if content file not found.
+ */
+export async function getContentStream(
+  photoId: string,
+  userId: string,
+): Promise<PhotoStreamResult & { title: string }> {
+  const photo = await db.query.photos.findFirst({
+    columns: { id: true, userId: true, title: true },
+    where: and(eq(photos.id, photoId), eq(photos.userId, userId)),
+  });
+
+  if (!photo) {
+    throw new PhotoNotFoundError("Photo not found or access denied");
+  }
+
+  try {
+    const contentStorageId = `${userId}/photos/${photoId}/content.md`;
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(contentStorageId);
+
+    return {
+      stream,
+      metadata: {
+        size: metadata.size,
+        contentType: "text/markdown",
+      },
+      filename: `${photo.title || photo.id}-content.md`,
+      title: photo.title,
+    };
+  } catch (error: any) {
+    if (error.code === "ENOENT") {
+      throw new PhotoFileNotFoundError("Content not found or not yet generated");
+    }
+    throw error;
+  }
+}
+
+/**
+ * Gets the photo file as a stream, intelligently choosing between original
+ * and converted JPG for browser compatibility (HEIC → JPG, etc.).
+ * @param photoId The ID of the photo.
+ * @param userId The ID of the user requesting (for authorization).
+ * @returns Object with stream, metadata, and filename.
+ * @throws {PhotoNotFoundError} if photo not found or user not authorized.
+ * @throws {PhotoForbiddenError} if access denied.
+ * @throws {PhotoFileNotFoundError} if file not found in storage.
+ */
+export async function getViewStream(
+  photoId: string,
+  userId: string,
+): Promise<PhotoStreamResult> {
+  // Use LEFT JOIN to get photo data along with processing status
+  const [result] = await db
+    .select({
+      photo: {
+        storageId: photos.storageId,
+        userId: photos.userId,
+        mimeType: photos.mimeType,
+        convertedJpgStorageId: photos.convertedJpgStorageId,
+        originalFilename: photos.originalFilename,
+      },
+      status: queueJobs.status,
+    })
+    .from(photos)
+    .leftJoin(
+      queueJobs,
+      eq(queueJobs.key, sql`'photos:' || ${photos.id}`),
+    )
+    .where(and(eq(photos.id, photoId), eq(photos.userId, userId)))
+    .limit(1);
+
+  if (!result || !result.photo) {
+    throw new PhotoNotFoundError("Photo not found or access denied");
+  }
+
+  const photoMeta = result.photo;
+  const processingStatus = result.status;
+
+  if (photoMeta.userId !== userId) {
+    throw new PhotoForbiddenError("Access denied");
+  }
+
+  // If the photo has failed processing and has no storageId, return a specific error
+  if (processingStatus === "failed" && !photoMeta.storageId) {
+    throw new PhotoFileNotFoundError("Photo processing failed and file is not available");
+  }
+
+  const originalMimeType = photoMeta.mimeType || "application/octet-stream";
+  let storageId: string;
+  let mimeType: string;
+
+  // If it's HEIC/HEIF and a converted JPG exists, serve the JPG
+  if (
+    (originalMimeType === "image/heic" || originalMimeType === "image/heif") &&
+    photoMeta.convertedJpgStorageId
+  ) {
+    storageId = photoMeta.convertedJpgStorageId;
+    mimeType = "image/jpeg";
+  } else if (!photoMeta.storageId) {
+    logger.error({ photoId }, "Photo is missing its primary storageId");
+    throw new PhotoFileNotFoundError("File reference missing for photo");
+  } else {
+    storageId = photoMeta.storageId;
+    mimeType = originalMimeType;
+  }
+
+  try {
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(storageId);
+
+    return {
+      stream,
+      metadata: {
+        size: metadata.size,
+        contentType: mimeType,
+      },
+      filename: photoMeta.originalFilename || `${photoId}-view`,
+    };
+  } catch (error: any) {
+    if (error.code === "ENOENT") {
+      throw new PhotoFileNotFoundError("Photo file not found in storage");
+    }
+    throw error;
+  }
+}
+
+/**
+ * Gets the photo thumbnail as a stream.
+ * @param photoId The ID of the photo.
+ * @param userId The ID of the user requesting (for authorization).
+ * @returns Object with stream, metadata, and filename.
+ * @throws {PhotoNotFoundError} if photo not found or user not authorized.
+ * @throws {PhotoForbiddenError} if access denied.
+ * @throws {PhotoFileNotFoundError} if thumbnail not available.
+ */
+export async function getThumbnailStream(
+  photoId: string,
+  userId: string,
+): Promise<PhotoStreamResult> {
+  const photoMeta = await db.query.photos.findFirst({
+    columns: { thumbnailStorageId: true, userId: true, originalFilename: true },
+    where: and(eq(photos.id, photoId), eq(photos.userId, userId)),
+  });
+
+  if (!photoMeta) {
+    throw new PhotoNotFoundError("Photo not found or access denied");
+  }
+
+  if (photoMeta.userId !== userId) {
+    throw new PhotoForbiddenError("Access denied");
+  }
+
+  if (!photoMeta.thumbnailStorageId) {
+    throw new PhotoFileNotFoundError("Thumbnail not available for this photo");
+  }
+
+  try {
+    const storage = getStorage();
+    const { stream, metadata } = await storage.read(photoMeta.thumbnailStorageId);
+
+    const baseFilename = photoMeta.originalFilename?.replace(/\.[^/.]+$/, "") || photoId;
+
+    return {
+      stream,
+      metadata: {
+        size: metadata.size,
+        contentType: "image/jpeg", // Thumbnails are always JPEG
+      },
+      filename: `${baseFilename}-thumbnail.jpg`,
+    };
+  } catch (error: any) {
+    if (error.code === "ENOENT") {
+      throw new PhotoFileNotFoundError("Thumbnail file not found in storage");
+    }
+    throw error;
   }
 }

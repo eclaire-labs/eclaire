@@ -1,12 +1,251 @@
 // lib/services/all.ts
+import { fileTypeFromBuffer } from "file-type";
+import isUrl from "is-url";
 import { createChildLogger } from "../logger.js";
-import { countBookmarks, findBookmarks } from "./bookmarks.js";
-import { countDocuments, findDocuments } from "./documents.js";
-import { countNotes, findNotes } from "./notes.js";
-import { countPhotos, findPhotos } from "./photos.js";
-import { countTasks, findTasks } from "./tasks.js";
+import { ASSET_TYPE } from "../../types/assets.js";
+import {
+  BOOKMARK_MIMES,
+  DOCUMENT_MIMES,
+  NOTE_MIMES,
+  PHOTO_MIMES,
+} from "../../types/mime-types.js";
+import { countBookmarks, createBookmarkAndQueueJob, findBookmarks } from "./bookmarks.js";
+import { countDocuments, createDocument, findDocuments } from "./documents.js";
+import { countNotes, createNoteEntry, findNotes } from "./notes.js";
+import { countPhotos, createPhoto, extractAndGeocode, findPhotos } from "./photos.js";
+import { countTasks, createTask, findTasks } from "./tasks.js";
 
 const logger = createChildLogger("services:all");
+
+// --- MIME DETECTION AND URL VALIDATION HELPERS ---
+
+/**
+ * Detects and verifies MIME type from buffer, with special handling for SVG and Apple iWork files.
+ */
+export async function detectAndVerifyMimeType(
+  buffer: Buffer,
+  originalMimeType: string,
+  filename?: string,
+): Promise<string> {
+  const fileTypeResult = await fileTypeFromBuffer(buffer);
+  let verifiedMimeType = fileTypeResult?.mime || originalMimeType;
+
+  // Special handling for SVG files that might be detected as application/xml
+  if (
+    (verifiedMimeType === "application/xml" || verifiedMimeType === "text/xml") &&
+    filename
+  ) {
+    if (filename.toLowerCase().endsWith(".svg")) {
+      verifiedMimeType = "image/svg+xml";
+    }
+  }
+
+  // Special handling for Apple iWork files that might be detected as ZIP
+  if (verifiedMimeType === "application/zip" && filename) {
+    const lowerFilename = filename.toLowerCase();
+    if (lowerFilename.endsWith(".numbers")) {
+      verifiedMimeType = "application/vnd.apple.numbers";
+    } else if (lowerFilename.endsWith(".pages")) {
+      verifiedMimeType = "application/vnd.apple.pages";
+    } else if (lowerFilename.endsWith(".keynote")) {
+      verifiedMimeType = "application/vnd.apple.keynote";
+    }
+  }
+
+  return verifiedMimeType;
+}
+
+/**
+ * Lenient URL check that allows URLs without protocol.
+ */
+export function isLaxUrl(str: string): boolean {
+  if (isUrl(str)) return true;
+  // Try again with a protocol prepended for cases like "google.com"
+  if (str.includes(".") && !str.includes(" ") && !str.startsWith("http")) {
+    return isUrl(`http://${str}`);
+  }
+  return false;
+}
+
+// --- CONTENT CLASSIFICATION AND CREATION ---
+
+interface CreateContentPayload {
+  contentBuffer: Buffer;
+  mimeType: string;
+  metadata: Record<string, any>;
+  filename?: string;
+  userId: string;
+  userAgent: string;
+  requestId?: string;
+}
+
+type CreateContentResult =
+  | { success: true; result: any; assetType: string }
+  | { success: false; error: string; statusCode: number };
+
+/**
+ * Classifies content and creates the appropriate asset type.
+ * Encapsulates all 7 classification rules.
+ */
+export async function classifyAndCreateContent(
+  payload: CreateContentPayload,
+): Promise<CreateContentResult> {
+  const { contentBuffer, mimeType, metadata, filename, userId, userAgent, requestId } = payload;
+  const contentString = contentBuffer.toString("utf-8").trim();
+
+  const servicePayload = {
+    metadata,
+    originalMimeType: mimeType,
+    userAgent,
+    userId,
+  };
+
+  // Rule 1: Explicit assetType in metadata (overrides all other rules)
+  if (metadata.assetType) {
+    switch (metadata.assetType) {
+      case ASSET_TYPE.BOOKMARK: {
+        const url = metadata.url || contentString;
+        if (!isLaxUrl(url)) {
+          return { success: false, error: "Invalid URL for bookmark", statusCode: 400 };
+        }
+        const result = await createBookmarkAndQueueJob({
+          url: url,
+          userId: userId,
+          rawMetadata: metadata,
+          userAgent: userAgent,
+        });
+        if (!result.success) {
+          return { success: false, error: result.error || "Failed to create bookmark", statusCode: 500 };
+        }
+        logger.info({ requestId, bookmarkId: result.bookmark.id, rule: "Rule 1 (explicit assetType)" }, "Bookmark created");
+        return { success: true, result: result.bookmark, assetType: "bookmark" };
+      }
+      case ASSET_TYPE.NOTE: {
+        const result = await createNoteEntry(
+          { ...servicePayload, content: contentString },
+          userId,
+        );
+        logger.info({ requestId, noteId: result.id, rule: "Rule 1 (explicit assetType)" }, "Note created");
+        return { success: true, result, assetType: "note" };
+      }
+      case ASSET_TYPE.PHOTO: {
+        if (!PHOTO_MIMES.includes(mimeType)) {
+          return { success: false, error: "Content is not a valid photo format.", statusCode: 400 };
+        }
+        const extractedMetadata = await extractAndGeocode(contentBuffer);
+        const result = await createPhoto(
+          {
+            ...servicePayload,
+            content: contentBuffer,
+            extractedMetadata,
+            metadata: { ...metadata, originalFilename: metadata.originalFilename || filename },
+          },
+          userId,
+        );
+        logger.info({ requestId, photoId: result.id, rule: "Rule 1 (explicit assetType)" }, "Photo created");
+        return { success: true, result, assetType: "photo" };
+      }
+      case ASSET_TYPE.DOCUMENT: {
+        const result = await createDocument(
+          {
+            ...servicePayload,
+            content: contentBuffer,
+            metadata: { ...metadata, originalFilename: metadata.originalFilename || filename },
+          },
+          userId,
+        );
+        logger.info({ requestId, documentId: result.id, rule: "Rule 1 (explicit assetType)" }, "Document created");
+        return { success: true, result, assetType: "document" };
+      }
+      case ASSET_TYPE.TASK: {
+        const taskData = JSON.parse(contentString);
+        if (!taskData.title) {
+          return { success: false, error: "Task title is required", statusCode: 400 };
+        }
+        const result = await createTask(taskData, userId);
+        logger.info({ requestId, taskId: result.id, rule: "Rule 1 (explicit assetType)" }, "Task created");
+        return { success: true, result, assetType: "task" };
+      }
+    }
+  }
+
+  // Rule 2: URI list MIME types -> Bookmarks
+  if (BOOKMARK_MIMES.URI_LIST.includes(mimeType)) {
+    const result = await createBookmarkAndQueueJob({
+      url: contentString,
+      userId: userId,
+      rawMetadata: metadata,
+      userAgent: userAgent,
+    });
+    if (!result.success) {
+      return { success: false, error: result.error || "Failed to create bookmark", statusCode: 500 };
+    }
+    logger.info({ requestId, bookmarkId: result.bookmark.id, rule: "Rule 2 (URI list)" }, "Bookmark created");
+    return { success: true, result: result.bookmark, assetType: "bookmark" };
+  }
+
+  // Rule 3: Text content that is a valid URL -> Bookmarks
+  if (BOOKMARK_MIMES.URL_IN_TEXT.includes(mimeType) && isLaxUrl(contentString)) {
+    const result = await createBookmarkAndQueueJob({
+      url: contentString,
+      userId: userId,
+      rawMetadata: metadata,
+      userAgent: userAgent,
+    });
+    if (!result.success) {
+      return { success: false, error: result.error || "Failed to create bookmark", statusCode: 500 };
+    }
+    logger.info({ requestId, bookmarkId: result.bookmark.id, rule: "Rule 3 (text URL)" }, "Bookmark created");
+    return { success: true, result: result.bookmark, assetType: "bookmark" };
+  }
+
+  // Rule 4: Plain text/RTF -> Notes
+  if (NOTE_MIMES.includes(mimeType)) {
+    const result = await createNoteEntry(
+      { ...servicePayload, content: contentString },
+      userId,
+    );
+    logger.info({ requestId, noteId: result.id, rule: "Rule 4 (MIME-based)" }, "Note created");
+    return { success: true, result, assetType: "note" };
+  }
+
+  // Rule 5: Image MIME types -> Photos
+  if (PHOTO_MIMES.includes(mimeType)) {
+    const extractedMetadata = await extractAndGeocode(contentBuffer);
+    const result = await createPhoto(
+      {
+        ...servicePayload,
+        content: contentBuffer,
+        extractedMetadata,
+        metadata: { ...metadata, originalFilename: metadata.originalFilename || filename },
+      },
+      userId,
+    );
+    logger.info({ requestId, photoId: result.id, rule: "Rule 5 (MIME-based)" }, "Photo created");
+    return { success: true, result, assetType: "photo" };
+  }
+
+  // Rule 6: Document MIME types -> Documents
+  if (DOCUMENT_MIMES.SET.has(mimeType) || mimeType.startsWith(DOCUMENT_MIMES.OPENXML_PREFIX)) {
+    const result = await createDocument(
+      {
+        ...servicePayload,
+        content: contentBuffer,
+        metadata: { ...metadata, originalFilename: metadata.originalFilename || filename },
+      },
+      userId,
+    );
+    logger.info({ requestId, documentId: result.id, rule: "Rule 6 (MIME-based)" }, "Document created");
+    return { success: true, result, assetType: "document" };
+  }
+
+  // Rule 7: Reject if no rules matched
+  return {
+    success: false,
+    error: `Unsupported content type or invalid data. Could not classify content with MIME type: ${mimeType}`,
+    statusCode: 400,
+  };
+}
 
 /**
  * Helper function to get due date filter range based on status

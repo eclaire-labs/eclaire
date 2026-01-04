@@ -1,14 +1,11 @@
-import { and, eq } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { db, schema } from "../db/index.js";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
-
-const { photos } = schema;
 import {
+  // CRUD functions
   countPhotos,
   createPhoto,
   deletePhoto,
@@ -16,12 +13,20 @@ import {
   findPhotos,
   getAllPhotos,
   getPhotoById,
-  getPhotoStreamDetailsForViewing,
-  getThumbnailStreamDetails,
   reprocessPhoto,
   updatePhotoMetadata,
+  // Stream functions (return streams directly)
+  getViewStream,
+  getThumbnailStream,
+  getOriginalStream,
+  getConvertedStream,
+  getAnalysisStream,
+  getContentStream,
+  // Error classes
+  PhotoNotFoundError,
+  PhotoForbiddenError,
+  PhotoFileNotFoundError,
 } from "../lib/services/photos.js";
-import { getStorage } from "../lib/storage/index.js";
 // Import schemas
 import {
   PartialPhotoSchema,
@@ -188,7 +193,15 @@ photosRoutes.post("/", describeRoute(postPhotosRouteDescription), async (c) => {
     }
 
     // Parse the raw metadata first (keep all fields for database storage)
-    const rawMetadata = JSON.parse((metadataPart as string) || "{}");
+    let rawMetadata;
+    try {
+      rawMetadata = JSON.parse((metadataPart as string) || "{}");
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return c.json({ error: "Invalid metadata JSON format" }, 400);
+      }
+      throw error;
+    }
 
     // Then validate only the fields we need for our internal logic
     const validatedMetadata = PhotoMetadataSchema.parse(rawMetadata);
@@ -256,12 +269,12 @@ photosRoutes.get(
         }
 
         return c.json(photo);
-      } catch (error: any) {
-        if (error.name === "NotFoundError") {
-          return c.json({ error: "Photo not found" }, 404);
+      } catch (error) {
+        if (error instanceof PhotoNotFoundError) {
+          return c.json({ error: error.message }, 404);
         }
-        if (error.name === "ForbiddenError") {
-          return c.json({ error: "Access denied" }, 403);
+        if (error instanceof PhotoForbiddenError) {
+          return c.json({ error: error.message }, 403);
         }
         throw error;
       }
@@ -309,12 +322,12 @@ photosRoutes.put(
         }
 
         return c.json(updatedPhoto);
-      } catch (error: any) {
-        if (error.name === "NotFoundError") {
-          return c.json({ error: "Photo not found" }, 404);
+      } catch (error) {
+        if (error instanceof PhotoNotFoundError) {
+          return c.json({ error: error.message }, 404);
         }
-        if (error.name === "ForbiddenError") {
-          return c.json({ error: "Access denied" }, 403);
+        if (error instanceof PhotoForbiddenError) {
+          return c.json({ error: error.message }, 403);
         }
         throw error;
       }
@@ -370,12 +383,12 @@ photosRoutes.patch(
         }
 
         return c.json(updatedPhoto);
-      } catch (error: any) {
-        if (error.name === "NotFoundError") {
-          return c.json({ error: "Photo not found" }, 404);
+      } catch (error) {
+        if (error instanceof PhotoNotFoundError) {
+          return c.json({ error: error.message }, 404);
         }
-        if (error.name === "ForbiddenError") {
-          return c.json({ error: "Access denied" }, 403);
+        if (error instanceof PhotoForbiddenError) {
+          return c.json({ error: error.message }, 403);
         }
         throw error;
       }
@@ -465,12 +478,12 @@ photosRoutes.delete(
       try {
         await deletePhoto(id, userId, deleteStorage);
         return new Response(null, { status: 204 });
-      } catch (error: any) {
-        if (error.name === "NotFoundError") {
-          return c.json({ error: "Photo not found" }, 404);
+      } catch (error) {
+        if (error instanceof PhotoNotFoundError) {
+          return c.json({ error: error.message }, 404);
         }
-        if (error.name === "ForbiddenError") {
-          return c.json({ error: "Access denied" }, 403);
+        if (error instanceof PhotoForbiddenError) {
+          return c.json({ error: error.message }, 403);
         }
         throw error;
       }
@@ -495,60 +508,40 @@ photosRoutes.get(
   "/:id/view",
   describeRoute(getPhotoViewRouteDescription),
   async (c) => {
+    const photoId = c.req.param("id");
+    const userId = await getAuthenticatedUserId(c);
+
+    if (!userId) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    if (!photoId) {
+      return c.json({ error: "Photo ID missing" }, 400);
+    }
+
     try {
-      const photoId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+      const { stream, metadata } = await getViewStream(photoId, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      if (!photoId) {
-        return c.json({ error: "Photo ID missing" }, 400);
-      }
-
-      // Get stream details from the service layer
-      const { storageId, mimeType } = await getPhotoStreamDetailsForViewing(
-        photoId,
-        userId,
-      );
-
-      // Get the file stream from storage
-      const storage = getStorage();
-      const { stream, metadata } = await storage.read(storageId);
-
-      // Set response headers
       const headers = new Headers();
-      headers.set("Content-Type", mimeType);
+      headers.set("Content-Type", metadata.contentType);
       headers.set("Content-Length", String(metadata.size));
       headers.set("Cache-Control", "private, max-age=3600");
 
-      // Return the file stream
       return new Response(stream, { status: 200, headers });
-    } catch (error: any) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          photoId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-          errorCode: error.code,
-        },
-        "Error serving photo (/view)",
-      );
-
-      if (error.name === "NotFoundError") {
+    } catch (error) {
+      if (error instanceof PhotoNotFoundError) {
         return c.json({ error: error.message }, 404);
       }
-      if (error.name === "ForbiddenError") {
+      if (error instanceof PhotoForbiddenError) {
         return c.json({ error: error.message }, 403);
       }
-      if (error.code === "ENOENT") {
-        return c.json({ error: "File not found in storage" }, 404);
+      if (error instanceof PhotoFileNotFoundError) {
+        return c.json({ error: error.message }, 404);
       }
-
+      logger.error(
+        { photoId, error: error instanceof Error ? error.message : "Unknown error" },
+        "Error serving photo (/view)",
+      );
       return c.json({ error: "Internal Server Error" }, 500);
     }
   },
@@ -559,60 +552,40 @@ photosRoutes.get(
   "/:id/thumbnail",
   describeRoute(getPhotoThumbnailRouteDescription),
   async (c) => {
+    const photoId = c.req.param("id");
+    const userId = await getAuthenticatedUserId(c);
+
+    if (!userId) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    if (!photoId) {
+      return c.json({ error: "Photo ID missing" }, 400);
+    }
+
     try {
-      const photoId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+      const { stream, metadata } = await getThumbnailStream(photoId, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      if (!photoId) {
-        return c.json({ error: "Photo ID missing" }, 400);
-      }
-
-      // Get thumbnail stream details from the service layer
-      const { storageId, mimeType } = await getThumbnailStreamDetails(
-        photoId,
-        userId,
-      );
-
-      // Get the thumbnail stream from storage
-      const storage = getStorage();
-      const { stream, metadata } = await storage.read(storageId);
-
-      // Set response headers
       const headers = new Headers();
-      headers.set("Content-Type", mimeType);
+      headers.set("Content-Type", metadata.contentType);
       headers.set("Content-Length", String(metadata.size));
       headers.set("Cache-Control", "public, max-age=86400");
 
-      // Return the thumbnail stream
       return new Response(stream, { status: 200, headers });
-    } catch (error: any) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          photoId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-          errorCode: error.code,
-        },
-        "Error serving thumbnail for photo",
-      );
-
-      if (error.name === "NotFoundError") {
+    } catch (error) {
+      if (error instanceof PhotoNotFoundError) {
         return c.json({ error: error.message }, 404);
       }
-      if (error.name === "ForbiddenError") {
+      if (error instanceof PhotoForbiddenError) {
         return c.json({ error: error.message }, 403);
       }
-      if (error.code === "ENOENT") {
-        return c.json({ error: "Thumbnail file not found in storage" }, 404);
+      if (error instanceof PhotoFileNotFoundError) {
+        return c.json({ error: error.message }, 404);
       }
-
+      logger.error(
+        { photoId, error: error instanceof Error ? error.message : "Unknown error" },
+        "Error serving thumbnail for photo",
+      );
       return c.json({ error: "Internal Server Error" }, 500);
     }
   },
@@ -623,81 +596,50 @@ photosRoutes.get(
   "/:id/analysis",
   describeRoute(getPhotoAnalysisRouteDescription),
   async (c) => {
+    const photoId = c.req.param("id");
+    const userId = await getAuthenticatedUserId(c);
+
+    if (!userId) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    if (!photoId) {
+      return c.json({ error: "Photo ID missing" }, 400);
+    }
+
     try {
-      const photoId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+      const { stream, metadata, filename } = await getAnalysisStream(photoId, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
+      const headers = new Headers();
+      headers.set("Content-Type", metadata.contentType + "; charset=utf-8");
+      headers.set("Content-Length", String(metadata.size));
+      // Disable caching since analysis can be updated when photos are reprocessed
+      headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      headers.set("Pragma", "no-cache");
+      headers.set("Expires", "0");
+
+      // Check if inline viewing is requested
+      const viewParam = c.req.query("view");
+      const isInlineView = viewParam === "inline";
+
+      if (isInlineView) {
+        headers.set("Content-Disposition", `inline; filename="${filename}"`);
+      } else {
+        headers.set("Content-Disposition", `attachment; filename="${filename}"`);
       }
 
-      if (!photoId) {
-        return c.json({ error: "Photo ID missing" }, 400);
+      return new Response(stream, { status: 200, headers });
+    } catch (error) {
+      if (error instanceof PhotoNotFoundError) {
+        return c.json({ error: error.message }, 404);
       }
-
-      // Verify photo ownership
-      const photo = await db.query.photos.findFirst({
-        columns: { id: true, userId: true },
-        where: and(eq(photos.id, photoId), eq(photos.userId, userId)),
-      });
-
-      if (!photo) {
-        return c.json({ error: "Photo not found or access denied" }, 404);
+      if (error instanceof PhotoFileNotFoundError) {
+        return c.json({ error: error.message }, 404);
       }
-
-      try {
-        // Try to get the extracted analysis file (created by the worker)
-        const analysisStorageId = `${userId}/photos/${photoId}/extracted.json`;
-        const storage = getStorage();
-        const { stream, metadata } = await storage.read(analysisStorageId);
-
-        // Set response headers
-        const headers = new Headers();
-        headers.set("Content-Type", "application/json; charset=utf-8");
-        headers.set("Content-Length", String(metadata.size));
-        // Disable caching since analysis can be updated when photos are reprocessed
-        headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
-        headers.set("Pragma", "no-cache");
-        headers.set("Expires", "0");
-
-        // Check if inline viewing is requested
-        const viewParam = c.req.query("view");
-        const isInlineView = viewParam === "inline";
-
-        const filename = `${photo.id}-analysis.json`;
-        if (isInlineView) {
-          headers.set("Content-Disposition", `inline; filename="${filename}"`);
-        } else {
-          headers.set(
-            "Content-Disposition",
-            `attachment; filename="${filename}"`,
-          );
-        }
-
-        return new Response(stream, { status: 200, headers });
-      } catch (storageError: any) {
-        if (storageError.code === "ENOENT") {
-          return c.json(
-            { error: "AI analysis not found or not yet generated" },
-            404,
-          );
-        }
-        throw storageError;
-      }
-    } catch (error: any) {
-      const requestId = c.get("requestId");
       logger.error(
-        {
-          requestId,
-          photoId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-          errorCode: error.code,
-        },
+        { photoId, error: error instanceof Error ? error.message : "Unknown error" },
         "Error serving AI analysis for photo",
       );
-
       return c.json({ error: "Internal Server Error" }, 500);
     }
   },
@@ -705,143 +647,76 @@ photosRoutes.get(
 
 // GET /api/photos/:id/original - Serve the original photo file
 photosRoutes.get("/:id/original", async (c) => {
+  const photoId = c.req.param("id");
+  const userId = await getAuthenticatedUserId(c);
+
+  if (!userId) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!photoId) {
+    return c.json({ error: "Photo ID missing" }, 400);
+  }
+
   try {
-    const photoId = c.req.param("id");
-    const userId = await getAuthenticatedUserId(c);
+    const { stream, metadata, filename } = await getOriginalStream(photoId, userId);
 
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    if (!photoId) {
-      return c.json({ error: "Photo ID missing" }, 400);
-    }
-
-    // Get the photo details to access original storage ID
-    const photo = await db.query.photos.findFirst({
-      columns: {
-        id: true,
-        userId: true,
-        storageId: true,
-        mimeType: true,
-        originalFilename: true,
-      },
-      where: and(eq(photos.id, photoId), eq(photos.userId, userId)),
-    });
-
-    if (!photo) {
-      return c.json({ error: "Photo not found or access denied" }, 404);
-    }
-
-    if (!photo.storageId) {
-      return c.json({ error: "Original file not found" }, 404);
-    }
-
-    // Get the file stream from storage
-    const storage = getStorage();
-    const { stream, metadata } = await storage.read(photo.storageId);
-
-    // Set response headers
     const headers = new Headers();
-    headers.set("Content-Type", photo.mimeType || "application/octet-stream");
+    headers.set("Content-Type", metadata.contentType);
     headers.set("Content-Length", String(metadata.size));
     headers.set("Cache-Control", "private, max-age=3600");
-
-    // Set filename for download
-    const filename = photo.originalFilename || `${photo.id}-original`;
     headers.set("Content-Disposition", `inline; filename="${filename}"`);
 
     return new Response(stream, { status: 200, headers });
-  } catch (error: any) {
-    const requestId = c.get("requestId");
+  } catch (error) {
+    if (error instanceof PhotoNotFoundError) {
+      return c.json({ error: error.message }, 404);
+    }
+    if (error instanceof PhotoFileNotFoundError) {
+      return c.json({ error: error.message }, 404);
+    }
     logger.error(
-      {
-        requestId,
-        photoId: c.req.param("id"),
-        userId: await getAuthenticatedUserId(c),
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-        errorCode: error.code,
-      },
+      { photoId, error: error instanceof Error ? error.message : "Unknown error" },
       "Error serving original photo",
     );
-
-    if (error.code === "ENOENT") {
-      return c.json({ error: "Original file not found in storage" }, 404);
-    }
-
     return c.json({ error: "Internal Server Error" }, 500);
   }
 });
 
 // GET /api/photos/:id/converted - Serve the converted JPG file
 photosRoutes.get("/:id/converted", async (c) => {
+  const photoId = c.req.param("id");
+  const userId = await getAuthenticatedUserId(c);
+
+  if (!userId) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!photoId) {
+    return c.json({ error: "Photo ID missing" }, 400);
+  }
+
   try {
-    const photoId = c.req.param("id");
-    const userId = await getAuthenticatedUserId(c);
+    const { stream, metadata, filename } = await getConvertedStream(photoId, userId);
 
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    if (!photoId) {
-      return c.json({ error: "Photo ID missing" }, 400);
-    }
-
-    // Get the photo details to access converted storage ID
-    const photo = await db.query.photos.findFirst({
-      columns: {
-        id: true,
-        userId: true,
-        convertedJpgStorageId: true,
-        originalFilename: true,
-      },
-      where: and(eq(photos.id, photoId), eq(photos.userId, userId)),
-    });
-
-    if (!photo) {
-      return c.json({ error: "Photo not found or access denied" }, 404);
-    }
-
-    if (!photo.convertedJpgStorageId) {
-      return c.json({ error: "Converted JPG file not available" }, 404);
-    }
-
-    // Get the file stream from storage
-    const storage = getStorage();
-    const { stream, metadata } = await storage.read(photo.convertedJpgStorageId);
-
-    // Set response headers
     const headers = new Headers();
-    headers.set("Content-Type", "image/jpeg");
+    headers.set("Content-Type", metadata.contentType);
     headers.set("Content-Length", String(metadata.size));
     headers.set("Cache-Control", "private, max-age=3600");
-
-    // Set filename for download
-    const baseFilename =
-      photo.originalFilename?.replace(/\.[^/.]+$/, "") || photo.id;
-    const filename = `${baseFilename}-converted.jpg`;
     headers.set("Content-Disposition", `inline; filename="${filename}"`);
 
     return new Response(stream, { status: 200, headers });
-  } catch (error: any) {
-    const requestId = c.get("requestId");
+  } catch (error) {
+    if (error instanceof PhotoNotFoundError) {
+      return c.json({ error: error.message }, 404);
+    }
+    if (error instanceof PhotoFileNotFoundError) {
+      return c.json({ error: error.message }, 404);
+    }
     logger.error(
-      {
-        requestId,
-        photoId: c.req.param("id"),
-        userId: await getAuthenticatedUserId(c),
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-        errorCode: error.code,
-      },
+      { photoId, error: error instanceof Error ? error.message : "Unknown error" },
       "Error serving converted photo",
     );
-
-    if (error.code === "ENOENT") {
-      return c.json({ error: "Converted file not found in storage" }, 404);
-    }
-
     return c.json({ error: "Internal Server Error" }, 500);
   }
 });
@@ -851,78 +726,47 @@ photosRoutes.get(
   "/:id/content",
   describeRoute(getPhotoContentRouteDescription),
   async (c) => {
+    const photoId = c.req.param("id");
+    const userId = await getAuthenticatedUserId(c);
+
+    if (!userId) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    if (!photoId) {
+      return c.json({ error: "Photo ID missing" }, 400);
+    }
+
     try {
-      const photoId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+      const { stream, metadata, filename } = await getContentStream(photoId, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
+      const headers = new Headers();
+      headers.set("Content-Type", metadata.contentType + "; charset=utf-8");
+      headers.set("Content-Length", String(metadata.size));
+      headers.set("Cache-Control", "private, max-age=3600");
+
+      // Check if inline viewing is requested
+      const viewParam = c.req.query("view");
+      const isInlineView = viewParam === "inline";
+
+      if (isInlineView) {
+        headers.set("Content-Disposition", `inline; filename="${filename}"`);
+      } else {
+        headers.set("Content-Disposition", `attachment; filename="${filename}"`);
       }
 
-      if (!photoId) {
-        return c.json({ error: "Photo ID missing" }, 400);
+      return new Response(stream, { status: 200, headers });
+    } catch (error) {
+      if (error instanceof PhotoNotFoundError) {
+        return c.json({ error: error.message }, 404);
       }
-
-      // Verify photo ownership
-      const photo = await db.query.photos.findFirst({
-        columns: { id: true, userId: true, title: true },
-        where: and(eq(photos.id, photoId), eq(photos.userId, userId)),
-      });
-
-      if (!photo) {
-        return c.json({ error: "Photo not found or access denied" }, 404);
+      if (error instanceof PhotoFileNotFoundError) {
+        return c.json({ error: error.message }, 404);
       }
-
-      try {
-        // Try to get the content markdown file
-        const contentStorageId = `${userId}/photos/${photoId}/content.md`;
-        const storage = getStorage();
-        const { stream, metadata } = await storage.read(contentStorageId);
-
-        // Set response headers
-        const headers = new Headers();
-        headers.set("Content-Type", "text/markdown; charset=utf-8");
-        headers.set("Content-Length", String(metadata.size));
-        headers.set("Cache-Control", "private, max-age=3600");
-
-        // Check if inline viewing is requested
-        const viewParam = c.req.query("view");
-        const isInlineView = viewParam === "inline";
-
-        const filename = `${photo.title || photo.id}-content.md`;
-        if (isInlineView) {
-          headers.set("Content-Disposition", `inline; filename="${filename}"`);
-        } else {
-          headers.set(
-            "Content-Disposition",
-            `attachment; filename="${filename}"`,
-          );
-        }
-
-        return new Response(stream, { status: 200, headers });
-      } catch (storageError: any) {
-        if (storageError.code === "ENOENT") {
-          return c.json(
-            { error: "Content not found or not yet generated" },
-            404,
-          );
-        }
-        throw storageError;
-      }
-    } catch (error: any) {
-      const requestId = c.get("requestId");
       logger.error(
-        {
-          requestId,
-          photoId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-          errorCode: error.code,
-        },
+        { photoId, error: error instanceof Error ? error.message : "Unknown error" },
         "Error serving content for photo",
       );
-
       return c.json({ error: "Internal Server Error" }, 500);
     }
   },
@@ -964,9 +808,9 @@ photosRoutes.patch(
         }
 
         return c.json(updatedPhoto);
-      } catch (error: any) {
-        if (error.name === "NotFoundError") {
-          return c.json({ error: "Photo not found" }, 404);
+      } catch (error) {
+        if (error instanceof PhotoNotFoundError) {
+          return c.json({ error: error.message }, 404);
         }
         throw error;
       }
@@ -1016,9 +860,9 @@ photosRoutes.patch(
         }
 
         return c.json(updatedPhoto);
-      } catch (error: any) {
-        if (error.name === "NotFoundError") {
-          return c.json({ error: "Photo not found" }, 404);
+      } catch (error) {
+        if (error instanceof PhotoNotFoundError) {
+          return c.json({ error: error.message }, 404);
         }
         throw error;
       }
@@ -1065,9 +909,9 @@ photosRoutes.patch(
         }
 
         return c.json(updatedPhoto);
-      } catch (error: any) {
-        if (error.name === "NotFoundError") {
-          return c.json({ error: "Photo not found" }, 404);
+      } catch (error) {
+        if (error instanceof PhotoNotFoundError) {
+          return c.json({ error: error.message }, 404);
         }
         throw error;
       }
