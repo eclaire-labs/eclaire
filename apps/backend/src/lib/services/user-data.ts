@@ -1,10 +1,19 @@
 import { verifyPassword } from "better-auth/crypto";
 import { and, count, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { fileTypeFromBuffer } from "file-type";
+import path from "path";
+import sharp from "sharp";
 import { db, dbType, txManager, schema, queueJobs } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
+import {
+  formatApiKeyForDisplay,
+  generateFullApiKey,
+} from "../api-key-security.js";
+import { getUserProfile } from "../user.js";
 
 const {
   accounts,
+  apiKeys,
   bookmarks,
   bookmarksTags,
   documents,
@@ -19,6 +28,42 @@ const {
   users,
 } = schema;
 import { getStorage, userPrefix, categoryPrefix } from "../storage/index.js";
+
+// ============================================================================
+// Error Classes
+// ============================================================================
+
+export class UserNotFoundError extends Error {
+  code = 404 as const;
+  constructor(message = "User not found") {
+    super(message);
+    this.name = "UserNotFoundError";
+  }
+}
+
+export class ApiKeyNotFoundError extends Error {
+  code = 404 as const;
+  constructor(message = "API key not found") {
+    super(message);
+    this.name = "ApiKeyNotFoundError";
+  }
+}
+
+export class AvatarNotFoundError extends Error {
+  code = 404 as const;
+  constructor(message = "Avatar not found") {
+    super(message);
+    this.name = "AvatarNotFoundError";
+  }
+}
+
+export class InvalidImageError extends Error {
+  code = 400 as const;
+  constructor(message = "Invalid image") {
+    super(message);
+    this.name = "InvalidImageError";
+  }
+}
 
 // Individual delete services are no longer needed for bulk deletion
 // We use bulk transactions instead for better performance and SQLite safety
@@ -809,4 +854,366 @@ export async function getQuickStats(userId: string) {
     logger.error({ err: error }, "Error getting quick stats");
     throw new Error("Failed to get quick stats");
   }
+}
+
+// ============================================================================
+// User Profile Functions
+// ============================================================================
+
+/**
+ * Get user profile with available assignees (current user + all assistants)
+ * @param userId - The ID of the current user
+ * @returns User profile and available assignees list
+ */
+export async function getUserWithAssignees(userId: string) {
+  const user = await getUserProfile(userId);
+
+  if (!user) {
+    throw new UserNotFoundError();
+  }
+
+  // Fetch all assistant users from database
+  const assistantUsers = await db.query.users.findMany({
+    where: eq(users.userType, "assistant"),
+    columns: {
+      id: true,
+      displayName: true,
+      userType: true,
+      email: true,
+    },
+  });
+
+  // Prepare available assignees (current user + all assistant users)
+  const availableAssignees = [
+    // Current user
+    {
+      id: user.id,
+      displayName: user.displayName || user.email || user.id,
+      userType: user.userType,
+      email: user.email,
+    },
+    // All assistant users from database
+    ...assistantUsers.map((assistant) => ({
+      id: assistant.id,
+      displayName: assistant.displayName || "AI Assistant",
+      userType: assistant.userType,
+      email: assistant.email,
+    })),
+  ];
+
+  return { user, availableAssignees };
+}
+
+/**
+ * Update user profile fields
+ * @param userId - The ID of the user to update
+ * @param data - The profile data to update
+ * @returns Updated user record
+ */
+export async function updateUserProfile(
+  userId: string,
+  data: Record<string, unknown>,
+) {
+  const [updatedUser] = await db
+    .update(users)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (!updatedUser) {
+    throw new UserNotFoundError("User not found or update failed");
+  }
+
+  return updatedUser;
+}
+
+/**
+ * Get public user profile by ID (limited fields)
+ * @param userId - The ID of the user to look up
+ * @returns Public user profile
+ */
+export async function getPublicUserProfile(userId: string) {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: {
+      id: true,
+      userType: true,
+      displayName: true,
+      email: true,
+    },
+  });
+
+  if (!user) {
+    throw new UserNotFoundError();
+  }
+
+  return {
+    id: user.id,
+    userType: user.userType,
+    displayName: user.displayName || "Unknown User",
+    email: user.email,
+  };
+}
+
+// ============================================================================
+// API Key Functions
+// ============================================================================
+
+/**
+ * Get all active API keys for a user
+ * @param userId - The ID of the user
+ * @returns Array of API keys with display formatting
+ */
+export async function getUserApiKeys(userId: string) {
+  const keys = await db.query.apiKeys.findMany({
+    where: and(eq(apiKeys.userId, userId), apiKeys.isActive),
+    columns: {
+      id: true,
+      keyId: true,
+      keySuffix: true,
+      name: true,
+      createdAt: true,
+      lastUsedAt: true,
+    },
+    orderBy: (apiKeys, { desc }) => [desc(apiKeys.createdAt)],
+  });
+
+  return keys.map((k) => ({
+    id: k.id,
+    displayKey: formatApiKeyForDisplay(k.keyId, k.keySuffix),
+    name: k.name,
+    createdAt: k.createdAt,
+    lastUsedAt: k.lastUsedAt,
+  }));
+}
+
+/**
+ * Create a new API key for a user
+ * @param userId - The ID of the user
+ * @param name - Optional name for the key
+ * @returns Created API key with full key (only returned once)
+ */
+export async function createApiKey(userId: string, name?: string) {
+  const keyName = name || `API Key ${new Date().toISOString().split("T")[0]}`;
+  const { fullKey, keyId, hash, hashVersion, suffix } = generateFullApiKey();
+
+  const result = await db
+    .insert(apiKeys)
+    .values({
+      keyId,
+      keyHash: hash,
+      hashVersion,
+      keySuffix: suffix,
+      name: keyName,
+      userId,
+    })
+    .returning({
+      id: apiKeys.id,
+      keyId: apiKeys.keyId,
+      keySuffix: apiKeys.keySuffix,
+      name: apiKeys.name,
+      createdAt: apiKeys.createdAt,
+    });
+
+  const createdKey = result[0];
+  if (!createdKey) {
+    throw new Error("Failed to create API key");
+  }
+
+  return {
+    id: createdKey.id,
+    key: fullKey, // Only time we return the full key!
+    displayKey: formatApiKeyForDisplay(createdKey.keyId, createdKey.keySuffix),
+    name: createdKey.name,
+    createdAt: createdKey.createdAt,
+    lastUsedAt: null,
+  };
+}
+
+/**
+ * Delete (deactivate) an API key
+ * @param userId - The ID of the user who owns the key
+ * @param keyId - The ID of the key to delete
+ */
+export async function deleteApiKey(userId: string, keyId: string) {
+  const result = await db
+    .update(apiKeys)
+    .set({ isActive: false })
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
+    .returning({ id: apiKeys.id });
+
+  if (result.length === 0) {
+    throw new ApiKeyNotFoundError();
+  }
+}
+
+/**
+ * Update an API key's name
+ * @param userId - The ID of the user who owns the key
+ * @param keyId - The ID of the key to update
+ * @param name - The new name for the key
+ * @returns Updated API key
+ */
+export async function updateApiKeyName(
+  userId: string,
+  keyId: string,
+  name: string,
+) {
+  const [updatedKey] = await db
+    .update(apiKeys)
+    .set({ name })
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
+    .returning({
+      id: apiKeys.id,
+      keyId: apiKeys.keyId,
+      keySuffix: apiKeys.keySuffix,
+      name: apiKeys.name,
+      createdAt: apiKeys.createdAt,
+      lastUsedAt: apiKeys.lastUsedAt,
+    });
+
+  if (!updatedKey) {
+    throw new ApiKeyNotFoundError();
+  }
+
+  return {
+    id: updatedKey.id,
+    displayKey: formatApiKeyForDisplay(updatedKey.keyId, updatedKey.keySuffix),
+    name: updatedKey.name,
+    createdAt: updatedKey.createdAt,
+    lastUsedAt: updatedKey.lastUsedAt,
+  };
+}
+
+// ============================================================================
+// Avatar Functions
+// ============================================================================
+
+/**
+ * Upload and process a user avatar
+ * @param userId - The ID of the user
+ * @param imageBuffer - The raw image buffer
+ * @param declaredMimeType - The MIME type declared by the client
+ * @returns Avatar URL
+ */
+export async function uploadUserAvatar(
+  userId: string,
+  imageBuffer: Buffer,
+  declaredMimeType: string,
+) {
+  // Validate file type
+  const fileTypeResult = await fileTypeFromBuffer(imageBuffer);
+  const verifiedMimeType = fileTypeResult?.mime || declaredMimeType;
+
+  if (!verifiedMimeType.startsWith("image/")) {
+    throw new InvalidImageError("File must be an image");
+  }
+
+  // Process image - resize to standard avatar sizes
+  const processedBuffer = await sharp(imageBuffer)
+    .resize(256, 256, {
+      fit: "cover",
+      position: "center",
+    })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+
+  // Store the processed image directly in user root directory
+  const storage = getStorage();
+  const avatarPath = path.join(userId, "avatar.jpg");
+  await storage.writeBuffer(avatarPath, processedBuffer, {
+    contentType: "image/jpeg",
+  });
+
+  // Update user with new avatar storage ID
+  const [updatedUser] = await db
+    .update(users)
+    .set({
+      avatarStorageId: avatarPath,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (!updatedUser) {
+    throw new UserNotFoundError("Failed to update user avatar");
+  }
+
+  return {
+    message: "Avatar uploaded successfully",
+    avatarUrl: `/api/user/${userId}/avatar`,
+  };
+}
+
+/**
+ * Delete a user's avatar
+ * @param userId - The ID of the user
+ */
+export async function deleteUserAvatar(userId: string) {
+  // Get current user to check if avatar exists
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: {
+      avatarStorageId: true,
+    },
+  });
+
+  if (!user?.avatarStorageId) {
+    throw new AvatarNotFoundError("No avatar to remove");
+  }
+
+  // Delete avatar file from storage
+  try {
+    const storage = getStorage();
+    await storage.delete(user.avatarStorageId);
+  } catch (error) {
+    // Log but don't fail if file doesn't exist
+    logger.warn(
+      { userId, storageId: user.avatarStorageId },
+      "Avatar file not found in storage during deletion",
+    );
+  }
+
+  // Clear avatar from user record
+  const [updatedUser] = await db
+    .update(users)
+    .set({
+      avatarStorageId: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (!updatedUser) {
+    throw new UserNotFoundError("Failed to update user record");
+  }
+
+  logger.info({ userId }, "Avatar removed successfully");
+
+  return { message: "Avatar removed successfully" };
+}
+
+/**
+ * Get a user's avatar stream and metadata
+ * @param userId - The ID of the user
+ * @returns Stream and metadata for the avatar, or throws if not found
+ */
+export async function getUserAvatar(userId: string) {
+  // Get user's avatar storage ID
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: {
+      avatarStorageId: true,
+    },
+  });
+
+  if (!user?.avatarStorageId) {
+    throw new AvatarNotFoundError();
+  }
+
+  // Get avatar from storage
+  const storage = getStorage();
+  const { stream, metadata } = await storage.read(user.avatarStorageId);
+
+  return { stream, metadata };
 }
