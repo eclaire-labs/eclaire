@@ -1,15 +1,15 @@
 # =============================================================================
 # Eclaire Docker Compose
 # =============================================================================
-# Default: SQLite database + in-process queue (simplest setup)
+# Default: PostgreSQL database (recommended for 2-10 users)
 #
 # Usage:
-#   docker compose up                           # Default (SQLite)
-#   docker compose --profile postgres up        # With PostgreSQL
+#   docker compose up                    # Default (PostgreSQL)
+#   docker compose up eclaire docling    # Minimal (SQLite, no external DB)
 #
 # Prerequisites:
 #   1. Copy .env.example to .env and generate secrets
-#   2. Start your LLM backend on the host (e.g., ollama serve)
+#   2. Start your LLM backend on the host
 #
 # LLM backends run on the host (not in containers) because they need GPU access.
 # The app connects to them via host.docker.internal.
@@ -39,6 +39,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
+      postgres:
+        condition: service_healthy
       docling:
         condition: service_started
     restart: unless-stopped
@@ -71,48 +73,28 @@ services:
         max-file: "3"
 
   # ===========================================================================
-  # Optional: PostgreSQL
+  # PostgreSQL Database
   # ===========================================================================
-  # Enable with: docker compose --profile postgres up
-  # Then set DATABASE_TYPE=postgresql in your .env
   postgres:
     image: postgres:16-alpine
     container_name: eclaire-postgres
-    profiles: ["postgres"]
     environment:
       POSTGRES_USER: ${DATABASE_USER:-eclaire}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-eclaire}
       POSTGRES_DB: ${DATABASE_NAME:-eclaire}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-eclaire}"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
-
-  # ===========================================================================
-  # Optional: Redis (for advanced distributed queue)
-  # ===========================================================================
-  # Enable with: docker compose --profile redis up
-  # Then set QUEUE_BACKEND=redis in your .env
-  redis:
-    image: redis:7-alpine
-    container_name: eclaire-redis
-    profiles: ["redis"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-  redis_data:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   default:

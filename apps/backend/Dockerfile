@@ -89,6 +89,7 @@ COPY packages/queue/package.json ./packages/queue/
 COPY packages/core/package.json ./packages/core/
 COPY packages/logger/package.json ./packages/logger/
 COPY packages/storage/package.json ./packages/storage/
+COPY packages/ai/package.json ./packages/ai/
 
 # Install dependencies for backend workspace (includes workspace packages)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
@@ -105,6 +106,7 @@ WORKDIR /app/apps/backend
 RUN pnpm --filter @eclaire/core build && \
     pnpm --filter @eclaire/logger build && \
     pnpm --filter @eclaire/storage build && \
+    pnpm --filter @eclaire/ai build && \
     pnpm --filter @eclaire/db build && \
     pnpm --filter @eclaire/queue build
 

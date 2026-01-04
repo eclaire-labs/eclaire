@@ -118,17 +118,17 @@ async function configureDatabaseInEnv(databaseType, questionFn) {
     const startPg = await questionFn(`\n  Start PostgreSQL with Docker Compose? [Y/n]: `);
     if (startPg.toLowerCase() !== 'n' && startPg.toLowerCase() !== 'no') {
       console.log(`\n  Starting PostgreSQL and Docling via Docker Compose...`);
-      const result = exec('docker compose --profile postgres up postgres docling -d', true);
+      const result = exec('docker compose up postgres docling -d', true);
       if (result.success) {
         console.log(`  ${colors.green}✅ PostgreSQL and Docling started${colors.reset}`);
         console.log(`  ${colors.cyan}Check status with: docker compose ps${colors.reset}`);
       } else {
         console.log(`  ${colors.red}❌ Failed to start Docker Compose${colors.reset}`);
-        console.log(`  ${colors.cyan}Try manually: docker compose --profile postgres up postgres docling -d${colors.reset}`);
+        console.log(`  ${colors.cyan}Try manually: docker compose up postgres docling -d${colors.reset}`);
       }
     } else {
       console.log(`  ${colors.yellow}Skipping Docker Compose startup${colors.reset}`);
-      console.log(`  ${colors.cyan}Start manually: docker compose --profile postgres up postgres docling -d${colors.reset}`);
+      console.log(`  ${colors.cyan}Start manually: docker compose up postgres docling -d${colors.reset}`);
     }
   } else {
     // Set DATABASE_TYPE=sqlite (handles commented or any existing value)
@@ -226,10 +226,21 @@ async function checkDependencies() {
       name: 'llama.cpp',
       command: 'llama-server',
       optional: true,
-      check: () => ({
-        exists: commandExists('llama-server'),
-        version: commandExists('llama-server') ? 'installed' : 'not installed'
-      })
+      minBuild: 7610,
+      check: () => {
+        if (!commandExists('llama-server')) {
+          return { exists: false, version: 'not installed' };
+        }
+        // Parse build number from output like: "version: 7610 (c6f0e832d)"
+        const output = getVersion('llama-server', '--version');
+        const match = output.match(/version:\s*(\d+)/);
+        const buildNumber = match ? parseInt(match[1], 10) : null;
+        return {
+          exists: true,
+          version: buildNumber ? `build ${buildNumber}` : 'unknown',
+          buildNumber
+        };
+      }
     },
     {
       name: 'docling-serve',
@@ -332,6 +343,16 @@ async function checkDependencies() {
       } else if (dep.name === 'libheif (HEIC support)') {
         console.log(`     macOS: ${colors.cyan}brew install libheif${colors.reset}`);
         console.log(`     Ubuntu/Debian: ${colors.cyan}sudo apt-get install libheif-examples${colors.reset}`);
+      }
+    }
+
+    // Check llama.cpp minimum build version
+    if (dep.minBuild && result.exists) {
+      if (result.buildNumber && result.buildNumber < dep.minBuild) {
+        console.log(`     ${colors.yellow}Warning: build ${result.buildNumber} is older than recommended ${dep.minBuild}${colors.reset}`);
+        console.log(`     ${colors.cyan}Update llama.cpp for full compatibility${colors.reset}`);
+      } else if (!result.buildNumber) {
+        console.log(`     ${colors.yellow}Warning: could not determine build number${colors.reset}`);
       }
     }
   }
@@ -525,7 +546,7 @@ async function initDatabase(databaseType = 'sqlite') {
     const pgCheck = exec('docker ps | grep eclaire-postgres', true);
     if (!pgCheck.success) {
       console.log(`  ${colors.yellow}⚠️  PostgreSQL is not running${colors.reset}`);
-      console.log(`  ${colors.cyan}Start with: docker compose --profile postgres up postgres -d${colors.reset}`);
+      console.log(`  ${colors.cyan}Start with: docker compose up postgres -d${colors.reset}`);
       return false;
     }
 

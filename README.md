@@ -34,7 +34,7 @@
   <a href="#installation">Installation</a> •
   <a href="#selecting-models">Selecting Models</a> •
   <a href="#architecture">Architecture</a> •
-  <a href="#roadmap">Roadmap</a> •
+  <a href="#development">Development</a> •
   <a href="#contributing">Contributing</a> •
   <a href="https://eclaire.co/docs">Docs</a> •
   <a href="https://eclaire.co/docs/api">API</a>
@@ -128,102 +128,121 @@ With AI gaining rapid adoption, there is a growing need for alternatives to clos
 
 ## Installation
 
-> [!IMPORTANT]  
-> Eclaire is in pre-release and under active development.  
-> Expect breaking changes — backup your data.  
-> Do **not** expose it directly to the internet; use a VPN, tunnel, or reverse proxy.
+### Prerequisites
 
-### System Requirements
-
-**Runtime & Tools:**
-- **Node.js ≥ 24** with **corepack** enabled
-- **pnpm@10.21.0** (managed via corepack - no manual install needed)
-- **Docker Desktop** with **Compose v2**
-- **PM2** process manager (`pnpm add -g pm2`) - used to run dependencies.
-
-**Infrastructure Services:**
-- **PostgreSQL ≥ 17.5** (managed via Docker)
-- **Redis ≥ 8** (managed via Docker)
-
-**AI/ML Backends:**
-- **llama.cpp/llama-server** for local LLM inference ([install guide](https://github.com/ggml-org/llama.cpp))
-- **docling-serve** for document processing ([install guide](https://github.com/docling-project/docling-serve))
-
-> [!NOTE]
-> We currently run llama-server and docling **bare-metal** (not containerized) for direct GPU access; PM2 supervises these processes.
-
-### Package Manager Setup
-
-Eclaire uses **pnpm** for dependency management. Node.js 24+ includes **corepack**, which automatically manages pnpm for you.
-
-**Enable corepack** (one-time setup):
-```bash
-corepack enable
-```
-
-That's it! Corepack will automatically use **pnpm@10.21.0** as specified in `package.json`. No need to install pnpm separately.
-
-> [!TIP]
-> If corepack is not available (older Node.js), install pnpm manually: `npm install -g pnpm@10.21.0`
+- **Docker** and **Docker Compose**
+- **A local LLM server** — [llama.cpp](https://github.com/ggml-org/llama.cpp) recommended
 
 ### Quick Start
 
-Choose the setup path that matches your needs:
-
-#### Option A — Quick Start (Recommended)
-**For users who want to run Eclaire quickly using official Docker images**
-
-1. **Run automated setup**
 ```bash
-pnpm setup:prod
-```
-This will:
-- Copy `.env.example` to `.env` and generate secure secrets
-- Create required directories
-- Check system dependencies
-- Install pnpm dependencies (needed for database migrations)
-- Initialize the database with essential seed data
-
-2. **Start your LLM backend** (Ollama, llama.cpp, or similar)
-```bash
-ollama serve  # Or your preferred LLM server on port 11434
+mkdir eclaire && cd eclaire
+curl -fsSL https://raw.githubusercontent.com/eclaire-labs/eclaire/main/setup.sh | sh
 ```
 
-3. **Start Eclaire**
-```bash
-docker compose up
-```
+The script will:
+1. Download configuration files
+2. Generate secrets automatically
+3. Initialize the database (PostgreSQL)
 
-This starts the backend (with SQLite by default) and Docling for document processing.
-
-**Alternative: Run without Docker Compose**
+After setup completes:
 
 ```bash
-docker run -p 3000:3000 --env-file ./.env ghcr.io/eclaire-labs/eclaire:latest
+# 1. Start your LLM server (in a separate terminal)
+llama-server --port 11500 -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL
+
+# 2. Start Eclaire
+docker compose up -d
 ```
 
-**Using PostgreSQL instead of SQLite**
+Open http://localhost:3000 and click "Sign up" to create your account.
+
+### Configuration
+
+Configuration lives in two places:
+- **`.env`** — secrets, database settings, ports
+- **`config/ai/`** — LLM provider URLs and model definitions
+
+### Upgrading
 
 ```bash
-docker compose --profile postgres up
+cd eclaire
+docker compose pull
+docker compose run --rm eclaire upgrade
+docker compose up -d
 ```
-Then set `DATABASE_TYPE=postgresql` in your `.env`.
 
-Access the application:
-- Frontend: http://localhost:3000
-- Backend health: curl http://localhost:3000/health
+### Stopping
 
-**First login:** Open http://localhost:3000 and click "Sign up" to create your account.
+```bash
+docker compose down
+```
 
 
-#### Option B — Development (For contributors)
+## Selecting Models
 
-** Additional dependencies required:**
-- LibreOffice (soffice for document processing)
-- Poppler Utils / pdftocairo (for PDF processing)
-- GraphicsMagick or ImageMagick (for image processing)
-- Ghostscript (for PDF/PostScript processing)
-- libheif (optional, for HEIC/HEIF photo processing)
+Eclaire works with various LLM backends and models. The default setup uses llama.cpp with Qwen3 14B, which runs well on machines with 32GB+ memory.
+
+**Supported backends:** llama.cpp, vLLM, mlx-lm/mlx-vlm, LM Studio, Ollama, and any OpenAI-compatible API.
+
+**Model requirements:**
+- **Assistant**: A text model with good tool calling capabilities (e.g., Qwen3, Mistral)
+- **Workers**: A vision model for document/image processing (e.g., Gemma3)
+
+### Changing Models
+
+1. **Edit `config/ai/providers.json`** — set your LLM server URL
+2. **Edit `config/ai/models.json`** — define available models
+3. **Start your LLM server** with the desired model:
+   ```bash
+   llama-server --port 11500 -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL
+   ```
+
+Choose models based on your hardware — larger models produce better results but require more memory. 
+
+## Architecture
+
+Eclaire follows a modular architecture with clear separation between the frontend, backend API, background workers, and data layers.
+
+**📋 [View detailed architecture diagram →](docs/architecture.md)**
+
+### Key Components
+- **Frontend**: Next.js web application with React 19 and Radix UI
+- **Backend API**: Node.js/Hono server with REST APIs
+- **Background Workers**: Job processing and scheduling
+- **Data Layer**: PostgreSQL (default) or SQLite for persistence, file storage for assets
+- **AI Services**: Local LLM backends (llama.cpp, etc.) for inference; Docling for document processing
+- **External Integrations**: GitHub and Reddit APIs for bookmark fetching
+
+## Roadmap
+- Capacity and Scalability
+- More streamlined system design
+- Easier installs and upgrades
+- Native mobile and desktop clients
+- Support for more data sources
+- Data source linking and synchronization
+- More robust full text indexing and search
+- Better extensibility
+- Improved AI capabilities
+- Evals for models and content pipelines
+- Unified CLI
+- Easier LLM backend and models management
+- More Hardening and Security
+- Top requests from the community
+
+## Development
+
+For contributors who want to build from source.
+
+### Additional Prerequisites
+
+Beyond Docker and an LLM server, you'll need:
+
+- **Node.js ≥ 24** with corepack enabled
+- **pnpm** (managed via corepack)
+- **PM2** process manager (`npm install -g pm2`)
+
+**Document/image processing tools:**
 
 **macOS:**
 ```bash
@@ -236,190 +255,28 @@ brew install poppler graphicsmagick imagemagick ghostscript libheif
 sudo apt-get install libreoffice poppler-utils graphicsmagick imagemagick ghostscript libheif-examples
 ```
 
-1. **Run automated setup**
-```
-pnpm setup:dev
-```
-This will:
-- Check system dependencies (Node.js, Docker, PM2, etc.)
-- Copy all environment config files
-- Create required data directories
-- Install pnpm dependencies for all apps
-- Start dependencies (PostgreSQL, Redis, AI models via PM2)
-- Initialize the database with sample data
+### Setup
 
-**Note:** AI models will download automatically on first start (5-10 minutes for large models). You can monitor progress with: `pm2 logs llama_backend --lines 100`
-
-Setup runs in interactive mode by default (asks for confirmation at each step).
-
-2. **Run the dev servers**
 ```bash
+git clone https://github.com/eclaire-labs/eclaire.git
+cd eclaire
+corepack enable
+pnpm setup:dev
 pnpm dev
 ```
 
 Access the application:
 - Frontend: http://localhost:3000
-- Backend health: curl http://localhost:3001/health
+- Backend: http://localhost:3001/health
 
-**First login:** Open http://localhost:3000 and click "Sign up" to create your account.
+### Building Docker Locally
 
+To build custom Docker images:
 
-#### Option C — Building Docker Locally (Advanced)
-**For users who want to customize and build their own Docker containers**
-
-If you need to modify the application or build custom images:
-
-1. **Setup with build** (if starting fresh):
-```bash
-pnpm setup:prod:build
-```
-This runs the full setup process, builds Docker containers locally, and generates `docker-compose.local.yml` to reference your local images.
-
-2. **Or build manually** (if already setup):
 ```bash
 ./scripts/build.sh
+docker compose -f compose.yaml -f compose.local.yaml up
 ```
-This will build the Docker images locally and generate `docker-compose.local.yml` that references your local images.
-
-3. **Run with local images**:
-```bash
-docker compose -f docker-compose.yml -f docker-compose.local.yml up
-```
-
-The build script creates `docker-compose.local.yml` that overrides the image references to use your locally-built containers instead of pulling from GHCR.
-
-Access the application:
-- Frontend: http://localhost:3000
-- Backend health: curl http://localhost:3000/health
-
-**First login:** Open http://localhost:3000 and click "Sign up" to create your account.
-
-
-### Stopping & Cleanup
-- If you started Dev with npm run dev: Press Ctrl+C in the terminal running the dev process.
-- If you started with Docker Compose
-```
-docker compose down
-```
-- Stop dependencies (Postgre, Redis, etc.)
-```
-pm2 stop pm2.deps.config.js
-```
-
-
-## Upgrading
-
-To upgrade to the latest release:
-
-```bash
-git pull
-docker compose pull
-```
-
-Then restart the services:
-```bash
-docker compose up
-```
-
-
-## Selecting Models
-Eclaire is designed to work with various LLM backends and models. By default we picked llama.cpp with Qwen3 14b Q4_K_XL GGUF for AI assistant and Gemma3 4b Q4_K_XL GGUF because that runs well on a typical dev machine (eg a Macbook Pro M1+ with 32GB memory) but you may want to pick something more appropriate. Some notes:
-
-- Support for llama.cpp / llama-server, vLLM, mlx_lm, mlx_vlm, ollama and more.
-- Uses the OpenAI-compatible /v1/chat/completions endpoint.
-- The server expects a text model with decent tool calling / agentic capabilities for the AI assistant
-- For document processing, a multi-modal model with support for text + images is recommended
-- You can configure separate endpoints for assistant vs worker models, or use the same endpoint for both. 
-- You may choose LLM backend and models to best take advantage of your hardware depending how much GPU memory is available, whether you are running on Apple silicon and want to use MLX, etc. Larger and more powerful models should produce better results but require more memory and run more slowly.
-
-### Steps for changing LLM backends
-1. Decide which LLM backend you want to use
-2. Download and make sure it's running locally
-3. [AS NEEDED] Edit AI_LOCAL_PROVIDER_URL in apps/backend/.env.* and apps/backend.env.*. By default they will use different endpoints at port 11434 and 11435 respectively. 
-4. [AS NEEDED] Edit the pm2.deps.config.js which is used to manage dependencies with PM2
-
-### Steps for changing models
-1. Check what models the system is currently using. From the repo root:
-```
-./tools/model-cli/run.sh list
-```
-You should see something like:
-```
-
-┌─────────────────────────────────────────┬───────────┬─────────────────────────────────┬─────────────────────────────────┬──────────────────┬─────────────┐
-│ ID                                      │ Provider  │ Short Name                      │ Model                           │ Context          │ Status      │
-├─────────────────────────────────────────┼───────────┼─────────────────────────────────┼─────────────────────────────────┼──────────────────┼─────────────┤
-│ llamacpp-qwen3-14b-gguf-q4-k-xl         │ llamacpp  │ qwen3-14b-gguf-q4_k_xl          │ qwen3-14b-gguf-q4_k_xl          │ backend          │ 🟢 ACTIVE   │
-├─────────────────────────────────────────┼───────────┼─────────────────────────────────┼─────────────────────────────────┼──────────────────┼─────────────┤
-│ llamacpp-gemma-3-4b-it-qat-gguf-q4-k-xl │ llamacpp  │ gemma-3-4b-it-qat-gguf-q4_k_xl  │ gemma-3-4b-it-qat-gguf-q4_k_xl  │ workers          │ 🟢 ACTIVE   │
-├─────────────────────────────────────────┼───────────┼─────────────────────────────────┼─────────────────────────────────┼──────────────────┼─────────────┤
-```
-
-2. Decide on models you want the Eclaire backend and workers to use. Get their Hugging Face URLs.
-
-3. Run the model-cli "import" command (or edit config/models.json directly). Eg:
-```
-./tools/model-cli/run.sh import https://huggingface.co/mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025
-```
-
-4. Make sure that the LLM backend is started using the correct model. Eg. from pm2.deps.config.js:
-```
-  script: 'llama-server',
-  args: '-hf unsloth/Qwen3-14B-GGUF:Q4_K_XL --port 11434', // CHANGE THIS TO YOUR NEW MODEL
-```
-
-5. Download the model locally before using the system. Each LLM backend has its own way of pulling models but with llama.cpp you can:
-```
-printf '' | llama-cli --hf-repo mlx-community/Qwen3-30B-A3B-4bit-DWQ-10072025 -n 0 --no-warmup
-``` 
-
-## Architecture
-
-Eclaire follows a modular architecture with clear separation between the frontend, backend API, background workers, and data layers.
-
-**📋 [View detailed architecture diagram →](docs/architecture.md)**
-
-### Key Components
-- **Frontend**: Next.js web application with React 19 and Radix UI
-- **Backend API**: Node.js/Hono server interfacing with DB and providing REST APIs
-- **Background Workers**: BullMQ/Redis background job processing and scheduling.
-- **Data Layer**: PostgreSQL for persistence, storage abstraction for raw files and generated artifacts.
-- **AI Services**: Local LLM backends (llama.cpp, etc) for model inference. Backend and workers use LLM endpoints. Backend for AI assistant (eg. Qwen3 model), Workers for image and document processing (eg. Gemma3 multi-modal). Docling for processing some of the document formats.
-- **External Integrations**: API integration with GitHub and Reddit for bookmark fetching.
-
-### Data Directory
-
-The system automatically creates all required data directories when services start:
-- `data/logs` - Application logs
-- `data/users` - User files and assets
-- `data/browser-data` - Browser profile data for workers
-- `data/postgres` - PostgreSQL database files
-- `data/pglite` - PGlite embedded database files
-- `data/sqlite` - SQLite database files
-- `data/redis` - Redis persistence files
-
-## Roadmap
-- MCP Client/Host
-- MCP Server
-- Capacity and Scalability
-- More streamlined system design
-- Easier installs and upgrades
-- Native mobile and desktop clients
-- Support for more data sources
-- Data source linking and synchronization
-- More robust full text indexing and search
-- Better extensibility
-- Improved AI capabilities
-  - tools
-  - memory
-  - context management
-  - specialized tasks
-- Evals for models and content pipelines
-- Team and Org
-- Unified CLI
-- Easier LLM backend and models management
-- More Hardening and Security
-- Top requests from the community
 
 ## Contributing
 We 💙 contributions! Please read the Contributing Guide.
