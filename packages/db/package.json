@@ -58,15 +58,15 @@
     "@electric-sql/pglite": "0.3.14",
     "async-mutex": "^0.5.0",
     "better-sqlite3": "12.5.0",
-    "dotenv": "^16.4.7",
-    "drizzle-orm": "0.45.0",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "0.45.1",
     "postgres": "3.4.7"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.2",
-    "drizzle-kit": "^0.30.4",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "drizzle-kit": "^0.31.8",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }

@@ -437,7 +437,7 @@ export function BookmarkDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/bookmarks" })}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -462,7 +462,7 @@ export function BookmarkDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+          <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/bookmarks" })}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Bookmark not found</h1>
@@ -496,7 +496,7 @@ export function BookmarkDetailClient() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/bookmarks" })}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
@@ -818,7 +818,14 @@ export function BookmarkDetailClient() {
                     >
                       {bookmark.enabled === false
                         ? "disabled"
-                        : bookmark.processingStatus || "unknown"}
+                        : bookmark.processingStatus === "processing"
+                          ? (
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                processing
+                              </span>
+                            )
+                          : (bookmark.processingStatus || "unknown").replace(/_/g, " ")}
                     </Badge>
 
                     {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}
@@ -1382,7 +1389,7 @@ export function BookmarkDetailClient() {
                 <div>
                   <Label>Screenshots</Label>
                   <div className="space-y-2 mt-1">
-                    {bookmark.thumbnailUrl && (
+                    {bookmark.screenshotUrl && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -1390,7 +1397,7 @@ export function BookmarkDetailClient() {
                         asChild
                       >
                         <a
-                          href={getAbsoluteApiUrl(bookmark.thumbnailUrl)}
+                          href={getAbsoluteApiUrl(bookmark.screenshotUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

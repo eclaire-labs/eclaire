@@ -456,7 +456,7 @@ export function DocumentDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/documents" })}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -481,7 +481,7 @@ export function DocumentDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+          <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/documents" })}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Document not found</h1>
@@ -841,7 +841,14 @@ export function DocumentDetailClient() {
                     >
                       {document.enabled === false
                         ? "disabled"
-                        : document.processingStatus || "unknown"}
+                        : document.processingStatus === "processing"
+                          ? (
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                processing
+                              </span>
+                            )
+                          : (document.processingStatus || "unknown").replace(/_/g, " ")}
                     </Badge>
 
                     {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}

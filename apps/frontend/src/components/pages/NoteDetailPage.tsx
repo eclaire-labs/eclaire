@@ -360,7 +360,7 @@ export function NoteDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/notes" })}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -385,7 +385,7 @@ export function NoteDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+          <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/notes" })}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Note not found</h1>
@@ -410,7 +410,7 @@ export function NoteDetailClient() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/notes" })}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
@@ -666,7 +666,14 @@ export function NoteDetailClient() {
                           >
                             {note.enabled === false
                               ? "disabled"
-                              : note.processingStatus || "unknown"}
+                              : note.processingStatus === "processing"
+                                ? (
+                                    <span className="flex items-center gap-1">
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      processing
+                                    </span>
+                                  )
+                                : (note.processingStatus || "unknown").replace(/_/g, " ")}
                           </Badge>
 
                           {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}

@@ -563,7 +563,7 @@ export function TaskDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/tasks" })}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -588,7 +588,7 @@ export function TaskDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+          <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/tasks" })}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Task not found</h1>
@@ -1191,7 +1191,14 @@ export function TaskDetailClient() {
                         >
                           {task.enabled === false
                             ? "disabled"
-                            : task.processingStatus || "unknown"}
+                            : task.processingStatus === "processing"
+                              ? (
+                                  <span className="flex items-center gap-1">
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    processing
+                                  </span>
+                                )
+                              : (task.processingStatus || "unknown").replace(/_/g, " ")}
                         </Badge>
 
                         {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}

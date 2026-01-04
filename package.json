@@ -33,15 +33,17 @@
     "dev:backend": "cd apps/backend && pnpm dev",
     "dev:backend:nowatch": "cd apps/backend && pnpm dev:nowatch",
     "dev:frontend": "cd apps/frontend && pnpm dev",
-    "build": "pnpm -r --filter './packages/*' build && pnpm -r --filter './apps/*' build",
+    "build": "pnpm -r build",
     "test": "pnpm --filter @eclaire/backend test && pnpm --filter @eclaire/frontend test",
     "lint": "pnpm --filter @eclaire/backend lint && pnpm --filter @eclaire/frontend lint",
     "format": "pnpm --filter @eclaire/backend format && pnpm --filter @eclaire/frontend format",
-    "typecheck": "pnpm --filter @eclaire/backend typecheck && pnpm --filter @eclaire/frontend typecheck",
+    "typecheck": "pnpm -r typecheck",
     "typecheck:backend": "pnpm --filter @eclaire/backend typecheck",
     "typecheck:frontend": "pnpm --filter @eclaire/frontend typecheck",
     "config:show": "pnpm --filter @eclaire/backend config:show",
     "app:upgrade": "pnpm --filter @eclaire/backend app:upgrade",
-    "app:upgrade-check": "pnpm --filter @eclaire/backend app:upgrade-check"
+    "app:upgrade-check": "pnpm --filter @eclaire/backend app:upgrade-check",
+    "cli": "pnpm --filter @eclaire/cli exec tsx main.ts",
+    "eclaire": "pnpm --filter @eclaire/cli exec tsx main.ts"
   }
 }

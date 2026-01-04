@@ -168,6 +168,14 @@ export function ProcessingEventsProvider({
                     );
                   }
                 );
+                // Optimistically update the asset's processingStatus in the detail view
+                queryClient.setQueriesData<any>(
+                  { queryKey: [assetType, assetId] },
+                  (oldData: any) => {
+                    if (!oldData) return oldData;
+                    return { ...oldData, processingStatus: "processing" };
+                  }
+                );
                 break;
 
               case "stage_completed":
