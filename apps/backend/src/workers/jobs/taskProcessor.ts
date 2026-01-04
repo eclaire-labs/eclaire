@@ -1,5 +1,5 @@
 import type { JobContext } from "@eclaire/queue/core";
-import { type AIMessage, callAI } from "../../lib/ai-client.js";
+import { type AIMessage, callAI } from "@eclaire/ai";
 import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("task-processor");

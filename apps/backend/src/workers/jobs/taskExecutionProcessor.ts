@@ -1,11 +1,11 @@
 import type { JobContext } from "@eclaire/queue/core";
-import { type AIMessage, callAI } from "../../lib/ai-client.js";
+import { type AIMessage, callAI } from "@eclaire/ai";
 import { createChildLogger } from "../../lib/logger.js";
 import {
   updateTaskStatusAsAssistant,
   updateTaskExecutionTracking,
 } from "../../lib/services/tasks.js";
-import { processPromptRequest } from "../../lib/services/prompt.js";
+import { processPromptRequest } from "../../lib/agent/index.js";
 import { createTaskComment as createTaskCommentService } from "../../lib/services/taskComments.js";
 
 const logger = createChildLogger("task-execution-processor");
@@ -173,7 +173,6 @@ async function generatePromptAIResponse(
       prompt,
       context,
       requestId,
-      false, // trace
       undefined, // conversationId
       false, // enableThinking
     );

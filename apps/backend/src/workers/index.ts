@@ -21,7 +21,8 @@ import processImageJob from "./jobs/imageProcessor.js";
 import processNoteJob from "./jobs/noteProcessor.js";
 import processTaskExecution from "./jobs/taskExecutionProcessor.js";
 import processTaskJob from "./jobs/taskProcessor.js";
-import { validateAIConfigOnStartup } from "../lib/ai-client.js";
+import { validateAIConfigOnStartup, isAIInitialized } from "@eclaire/ai";
+import { initializeAI } from "../lib/ai-init.js";
 import { startDirectDbWorkers, stopDirectDbWorkers } from "./lib/direct-db-workers.js";
 import { createRedisPublisher } from "./lib/redis-publisher.js";
 import { createChildLogger } from "../lib/logger.js";
@@ -62,7 +63,10 @@ export async function startBullMQWorkers(): Promise<void> {
     throw error;
   }
 
-  // Validate AI configuration
+  // Initialize and validate AI configuration (skip if already initialized by API)
+  if (!isAIInitialized()) {
+    initializeAI();
+  }
   validateAIConfigOnStartup();
 
   // Initialize Hono app for Bull Board
@@ -93,7 +97,7 @@ export async function startBullMQWorkers(): Promise<void> {
   logger.info({ concurrency: config.worker.concurrency }, "Initializing BullMQ workers");
 
   // Create event callbacks for SSE publishing via Redis pub/sub
-  const eventCallbacks = createRedisPublisher(config.redis.url, logger);
+  const eventCallbacks = createRedisPublisher(config.redis.url, logger, config.redis.keyPrefix);
 
   // Shared worker configuration
   const workerConfig: BullMQWorkerConfig = {
@@ -238,7 +242,10 @@ export async function startDatabaseWorkers(): Promise<void> {
     throw error;
   }
 
-  // Validate AI configuration
+  // Initialize and validate AI configuration (skip if already initialized by API)
+  if (!isAIInitialized()) {
+    initializeAI();
+  }
   validateAIConfigOnStartup();
 
   // Start direct database workers with event callbacks

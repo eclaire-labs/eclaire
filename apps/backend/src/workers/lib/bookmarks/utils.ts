@@ -5,7 +5,7 @@ import { JSDOM } from "jsdom";
 import type { Page } from "patchright";
 import { Readable } from "stream";
 import TurndownService from "turndown";
-import { type AIMessage, callAI } from "../../../lib/ai-client.js";
+import { type AIMessage, callAI } from "@eclaire/ai";
 import { createChildLogger } from "../../../lib/logger.js";
 import { getStorage, buildKey } from "../../../lib/storage/index.js";
 
@@ -21,6 +21,7 @@ export async function extractContentFromHtml(
   url: string,
   userId: string,
   bookmarkId: string,
+  prefetchedFaviconStorageId?: string | null,
 ): Promise<{
   title: string;
   description: string;
@@ -105,67 +106,84 @@ export async function extractContentFromHtml(
       return `favicon${extension}`;
     };
 
-    // --- Favicon Fetching ---
-    let faviconStorageId: string | null = null;
-    try {
-      const faviconUrl =
-        document.querySelector("link[rel='icon']")?.getAttribute("href") ||
-        document
-          .querySelector("link[rel='shortcut icon']")
-          ?.getAttribute("href");
+    // --- Favicon Handling ---
+    // Use prefetched favicon if available (fetched via Playwright in the processor)
+    // Otherwise fall back to axios-based fetching (for other code paths)
+    let faviconStorageId: string | null = prefetchedFaviconStorageId || null;
 
-      if (faviconUrl) {
-        const absoluteFaviconUrl = new URL(faviconUrl, url).href;
-        logger.debug({ absoluteFaviconUrl }, "Found favicon link in HTML");
-        const response = await axios.get(absoluteFaviconUrl, {
-          responseType: "arraybuffer",
-        });
-        const faviconBuffer = Buffer.from(response.data);
-        if (faviconBuffer.length > 0) {
-          const contentType =
-            response.headers["content-type"] || "image/x-icon";
-          const fileName = generateFaviconFileName(
-            absoluteFaviconUrl,
-            contentType,
-          );
+    if (!faviconStorageId) {
+      try {
+        const faviconUrl =
+          document.querySelector("link[rel='icon']")?.getAttribute("href") ||
+          document
+            .querySelector("link[rel='shortcut icon']")
+            ?.getAttribute("href");
 
-          const storage = getStorage();
-          const faviconKey = buildKey(userId, "bookmarks", bookmarkId, fileName);
-          await storage.writeBuffer(faviconKey, faviconBuffer, { contentType });
-          faviconStorageId = faviconKey;
+        if (faviconUrl) {
+          const absoluteFaviconUrl = new URL(faviconUrl, url).href;
+          logger.debug({ absoluteFaviconUrl }, "Found favicon link in HTML");
+          const response = await axios.get(absoluteFaviconUrl, {
+            responseType: "arraybuffer",
+            timeout: 10000,
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              Accept: "image/*,*/*",
+            },
+          });
+          const faviconBuffer = Buffer.from(response.data);
+          if (faviconBuffer.length > 0) {
+            const contentType =
+              response.headers["content-type"] || "image/x-icon";
+            const fileName = generateFaviconFileName(
+              absoluteFaviconUrl,
+              contentType,
+            );
 
-          logger.debug(
-            { fileName, contentType },
-            "Favicon saved with proper extension",
-          );
+            const storage = getStorage();
+            const faviconKey = buildKey(userId, "bookmarks", bookmarkId, fileName);
+            await storage.writeBuffer(faviconKey, faviconBuffer, { contentType });
+            faviconStorageId = faviconKey;
+
+            logger.debug(
+              { fileName, contentType },
+              "Favicon saved with proper extension",
+            );
+          }
+        } else {
+          logger.debug("No favicon link found, trying /favicon.ico");
+          const rootFaviconUrl = new URL("/favicon.ico", url).href;
+          const response = await axios.get(rootFaviconUrl, {
+            responseType: "arraybuffer",
+            timeout: 10000,
+            validateStatus: (status) => status === 200,
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              Accept: "image/*,*/*",
+            },
+          });
+          const faviconBuffer = Buffer.from(response.data);
+          if (faviconBuffer.length > 0) {
+            const contentType =
+              response.headers["content-type"] || "image/x-icon";
+
+            const storage = getStorage();
+            const faviconKey = buildKey(userId, "bookmarks", bookmarkId, "favicon.ico");
+            await storage.writeBuffer(faviconKey, faviconBuffer, { contentType });
+            faviconStorageId = faviconKey;
+          }
         }
-      } else {
-        logger.debug("No favicon link found, trying /favicon.ico");
-        const rootFaviconUrl = new URL("/favicon.ico", url).href;
-        const response = await axios.get(rootFaviconUrl, {
-          responseType: "arraybuffer",
-          validateStatus: (status) => status === 200,
-        });
-        const faviconBuffer = Buffer.from(response.data);
-        if (faviconBuffer.length > 0) {
-          const contentType =
-            response.headers["content-type"] || "image/x-icon";
-
-          const storage = getStorage();
-          const faviconKey = buildKey(userId, "bookmarks", bookmarkId, "favicon.ico");
-          await storage.writeBuffer(faviconKey, faviconBuffer, { contentType });
-          faviconStorageId = faviconKey;
-        }
+      } catch (error: any) {
+        logger.warn(
+          {
+            bookmarkId,
+            url,
+            error: error.response ? error.response.status : error.message,
+          },
+          "Could not fetch or save favicon",
+        );
       }
-    } catch (error: any) {
-      logger.warn(
-        {
-          bookmarkId,
-          url,
-          error: error.response ? error.response.status : error.message,
-        },
-        "Could not fetch or save favicon",
-      );
     }
 
     // Save raw and readable HTML content
@@ -248,16 +266,18 @@ export async function generateOptimizedPdf(
 ): Promise<Buffer> {
   logger.debug({ bookmarkId }, "Generating optimized PDF");
 
-  // Wait for images to load
+  // Wait for images to load with per-image timeout (5s each)
   await page.evaluate(() =>
     Promise.all(
       Array.from((globalThis as any).document.images)
         .filter((img: any) => !img.complete)
-        .map(
-          (img: any) =>
+        .map((img: any) =>
+          Promise.race([
             new Promise((resolve) => {
               img.onload = img.onerror = resolve;
             }),
+            new Promise((resolve) => setTimeout(resolve, 5000)),
+          ]),
         ),
     ),
   );

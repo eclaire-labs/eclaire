@@ -24,6 +24,7 @@ import { execSync } from "child_process";
 import * as semver from "semver";
 import { sql, eq } from "drizzle-orm";
 import { executeQuery } from "@eclaire/db";
+import { closeDatabase } from "../db/index.js";
 import { getUpgradeSteps } from "./upgrades/index.js";
 import { getAppVersion, findMigrationJournal } from "./lib/version-utils.js";
 
@@ -120,6 +121,9 @@ async function main() {
 		// Step 4: Update installed version
 		await setInstalledVersion(appVersion);
 
+		// Close database connection
+		await closeDatabase();
+
 		// Print success message
 		console.log("");
 		console.log("═══════════════════════════════════════");
@@ -128,6 +132,7 @@ async function main() {
 		console.log("");
 	} catch (error) {
 		console.error("Upgrade failed:", error);
+		await closeDatabase();
 		process.exit(1);
 	}
 }

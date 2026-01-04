@@ -3,7 +3,7 @@ import heicConvert from "heic-convert";
 import sharp from "sharp";
 import type { JobContext } from "@eclaire/queue/core";
 import { config } from "../config.js";
-import { type AIMessage, callAI } from "../../lib/ai-client.js";
+import { type AIMessage, callAI } from "@eclaire/ai";
 import { createChildLogger } from "../../lib/logger.js";
 import { getStorage, buildKey } from "../../lib/storage/index.js";
 
@@ -243,7 +243,6 @@ async function executeAIWorkflowStep(
       temperature: 0.1,
       maxTokens: 1000,
       timeout: config.worker.aiTimeout || 180000,
-      schema: extractionSchema,
     });
 
     // log raw response

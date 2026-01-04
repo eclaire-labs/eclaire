@@ -26,7 +26,8 @@ import { serve } from "@hono/node-server";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { showRoutes } from "hono/dev";
-import { validateAIConfigOnStartup } from "./lib/ai-client.js";
+import { validateAIConfigOnStartup } from "@eclaire/ai";
+import { initializeAI } from "./lib/ai-init.js";
 import { auth } from "./lib/auth.js";
 import { validateEncryptionService } from "./lib/encryption.js";
 import { logger, smartLogger } from "./lib/logger.js";
@@ -366,6 +367,9 @@ const start = async () => {
 
     // Only start HTTP server if role includes API functionality
     if (SERVICE_ROLE === "api" || SERVICE_ROLE === "all") {
+      // Initialize AI client before validation
+      initializeAI();
+
       // Validate configurations first - fail fast if not properly configured
       validateAIConfigOnStartup();
 

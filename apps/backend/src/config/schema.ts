@@ -73,15 +73,9 @@ export interface EclaireConfig {
     backend: "local" | "s3";
   };
 
-  // AI Providers
+  // AI Settings (provider URLs moved to config/ai/providers.json)
   ai: {
-    localProviderUrl: string;
-    workerLocalProviderUrl: string;
-    proxyProviderUrl: string | undefined;
-    proxyApiKey: string | undefined;
-    workerProxyProviderUrl: string | undefined;
-    workerProxyApiKey: string | undefined;
-    promptLoggingEnabled: boolean;
+    debugLogPath?: string;
     timeout: number;
   };
 
@@ -221,12 +215,6 @@ export function buildConfig(): EclaireConfig {
   const defaultDoclingUrl = isContainer
     ? "http://docling:5001"
     : "http://127.0.0.1:5001";
-  const defaultAiUrl = isContainer
-    ? "http://host.docker.internal:11434"
-    : "http://127.0.0.1:11434";
-  const defaultWorkerAiUrl = isContainer
-    ? "http://host.docker.internal:11435"
-    : "http://127.0.0.1:11435";
 
   // Service configuration
   const serviceRole = (env.SERVICE_ROLE || "all") as ServiceRole;
@@ -359,16 +347,9 @@ export function buildConfig(): EclaireConfig {
       backend: (env.STORAGE_BACKEND || "local") as "local" | "s3",
     },
 
-    // AI
+    // AI (provider URLs now in config/ai/providers.json)
     ai: {
-      localProviderUrl: env.AI_LOCAL_PROVIDER_URL || defaultAiUrl,
-      workerLocalProviderUrl:
-        env.WORKER_AI_LOCAL_PROVIDER_URL || defaultWorkerAiUrl,
-      proxyProviderUrl: env.AI_PROXY_PROVIDER_URL,
-      proxyApiKey: env.AI_PROXY_API_KEY,
-      workerProxyProviderUrl: env.WORKER_AI_PROXY_PROVIDER_URL,
-      workerProxyApiKey: env.WORKER_AI_PROXY_API_KEY,
-      promptLoggingEnabled: bool(env.AI_PROMPT_LOGGING_ENABLED, true),
+      debugLogPath: env.AI_DEBUG_LOG_PATH || undefined,
       timeout: int(env.AI_TIMEOUT, 180000),
     },
 
@@ -517,8 +498,7 @@ export function getConfigSummary(config: EclaireConfig): Record<string, unknown>
     queueBackend: config.queueBackend,
     dataDir: config.dirs.data,
     configDir: config.dirs.config,
-    aiLocalProviderUrl: config.ai.localProviderUrl,
-    workerAiLocalProviderUrl: config.ai.workerLocalProviderUrl,
+    aiConfigDir: `${config.dirs.config}/ai`,
     doclingUrl: config.services.doclingUrl,
     frontendUrl: config.services.frontendUrl,
     secrets: "[REDACTED]",

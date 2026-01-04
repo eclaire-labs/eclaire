@@ -69,13 +69,11 @@ console.log(`  logs:           ${config.dirs.logs}`);
 console.log(`  browserData:    ${config.dirs.browserData}`);
 console.log("");
 
-console.log("AI Providers:");
-console.log(`  localUrl:       ${config.ai.localProviderUrl}`);
-console.log(`  workerLocalUrl: ${config.ai.workerLocalProviderUrl}`);
-if (config.ai.proxyProviderUrl) {
-  console.log(`  proxyUrl:       ${config.ai.proxyProviderUrl}`);
-}
+console.log("AI Settings:");
+console.log(`  configDir:      ${config.dirs.config}/ai`);
+console.log(`  debugLogPath:   ${config.ai.debugLogPath || "(disabled)"}`);
 console.log(`  timeout:        ${config.ai.timeout}ms`);
+console.log(`  (providers/models configured in config/ai/*.json)`);
 console.log("");
 
 console.log("Services:");

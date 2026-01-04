@@ -14,10 +14,13 @@ import {
 	pgSchema,
 	sqliteSchema,
 	getDatabaseType,
+	closeDatabase,
 	type TransactionManager,
 	type DbCapabilities,
 	type DbDialect,
 } from "@eclaire/db";
+
+export { closeDatabase };
 import {
 	queueJobsPg,
 	queueSchedulesPg,

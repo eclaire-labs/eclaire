@@ -16,16 +16,18 @@ import type { Redis } from "ioredis";
 /**
  * Create Redis pub/sub publisher for remote BullMQ workers.
  *
- * Publishes events to channel: `processing:{userId}`
+ * Publishes events to channel: `{keyPrefix}:processing:{userId}`
  * Backend subscribes to this channel in processing-events.ts
  *
  * @param redisUrl - Redis connection URL
  * @param logger - Logger instance
+ * @param keyPrefix - Redis key prefix (default: "eclaire")
  * @returns JobEventCallbacks that publish to Redis
  */
 export function createRedisPublisher(
   redisUrl: string,
   logger: Logger,
+  keyPrefix: string = "eclaire",
 ): JobEventCallbacks {
   let redis: Redis | null = null;
 
@@ -49,7 +51,7 @@ export function createRedisPublisher(
     }
 
     try {
-      const channel = `processing:${userId}`;
+      const channel = `${keyPrefix}:processing:${userId}`;
       await connection.publish(channel, JSON.stringify(event));
 
       logger.debug(

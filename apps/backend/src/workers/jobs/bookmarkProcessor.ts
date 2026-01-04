@@ -156,9 +156,23 @@ async function processRegularBookmarkJob(
         "Desktop screenshot completed successfully.",
       );
 
+      // Extract raw pixel data to bypass libvips colorspace interpretation issues
+      // (Playwright PNGs can have colorspace values that libvips doesn't recognize)
+      const { data: rawPixels, info: imageInfo } = await sharp(ssDesktopBuffer)
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      const rawInput = {
+        raw: {
+          width: imageInfo.width,
+          height: imageInfo.height,
+          channels: imageInfo.channels,
+        },
+      };
+
       // Generate thumbnail (lower resolution, 400x400, 85% quality)
       const storage = getStorage();
-      const thumbnailBuffer = await sharp(ssDesktopBuffer)
+      const thumbnailBuffer = await sharp(rawPixels, rawInput)
         .resize(400, 400, { fit: "inside", withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toBuffer();
@@ -167,7 +181,7 @@ async function processRegularBookmarkJob(
       allArtifacts.thumbnailStorageId = thumbnailKey;
 
       // Generate screenshot (higher resolution, 1920x1440, 90% quality)
-      const screenshotBuffer = await sharp(ssDesktopBuffer)
+      const screenshotBuffer = await sharp(rawPixels, rawInput)
         .resize(1920, 1440, { fit: "inside", withoutEnlargement: true })
         .jpeg({ quality: 90 })
         .toBuffer();
@@ -185,18 +199,10 @@ async function processRegularBookmarkJob(
           error: errorMessage,
           isTimeout: screenshotError instanceof TimeoutError,
         },
-        "Desktop screenshot generation failed, creating fallback",
+        "Desktop screenshot/thumbnail generation failed",
       );
-      // Create a simple fallback thumbnail
-      const fallbackBuffer = Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-        "base64",
-      );
-      const storage = getStorage();
-      const fallbackKey = buildKey(userId, "bookmarks", bookmarkId, "thumbnail-fallback.jpg");
-      await storage.writeBuffer(fallbackKey, fallbackBuffer, { contentType: "image/jpeg" });
-      allArtifacts.thumbnailStorageId = fallbackKey;
-      ssDesktopBuffer = fallbackBuffer;
+      // Let the error propagate - don't create fallback, let job fail
+      throw screenshotError;
     }
 
     // Full page screenshot with error handling
@@ -300,6 +306,46 @@ async function processRegularBookmarkJob(
       );
     }
 
+    // Favicon extraction via Playwright (before closing page)
+    currentStage = "favicon_extraction";
+    let faviconStorageId: string | null = null;
+    try {
+      logger.debug({ bookmarkId }, "Attempting favicon extraction via Playwright...");
+      const faviconHref = await page.evaluate(() => {
+        const link = document.querySelector("link[rel='icon']") ||
+                     document.querySelector("link[rel='shortcut icon']");
+        return link?.getAttribute('href') || null;
+      });
+
+      if (faviconHref) {
+        const absoluteFaviconUrl = new URL(faviconHref, page.url()).href;
+        logger.debug({ bookmarkId, faviconUrl: absoluteFaviconUrl }, "Found favicon, fetching via Playwright...");
+        const faviconResponse = await page.request.get(absoluteFaviconUrl);
+        if (faviconResponse.ok()) {
+          const faviconBuffer = await faviconResponse.body();
+          if (faviconBuffer.length > 0) {
+            const contentType = faviconResponse.headers()['content-type'] || 'image/x-icon';
+            // Determine file extension from content type
+            let ext = '.ico';
+            if (contentType.includes('svg')) ext = '.svg';
+            else if (contentType.includes('png')) ext = '.png';
+            else if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = '.jpg';
+            else if (contentType.includes('gif')) ext = '.gif';
+
+            const storage = getStorage();
+            const faviconKey = buildKey(userId, "bookmarks", bookmarkId, `favicon${ext}`);
+            await storage.writeBuffer(faviconKey, faviconBuffer, { contentType });
+            faviconStorageId = faviconKey;
+            logger.debug({ bookmarkId, faviconKey }, "Favicon saved successfully");
+          }
+        }
+      } else {
+        logger.debug({ bookmarkId }, "No favicon link found in page");
+      }
+    } catch (faviconError: any) {
+      logger.debug({ bookmarkId, error: faviconError.message }, "Could not fetch favicon via Playwright");
+    }
+
     // Content extraction with error handling
     currentStage = "html_content_extraction";
     try {
@@ -310,6 +356,7 @@ async function processRegularBookmarkJob(
         allArtifacts.normalizedUrl,
         userId,
         bookmarkId,
+        faviconStorageId, // Pass pre-fetched favicon
       );
       Object.assign(allArtifacts, contentData);
       logger.debug(
