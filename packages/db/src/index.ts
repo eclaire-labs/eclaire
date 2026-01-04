@@ -9,6 +9,9 @@ import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
 import type { Logger } from "@eclaire/logger";
+import type { PGlite } from "@electric-sql/pglite";
+import type Database from "better-sqlite3";
+import type postgres from "postgres";
 import {
 	createSqliteClient,
 	createPgliteClient,
@@ -78,6 +81,8 @@ export interface DatabaseInitResult {
 let dbInstance: DbInstance | null = null;
 let txManagerInstance: TransactionManager | null = null;
 let capabilitiesInstance: DbCapabilities | null = null;
+let rawClient: postgres.Sql | Database.Database | PGlite | null = null;
+let currentDbType: DbDialect | null = null;
 
 /**
  * Get database capabilities based on database type
@@ -154,6 +159,8 @@ export function initializeDatabase(config?: DatabaseConfig): DatabaseInitResult 
 		logger?.info({ path: sqlitePath }, "Initializing SQLite database");
 
 		const client = createSqliteClient(sqlitePath);
+		rawClient = client;
+		currentDbType = dbType;
 		dbInstance = drizzleSqlite(client, { schema: sqliteSchema }) as any;
 		txManagerInstance = createSqliteTransactionManager(
 			dbInstance as SqliteDbInstance,
@@ -175,6 +182,8 @@ export function initializeDatabase(config?: DatabaseConfig): DatabaseInitResult 
 		logger?.info({ path: pglitePath }, "Initializing PGlite database");
 
 		const client = createPgliteClient(pglitePath);
+		rawClient = client;
+		currentDbType = dbType;
 		dbInstance = drizzlePglite(client, { schema: pgSchema }) as any;
 		txManagerInstance = createPgTransactionManager(
 			dbInstance as PgliteDbInstance,
@@ -198,6 +207,8 @@ export function initializeDatabase(config?: DatabaseConfig): DatabaseInitResult 
 		);
 
 		const client = createPostgresClient(dbUrl);
+		rawClient = client;
+		currentDbType = dbType;
 		dbInstance = drizzlePostgres(client, { schema: pgSchema });
 		txManagerInstance = createPgTransactionManager(
 			dbInstance as PostgresDbInstance,
@@ -225,4 +236,26 @@ export function resetDatabaseInstance(): void {
 	dbInstance = null;
 	txManagerInstance = null;
 	capabilitiesInstance = null;
+	rawClient = null;
+	currentDbType = null;
+}
+
+/**
+ * Close the database connection gracefully.
+ *
+ * @param options - Optional settings for closing the connection
+ * @param options.timeout - Timeout in seconds for PostgreSQL connections (default: 5)
+ */
+export async function closeDatabase(options?: { timeout?: number }): Promise<void> {
+	if (!rawClient) return;
+
+	if (currentDbType === "postgresql") {
+		await (rawClient as postgres.Sql).end({ timeout: options?.timeout ?? 5 });
+	} else if (currentDbType === "sqlite") {
+		(rawClient as Database.Database).close();
+	} else if (currentDbType === "pglite") {
+		await (rawClient as PGlite).close();
+	}
+
+	resetDatabaseInstance();
 }

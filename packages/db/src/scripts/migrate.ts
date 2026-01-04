@@ -307,7 +307,7 @@ async function runPostgresMigrations(statusFlag: boolean, forceFlag: boolean) {
 		process.exit(1);
 	} finally {
 		console.log("Closing database connection");
-		await client.end();
+		await client.end({ timeout: 5 });
 	}
 }
 
