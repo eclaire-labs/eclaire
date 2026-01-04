@@ -9,62 +9,12 @@ import {
 // Create authenticated fetch function
 const loggedFetch = createAuthenticatedFetch(TEST_API_KEY);
 
-// Type definitions for the prompt API response with trace data
-interface TraceContext {
-  aiProvider: string;
-  aiBaseURL: string;
-  aiModel: string;
-  hasApiKey: boolean;
-}
-
-interface TraceAICall {
-  callIndex: number;
-  timestamp: string;
-  requestBody: Record<string, any>;
-  responseBody: Record<string, any>;
-  durationMs: number;
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-  };
-  estimatedInputTokens?: number;
-}
-
-interface TraceToolCall {
-  callIndex: number;
-  timestamp: string;
-  functionName: string;
-  arguments: Record<string, any>;
-  result: any;
-  error?: string;
-  durationMs: number;
-}
-
-interface TraceSummary {
-  totalExecutionTimeMs: number;
-  totalAiCalls: number;
-  totalToolCalls: number;
-  totalAiResponseTimeMs: number;
-  totalToolExecutionTimeMs: number;
-}
-
-interface Trace {
-  enabled: boolean;
-  requestBody: Record<string, any>;
-  context: TraceContext;
-  aiCalls: TraceAICall[];
-  toolCalls: TraceToolCall[];
-  summary: TraceSummary;
-  responseBody: Record<string, any>;
-}
-
+// Type definitions for the prompt API response
 interface PromptResponse {
   status: string;
   requestId: string;
   type: "text_response";
   response: string;
-  trace?: Trace;
 }
 
 interface ModelEvalResult {
@@ -160,7 +110,6 @@ describe("Model Evaluation Integration Tests", () => {
 
         const requestBody = {
           prompt: prompt,
-          trace: true, // Enable tracing to collect performance metrics
           aiConfig: modelConfig.config,
         };
 
@@ -179,34 +128,16 @@ describe("Model Evaluation Integration Tests", () => {
         if (response.ok) {
           const data = (await response.json()) as PromptResponse;
 
-          // Extract metrics from trace data
-          const trace = data.trace;
-          const modelName =
-            trace?.context?.aiModel ||
-            modelConfig.config.BACKEND_AI_MODEL ||
-            "unknown";
-          const provider =
-            trace?.context?.aiProvider ||
-            modelConfig.config.BACKEND_AI_PROVIDER ||
-            "unknown";
-          const baseURL = trace?.context?.aiBaseURL || "unknown";
-
-          // Calculate maximum context size from AI calls (sum of prompt tokens)
-          const maxContextSize = trace?.aiCalls?.reduce((max, call) => {
-            const promptTokens =
-              call.usage?.prompt_tokens || call.estimatedInputTokens || 0;
-            return Math.max(max, promptTokens);
-          }, 0);
-
+          const config = modelConfig.config as Record<string, string>;
           const result: ModelEvalResult = {
-            modelName: modelName,
-            provider: provider,
-            baseURL: baseURL,
-            totalTimeMs: trace?.summary?.totalExecutionTimeMs || totalTime,
-            aiResponseTimeMs: trace?.summary?.totalAiResponseTimeMs || 0,
-            toolCallsCount: trace?.summary?.totalToolCalls || 0,
-            aiCallsCount: trace?.summary?.totalAiCalls || 0,
-            maxContextSize: maxContextSize,
+            modelName: config.BACKEND_AI_MODEL || "unknown",
+            provider: config.BACKEND_AI_PROVIDER || "unknown",
+            baseURL: config.BACKEND_AI_BASE_URL || "unknown",
+            totalTimeMs: totalTime,
+            aiResponseTimeMs: 0,
+            toolCallsCount: 0,
+            aiCallsCount: 0,
+            maxContextSize: undefined,
             finalResponse: data.response,
             success: true,
           };

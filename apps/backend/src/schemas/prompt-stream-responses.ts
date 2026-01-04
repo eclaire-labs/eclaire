@@ -1,5 +1,6 @@
 // schemas/prompt-stream-responses.ts
 import z from "zod/v4";
+import { jsonValueSchema, toolArgumentsSchema } from "./common.js";
 
 // Base streaming event schema
 export const BaseStreamEventSchema = z.object({
@@ -18,8 +19,8 @@ export const ToolCallStreamEventSchema = BaseStreamEventSchema.extend({
   type: z.literal("tool-call"),
   name: z.string(),
   status: z.enum(["starting", "executing", "completed", "error"]),
-  arguments: z.record(z.string(), z.any()).optional(),
-  result: z.any().optional(),
+  arguments: toolArgumentsSchema.optional(),
+  result: jsonValueSchema.optional(),
   error: z.string().optional(),
 });
 

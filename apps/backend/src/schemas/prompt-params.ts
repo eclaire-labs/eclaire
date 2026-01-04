@@ -1,5 +1,6 @@
 // schemas/prompt-params.ts
 import z from "zod/v4";
+import { jsonValueSchema, toolArgumentsSchema } from "./common.js";
 
 // Content data schema for file/data uploads
 export const ContentDataSchema = z.object({
@@ -48,24 +49,23 @@ export const PromptRequestSchema = z.object({
   content: z.union([ContentDataSchema, z.array(ContentDataSchema)]).optional(),
   deviceInfo: DeviceInfoSchema.optional(),
   prompt: z.string().optional(),
-  context: ContextSchema.optional(), // Add context field
-  trace: z.boolean().optional().default(false), // Add trace parameter
-  conversationId: z.string().optional(), // Add conversation ID for multi-turn conversations
-  targetUserId: z.string().optional(), // Add target user ID for AI assistant requests
-  stream: z.boolean().optional().default(false), // Add streaming parameter
-  enableThinking: z.boolean().optional(), // Add thinking control parameter
+  context: ContextSchema.optional(),
+  conversationId: z.string().optional(),
+  targetUserId: z.string().optional(),
+  stream: z.boolean().optional().default(false),
+  enableThinking: z.boolean().optional(),
 });
 
 // Tool call schema for AI function calls
 export const ToolCallSchema = z.object({
   functionName: z.string(),
-  arguments: z.record(z.string(), z.any()),
+  arguments: toolArgumentsSchema,
 });
 
 // Tool result schema
 export const ToolResultSchema = z.object({
   tool_name: z.string(),
-  result: z.any().optional(),
+  result: jsonValueSchema.optional(),
   error: z.string().optional(),
 });
 
@@ -98,62 +98,6 @@ export const SearchArgsSchema = z.object({
   status: z.enum(["not-started", "in-progress", "completed"]).optional(), // For tasks
 });
 
-// Trace schemas for debugging and testing
-export const TraceAICallSchema = z.object({
-  callIndex: z.number(),
-  timestamp: z.string(),
-  requestBody: z.record(z.string(), z.any()),
-  responseBody: z
-    .object({
-      rawSSEResponse: z.string().optional(), // Raw SSE buffer for streaming responses
-    })
-    .passthrough(), // Allows additional properties from AI provider response
-  durationMs: z.number(),
-  usage: z
-    .object({
-      prompt_tokens: z.number().optional(),
-      completion_tokens: z.number().optional(),
-      total_tokens: z.number().optional(),
-    })
-    .optional(),
-  estimatedInputTokens: z.number().optional(),
-});
-
-export const TraceToolCallSchema = z.object({
-  callIndex: z.number(),
-  timestamp: z.string(),
-  functionName: z.string(),
-  arguments: z.record(z.string(), z.any()),
-  result: z.any(),
-  error: z.string().optional(),
-  durationMs: z.number(),
-});
-
-export const TraceContextSchema = z.object({
-  aiProvider: z.string(),
-  aiBaseURL: z.string(),
-  aiModel: z.string(),
-  hasApiKey: z.boolean(),
-});
-
-export const TraceSummarySchema = z.object({
-  totalExecutionTimeMs: z.number(),
-  totalAiCalls: z.number(),
-  totalToolCalls: z.number(),
-  totalAiResponseTimeMs: z.number(),
-  totalToolExecutionTimeMs: z.number(),
-});
-
-export const TraceSchema = z.object({
-  enabled: z.boolean(),
-  requestBody: z.record(z.string(), z.any()),
-  context: TraceContextSchema,
-  aiCalls: z.array(TraceAICallSchema),
-  toolCalls: z.array(TraceToolCallSchema),
-  summary: TraceSummarySchema,
-  responseBody: z.record(z.string(), z.any()), // Response before trace is added
-});
-
 // TypeScript types
 export type ContentData = z.infer<typeof ContentDataSchema>;
 export type DeviceInfo = z.infer<typeof DeviceInfoSchema>;
@@ -165,8 +109,3 @@ export type UserContext = z.infer<typeof UserContextSchema>;
 export type SearchArgs = z.infer<typeof SearchArgsSchema>;
 export type AssetReference = z.infer<typeof AssetReferenceSchema>;
 export type Context = z.infer<typeof ContextSchema>;
-export type TraceAICall = z.infer<typeof TraceAICallSchema>;
-export type TraceToolCall = z.infer<typeof TraceToolCallSchema>;
-export type TraceContext = z.infer<typeof TraceContextSchema>;
-export type TraceSummary = z.infer<typeof TraceSummarySchema>;
-export type Trace = z.infer<typeof TraceSchema>;

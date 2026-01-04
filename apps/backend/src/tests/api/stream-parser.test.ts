@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { LLMStreamParser } from "../../lib/parser-stream-text.js";
+import { LLMStreamParser } from "@eclaire/ai";
 
 describe("LLMStreamParser Character Preservation", () => {
   let parser: LLMStreamParser;

@@ -1,14 +1,15 @@
 import { Hono } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { describeRoute } from "hono-openapi";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
-import { isValidConversationId } from "@eclaire/core";
-import { recordHistory } from "../lib/services/history.js";
 import {
+  validatePromptRequest,
+  resolveEffectiveUserId,
+  processPromptWithHistory,
+  processPromptStreamWithHistory,
   ConversationNotFoundError,
-  processPromptRequest,
-  processPromptRequestStream,
-  type StreamEvent,
+  PromptProcessingError,
 } from "../lib/services/prompt.js";
 
 // Import schemas
@@ -34,60 +35,35 @@ promptRoutes.post("/", describeRoute(postPromptRouteDescription), async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  logger.info(
-    { requestId, userId: authenticatedUserId },
-    "Authenticated user request",
-  );
-
-  // Determine the effective user ID for tool execution (declare at function scope)
-  let effectiveUserId = authenticatedUserId;
-
   try {
     const bodyData = await c.req.json();
-    logger.debug(
-      { requestId, userId: authenticatedUserId },
-      "Request body parsed",
-    );
-
-    // Validate request body
     const body = PromptRequestSchema.parse(bodyData);
 
-    // Update the effective user ID if targetUserId is provided
-    effectiveUserId = authenticatedUserId;
+    // Resolve effective user ID (handles targetUserId for AI assistant)
+    const userResult = resolveEffectiveUserId(
+      authenticatedUserId,
+      body.targetUserId,
+    );
+    if ("error" in userResult) {
+      logger.warn(
+        { requestId, authenticatedUserId, targetUserId: body.targetUserId },
+        "Non-AI assistant attempted to specify targetUserId",
+      );
+      return c.json({ error: userResult.error }, userResult.code);
+    }
+    const effectiveUserId = userResult.userId;
 
-    // If targetUserId is provided, validate that the authenticated user is the AI assistant
-    if (body.targetUserId) {
-      // Check if the authenticated user is the AI assistant
-      const isAIAssistant = authenticatedUserId === "user-ai-assistant"; // TODO: Make this configurable
-
-      if (!isAIAssistant) {
-        logger.warn(
-          {
-            requestId,
-            authenticatedUserId,
-            targetUserId: body.targetUserId,
-          },
-          "Non-AI assistant user attempted to specify targetUserId",
-        );
-        return c.json(
-          { error: "Unauthorized: Only AI assistant can specify targetUserId" },
-          403,
-        );
-      }
-
-      // Use the target user ID for tool execution
-      effectiveUserId = body.targetUserId;
-      logger.info(
-        {
-          requestId,
-          authenticatedUserId,
-          effectiveUserId: body.targetUserId,
-        },
-        "AI assistant request on behalf of user",
+    // Validate request
+    const validation = validatePromptRequest(body);
+    if (!validation.valid) {
+      logger.warn({ requestId, userId: effectiveUserId }, validation.error);
+      return c.json(
+        { error: validation.error, message: validation.message },
+        validation.code as ContentfulStatusCode,
       );
     }
 
-    // Log context information
+    // Log context if present
     if (body.context) {
       logger.info(
         {
@@ -100,242 +76,36 @@ promptRoutes.post("/", describeRoute(postPromptRouteDescription), async (c) => {
       );
     }
 
-    if (body.trace) {
-      logger.info(
-        {
-          requestId,
-          userId: effectiveUserId,
-          traceEnabled: body.trace,
-        },
-        "Request includes trace parameter",
-      );
-    }
-
-    if (
-      (!body.prompt || body.prompt.trim() === "") &&
-      (!body.content ||
-        (Array.isArray(body.content) && body.content.length === 0))
-    ) {
-      logger.warn(
-        { requestId, userId: effectiveUserId },
-        "Invalid request: Missing 'prompt' or 'content'",
-      );
-      return c.json(
-        {
-          error: "Invalid request",
-          message: "Request must include either 'prompt' or 'content' or both",
-        },
-        400,
-      );
-    }
-
-    // Validate conversation ID format if provided
-    if (body.conversationId && !isValidConversationId(body.conversationId)) {
-      logger.warn(
-        {
-          requestId,
-          userId: effectiveUserId,
-          conversationId: body.conversationId,
-        },
-        "Invalid conversation ID format",
-      );
-      return c.json({ error: "Invalid conversation ID" }, 400);
-    }
-
-    if (body.content) {
-      const contentArray = Array.isArray(body.content)
-        ? body.content
-        : [body.content];
-      for (const item of contentArray) {
-        if (item.data && item.data.length > 10 * 1024 * 1024) {
-          logger.warn(
-            {
-              requestId,
-              userId: effectiveUserId,
-              contentSize: item.data.length,
-            },
-            "Content too large",
-          );
-          return c.json(
-            {
-              error: "Content too large",
-              message:
-                "The content data exceeds the maximum size limit of 10MB",
-            },
-            413,
-          );
-        }
-      }
-    }
-
-    if (body.prompt) {
-      logger.info(
-        { requestId, userId: effectiveUserId },
-        "Processing prompt with AI",
-      );
-
-      try {
-        const result = await processPromptRequest(
-          effectiveUserId,
-          body.prompt,
-          body.context,
-          requestId,
-          body.trace,
-          body.conversationId,
-          body.enableThinking,
-        );
-
-        // Capture request body in trace if enabled
-        if (result.trace) {
-          result.trace.requestBody = bodyData;
-        }
-
-        const responsePayload = {
-          status: "OK",
-          requestId: result.requestId,
-          type: result.type,
-          response: result.response,
-          ...(result.conversationId && {
-            conversationId: result.conversationId,
-          }),
-          ...(result.thinkingContent && {
-            thinkingContent: result.thinkingContent,
-          }),
-          ...(result.toolCalls && { toolCalls: result.toolCalls }),
-          ...(body.trace && result.trace && { trace: result.trace }),
-        };
-
-        logger.info(
-          { requestId, userId: effectiveUserId },
-          "Recording history for text response",
-        );
-        await recordHistory({
-          action: "ai_prompt_text_response",
-          itemType: "prompt",
-          itemId: responsePayload.requestId,
-          itemName: "AI Text Response",
-          beforeData: { prompt: body.prompt, deviceInfo: body.deviceInfo },
-          afterData: responsePayload,
-          actor: "assistant",
-          userId: effectiveUserId,
-        });
-
-        logger.info(
-          { requestId, userId: effectiveUserId },
-          "Returning text JSON response",
-        );
-        return c.json(responsePayload);
-      } catch (aiError) {
-        // Handle conversation not found errors specifically
-        if (aiError instanceof ConversationNotFoundError) {
-          logger.warn(
-            {
-              requestId,
-              userId: effectiveUserId,
-              conversationId: body.conversationId,
-            },
-            "Conversation not found or access denied",
-          );
-          return c.json({ error: "Conversation not found" }, 404);
-        }
-
-        logger.error(
-          {
-            requestId,
-            userId: effectiveUserId,
-            error: aiError instanceof Error ? aiError.message : "Unknown error",
-            stack: aiError instanceof Error ? aiError.stack : undefined,
-          },
-          "Error processing prompt request",
-        );
-
-        const errorResponse = {
-          type: "text_response",
-          error: "AI service error",
-          response:
-            "An error occurred while processing your prompt with the AI service. Please try again later.",
-        };
-        try {
-          await recordHistory({
-            action: "ai_prompt_error",
-            itemType: "api_error",
-            itemId: `err_ai_outer_${Date.now()}`,
-            itemName: "AI Prompt Processing Error",
-            beforeData: { prompt: body.prompt, deviceInfo: body.deviceInfo },
-            afterData: {
-              error:
-                aiError instanceof Error ? aiError.message : String(aiError),
-              response: errorResponse,
-            },
-            actor: "system",
-            userId: effectiveUserId,
-          });
-        } catch (historyError) {
-          logger.error(
-            {
-              requestId,
-              userId: effectiveUserId,
-              error:
-                historyError instanceof Error
-                  ? historyError.message
-                  : "Unknown error",
-              stack:
-                historyError instanceof Error ? historyError.stack : undefined,
-            },
-            "Failed to record AI error in history",
-          );
-        }
-        return c.json(errorResponse, 502);
-      }
-    }
-
-    logger.info(
-      { requestId, userId: effectiveUserId },
-      "No prompt provided, acknowledging content receipt",
-    );
-    const response = {
-      status: "OK",
-      requestId: `req_content_${Date.now()}`,
-      type: "text_response",
-      response: "Content received and acknowledged.",
-      processed: true,
-    };
-
-    logger.info(
-      { requestId, userId: effectiveUserId },
-      "Recording history for content-only request",
-    );
-    await recordHistory({
-      action: "api_content_upload",
-      itemType: "content_submission",
-      itemId: response.requestId,
-      itemName: "Content Submission (No Prompt)",
-      beforeData: {
-        contentSummary: "Content provided without prompt",
-        deviceInfo: body.deviceInfo,
-      },
-      afterData: response,
-      actor: "user",
-      userId: effectiveUserId,
+    // Process prompt
+    const result = await processPromptWithHistory({
+      body,
+      effectiveUserId,
+      requestId,
     });
 
-    logger.info(
-      { requestId, userId: effectiveUserId },
-      "Returning response for content-only request",
-    );
-    return c.json(response);
+    logger.info({ requestId, userId: effectiveUserId }, "Returning response");
+    return c.json({ status: "OK", ...result });
   } catch (error) {
-    logger.error(
-      {
-        requestId,
-        userId: effectiveUserId,
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Top-level error processing request",
-    );
+    if (error instanceof ConversationNotFoundError) {
+      logger.warn({ requestId }, "Conversation not found or access denied");
+      return c.json({ error: "Conversation not found" }, 404);
+    }
+
+    if (error instanceof PromptProcessingError) {
+      logger.error({ requestId, error: error.message }, "Prompt processing error");
+      return c.json(
+        {
+          type: "text_response",
+          error: error.message,
+          response:
+            "An error occurred while processing your prompt with the AI service. Please try again later.",
+        },
+        error.code as ContentfulStatusCode,
+      );
+    }
 
     if (error instanceof z.ZodError) {
+      logger.warn({ requestId, error: error.issues }, "Request validation failed");
       return c.json(
         {
           error: "Invalid request format",
@@ -346,44 +116,23 @@ promptRoutes.post("/", describeRoute(postPromptRouteDescription), async (c) => {
       );
     }
 
-    const errorResponse = {
-      type: "text_response",
-      error: "Internal server error",
-      response:
-        "An unexpected error occurred while processing your request. Please try again later.",
-    };
-    try {
-      await recordHistory({
-        action: "api_error_general",
-        itemType: "api_error",
-        itemId: `err_gen_top_${Date.now()}`,
-        itemName: "General Prompt API Top-Level Error",
-        beforeData: {
-          errorInfo:
-            "Request body might be unparsable or other top-level issue",
-        },
-        afterData: {
-          error: error instanceof Error ? error.message : String(error),
-          response: errorResponse,
-        },
-        actor: "system",
-        userId: effectiveUserId || "unknown",
-      });
-    } catch (historyError) {
-      logger.error(
-        {
-          requestId,
-          userId: effectiveUserId,
-          error:
-            historyError instanceof Error
-              ? historyError.message
-              : "Unknown error",
-          stack: historyError instanceof Error ? historyError.stack : undefined,
-        },
-        "Failed to record general top-level error in history",
-      );
-    }
-    return c.json(errorResponse, 500);
+    logger.error(
+      {
+        requestId,
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+      "Unexpected error processing request",
+    );
+    return c.json(
+      {
+        type: "text_response",
+        error: "Internal server error",
+        response:
+          "An unexpected error occurred while processing your request. Please try again later.",
+      },
+      500,
+    );
   }
 });
 
@@ -401,62 +150,38 @@ promptRoutes.post(
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    logger.info(
-      { requestId, userId: authenticatedUserId },
-      "Authenticated user streaming request",
-    );
-
-    // Determine the effective user ID for tool execution
-    let effectiveUserId = authenticatedUserId;
-
     try {
       const bodyData = await c.req.json();
-      logger.debug(
-        { requestId, userId: authenticatedUserId },
-        "Streaming request body parsed",
-      );
-
-      // Validate request body for streaming
       const body = StreamPromptRequestSchema.parse(bodyData);
 
-      // Update the effective user ID if targetUserId is provided
-      effectiveUserId = authenticatedUserId;
+      // Resolve effective user ID
+      const userResult = resolveEffectiveUserId(
+        authenticatedUserId,
+        body.targetUserId,
+      );
+      if ("error" in userResult) {
+        logger.warn(
+          { requestId, authenticatedUserId, targetUserId: body.targetUserId },
+          "Non-AI assistant attempted to specify targetUserId in streaming",
+        );
+        return c.json({ error: userResult.error }, userResult.code);
+      }
+      const effectiveUserId = userResult.userId;
 
-      // If targetUserId is provided, validate that the authenticated user is the AI assistant
-      if (body.targetUserId) {
-        // Check if the authenticated user is the AI assistant
-        const isAIAssistant = authenticatedUserId === "user-ai-assistant"; // TODO: Make this configurable
-
-        if (!isAIAssistant) {
-          logger.warn(
-            {
-              requestId,
-              authenticatedUserId,
-              targetUserId: body.targetUserId,
-            },
-            "Non-AI assistant user attempted to specify targetUserId in streaming",
-          );
-          return c.json(
-            {
-              error: "Unauthorized: Only AI assistant can specify targetUserId",
-            },
-            403,
-          );
-        }
-
-        // Use the target user ID for tool execution
-        effectiveUserId = body.targetUserId;
-        logger.info(
-          {
-            requestId,
-            authenticatedUserId,
-            effectiveUserId: body.targetUserId,
-          },
-          "AI assistant streaming request on behalf of user",
+      // Validate request
+      const validation = validatePromptRequest(body);
+      if (!validation.valid) {
+        logger.warn(
+          { requestId, userId: effectiveUserId },
+          `Streaming validation failed: ${validation.error}`,
+        );
+        return c.json(
+          { error: validation.error, message: validation.message },
+          validation.code as ContentfulStatusCode,
         );
       }
 
-      // Log context information
+      // Log context if present
       if (body.context) {
         logger.info(
           {
@@ -469,302 +194,35 @@ promptRoutes.post(
         );
       }
 
-      if (body.trace) {
-        logger.info(
-          {
-            requestId,
-            userId: effectiveUserId,
-            traceEnabled: body.trace,
-          },
-          "Streaming request includes trace parameter",
-        );
-      }
-
-      if (
-        (!body.prompt || body.prompt.trim() === "") &&
-        (!body.content ||
-          (Array.isArray(body.content) && body.content.length === 0))
-      ) {
-        logger.warn(
-          { requestId, userId: effectiveUserId },
-          "Invalid streaming request: Missing 'prompt' or 'content'",
-        );
-        return c.json(
-          {
-            error: "Invalid request",
-            message:
-              "Request must include either 'prompt' or 'content' or both",
-          },
-          400,
-        );
-      }
-
-      // Validate conversation ID format if provided
-      if (body.conversationId && !isValidConversationId(body.conversationId)) {
-        logger.warn(
-          {
-            requestId,
-            userId: effectiveUserId,
-            conversationId: body.conversationId,
-          },
-          "Invalid conversation ID format in streaming request",
-        );
-        return c.json({ error: "Invalid conversation ID" }, 400);
-      }
-
-      if (body.content) {
-        const contentArray = Array.isArray(body.content)
-          ? body.content
-          : [body.content];
-        for (const item of contentArray) {
-          if (item.data && item.data.length > 10 * 1024 * 1024) {
-            logger.warn(
-              {
-                requestId,
-                userId: effectiveUserId,
-                contentSize: item.data.length,
-              },
-              "Content too large in streaming request",
-            );
-            return c.json(
-              {
-                error: "Content too large",
-                message:
-                  "The content data exceeds the maximum size limit of 10MB",
-              },
-              413,
-            );
-          }
-        }
-      }
-
-      if (body.prompt) {
-        logger.info(
-          { requestId, userId: effectiveUserId },
-          "Processing streaming prompt with AI",
-        );
-
-        try {
-          // Set up Server-Sent Events headers
-          c.header("Content-Type", "text/event-stream");
-          c.header("Cache-Control", "no-cache");
-          c.header("Connection", "keep-alive");
-          c.header("Access-Control-Allow-Origin", "*");
-          c.header("Access-Control-Allow-Headers", "*");
-
-          // Create the streaming response
-          const streamingResult = await processPromptRequestStream(
-            effectiveUserId,
-            body.prompt,
-            body.context,
-            requestId,
-            body.trace,
-            body.conversationId,
-            body.enableThinking,
-          );
-
-          // Create a ReadableStream that formats events as SSE
-          const sseStream = new ReadableStream({
-            async start(controller) {
-              const reader = streamingResult.getReader();
-              const encoder = new TextEncoder();
-
-              try {
-                while (true) {
-                  const { done, value } = await reader.read();
-                  if (done) break;
-
-                  // Format as Server-Sent Event
-                  const eventData = JSON.stringify(value);
-                  const sseData = `data: ${eventData}\n\n`;
-                  controller.enqueue(encoder.encode(sseData));
-                }
-              } catch (error) {
-                logger.error(
-                  {
-                    requestId,
-                    userId: effectiveUserId,
-                    error:
-                      error instanceof Error ? error.message : "Unknown error",
-                  },
-                  "Error in streaming response",
-                );
-
-                // Send error event
-                const errorEvent = JSON.stringify({
-                  type: "error",
-                  error:
-                    error instanceof Error ? error.message : "Unknown error",
-                  timestamp: new Date().toISOString(),
-                });
-                const sseError = `data: ${errorEvent}\n\n`;
-                controller.enqueue(encoder.encode(sseError));
-              } finally {
-                reader.releaseLock();
-                controller.close();
-              }
-            },
-          });
-
-          logger.info(
-            { requestId, userId: effectiveUserId },
-            "Recording history for streaming response",
-          );
-
-          // Record history for streaming request (non-blocking)
-          recordHistory({
-            action: "ai_prompt_streaming_response",
-            itemType: "prompt",
-            itemId: requestId,
-            itemName: "AI Streaming Response",
-            beforeData: { prompt: body.prompt, deviceInfo: body.deviceInfo },
-            afterData: { streaming: true, requestId },
-            actor: "assistant",
-            userId: effectiveUserId,
-          }).catch((historyError) => {
-            logger.error(
-              {
-                requestId,
-                userId: effectiveUserId,
-                error:
-                  historyError instanceof Error
-                    ? historyError.message
-                    : "Unknown error",
-              },
-              "Failed to record streaming history (non-blocking)",
-            );
-          });
-
-          logger.info(
-            { requestId, userId: effectiveUserId },
-            "Returning streaming response",
-          );
-
-          return new Response(sseStream, {
-            headers: {
-              "Content-Type": "text/event-stream",
-              "Cache-Control": "no-cache",
-              Connection: "keep-alive",
-              "Access-Control-Allow-Origin": "*",
-              "Access-Control-Allow-Headers": "*",
-            },
-          });
-        } catch (aiError) {
-          // Handle conversation not found errors specifically
-          if (aiError instanceof ConversationNotFoundError) {
-            logger.warn(
-              {
-                requestId,
-                userId: effectiveUserId,
-                conversationId: body.conversationId,
-              },
-              "Conversation not found for streaming or access denied",
-            );
-            return c.json({ error: "Conversation not found" }, 404);
-          }
-
-          logger.error(
-            {
-              requestId,
-              userId: effectiveUserId,
-              error:
-                aiError instanceof Error ? aiError.message : "Unknown error",
-              stack: aiError instanceof Error ? aiError.stack : undefined,
-            },
-            "Error processing streaming prompt request",
-          );
-
-          const errorResponse = {
-            type: "text_response",
-            error: "AI service error",
-            response:
-              "An error occurred while processing your streaming prompt with the AI service. Please try again later.",
-          };
-
-          try {
-            await recordHistory({
-              action: "ai_prompt_streaming_error",
-              itemType: "api_error",
-              itemId: `err_ai_stream_${Date.now()}`,
-              itemName: "AI Streaming Prompt Processing Error",
-              beforeData: { prompt: body.prompt, deviceInfo: body.deviceInfo },
-              afterData: {
-                error:
-                  aiError instanceof Error ? aiError.message : String(aiError),
-                response: errorResponse,
-              },
-              actor: "system",
-              userId: effectiveUserId,
-            });
-          } catch (historyError) {
-            logger.error(
-              {
-                requestId,
-                userId: effectiveUserId,
-                error:
-                  historyError instanceof Error
-                    ? historyError.message
-                    : "Unknown error",
-                stack:
-                  historyError instanceof Error
-                    ? historyError.stack
-                    : undefined,
-              },
-              "Failed to record streaming AI error in history",
-            );
-          }
-          return c.json(errorResponse, 502);
-        }
-      }
-
-      logger.info(
-        { requestId, userId: effectiveUserId },
-        "No prompt provided in streaming request, acknowledging content receipt",
-      );
-      const response = {
-        status: "OK",
-        requestId: `req_stream_content_${Date.now()}`,
-        type: "text_response",
-        response: "Content received and acknowledged via streaming endpoint.",
-        processed: true,
-      };
-
-      logger.info(
-        { requestId, userId: effectiveUserId },
-        "Recording history for streaming content-only request",
-      );
-      await recordHistory({
-        action: "api_streaming_content_upload",
-        itemType: "content_submission",
-        itemId: response.requestId,
-        itemName: "Streaming Content Submission (No Prompt)",
-        beforeData: {
-          contentSummary:
-            "Content provided without prompt to streaming endpoint",
-          deviceInfo: body.deviceInfo,
-        },
-        afterData: response,
-        actor: "user",
-        userId: effectiveUserId,
+      // Process streaming prompt
+      const sseStream = await processPromptStreamWithHistory({
+        body,
+        effectiveUserId,
+        requestId,
       });
 
       logger.info(
         { requestId, userId: effectiveUserId },
-        "Returning response for streaming content-only request",
-      );
-      return c.json(response);
-    } catch (error) {
-      logger.error(
-        {
-          requestId,
-          userId: effectiveUserId,
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Top-level error processing streaming request",
+        "Returning streaming response",
       );
 
+      return new Response(sseStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "*",
+        },
+      });
+    } catch (error) {
+      if (error instanceof ConversationNotFoundError) {
+        logger.warn({ requestId }, "Conversation not found for streaming");
+        return c.json({ error: "Conversation not found" }, 404);
+      }
+
       if (error instanceof z.ZodError) {
+        logger.warn({ requestId, error: error.issues }, "Streaming request validation failed");
         return c.json(
           {
             error: "Invalid request format",
@@ -775,45 +233,23 @@ promptRoutes.post(
         );
       }
 
-      const errorResponse = {
-        type: "text_response",
-        error: "Internal server error",
-        response:
-          "An unexpected error occurred while processing your streaming request. Please try again later.",
-      };
-      try {
-        await recordHistory({
-          action: "api_error_streaming_general",
-          itemType: "api_error",
-          itemId: `err_gen_stream_top_${Date.now()}`,
-          itemName: "General Streaming Prompt API Top-Level Error",
-          beforeData: {
-            errorInfo:
-              "Streaming request body might be unparsable or other top-level issue",
-          },
-          afterData: {
-            error: error instanceof Error ? error.message : String(error),
-            response: errorResponse,
-          },
-          actor: "system",
-          userId: effectiveUserId || "unknown",
-        });
-      } catch (historyError) {
-        logger.error(
-          {
-            requestId,
-            userId: effectiveUserId,
-            error:
-              historyError instanceof Error
-                ? historyError.message
-                : "Unknown error",
-            stack:
-              historyError instanceof Error ? historyError.stack : undefined,
-          },
-          "Failed to record general streaming top-level error in history",
-        );
-      }
-      return c.json(errorResponse, 500);
+      logger.error(
+        {
+          requestId,
+          error: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        "Unexpected error processing streaming request",
+      );
+      return c.json(
+        {
+          type: "text_response",
+          error: "Internal server error",
+          response:
+            "An unexpected error occurred while processing your streaming request. Please try again later.",
+        },
+        500,
+      );
     }
   },
 );
