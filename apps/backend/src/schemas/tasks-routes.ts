@@ -2,6 +2,7 @@
 
 import { resolver } from "hono-openapi";
 import z from "zod/v4";
+import { reviewStatusSchema } from "./common.js";
 import {
   ErrorResponseSchema,
   UnauthorizedSchema,
@@ -357,7 +358,7 @@ export const TaskDeleteSuccessSchema = z
 // Request schema for review status update
 export const TaskReviewUpdateSchema = z
   .object({
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "New review status for the task",
       examples: ["accepted", "rejected"],
     }),

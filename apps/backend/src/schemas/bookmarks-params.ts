@@ -318,7 +318,7 @@ export const CreateBookmarkSchema = z
       }),
 
     metadata: z
-      .record(z.string(), z.any())
+      .record(z.string(), z.unknown())
       .optional()
       .meta({
         description: "Optional additional metadata for the bookmark",

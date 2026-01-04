@@ -1,5 +1,6 @@
 // schemas/documents-responses.ts
 import z from "zod/v4";
+import { reviewStatusSchema } from "./common.js";
 
 // Full document response schema
 export const DocumentResponseSchema = z
@@ -56,7 +57,7 @@ export const DocumentResponseSchema = z
       }),
 
     // Review and organization
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "Review status of the document",
     }),
 
@@ -180,7 +181,7 @@ export const CreatedDocumentResponseSchema = z
         "Initial processing status - background jobs will extract text and perform OCR",
     }),
 
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "Review status of the document",
     }),
 

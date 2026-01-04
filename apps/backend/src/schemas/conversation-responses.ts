@@ -13,7 +13,7 @@ export const MessageSchema = z.object({
   content: z.string(),
   thinkingContent: z.string().nullable().optional(),
   createdAt: z.string(),
-  metadata: z.any().optional(),
+  metadata: z.unknown().optional(),
 });
 
 // Conversation summary schema (without messages)

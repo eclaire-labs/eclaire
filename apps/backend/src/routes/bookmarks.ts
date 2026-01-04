@@ -1,18 +1,18 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
-import isUrl from "is-url";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import {
   type BookmarkAssetType,
-  createBookmarkAndQueueJob, // Renamed for clarity
+  createBookmarkAndQueueJob,
   deleteBookmark,
   getAllBookmarks,
   getBookmarkAssetDetails,
   getBookmarkById,
   reprocessBookmark,
   updateBookmark,
+  validateAndNormalizeBookmarkUrl,
 } from "../lib/services/bookmarks.js";
 import { getStorage } from "../lib/storage/index.js";
 // Import schemas
@@ -38,19 +38,6 @@ import type { RouteVariables } from "../types/route-variables.js";
 import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("bookmarks");
-
-// Helper function to normalize URLs by adding protocol if missing
-const normalizeUrl = (url: string): string => {
-  const trimmedUrl = url.trim();
-
-  // If URL already has a protocol, return as-is
-  if (trimmedUrl.match(/^https?:\/\//i)) {
-    return trimmedUrl;
-  }
-
-  // Add https:// prefix for URLs without protocol
-  return `https://${trimmedUrl}`;
-};
 
 export const bookmarksRoutes = new Hono<{ Variables: RouteVariables }>();
 
@@ -99,13 +86,9 @@ bookmarksRoutes.post(
       const { url, title, description, tags, metadata, enabled } = body;
 
       // 1. Basic URL validation and normalization
-      if (!url || !url.trim()) {
-        return c.json({ error: "A valid URL is required." }, 400);
-      }
-
-      const normalizedUrl = normalizeUrl(url);
-      if (!isUrl(normalizedUrl)) {
-        return c.json({ error: "A valid URL is required." }, 400);
+      const urlValidation = validateAndNormalizeBookmarkUrl(url);
+      if (!urlValidation.valid) {
+        return c.json({ error: urlValidation.error }, 400);
       }
 
       // 2. Prepare metadata with core fields and additional metadata
@@ -119,7 +102,7 @@ bookmarksRoutes.post(
 
       // 3. Call the service to create the DB entries and queue the job
       const result = await createBookmarkAndQueueJob({
-        url: normalizedUrl,
+        url: urlValidation.normalizedUrl!,
         userId: userId,
         rawMetadata: enrichedMetadata,
         userAgent: c.req.header("User-Agent") || "",

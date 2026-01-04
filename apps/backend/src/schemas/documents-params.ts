@@ -1,5 +1,6 @@
 // schemas/documents-params.ts
 import z from "zod/v4";
+import { reviewStatusSchema } from "./common.js";
 
 // Full document update schema
 export const DocumentSchema = z
@@ -336,7 +337,7 @@ export const DocumentSearchParamsSchema = z
 // Specialized update schemas
 export const DocumentReviewUpdateSchema = z
   .object({
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "New review status for the document",
       examples: ["accepted", "rejected"],
     }),

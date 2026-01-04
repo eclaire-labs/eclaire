@@ -28,8 +28,47 @@ import { createChildLogger } from "../logger.js";
 
 import { recordHistory } from "./history.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
+import isUrl from "is-url";
 
 const logger = createChildLogger("services:bookmarks");
+
+// --- URL VALIDATION AND NORMALIZATION ---
+
+/**
+ * Normalizes a URL by adding https:// protocol if missing.
+ */
+export function normalizeBookmarkUrl(url: string): string {
+  const trimmedUrl = url.trim();
+
+  // If URL already has a protocol, return as-is
+  if (trimmedUrl.match(/^https?:\/\//i)) {
+    return trimmedUrl;
+  }
+
+  // Add https:// prefix for URLs without protocol
+  return `https://${trimmedUrl}`;
+}
+
+/**
+ * Validates and normalizes a bookmark URL.
+ * Returns the normalized URL if valid, or an error message if invalid.
+ */
+export function validateAndNormalizeBookmarkUrl(url: string | undefined | null): {
+  valid: boolean;
+  normalizedUrl?: string;
+  error?: string;
+} {
+  if (!url || !url.trim()) {
+    return { valid: false, error: "A valid URL is required." };
+  }
+
+  const normalizedUrl = normalizeBookmarkUrl(url);
+  if (!isUrl(normalizedUrl)) {
+    return { valid: false, error: "A valid URL is required." };
+  }
+
+  return { valid: true, normalizedUrl };
+}
 
 // --- TYPES AND INTERFACES ---
 

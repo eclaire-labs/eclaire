@@ -10,8 +10,11 @@ import {
   findNotes,
   getAllNoteEntries,
   getNoteEntryById,
+  parseNoteUploadMetadata,
+  prepareNoteFromUpload,
   reprocessNote,
   updateNoteEntry,
+  validateNoteFileUpload,
 } from "../lib/services/notes.js";
 // Import schemas
 import {
@@ -35,26 +38,6 @@ import type { RouteVariables } from "../types/route-variables.js";
 import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("notes");
-
-// Helper function to transform file content to markdown
-function transformFileContent(
-  content: string,
-  mimeType: string,
-  filename: string,
-): string {
-  const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
-
-  switch (mimeType) {
-    case "text/plain":
-      return content; // Direct text content
-    case "text/markdown":
-      return content; // Direct markdown content
-    case "application/json":
-      return `# ${nameWithoutExt}\n\n\`\`\`json\n${content}\n\`\`\``;
-    default:
-      return content;
-  }
-}
 
 export const notesRoutes = new Hono<{ Variables: RouteVariables }>();
 
@@ -292,68 +275,29 @@ notesRoutes.post(
       const file = body.content as File;
       const metadataStr = body.metadata as string;
 
-      if (!file) {
-        return c.json({ error: "No file provided" }, 400);
-      }
-
-      // Validate file type
-      const allowedTypes = ["text/plain", "text/markdown", "application/json"];
-      if (!allowedTypes.includes(file.type)) {
-        return c.json(
-          {
-            error: "Invalid file type. Supported types: TXT, MD, JSON",
-          },
-          400,
-        );
-      }
-
-      // Validate file size (1MB limit)
-      const maxSize = 1024 * 1024; // 1MB
-      if (file.size > maxSize) {
-        return c.json(
-          {
-            error: "File too large. Maximum size is 1MB",
-          },
-          400,
-        );
+      // Validate file
+      const fileValidation = validateNoteFileUpload(file);
+      if (!fileValidation.valid) {
+        return c.json({ error: fileValidation.error }, 400);
       }
 
       // Parse metadata
-      let metadata = {};
-      if (metadataStr) {
-        try {
-          metadata = JSON.parse(metadataStr);
-        } catch (error) {
-          return c.json({ error: "Invalid metadata JSON" }, 400);
-        }
+      const metadataResult = parseNoteUploadMetadata(metadataStr);
+      if (!metadataResult.valid) {
+        return c.json({ error: metadataResult.error }, 400);
       }
 
-      // Validate metadata
-      const validatedMetadata = NoteMetadataSchema.parse(metadata);
+      // Validate metadata schema
+      const validatedMetadata = NoteMetadataSchema.parse(metadataResult.metadata);
 
-      // Read file content
-      const fileContent = await file.text();
-
-      // Transform content based on file type
-      const transformedContent = transformFileContent(
-        fileContent,
-        file.type,
-        file.name,
-      );
-
-      // Extract title from filename if not provided
-      const title =
-        validatedMetadata.title || file.name.replace(/\.[^/.]+$/, "");
+      // Prepare note from upload
+      const prepared = await prepareNoteFromUpload(file, validatedMetadata);
 
       // Create service payload
       const servicePayload = {
-        content: transformedContent,
-        metadata: {
-          title,
-          tags: validatedMetadata.tags || [],
-          dueDate: validatedMetadata.dueDate || undefined,
-        },
-        originalMimeType: file.type,
+        content: prepared.content,
+        metadata: prepared.metadata,
+        originalMimeType: prepared.originalMimeType,
         userAgent: c.req.header("User-Agent") || "",
       };
 

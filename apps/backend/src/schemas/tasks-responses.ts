@@ -1,5 +1,6 @@
 // schemas/tasks-responses.ts
 import z from "zod/v4";
+import { reviewStatusSchema } from "./common.js";
 
 // Task comment user schema
 export const CommentUserSchema = z
@@ -76,7 +77,7 @@ export const TaskResponseSchema = z
       description: "User ID of the person assigned to this task",
     }),
 
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "Review status of the task",
     }),
 
@@ -212,7 +213,7 @@ export const CreatedTaskResponseSchema = z
       description: "Whether background processing is enabled for this task",
     }),
 
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "Review status of the task",
     }),
 

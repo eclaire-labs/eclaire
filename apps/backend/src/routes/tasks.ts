@@ -1,13 +1,8 @@
-import { and, count, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { db, schema } from "../db/index.js";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
-
-const { tasks } = schema;
-import { getNextExecutionTime, getQueueAdapter } from "../lib/queue/index.js";
 import { ValidationError } from "../lib/errors.js";
 import {
   createTaskComment,
@@ -23,8 +18,11 @@ import {
   getAllTasks,
   getTaskById,
   reprocessTask,
+  TaskNotFoundError,
+  TaskUnauthorizedError,
   type TaskStatus,
   updateTask,
+  updateTaskExecutionTrackingWithPermissions,
   updateTaskStatusAsAssistant,
 } from "../lib/services/tasks.js";
 // Import schemas
@@ -654,61 +652,21 @@ tasksRoutes.put(
       const taskId = c.req.param("id");
       const { lastExecutedAt } = c.req.valid("json");
 
-      // Get the task to verify it exists and user has permission to update it
-      const task = await db.query.tasks.findFirst({
-        where: eq(tasks.id, taskId),
-        columns: {
-          id: true,
-          userId: true,
-          assignedToId: true,
-        },
-      });
+      const result = await updateTaskExecutionTrackingWithPermissions(
+        taskId,
+        userId,
+        lastExecutedAt,
+      );
 
-      if (!task) {
+      return c.json(result);
+    } catch (error: unknown) {
+      if (error instanceof TaskNotFoundError) {
         return c.json({ error: "Task not found" }, 404);
       }
-
-      // Check if user has permission to update execution tracking
-      // Note: In-process workers use direct service calls, so this route is primarily for external access
-      const canUpdate = task.userId === userId || task.assignedToId === userId;
-      if (!canUpdate) {
+      if (error instanceof TaskUnauthorizedError) {
         return c.json({ error: "Unauthorized to update this task" }, 403);
       }
 
-      // Log execution tracking update for security/auditing
-      logger.info(
-        {
-          taskId,
-          userId,
-          taskOwnerId: task.userId,
-          taskAssignedToId: task.assignedToId,
-          updates: { lastExecutedAt },
-        },
-        "Task execution tracking update",
-      );
-
-      // Prepare update data - only lastExecutedAt is still in the task table
-      // nextRunAt is now managed by the queue scheduler
-      const updateData: any = {};
-
-      if (lastExecutedAt !== undefined) {
-        updateData.lastExecutedAt = new Date(lastExecutedAt);
-      }
-
-      // Update the task
-      await db
-        .update(tasks)
-        .set({
-          ...updateData,
-          updatedAt: new Date(),
-        })
-        .where(eq(tasks.id, taskId));
-
-      return c.json({
-        message: "Task execution tracking updated successfully",
-        updated: Object.keys(updateData),
-      });
-    } catch (error: unknown) {
       const requestId = c.get("requestId");
       logger.error(
         {

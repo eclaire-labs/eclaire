@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { getCurrentModelConfig } from "../lib/ai-client.js";
+import { getCurrentModelConfig } from "@eclaire/ai";
 import { createChildLogger } from "../lib/logger.js";
 import { getCurrentModelRouteDescription } from "../schemas/model-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
@@ -38,7 +38,7 @@ modelRoutes.get(
         {
           requestId,
           provider: modelConfig.provider,
-          modelShortName: modelConfig.modelShortName,
+          providerModel: modelConfig.providerModel,
         },
         "Returning current model configuration",
       );

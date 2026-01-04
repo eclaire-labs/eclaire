@@ -1,5 +1,6 @@
 // schemas/bookmarks-responses.ts
 import z from "zod/v4";
+import { reviewStatusSchema } from "./common.js";
 
 // Full bookmark response schema
 export const BookmarkResponseSchema = z
@@ -39,7 +40,7 @@ export const BookmarkResponseSchema = z
       description: "Tags associated with the bookmark",
     }),
 
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "Review status of the bookmark",
     }),
 
@@ -176,7 +177,7 @@ export const CreatedBookmarkResponseSchema = z
       description: "Tags associated with the bookmark",
     }),
 
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "Review status of the bookmark",
     }),
 

@@ -25,6 +25,116 @@ import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:notes");
 
+// --- FILE UPLOAD HELPERS ---
+
+const NOTE_ALLOWED_TYPES = ["text/plain", "text/markdown", "application/json"];
+const NOTE_MAX_FILE_SIZE = 1024 * 1024; // 1MB
+
+/**
+ * Transform file content to markdown based on MIME type.
+ * JSON files are wrapped in code blocks, plain text and markdown are passed through.
+ */
+function transformFileContent(
+  content: string,
+  mimeType: string,
+  filename: string,
+): string {
+  const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
+
+  switch (mimeType) {
+    case "text/plain":
+      return content; // Direct text content
+    case "text/markdown":
+      return content; // Direct markdown content
+    case "application/json":
+      return `# ${nameWithoutExt}\n\n\`\`\`json\n${content}\n\`\`\``;
+    default:
+      return content;
+  }
+}
+
+/**
+ * Validates a note file upload and returns parsed data or an error.
+ */
+export function validateNoteFileUpload(file: File | undefined): {
+  valid: boolean;
+  error?: string;
+} {
+  if (!file) {
+    return { valid: false, error: "No file provided" };
+  }
+
+  if (!NOTE_ALLOWED_TYPES.includes(file.type)) {
+    return {
+      valid: false,
+      error: "Invalid file type. Supported types: TXT, MD, JSON",
+    };
+  }
+
+  if (file.size > NOTE_MAX_FILE_SIZE) {
+    return {
+      valid: false,
+      error: "File too large. Maximum size is 1MB",
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Parses metadata JSON string for note upload.
+ */
+export function parseNoteUploadMetadata(metadataStr: string | undefined): {
+  valid: boolean;
+  metadata?: Record<string, any>;
+  error?: string;
+} {
+  if (!metadataStr) {
+    return { valid: true, metadata: {} };
+  }
+
+  try {
+    const metadata = JSON.parse(metadataStr);
+    return { valid: true, metadata };
+  } catch (error) {
+    return { valid: false, error: "Invalid metadata JSON" };
+  }
+}
+
+/**
+ * Prepares note content and metadata from an uploaded file.
+ */
+export async function prepareNoteFromUpload(
+  file: File,
+  validatedMetadata: { title?: string; tags?: string[]; dueDate?: string | null; enabled?: boolean },
+): Promise<{
+  content: string;
+  title: string;
+  metadata: { title: string; tags: string[]; dueDate?: string };
+  originalMimeType: string;
+}> {
+  const fileContent = await file.text();
+  const transformedContent = transformFileContent(
+    fileContent,
+    file.type,
+    file.name,
+  );
+
+  // Extract title from filename if not provided
+  const title = validatedMetadata.title || file.name.replace(/\.[^/.]+$/, "");
+
+  return {
+    content: transformedContent,
+    title,
+    metadata: {
+      title,
+      tags: validatedMetadata.tags || [],
+      dueDate: validatedMetadata.dueDate ?? undefined, // Convert null to undefined
+    },
+    originalMimeType: file.type,
+  };
+}
+
 interface CreateNoteData {
   content: string;
   metadata: {

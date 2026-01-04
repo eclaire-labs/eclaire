@@ -1,5 +1,6 @@
 // schemas/notes-responses.ts
 import z from "zod/v4";
+import { reviewStatusSchema } from "./common.js";
 
 // Full note response schema
 export const NoteResponseSchema = z
@@ -41,7 +42,7 @@ export const NoteResponseSchema = z
       description: "Due date for the note in ISO 8601 format (null if not set)",
     }),
 
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "Review status of the note",
     }),
 
@@ -68,7 +69,7 @@ export const NoteResponseSchema = z
     }),
 
     // Additional metadata stored as JSON
-    metadata: z.record(z.string(), z.any()).nullable().optional().meta({
+    metadata: z.record(z.string(), z.unknown()).nullable().optional().meta({
       description: "Additional metadata associated with the note",
     }),
   })
@@ -135,7 +136,7 @@ export const CreatedNoteResponseSchema = z
       description: "Due date for the note in ISO 8601 format (null if not set)",
     }),
 
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "Review status of the note",
     }),
 

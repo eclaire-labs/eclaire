@@ -6,7 +6,7 @@ import { decrypt } from "../encryption.js";
 const { channels, users } = schema;
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
-import { processPromptRequest } from "./prompt.js";
+import { processPromptRequest } from "../agent/index.js";
 
 const logger = createChildLogger("telegram");
 
@@ -318,7 +318,6 @@ async function handleIncomingMessage(
         agent: "telegram-bot",
       },
       `telegram-${channelId}-${Date.now()}`,
-      false, // no trace
       undefined, // no specific conversation
       false, // no thinking
     );

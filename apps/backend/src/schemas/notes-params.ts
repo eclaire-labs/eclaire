@@ -1,5 +1,6 @@
 // schemas/notes-params.ts
 import z from "zod/v4";
+import { reviewStatusSchema } from "./common.js";
 
 // Full note creation/update schema
 export const NoteSchema = z
@@ -340,7 +341,7 @@ export const NoteIdParam = z
 // Request schema for review status update
 export const NoteReviewUpdateSchema = z
   .object({
-    reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
+    reviewStatus: reviewStatusSchema.meta({
       description: "New review status for the note",
       examples: ["accepted", "rejected"],
     }),

@@ -21,6 +21,9 @@ export const processingEventsRoutes = new Hono<{ Variables: RouteVariables }>();
 const queueBackend = config.queueBackend;
 const useRedisPubSub = queueBackend === "redis";
 
+// Redis key prefix for pub/sub channels (avoids collisions with other apps)
+const redisKeyPrefix = config.queue.redisKeyPrefix;
+
 // Database type for Postgres LISTEN (used when not in Redis mode)
 const dbType = getDatabaseType();
 const usePostgresListen = !useRedisPubSub && dbType === "postgresql";
@@ -104,7 +107,7 @@ processingEventsRoutes.get("/stream", async (c) => {
           });
 
           if (subscriber) {
-            await subscriber.subscribe(`processing:${userId}`);
+            await subscriber.subscribe(`${redisKeyPrefix}:processing:${userId}`);
 
             // Handle incoming messages
             subscriber.on("message", (_channel, message) => {
@@ -228,7 +231,7 @@ processingEventsRoutes.get("/stream", async (c) => {
 
         if (subscriber) {
           try {
-            await subscriber.unsubscribe(`processing:${userId}`);
+            await subscriber.unsubscribe(`${redisKeyPrefix}:processing:${userId}`);
             await subscriber.quit();
           } catch (cleanupError) {
             logger.warn(
@@ -336,7 +339,7 @@ export async function publishProcessingEvent(
   if (useRedisPubSub && publisherConnection) {
     try {
       await publisherConnection.publish(
-        `processing:${userId}`,
+        `${redisKeyPrefix}:processing:${userId}`,
         JSON.stringify(eventWithTimestamp),
       );
 

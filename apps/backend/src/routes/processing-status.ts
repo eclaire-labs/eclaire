@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
+import { validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
@@ -10,7 +11,12 @@ import {
   retryAssetProcessing,
   updateProcessingStatusWithArtifacts,
 } from "../lib/services/processing-status.js";
-import { assetTypeSchema } from "../schemas/asset-types.js";
+import { assetTypeSchema, ASSET_TYPES } from "../schemas/asset-types.js";
+import {
+  AssetRetryBodySchema,
+  RetryBodySchema,
+  UpdateStatusBodySchema,
+} from "../schemas/processing-status-params.js";
 import {
   getAssetProcessingStatusRouteDescription,
   getProcessingJobsRouteDescription,
@@ -134,7 +140,7 @@ processingStatusRoutes.get(
       const validationResult = assetTypeSchema.safeParse(rawAssetType);
       if (!validationResult.success) {
         return c.json(
-          { error: "Invalid asset type", validTypes: assetTypeSchema.options },
+          { error: "Invalid asset type", validTypes: ASSET_TYPES },
           400,
         );
       }
@@ -186,28 +192,16 @@ processingStatusRoutes.get(
 processingStatusRoutes.post(
   "/retry",
   describeRoute(postProcessingRetryRouteDescription),
+  zValidator("json", RetryBodySchema),
   async (c) => {
-    // ... (code is unchanged)
     const requestId = c.get("requestId");
     try {
       const userId = await getAuthenticatedUserId(c);
       if (!userId) {
         return c.json({ error: "Unauthorized" }, 401);
       }
-      const body = await c.req.json();
-      const { assetType: rawAssetType, assetId } = body;
 
-      if (!rawAssetType || !assetId) {
-        return c.json({ error: "assetType and assetId are required" }, 400);
-      }
-      const validationResult = assetTypeSchema.safeParse(rawAssetType);
-      if (!validationResult.success) {
-        return c.json(
-          { error: "Invalid asset type", validTypes: assetTypeSchema.options },
-          400,
-        );
-      }
-      const assetType = validationResult.data;
+      const { assetType, assetId } = c.req.valid("json");
 
       const result = await retryAssetProcessing(assetType, assetId, userId);
       if (result.success) {
@@ -235,8 +229,8 @@ processingStatusRoutes.post(
 processingStatusRoutes.post(
   "/:assetType/:assetId/retry",
   describeRoute(postAssetProcessingRetryRouteDescription),
+  zValidator("json", AssetRetryBodySchema),
   async (c) => {
-    // ... (code is unchanged)
     const requestId = c.get("requestId");
     try {
       const userId = await getAuthenticatedUserId(c);
@@ -246,13 +240,12 @@ processingStatusRoutes.post(
       const rawAssetType = c.req.param("assetType");
       const assetId = c.req.param("assetId");
 
-      const body = await c.req.json().catch(() => ({}));
-      const force = body.force === true;
+      const { force } = c.req.valid("json");
 
       const validationResult = assetTypeSchema.safeParse(rawAssetType);
       if (!validationResult.success) {
         return c.json(
-          { error: "Invalid asset type", validTypes: assetTypeSchema.options },
+          { error: "Invalid asset type", validTypes: ASSET_TYPES },
           400,
         );
       }
@@ -300,6 +293,7 @@ processingStatusRoutes.post(
 processingStatusRoutes.put(
   "/:assetType/:assetId/update",
   describeRoute(putAssetProcessingStatusUpdateRouteDescription),
+  zValidator("json", UpdateStatusBodySchema),
   async (c) => {
     const requestId = c.get("requestId");
 
@@ -315,14 +309,13 @@ processingStatusRoutes.put(
           "Invalid asset type in worker update",
         );
         return c.json(
-          { error: "Invalid asset type", validTypes: assetTypeSchema.options },
+          { error: "Invalid asset type", validTypes: ASSET_TYPES },
           400,
         );
       }
       const assetType = validationResult.data;
 
-      // 2. Parse the entire body from the worker
-      const body = await c.req.json();
+      // 2. Get validated body
       const {
         status,
         stage,
@@ -333,7 +326,7 @@ processingStatusRoutes.put(
         addStages,
         artifacts,
         userId,
-      } = body;
+      } = c.req.valid("json");
 
       // 3. Validate userId for job initialization
       if (stages && Array.isArray(stages) && !userId) {
@@ -356,7 +349,7 @@ processingStatusRoutes.put(
       const job = await updateProcessingStatusWithArtifacts(
         assetType,
         assetId,
-        userId,
+        userId ?? "",
         {
           status,
           stage,

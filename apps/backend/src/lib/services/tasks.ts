@@ -1312,6 +1312,99 @@ export async function updateTaskStatusAsAssistant(
 }
 
 /**
+ * Error thrown when a task is not found
+ */
+export class TaskNotFoundError extends Error {
+  constructor(taskId: string) {
+    super(`Task not found: ${taskId}`);
+    this.name = "TaskNotFoundError";
+  }
+}
+
+/**
+ * Error thrown when user is not authorized to perform an action on a task
+ */
+export class TaskUnauthorizedError extends Error {
+  constructor(taskId: string, userId: string) {
+    super(`User ${userId} is not authorized to update task ${taskId}`);
+    this.name = "TaskUnauthorizedError";
+  }
+}
+
+/**
+ * Updates task execution tracking with permission checks.
+ * Used by the API route for external access.
+ *
+ * @param taskId - The task ID
+ * @param userId - The user ID making the request
+ * @param lastExecutedAt - Optional ISO 8601 timestamp when task was last executed
+ * @returns Object with success message and list of updated fields
+ * @throws TaskNotFoundError if task doesn't exist
+ * @throws TaskUnauthorizedError if user doesn't have permission
+ */
+export async function updateTaskExecutionTrackingWithPermissions(
+  taskId: string,
+  userId: string,
+  lastExecutedAt?: string,
+): Promise<{ message: string; updated: string[] }> {
+  // Get the task to verify it exists and user has permission
+  const task = await db.query.tasks.findFirst({
+    where: eq(tasks.id, taskId),
+    columns: {
+      id: true,
+      userId: true,
+      assignedToId: true,
+    },
+  });
+
+  if (!task) {
+    throw new TaskNotFoundError(taskId);
+  }
+
+  // Check if user has permission to update execution tracking
+  const canUpdate = task.userId === userId || task.assignedToId === userId;
+  if (!canUpdate) {
+    throw new TaskUnauthorizedError(taskId, userId);
+  }
+
+  // Log execution tracking update for security/auditing
+  logger.info(
+    {
+      taskId,
+      userId,
+      taskOwnerId: task.userId,
+      taskAssignedToId: task.assignedToId,
+      updates: { lastExecutedAt },
+    },
+    "Task execution tracking update",
+  );
+
+  // Prepare update data - only lastExecutedAt is in the task table
+  // nextRunAt is managed by the queue scheduler
+  const updateData: { lastExecutedAt?: Date } = {};
+  const updatedFields: string[] = [];
+
+  if (lastExecutedAt !== undefined) {
+    updateData.lastExecutedAt = new Date(lastExecutedAt);
+    updatedFields.push("lastExecutedAt");
+  }
+
+  // Update the task
+  await db
+    .update(tasks)
+    .set({
+      ...updateData,
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
+
+  return {
+    message: "Task execution tracking updated successfully",
+    updated: updatedFields,
+  };
+}
+
+/**
  * Updates the lastExecutedAt timestamp for a task.
  * Used by task execution processor for internal tracking - no history recorded.
  * Returns true if task was found and updated, false if task was not found.

@@ -137,6 +137,13 @@ conversationsRoutes.get(
         "Error listing conversations",
       );
 
+      if (error instanceof z.ZodError) {
+        return c.json(
+          { error: "Invalid query parameters", details: error.issues },
+          400,
+        );
+      }
+
       return c.json({ error: "Internal server error" }, 500);
     }
   },

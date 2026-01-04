@@ -63,7 +63,7 @@ export const SendNotificationResponseSchema = z.object({
 export const ChannelErrorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
-  details: z.any().optional(),
+  details: z.unknown().optional(),
 });
 
 // Channel not found response schema

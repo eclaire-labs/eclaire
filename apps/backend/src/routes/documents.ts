@@ -1,10 +1,8 @@
-import { and, eq } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { resolver, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { db, schema } from "../db/index.js";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 // Import response schemas
 import { ErrorResponseSchema } from "../lib/openapi-config.js";
@@ -50,8 +48,6 @@ import type { RouteVariables } from "../types/route-variables.js";
 import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("documents");
-
-const { documents: schemaDocuments } = schema;
 
 export const documentsRoutes = new Hono<{ Variables: RouteVariables }>();
 
@@ -205,7 +201,15 @@ documentsRoutes.post(
       }
 
       // Parse the raw metadata first (keep all fields for database storage)
-      const rawMetadata = JSON.parse((metadataPart as string) || "{}");
+      let rawMetadata;
+      try {
+        rawMetadata = JSON.parse((metadataPart as string) || "{}");
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          return c.json({ error: "Invalid metadata JSON format" }, 400);
+        }
+        throw error;
+      }
 
       // Then validate only the fields we need for our internal logic
       const validatedMetadata = DocumentMetadataSchema.parse(rawMetadata);
@@ -713,102 +717,6 @@ documentsRoutes.patch(
     }
   },
 );
-
-// Document asset types for serving extracted content
-const documentAssetTypeToColumnMap = {
-  extractedMd: { column: "extractedMdStorageId", mime: "text/markdown" },
-  extractedTxt: { column: "extractedTxtStorageId", mime: "text/plain" },
-} as const;
-
-type DocumentAssetType = keyof typeof documentAssetTypeToColumnMap;
-
-// Helper function to get document asset details
-async function getDocumentAssetDetails(
-  documentId: string,
-  userId: string,
-  assetType: DocumentAssetType,
-) {
-  const assetInfo = documentAssetTypeToColumnMap[assetType];
-  if (!assetInfo) {
-    throw new Error("Invalid asset type");
-  }
-
-  const document = await db.query.documents.findFirst({
-    columns: {
-      id: true,
-      [assetInfo.column]: true,
-    },
-    where: and(
-      eq(schemaDocuments.id, documentId),
-      eq(schemaDocuments.userId, userId),
-    ),
-  });
-
-  if (!document) {
-    const notFoundError = new Error("Document not found");
-    (notFoundError as any).name = "NotFoundError";
-    throw notFoundError;
-  }
-
-  const path = (document as any)[assetInfo.column];
-  if (!path) {
-    const fileNotFoundError = new Error(
-      `${assetType} not found for this document`,
-    );
-    (fileNotFoundError as any).name = "FileNotFoundError";
-    throw fileNotFoundError;
-  }
-
-  return {
-    storageId: path,
-    mimeType: assetInfo.mime,
-  };
-}
-
-// Helper function to serve a document asset
-const serveDocumentAsset = async (c: any, assetType: DocumentAssetType) => {
-  try {
-    const documentId = c.req.param("id");
-    const userId = await getAuthenticatedUserId(c);
-
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const { storageId, mimeType } = await getDocumentAssetDetails(
-      documentId,
-      userId,
-      assetType,
-    );
-
-    const { getStorage } = await import("../lib/storage/index.js");
-    const storage = getStorage();
-    const { stream, metadata } = await storage.read(storageId);
-
-    const headers = new Headers();
-    // Add charset for text-based content types
-    const textTypes = ["text/", "application/json", "application/xml"];
-    const needsCharset = textTypes.some((type) => mimeType.startsWith(type));
-    headers.set(
-      "Content-Type",
-      needsCharset ? `${mimeType}; charset=utf-8` : mimeType,
-    );
-    headers.set("Content-Length", String(metadata.size));
-    headers.set("Cache-Control", "private, max-age=3600");
-
-    return new Response(stream, { status: 200, headers });
-  } catch (error: any) {
-    logger.error({ err: error, assetType }, "Error serving document asset");
-    if (
-      error.name === "NotFoundError" ||
-      error.name === "FileNotFoundError" ||
-      error.code === "ENOENT"
-    ) {
-      return c.json({ error: error.message }, 404);
-    }
-    return c.json({ error: "Internal Server Error" }, 500);
-  }
-};
 
 /**
  * Creates a streaming asset response with appropriate headers.
