@@ -1,0 +1,68 @@
+{
+  "providers": {
+    "llama-cpp": {
+      "dialect": "openai_compatible",
+      "baseUrl": "http://127.0.0.1:11500/v1",
+      "auth": { "type": "none" },
+      "engine": {
+        "managed": true,
+        "name": "llama-cpp",
+        "gpuLayers": -1,
+        "flashAttention": true,
+        "contextSize": 16384
+      }
+    },
+    "ollama": {
+      "dialect": "openai_compatible",
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "auth": { "type": "none" },
+      "engine": {
+        "managed": false,
+        "name": "ollama"
+      }
+    },
+    "lm-studio": {
+      "dialect": "openai_compatible",
+      "baseUrl": "http://127.0.0.1:1234/v1",
+      "auth": { "type": "none" },
+      "engine": {
+        "managed": false,
+        "name": "lm-studio"
+      }
+    },
+    "openrouter": {
+      "dialect": "openai_compatible",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "headers": {
+        "HTTP-Referer": "https://github.com/eclaire-labs/eclaire",
+        "X-Title": "Eclaire"
+      },
+      "auth": {
+        "type": "bearer",
+        "header": "Authorization",
+        "value": "Bearer ${ENV:OPENROUTER_API_KEY}"
+      }
+    },
+    "openai": {
+      "dialect": "openai_compatible",
+      "baseUrl": "https://api.openai.com/v1",
+      "auth": {
+        "type": "bearer",
+        "header": "Authorization",
+        "value": "Bearer ${ENV:OPENAI_API_KEY}"
+      }
+    },
+    "anthropic": {
+      "dialect": "anthropic_messages",
+      "baseUrl": "https://api.anthropic.com",
+      "headers": {
+        "anthropic-version": "2023-06-01"
+      },
+      "auth": {
+        "type": "header",
+        "header": "x-api-key",
+        "value": "${ENV:ANTHROPIC_API_KEY}"
+      }
+    }
+  }
+}

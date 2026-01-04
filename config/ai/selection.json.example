@@ -1,0 +1,6 @@
+{
+  "active": {
+    "backend": "llama-cpp:qwen3-14b-q4",
+    "workers": "llama-cpp:gemma-3-4b-q4"
+  }
+}

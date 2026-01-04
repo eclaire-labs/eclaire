@@ -1,0 +1,26 @@
+{
+  "models": {
+    "openrouter-default": {
+      "provider": "openrouter",
+      "name": "OpenRouter Default Model",
+      "providerModel": "google/gemini-2.5-flash-lite-preview-09-2025",
+      "capabilities": {
+        "contextWindow": 32768,
+        "maxOutputTokens": 8192,
+        "streaming": true,
+        "tools": true,
+        "jsonSchema": true,
+        "structuredOutputs": true,
+        "reasoning": { "supported": false },
+        "modalities": {
+          "input": ["text"],
+          "output": ["text"]
+        }
+      },
+      "tokenizer": {
+        "type": "tiktoken",
+        "encoding": "cl100k_base"
+      }
+    }
+  }
+}

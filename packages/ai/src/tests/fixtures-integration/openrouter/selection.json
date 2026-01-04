@@ -1,0 +1,6 @@
+{
+  "active": {
+    "backend": "openrouter-default",
+    "workers": "openrouter-default"
+  }
+}

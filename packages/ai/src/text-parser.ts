@@ -1,6 +1,6 @@
-import { createChildLogger } from "./logger.js";
+import { createAILogger } from "./logger.js";
 
-const logger = createChildLogger("parser-text");
+const logger = createAILogger("text-parser");
 
 /**
  * Tool call extracted from content
@@ -84,7 +84,8 @@ function extractToolCallsFromContent(content: string): {
       }
     } catch (e) {
       logger.warn(
-        `Could not parse JSON code block for tool calls: ${blockContent}`,
+        { blockContent },
+        "Could not parse JSON code block for tool calls",
       );
     }
   }
@@ -115,7 +116,7 @@ function extractToolCallsFromContent(content: string): {
       // Remove the matched JSON from remaining content
       remainingContent = remainingContent.replace(match[0], "");
     } catch (e) {
-      logger.warn(`Could not parse potential tool call: ${match[0]}`);
+      logger.warn({ toolCall: match[0] }, "Could not parse potential tool call");
     }
   }
 
@@ -140,7 +141,7 @@ export function parseTextToolContent(
   };
 
   if (!content || !content.trim()) {
-    logger.warn("Content is empty in parseTextToolContent");
+    logger.warn({}, "Content is empty in parseTextToolContent");
     // Still check for reasoning field even if content is empty
     if (reasoning && reasoning.trim()) {
       result.thinkingContent = reasoning.trim();
@@ -154,14 +155,14 @@ export function parseTextToolContent(
   if (reasoning && reasoning.trim()) {
     result.thinkingContent = reasoning.trim();
     result.thinkingSource = "reasoning_field";
-    logger.debug("Using reasoning field from AI provider as thinking content");
+    logger.debug({}, "Using reasoning field from AI provider as thinking content");
   } else {
     // Fallback to extracting from embedded <think> tags
     const { thinkingContent } = extractThinkingContent(content);
     if (thinkingContent) {
       result.thinkingContent = thinkingContent;
       result.thinkingSource = "embedded_tags";
-      logger.debug("Using embedded <think> tags as thinking content");
+      logger.debug({}, "Using embedded <think> tags as thinking content");
     }
   }
 

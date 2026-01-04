@@ -1,0 +1,16 @@
+{
+  "providers": {
+    "openrouter": {
+      "dialect": "openai-chat",
+      "baseUrl": "https://openrouter.ai",
+      "endpoint": "/api/v1/chat/completions",
+      "headers": {
+        "HTTP-Referer": "https://eclaire.dev",
+        "X-Title": "Eclaire AI Integration Tests"
+      },
+      "auth": {
+        "type": "bearer"
+      }
+    }
+  }
+}

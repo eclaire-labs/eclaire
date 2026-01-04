@@ -1,0 +1,6 @@
+{
+  "active": {
+    "backend": "test-model-full",
+    "workers": "test-model-basic"
+  }
+}

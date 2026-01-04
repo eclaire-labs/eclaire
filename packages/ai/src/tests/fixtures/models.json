@@ -1,0 +1,120 @@
+{
+  "models": {
+    "test-model-full": {
+      "provider": "test-openai",
+      "name": "Test Model Full",
+      "providerModel": "test-model-full",
+      "capabilities": {
+        "contextWindow": 8192,
+        "maxOutputTokens": 4096,
+        "streaming": true,
+        "tools": true,
+        "jsonSchema": true,
+        "structuredOutputs": true,
+        "reasoning": { "supported": true },
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        }
+      },
+      "tokenizer": {
+        "type": "tiktoken",
+        "name": "cl100k_base"
+      },
+      "source": {
+        "url": "https://example.com/model.gguf"
+      }
+    },
+    "test-model-basic": {
+      "provider": "test-openai",
+      "name": "Test Model Basic",
+      "providerModel": "test-model-basic",
+      "capabilities": {
+        "contextWindow": 4096,
+        "maxOutputTokens": 1024,
+        "streaming": true,
+        "tools": false,
+        "jsonSchema": false,
+        "structuredOutputs": false,
+        "reasoning": { "supported": false },
+        "modalities": {
+          "input": ["text"],
+          "output": ["text"]
+        }
+      },
+      "tokenizer": {
+        "type": "unknown"
+      },
+      "source": {
+        "url": "https://example.com/model.gguf"
+      }
+    },
+    "test-model-no-streaming": {
+      "provider": "test-openai",
+      "name": "Test Model No Streaming",
+      "providerModel": "test-model-no-streaming",
+      "capabilities": {
+        "contextWindow": 4096,
+        "maxOutputTokens": 1024,
+        "streaming": false,
+        "tools": false,
+        "jsonSchema": false,
+        "structuredOutputs": false,
+        "reasoning": { "supported": false },
+        "modalities": {
+          "input": ["text"],
+          "output": ["text"]
+        }
+      },
+      "source": {
+        "url": "https://example.com/model.gguf"
+      }
+    },
+    "test-model-reasoning": {
+      "provider": "test-openai",
+      "name": "Test Model Reasoning",
+      "providerModel": "test-model-reasoning",
+      "capabilities": {
+        "contextWindow": 8192,
+        "maxOutputTokens": 4096,
+        "streaming": true,
+        "tools": true,
+        "jsonSchema": false,
+        "structuredOutputs": false,
+        "reasoning": {
+          "supported": true,
+          "mode": "prompt-controlled",
+          "disablePrefix": "/no_think"
+        },
+        "modalities": {
+          "input": ["text"],
+          "output": ["text"]
+        }
+      },
+      "source": {
+        "url": "https://example.com/model.gguf"
+      }
+    },
+    "test-model-mlx": {
+      "provider": "test-mlx",
+      "name": "Test MLX Model",
+      "providerModel": "test-model-mlx",
+      "capabilities": {
+        "contextWindow": 4096,
+        "maxOutputTokens": 1024,
+        "streaming": true,
+        "tools": false,
+        "jsonSchema": false,
+        "structuredOutputs": false,
+        "reasoning": { "supported": false },
+        "modalities": {
+          "input": ["text", "image"],
+          "output": ["text"]
+        }
+      },
+      "source": {
+        "url": "https://example.com/model.gguf"
+      }
+    }
+  }
+}

@@ -8,9 +8,16 @@
  * - Proper state management for partial content
  */
 
-import { createChildLogger } from "./logger.js";
+import { createAILogger } from "./logger.js";
 
-const logger = createChildLogger("parser-stream-text");
+// Lazy-initialized logger
+let _logger: ReturnType<typeof createAILogger> | null = null;
+function getLogger() {
+  if (!_logger) {
+    _logger = createAILogger("stream-parser");
+  }
+  return _logger;
+}
 
 // Type definitions
 export interface StreamParseResult {
@@ -21,9 +28,17 @@ export interface StreamParseResult {
     | "think_end"
     | "tool_call"
     | "done"
-    | "reasoning";
+    | "reasoning"
+    | "usage"
+    | "finish_reason";
   content?: string;
   data?: ToolCallData;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+  finishReason?: "stop" | "tool_calls" | "length" | "content_filter";
 }
 
 export interface ToolCallData {
@@ -32,8 +47,20 @@ export interface ToolCallData {
 }
 
 export interface SSEParseResult {
-  type: "content" | "reasoning" | "done";
+  type: "content" | "reasoning" | "done" | "usage" | "finish_reason" | "tool_call_delta";
   content?: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+  finishReason?: "stop" | "tool_calls" | "length" | "content_filter";
+  toolCallDelta?: {
+    index: number;
+    id?: string;
+    functionName?: string;
+    argumentsDelta?: string;
+  };
 }
 
 export type RawSSEBufferCallback = (chunk: string) => void;
@@ -48,6 +75,7 @@ interface ParserState {
   codeBlockStartLine: string;
   accumulatedReasoning: string;
   accumulatedThinking: string;
+  accumulatedToolCalls: Map<number, { id: string; functionName: string; arguments: string }>;
 }
 
 /**
@@ -71,6 +99,7 @@ export class LLMStreamParser {
       codeBlockStartLine: "",
       accumulatedReasoning: "",
       accumulatedThinking: "",
+      accumulatedToolCalls: new Map(),
     };
   }
 
@@ -80,6 +109,8 @@ export class LLMStreamParser {
    * @returns Parsed SSE data or null if not processable
    */
   parseSSELine(line: string): SSEParseResult | null {
+    const logger = getLogger();
+
     // Input validation
     if (typeof line !== "string") {
       logger.warn(
@@ -103,49 +134,91 @@ export class LLMStreamParser {
 
       try {
         const parsed = JSON.parse(data);
-        if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta) {
-          const delta = parsed.choices[0].delta;
 
-          // Handle reasoning field (from providers like OpenRouter)
-          // Support both 'reasoning' and 'reasoning_content' field names (different providers use different names)
-          const reasoningValue = delta.reasoning ?? delta.reasoning_content;
-          // Only process reasoning if it has actual content (not empty string)
-          if (
-            reasoningValue !== null &&
-            reasoningValue !== undefined &&
-            reasoningValue.trim() !== ""
-          ) {
+        // Handle usage from final chunk (OpenAI includes this with stream_options.include_usage)
+        if (parsed.usage) {
+          logger.debug(
+            { usage: parsed.usage },
+            "Extracted usage from SSE chunk",
+          );
+          return { type: "usage", usage: parsed.usage };
+        }
+
+        if (parsed.choices && parsed.choices[0]) {
+          const choice = parsed.choices[0];
+
+          // Handle finish_reason from final chunk
+          if (choice.finish_reason && choice.finish_reason !== null) {
             logger.debug(
-              { reasoningContent: reasoningValue },
-              "Returning reasoning content",
+              { finishReason: choice.finish_reason },
+              "Extracted finish_reason from SSE chunk",
             );
-            return { type: "reasoning", content: reasoningValue };
-          } else if (
-            reasoningValue !== null &&
-            reasoningValue !== undefined
-          ) {
-            logger.debug(
-              {
-                reasoningValue: reasoningValue,
-                reasoningLength: reasoningValue.length,
-              },
-              "Skipping empty reasoning content, will check for regular content",
-            );
+            return { type: "finish_reason", finishReason: choice.finish_reason };
           }
 
-          // Handle regular content
-          if (delta.content !== null && delta.content !== undefined) {
-            logger.debug(
-              {
-                deltaContent: delta.content,
-                contentLength: delta.content.length,
-                firstChar:
-                  delta.content.length > 0 ? delta.content[0] : "EMPTY",
-                preview: delta.content.substring(0, 20),
-              },
-              "Extracted content from SSE delta",
-            );
-            return { type: "content", content: delta.content };
+          if (choice.delta) {
+            const delta = choice.delta;
+
+            // Handle reasoning field (from providers like OpenRouter)
+            // Support both 'reasoning' and 'reasoning_content' field names (different providers use different names)
+            const reasoningValue = delta.reasoning ?? delta.reasoning_content;
+            // Only process reasoning if it has actual content (not empty string)
+            if (
+              reasoningValue !== null &&
+              reasoningValue !== undefined &&
+              reasoningValue.trim() !== ""
+            ) {
+              logger.debug(
+                { reasoningContent: reasoningValue },
+                "Returning reasoning content",
+              );
+              return { type: "reasoning", content: reasoningValue };
+            } else if (
+              reasoningValue !== null &&
+              reasoningValue !== undefined
+            ) {
+              logger.debug(
+                {
+                  reasoningValue: reasoningValue,
+                  reasoningLength: reasoningValue.length,
+                },
+                "Skipping empty reasoning content, will check for regular content",
+              );
+            }
+
+            // Handle regular content
+            if (delta.content !== null && delta.content !== undefined) {
+              logger.debug(
+                {
+                  deltaContent: delta.content,
+                  contentLength: delta.content.length,
+                  firstChar:
+                    delta.content.length > 0 ? delta.content[0] : "EMPTY",
+                  preview: delta.content.substring(0, 20),
+                },
+                "Extracted content from SSE delta",
+              );
+              return { type: "content", content: delta.content };
+            }
+
+            // Handle tool call deltas
+            if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
+              for (const tc of delta.tool_calls) {
+                logger.debug(
+                  { toolCallDelta: tc },
+                  "Extracted tool_call delta from SSE chunk",
+                );
+                return {
+                  type: "tool_call_delta",
+                  toolCallDelta: {
+                    index: tc.index ?? 0,
+                    id: tc.id,
+                    functionName: tc.function?.name,
+                    argumentsDelta: tc.function?.arguments,
+                  },
+                };
+              }
+            }
           }
         }
       } catch (e) {
@@ -165,6 +238,8 @@ export class LLMStreamParser {
    * @returns Array of parsed results
    */
   processContent(content: string): StreamParseResult[] {
+    const logger = getLogger();
+
     // Input validation to prevent character loss
     if (typeof content !== "string") {
       logger.warn(
@@ -238,6 +313,7 @@ export class LLMStreamParser {
    * @returns Array of parsed results
    */
   private processRegularContent(content: string): StreamParseResult[] {
+    const logger = getLogger();
     const results: StreamParseResult[] = [];
     let remaining = content;
     let processed = "";
@@ -462,6 +538,7 @@ export class LLMStreamParser {
     onRawSSEBuffer?: RawSSEBufferCallback,
   ): Promise<ReadableStream<StreamParseResult>> {
     const parser = this;
+    const logger = getLogger();
 
     return new ReadableStream<StreamParseResult>({
       async start(controller) {
@@ -517,7 +594,19 @@ export class LLMStreamParser {
                 return;
               }
 
-              if (sseResult.type === "reasoning" && sseResult.content) {
+              if (sseResult.type === "usage" && sseResult.usage) {
+                // Pass through usage information
+                controller.enqueue({
+                  type: "usage",
+                  usage: sseResult.usage,
+                });
+              } else if (sseResult.type === "finish_reason" && sseResult.finishReason) {
+                // Pass through finish reason
+                controller.enqueue({
+                  type: "finish_reason",
+                  finishReason: sseResult.finishReason,
+                });
+              } else if (sseResult.type === "reasoning" && sseResult.content) {
                 // Accumulate reasoning content from AI provider for final consolidation
                 parser.state.accumulatedReasoning += sseResult.content;
                 // Also emit for real-time display
@@ -525,6 +614,28 @@ export class LLMStreamParser {
                   type: "reasoning",
                   content: sseResult.content,
                 });
+              } else if (sseResult.type === "tool_call_delta" && sseResult.toolCallDelta) {
+                // Accumulate tool call deltas
+                const delta = sseResult.toolCallDelta;
+                const existing = parser.state.accumulatedToolCalls.get(delta.index);
+
+                if (existing) {
+                  // Accumulate arguments delta
+                  if (delta.argumentsDelta) {
+                    existing.arguments += delta.argumentsDelta;
+                  }
+                  // Update function name if provided (first chunk usually has it)
+                  if (delta.functionName) {
+                    existing.functionName = delta.functionName;
+                  }
+                } else {
+                  // First chunk for this tool call
+                  parser.state.accumulatedToolCalls.set(delta.index, {
+                    id: delta.id || `tool_${delta.index}`,
+                    functionName: delta.functionName || "",
+                    arguments: delta.argumentsDelta || "",
+                  });
+                }
               } else if (sseResult.content) {
                 // Process regular content for thinking tags, tool calls, etc.
                 const contentResults = parser.processContent(sseResult.content);
@@ -585,6 +696,18 @@ export class LLMStreamParser {
   }
 
   /**
+   * Get final accumulated tool calls after stream processing
+   * @returns Array of complete tool calls or empty array if none
+   */
+  getAccumulatedToolCalls(): Array<{
+    id: string;
+    functionName: string;
+    arguments: string;
+  }> {
+    return Array.from(this.state.accumulatedToolCalls.values());
+  }
+
+  /**
    * Reset the parser state for processing a new stream
    */
   reset(): void {
@@ -598,6 +721,7 @@ export class LLMStreamParser {
       codeBlockStartLine: "",
       accumulatedReasoning: "",
       accumulatedThinking: "",
+      accumulatedToolCalls: new Map(),
     };
   }
 }

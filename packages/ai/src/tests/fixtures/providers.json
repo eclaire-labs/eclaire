@@ -1,0 +1,48 @@
+{
+  "providers": {
+    "test-openai": {
+      "dialect": "openai_compatible",
+      "baseUrl": "http://localhost:8080/v1",
+      "auth": {
+        "type": "bearer",
+        "header": "Authorization",
+        "value": "Bearer test-api-key"
+      }
+    },
+    "test-openai-header-auth": {
+      "dialect": "openai_compatible",
+      "baseUrl": "http://localhost:8080/v1",
+      "auth": {
+        "type": "header",
+        "header": "X-API-Key",
+        "value": "test-api-key"
+      }
+    },
+    "test-openai-no-auth": {
+      "dialect": "openai_compatible",
+      "baseUrl": "http://localhost:8080/v1",
+      "auth": {
+        "type": "none"
+      }
+    },
+    "test-mlx": {
+      "dialect": "mlx_native",
+      "baseUrl": "http://localhost:8081",
+      "auth": {
+        "type": "none"
+      }
+    },
+    "test-anthropic": {
+      "dialect": "anthropic_messages",
+      "baseUrl": "http://localhost:8082",
+      "headers": {
+        "anthropic-version": "2023-06-01"
+      },
+      "auth": {
+        "type": "header",
+        "header": "x-api-key",
+        "value": "test-anthropic-key"
+      }
+    }
+  }
+}
