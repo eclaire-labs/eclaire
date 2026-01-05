@@ -14,6 +14,17 @@
  *   4 - Safe upgrade (can be auto-applied without manual intervention)
  */
 
+// Global error handlers - must be set up before any async code
+process.on("unhandledRejection", (reason) => {
+	console.error("Upgrade check failed (unhandled rejection):", reason);
+	process.exit(1);
+});
+
+process.on("uncaughtException", (error) => {
+	console.error("Upgrade check failed (uncaught exception):", error);
+	process.exit(1);
+});
+
 // Load environment first
 import "../lib/env-loader.js";
 
@@ -75,4 +86,7 @@ async function main() {
 	}
 }
 
-main();
+main().catch((error) => {
+	console.error("Upgrade check failed:", error);
+	process.exit(1);
+});

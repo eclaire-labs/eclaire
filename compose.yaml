@@ -76,7 +76,7 @@ services:
   # PostgreSQL Database
   # ===========================================================================
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17.5-bookworm
     container_name: eclaire-postgres
     environment:
       POSTGRES_USER: ${DATABASE_USER:-eclaire}

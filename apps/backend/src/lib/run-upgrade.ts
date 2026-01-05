@@ -45,19 +45,28 @@ export interface RunUpgradeResult {
  */
 export async function runUpgrade(options: RunUpgradeOptions = {}): Promise<RunUpgradeResult> {
 	const { verbose = true, closeDb = false } = options;
-	const appVersion = getAppVersion();
-
 	const log = verbose ? console.log.bind(console) : () => {};
 
-	// Import db module
-	const { db, dbType, schema, closeDatabase } = await import("../db/index.js");
-
-	log(`Auto-upgrading to ${appVersion}...`);
+	// Declare variables outside try so they're accessible in catch for cleanup
+	let db: Awaited<typeof import("../db/index.js")>["db"] | undefined;
+	let dbType: Awaited<typeof import("../db/index.js")>["dbType"] | undefined;
+	let schema: Awaited<typeof import("../db/index.js")>["schema"] | undefined;
+	let closeDatabase: Awaited<typeof import("../db/index.js")>["closeDatabase"] | undefined;
+	let appVersion = "unknown";
 
 	try {
+		// These can throw - must be inside try-catch for proper error handling
+		appVersion = getAppVersion();
+
+		// Import db module
+		({ db, dbType, schema, closeDatabase } = await import("../db/index.js"));
+
+		log(`Auto-upgrading to ${appVersion}...`);
+
+		// After successful import, these are guaranteed to be defined
 		// Check current state
-		const migrationStatus = await checkMigrations(db, dbType);
-		const installedVersion = await getInstalledVersion(db, schema);
+		const migrationStatus = await checkMigrations(db!, dbType!);
+		const installedVersion = await getInstalledVersion(db!, schema!);
 
 		if (verbose) {
 			log(`  From: ${installedVersion || "(fresh)"}`);
@@ -101,17 +110,17 @@ export async function runUpgrade(options: RunUpgradeOptions = {}): Promise<RunUp
 			for (const step of steps) {
 				if (step.run) {
 					log(`  → ${step.version}: ${step.description}`);
-					await step.run(db as Parameters<typeof step.run>[0]);
+					await step.run(db! as Parameters<typeof step.run>[0]);
 					upgradeStepsRun++;
 				}
 			}
 		}
 
 		// Update installed version
-		await setInstalledVersion(db, schema, appVersion);
+		await setInstalledVersion(db!, schema!, appVersion);
 
 		if (closeDb) {
-			await closeDatabase();
+			await closeDatabase!();
 		}
 
 		log(`  Upgraded to ${appVersion}`);
@@ -124,9 +133,13 @@ export async function runUpgrade(options: RunUpgradeOptions = {}): Promise<RunUp
 			upgradeStepsRun,
 		};
 	} catch (error) {
-		if (closeDb) {
-			const { closeDatabase } = await import("../db/index.js");
-			await closeDatabase();
+		// Try to close database if it was initialized and closeDb was requested
+		if (closeDb && closeDatabase) {
+			try {
+				await closeDatabase();
+			} catch {
+				// Ignore cleanup errors
+			}
 		}
 		return {
 			success: false,
@@ -191,17 +204,26 @@ async function getInstalledVersion(
 }
 
 async function runMigrations(): Promise<void> {
-	const migrateScript = resolve(
-		import.meta.dirname,
-		"../../node_modules/@eclaire/db/dist/scripts/migrate.js",
-	);
+	const isContainer = process.env.ECLAIRE_RUNTIME === "container";
 
-	const scriptPath = existsSync(migrateScript)
-		? migrateScript
-		: resolve(import.meta.dirname, "../../../packages/db/src/scripts/migrate.ts");
+	let scriptPath: string;
+	let cmd: string;
 
-	const isTs = scriptPath.endsWith(".ts");
-	const cmd = isTs ? `pnpm exec tsx ${scriptPath} --force` : `node ${scriptPath} --force`;
+	if (isContainer) {
+		// Container: pnpm deploy puts @eclaire/db in node_modules
+		// Code runs from /app/dist/src/lib/, script is at /app/node_modules/...
+		scriptPath = resolve(import.meta.dirname, "../../../node_modules/@eclaire/db/dist/scripts/migrate.js");
+		cmd = `node ${scriptPath} --force`;
+	} else {
+		// Local dev: use monorepo packages directly with tsx
+		// Code runs from apps/backend/src/lib/, script is at packages/db/...
+		scriptPath = resolve(import.meta.dirname, "../../../../packages/db/src/scripts/migrate.ts");
+		cmd = `pnpm exec tsx ${scriptPath} --force`;
+	}
+
+	if (!existsSync(scriptPath)) {
+		throw new Error(`Migration script not found at: ${scriptPath}`);
+	}
 
 	execSync(cmd, {
 		stdio: "inherit",

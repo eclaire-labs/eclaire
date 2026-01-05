@@ -48,9 +48,9 @@ COPY apps/frontend ./apps/frontend/
 WORKDIR /app/apps/frontend
 RUN pnpm build
 
-# ===== Backend Builder Stage =====
-# Includes build toolchain for native modules & TS compile + worker dependencies
-FROM node:24-bookworm-slim AS builder
+# ===== Backend Builder Base Stage =====
+# Contains slow apt-get installs - cached separately from source code
+FROM node:24-bookworm-slim AS builder-base
 WORKDIR /app
 
 # Build tools needed to compile native deps + worker processing tools
@@ -67,6 +67,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Enable pnpm via corepack
 RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
+
+# ===== Backend Builder Stage =====
+# Source code compilation - busted by --no-cache-filter=builder for fresh builds
+FROM builder-base AS builder
 
 # Build metadata (optional)
 ARG APP_VERSION=N/A

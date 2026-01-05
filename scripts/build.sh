@@ -214,6 +214,9 @@ cat >> compose.local.yaml << EOF
     image: eclaire:${DOCKER_TAG}
     environment:
       ECLAIRE_LOCAL_BUILD: "true"
+  postgres:
+    ports:
+      - "5432:5432"
 EOF
 
 echo -e "\n✅ Build complete: ${SEMVER} (${COMMITS_SINCE_TAG} commits since tag, sha ${SHORT_SHA})"

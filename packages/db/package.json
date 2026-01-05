@@ -39,6 +39,10 @@
     "./adapters/sqlite/tx": {
       "development": "./src/adapters/sqlite/tx.ts",
       "default": "./dist/adapters/sqlite/tx.js"
+    },
+    "./scripts/migrate": {
+      "development": "./src/scripts/migrate.ts",
+      "default": "./dist/scripts/migrate.js"
     }
   },
   "scripts": {

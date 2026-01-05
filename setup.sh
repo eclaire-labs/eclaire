@@ -123,18 +123,14 @@ initialize_database() {
   docker compose up -d postgres
 
   info "Waiting for database to be ready..."
-  timeout=30
-  while ! docker compose exec postgres pg_isready -U eclaire >/dev/null 2>&1; do
+  timeout=60
+  while ! docker compose exec postgres psql -U eclaire -d eclaire -c "SELECT 1" >/dev/null 2>&1; do
     timeout=$((timeout - 1))
     if [ $timeout -le 0 ]; then
-      error "Database failed to start"
+      error "Database failed to become ready"
     fi
     sleep 1
   done
-
-  # Verify actual database connection works
-  sleep 2
-  docker compose exec postgres psql -U eclaire -d eclaire -c "SELECT 1" >/dev/null 2>&1 || sleep 3
 
   info "Running migrations..."
   docker compose run --rm --no-deps eclaire upgrade

@@ -12,6 +12,17 @@
  * 3. Updates the installed version in _app_meta
  */
 
+// Global error handlers - must be set up before any async code
+process.on("unhandledRejection", (reason) => {
+	console.error("Upgrade failed (unhandled rejection):", reason);
+	process.exit(1);
+});
+
+process.on("uncaughtException", (error) => {
+	console.error("Upgrade failed (uncaught exception):", error);
+	process.exit(1);
+});
+
 // Load environment first
 import "../lib/env-loader.js";
 
