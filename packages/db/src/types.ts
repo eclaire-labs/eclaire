@@ -55,7 +55,7 @@ export type DbInstance = PostgresDbInstance | PgliteDbInstance | SqliteDbInstanc
 /**
  * Database dialect types
  */
-export type DbDialect = "postgresql" | "pglite" | "sqlite";
+export type DbDialect = "postgres" | "pglite" | "sqlite";
 
 /**
  * Database capabilities - indicates which features are available per dialect

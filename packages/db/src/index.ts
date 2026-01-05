@@ -89,7 +89,7 @@ let currentDbType: DbDialect | null = null;
  */
 function getDatabaseCapabilities(dbType: DbDialect): DbCapabilities {
 	switch (dbType) {
-		case "postgresql":
+		case "postgres":
 			return {
 				jsonIndexing: true, // JSONB with GIN indexes
 				fts: "builtin", // Built-in tsvector full-text search
@@ -249,7 +249,7 @@ export function resetDatabaseInstance(): void {
 export async function closeDatabase(options?: { timeout?: number }): Promise<void> {
 	if (!rawClient) return;
 
-	if (currentDbType === "postgresql") {
+	if (currentDbType === "postgres") {
 		await (rawClient as postgres.Sql).end({ timeout: options?.timeout ?? 5 });
 	} else if (currentDbType === "sqlite") {
 		(rawClient as Database.Database).close();

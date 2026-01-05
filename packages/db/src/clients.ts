@@ -62,7 +62,7 @@ export function createPostgresClient(
 	const defaultOptions: postgres.Options<Record<string, postgres.PostgresType>> = {
 		max: 10, // Maximum number of connections
 		idle_timeout: 20, // Seconds before idle connection is closed
-		connect_timeout: 10, // Seconds before connection timeout
+		connect_timeout: 30, // Seconds before connection timeout
 		connection: {
 			client_encoding: "UTF8",
 		},

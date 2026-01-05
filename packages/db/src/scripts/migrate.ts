@@ -42,123 +42,6 @@ config({ path: resolve(backendDir, envFile) });
 const SQLITE_MIGRATIONS = resolve(import.meta.dirname, "../../src/migrations/sqlite");
 const POSTGRES_MIGRATIONS = resolve(import.meta.dirname, "../../src/migrations/postgres");
 
-// ============================================================================
-// Queue tables SQL (from @eclaire/queue - these don't have pre-generated migrations)
-// Uses CREATE TABLE IF NOT EXISTS for idempotency
-// ============================================================================
-
-const QUEUE_TABLES_SQLITE = `
--- Queue jobs table
-CREATE TABLE IF NOT EXISTS "queue_jobs" (
-	"id" text PRIMARY KEY NOT NULL,
-	"queue" text NOT NULL,
-	"key" text,
-	"data" text NOT NULL,
-	"status" text DEFAULT 'pending' NOT NULL,
-	"priority" integer DEFAULT 0 NOT NULL,
-	"scheduled_for" integer,
-	"attempts" integer DEFAULT 0 NOT NULL,
-	"max_attempts" integer DEFAULT 3 NOT NULL,
-	"next_retry_at" integer,
-	"backoff_ms" integer,
-	"backoff_type" text,
-	"locked_by" text,
-	"locked_at" integer,
-	"expires_at" integer,
-	"lock_token" text,
-	"error_message" text,
-	"error_details" text,
-	"created_at" integer NOT NULL,
-	"updated_at" integer NOT NULL,
-	"completed_at" integer,
-	"stages" text,
-	"current_stage" text,
-	"overall_progress" integer DEFAULT 0,
-	"metadata" text
-);
-
--- Queue schedules table
-CREATE TABLE IF NOT EXISTS "queue_schedules" (
-	"id" text PRIMARY KEY NOT NULL,
-	"queue" text NOT NULL,
-	"key" text NOT NULL UNIQUE,
-	"cron" text NOT NULL,
-	"data" text NOT NULL,
-	"enabled" integer DEFAULT true NOT NULL,
-	"last_run_at" integer,
-	"next_run_at" integer,
-	"run_limit" integer,
-	"run_count" integer DEFAULT 0 NOT NULL,
-	"end_date" integer,
-	"created_at" integer NOT NULL,
-	"updated_at" integer NOT NULL
-);
-
--- Indexes (CREATE INDEX IF NOT EXISTS)
-CREATE UNIQUE INDEX IF NOT EXISTS "queue_jobs_queue_key_idx" ON "queue_jobs" ("queue","key");
-CREATE INDEX IF NOT EXISTS "queue_jobs_queue_status_idx" ON "queue_jobs" ("queue","status");
-CREATE INDEX IF NOT EXISTS "queue_jobs_status_scheduled_idx" ON "queue_jobs" ("status","scheduled_for");
-CREATE INDEX IF NOT EXISTS "queue_jobs_status_retry_idx" ON "queue_jobs" ("status","next_retry_at");
-CREATE INDEX IF NOT EXISTS "queue_jobs_status_expires_idx" ON "queue_jobs" ("status","expires_at");
-CREATE INDEX IF NOT EXISTS "queue_schedules_enabled_next_run_idx" ON "queue_schedules" ("enabled","next_run_at");
-`;
-
-const QUEUE_TABLES_POSTGRES = `
--- Queue jobs table
-CREATE TABLE IF NOT EXISTS "queue_jobs" (
-	"id" text PRIMARY KEY NOT NULL,
-	"queue" text NOT NULL,
-	"key" text,
-	"data" jsonb NOT NULL,
-	"status" text DEFAULT 'pending' NOT NULL,
-	"priority" integer DEFAULT 0 NOT NULL,
-	"scheduled_for" timestamp,
-	"attempts" integer DEFAULT 0 NOT NULL,
-	"max_attempts" integer DEFAULT 3 NOT NULL,
-	"next_retry_at" timestamp,
-	"backoff_ms" integer,
-	"backoff_type" text,
-	"locked_by" text,
-	"locked_at" timestamp,
-	"expires_at" timestamp,
-	"lock_token" text,
-	"error_message" text,
-	"error_details" jsonb,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	"completed_at" timestamp,
-	"stages" jsonb,
-	"current_stage" text,
-	"overall_progress" integer DEFAULT 0,
-	"metadata" jsonb
-);
-
--- Queue schedules table
-CREATE TABLE IF NOT EXISTS "queue_schedules" (
-	"id" text PRIMARY KEY NOT NULL,
-	"queue" text NOT NULL,
-	"key" text NOT NULL UNIQUE,
-	"cron" text NOT NULL,
-	"data" jsonb NOT NULL,
-	"enabled" boolean DEFAULT true NOT NULL,
-	"last_run_at" timestamp,
-	"next_run_at" timestamp,
-	"run_limit" integer,
-	"run_count" integer DEFAULT 0 NOT NULL,
-	"end_date" timestamp,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
-);
-
--- Indexes (CREATE INDEX IF NOT EXISTS)
-CREATE UNIQUE INDEX IF NOT EXISTS "queue_jobs_queue_key_idx" ON "queue_jobs" ("queue","key");
-CREATE INDEX IF NOT EXISTS "queue_jobs_queue_status_idx" ON "queue_jobs" ("queue","status");
-CREATE INDEX IF NOT EXISTS "queue_jobs_status_scheduled_idx" ON "queue_jobs" ("status","scheduled_for");
-CREATE INDEX IF NOT EXISTS "queue_jobs_status_retry_idx" ON "queue_jobs" ("status","next_retry_at");
-CREATE INDEX IF NOT EXISTS "queue_jobs_status_expires_idx" ON "queue_jobs" ("status","expires_at");
-CREATE INDEX IF NOT EXISTS "queue_schedules_enabled_next_run_idx" ON "queue_schedules" ("enabled","next_run_at");
-`;
-
 async function main() {
 	const args = process.argv.slice(2);
 	const forceFlag = args.includes("--force");
@@ -202,13 +85,7 @@ async function runSqliteMigrations(statusFlag: boolean, forceFlag: boolean) {
 			console.log(`   Migrations folder: ${SQLITE_MIGRATIONS}`);
 
 			await migrateSqlite(db, { migrationsFolder: SQLITE_MIGRATIONS });
-			console.log("Core database migrations completed!");
-
-			// Create queue tables (idempotent - uses IF NOT EXISTS)
-			console.log("Creating queue tables...");
-			client.exec(QUEUE_TABLES_SQLITE);
-			console.log("Queue tables created successfully!");
-			console.log("All database migrations completed successfully!");
+			console.log("Database migrations completed successfully!");
 		}
 	} catch (error) {
 		console.error("Migration failed:", error);
@@ -245,13 +122,7 @@ async function runPgliteMigrations(statusFlag: boolean, forceFlag: boolean) {
 			console.log(`   Migrations folder: ${POSTGRES_MIGRATIONS}`);
 
 			await migratePglite(db, { migrationsFolder: POSTGRES_MIGRATIONS });
-			console.log("Core database migrations completed!");
-
-			// Create queue tables (idempotent - uses IF NOT EXISTS)
-			console.log("Creating queue tables...");
-			await client.exec(QUEUE_TABLES_POSTGRES);
-			console.log("Queue tables created successfully!");
-			console.log("All database migrations completed successfully!");
+			console.log("Database migrations completed successfully!");
 		}
 	} catch (error) {
 		console.error("Migration failed:", error);
@@ -294,13 +165,7 @@ async function runPostgresMigrations(statusFlag: boolean, forceFlag: boolean) {
 			console.log(`   Migrations folder: ${POSTGRES_MIGRATIONS}`);
 
 			await migratePostgres(db, { migrationsFolder: POSTGRES_MIGRATIONS });
-			console.log("Core database migrations completed!");
-
-			// Create queue tables (idempotent - uses IF NOT EXISTS)
-			console.log("Creating queue tables...");
-			await client.unsafe(QUEUE_TABLES_POSTGRES);
-			console.log("Queue tables created successfully!");
-			console.log("All database migrations completed successfully!");
+			console.log("Database migrations completed successfully!");
 		}
 	} catch (error) {
 		console.error("Migration failed:", error);

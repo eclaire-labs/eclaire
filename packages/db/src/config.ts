@@ -37,10 +37,11 @@ export function getDatabaseAuthToken(): string | undefined {
 /**
  * Get the database type from environment.
  * Defaults to SQLite if not specified.
+ * Accepts both "postgres" and "postgresql" for backwards compatibility.
  */
-export function getDatabaseType(): "postgresql" | "pglite" | "sqlite" {
+export function getDatabaseType(): "postgres" | "pglite" | "sqlite" {
 	const type = process.env.DATABASE_TYPE?.toLowerCase();
-	if (type === "postgresql") return "postgresql";
+	if (type === "postgres" || type === "postgresql") return "postgres";
 	if (type === "pglite") return "pglite";
 	return "sqlite";
 }
