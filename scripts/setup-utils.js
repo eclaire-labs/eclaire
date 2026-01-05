@@ -83,7 +83,7 @@ async function chooseDatabaseType() {
 
   const options = [
     { label: 'SQLite', value: 'sqlite', description: 'default, no external DB needed' },
-    { label: 'PostgreSQL', value: 'postgresql', description: 'requires Docker' }
+    { label: 'PostgreSQL', value: 'postgres', description: 'requires Docker' }
   ];
 
   const selected = await selectFromList('\n  Use arrow keys to select, Enter to confirm:', options, 0);
@@ -103,14 +103,14 @@ async function configureDatabaseInEnv(databaseType, questionFn) {
 
   let content = fs.readFileSync(envPath, 'utf-8');
 
-  if (databaseType === 'postgresql') {
-    // Set DATABASE_TYPE=postgresql (handles commented or any existing value)
+  if (databaseType === 'postgres') {
+    // Set DATABASE_TYPE=postgres (handles commented or any existing value)
     content = content.replace(
       /^#?DATABASE_TYPE=\w*$/m,
-      'DATABASE_TYPE=postgresql'
+      'DATABASE_TYPE=postgres'
     );
     fs.writeFileSync(envPath, content);
-    console.log(`  ✅ Configured DATABASE_TYPE=postgresql in .env`);
+    console.log(`  ✅ Configured DATABASE_TYPE=postgres in .env`);
 
     // Offer to start PostgreSQL via Docker Compose
     console.log(`\n  ${colors.cyan}PostgreSQL Setup${colors.reset}`);
@@ -231,15 +231,19 @@ async function checkDependencies() {
         if (!commandExists('llama-server')) {
           return { exists: false, version: 'not installed' };
         }
-        // Parse build number from output like: "version: 7610 (c6f0e832d)"
-        const output = getVersion('llama-server', '--version');
-        const match = output.match(/version:\s*(\d+)/);
-        const buildNumber = match ? parseInt(match[1], 10) : null;
-        return {
-          exists: true,
-          version: buildNumber ? `build ${buildNumber}` : 'unknown',
-          buildNumber
-        };
+        try {
+          // Get full output since version may not be on first line (GPU init messages appear first)
+          const output = execSync('llama-server --version 2>&1', { encoding: 'utf-8', stdio: 'pipe' });
+          const match = output.match(/version:\s*(\d+)/);
+          const buildNumber = match ? parseInt(match[1], 10) : null;
+          return {
+            exists: true,
+            version: buildNumber ? `build ${buildNumber}` : 'unknown',
+            buildNumber
+          };
+        } catch {
+          return { exists: true, version: 'unknown', buildNumber: null };
+        }
       }
     },
     {
@@ -373,8 +377,16 @@ async function copyEnvFiles(force = false) {
       generateSecrets: true
     },
     {
-      source: 'config/models.json.example',
-      dest: 'config/models.json'
+      source: 'config/ai/models.json.example',
+      dest: 'config/ai/models.json'
+    },
+    {
+      source: 'config/ai/providers.json.example',
+      dest: 'config/ai/providers.json'
+    },
+    {
+      source: 'config/ai/selection.json.example',
+      dest: 'config/ai/selection.json'
     }
   ];
 
@@ -494,15 +506,11 @@ async function checkModels() {
     return false;
   }
 
-  console.log(`\n  ${colors.green}✅ llama-server found - models will download when PM2 starts${colors.reset}`);
-
-  console.log('\n  To monitor model download progress:');
-  console.log(`    ${colors.cyan}pm2 logs llama_backend --lines 100${colors.reset}  # Backend model`);
-  console.log(`    ${colors.cyan}pm2 logs llama_workers --lines 100${colors.reset}  # Workers model`);
+  console.log(`\n  ${colors.green}✅ llama-server found${colors.reset}`);
 
   console.log('\n  To manually download models (optional):');
-  console.log(`    ${colors.cyan}llama-cli --hf-repo unsloth/Qwen3-14B-GGUF:Q4_K_XL -n 0 --no-warmup${colors.reset}`);
-  console.log(`    ${colors.cyan}llama-cli --hf-repo unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL -n 0 --no-warmup${colors.reset}`);
+  console.log(`    ${colors.cyan}llama-cli --hf-repo unsloth/Qwen3-14B-GGUF:Q4_K_XL --prompt "hi" -n 0 --no-warmup --single-turn${colors.reset}`);
+  console.log(`    ${colors.cyan}llama-cli --hf-repo unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --prompt "hi" -n 0 --no-warmup --single-turn${colors.reset}`);
 
   return true;
 }
@@ -540,7 +548,7 @@ async function installDependencies() {
 // Initialize database
 async function initDatabase(databaseType = 'sqlite') {
   // For PostgreSQL, check if it's running
-  if (databaseType === 'postgresql') {
+  if (databaseType === 'postgres') {
     console.log('\n  Checking if PostgreSQL is running...');
 
     const pgCheck = exec('docker ps | grep eclaire-postgres', true);
@@ -640,6 +648,9 @@ function printSummary(results) {
   console.log(`     Backend:  ${colors.blue}http://localhost:3001/health${colors.reset}`);
   console.log('');
   console.log(`  Create an account at the frontend to get started.`);
+  console.log('');
+  console.log(`  For AI model configuration:`);
+  console.log(`     ${colors.cyan}docs/ai-models.md${colors.reset}`);
   console.log('');
 }
 

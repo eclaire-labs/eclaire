@@ -148,10 +148,14 @@ The script will:
 After setup completes:
 
 ```bash
-# 1. Start your LLM server (in a separate terminal)
-llama-server --port 11500 -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL
+# 1. Download models (if not already cached)
+llama-cli --hf-repo unsloth/Qwen3-14B-GGUF:Q4_K_XL --prompt "hi" -n 0 --no-warmup --single-turn
+llama-cli --hf-repo unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --prompt "hi" -n 0 --no-warmup --single-turn
 
-# 2. Start Eclaire
+# 2. Start your LLM server (in a separate terminal)
+llama-server --port 11500
+
+# 3. Start Eclaire
 docker compose up -d
 ```
 
@@ -181,24 +185,19 @@ docker compose down
 
 ## Selecting Models
 
-Eclaire works with various LLM backends and models. The default setup uses llama.cpp with Qwen3 14B, which runs well on machines with 32GB+ memory.
+Eclaire uses AI models for two purposes:
+- **Backend**: Powers the chat assistant (requires good tool calling)
+- **Workers**: Processes documents and images (requires vision capability)
 
-**Supported backends:** llama.cpp, vLLM, mlx-lm/mlx-vlm, LM Studio, Ollama, and any OpenAI-compatible API.
+> **Apple Silicon**: Mac users can leverage MLX for optimized local inference. See the [configuration guide](docs/ai-models.md#mlx-on-apple-silicon) for details.
 
-**Model requirements:**
-- **Assistant**: A text model with good tool calling capabilities (e.g., Qwen3, Mistral)
-- **Workers**: A vision model for document/image processing (e.g., Gemma3)
+Use the CLI to manage models:
 
-### Changing Models
+```bash
+docker compose run --rm eclaire model list
+```
 
-1. **Edit `config/ai/providers.json`** — set your LLM server URL
-2. **Edit `config/ai/models.json`** — define available models
-3. **Start your LLM server** with the desired model:
-   ```bash
-   llama-server --port 11500 -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL
-   ```
-
-Choose models based on your hardware — larger models produce better results but require more memory. 
+See [AI Model Configuration](docs/ai-models.md) for detailed setup and model recommendations. 
 
 ## Architecture
 

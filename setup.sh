@@ -132,6 +132,10 @@ initialize_database() {
     sleep 1
   done
 
+  # Verify actual database connection works
+  sleep 2
+  docker compose exec postgres psql -U eclaire -d eclaire -c "SELECT 1" >/dev/null 2>&1 || sleep 3
+
   info "Running migrations..."
   docker compose run --rm --no-deps eclaire upgrade
 
@@ -146,14 +150,19 @@ print_next_steps() {
 
   printf "${BOLD}Next steps:${NC}\n\n"
 
-  printf "1. Start your LLM server (in a separate terminal):\n"
-  printf "   ${CYAN}llama-server --port 11500 -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL,unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL${NC}\n\n"
-  printf "   See README for configuring different AI models.\n\n"
+  printf "1. Download models (if not already cached):\n"
+  printf "   ${CYAN}llama-cli --hf-repo unsloth/Qwen3-14B-GGUF:Q4_K_XL --prompt \"hi\" -n 0 --no-warmup --single-turn${NC}\n"
+  printf "   ${CYAN}llama-cli --hf-repo unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --prompt \"hi\" -n 0 --no-warmup --single-turn${NC}\n\n"
 
-  printf "2. Start Eclaire:\n"
+  printf "2. Start your LLM server (in a separate terminal):\n"
+  printf "   ${CYAN}llama-server --port 11500${NC}\n\n"
+
+  printf "3. Start Eclaire:\n"
   printf "   ${CYAN}docker compose up -d${NC}\n\n"
 
-  printf "3. Open ${CYAN}http://localhost:3000${NC} and register an account.\n\n"
+  printf "4. Open ${CYAN}http://localhost:3000${NC} and register an account.\n\n"
+
+  printf "For AI model configuration, see: ${CYAN}docs/ai-models.md${NC}\n\n"
 }
 
 # Main

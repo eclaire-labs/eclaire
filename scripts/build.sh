@@ -2,12 +2,16 @@
 set -euo pipefail
 
 RELEASE_MODE_FLAG=false
+NO_CACHE_FLAG=false
+CACHED_FLAG=false
 PARSED_ARGS=()
 
 # Parse CLI
 while [[ $# -gt 0 ]]; do
   case $1 in
     --release)     RELEASE_MODE_FLAG=true; shift ;;
+    --no-cache)    NO_CACHE_FLAG=true; shift ;;
+    --cached)      CACHED_FLAG=true; shift ;;
     *)             PARSED_ARGS+=("$1"); shift ;;
   esac
 done
@@ -164,10 +168,28 @@ for svc in "${SERVICES[@]}"; do
   )
 
   # Build the image from root context (for monorepo with shared pnpm-lock.yaml)
+  # Default: bust source stages to prevent stale builds, keep slow deps cached
+  CACHE_FLAG=()
+  if [[ "$NO_CACHE_FLAG" == "true" ]]; then
+    # Full rebuild, no caching at all
+    CACHE_FLAG=(--no-cache)
+  elif [[ "$CACHED_FLAG" == "true" ]]; then
+    # Use full Docker cache (risky - may serve stale builds)
+    CACHE_FLAG=()
+  else
+    # DEFAULT: Bust source stages only, keep base/browser-installer/runner apt cached
+    CACHE_FLAG=(
+      --no-cache-filter=frontend-builder
+      --no-cache-filter=builder
+      --no-cache-filter=prod-deps
+    )
+  fi
+
   docker build \
     -f "apps/${svc}/Dockerfile" \
     "${TAGS[@]}" \
     "${BUILD_ARGS[@]}" \
+    "${CACHE_FLAG[@]}" \
     . || { echo "❌ ${svc} build failed"; exit 1; }
 
   echo "✅ ${svc} done."

@@ -1,7 +1,7 @@
 # =============================================================================
 # Eclaire Docker Compose
 # =============================================================================
-# Default: PostgreSQL database (recommended for 2-10 users)
+# Default: PostgreSQL database
 #
 # Usage:
 #   docker compose up                    # Default (PostgreSQL)
