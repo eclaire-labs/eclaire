@@ -18,7 +18,7 @@ case "${1:-}" in
     echo "[entrypoint] Runtime: $ECLAIRE_RUNTIME, Home: $ECLAIRE_HOME"
 
     # Check if upgrade is needed
-    # Exit codes: 0 = up-to-date, 1 = upgrade needed, 2 = downgrade detected, 3 = fresh install
+    # Exit codes: 0 = up-to-date, 1 = manual upgrade needed, 2 = downgrade, 3 = fresh install, 4 = safe auto-upgrade
     # Use || to prevent set -e from exiting on non-zero return
     upgrade_result=0
     node dist/src/scripts/upgrade-check.js --quiet 2>/dev/null || upgrade_result=$?
@@ -56,10 +56,33 @@ case "${1:-}" in
       echo ""
       echo "  Initialization complete."
       echo ""
+    elif [ $upgrade_result -eq 4 ]; then
+      # Safe upgrade - auto-apply without user intervention
+      echo ""
+      echo "================================================"
+      echo "  Safe upgrade detected."
+      echo "  Running automatic upgrade..."
+      echo "================================================"
+      echo ""
+      node dist/src/scripts/upgrade.js
+      upgrade_run_result=$?
+      if [ $upgrade_run_result -ne 0 ]; then
+        echo ""
+        echo "================================================"
+        echo "  Auto-upgrade failed (exit code: $upgrade_run_result)"
+        echo "  Check logs above for details."
+        echo "================================================"
+        echo ""
+        exec sleep infinity
+      fi
+      echo ""
+      echo "  Auto-upgrade complete."
+      echo ""
     elif [ $upgrade_result -eq 1 ]; then
       echo ""
       echo "================================================"
       echo "  Upgrade required before starting."
+      echo "  This version has breaking changes that require manual upgrade."
       if [ "${ECLAIRE_LOCAL_BUILD:-}" = "true" ]; then
         echo "  Run: docker compose -f compose.yaml -f compose.local.yaml run --rm eclaire upgrade"
       else

@@ -212,19 +212,20 @@ export function getEngineSettings(provider: ProviderConfig): {
 // ============================================================================
 
 /**
- * Start llama-server with one or more models.
+ * Start llama-server in router mode.
  *
- * @param options.hfModels - Array of HuggingFace model references to preload
+ * - Empty hfModels: router mode, auto-discovers models from cache
+ * - Single model: uses -hf to ensure model is downloaded/loaded
+ * - Multiple models: router mode (models must be in cache already)
+ *
+ * @param options.hfModels - Array of HuggingFace model references (optional)
  * @param options.providerConfig - Provider configuration (for port and engine settings)
  * @param options.foreground - Run in foreground mode (default: false)
  */
 export async function startLlamaServer(options: EngineStartOptions): Promise<number> {
   const { hfModels, providerConfig, foreground = false } = options;
 
-  if (hfModels.length === 0) {
-    throw new Error('No models specified to preload');
-  }
-
+  // Empty hfModels is valid: starts in router mode, auto-discovers models from cache
   const settings = getEngineSettings(providerConfig);
 
   // Ensure directories exist
@@ -250,10 +251,13 @@ export async function startLlamaServer(options: EngineStartOptions): Promise<num
     '--host', '127.0.0.1',
   ];
 
-  // Add each model with -hf flag (llama-server supports multiple models)
-  for (const hfModel of hfModels) {
-    args.push('-hf', hfModel);
+  // For router mode (multiple models), start without -hf and let llama-server
+  // auto-discover from cache. For single model, use -hf to ensure it's loaded.
+  // Note: Multiple -hf flags is deprecated; comma-separated -hf is for speculative decoding.
+  if (hfModels.length === 1 && hfModels[0]) {
+    args.push('-hf', hfModels[0]);
   }
+  // When multiple models: start in router mode, models auto-discovered from cache
 
   // Only pass if explicitly configured (let llama-server use its defaults otherwise)
   if (settings.gpuLayers !== undefined) {

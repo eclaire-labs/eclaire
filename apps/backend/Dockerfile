@@ -90,14 +90,16 @@ COPY packages/core/package.json ./packages/core/
 COPY packages/logger/package.json ./packages/logger/
 COPY packages/storage/package.json ./packages/storage/
 COPY packages/ai/package.json ./packages/ai/
+COPY tools/admin-cli/package.json ./tools/admin-cli/
 
-# Install dependencies for backend workspace (includes workspace packages)
+# Install dependencies for backend workspace + CLI (includes workspace packages)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    SHARP_IGNORE_GLOBAL_LIBVIPS=1 pnpm install --frozen-lockfile --filter=@eclaire/backend...
+    SHARP_IGNORE_GLOBAL_LIBVIPS=1 pnpm install --frozen-lockfile --filter=@eclaire/backend... --filter=@eclaire/cli...
 
 # Copy source code
 COPY apps/backend ./apps/backend/
 COPY packages ./packages/
+COPY tools/admin-cli ./tools/admin-cli/
 WORKDIR /app/apps/backend
 # If you generate code (e.g., drizzle generate/prisma generate), do it here before build
 # RUN pnpm run db:generate
@@ -108,7 +110,8 @@ RUN pnpm --filter @eclaire/core build && \
     pnpm --filter @eclaire/storage build && \
     pnpm --filter @eclaire/ai build && \
     pnpm --filter @eclaire/db build && \
-    pnpm --filter @eclaire/queue build
+    pnpm --filter @eclaire/queue build && \
+    pnpm --filter @eclaire/cli build
 
 RUN pnpm build
 
@@ -119,6 +122,10 @@ FROM builder AS prod-deps
 # Deploy the standalone backend with prod dependencies (now includes worker deps)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm deploy --filter=@eclaire/backend --prod /deploy
+
+# Deploy CLI with its production dependencies
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm deploy --filter=@eclaire/cli --prod /deploy-cli
 
 # ===== Runner Stage =====
 FROM base AS runner
@@ -169,7 +176,8 @@ ENV NODE_ENV=production \
     APP_BUILD_TIMESTAMP=${APP_BUILD_TIMESTAMP} \
     APP_GIT_HASH=${APP_GIT_HASH} \
     PLAYWRIGHT_BROWSERS_PATH=/home/nodeapp/.cache/ms-playwright \
-    NODE_OPTIONS=--enable-source-maps
+    NODE_OPTIONS=--enable-source-maps \
+    CONFIG_DIR=/app/config
 
 # OCI Labels for provenance
 LABEL org.opencontainers.image.title="Eclaire Backend" \
@@ -197,6 +205,8 @@ COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 
 # Copy standalone deployment from pnpm deploy (includes node_modules, package.json, and dist)
 COPY --from=prod-deps --chown=nodeapp:nodeapp /deploy ./
+# Copy CLI deployment
+COPY --from=prod-deps --chown=nodeapp:nodeapp /deploy-cli ./cli
 # Copy browser cache from browser-installer (isolated from dependency changes)
 COPY --from=browser-installer --chown=nodeapp:nodeapp /root/.cache/ms-playwright /home/nodeapp/.cache/ms-playwright
 
@@ -219,6 +229,9 @@ COPY --from=builder  --chown=nodeapp:nodeapp /app/packages/db/src/migrations/sql
 RUN mkdir -p /app/data /app/logs /app/browser-data /app/tmp \
  && chown -R nodeapp:nodeapp /app /home/nodeapp \
  && chmod 1777 /tmp
+
+# Create CLI symlink for easy access: docker exec eclaire cli model list
+RUN ln -s /app/cli/dist/main.js /usr/local/bin/cli && chmod +x /app/cli/dist/main.js
 
 # Copy entrypoint script (path relative to repo root - the build context)
 COPY --chown=nodeapp:nodeapp apps/backend/docker-entrypoint.sh /app/docker-entrypoint.sh

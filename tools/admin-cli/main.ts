@@ -64,7 +64,12 @@ program
 registerProviderCommands(program);
 registerModelCommands(program);
 registerConfigCommands(program);
-registerEngineCommands(program);
+
+// Only register engine commands if not in container
+// (engine runs on host, not accessible from container)
+if (process.env.ECLAIRE_RUNTIME !== 'container') {
+  registerEngineCommands(program);
+}
 
 // Hook to handle global options before command execution
 program.hook('preAction', (thisCommand) => {
