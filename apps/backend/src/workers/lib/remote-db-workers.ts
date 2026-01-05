@@ -37,7 +37,7 @@ const workers: Worker[] = [];
  * Get queue schema for Postgres (remote DB workers only support Postgres)
  */
 function getSchema() {
-  if (dbType !== "postgresql") {
+  if (dbType !== "postgres") {
     throw new Error(
       `Remote database workers only support PostgreSQL, but DATABASE_TYPE is '${dbType}'`
     );

@@ -26,7 +26,7 @@ const redisKeyPrefix = config.queue.redisKeyPrefix;
 
 // Database type for Postgres LISTEN (used when not in Redis mode)
 const dbType = getDatabaseType();
-const usePostgresListen = !useRedisPubSub && dbType === "postgresql";
+const usePostgresListen = !useRedisPubSub && dbType === "postgres";
 const postgresUrl = usePostgresListen ? getDatabaseUrl() : null;
 
 // Redis connection for pub/sub (only used in redis mode)

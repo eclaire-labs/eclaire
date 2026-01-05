@@ -23,6 +23,7 @@ import { processArtifacts } from "../../lib/services/artifact-processor.js";
 import type { AssetType } from "../../types/assets.js";
 import { createChildLogger } from "../../lib/logger.js";
 import { runWithRequestId } from "@eclaire/logger";
+import { getNotifyListener } from "../../lib/queue/notify.js";
 
 // Import job processors
 import processBookmarkJob from "../jobs/bookmarkProcessor.js";
@@ -82,7 +83,9 @@ function getWorkerConfig(): Omit<DbWorkerConfig, "eventCallbacks"> {
     logger,
     lockDuration: 300000, // 5 minutes
     heartbeatInterval: 60000, // 1 minute
-    pollInterval: 5000, // 5 seconds
+    pollInterval: 5000, // 5 seconds (fallback if notify fails)
+    notifyListener: getNotifyListener(), // Instant wakeup via in-memory notify
+    notifyWaitTimeout: 30000, // 30 seconds max wait for notification
     gracefulShutdownTimeout: 30000, // 30 seconds
     // Wrap job execution in AsyncLocalStorage context for request tracing
     wrapJobExecution: async (requestId, execute) => {
@@ -149,9 +152,7 @@ export async function startDirectDbWorkers(): Promise<void> {
   // Note processing worker
   const noteWorker = createDbWorker(
     QueueNames.NOTE_PROCESSING,
-    async (ctx: JobContext<any>) => {
-      await processNoteJob(ctx);
-    },
+    processNoteJob,
     config,
     { concurrency: 1 },
   );
