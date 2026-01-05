@@ -75,17 +75,17 @@ function getMigrationPaths(): string[] {
 /**
  * Database dialect types (matches @eclaire/db DbDialect)
  */
-type DbDialect = "postgresql" | "pglite" | "sqlite";
+type DbDialect = "postgres" | "pglite" | "sqlite";
 
 /**
  * Find the migration journal file for the given database type.
  * Checks multiple paths to handle container vs local dev environments.
  *
- * @param dbType - Database dialect (postgresql, pglite, or sqlite)
+ * @param dbType - Database dialect (postgres, pglite, or sqlite)
  * @returns Path to the journal file, or null if not found
  */
 export function findMigrationJournal(dbType: DbDialect): string | null {
-	// Map dialect to migration folder name (postgresql and pglite both use postgres migrations)
+	// Map dialect to migration folder name (postgres and pglite both use postgres migrations)
 	const subdir = dbType === "sqlite" ? "sqlite" : "postgres";
 
 	for (const basePath of getMigrationPaths()) {

@@ -11,9 +11,10 @@ import * as semver from "semver";
 import { sql } from "drizzle-orm";
 import { executeQuery, getDatabaseType } from "@eclaire/db";
 import { getAppVersion, findMigrationJournal } from "../scripts/lib/version-utils.js";
+import { hasManualUpgradeRequired } from "../scripts/upgrades/index.js";
 
 export interface UpgradeCheckResult {
-	status: "up-to-date" | "needs-upgrade" | "downgrade" | "fresh-install";
+	status: "up-to-date" | "needs-upgrade" | "safe-upgrade" | "downgrade" | "fresh-install";
 	appVersion: string;
 	installedVersion: string | null;
 	pendingMigrations: number;
@@ -82,14 +83,19 @@ export async function checkUpgradeStatus(): Promise<UpgradeCheckResult> {
 		const needsUpgrade = migrationStatus.pending > 0 || versionStatus.needsUpgrade;
 
 		if (needsUpgrade) {
+			// Check if any version in the upgrade path requires manual upgrade
+			const requiresManual = hasManualUpgradeRequired(versionStatus.installed, appVersion);
+
+			const message = versionStatus.needsUpgrade
+				? `Upgrade needed: ${versionStatus.installed || "fresh install"} -> ${appVersion}`
+				: `${migrationStatus.pending} pending migration(s)`;
+
 			return {
-				status: "needs-upgrade",
+				status: requiresManual ? "needs-upgrade" : "safe-upgrade",
 				appVersion,
 				installedVersion: versionStatus.installed,
 				pendingMigrations: migrationStatus.pending,
-				message: versionStatus.needsUpgrade
-					? `Upgrade needed: ${versionStatus.installed || "fresh install"} -> ${appVersion}`
-					: `${migrationStatus.pending} pending migration(s)`,
+				message,
 			};
 		}
 
@@ -120,10 +126,14 @@ async function checkIsFreshInstall(
 	dbType: Awaited<ReturnType<typeof getDbModule>>["dbType"],
 ): Promise<boolean> {
 	try {
+		// Drizzle creates migrations table in 'drizzle' schema for PostgreSQL
+		const migrationTable = dbType === "sqlite"
+			? sql`__drizzle_migrations`
+			: sql`drizzle.__drizzle_migrations`;
 		await executeQuery<{ count: number }>(
 			db,
 			dbType,
-			sql`SELECT COUNT(*) as count FROM __drizzle_migrations`,
+			sql`SELECT COUNT(*) as count FROM ${migrationTable}`,
 		);
 		return false; // Table exists, not a fresh install
 	} catch {
@@ -153,10 +163,14 @@ async function getAppliedMigrationCount(
 	dbType: Awaited<ReturnType<typeof getDbModule>>["dbType"],
 ): Promise<number> {
 	try {
+		// Drizzle creates migrations table in 'drizzle' schema for PostgreSQL
+		const migrationTable = dbType === "sqlite"
+			? sql`__drizzle_migrations`
+			: sql`drizzle.__drizzle_migrations`;
 		const result = await executeQuery<{ count: number }>(
 			db,
 			dbType,
-			sql`SELECT COUNT(*) as count FROM __drizzle_migrations`,
+			sql`SELECT COUNT(*) as count FROM ${migrationTable}`,
 		);
 		return Number(result[0]?.count ?? 0);
 	} catch {

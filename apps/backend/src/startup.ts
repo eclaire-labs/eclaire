@@ -54,6 +54,10 @@ if (process.env.ECLAIRE_RUNTIME !== "container") {
 				handleFreshInstall();
 				break;
 
+			case "safe-upgrade":
+				await handleSafeUpgrade(upgradeResult);
+				break;
+
 			case "needs-upgrade":
 				handleUpgradeNeeded(upgradeResult);
 				break;
@@ -103,6 +107,35 @@ function handleUpgradeNeeded(result: UpgradeCheckResult): never {
 	console.error("===============================================================");
 	console.error("");
 	process.exit(1);
+}
+
+async function handleSafeUpgrade(result: UpgradeCheckResult): Promise<void> {
+	console.log("");
+	console.log("===============================================================");
+	console.log("  AUTO-UPGRADE");
+	console.log("===============================================================");
+	console.log("");
+	console.log(`  ${result.message}`);
+	if (result.pendingMigrations > 0) {
+		console.log(`  Pending migrations: ${result.pendingMigrations}`);
+	}
+	console.log("");
+
+	const { runUpgrade } = await import("./lib/run-upgrade.js");
+	const upgradeResult = await runUpgrade({ verbose: true, closeDb: false });
+
+	if (!upgradeResult.success) {
+		console.error("");
+		console.error("  Auto-upgrade failed:", upgradeResult.error?.message);
+		console.error("  Please run manually: pnpm app:upgrade");
+		console.error("");
+		console.error("===============================================================");
+		process.exit(1);
+	}
+
+	console.log("");
+	console.log("===============================================================");
+	console.log("");
 }
 
 function handleDowngrade(result: UpgradeCheckResult): never {

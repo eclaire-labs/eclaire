@@ -8,9 +8,10 @@
  *
  * Exit codes:
  *   0 - Up to date
- *   1 - Upgrade needed
+ *   1 - Upgrade needed (manual upgrade required - has breaking changes)
  *   2 - Downgrade detected (app version older than installed)
  *   3 - Fresh install (no database tables exist)
+ *   4 - Safe upgrade (can be auto-applied without manual intervention)
  */
 
 // Load environment first
@@ -46,11 +47,19 @@ async function main() {
 					console.log(`  Pending migrations: ${result.pendingMigrations}`);
 				}
 				console.log("");
+				console.log("  This version requires manual upgrade.");
 				console.log("  Run: pnpm app:upgrade");
 				console.log("═══════════════════════════════════════");
 				console.log("");
 			}
 			process.exit(1);
+			break;
+
+		case "safe-upgrade":
+			if (!quiet) {
+				console.log(`${result.message} (safe to auto-apply)`);
+			}
+			process.exit(4);
 			break;
 
 		case "downgrade":

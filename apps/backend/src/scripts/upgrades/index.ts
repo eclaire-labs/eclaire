@@ -28,7 +28,10 @@ export type Database =
 export interface UpgradeStep {
 	version: string; // Target version (e.g., '0.7.0')
 	description: string;
-	run: (db: Database) => Promise<void>;
+	/** If true, blocks automatic upgrade - user must run upgrade command manually */
+	requiresManualUpgrade?: boolean;
+	/** Optional data migration function (can be omitted for marker-only entries) */
+	run?: (db: Database) => Promise<void>;
 }
 
 /**
@@ -65,4 +68,15 @@ export function getUpgradeSteps(
 			return semver.gt(stepVersion, from) && semver.lte(stepVersion, to);
 		})
 		.sort((a, b) => semver.compare(a.version, b.version));
+}
+
+/**
+ * Check if any upgrade step between two versions requires manual upgrade.
+ */
+export function hasManualUpgradeRequired(
+	fromVersion: string | null,
+	toVersion: string,
+): boolean {
+	const steps = getUpgradeSteps(fromVersion || "0.0.0", toVersion);
+	return steps.some((step) => step.requiresManualUpgrade === true);
 }
