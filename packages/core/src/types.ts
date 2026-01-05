@@ -17,11 +17,7 @@ export type JobStatus =
   | "completed"
   | "failed"
   | "retry_pending";
-export type TaskStatus =
-  | "not-started"
-  | "in-progress"
-  | "completed"
-  | "cancelled";
+export type TaskStatus = "not-started" | "in-progress" | "completed";
 export type MessageRole = "user" | "assistant";
 export type ChannelPlatform = "telegram" | "slack" | "whatsapp" | "email";
 export type ChannelCapability = "notification" | "chat" | "bidirectional";

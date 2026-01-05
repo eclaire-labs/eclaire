@@ -16,7 +16,7 @@ import { envLoadInfo } from "../lib/env-loader.js";
 
 export type EclaireRuntime = "local" | "container";
 export type SecretsSource = "auto-generated" | "env-local" | "env" | "environment";
-export type DatabaseType = "sqlite" | "pglite" | "postgresql";
+export type DatabaseType = "sqlite" | "pglite" | "postgres";
 export type QueueBackend = "sqlite" | "postgres" | "redis";
 export type ServiceRole = "api" | "worker" | "all";
 
@@ -218,7 +218,9 @@ export function buildConfig(): EclaireConfig {
 
   // Service configuration
   const serviceRole = (env.SERVICE_ROLE || "all") as ServiceRole;
-  const databaseType = (env.DATABASE_TYPE || "sqlite") as DatabaseType;
+  // Normalize "postgresql" to "postgres" for backwards compatibility
+  const rawDbType = env.DATABASE_TYPE?.toLowerCase();
+  const databaseType = (rawDbType === "postgresql" ? "postgres" : rawDbType || "sqlite") as DatabaseType;
   const queueBackend = (env.QUEUE_BACKEND || "sqlite") as QueueBackend;
 
   // Database config
@@ -415,9 +417,9 @@ export function validateConfig(config: EclaireConfig): string[] {
   }
 
   // Validate DATABASE_TYPE
-  if (!["sqlite", "pglite", "postgresql"].includes(config.databaseType)) {
+  if (!["sqlite", "pglite", "postgres"].includes(config.databaseType)) {
     errors.push(
-      `DATABASE_TYPE must be one of: sqlite, pglite, postgresql. Got: ${config.databaseType}`,
+      `DATABASE_TYPE must be one of: sqlite, pglite, postgres. Got: ${config.databaseType}`,
     );
   }
 
@@ -426,6 +428,29 @@ export function validateConfig(config: EclaireConfig): string[] {
     errors.push(
       `QUEUE_BACKEND=sqlite requires SERVICE_ROLE=all (SQLite cannot support remote workers)`,
     );
+  }
+
+  // Database-backed queue must match DATABASE_TYPE
+  // Valid combinations:
+  // - DATABASE_TYPE=sqlite + QUEUE_BACKEND=sqlite
+  // - DATABASE_TYPE=postgres/pglite + QUEUE_BACKEND=postgres
+  // - Any DATABASE_TYPE + QUEUE_BACKEND=redis (redis is independent)
+  if (config.queueBackend !== "redis") {
+    const dbIsPostgresLike = config.databaseType === "postgres" || config.databaseType === "pglite";
+    const queueIsPostgres = config.queueBackend === "postgres";
+
+    if (dbIsPostgresLike && !queueIsPostgres) {
+      errors.push(
+        `QUEUE_BACKEND=${config.queueBackend} is incompatible with DATABASE_TYPE=${config.databaseType}. ` +
+        `Use QUEUE_BACKEND=postgres or QUEUE_BACKEND=redis`,
+      );
+    }
+    if (config.databaseType === "sqlite" && queueIsPostgres) {
+      errors.push(
+        `QUEUE_BACKEND=postgres is incompatible with DATABASE_TYPE=sqlite. ` +
+        `Use QUEUE_BACKEND=sqlite or QUEUE_BACKEND=redis`,
+      );
+    }
   }
 
   // Redis URL required when using redis backend
