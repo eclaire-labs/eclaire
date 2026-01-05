@@ -501,7 +501,7 @@ export function getThinkingPromptPrefix(
   }
 
   const reasoning = modelConfig.capabilities.reasoning;
-  if (!reasoning) {
+  if (!reasoning || reasoning.supported === false) {
     return "";
   }
 
@@ -599,9 +599,10 @@ export function resolveProviderForModel(
     );
   }
 
-  // Interpolate environment variables in auth and headers
+  // Interpolate environment variables in auth, headers, and baseUrl
   const providerConfig: ProviderConfig = {
     ...rawProviderConfig,
+    baseUrl: interpolateEnvVars(rawProviderConfig.baseUrl, false),
     auth: interpolateAuth(rawProviderConfig.auth),
     headers: interpolateHeaders(rawProviderConfig.headers),
   };
@@ -613,8 +614,7 @@ export function resolveProviderForModel(
   );
 
   // Build the full URL from provider config
-  const baseUrl = providerConfig.baseUrl;
-  const url = `${baseUrl}${endpoint}`;
+  const url = `${providerConfig.baseUrl}${endpoint}`;
 
   return { providerConfig, url };
 }

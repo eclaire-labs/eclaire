@@ -2,7 +2,7 @@
   "providers": {
     "llama-cpp": {
       "dialect": "openai_compatible",
-      "baseUrl": "http://127.0.0.1:11500/v1",
+      "baseUrl": "${ENV:LLAMA_CPP_BASE_URL}",
       "auth": { "type": "none" },
       "engine": {
         "managed": true,
@@ -14,7 +14,7 @@
     },
     "ollama": {
       "dialect": "openai_compatible",
-      "baseUrl": "http://127.0.0.1:11434/v1",
+      "baseUrl": "${ENV:OLLAMA_BASE_URL}",
       "auth": { "type": "none" },
       "engine": {
         "managed": false,
@@ -23,11 +23,29 @@
     },
     "lm-studio": {
       "dialect": "openai_compatible",
-      "baseUrl": "http://127.0.0.1:1234/v1",
+      "baseUrl": "${ENV:LM_STUDIO_BASE_URL}",
       "auth": { "type": "none" },
       "engine": {
         "managed": false,
         "name": "lm-studio"
+      }
+    },
+    "mlx-lm": {
+      "dialect": "openai_compatible",
+      "baseUrl": "${ENV:MLX_LM_BASE_URL}",
+      "auth": { "type": "none" },
+      "engine": {
+        "managed": false,
+        "name": "mlx-lm"
+      }
+    },
+    "mlx-vlm": {
+      "dialect": "openai_compatible",
+      "baseUrl": "${ENV:MLX_VLM_BASE_URL}",
+      "auth": { "type": "none" },
+      "engine": {
+        "managed": false,
+        "name": "mlx-vlm"
       }
     },
     "openrouter": {

@@ -5,39 +5,21 @@
       "provider": "llama-cpp",
       "providerModel": "unsloth/Qwen3-14B-GGUF:Q4_K_XL",
       "capabilities": {
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
+        "modalities": { "input": ["text"], "output": ["text"] },
         "streaming": true,
         "tools": true,
         "jsonSchema": false,
         "structuredOutputs": false,
-        "reasoning": {
-          "supported": true,
-          "mode": "prompt-controlled",
-          "disablePrefix": "/no_think"
-        },
+        "reasoning": { "supported": true, "mode": "prompt-controlled", "disablePrefix": "/no_think" },
         "contextWindow": 32768
       },
-      "tokenizer": {
-        "type": "sentencepiece",
-        "name": "qwen"
-      },
+      "tokenizer": { "type": "sentencepiece", "name": "qwen" },
       "source": {
         "url": "https://huggingface.co/unsloth/Qwen3-14B-GGUF",
         "format": "gguf",
         "quantization": "Q4_K_XL",
         "sizeBytes": 9159818624,
-        "architecture": {
-          "layers": 40,
-          "kvHeads": 8,
-          "headDim": 128
-        }
+        "architecture": { "layers": 40, "kvHeads": 8, "headDim": 128 }
       }
     },
     "llama-cpp:gemma-3-4b-q4": {
@@ -45,40 +27,21 @@
       "provider": "llama-cpp",
       "providerModel": "unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL",
       "capabilities": {
-        "modalities": {
-          "input": [
-            "text",
-            "image"
-          ],
-          "output": [
-            "text"
-          ]
-        },
+        "modalities": { "input": ["text", "image"], "output": ["text"] },
         "streaming": true,
         "tools": true,
         "jsonSchema": false,
         "structuredOutputs": false,
-        "reasoning": {
-          "supported": false
-        },
+        "reasoning": { "supported": false },
         "contextWindow": 131072
       },
-      "tokenizer": {
-        "type": "sentencepiece",
-        "name": "gemma"
-      },
+      "tokenizer": { "type": "sentencepiece", "name": "gemma" },
       "source": {
         "url": "https://huggingface.co/unsloth/gemma-3-4b-it-qat-GGUF",
         "format": "gguf",
         "quantization": "Q4_K_XL",
         "sizeBytes": 2537530496,
-        "architecture": {
-          "layers": 34,
-          "kvHeads": 4,
-          "headDim": 256,
-          "slidingWindow": 1024,
-          "slidingWindowPattern": 6
-        },
+        "architecture": { "layers": 34, "kvHeads": 4, "headDim": 256, "slidingWindow": 1024, "slidingWindowPattern": 6 },
         "visionSizeBytes": 851251328
       }
     },
@@ -87,28 +50,17 @@
       "provider": "openrouter",
       "providerModel": "qwen/qwen3-vl-30b-a3b-instruct",
       "capabilities": {
-        "modalities": {
-          "input": [
-            "text",
-            "image"
-          ],
-          "output": [
-            "text"
-          ]
-        },
+        "modalities": { "input": ["text", "image"], "output": ["text"] },
         "streaming": true,
         "tools": true,
         "jsonSchema": true,
         "structuredOutputs": false,
-        "reasoning": {
-          "supported": false
-        },
+        "reasoning": { "supported": false },
         "contextWindow": 131072
       },
       "source": {
         "url": "https://openrouter.ai/models/qwen/qwen3-vl-30b-a3b-instruct"
-      },
-      "pricing": null
+      }
     }
   }
 }
