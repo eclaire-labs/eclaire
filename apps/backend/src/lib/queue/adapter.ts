@@ -3,7 +3,7 @@
 
 import {
   createQueueAdapter as createPkgQueueAdapter,
-  createQueueAdapterWithWaitlist,
+  createDatabaseAdapter,
   type QueueAdapter,
   type BookmarkJobData,
   type ImageJobData,
@@ -17,6 +17,7 @@ import { db, dbType } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 import { config } from "../../config/index.js";
 import { getQueue, QueueNames } from "./queues.js";
+import { getNotifyEmitter } from "./notify.js";
 
 const logger = createChildLogger("queue-adapter");
 
@@ -66,14 +67,14 @@ async function initializeQueueAdapter(): Promise<QueueAdapter> {
     });
     logger.info({}, "Using Redis/BullMQ queue adapter");
   } else {
-    // postgres or sqlite backend - use database adapter with waitlist
-    const { adapter } = await createQueueAdapterWithWaitlist({
-      mode: "database",
-      database: { db, dbType: dbType as "postgres" | "sqlite" },
+    // postgres or sqlite backend - use database adapter with in-memory notify
+    queueAdapterInstance = createDatabaseAdapter({
+      db,
+      dbType: dbType as "postgres" | "sqlite",
       logger,
+      notifyEmitter: getNotifyEmitter(),
     });
-    logger.info({ queueBackend }, "Using database-backed queue adapter");
-    queueAdapterInstance = adapter;
+    logger.info({ queueBackend }, "Using database-backed queue adapter with instant notify");
   }
 
   return queueAdapterInstance;

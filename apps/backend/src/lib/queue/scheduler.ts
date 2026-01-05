@@ -59,8 +59,8 @@ async function initializeScheduler(): Promise<Scheduler> {
     logger.info({}, "Using BullMQ scheduler");
   } else {
     // postgres or sqlite backend - create scheduler with queueClient
-    // Use queueBackend directly since it's already "postgres" or "sqlite"
-    const queueDbType = queueBackend === "sqlite" ? "sqlite" : "postgres";
+    // Use actual database type for schema - dbType comes from DATABASE_TYPE
+    const queueDbType = dbType as "postgres" | "sqlite";
     const schema = getQueueSchema(queueDbType);
 
     const queueClient = createDbQueueClient({

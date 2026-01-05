@@ -10,6 +10,7 @@ import type { DbInstance } from "@eclaire/db";
 import type { QueueClient } from "../../core/types.js";
 import { createDbQueueClient } from "../../driver-db/client.js";
 import { getQueueSchema } from "../../driver-db/schema.js";
+import type { NotifyEmitter } from "../../driver-db/types.js";
 import { QueueNames } from "../queue-names.js";
 import type {
   QueueAdapter,
@@ -29,8 +30,10 @@ export interface DatabaseAdapterConfig {
   dbType: "postgres" | "sqlite";
   /** Logger instance */
   logger: Logger;
-  /** Optional job waitlist for push notifications */
+  /** Optional job waitlist for push notifications (legacy, use notifyEmitter instead) */
   waitlist?: JobWaitlistInterface;
+  /** Optional notify emitter for instant worker wakeup */
+  notifyEmitter?: NotifyEmitter;
 }
 
 /**
@@ -56,7 +59,7 @@ function getQueueName(assetType: AssetType, jobType?: string): string {
  * Creates a database-backed queue adapter
  */
 export function createDatabaseAdapter(config: DatabaseAdapterConfig): QueueAdapter {
-  const { db, dbType, logger, waitlist } = config;
+  const { db, dbType, logger, waitlist, notifyEmitter } = config;
 
   // Get the appropriate schema for the database type
   const schema = getQueueSchema(dbType);
@@ -116,12 +119,17 @@ export function createDatabaseAdapter(config: DatabaseAdapterConfig): QueueAdapt
       );
 
       // Notify waiting workers immediately (push-based notification)
-      if (waitlist) {
+      // Prefer notifyEmitter (works with createDbWorker's notifyListener)
+      if (notifyEmitter) {
+        await notifyEmitter.emit(queueName);
+        logger.debug({ queueName }, "Emitted job notification");
+      } else if (waitlist) {
+        // Legacy waitlist support
         const notifiedCount = waitlist.notifyWaiters(assetType, 1);
         if (notifiedCount > 0) {
           logger.debug(
             { assetType, notifiedCount },
-            "Notified waiting workers",
+            "Notified waiting workers (legacy waitlist)",
           );
         }
 

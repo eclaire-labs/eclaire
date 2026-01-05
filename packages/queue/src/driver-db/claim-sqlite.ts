@@ -87,11 +87,18 @@ export async function claimJobSqlite(
     // Raw SQL RETURNING returns snake_case columns
     return formatClaimedJob(job);
   } catch (error) {
+    // Extract the actual database error from DrizzleQueryError.cause
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorCause = error instanceof Error && error.cause
+      ? (error.cause instanceof Error ? error.cause.message : String(error.cause))
+      : undefined;
+
     logger.error(
       {
         queue,
         workerId,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
+        cause: errorCause,
       },
       "Failed to claim job",
     );

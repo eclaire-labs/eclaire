@@ -34,6 +34,9 @@ export async function claimJobPostgres(
   const { workerId, lockDuration } = options;
   const now = new Date();
   const expiresAt = new Date(now.getTime() + lockDuration);
+  // Convert to ISO strings for raw SQL compatibility with postgres-js
+  const nowStr = now.toISOString();
+  const expiresAtStr = expiresAt.toISOString();
   // Generate a unique fencing token for this claim
   const lockToken = generateJobId();
 
@@ -46,18 +49,18 @@ export async function claimJobPostgres(
       SET
         status = 'processing',
         locked_by = ${workerId},
-        locked_at = ${now},
-        expires_at = ${expiresAt},
+        locked_at = ${nowStr}::timestamptz,
+        expires_at = ${expiresAtStr}::timestamptz,
         lock_token = ${lockToken},
         attempts = attempts + 1,
-        updated_at = ${now}
+        updated_at = ${nowStr}::timestamptz
       WHERE id = (
         SELECT id FROM ${queueJobs}
         WHERE queue = ${queue}
         AND (
-          (status = 'pending' AND (scheduled_for IS NULL OR scheduled_for <= ${now}))
-          OR (status = 'retry_pending' AND (next_retry_at IS NULL OR next_retry_at <= ${now}))
-          OR (status = 'processing' AND expires_at < ${now} AND attempts < max_attempts)
+          (status = 'pending' AND (scheduled_for IS NULL OR scheduled_for <= ${nowStr}::timestamptz))
+          OR (status = 'retry_pending' AND (next_retry_at IS NULL OR next_retry_at <= ${nowStr}::timestamptz))
+          OR (status = 'processing' AND expires_at < ${nowStr}::timestamptz AND attempts < max_attempts)
         )
         ORDER BY
           CASE WHEN status = 'processing' THEN 0 ELSE 1 END,
@@ -69,24 +72,38 @@ export async function claimJobPostgres(
       RETURNING *
     `);
 
-    const job = result.rows?.[0];
+    // postgres-js returns array directly, pglite returns { rows: [] }
+    const rows = Array.isArray(result) ? result : (result.rows ?? []);
+    const job = rows[0];
+
+    logger.debug(
+      { resultIsArray: Array.isArray(result), rowCount: rows.length },
+      "Claim query result",
+    );
 
     if (!job) {
       return null;
     }
 
-    logger.debug(
+    logger.info(
       { jobId: job.id, queue, workerId, attempts: job.attempts },
       "Job claimed (PostgreSQL)",
     );
 
     return formatClaimedJob(job);
   } catch (error) {
+    // Extract the actual database error from DrizzleQueryError.cause
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorCause = error instanceof Error && error.cause
+      ? (error.cause instanceof Error ? error.cause.message : String(error.cause))
+      : undefined;
+
     logger.error(
       {
         queue,
         workerId,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
+        cause: errorCause,
       },
       "Failed to claim job",
     );

@@ -48,7 +48,7 @@ export const queueJobsPg = pgTable(
     priority: pgInteger("priority").notNull().default(0),
 
     /** When the job should become available (null = immediately) */
-    scheduledFor: pgTimestamp("scheduled_for"),
+    scheduledFor: pgTimestamp("scheduled_for", { withTimezone: true }),
 
     /** Number of times this job has been attempted */
     attempts: pgInteger("attempts").notNull().default(0),
@@ -57,7 +57,7 @@ export const queueJobsPg = pgTable(
     maxAttempts: pgInteger("max_attempts").notNull().default(3),
 
     /** When the next retry should happen (for retry_pending jobs) */
-    nextRetryAt: pgTimestamp("next_retry_at"),
+    nextRetryAt: pgTimestamp("next_retry_at", { withTimezone: true }),
 
     /** Base backoff delay in ms (for calculating retry delays) */
     backoffMs: pgInteger("backoff_ms"),
@@ -69,10 +69,10 @@ export const queueJobsPg = pgTable(
     lockedBy: pgText("locked_by"),
 
     /** When the job was locked */
-    lockedAt: pgTimestamp("locked_at"),
+    lockedAt: pgTimestamp("locked_at", { withTimezone: true }),
 
     /** When the lock expires (for stale job recovery) */
-    expiresAt: pgTimestamp("expires_at"),
+    expiresAt: pgTimestamp("expires_at", { withTimezone: true }),
 
     /** Fencing token for preventing stale worker completion */
     lockToken: pgText("lock_token"),
@@ -84,13 +84,17 @@ export const queueJobsPg = pgTable(
     errorDetails: pgJsonb("error_details"),
 
     /** When the job was created */
-    createdAt: pgTimestamp("created_at").notNull().defaultNow(),
+    createdAt: pgTimestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
 
     /** When the job was last updated */
-    updatedAt: pgTimestamp("updated_at").notNull().defaultNow(),
+    updatedAt: pgTimestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
 
     /** When the job completed (success or permanent failure) */
-    completedAt: pgTimestamp("completed_at"),
+    completedAt: pgTimestamp("completed_at", { withTimezone: true }),
 
     // ---- Multi-stage progress tracking (optional) ----
 
@@ -160,10 +164,10 @@ export const queueSchedulesPg = pgTable(
     enabled: pgBoolean("enabled").notNull().default(true),
 
     /** When the schedule last ran */
-    lastRunAt: pgTimestamp("last_run_at"),
+    lastRunAt: pgTimestamp("last_run_at", { withTimezone: true }),
 
     /** When the schedule should next run */
-    nextRunAt: pgTimestamp("next_run_at"),
+    nextRunAt: pgTimestamp("next_run_at", { withTimezone: true }),
 
     /** Maximum number of runs (null = unlimited) */
     runLimit: pgInteger("run_limit"),
@@ -172,13 +176,17 @@ export const queueSchedulesPg = pgTable(
     runCount: pgInteger("run_count").notNull().default(0),
 
     /** When the schedule should stop creating jobs (null = no end date) */
-    endDate: pgTimestamp("end_date"),
+    endDate: pgTimestamp("end_date", { withTimezone: true }),
 
     /** When the schedule was created */
-    createdAt: pgTimestamp("created_at").notNull().defaultNow(),
+    createdAt: pgTimestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
 
     /** When the schedule was last updated */
-    updatedAt: pgTimestamp("updated_at").notNull().defaultNow(),
+    updatedAt: pgTimestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => ({
     /** Index for finding schedules due to run */
