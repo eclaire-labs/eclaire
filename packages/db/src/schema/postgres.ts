@@ -1,10 +1,11 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
 	boolean,
 	index,
 	integer,
 	jsonb,
 	numeric,
+	pgEnum,
 	pgTable,
 	primaryKey,
 	text,
@@ -13,6 +14,13 @@ import {
 	uniqueIndex,
 	varchar,
 } from "drizzle-orm/pg-core";
+
+// Enums
+export const taskStatusEnum = pgEnum("task_status", [
+	"not-started",
+	"in-progress",
+	"completed",
+]);
 import {
 	generateApiKeyId,
 	generateBookmarkId,
@@ -31,27 +39,39 @@ import {
 	generateUserId,
 } from "@eclaire/core/id";
 
-export const users = pgTable("users", {
-	id: text("id")
-		.primaryKey()
-		.$defaultFn(() => generateUserId()),
-	userType: text("user_type", {
-		enum: ["user", "assistant", "worker"],
-	}).notNull(),
-	displayName: text("display_name"),
-	fullName: text("full_name"),
-	email: text("email").notNull().unique(),
-	emailVerified: boolean("email_verified").notNull().default(false),
-	avatarStorageId: text("avatar_storage_id"),
-	avatarColor: text("avatar_color"),
-	bio: text("bio"),
-	timezone: text("time_zone"),
-	city: text("city"),
-	country: text("country"),
+export const users = pgTable(
+	"users",
+	{
+		id: text("id")
+			.primaryKey()
+			.$defaultFn(() => generateUserId()),
+		userType: text("user_type", {
+			enum: ["user", "assistant", "worker"],
+		}).notNull(),
+		displayName: text("display_name"),
+		fullName: text("full_name"),
+		email: text("email").notNull(),
+		emailVerified: boolean("email_verified").notNull().default(false),
+		avatarStorageId: text("avatar_storage_id"),
+		avatarColor: text("avatar_color"),
+		bio: text("bio"),
+		timezone: text("time_zone"),
+		city: text("city"),
+		country: text("country"),
 
-	createdAt: timestamp("created_at").notNull().defaultNow(),
-	updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => ({
+		emailLowerIdx: uniqueIndex("users_email_lower_idx").on(
+			sql`lower(${table.email})`,
+		),
+	}),
+);
 
 export const sessions = pgTable(
 	"sessions",
@@ -65,9 +85,13 @@ export const sessions = pgTable(
 		ipAddress: text("ip_address"),
 		userAgent: text("user_agent"),
 		token: text("token").notNull().unique(),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
-		expiresAt: timestamp("expires_at").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 	},
 	(table) => ({
 		userIdx: index("sessions_user_id_idx").on(table.userId),
@@ -87,13 +111,21 @@ export const accounts = pgTable(
 		providerId: text("provider_id").notNull(),
 		accessToken: text("access_token"),
 		refreshToken: text("refresh_token"),
-		accessTokenExpiresAt: timestamp("access_token_expires_at"),
-		refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+		accessTokenExpiresAt: timestamp("access_token_expires_at", {
+			withTimezone: true,
+		}),
+		refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
+			withTimezone: true,
+		}),
 		scope: text("scope"),
 		idToken: text("id_token"),
 		passwordHash: text("password_hash"),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => ({
 		providerAccountIdx: unique().on(table.providerId, table.accountId),
@@ -107,9 +139,13 @@ export const verifications = pgTable("verifications", {
 		.$defaultFn(() => generateSecurityId()),
 	identifier: text("identifier").notNull(),
 	token: text("token").notNull().unique(),
-	createdAt: timestamp("created_at").notNull().defaultNow(),
-	updatedAt: timestamp("updated_at").notNull().defaultNow(),
-	expiresAt: timestamp("expires_at").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+	expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
 export const apiKeys = pgTable(
@@ -126,8 +162,10 @@ export const apiKeys = pgTable(
 		userId: text("user_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
-		lastUsedAt: timestamp("last_used_at"),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
+		lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 		isActive: boolean("is_active").notNull().default(true),
 	},
 	(table) => ({
@@ -146,8 +184,8 @@ export const tasks = pgTable(
 			.references(() => users.id, { onDelete: "cascade" }),
 		title: text("title").notNull(),
 		description: text("description"),
-		status: text("status").notNull().default("not-started"),
-		dueDate: timestamp("due_date"),
+		status: taskStatusEnum("status").notNull().default("not-started"),
+		dueDate: timestamp("due_date", { withTimezone: true }),
 		assignedToId: text("assigned_to_id").references(() => users.id, {
 			onDelete: "set null",
 		}),
@@ -161,10 +199,14 @@ export const tasks = pgTable(
 		isPinned: boolean("is_pinned").notNull().default(false),
 		// Note: Recurrence data (isRecurring, cronExpression, recurrenceEndDate, recurrenceLimit)
 		// is now stored in queue_schedules table and fetched via scheduler.get()
-		lastExecutedAt: timestamp("last_executed_at"), // When task was last executed (for display)
-		completedAt: timestamp("completed_at"),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		lastExecutedAt: timestamp("last_executed_at", { withTimezone: true }), // When task was last executed (for display)
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => ({
 		userIdx: index("tasks_user_id_idx").on(table.userId),
@@ -188,8 +230,12 @@ export const taskComments = pgTable(
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
 		content: text("content").notNull(),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => ({
 		taskIdx: index("task_comments_task_id_idx").on(table.taskId),
@@ -216,10 +262,14 @@ export const bookmarks = pgTable(
 		author: text("author"),
 		lang: text("lang"),
 
-		dueDate: timestamp("due_date"),
-		pageLastUpdatedAt: timestamp("page_last_updated_at"),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		dueDate: timestamp("due_date", { withTimezone: true }),
+		pageLastUpdatedAt: timestamp("page_last_updated_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 
 		contentType: text("content_type"),
 		etag: text("etag"),
@@ -274,7 +324,7 @@ export const documents = pgTable(
 		title: text("title").notNull(),
 		description: text("description"),
 		originalFilename: text("original_filename"),
-		dueDate: timestamp("due_date"),
+		dueDate: timestamp("due_date", { withTimezone: true }),
 		storageId: text("storage_id"),
 		mimeType: text("mime_type"),
 		fileSize: integer("file_size"),
@@ -298,8 +348,12 @@ export const documents = pgTable(
 		}),
 		isPinned: boolean("is_pinned").default(false),
 
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => ({
 		userIdx: index("documents_user_id_idx").on(table.userId),
@@ -323,8 +377,8 @@ export const photos = pgTable(
 		mimeType: text("mime_type"),
 		fileSize: integer("file_size"),
 		deviceId: text("device_id"),
-		dueDate: timestamp("due_date"),
-		dateTaken: timestamp("date_taken"),
+		dueDate: timestamp("due_date", { withTimezone: true }),
+		dateTaken: timestamp("date_taken", { withTimezone: true }),
 		cameraMake: text("camera_make"),
 		cameraModel: text("camera_model"),
 		lensModel: text("lens_model"),
@@ -364,8 +418,12 @@ export const photos = pgTable(
 		}),
 		isPinned: boolean("is_pinned").default(false),
 
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => ({
 		userIdx: index("photos_user_id_idx").on(table.userId),
@@ -390,7 +448,7 @@ export const notes = pgTable(
 		originalMimeType: text("original_mime_type"),
 		userAgent: text("user_agent"),
 		enabled: boolean("enabled").notNull().default(true),
-		dueDate: timestamp("due_date"),
+		dueDate: timestamp("due_date", { withTimezone: true }),
 
 		reviewStatus: text("review_status", {
 			enum: ["pending", "accepted", "rejected"],
@@ -400,8 +458,12 @@ export const notes = pgTable(
 		}),
 		isPinned: boolean("is_pinned").default(false),
 
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => ({
 		userIdx: index("notes_user_id_idx").on(table.userId),
@@ -421,7 +483,11 @@ export const tags = pgTable(
 			.references(() => users.id, { onDelete: "cascade" }),
 	},
 	(t) => ({
-		userTagName: unique().on(t.userId, t.name),
+		// Case-insensitive unique constraint per user
+		userTagNameLowerIdx: uniqueIndex("tags_user_id_name_lower_idx").on(
+			t.userId,
+			sql`lower(${t.name})`,
+		),
 	}),
 );
 
@@ -437,6 +503,7 @@ export const tasksTags = pgTable(
 	},
 	(t) => ({
 		pk: primaryKey({ columns: [t.taskId, t.tagId] }),
+		tagIdx: index("tasks_tags_tag_id_idx").on(t.tagId),
 	}),
 );
 
@@ -452,6 +519,7 @@ export const bookmarksTags = pgTable(
 	},
 	(t) => ({
 		pk: primaryKey({ columns: [t.bookmarkId, t.tagId] }),
+		tagIdx: index("bookmarks_tags_tag_id_idx").on(t.tagId),
 	}),
 );
 
@@ -467,6 +535,7 @@ export const documentsTags = pgTable(
 	},
 	(t) => ({
 		pk: primaryKey({ columns: [t.documentId, t.tagId] }),
+		tagIdx: index("documents_tags_tag_id_idx").on(t.tagId),
 	}),
 );
 
@@ -482,6 +551,7 @@ export const notesTags = pgTable(
 	},
 	(t) => ({
 		pk: primaryKey({ columns: [t.noteId, t.tagId] }),
+		tagIdx: index("notes_tags_tag_id_idx").on(t.tagId),
 	}),
 );
 
@@ -497,6 +567,7 @@ export const photosTags = pgTable(
 	},
 	(t) => ({
 		pk: primaryKey({ columns: [t.photoId, t.tagId] }),
+		tagIdx: index("photos_tags_tag_id_idx").on(t.tagId),
 	}),
 );
 
@@ -515,7 +586,9 @@ export const history = pgTable(
 		afterData: jsonb("after_data"),
 		actor: text("actor").notNull(),
 		metadata: jsonb("metadata"),
-		timestamp: timestamp("timestamp").notNull().defaultNow(),
+		timestamp: timestamp("timestamp", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 		userId: text("user_id").references(() => users.id, {
 			onDelete: "set null",
 		}),
@@ -639,9 +712,13 @@ export const conversations = pgTable(
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
 		title: text("title").notNull(),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
-		lastMessageAt: timestamp("last_message_at"),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
 		messageCount: integer("message_count").notNull().default(0),
 	},
 	(table) => ({
@@ -664,7 +741,9 @@ export const messages = pgTable(
 		role: text("role", { enum: ["user", "assistant"] }).notNull(),
 		content: text("content").notNull(),
 		thinkingContent: text("thinking_content"),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 		metadata: jsonb("metadata"),
 	},
 	(table) => ({
@@ -713,8 +792,12 @@ export const channels = pgTable(
 		config: jsonb("config").notNull(),
 
 		isActive: boolean("is_active").notNull().default(true),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => ({
 		userIdx: index("channels_user_id_idx").on(table.userId),
@@ -741,8 +824,12 @@ export const feedback = pgTable(
 		sentiment: text("sentiment", {
 			enum: ["positive", "negative"],
 		}),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => ({
 		userIdx: index("feedback_user_id_idx").on(table.userId),
@@ -761,5 +848,7 @@ export const feedbackRelations = relations(feedback, ({ one }) => ({
 export const appMeta = pgTable("_app_meta", {
 	key: text("key").primaryKey(),
 	value: text("value").notNull(),
-	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
 });

@@ -29,6 +29,13 @@
       "when": 1767917000000,
       "tag": "0003_system_users",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1767524287094,
+      "tag": "0004_clean_maddog",
+      "breakpoints": true
     }
   ]
 }

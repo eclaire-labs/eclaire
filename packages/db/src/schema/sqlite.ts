@@ -1,12 +1,13 @@
 import { relations, sql } from "drizzle-orm";
 import {
+	index,
 	integer,
 	primaryKey,
+	real,
 	sqliteTable,
 	text,
 	unique,
 	uniqueIndex,
-	index,
 } from "drizzle-orm/sqlite-core";
 import {
 	generateApiKeyId,
@@ -382,15 +383,15 @@ export const photos = sqliteTable(
 		cameraModel: text("camera_model"),
 		lensModel: text("lens_model"),
 		iso: integer("iso"),
-		fNumber: text("f_number"),
-		exposureTime: text("exposure_time"),
+		fNumber: real("f_number"),
+		exposureTime: real("exposure_time"),
 		orientation: integer("orientation"),
 		imageWidth: integer("image_width"),
 		imageHeight: integer("image_height"),
 
-		latitude: text("latitude"),
-		longitude: text("longitude"),
-		altitude: text("altitude"),
+		latitude: real("latitude"),
+		longitude: real("longitude"),
+		altitude: real("altitude"),
 		locationCity: text("location_city"),
 		locationCountryIso2: text("location_country_iso2"),
 		locationCountryName: text("location_country_name"),
@@ -482,7 +483,8 @@ export const tags = sqliteTable(
 			.references(() => users.id, { onDelete: "cascade" }),
 	},
 	(t) => ({
-		userTagName: unique().on(t.userId, t.name),
+		// Case-insensitive unique constraint per user (COLLATE NOCASE)
+		userTagNameIdx: uniqueIndex("tags_user_id_name_idx").on(t.userId, t.name),
 	}),
 );
 
@@ -498,6 +500,7 @@ export const tasksTags = sqliteTable(
 	},
 	(t) => ({
 		pk: primaryKey({ columns: [t.taskId, t.tagId] }),
+		tagIdx: index("tasks_tags_tag_id_idx").on(t.tagId),
 	}),
 );
 
@@ -513,6 +516,7 @@ export const bookmarksTags = sqliteTable(
 	},
 	(t) => ({
 		pk: primaryKey({ columns: [t.bookmarkId, t.tagId] }),
+		tagIdx: index("bookmarks_tags_tag_id_idx").on(t.tagId),
 	}),
 );
 
@@ -528,6 +532,7 @@ export const documentsTags = sqliteTable(
 	},
 	(t) => ({
 		pk: primaryKey({ columns: [t.documentId, t.tagId] }),
+		tagIdx: index("documents_tags_tag_id_idx").on(t.tagId),
 	}),
 );
 
@@ -543,6 +548,7 @@ export const notesTags = sqliteTable(
 	},
 	(t) => ({
 		pk: primaryKey({ columns: [t.noteId, t.tagId] }),
+		tagIdx: index("notes_tags_tag_id_idx").on(t.tagId),
 	}),
 );
 
@@ -558,6 +564,7 @@ export const photosTags = sqliteTable(
 	},
 	(t) => ({
 		pk: primaryKey({ columns: [t.photoId, t.tagId] }),
+		tagIdx: index("photos_tags_tag_id_idx").on(t.tagId),
 	}),
 );
 
