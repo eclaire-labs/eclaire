@@ -164,10 +164,7 @@ async function runPostgresWorker() {
 }
 
 async function runRedisWorker() {
-  const connection = createRedisConnection({
-    url: config.redisUrl!,
-    logger: noopLogger,
-  });
+  const connection = createRedisConnection({ url: config.redisUrl! }, noopLogger);
 
   const worker = createBullMQWorker<{ value: number }>(
     config.queueName!,

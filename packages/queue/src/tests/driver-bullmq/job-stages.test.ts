@@ -265,14 +265,14 @@ describe("BullMQ: Job Stages", () => {
 
     await client.enqueue("test-queue", { filename: "photo.jpg" });
 
-    worker = harness.createWorker<{ filename: string }>(
+    worker = harness.createWorker(
       "test-queue",
       async (ctx) => {
         await ctx.initStages(["classify"]);
         await ctx.startStage("classify");
 
         // Simulate classification based on data
-        const filename = ctx.job.data.filename;
+        const filename = (ctx.job.data as { filename: string }).filename;
         let stages: string[];
 
         if (filename.endsWith(".jpg")) {

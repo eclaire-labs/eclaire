@@ -11,7 +11,7 @@
  * Run with: QUEUE_DRIVER=bullmq pnpm vitest run H1
  */
 
-import type Redis from "ioredis";
+import { Redis } from "ioredis";
 import {
   afterAll,
   afterEach,
@@ -56,10 +56,7 @@ describeIfBullMQ("H1: Multi-process workers (BullMQ)", () => {
   };
 
   beforeAll(async () => {
-    redis = createRedisConnection({
-      url: REDIS_URL,
-      logger: noopLogger,
-    });
+    redis = createRedisConnection({ url: REDIS_URL }, noopLogger);
 
     client = createBullMQClient({
       redis: { connection: redis },

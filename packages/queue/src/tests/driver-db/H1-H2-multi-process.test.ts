@@ -46,6 +46,15 @@ describeIfPostgres("H1-H2: Multi-process workers (Postgres)", () => {
   let client: ReturnType<typeof createDbQueueClient>;
   let workers: WorkerProcess[] = [];
 
+  // No-op logger for tests
+  const noopLogger = {
+    info: () => {},
+    error: () => {},
+    warn: () => {},
+    debug: () => {},
+    child: () => noopLogger,
+  };
+
   beforeAll(async () => {
     sqlClient = postgres(POSTGRES_URL!);
     db = drizzle(sqlClient);
@@ -96,6 +105,7 @@ describeIfPostgres("H1-H2: Multi-process workers (Postgres)", () => {
         jsonb: true,
         type: "postgres",
       },
+      logger: noopLogger,
     });
   });
 

@@ -256,7 +256,7 @@ describe("BullMQ: Job Context", () => {
     });
 
     it("should provide job metadata in context", async () => {
-      let jobInfo: { id: string; name: string; attempts: number } | null = null;
+      let jobInfo: { id: string; queue: string; attempts: number } | null = null;
 
       const jobId = await client.enqueue(
         "test-queue",
