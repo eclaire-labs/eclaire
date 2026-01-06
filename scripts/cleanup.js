@@ -88,12 +88,7 @@ function showCleanupPreview() {
   // 3. Environment files
   console.log(`\n${colors.bright}${colors.magenta}3. Environment Files${colors.reset}`);
   const envFiles = [
-    'apps/frontend/.env.dev',
-    'apps/frontend/.env.prod',
-    'apps/backend/.env.dev',
-    'apps/backend/.env.prod',
-    'apps/workers/.env.dev',
-    'apps/workers/.env.prod'
+    '.env'
   ];
 
   for (const envFile of envFiles) {
@@ -108,12 +103,12 @@ function showCleanupPreview() {
 
   // 4. Configuration files
   console.log(`\n${colors.bright}${colors.magenta}4. Configuration Files${colors.reset}`);
-  const configFile = path.join(PROJECT_ROOT, 'config/models.json');
-  if (fs.existsSync(configFile)) {
-    const size = fs.statSync(configFile).size;
-    console.log(`${colors.red}   ✗${colors.reset} config/models.json (${size} bytes)`);
+  const configDir = path.join(PROJECT_ROOT, 'config/ai');
+  const configStats = getDirectoryStats(configDir);
+  if (configStats.fileCount > 0) {
+    console.log(`${colors.red}   ✗${colors.reset} config/ai/ (${configStats.fileCount} files, ${(configStats.size / 1024 / 1024).toFixed(1)}MB)`);
   } else {
-    console.log(`${colors.yellow}   -${colors.reset} config/models.json (not found)`);
+    console.log(`${colors.yellow}   -${colors.reset} config/ai/ (empty or not found)`);
   }
 
   // What will NOT be deleted
@@ -138,8 +133,7 @@ async function dropDatabase(dryRun = false) {
     // Get database connection info (same logic as backup/restore scripts)
     let dbUrl = 'postgresql://eclaire:eclaire@localhost:5432/eclaire';
     const envPaths = [
-      path.join(PROJECT_ROOT, 'apps/backend/.env.dev'),
-      path.join(PROJECT_ROOT, 'apps/backend/.env.prod')
+      path.join(PROJECT_ROOT, '.env')
     ];
 
     for (const envPath of envPaths) {
@@ -254,12 +248,7 @@ async function removeEnvironmentFiles(dryRun = false) {
   console.log(`\n${colors.bright}${colors.magenta}🔐 Environment Files Cleanup${colors.reset}`);
 
   const envFiles = [
-    'apps/frontend/.env.dev',
-    'apps/frontend/.env.prod',
-    'apps/backend/.env.dev',
-    'apps/backend/.env.prod',
-    'apps/workers/.env.dev',
-    'apps/workers/.env.prod'
+    '.env'
   ];
 
   let successCount = 0;
@@ -297,24 +286,27 @@ async function removeEnvironmentFiles(dryRun = false) {
 async function removeConfigFiles(dryRun = false) {
   console.log(`\n${colors.bright}${colors.magenta}⚙️  Configuration Files Cleanup${colors.reset}`);
 
-  const configFile = path.join(PROJECT_ROOT, 'config/models.json');
+  const configDir = path.join(PROJECT_ROOT, 'config/ai');
 
-  if (!fs.existsSync(configFile)) {
-    console.log(`${colors.yellow}⚠${colors.reset} config/models.json: Not found`);
+  if (!fs.existsSync(configDir)) {
+    console.log(`${colors.yellow}⚠${colors.reset} config/ai/: Not found`);
     return true;
   }
 
+  const configStats = getDirectoryStats(configDir);
+  console.log(`${colors.cyan}Target:${colors.reset} config/ai/ directory (${configStats.fileCount} files)`);
+
   if (dryRun) {
-    console.log(`${colors.cyan}→${colors.reset} Would remove: config/models.json`);
+    console.log(`${colors.cyan}→${colors.reset} Would remove: config/ai/ directory`);
     return true;
   }
 
   try {
-    fs.unlinkSync(configFile);
-    console.log(`${colors.green}✓${colors.reset} Removed: config/models.json`);
+    execSync(`rm -rf "${configDir}"`);
+    console.log(`${colors.green}✓${colors.reset} Removed: config/ai/ directory`);
     return true;
   } catch (error) {
-    console.error(`${colors.red}✗${colors.reset} Failed to remove config/models.json: ${error.message}`);
+    console.error(`${colors.red}✗${colors.reset} Failed to remove config/ai/: ${error.message}`);
     return false;
   }
 }
@@ -423,8 +415,8 @@ if (showHelp) {
   console.log('Resets Eclaire to a clean state by removing:');
   console.log('  • PostgreSQL database (dropped, not recreated)');
   console.log('  • Complete data/ directory');
-  console.log('  • All environment files (.env.dev, .env.prod)');
-  console.log('  • Configuration files (config/models.json)');
+  console.log('  • Environment file (.env)');
+  console.log('  • Configuration files (config/ai/*.json)');
   console.log('');
   console.log('Usage: node scripts/cleanup.js [options]');
   console.log('');

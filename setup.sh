@@ -28,6 +28,17 @@ success() { printf "${GREEN}✓${NC} %s\n" "$1"; }
 warn() { printf "${YELLOW}!${NC} %s\n" "$1"; }
 error() { printf "${RED}✗${NC} %s\n" "$1"; exit 1; }
 
+# Collect diagnostics on failure
+cleanup_on_error() {
+  printf "\n${RED}Setup failed. Collecting diagnostics...${NC}\n\n"
+  printf "${BOLD}Container status:${NC}\n"
+  docker compose --env-file .env ps 2>/dev/null || true
+  printf "\n${BOLD}Postgres logs (last 30 lines):${NC}\n"
+  docker compose --env-file .env logs --tail=30 postgres 2>/dev/null || true
+  printf "\n"
+}
+trap 'cleanup_on_error' ERR
+
 # Generate a random 32-byte hex string
 generate_secret() {
   if command -v openssl >/dev/null 2>&1; then
@@ -113,18 +124,18 @@ configure_secrets() {
 # Pull Docker images
 pull_images() {
   info "Pulling Docker images (this may take a few minutes)..."
-  docker compose pull
+  docker compose --env-file .env pull
   success "Docker images pulled"
 }
 
 # Initialize database
 initialize_database() {
   info "Starting database..."
-  docker compose up -d postgres
+  docker compose --env-file .env up -d postgres
 
   info "Waiting for database to be ready..."
   timeout=60
-  while ! docker compose exec postgres psql -U eclaire -d eclaire -c "SELECT 1" >/dev/null 2>&1; do
+  while ! docker compose --env-file .env exec -T postgres psql -U eclaire -d eclaire -c "SELECT 1" >/dev/null 2>&1; do
     timeout=$((timeout - 1))
     if [ $timeout -le 0 ]; then
       error "Database failed to become ready"
@@ -133,9 +144,11 @@ initialize_database() {
   done
 
   info "Running migrations..."
-  docker compose run --rm --no-deps eclaire upgrade
+  if ! docker compose --env-file .env run --rm -T --no-deps eclaire upgrade; then
+    error "Database migration failed. Check logs above for details."
+  fi
 
-  docker compose stop postgres >/dev/null 2>&1
+  docker compose --env-file .env stop postgres >/dev/null 2>&1
 
   success "Database initialized"
 }
@@ -146,17 +159,15 @@ print_next_steps() {
 
   printf "${BOLD}Next steps:${NC}\n\n"
 
-  printf "1. Download models (if not already cached):\n"
-  printf "   ${CYAN}llama-cli --hf-repo unsloth/Qwen3-14B-GGUF:Q4_K_XL --prompt \"hi\" -n 0 --no-warmup --single-turn${NC}\n"
-  printf "   ${CYAN}llama-cli --hf-repo unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --prompt \"hi\" -n 0 --no-warmup --single-turn${NC}\n\n"
+  printf "1. Start your LLM servers (in separate terminals):\n"
+  printf "   ${CYAN}llama-server -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL --ctx-size 16384 --port 11500${NC}\n"
+  printf "   ${CYAN}llama-server -hf unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --ctx-size 16384 --port 11501${NC}\n"
+  printf "   ${YELLOW}(Models download automatically on first run)${NC}\n\n"
 
-  printf "2. Start your LLM server (in a separate terminal):\n"
-  printf "   ${CYAN}llama-server --port 11500${NC}\n\n"
-
-  printf "3. Start Eclaire:\n"
+  printf "2. Start Eclaire:\n"
   printf "   ${CYAN}docker compose up -d${NC}\n\n"
 
-  printf "4. Open ${CYAN}http://localhost:3000${NC} and register an account.\n\n"
+  printf "3. Open ${CYAN}http://localhost:3000${NC} and register an account.\n\n"
 
   printf "For AI model configuration, see: ${CYAN}docs/ai-models.md${NC}\n\n"
 }

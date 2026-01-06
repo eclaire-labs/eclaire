@@ -11,14 +11,28 @@ export const isDev = process.env.NODE_ENV === "development";
 /**
  * Get the PostgreSQL database URL from environment variables.
  * Falls back to constructing URL from individual components or defaults.
+ * Returns null for sqlite/pglite since they use file paths, not connection URLs.
  */
-export function getDatabaseUrl(): string {
+export function getDatabaseUrl(): string | null {
+	// If explicitly set, always use it
 	if (process.env.DATABASE_URL) {
 		return process.env.DATABASE_URL;
 	}
 
+	// For file-based databases, there's no connection URL
+	const dbType = getDatabaseType();
+	if (dbType === "sqlite" || dbType === "pglite") {
+		return null;
+	}
+
+	// Postgres: build connection URL from components
+	// Default host based on runtime context
+	// In containers, use Docker service name; locally use localhost
+	const isContainer = process.env.ECLAIRE_RUNTIME === "container";
+	const defaultHost = isContainer ? "postgres" : "127.0.0.1";
+
 	// Fall back to individual components (using DATABASE_* naming to match compose.yaml)
-	const host = process.env.DATABASE_HOST || "127.0.0.1";
+	const host = process.env.DATABASE_HOST || defaultHost;
 	const port = process.env.DATABASE_PORT || "5432";
 	const database = process.env.DATABASE_NAME || "eclaire";
 	const username = process.env.DATABASE_USER || "eclaire";
@@ -36,14 +50,15 @@ export function getDatabaseAuthToken(): string | undefined {
 
 /**
  * Get the database type from environment.
- * Defaults to SQLite if not specified.
+ * Defaults to postgres for dev/prod parity.
  * Accepts both "postgres" and "postgresql" for backwards compatibility.
  */
 export function getDatabaseType(): "postgres" | "pglite" | "sqlite" {
 	const type = process.env.DATABASE_TYPE?.toLowerCase();
-	if (type === "postgres" || type === "postgresql") return "postgres";
+	if (type === "sqlite") return "sqlite";
 	if (type === "pglite") return "pglite";
-	return "sqlite";
+	// Default to postgres (handles "postgres", "postgresql", or unset)
+	return "postgres";
 }
 
 /**

@@ -42,10 +42,10 @@ export async function initTestDatabase(
 		const db = drizzleSqlite(client, { schema: sqliteSchema });
 		const txManager = createSqliteTransactionManager(db, sqliteSchema);
 
-		// Run migrations
+		// Run migrations (from @eclaire/db package)
 		const migrationsPath = path.join(
 			process.cwd(),
-			"src/db/migrations-sqlite",
+			"../../packages/db/src/migrations/sqlite",
 		);
 		migrateSqlite(db, { migrationsFolder: migrationsPath });
 
@@ -65,10 +65,10 @@ export async function initTestDatabase(
 		const db = drizzlePglite(client, { schema: pgSchema });
 		const txManager = createPgTransactionManager(db);
 
-		// Run migrations
+		// Run migrations (from @eclaire/db package)
 		const migrationsPath = path.join(
 			process.cwd(),
-			"src/db/migrations-postgres",
+			"../../packages/db/src/migrations/postgres",
 		);
 		await migratePg(db, { migrationsFolder: migrationsPath });
 

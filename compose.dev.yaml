@@ -1,0 +1,13 @@
+# =============================================================================
+# Eclaire Docker Compose - Development Overlay
+# =============================================================================
+# Use with: docker compose -f compose.yaml -f compose.dev.yaml up -d postgres docling
+#
+# This overlay exposes additional ports for local development:
+#   - PostgreSQL on host port 5432 (for migrations, scripts, IDE tools)
+# =============================================================================
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"

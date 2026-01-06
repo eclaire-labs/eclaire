@@ -100,8 +100,7 @@ function backupDatabase(backupDir) {
     let dbUrl = 'postgresql://eclaire:eclaire@localhost:5432/eclaire';
 
     const envPaths = [
-      path.join(PROJECT_ROOT, 'apps/backend/.env.dev'),
-      path.join(PROJECT_ROOT, 'apps/backend/.env.prod')
+      path.join(PROJECT_ROOT, '.env')
     ];
 
     for (const envPath of envPaths) {
@@ -201,9 +200,11 @@ function showBackupPreview() {
   // 3. Configuration files
   console.log(`\n${colors.bright}${colors.magenta}3. Configuration Files${colors.reset}`);
   const configFiles = [
-    'config/models.json',
-    'docker-compose.yml',
+    'compose.yaml',
     'pm2.deps.config.js'
+  ];
+  const configDirs = [
+    'config/ai'
   ];
 
   for (const configFile of configFiles) {
@@ -216,15 +217,20 @@ function showBackupPreview() {
     }
   }
 
+  for (const configDir of configDirs) {
+    const configPath = path.join(PROJECT_ROOT, configDir);
+    const stats = getDirectoryStats(configPath);
+    if (stats.fileCount > 0) {
+      console.log(`${colors.green}   ✓${colors.reset} ${configDir}/ (${stats.fileCount} files, ${(stats.size / 1024 / 1024).toFixed(1)}MB)`);
+    } else {
+      console.log(`${colors.yellow}   -${colors.reset} ${configDir}/ (empty or not found)`);
+    }
+  }
+
   // 4. Environment files
   console.log(`\n${colors.bright}${colors.magenta}4. Environment Files${colors.reset}`);
   const envFiles = [
-    'apps/frontend/.env.dev',
-    'apps/frontend/.env.prod',
-    'apps/backend/.env.dev',
-    'apps/backend/.env.prod',
-    'apps/workers/.env.dev',
-    'apps/workers/.env.prod'
+    '.env'
   ];
 
   for (const envFile of envFiles) {
@@ -294,8 +300,7 @@ async function createBackup() {
   // 3. Backup configuration files
   console.log(`\n${colors.bright}${colors.magenta}3. Configuration Files${colors.reset}`);
   const configFiles = [
-    { src: path.join(PROJECT_ROOT, 'config/models.json'), dest: path.join(backupDir, 'config/models.json') },
-    { src: path.join(PROJECT_ROOT, 'docker-compose.yml'), dest: path.join(backupDir, 'docker-compose.yml') },
+    { src: path.join(PROJECT_ROOT, 'compose.yaml'), dest: path.join(backupDir, 'compose.yaml') },
     { src: path.join(PROJECT_ROOT, 'pm2.deps.config.js'), dest: path.join(backupDir, 'pm2.deps.config.js') }
   ];
 
@@ -306,15 +311,22 @@ async function createBackup() {
     totalFiles++;
   }
 
+  // Backup config directories
+  const configDirs = [
+    { src: path.join(PROJECT_ROOT, 'config/ai'), dest: path.join(backupDir, 'config/ai') }
+  ];
+
+  for (const { src, dest } of configDirs) {
+    if (copyDir(src, dest)) {
+      successCount++;
+    }
+    totalFiles++;
+  }
+
   // 4. Backup environment files
   console.log(`\n${colors.bright}${colors.magenta}4. Environment Files${colors.reset}`);
   const envFiles = [
-    { src: path.join(PROJECT_ROOT, 'apps/frontend/.env.dev'), dest: path.join(backupDir, 'apps/frontend/.env.dev') },
-    { src: path.join(PROJECT_ROOT, 'apps/frontend/.env.prod'), dest: path.join(backupDir, 'apps/frontend/.env.prod') },
-    { src: path.join(PROJECT_ROOT, 'apps/backend/.env.dev'), dest: path.join(backupDir, 'apps/backend/.env.dev') },
-    { src: path.join(PROJECT_ROOT, 'apps/backend/.env.prod'), dest: path.join(backupDir, 'apps/backend/.env.prod') },
-    { src: path.join(PROJECT_ROOT, 'apps/workers/.env.dev'), dest: path.join(backupDir, 'apps/workers/.env.dev') },
-    { src: path.join(PROJECT_ROOT, 'apps/workers/.env.prod'), dest: path.join(backupDir, 'apps/workers/.env.prod') }
+    { src: path.join(PROJECT_ROOT, '.env'), dest: path.join(backupDir, '.env') }
   ];
 
   for (const { src, dest } of envFiles) {
@@ -476,8 +488,7 @@ function validateBackup(backupDir) {
     // Parse database config (same logic as backup function)
     let dbUrl = 'postgresql://eclaire:eclaire@localhost:5432/eclaire';
     const envPaths = [
-      path.join(PROJECT_ROOT, 'apps/backend/.env.dev'),
-      path.join(PROJECT_ROOT, 'apps/backend/.env.prod')
+      path.join(PROJECT_ROOT, '.env')
     ];
 
     for (const envPath of envPaths) {
@@ -565,8 +576,7 @@ function validateBackup(backupDir) {
   // 3. Validate configuration files
   console.log(`\n${colors.bright}${colors.magenta}3. Configuration File Validation${colors.reset}`);
   const configFiles = [
-    { src: path.join(PROJECT_ROOT, 'config/models.json'), backup: path.join(backupDir, 'config/models.json') },
-    { src: path.join(PROJECT_ROOT, 'docker-compose.yml'), backup: path.join(backupDir, 'docker-compose.yml') },
+    { src: path.join(PROJECT_ROOT, 'compose.yaml'), backup: path.join(backupDir, 'compose.yaml') },
     { src: path.join(PROJECT_ROOT, 'pm2.deps.config.js'), backup: path.join(backupDir, 'pm2.deps.config.js') }
   ];
 
@@ -600,6 +610,39 @@ function validateBackup(backupDir) {
       valid,
       srcChecksum,
       backupChecksum
+    };
+  }
+
+  // Validate config directories
+  const configDirs = [
+    { name: 'config/ai', src: path.join(PROJECT_ROOT, 'config/ai'), backup: path.join(backupDir, 'config/ai') }
+  ];
+
+  for (const { name, src, backup } of configDirs) {
+    configTotal++;
+    const srcStats = getDirectoryStats(src);
+    const backupStats = getDirectoryStats(backup);
+
+    const valid = fs.existsSync(backup) && backupStats.fileCount > 0;
+    const fileDiff = Math.abs(srcStats.fileCount - backupStats.fileCount);
+
+    if (valid && fileDiff === 0) {
+      console.log(`${colors.green}✓${colors.reset} ${name}/: ${backupStats.fileCount} files match`);
+      configValid++;
+    } else if (valid) {
+      console.log(`${colors.yellow}⚠${colors.reset} ${name}/: ${backupStats.fileCount} files (${fileDiff} file difference)`);
+      configValid++;
+    } else if (!fs.existsSync(src)) {
+      console.log(`${colors.yellow}⚠${colors.reset} ${name}/: Source directory not found`);
+    } else {
+      console.log(`${colors.red}✗${colors.reset} ${name}/: Backup directory missing or empty`);
+      allValid = false;
+    }
+
+    validationReport.checks.configFiles[name] = {
+      valid,
+      srcFiles: srcStats.fileCount,
+      backupFiles: backupStats.fileCount
     };
   }
 

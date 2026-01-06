@@ -102,7 +102,7 @@ function wrapPgTx(drizzleTx: DrizzlePgTx): Tx {
 						userId,
 					})),
 				)
-				.onConflictDoNothing({ target: [schema.tags.userId, schema.tags.name] });
+				.onConflictDoNothing();
 
 			// Fetch all matching tags
 			return drizzleTx

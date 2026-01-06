@@ -89,8 +89,6 @@ console.log("");
 
 console.log("Security:");
 const secretsSourceLabels = {
-  "auto-generated": "[AUTO-GENERATED] (saved to .env.local)",
-  "env-local": "[CONFIGURED] (from .env.local)",
   env: "[CONFIGURED] (from .env)",
   environment: "[CONFIGURED] (from environment)",
 };

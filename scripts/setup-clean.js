@@ -26,9 +26,10 @@ function question(query) {
 async function clean() {
   console.log(`${colors.yellow}⚠️  WARNING: This will delete all generated configuration files${colors.reset}`);
   console.log('\nThe following files will be deleted:');
-  console.log('  - apps/backend/.env.dev');
-  console.log('  - apps/backend/.env.prod');
-  console.log('  - config/models.json');
+  console.log('  - .env');
+  console.log('  - config/ai/models.json');
+  console.log('  - config/ai/providers.json');
+  console.log('  - config/ai/selection.json');
 
   const answer = await question(`\n${colors.red}Are you sure you want to continue? [y/N] ${colors.reset}`);
   const normalizedAnswer = answer.trim().toLowerCase();
@@ -40,9 +41,10 @@ async function clean() {
   }
 
   const files = [
-    'apps/backend/.env.dev',
-    'apps/backend/.env.prod',
-    'config/models.json'
+    '.env',
+    'config/ai/models.json',
+    'config/ai/providers.json',
+    'config/ai/selection.json'
   ];
 
   let deletedCount = 0;

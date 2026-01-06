@@ -127,7 +127,7 @@ describe.each(DB_TEST_CONFIGS)(
 						id: taskId,
 						userId: testUserId,
 						title: "Test Task",
-						status: "pending",
+						status: "not-started",
 					});
 
 					// Insert task-tag relationships
@@ -196,7 +196,7 @@ describe.each(DB_TEST_CONFIGS)(
 							id: taskId,
 							userId: testUserId,
 							title: "Test Task",
-							status: "pending",
+							status: "not-started",
 						});
 
 						// Insert task-tag relationship

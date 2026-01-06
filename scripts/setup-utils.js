@@ -82,8 +82,8 @@ async function chooseDatabaseType() {
   console.log(`\n  ${colors.cyan}Database Configuration${colors.reset}`);
 
   const options = [
-    { label: 'SQLite', value: 'sqlite', description: 'default, no external DB needed' },
-    { label: 'PostgreSQL', value: 'postgres', description: 'requires Docker' }
+    { label: 'PostgreSQL', value: 'postgres', description: 'default, requires Docker' },
+    { label: 'SQLite', value: 'sqlite', description: 'simpler, no external DB' }
   ];
 
   const selected = await selectFromList('\n  Use arrow keys to select, Enter to confirm:', options, 0);
@@ -118,17 +118,18 @@ async function configureDatabaseInEnv(databaseType, questionFn) {
     const startPg = await questionFn(`\n  Start PostgreSQL with Docker Compose? [Y/n]: `);
     if (startPg.toLowerCase() !== 'n' && startPg.toLowerCase() !== 'no') {
       console.log(`\n  Starting PostgreSQL and Docling via Docker Compose...`);
-      const result = exec('docker compose up postgres docling -d', true);
+      // Use compose.dev.yaml overlay to expose Postgres port to host
+      const result = exec('docker compose -f compose.yaml -f compose.dev.yaml up postgres docling -d', true);
       if (result.success) {
         console.log(`  ${colors.green}✅ PostgreSQL and Docling started${colors.reset}`);
         console.log(`  ${colors.cyan}Check status with: docker compose ps${colors.reset}`);
       } else {
         console.log(`  ${colors.red}❌ Failed to start Docker Compose${colors.reset}`);
-        console.log(`  ${colors.cyan}Try manually: docker compose up postgres docling -d${colors.reset}`);
+        console.log(`  ${colors.cyan}Try manually: docker compose -f compose.yaml -f compose.dev.yaml up postgres docling -d${colors.reset}`);
       }
     } else {
       console.log(`  ${colors.yellow}Skipping Docker Compose startup${colors.reset}`);
-      console.log(`  ${colors.cyan}Start manually: docker compose up postgres docling -d${colors.reset}`);
+      console.log(`  ${colors.cyan}Start manually: docker compose -f compose.yaml -f compose.dev.yaml up postgres docling -d${colors.reset}`);
     }
   } else {
     // Set DATABASE_TYPE=sqlite (handles commented or any existing value)
@@ -136,8 +137,13 @@ async function configureDatabaseInEnv(databaseType, questionFn) {
       /^#?DATABASE_TYPE=\w*$/m,
       'DATABASE_TYPE=sqlite'
     );
+    // Also set QUEUE_BACKEND=sqlite for consistency (SQLite queue requires SQLite database)
+    content = content.replace(
+      /^#?QUEUE_BACKEND=\w*$/m,
+      'QUEUE_BACKEND=sqlite'
+    );
     fs.writeFileSync(envPath, content);
-    console.log(`  ✅ Configured DATABASE_TYPE=sqlite in .env`);
+    console.log(`  ✅ Configured DATABASE_TYPE=sqlite and QUEUE_BACKEND=sqlite in .env`);
   }
 }
 
@@ -372,7 +378,7 @@ async function checkDependencies() {
 async function copyEnvFiles(force = false) {
   const filesToCopy = [
     {
-      source: '.env.dev.example',
+      source: '.env.example',
       dest: '.env',
       generateSecrets: true
     },
@@ -508,9 +514,10 @@ async function checkModels() {
 
   console.log(`\n  ${colors.green}✅ llama-server found${colors.reset}`);
 
-  console.log('\n  To manually download models (optional):');
-  console.log(`    ${colors.cyan}llama-cli --hf-repo unsloth/Qwen3-14B-GGUF:Q4_K_XL --prompt "hi" -n 0 --no-warmup --single-turn${colors.reset}`);
-  console.log(`    ${colors.cyan}llama-cli --hf-repo unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --prompt "hi" -n 0 --no-warmup --single-turn${colors.reset}`);
+  console.log('\n  To start LLM servers (in separate terminals):');
+  console.log(`    ${colors.cyan}llama-server -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL --ctx-size 16384 --port 11500${colors.reset}`);
+  console.log(`    ${colors.cyan}llama-server -hf unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --ctx-size 16384 --port 11501${colors.reset}`);
+  console.log(`    ${colors.yellow}(Models download automatically on first run)${colors.reset}`);
 
   return true;
 }
@@ -546,7 +553,7 @@ async function installDependencies() {
 }
 
 // Initialize database
-async function initDatabase(databaseType = 'sqlite') {
+async function initDatabase(databaseType = 'postgres') {
   // For PostgreSQL, check if it's running
   if (databaseType === 'postgres') {
     console.log('\n  Checking if PostgreSQL is running...');
@@ -554,7 +561,7 @@ async function initDatabase(databaseType = 'sqlite') {
     const pgCheck = exec('docker ps | grep eclaire-postgres', true);
     if (!pgCheck.success) {
       console.log(`  ${colors.yellow}⚠️  PostgreSQL is not running${colors.reset}`);
-      console.log(`  ${colors.cyan}Start with: docker compose up postgres -d${colors.reset}`);
+      console.log(`  ${colors.cyan}Start with: docker compose -f compose.yaml -f compose.dev.yaml up postgres -d${colors.reset}`);
       return false;
     }
 
@@ -576,6 +583,20 @@ async function initDatabase(databaseType = 'sqlite') {
   return true;
 }
 
+// Seed demo data (only for PostgreSQL)
+async function seedDemoData() {
+  console.log('  Running demo data seed...');
+  const seedResult = exec('pnpm --filter @eclaire/backend db:seed:demo');
+
+  if (!seedResult.success) {
+    console.log(`  ${colors.red}❌ Demo seeding failed${colors.reset}`);
+    return false;
+  }
+
+  console.log(`  ${colors.green}✅ Demo data seeded successfully${colors.reset}`);
+  return true;
+}
+
 // Print setup summary
 function printSummary(results) {
   console.log(`${colors.cyan}╔══════════════════════════════════════════════╗${colors.reset}`);
@@ -591,7 +612,8 @@ function printSummary(results) {
     { name: 'Data directories', key: 'directories' },
     { name: 'AI models check', key: 'models' },
     { name: 'NPM dependencies', key: 'npmDependencies' },
-    { name: 'Database initialized', key: 'database' }
+    { name: 'Database initialized', key: 'database' },
+    { name: 'Demo data seeded', key: 'demoSeed' }
   ];
 
   let hasFailures = false;
@@ -663,6 +685,7 @@ module.exports = {
   checkModels,
   installDependencies,
   initDatabase,
+  seedDemoData,
   printSummary,
   colors,
   exec,

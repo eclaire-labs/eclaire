@@ -106,8 +106,7 @@ async function restoreDatabase(backupDir, dryRun = false) {
     // Get database connection info (same logic as backup script)
     let dbUrl = 'postgresql://eclaire:eclaire@localhost:5432/eclaire';
     const envPaths = [
-      path.join(PROJECT_ROOT, 'apps/backend/.env.dev'),
-      path.join(PROJECT_ROOT, 'apps/backend/.env.prod')
+      path.join(PROJECT_ROOT, '.env')
     ];
 
     for (const envPath of envPaths) {
@@ -354,7 +353,11 @@ function showRestorePreview(backupDir) {
   // 3. Configuration files
   console.log(`\n${colors.bright}${colors.magenta}3. Configuration Files${colors.reset}`);
   const configFiles = [
-    'config/models.json'
+    'compose.yaml',
+    'pm2.deps.config.js'
+  ];
+  const configDirs = [
+    'config/ai'
   ];
 
   for (const configFile of configFiles) {
@@ -379,15 +382,30 @@ function showRestorePreview(backupDir) {
     }
   }
 
+  for (const configDir of configDirs) {
+    const backupPath = path.join(backupDir, configDir);
+    const currentPath = path.join(PROJECT_ROOT, configDir);
+
+    const backupStats = getDirectoryStats(backupPath);
+    const currentStats = getDirectoryStats(currentPath);
+
+    if (backupStats.fileCount > 0) {
+      if (currentStats.fileCount === 0) {
+        console.log(`${colors.green}   ✓${colors.reset} ${configDir}/ (new directory from backup, ${backupStats.fileCount} files)`);
+      } else {
+        console.log(`${colors.red}   ✗${colors.reset} ${configDir}/ directory will be REPLACED`);
+        console.log(`${colors.cyan}     Current:${colors.reset} ${currentStats.fileCount} files (${(currentStats.size / 1024 / 1024).toFixed(1)}MB)`);
+        console.log(`${colors.cyan}     Backup:${colors.reset} ${backupStats.fileCount} files (${(backupStats.size / 1024 / 1024).toFixed(1)}MB)`);
+      }
+    } else {
+      console.log(`${colors.yellow}   -${colors.reset} ${configDir}/ (not in backup)`);
+    }
+  }
+
   // 4. Environment files
   console.log(`\n${colors.bright}${colors.magenta}4. Environment Files${colors.reset}`);
   const envFiles = [
-    'apps/frontend/.env.dev',
-    'apps/frontend/.env.prod',
-    'apps/backend/.env.dev',
-    'apps/backend/.env.prod',
-    'apps/workers/.env.dev',
-    'apps/workers/.env.prod'
+    '.env'
   ];
 
   for (const envFile of envFiles) {
@@ -476,7 +494,8 @@ async function restoreBackup(backupDir, options = {}) {
   // 3. Restore configuration files
   console.log(`\n${colors.bright}${colors.magenta}⚙️ Configuration Files${colors.reset}`);
   const configFiles = [
-    { src: 'config/models.json', dest: 'config/models.json' }
+    { src: 'compose.yaml', dest: 'compose.yaml' },
+    { src: 'pm2.deps.config.js', dest: 'pm2.deps.config.js' }
   ];
 
   for (const { src, dest } of configFiles) {
@@ -494,15 +513,56 @@ async function restoreBackup(backupDir, options = {}) {
     }
   }
 
+  // Restore config directories
+  const configDirs = [
+    { src: 'config/ai', dest: 'config/ai' }
+  ];
+
+  for (const { src, dest } of configDirs) {
+    totalOperations++;
+    const backupPath = path.join(backupDir, src);
+    const destPath = path.join(PROJECT_ROOT, dest);
+
+    if (!fs.existsSync(backupPath)) {
+      console.log(`${colors.yellow}⚠${colors.reset} ${src}/: Not found in backup`);
+      successCount++;
+      continue;
+    }
+
+    const backupStats = getDirectoryStats(backupPath);
+    const currentStats = getDirectoryStats(destPath);
+
+    if (dryRun) {
+      console.log(`${colors.cyan}→${colors.reset} Would restore ${src}/ (${backupStats.fileCount} files)`);
+      successCount++;
+      continue;
+    }
+
+    if (currentStats.fileCount > 0) {
+      console.log(`${colors.cyan}${src}/:${colors.reset} Current: ${currentStats.fileCount} files → Backup: ${backupStats.fileCount} files`);
+      const answer = await askQuestion(`${colors.yellow}?${colors.reset} Restore this directory? (y/N): `);
+      if (!answer.toLowerCase().startsWith('y')) {
+        console.log(`${colors.yellow}↷${colors.reset} Skipped ${src}/`);
+        successCount++;
+        continue;
+      }
+    }
+
+    try {
+      copyDirectory(backupPath, destPath);
+      console.log(`${colors.green}✓${colors.reset} ${src}/ restored`);
+      successCount++;
+    } catch (error) {
+      console.error(`${colors.red}✗${colors.reset} Failed to restore ${src}/: ${error.message}`);
+      rl.close();
+      return false;
+    }
+  }
+
   // 4. Restore environment files
   console.log(`\n${colors.bright}${colors.magenta}🔐 Environment Files${colors.reset}`);
   const envFiles = [
-    { src: 'apps/frontend/.env.dev', dest: 'apps/frontend/.env.dev' },
-    { src: 'apps/frontend/.env.prod', dest: 'apps/frontend/.env.prod' },
-    { src: 'apps/backend/.env.dev', dest: 'apps/backend/.env.dev' },
-    { src: 'apps/backend/.env.prod', dest: 'apps/backend/.env.prod' },
-    { src: 'apps/workers/.env.dev', dest: 'apps/workers/.env.dev' },
-    { src: 'apps/workers/.env.prod', dest: 'apps/workers/.env.prod' }
+    { src: '.env', dest: '.env' }
   ];
 
   for (const { src, dest } of envFiles) {

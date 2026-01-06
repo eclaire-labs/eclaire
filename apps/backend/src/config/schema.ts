@@ -10,12 +10,11 @@
  * 3. Derived config (computed): connection strings, full paths
  */
 
-import * as fs from "fs";
 import * as path from "path";
 import { envLoadInfo } from "../lib/env-loader.js";
 
 export type EclaireRuntime = "local" | "container";
-export type SecretsSource = "auto-generated" | "env-local" | "env" | "environment";
+export type SecretsSource = "env" | "environment";
 export type DatabaseType = "sqlite" | "pglite" | "postgres";
 export type QueueBackend = "sqlite" | "postgres" | "redis";
 export type ServiceRole = "api" | "worker" | "all";
@@ -46,7 +45,7 @@ export interface EclaireConfig {
     user: string;
     password: string;
     name: string;
-    url: string; // Full connection string
+    url: string | null; // Full connection string (null for sqlite/pglite)
     sqlitePath: string;
     pgliteDir: string;
   };
@@ -150,47 +149,46 @@ function generateHex(bytes: number): string {
 }
 
 /**
- * Well-known test secrets (only used when NODE_ENV=test)
- * These are intentionally weak and predictable for reproducible testing.
- * NEVER use these values in production.
+ * Seed for deterministic test secrets.
+ * The "DEVONLY" prefix ensures these can never accidentally be used in production.
  */
-const TEST_SECRETS = {
-  betterAuthSecret: "test-auth-secret-32-characters!!!",
-  masterEncryptionKey:
-    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-  apiKeyHmacKeyV1: "test-hmac-key-32-characters!!!!!",
-};
+const DEVONLY_TEST_SEED = "DEVONLY_ECLAIRE_TEST_SECRET_SEED_2024";
 
 /**
- * Persist auto-generated secrets to .env.local so they survive restarts.
- * This enables "pnpm dev just works" without requiring manual setup.
+ * Generate deterministic test secrets from the DEVONLY seed.
+ * These are intentionally weak and predictable for reproducible testing.
+ * Production validation will reject any secret containing "DEVONLY".
  */
-function persistSecretsToEnvLocal(
-  secrets: {
-    betterAuthSecret: string;
-    masterEncryptionKey: string;
-    apiKeyHmacKeyV1: string;
-  },
-  home: string,
-): void {
-  const envLocalPath = path.join(home, ".env.local");
+function deriveTestSecrets(): {
+  betterAuthSecret: string;
+  masterEncryptionKey: string;
+  apiKeyHmacKeyV1: string;
+} {
+  // Simple deterministic derivation - not cryptographically secure, but reproducible
+  const hash = (input: string): string => {
+    let h = 0;
+    for (let i = 0; i < input.length; i++) {
+      h = ((h << 5) - h + input.charCodeAt(i)) | 0;
+    }
+    return Math.abs(h).toString(16).padStart(8, "0");
+  };
 
-  const lines = [
-    "# Auto-generated secrets for development (gitignored)",
-    "# Delete this file to regenerate secrets",
-    "",
-    `BETTER_AUTH_SECRET=${secrets.betterAuthSecret}`,
-    `MASTER_ENCRYPTION_KEY=${secrets.masterEncryptionKey}`,
-    `API_KEY_HMAC_KEY_V1=${secrets.apiKeyHmacKeyV1}`,
-    "",
-  ];
+  // Generate deterministic hex strings of required lengths
+  const authSeed = `${DEVONLY_TEST_SEED}_auth`;
+  const encSeed = `${DEVONLY_TEST_SEED}_encryption`;
+  const hmacSeed = `${DEVONLY_TEST_SEED}_hmac`;
 
-  try {
-    fs.writeFileSync(envLocalPath, lines.join("\n"));
-  } catch {
-    // Silently fail if we can't write - not critical for operation
-  }
+  return {
+    // 32+ chars, contains DEVONLY marker
+    betterAuthSecret: `DEVONLY_${hash(authSeed)}${hash(authSeed + "2")}${hash(authSeed + "3")}`,
+    // 64 hex chars exactly
+    masterEncryptionKey: `${hash(encSeed)}${hash(encSeed + "1")}${hash(encSeed + "2")}${hash(encSeed + "3")}${hash(encSeed + "4")}${hash(encSeed + "5")}${hash(encSeed + "6")}${hash(encSeed + "7")}`,
+    // 32+ chars, contains DEVONLY marker
+    apiKeyHmacKeyV1: `DEVONLY_${hash(hmacSeed)}${hash(hmacSeed + "2")}${hash(hmacSeed + "3")}`,
+  };
 }
+
+const TEST_SECRETS = deriveTestSecrets();
 
 /**
  * Build the configuration from environment variables
@@ -216,12 +214,30 @@ export function buildConfig(): EclaireConfig {
     ? "http://docling:5001"
     : "http://127.0.0.1:5001";
 
+  // Set DATABASE_HOST in process.env so @eclaire/db uses correct host
+  // This must happen before any code calls getDatabaseUrl()
+  env.DATABASE_HOST ??= defaultDbHost;
+
+  // AI provider URL defaults based on runtime
+  // In containers, use host.docker.internal to reach host machine
+  // Locally, use 127.0.0.1
+  const llmHost = isContainer ? "host.docker.internal" : "127.0.0.1";
+  env.LLAMA_CPP_BASE_URL ??= `http://${llmHost}:11500/v1`;
+  env.LLAMA_CPP_BASE_URL_2 ??= `http://${llmHost}:11501/v1`;
+  env.OLLAMA_BASE_URL ??= `http://${llmHost}:11434/v1`;
+  env.LM_STUDIO_BASE_URL ??= `http://${llmHost}:1234/v1`;
+  env.MLX_LM_BASE_URL ??= `http://${llmHost}:8080/v1`;
+  env.MLX_VLM_BASE_URL ??= `http://${llmHost}:8080/v1`;
+
   // Service configuration
   const serviceRole = (env.SERVICE_ROLE || "all") as ServiceRole;
   // Normalize "postgresql" to "postgres" for backwards compatibility
+  // Default to postgres for dev/prod parity (SQLite is opt-in)
   const rawDbType = env.DATABASE_TYPE?.toLowerCase();
-  const databaseType = (rawDbType === "postgresql" ? "postgres" : rawDbType || "sqlite") as DatabaseType;
-  const queueBackend = (env.QUEUE_BACKEND || "sqlite") as QueueBackend;
+  const databaseType = (rawDbType === "postgresql" ? "postgres" : rawDbType || "postgres") as DatabaseType;
+  // Queue backend defaults to match database type (postgres with postgres, sqlite with sqlite)
+  const defaultQueueBackend = databaseType === "sqlite" ? "sqlite" : "postgres";
+  const queueBackend = (env.QUEUE_BACKEND || defaultQueueBackend) as QueueBackend;
 
   // Database config
   const dbHost = env.DATABASE_HOST || defaultDbHost;
@@ -231,65 +247,59 @@ export function buildConfig(): EclaireConfig {
   const dbName = env.DATABASE_NAME || "eclaire";
 
   // Build database URL if not provided
+  // Only build postgres URL for postgres type; sqlite/pglite use file paths instead
   const databaseUrl =
     env.DATABASE_URL ||
-    `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
+    (databaseType === "postgres"
+      ? `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`
+      : null);
 
   // Paths
   const dataDir = env.DATA_DIR || `${home}/data`;
   const configDir = env.CONFIG_DIR || `${home}/config`;
 
   // Security secrets
-  // - Production: required, must be provided
-  // - Test: use fixed well-known values for reproducibility
-  // - Development: auto-generate random values
+  // - Production: required, must be provided, DEVONLY values rejected
+  // - Test: use deterministic DEVONLY values for reproducibility
+  // - Development: required from .env (run pnpm setup:dev to generate)
   const isTest = env.NODE_ENV === "test";
   const secrets = {
     betterAuthSecret: env.BETTER_AUTH_SECRET || "",
     masterEncryptionKey: env.MASTER_ENCRYPTION_KEY || "",
     apiKeyHmacKeyV1: env.API_KEY_HMAC_KEY_V1 || "",
   };
-  let secretsAutoGenerated = false;
 
-  if (!isProduction) {
-    if (isTest) {
-      // Test mode: use fixed well-known secrets for reproducibility
-      if (!secrets.betterAuthSecret)
-        secrets.betterAuthSecret = TEST_SECRETS.betterAuthSecret;
-      if (!secrets.masterEncryptionKey)
-        secrets.masterEncryptionKey = TEST_SECRETS.masterEncryptionKey;
-      if (!secrets.apiKeyHmacKeyV1)
-        secrets.apiKeyHmacKeyV1 = TEST_SECRETS.apiKeyHmacKeyV1;
-    } else {
-      // Development mode: auto-generate random secrets
-      if (!secrets.betterAuthSecret) {
-        secrets.betterAuthSecret = generateHex(32);
-        secretsAutoGenerated = true;
-      }
-      if (!secrets.masterEncryptionKey) {
-        secrets.masterEncryptionKey = generateHex(32);
-        secretsAutoGenerated = true;
-      }
-      if (!secrets.apiKeyHmacKeyV1) {
-        secrets.apiKeyHmacKeyV1 = generateHex(32);
-        secretsAutoGenerated = true;
-      }
+  if (isTest) {
+    // Test mode: ALWAYS use deterministic DEVONLY secrets for reproducibility
+    // This ensures tests are identical regardless of .env contents, making them
+    // reproducible across developer machines and CI environments
+    secrets.betterAuthSecret = TEST_SECRETS.betterAuthSecret;
+    secrets.masterEncryptionKey = TEST_SECRETS.masterEncryptionKey;
+    secrets.apiKeyHmacKeyV1 = TEST_SECRETS.apiKeyHmacKeyV1;
+  } else if (!isProduction) {
+    // Development mode: secrets must come from .env
+    // If missing, fail with helpful error pointing to setup
+    const missingSecrets: string[] = [];
+    if (!secrets.betterAuthSecret) missingSecrets.push("BETTER_AUTH_SECRET");
+    if (!secrets.masterEncryptionKey) missingSecrets.push("MASTER_ENCRYPTION_KEY");
+    if (!secrets.apiKeyHmacKeyV1) missingSecrets.push("API_KEY_HMAC_KEY_V1");
 
-      // Persist auto-generated secrets to .env.local so they survive restarts
-      if (secretsAutoGenerated) {
-        persistSecretsToEnvLocal(secrets, home);
-      }
+    if (missingSecrets.length > 0) {
+      throw new Error(
+        `Missing required secrets: ${missingSecrets.join(", ")}\n\n` +
+        `Run 'pnpm setup:dev' to generate secrets and configure your environment.\n` +
+        `See README.md for setup instructions.`
+      );
     }
   }
+  // Production validation happens in validateConfig()
 
   // Determine where secrets came from
   let secretsSource: SecretsSource;
-  if (secretsAutoGenerated) {
-    secretsSource = "auto-generated";
+  if (isTest) {
+    secretsSource = "env"; // Test secrets appear to come from env (deterministic)
   } else if (envLoadInfo.isContainer) {
     secretsSource = "environment";
-  } else if (envLoadInfo.envLocalLoaded) {
-    secretsSource = "env-local";
   } else {
     secretsSource = "env";
   }
@@ -484,6 +494,23 @@ export function validateConfig(config: EclaireConfig): string[] {
         continue;
       }
 
+      // Reject DEVONLY secrets in production (these are test-only values)
+      if (secret.value.includes("DEVONLY")) {
+        errors.push(
+          `${secret.key} contains "DEVONLY" - test secrets are not allowed in production. ` +
+          `Generate proper secrets with: openssl rand -hex 32`
+        );
+        continue;
+      }
+
+      // Reject the specific test master encryption key (it's pure hex without DEVONLY marker)
+      if (secret.key === "MASTER_ENCRYPTION_KEY" && secret.value === TEST_SECRETS.masterEncryptionKey) {
+        errors.push(
+          `${secret.key} is using the test value - generate a real secret for production: openssl rand -hex 32`
+        );
+        continue;
+      }
+
       // Validate length/format
       if (secret.exactLen && secret.value.length !== secret.exactLen) {
         errors.push(`${secret.key} must be exactly ${secret.exactLen} characters`);
@@ -497,9 +524,9 @@ export function validateConfig(config: EclaireConfig): string[] {
       }
     }
   } else if (config.nodeEnv === "test") {
-    // Test mode: no warnings, fixed secrets are expected for reproducibility
+    // Test mode: no warnings, deterministic DEVONLY secrets are expected
   } else {
-    // Development: permissive, secrets source is logged in initConfig()
+    // Development: secrets validated at build time (see buildConfig)
   }
 
   if (errors.length > 0) {

@@ -27,6 +27,10 @@
     "./utils": {
       "development": "./src/utils.ts",
       "default": "./dist/utils.js"
+    },
+    "./env-loader": {
+      "development": "./src/env-loader.ts",
+      "default": "./dist/env-loader.js"
     }
   },
   "scripts": {
@@ -35,6 +39,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "dotenv": "^16.5.0",
     "nanoid": "^5.1.6"
   },
   "devDependencies": {

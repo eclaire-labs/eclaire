@@ -124,6 +124,12 @@ async function main() {
   } else {
     // PostgreSQL setup using client helper
     const dbUrl = process.env.DATABASE_URL || getDatabaseUrl();
+    if (!dbUrl) {
+      throw new Error(
+        `DATABASE_URL is required for PostgreSQL seeding but was not provided. ` +
+        `Either set DATABASE_URL or ensure DATABASE_TYPE=postgres.`
+      );
+    }
     console.log(`Connecting to PostgreSQL database: ${dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1") ? "local" : "remote"}`);
 
     const client = createPostgresClient(dbUrl);

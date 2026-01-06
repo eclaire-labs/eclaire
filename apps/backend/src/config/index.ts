@@ -50,8 +50,6 @@ export function initConfig(): EclaireConfig {
 
   // Log where secrets came from
   const sourceMessages: Record<SecretsSource, string> = {
-    "auto-generated": "auto-generated (saved to .env.local)",
-    "env-local": "loaded from .env.local",
     env: "loaded from .env",
     environment: "loaded from environment",
   };

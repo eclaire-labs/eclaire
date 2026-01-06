@@ -45,8 +45,8 @@ describe.each(DB_TEST_CONFIGS)(
 			it("should run all migrations successfully on empty database", async () => {
 				const migrationsPath =
 					dbType === "sqlite"
-						? path.join(process.cwd(), "src/db/migrations-sqlite")
-						: path.join(process.cwd(), "src/db/migrations-postgres");
+						? path.join(process.cwd(), "../../packages/db/src/migrations/sqlite")
+						: path.join(process.cwd(), "../../packages/db/src/migrations/postgres");
 
 				// Run migrations
 				if (dbType === "sqlite") {
@@ -84,8 +84,8 @@ describe.each(DB_TEST_CONFIGS)(
 			it("should create all expected tables", async () => {
 				const migrationsPath =
 					dbType === "sqlite"
-						? path.join(process.cwd(), "src/db/migrations-sqlite")
-						: path.join(process.cwd(), "src/db/migrations-postgres");
+						? path.join(process.cwd(), "../../packages/db/src/migrations/sqlite")
+						: path.join(process.cwd(), "../../packages/db/src/migrations/postgres");
 
 				// Run migrations
 				if (dbType === "sqlite") {
@@ -142,8 +142,8 @@ describe.each(DB_TEST_CONFIGS)(
 			it("should create users table with correct columns", async () => {
 				const migrationsPath =
 					dbType === "sqlite"
-						? path.join(process.cwd(), "src/db/migrations-sqlite")
-						: path.join(process.cwd(), "src/db/migrations-postgres");
+						? path.join(process.cwd(), "../../packages/db/src/migrations/sqlite")
+						: path.join(process.cwd(), "../../packages/db/src/migrations/postgres");
 
 				// Run migrations
 				if (dbType === "sqlite") {
@@ -194,8 +194,8 @@ describe.each(DB_TEST_CONFIGS)(
 			it("should create bookmarks table with correct schema", async () => {
 				const migrationsPath =
 					dbType === "sqlite"
-						? path.join(process.cwd(), "src/db/migrations-sqlite")
-						: path.join(process.cwd(), "src/db/migrations-postgres");
+						? path.join(process.cwd(), "../../packages/db/src/migrations/sqlite")
+						: path.join(process.cwd(), "../../packages/db/src/migrations/postgres");
 
 				// Run migrations
 				if (dbType === "sqlite") {
@@ -268,8 +268,8 @@ describe.each(DB_TEST_CONFIGS)(
 			it("should create photos table with numeric/text fields", async () => {
 				const migrationsPath =
 					dbType === "sqlite"
-						? path.join(process.cwd(), "src/db/migrations-sqlite")
-						: path.join(process.cwd(), "src/db/migrations-postgres");
+						? path.join(process.cwd(), "../../packages/db/src/migrations/sqlite")
+						: path.join(process.cwd(), "../../packages/db/src/migrations/postgres");
 
 				// Run migrations
 				if (dbType === "sqlite") {
@@ -314,8 +314,8 @@ describe.each(DB_TEST_CONFIGS)(
 					});
 
 					expect(photo).toBeDefined();
-					expect(photo.fNumber).toBe("2.8"); // Text in SQLite
-					expect(photo.latitude).toBe("37.7749"); // Text in SQLite
+					expect(photo.fNumber).toBe(2.8); // Real (number) in SQLite
+					expect(photo.latitude).toBe(37.7749); // Real (number) in SQLite
 				} else {
 					await db.insert(pgSchema.photos).values({
 						id: photoId,
@@ -342,8 +342,8 @@ describe.each(DB_TEST_CONFIGS)(
 			it("should not fail when running migrations twice", async () => {
 				const migrationsPath =
 					dbType === "sqlite"
-						? path.join(process.cwd(), "src/db/migrations-sqlite")
-						: path.join(process.cwd(), "src/db/migrations-postgres");
+						? path.join(process.cwd(), "../../packages/db/src/migrations/sqlite")
+						: path.join(process.cwd(), "../../packages/db/src/migrations/postgres");
 
 				// Run migrations first time
 				if (dbType === "sqlite") {
@@ -369,8 +369,8 @@ describe.each(DB_TEST_CONFIGS)(
 			it("should enforce foreign key constraints", async () => {
 				const migrationsPath =
 					dbType === "sqlite"
-						? path.join(process.cwd(), "src/db/migrations-sqlite")
-						: path.join(process.cwd(), "src/db/migrations-postgres");
+						? path.join(process.cwd(), "../../packages/db/src/migrations/sqlite")
+						: path.join(process.cwd(), "../../packages/db/src/migrations/postgres");
 
 				// Run migrations
 				if (dbType === "sqlite") {
@@ -407,8 +407,8 @@ describe.each(DB_TEST_CONFIGS)(
 			it("should create indexes successfully", async () => {
 				const migrationsPath =
 					dbType === "sqlite"
-						? path.join(process.cwd(), "src/db/migrations-sqlite")
-						: path.join(process.cwd(), "src/db/migrations-postgres");
+						? path.join(process.cwd(), "../../packages/db/src/migrations/sqlite")
+						: path.join(process.cwd(), "../../packages/db/src/migrations/postgres");
 
 				// Run migrations
 				if (dbType === "sqlite") {

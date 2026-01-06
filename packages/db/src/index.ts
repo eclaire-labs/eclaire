@@ -201,6 +201,12 @@ export function initializeDatabase(config?: DatabaseConfig): DatabaseInitResult 
 	} else {
 		// Initialize PostgreSQL (with connection pooling)
 		const dbUrl = config?.url ?? getDatabaseUrl();
+		if (!dbUrl) {
+			throw new Error(
+				`DATABASE_URL is required for PostgreSQL but was not provided. ` +
+				`Either set DATABASE_URL or ensure DATABASE_TYPE=postgres.`
+			);
+		}
 		logger?.info(
 			{ dbUrl: dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1") ? "local" : "remote" },
 			"Initializing PostgreSQL database connection",

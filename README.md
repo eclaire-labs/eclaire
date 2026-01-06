@@ -148,14 +148,12 @@ The script will:
 After setup completes:
 
 ```bash
-# 1. Download models (if not already cached)
-llama-cli --hf-repo unsloth/Qwen3-14B-GGUF:Q4_K_XL --prompt "hi" -n 0 --no-warmup --single-turn
-llama-cli --hf-repo unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --prompt "hi" -n 0 --no-warmup --single-turn
+# 1. Start your LLM servers (in separate terminals)
+#    Models download automatically on first run
+llama-server -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL --ctx-size 16384 --port 11500
+llama-server -hf unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --ctx-size 16384 --port 11501
 
-# 2. Start your LLM server (in a separate terminal)
-llama-server --port 11500
-
-# 3. Start Eclaire
+# 2. Start Eclaire
 docker compose up -d
 ```
 
@@ -270,11 +268,11 @@ Access the application:
 
 ### Building Docker Locally
 
-To build custom Docker images:
+To build and test custom Docker images:
 
 ```bash
 ./scripts/build.sh
-docker compose -f compose.yaml -f compose.local.yaml up
+docker compose -f compose.yaml -f compose.dev.yaml -f compose.local.yaml up -d
 ```
 
 ## Contributing

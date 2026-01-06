@@ -371,7 +371,7 @@ describe.each(DB_TEST_CONFIGS)(
 						id: taskId,
 						userId: testUserId,
 						title: "Important Task",
-						status: "pending",
+						status: "not-started",
 					});
 
 					await tx.tasksTags.insert({ taskId, tagId: tag1Id });

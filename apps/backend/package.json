@@ -36,15 +36,9 @@
     "fix": "biome check --write ./",
     "db:migrate:apply": "pnpm --filter @eclaire/db db:migrate",
     "db:migrate:status": "pnpm --filter @eclaire/db db:migrate:status",
-    "db:migrate:apply:prod": "NODE_ENV=production pnpm --filter @eclaire/db db:migrate -- --force",
     "db:seed:demo": "NODE_ENV=development tsx scripts/db-seed.ts --demo",
-    "db:seed:essential": "NODE_ENV=development tsx scripts/db-seed.ts --essential",
-    "db:reset:demo": "./scripts/db-reset-local.sh demo",
-    "db:reset:essential": "./scripts/db-reset-local.sh essential",
-    "db:seed:demo:prod": "NODE_ENV=production tsx scripts/db-seed.ts --demo",
-    "db:seed:essential:prod": "NODE_ENV=production tsx scripts/db-seed.ts --essential",
-    "db:reset:demo:prod": "./scripts/db-reset-container.sh demo",
-    "db:reset:essential:prod": "./scripts/db-reset-container.sh essential",
+    "db:reset": "./scripts/db-reset.sh",
+    "db:reset:demo": "./scripts/db-reset.sh --demo",
     "db:migrate:generate": "pnpm --filter @eclaire/db db:generate",
     "db:generate:baseline": "./scripts/db-generate-baseline.sh",
     "app:upgrade": "ECLAIRE_RUNTIME=local tsx src/scripts/upgrade.ts",
@@ -76,8 +70,7 @@
     "test:ai-model-eval": "vitest run src/tests/api/ai-model-eval.test.ts",
     "generate:openapi": "tsx scripts/generate-openapi.ts",
     "generate:tool-signatures": "tsx scripts/generate-tool-signatures.ts",
-    "workers:dev": "NODE_ENV=development SERVICE_ROLE=worker NODE_OPTIONS='--conditions=development' tsx watch src/index.ts",
-    "unified:dev": "NODE_ENV=development SERVICE_ROLE=unified NODE_OPTIONS='--conditions=development' tsx watch src/index.ts"
+    "workers:dev": "NODE_ENV=development SERVICE_ROLE=worker NODE_OPTIONS='--conditions=development' tsx watch src/index.ts"
   },
   "dependencies": {
     "@eclaire/ai": "workspace:*",

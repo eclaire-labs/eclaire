@@ -8,8 +8,11 @@
  *   pnpm --filter @eclaire/db db:migrate --force
  */
 
+// Load environment FIRST - uses shared loader from @eclaire/core
+// Importing @eclaire/core triggers env loading as a side effect
+import "@eclaire/core";
+
 import { resolve } from "node:path";
-import { config } from "dotenv";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
@@ -29,14 +32,6 @@ import {
 } from "../clients.js";
 import * as pgSchema from "../schema/postgres.js";
 import * as sqliteSchema from "../schema/sqlite.js";
-
-// Resolve backend directory to load environment files
-const backendDir = resolve(import.meta.dirname, "../../../../apps/backend");
-
-// Load env file based on NODE_ENV (matching seed script pattern)
-// dotenv.config() does NOT override existing env vars
-const envFile = process.env.NODE_ENV === "production" ? ".env.prod" : ".env.dev";
-config({ path: resolve(backendDir, envFile) });
 
 // Migration folders relative to this script (from dist/scripts/ back to src/migrations/)
 const SQLITE_MIGRATIONS = resolve(import.meta.dirname, "../../src/migrations/sqlite");
@@ -135,6 +130,12 @@ async function runPgliteMigrations(statusFlag: boolean, forceFlag: boolean) {
 
 async function runPostgresMigrations(statusFlag: boolean, forceFlag: boolean) {
 	const dbUrl = process.env.DATABASE_URL || getDatabaseUrl();
+	if (!dbUrl) {
+		throw new Error(
+			`DATABASE_URL is required for PostgreSQL migrations but was not provided. ` +
+			`Either set DATABASE_URL or ensure DATABASE_TYPE=postgres.`
+		);
+	}
 	console.log(`Connecting to PostgreSQL database: ${dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1") ? "local" : "remote"}`);
 
 	const client = createPostgresClient(dbUrl, {

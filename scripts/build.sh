@@ -214,9 +214,6 @@ cat >> compose.local.yaml << EOF
     image: eclaire:${DOCKER_TAG}
     environment:
       ECLAIRE_LOCAL_BUILD: "true"
-  postgres:
-    ports:
-      - "5432:5432"
 EOF
 
 echo -e "\n✅ Build complete: ${SEMVER} (${COMMITS_SINCE_TAG} commits since tag, sha ${SHORT_SHA})"
@@ -226,5 +223,5 @@ for tag in $DOCKER_TAGS; do
 done
 echo -e "\n📝 Created compose.local.yaml with local image tags"
 echo -e "\n🚀 To run with local images, use:"
-echo "   docker compose -f compose.yaml -f compose.local.yaml up"
+echo "   docker compose -f compose.yaml -f compose.dev.yaml -f compose.local.yaml up"
 echo -e "\n"
