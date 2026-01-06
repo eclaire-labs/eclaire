@@ -24,7 +24,7 @@
     },
     "llama-cpp:gemma-3-4b-q4": {
       "name": "Gemma 3 4B Vision (Q4_K_XL)",
-      "provider": "llama-cpp",
+      "provider": "llama-cpp-2",
       "providerModel": "unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL",
       "capabilities": {
         "modalities": { "input": ["text", "image"], "output": ["text"] },
@@ -44,6 +44,43 @@
         "architecture": { "layers": 34, "kvHeads": 4, "headDim": 256, "slidingWindow": 1024, "slidingWindowPattern": 6 },
         "visionSizeBytes": 851251328
       }
+    },
+    "llama-cpp:qwen3-vl-8b-instruct-gguf-q4-k-xl": {
+      "name": "unsloth/Qwen3-VL-8B-Instruct-GGUF:Q4_K_XL",
+      "provider": "llama-cpp",
+      "providerModel": "unsloth/Qwen3-VL-8B-Instruct-GGUF",
+      "capabilities": {
+        "modalities": {
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "streaming": true,
+        "tools": true,
+        "jsonSchema": false,
+        "structuredOutputs": false,
+        "reasoning": {
+          "supported": false
+        },
+        "contextWindow": 262144
+      },
+      "source": {
+        "url": "https://huggingface.co/unsloth/Qwen3-VL-8B-Instruct-GGUF",
+        "format": "gguf",
+        "quantization": "Q4_K_XL",
+        "sizeBytes": 5148699488,
+        "visionSizeBytes": 1159030336,
+        "architecture": {
+          "layers": 36,
+          "kvHeads": 8,
+          "headDim": 128
+        }
+      },
+      "pricing": null
     },
     "openrouter:qwen-qwen3-vl-30b-a3b-instruct": {
       "name": "Qwen: Qwen3 VL 30B A3B Instruct",

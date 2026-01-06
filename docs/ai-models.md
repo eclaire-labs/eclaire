@@ -13,6 +13,44 @@ Eclaire uses AI models for two distinct purposes:
 
 You can use the same model for both, or different models optimized for each task. The default setup uses separate models: a text model for the assistant and a vision model for workers.
 
+## Single vs Dual Model Setup
+
+You have two options for running local models with llama.cpp:
+
+### Single Model (Simple)
+
+Use one model for both backend and workers. This is the simplest setup—just run one llama-server instance:
+
+```bash
+llama-server -hf unsloth/Qwen3-VL-8B-Instruct-GGUF:Q4_K_XL --ctx-size 16384 --port 11500
+```
+
+Configure both contexts to use the same model in `selection.json`.
+
+### Dual Model (Recommended)
+
+Use different models optimized for each purpose:
+- **Backend (port 11500)**: A smarter/larger model for the AI assistant—better reasoning and tool calling
+- **Workers (port 11501)**: A smaller/faster model with vision for background processing—efficient document and image analysis
+
+This setup requires two separate llama-server instances:
+
+```bash
+# Terminal 1: Backend model (AI assistant)
+llama-server -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL --ctx-size 16384 --port 11500
+
+# Terminal 2: Workers model (vision processing)
+llama-server -hf unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --ctx-size 16384 --port 11501
+```
+
+The default configuration uses the `llama-cpp` provider (port 11500) and `llama-cpp-2` provider (port 11501).
+
+> **Note**: llama-server has a router mode that can serve multiple models from one instance, but it's not yet production-ready. We recommend running separate instances for reliability.
+
+> **Context size**: The `--ctx-size 16384` flag limits context to 16K tokens to reduce GPU memory usage. Adjust based on your hardware—higher values allow longer conversations but require more memory.
+
+Choose your setup based on your hardware and available memory. See [Model Recommendations](#model-recommendations) below for guidance.
+
 ## Using the CLI
 
 The recommended way to manage models is through the Eclaire CLI. In Docker deployments, prefix commands with `docker compose run --rm eclaire`.
@@ -122,7 +160,12 @@ Defines the LLM backends (inference servers) Eclaire can connect to:
   "providers": {
     "llama-cpp": {
       "dialect": "openai_compatible",
-      "baseUrl": "http://127.0.0.1:11500/v1",
+      "baseUrl": "${ENV:LLAMA_CPP_BASE_URL}",
+      "auth": { "type": "none" }
+    },
+    "llama-cpp-2": {
+      "dialect": "openai_compatible",
+      "baseUrl": "${ENV:LLAMA_CPP_BASE_URL_2}",
       "auth": { "type": "none" }
     },
     "openrouter": {
@@ -138,9 +181,13 @@ Defines the LLM backends (inference servers) Eclaire can connect to:
 }
 ```
 
+The default URLs are auto-detected based on runtime:
+- **Local**: `http://127.0.0.1:11500/v1` and `http://127.0.0.1:11501/v1`
+- **Container**: `http://host.docker.internal:11500/v1` and `http://host.docker.internal:11501/v1`
+
 Key fields:
 - `dialect`: API format (`openai_compatible` or `anthropic_messages`)
-- `baseUrl`: The API endpoint URL
+- `baseUrl`: The API endpoint URL (supports `${ENV:VAR_NAME}` interpolation)
 - `auth`: Authentication configuration (supports `none`, `bearer`, or custom headers)
 
 ### models.json

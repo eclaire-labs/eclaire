@@ -239,7 +239,7 @@ export async function callAI(
       method: request.method,
       headers: request.headers,
       body: JSON.stringify(request.body),
-      signal: options.timeout ? AbortSignal.timeout(options.timeout) : undefined,
+      signal: options.timeout && options.timeout > 0 ? AbortSignal.timeout(options.timeout) : undefined,
     });
 
     if (!response.ok) {
@@ -482,7 +482,7 @@ export async function callAIStream(
       method: request.method,
       headers: request.headers,
       body: JSON.stringify(request.body),
-      signal: options.timeout ? AbortSignal.timeout(options.timeout) : undefined,
+      signal: options.timeout && options.timeout > 0 ? AbortSignal.timeout(options.timeout) : undefined,
     });
 
     if (!response.ok) {

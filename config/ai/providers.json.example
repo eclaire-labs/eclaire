@@ -12,6 +12,18 @@
         "contextSize": 16384
       }
     },
+    "llama-cpp-2": {
+      "dialect": "openai_compatible",
+      "baseUrl": "${ENV:LLAMA_CPP_BASE_URL_2}",
+      "auth": { "type": "none" },
+      "engine": {
+        "managed": true,
+        "name": "llama-cpp",
+        "gpuLayers": -1,
+        "flashAttention": true,
+        "contextSize": 16384
+      }
+    },
     "ollama": {
       "dialect": "openai_compatible",
       "baseUrl": "${ENV:OLLAMA_BASE_URL}",

@@ -607,6 +607,15 @@ export function resolveProviderForModel(
     headers: interpolateHeaders(rawProviderConfig.headers),
   };
 
+  // Validate that baseUrl doesn't have unresolved env vars
+  if (providerConfig.baseUrl.includes("${ENV:")) {
+    const unresolvedVars = providerConfig.baseUrl.match(/\$\{ENV:([^}]+)\}/g);
+    throw new Error(
+      `Provider '${modelConfig.provider}' has unresolved env vars in baseUrl: ${unresolvedVars?.join(", ")}. ` +
+      `Set these in .env or configure the provider in providers.json.`
+    );
+  }
+
   // Derive endpoint from dialect (or use override)
   const endpoint = getDialectEndpoint(
     providerConfig.dialect,
