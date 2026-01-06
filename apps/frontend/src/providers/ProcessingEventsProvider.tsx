@@ -201,17 +201,22 @@ export function ProcessingEventsProvider({
                 queryClient.invalidateQueries({
                   queryKey: ["processing-status", assetType, assetId],
                 });
-                // Invalidate asset list and individual asset to get fresh data
-                queryClient.invalidateQueries({
+                // Force refetch of asset list and individual asset to get fresh data
+                // Using refetchQueries instead of invalidateQueries ensures immediate
+                // network request, so tags and other processed data appear immediately
+                queryClient.refetchQueries({
                   queryKey: [assetType],
+                  type: "active",
                 });
-                queryClient.invalidateQueries({
+                queryClient.refetchQueries({
                   queryKey: [assetType, assetId],
+                  type: "active",
                 });
-                // For photos, also invalidate AI analysis cache
+                // For photos, also refetch AI analysis cache
                 if (assetType === "photos") {
-                  queryClient.invalidateQueries({
+                  queryClient.refetchQueries({
                     queryKey: ["photo-analysis", assetId],
+                    type: "active",
                   });
                 }
                 // Trigger registered refresh callbacks
@@ -227,9 +232,10 @@ export function ProcessingEventsProvider({
                 queryClient.invalidateQueries({
                   queryKey: ["processing-status", assetType, assetId],
                 });
-                // Also refresh the asset list to show failure
-                queryClient.invalidateQueries({
+                // Force refetch of asset list to show failure state immediately
+                queryClient.refetchQueries({
                   queryKey: [assetType],
+                  type: "active",
                 });
                 break;
             }
