@@ -1,8 +1,9 @@
+import type { JobContext } from "@eclaire/queue/core";
 import { type BrowserContext, chromium } from "patchright";
 import sharp from "sharp";
 import { Readable } from "stream";
-import type { JobContext } from "@eclaire/queue/core";
 import { createChildLogger } from "../../../lib/logger.js";
+import { buildKey, getStorage } from "../../../lib/storage/index.js";
 import { createRedditApiClient } from "../reddit-api-client.js";
 import { extractRedditData } from "../reddit-extractor.js";
 import {
@@ -10,7 +11,6 @@ import {
   generateRedditHTMLWithComments,
 } from "../reddit-renderer.js";
 import { generateRedditTags } from "../reddit-tags.js";
-import { getStorage, buildKey } from "../../../lib/storage/index.js";
 import type {
   BookmarkHandler,
   BookmarkHandlerType,
@@ -65,8 +65,15 @@ export async function processRedditApiBookmark(
       JSON.stringify(apiResponse.data, null, 2),
       "utf-8",
     );
-    const rawJsonKey = buildKey(userId, "bookmarks", bookmarkId, "redditRaw.json");
-    await storage.writeBuffer(rawJsonKey, rawJsonBuffer, { contentType: "application/json" });
+    const rawJsonKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "redditRaw.json",
+    );
+    await storage.writeBuffer(rawJsonKey, rawJsonBuffer, {
+      contentType: "application/json",
+    });
     allArtifacts.redditRawStorageId = rawJsonKey;
 
     await ctx.updateStageProgress("content_extraction", 25);
@@ -84,8 +91,15 @@ export async function processRedditApiBookmark(
       JSON.stringify(redditData, null, 2),
       "utf-8",
     );
-    const simpleJsonKey = buildKey(userId, "bookmarks", bookmarkId, "redditSimple.json");
-    await storage.writeBuffer(simpleJsonKey, simpleJsonBuffer, { contentType: "application/json" });
+    const simpleJsonKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "redditSimple.json",
+    );
+    await storage.writeBuffer(simpleJsonKey, simpleJsonBuffer, {
+      contentType: "application/json",
+    });
     allArtifacts.redditSimpleStorageId = simpleJsonKey;
 
     await ctx.updateStageProgress("content_extraction", 50);
@@ -96,15 +110,29 @@ export async function processRedditApiBookmark(
     // Generate HTML without comments (for thumbnails and screenshots)
     const htmlNoComments = generateRedditHTMLNoComments(redditData);
     const htmlNoCommentsBuffer = Buffer.from(htmlNoComments, "utf-8");
-    const noCommentsKey = buildKey(userId, "bookmarks", bookmarkId, "reddit-no-comments.html");
-    await storage.writeBuffer(noCommentsKey, htmlNoCommentsBuffer, { contentType: "text/html" });
+    const noCommentsKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "reddit-no-comments.html",
+    );
+    await storage.writeBuffer(noCommentsKey, htmlNoCommentsBuffer, {
+      contentType: "text/html",
+    });
     allArtifacts.redditNoCommentsStorageId = noCommentsKey;
 
     // Generate HTML with comments (for full content and PDFs)
     const htmlWithComments = generateRedditHTMLWithComments(redditData);
     const htmlWithCommentsBuffer = Buffer.from(htmlWithComments, "utf-8");
-    const withCommentsKey = buildKey(userId, "bookmarks", bookmarkId, "reddit-with-comments.html");
-    await storage.writeBuffer(withCommentsKey, htmlWithCommentsBuffer, { contentType: "text/html" });
+    const withCommentsKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "reddit-with-comments.html",
+    );
+    await storage.writeBuffer(withCommentsKey, htmlWithCommentsBuffer, {
+      contentType: "text/html",
+    });
     allArtifacts.redditWithCommentsStorageId = withCommentsKey;
 
     await ctx.updateStageProgress("content_extraction", 75);
@@ -115,7 +143,7 @@ export async function processRedditApiBookmark(
     // Launch browser
     browser = await chromium.launch({
       headless: true,
-      args: ['--use-mock-keychain'],
+      args: ["--use-mock-keychain"],
     });
     context = await browser.newContext({ viewport: null });
     const page = await context!.newPage();
@@ -133,8 +161,15 @@ export async function processRedditApiBookmark(
       .resize(400, 400, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 85 })
       .toBuffer();
-    const thumbnailKey = buildKey(userId, "bookmarks", bookmarkId, "thumbnail.jpg");
-    await storage.writeBuffer(thumbnailKey, thumbnailBuffer, { contentType: "image/jpeg" });
+    const thumbnailKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "thumbnail.jpg",
+    );
+    await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
+      contentType: "image/jpeg",
+    });
     allArtifacts.thumbnailStorageId = thumbnailKey;
 
     // Generate screenshot (higher resolution, 1920x1440, 90% quality)
@@ -142,8 +177,15 @@ export async function processRedditApiBookmark(
       .resize(1920, 1440, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 90 })
       .toBuffer();
-    const screenshotKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot.jpg");
-    await storage.writeBuffer(screenshotKey, screenshotBuffer, { contentType: "image/jpeg" });
+    const screenshotKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "screenshot.jpg",
+    );
+    await storage.writeBuffer(screenshotKey, screenshotBuffer, {
+      contentType: "image/jpeg",
+    });
     allArtifacts.screenshotDesktopStorageId = screenshotKey;
 
     // Take full page screenshot using full content HTML (with comments)
@@ -153,8 +195,15 @@ export async function processRedditApiBookmark(
       type: "png",
       fullPage: true,
     });
-    const fullpageKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot-fullpage.png");
-    await storage.writeBuffer(fullpageKey, ssFullPageBuffer, { contentType: "image/png" });
+    const fullpageKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "screenshot-fullpage.png",
+    );
+    await storage.writeBuffer(fullpageKey, ssFullPageBuffer, {
+      contentType: "image/png",
+    });
     allArtifacts.screenshotFullPageStorageId = fullpageKey;
 
     // Take mobile screenshot (post only, no comments)
@@ -165,8 +214,15 @@ export async function processRedditApiBookmark(
     });
     await page.setViewportSize({ width: 375, height: 667 });
     const ssMobileBuffer = await page.screenshot({ type: "png" });
-    const mobileKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot-mobile.png");
-    await storage.writeBuffer(mobileKey, ssMobileBuffer, { contentType: "image/png" });
+    const mobileKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "screenshot-mobile.png",
+    );
+    await storage.writeBuffer(mobileKey, ssMobileBuffer, {
+      contentType: "image/png",
+    });
     allArtifacts.screenshotMobileStorageId = mobileKey;
 
     // Reset viewport for PDF generation
@@ -176,7 +232,9 @@ export async function processRedditApiBookmark(
     await page.goto(fullDataUrl, { waitUntil: "networkidle", timeout: 60000 });
     const pdfBuffer = await generateOptimizedPdf(page, bookmarkId);
     const pdfKey = buildKey(userId, "bookmarks", bookmarkId, "content.pdf");
-    await storage.writeBuffer(pdfKey, pdfBuffer, { contentType: "application/pdf" });
+    await storage.writeBuffer(pdfKey, pdfBuffer, {
+      contentType: "application/pdf",
+    });
     allArtifacts.pdfStorageId = pdfKey;
 
     // Extract content from the full HTML for text analysis (with comments)
@@ -276,9 +334,7 @@ export class RedditApiBookmarkHandler implements BookmarkHandler {
     return "reddit";
   }
 
-  async processBookmark(
-    ctx: JobContext<BookmarkJobData>,
-  ): Promise<void> {
+  async processBookmark(ctx: JobContext<BookmarkJobData>): Promise<void> {
     return processRedditApiBookmark(ctx);
   }
 }

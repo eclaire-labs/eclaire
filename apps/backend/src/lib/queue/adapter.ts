@@ -2,22 +2,22 @@
 // Uses @eclaire/queue package for queue implementations
 
 import {
-  createQueueAdapter as createPkgQueueAdapter,
-  createDatabaseAdapter,
-  type QueueAdapter,
-  type BookmarkJobData,
-  type ImageJobData,
-  type DocumentJobData,
-  type NoteJobData,
-  type TaskJobData,
-  type JobData,
   type AssetType,
+  type BookmarkJobData,
+  createDatabaseAdapter,
+  createQueueAdapter as createPkgQueueAdapter,
+  type DocumentJobData,
+  type ImageJobData,
+  type JobData,
+  type NoteJobData,
+  type QueueAdapter,
+  type TaskJobData,
 } from "@eclaire/queue/app";
+import { config } from "../../config/index.js";
 import { db, dbType } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
-import { config } from "../../config/index.js";
-import { getQueue, QueueNames } from "./queues.js";
 import { getNotifyEmitter } from "./notify.js";
+import { getQueue, QueueNames } from "./queues.js";
 
 const logger = createChildLogger("queue-adapter");
 
@@ -74,7 +74,10 @@ async function initializeQueueAdapter(): Promise<QueueAdapter> {
       logger,
       notifyEmitter: getNotifyEmitter(),
     });
-    logger.info({ queueBackend }, "Using database-backed queue adapter with instant notify");
+    logger.info(
+      { queueBackend },
+      "Using database-backed queue adapter with instant notify",
+    );
   }
 
   return queueAdapterInstance;

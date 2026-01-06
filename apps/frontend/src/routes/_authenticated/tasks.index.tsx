@@ -13,8 +13,11 @@ function PageLoading() {
 }
 
 export const Route = createFileRoute("/_authenticated/tasks/")({
-  validateSearch: (search: Record<string, unknown>): { openDialog?: string } => ({
-    openDialog: typeof search.openDialog === "string" ? search.openDialog : undefined,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { openDialog?: string } => ({
+    openDialog:
+      typeof search.openDialog === "string" ? search.openDialog : undefined,
   }),
   component: () => (
     <Suspense fallback={<PageLoading />}>

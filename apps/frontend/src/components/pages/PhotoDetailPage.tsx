@@ -1,5 +1,5 @@
-
 import { useQueryClient } from "@tanstack/react-query";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Calendar,
@@ -19,9 +19,9 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useNavigate, getRouteApi } from "@tanstack/react-router";
 
 const routeApi = getRouteApi("/_authenticated/photos/$id");
+
 import React, { useEffect, useState } from "react";
 import { PhotoAnalysisCard } from "@/components/photo-analysis";
 import { Badge } from "@/components/ui/badge";
@@ -478,7 +478,11 @@ export function PhotoDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/photos" })}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate({ to: "/photos" })}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -503,7 +507,11 @@ export function PhotoDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/photos" })}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate({ to: "/photos" })}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Photo not found</h1>
@@ -514,7 +522,9 @@ export function PhotoDetailClient() {
           <p className="text-muted-foreground mb-4">
             The photo you're looking for doesn't exist or couldn't be loaded.
           </p>
-          <Button onClick={() => navigate({ to: "/photos" })}>Go to Photos</Button>
+          <Button onClick={() => navigate({ to: "/photos" })}>
+            Go to Photos
+          </Button>
         </div>
       </div>
     );
@@ -877,16 +887,16 @@ export function PhotoDetailClient() {
                           : "Processing is disabled for this photo"
                       }
                     >
-                      {photo.enabled === false
-                        ? "disabled"
-                        : photo.processingStatus === "processing"
-                          ? (
-                              <span className="flex items-center gap-1">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                processing
-                              </span>
-                            )
-                          : (photo.processingStatus || "unknown").replace(/_/g, " ")}
+                      {photo.enabled === false ? (
+                        "disabled"
+                      ) : photo.processingStatus === "processing" ? (
+                        <span className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          processing
+                        </span>
+                      ) : (
+                        (photo.processingStatus || "unknown").replace(/_/g, " ")
+                      )}
                     </Badge>
 
                     {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}

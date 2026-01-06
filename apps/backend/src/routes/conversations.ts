@@ -1,8 +1,8 @@
+import { isValidConversationId } from "@eclaire/core";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
-import { isValidConversationId } from "@eclaire/core";
 import { createChildLogger } from "../lib/logger.js";
 import {
   createConversation,

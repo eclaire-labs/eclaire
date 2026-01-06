@@ -194,7 +194,9 @@ export function getCurrentStageName(stages: JobStage[]): string | undefined {
  * @returns true if all stages have "completed" status
  */
 export function areAllStagesCompleted(stages: JobStage[]): boolean {
-  return stages.length > 0 && stages.every((stage) => stage.status === "completed");
+  return (
+    stages.length > 0 && stages.every((stage) => stage.status === "completed")
+  );
 }
 
 /**

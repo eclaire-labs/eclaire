@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 
 const { channels } = schema;
+
 import {
   type ChannelCapability,
   type ChannelPlatform,
@@ -16,7 +17,7 @@ import type {
   ListChannelsResponse,
   UpdateChannelResponse,
 } from "../../schemas/channels-responses.js";
-import { formatToISO8601, formatRequiredTimestamp } from "../db-helpers.js";
+import { formatRequiredTimestamp, formatToISO8601 } from "../db-helpers.js";
 import { decrypt, encrypt } from "../encryption.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";

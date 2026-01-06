@@ -395,120 +395,120 @@ describe("Photo API Integration Tests (Real File Uploads)", () => {
   ];
 
   // Use it.each to run the test for each file defined above
-  it.each(testFiles)(
-    "POST /api/photos - should upload $filename successfully with tags [$tags]",
-    async ({ filename, mimeType, titleSuffix, tags }) => {
-      await delay(50); // Small delay between uploads if needed
+  it.each(
+    testFiles,
+  )("POST /api/photos - should upload $filename successfully with tags [$tags]", async ({
+    filename,
+    mimeType,
+    titleSuffix,
+    tags,
+  }) => {
+    await delay(50); // Small delay between uploads if needed
 
-      // *** UPDATED PATH ***
-      const filePath = path.join(
-        process.cwd(),
-        "src",
-        "tests",
-        "fixtures",
-        "photos",
-        filename,
+    // *** UPDATED PATH ***
+    const filePath = path.join(
+      process.cwd(),
+      "src",
+      "tests",
+      "fixtures",
+      "photos",
+      filename,
+    );
+    let fileBuffer: Buffer;
+    try {
+      fileBuffer = await fs.readFile(filePath);
+    } catch (err) {
+      console.error(`Error reading test file: ${filePath}`, err);
+      throw new Error(
+        `Test setup failed: Could not read file ${filename}. Make sure it exists in ${path.dirname(filePath)}`,
       );
-      let fileBuffer: Buffer;
-      try {
-        fileBuffer = await fs.readFile(filePath);
-      } catch (err) {
-        console.error(`Error reading test file: ${filePath}`, err);
-        throw new Error(
-          `Test setup failed: Could not read file ${filename}. Make sure it exists in ${path.dirname(filePath)}`,
-        );
-      }
+    }
 
-      const fileSize = fileBuffer.length;
-      // Create Blob from file buffer
-      const fileBlob = new Blob([fileBuffer as BlobPart], { type: mimeType });
+    const fileSize = fileBuffer.length;
+    // Create Blob from file buffer
+    const fileBlob = new Blob([fileBuffer as BlobPart], { type: mimeType });
 
-      // Create FormData for this specific file
-      const formData = new FormData();
-      const title = `Real Upload ${titleSuffix} ${Date.now()}`;
-      const metadata = {
-        title,
-        description: `Uploaded file: ${filename} with tags: ${tags.join(", ")}`,
-        tags,
-        deviceId: "Vitest Real File Test",
-        originalFilename: filename,
-      };
-      formData.append("metadata", JSON.stringify(metadata));
-      formData.append("content", fileBlob, filename);
+    // Create FormData for this specific file
+    const formData = new FormData();
+    const title = `Real Upload ${titleSuffix} ${Date.now()}`;
+    const metadata = {
+      title,
+      description: `Uploaded file: ${filename} with tags: ${tags.join(", ")}`,
+      tags,
+      deviceId: "Vitest Real File Test",
+      originalFilename: filename,
+    };
+    formData.append("metadata", JSON.stringify(metadata));
+    formData.append("content", fileBlob, filename);
 
-      // Make the API call
-      const response = await loggedFetch(`${BASE_URL}/photos`, {
-        method: "POST",
-        headers: { "X-API-Key": TEST_API_KEY },
-        body: formData,
-      });
+    // Make the API call
+    const response = await loggedFetch(`${BASE_URL}/photos`, {
+      method: "POST",
+      headers: { "X-API-Key": TEST_API_KEY },
+      body: formData,
+    });
 
-      // Assertions for the POST response
-      expect(
-        response.status,
-        `POST failed for ${filename} with status ${response.status}. Check API logs.`,
-      ).toBe(201);
+    // Assertions for the POST response
+    expect(
+      response.status,
+      `POST failed for ${filename} with status ${response.status}. Check API logs.`,
+    ).toBe(201);
 
-      const data = (await response.json()) as PhotoResponse;
+    const data = (await response.json()) as PhotoResponse;
 
-      expect(
-        data,
-        `Response data should be defined for ${filename}`,
-      ).toBeDefined();
-      expect(data.id, `ID should be a string for ${filename}`).toBeTypeOf(
-        "string",
-      );
-      expect(data.id).toMatch(/^photo-[A-Za-z0-9]{15}$/);
-      expect(data.title, `Title mismatch for ${filename}`).toBe(title);
-      expect(data.description, `Description mismatch for ${filename}`).toBe(
-        `Uploaded file: ${filename} with tags: ${tags.join(", ")}`,
-      );
-      expect(data.imageUrl, `Image URL format mismatch for ${filename}`).toBe(
-        `/api/photos/${data.id}/view`,
-      );
+    expect(
+      data,
+      `Response data should be defined for ${filename}`,
+    ).toBeDefined();
+    expect(data.id, `ID should be a string for ${filename}`).toBeTypeOf(
+      "string",
+    );
+    expect(data.id).toMatch(/^photo-[A-Za-z0-9]{15}$/);
+    expect(data.title, `Title mismatch for ${filename}`).toBe(title);
+    expect(data.description, `Description mismatch for ${filename}`).toBe(
+      `Uploaded file: ${filename} with tags: ${tags.join(", ")}`,
+    );
+    expect(data.imageUrl, `Image URL format mismatch for ${filename}`).toBe(
+      `/api/photos/${data.id}/view`,
+    );
 
-      // Key Assertions for Real Files
-      expect(
-        data.originalFilename,
-        `Original filename mismatch for ${filename}`,
-      ).toBe(filename);
-      expect(data.mimeType, `MIME type mismatch for ${filename}`).toBe(
-        mimeType,
-      );
-      expect(data.fileSize, `File size mismatch for ${filename}`).toBe(
-        fileSize,
-      );
+    // Key Assertions for Real Files
+    expect(
+      data.originalFilename,
+      `Original filename mismatch for ${filename}`,
+    ).toBe(filename);
+    expect(data.mimeType, `MIME type mismatch for ${filename}`).toBe(mimeType);
+    expect(data.fileSize, `File size mismatch for ${filename}`).toBe(fileSize);
 
-      // *** ASSERT SPECIFIC TAGS ***
-      expect(
-        hasSameElements(data.tags, tags),
-        `Tags mismatch for ${filename}. Expected [${tags.join(", ")}], got [${data.tags.join(", ")}]`,
-      ).toBe(true);
+    // *** ASSERT SPECIFIC TAGS ***
+    expect(
+      hasSameElements(data.tags, tags),
+      `Tags mismatch for ${filename}. Expected [${tags.join(", ")}], got [${data.tags.join(", ")}]`,
+    ).toBe(true);
 
-      expect(data.deviceId, `Device ID mismatch for ${filename}`).toBe(
-        "Vitest Real File Test",
-      );
-      expect(
-        data.createdAt,
-        `createdAt should be a string for ${filename}`,
-      ).toBeTypeOf("string");
-      expect(
-        data.createdAt.length,
-        `createdAt format seems incorrect for ${filename}`,
-      ).toBeGreaterThan(5);
-      expect(
-        data.updatedAt,
-        `updatedAt should be a string for ${filename}`,
-      ).toBeTypeOf("string");
-      expect(
-        data.updatedAt.length,
-        `updatedAt format seems incorrect for ${filename}`,
-      ).toBeGreaterThan(5);
+    expect(data.deviceId, `Device ID mismatch for ${filename}`).toBe(
+      "Vitest Real File Test",
+    );
+    expect(
+      data.createdAt,
+      `createdAt should be a string for ${filename}`,
+    ).toBeTypeOf("string");
+    expect(
+      data.createdAt.length,
+      `createdAt format seems incorrect for ${filename}`,
+    ).toBeGreaterThan(5);
+    expect(
+      data.updatedAt,
+      `updatedAt should be a string for ${filename}`,
+    ).toBeTypeOf("string");
+    expect(
+      data.updatedAt.length,
+      `updatedAt format seems incorrect for ${filename}`,
+    ).toBeGreaterThan(5);
 
-      // Optional: Add cleanup if needed, but usually better to test GET/DELETE separately
-      // await loggedFetch(`${BASE_URL}/photos/${data.id}`, { method: 'DELETE', headers: { 'X-API-Key': TEST_API_KEY } });
-    },
-  );
+    // Optional: Add cleanup if needed, but usually better to test GET/DELETE separately
+    // await loggedFetch(`${BASE_URL}/photos/${data.id}`, { method: 'DELETE', headers: { 'X-API-Key': TEST_API_KEY } });
+  });
 }); // End describe block for Real File Uploads
 
 // --- Test Suite 3: Workflow Management Endpoints ---

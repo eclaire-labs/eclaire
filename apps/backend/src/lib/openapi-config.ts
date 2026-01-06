@@ -1,14 +1,17 @@
-import type { Hono, MiddlewareHandler } from "hono";
-import { generateSpecs, type GenerateSpecOptions } from "hono-openapi";
-import z from "zod/v4";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Hono, MiddlewareHandler } from "hono";
+import { type GenerateSpecOptions, generateSpecs } from "hono-openapi";
+import z from "zod/v4";
 import { config } from "../config/index.js";
 
 // Read version from build-info.json (generated during build) or fallback to package.json
 let version = "0.0.0";
 try {
-  const buildInfoPath = resolve(import.meta.dirname, "../../../../build-info.json");
+  const buildInfoPath = resolve(
+    import.meta.dirname,
+    "../../../../build-info.json",
+  );
   const buildInfo = JSON.parse(readFileSync(buildInfoPath, "utf8"));
   version = buildInfo.version || "0.0.0";
 } catch {
@@ -82,7 +85,9 @@ You can authenticate using either:
     servers: [
       {
         url: config.services.backendUrl,
-        description: config.isProduction ? "Production Server" : "Development Server",
+        description: config.isProduction
+          ? "Production Server"
+          : "Development Server",
       },
     ],
     components: {

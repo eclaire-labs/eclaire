@@ -9,16 +9,20 @@ import type { z } from "zod";
 // Zod v4 type alias for any zod schema
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyZodType = z.ZodType<any, any, any>;
+
+import type {
+  ToolCallSummaryOutput,
+  ToolExecutionResult,
+} from "../tools/types.js";
 import type {
   AICallOptions,
   AIContext,
   AIMessage,
   FinishReason,
   TokenUsage,
-  ToolCallResult,
   ToolCallingMode,
+  ToolCallResult,
 } from "../types.js";
-import type { ToolCallSummaryOutput, ToolExecutionResult } from "../tools/types.js";
 
 // =============================================================================
 // AGENT CONTEXT
@@ -85,7 +89,7 @@ export interface AgentToolDefinition<
    */
   execute: (
     input: z.infer<TInput>,
-    context: TContext
+    context: TContext,
   ) => Promise<ToolExecutionResult>;
 
   /**
@@ -94,7 +98,10 @@ export interface AgentToolDefinition<
    */
   needsApproval?:
     | boolean
-    | ((input: z.infer<TInput>, context: TContext) => boolean | Promise<boolean>);
+    | ((
+        input: z.infer<TInput>,
+        context: TContext,
+      ) => boolean | Promise<boolean>);
 }
 
 // =============================================================================
@@ -147,7 +154,12 @@ export interface AgentStep {
   isTerminal: boolean;
 
   /** Reason the loop stopped (if terminal) */
-  stopReason?: "max_steps" | "no_tool_calls" | "stop_condition" | "finish_reason" | "needs_approval";
+  stopReason?:
+    | "max_steps"
+    | "no_tool_calls"
+    | "stop_condition"
+    | "finish_reason"
+    | "needs_approval";
 }
 
 // =============================================================================
@@ -167,7 +179,9 @@ export interface PrepareStepInfo<TContext extends AgentContext = AgentContext> {
 /**
  * Result from prepareStep callback - allows overriding per-step settings
  */
-export interface PrepareStepResult<TContext extends AgentContext = AgentContext> {
+export interface PrepareStepResult<
+  TContext extends AgentContext = AgentContext,
+> {
   /** Override AI context for this step */
   aiContext?: AIContext;
 
@@ -184,7 +198,9 @@ export interface PrepareStepResult<TContext extends AgentContext = AgentContext>
 /**
  * Configuration for ToolLoopAgent
  */
-export interface ToolLoopAgentConfig<TContext extends AgentContext = AgentContext> {
+export interface ToolLoopAgentConfig<
+  TContext extends AgentContext = AgentContext,
+> {
   /**
    * AI context for model selection (e.g., "backend", "workers")
    */
@@ -218,7 +234,7 @@ export interface ToolLoopAgentConfig<TContext extends AgentContext = AgentContex
    * Callback before each step - can modify model, tools, messages
    */
   prepareStep?: (
-    info: PrepareStepInfo<TContext>
+    info: PrepareStepInfo<TContext>,
   ) => PrepareStepResult<TContext> | Promise<PrepareStepResult<TContext>>;
 
   /**

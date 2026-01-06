@@ -87,7 +87,9 @@ export default function DashboardPage() {
   }
 
   const userName =
-    session.user.name || (session.user as any).displayName || session.user.email;
+    session.user.name ||
+    (session.user as any).displayName ||
+    session.user.email;
 
   return (
     <DashboardClientContent

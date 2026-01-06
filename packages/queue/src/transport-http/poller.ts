@@ -5,27 +5,32 @@
  * long-polling to process jobs from a remote backend.
  */
 
-import type {
-  Worker,
-  WorkerOptions,
-  JobHandler,
-  JobContext,
-  Job,
-  JobStage,
-} from "../core/types.js";
-import { createWorkerId, sleep, cancellableSleep, createDeferred } from "../core/utils.js";
-import { RateLimitError, isRateLimitError } from "../core/errors.js";
+import { isRateLimitError, type RateLimitError } from "../core/errors.js";
 import {
-  initializeStages,
-  startStageInList,
-  completeStageInList,
-  failStageInList,
-  updateStageProgressInList,
   addStagesToList,
   calculateOverallProgress,
+  completeStageInList,
+  failStageInList,
+  initializeStages,
+  startStageInList,
+  updateStageProgressInList,
 } from "../core/progress.js";
-import type { HttpPollerConfig, HttpJobResponse } from "./types.js";
+import type {
+  Job,
+  JobContext,
+  JobHandler,
+  JobStage,
+  Worker,
+  WorkerOptions,
+} from "../core/types.js";
+import {
+  cancellableSleep,
+  createDeferred,
+  createWorkerId,
+  sleep,
+} from "../core/utils.js";
 import { createHttpClient, type HttpQueueClient } from "./client.js";
+import type { HttpJobResponse, HttpPollerConfig } from "./types.js";
 
 /**
  * Default configuration values
@@ -99,7 +104,9 @@ export function createHttpWorker<T = unknown>(
       attempts: response.attempts,
       maxAttempts: response.maxAttempts,
       createdAt: new Date(response.createdAt),
-      scheduledFor: response.scheduledFor ? new Date(response.scheduledFor) : undefined,
+      scheduledFor: response.scheduledFor
+        ? new Date(response.scheduledFor)
+        : undefined,
       updatedAt: new Date(response.createdAt), // HTTP doesn't return updatedAt
     };
   }
@@ -118,7 +125,10 @@ export function createHttpWorker<T = unknown>(
       heartbeatTimer = setInterval(async () => {
         const success = await httpClient.heartbeat(job.id, workerId);
         if (!success) {
-          logger.warn({ jobId: job.id }, "Heartbeat failed - job may be reclaimed");
+          logger.warn(
+            { jobId: job.id },
+            "Heartbeat failed - job may be reclaimed",
+          );
         }
       }, heartbeatInterval);
 
@@ -145,7 +155,10 @@ export function createHttpWorker<T = unknown>(
         async initStages(stageNames: string[]) {
           currentStages = initializeStages(stageNames);
           job.stages = currentStages;
-          logger.debug({ jobId: job.id, stages: stageNames }, "Job stages initialized");
+          logger.debug(
+            { jobId: job.id, stages: stageNames },
+            "Job stages initialized",
+          );
         },
 
         async startStage(stageName: string) {
@@ -156,14 +169,25 @@ export function createHttpWorker<T = unknown>(
         },
 
         async updateStageProgress(stageName: string, percent: number) {
-          currentStages = updateStageProgressInList(currentStages, stageName, percent);
+          currentStages = updateStageProgressInList(
+            currentStages,
+            stageName,
+            percent,
+          );
           job.stages = currentStages;
           job.overallProgress = calculateOverallProgress(currentStages);
           // No event callback in HTTP transport
         },
 
-        async completeStage(stageName: string, artifacts?: Record<string, unknown>) {
-          currentStages = completeStageInList(currentStages, stageName, artifacts);
+        async completeStage(
+          stageName: string,
+          artifacts?: Record<string, unknown>,
+        ) {
+          currentStages = completeStageInList(
+            currentStages,
+            stageName,
+            artifacts,
+          );
           job.stages = currentStages;
           job.currentStage = undefined;
           job.overallProgress = calculateOverallProgress(currentStages);
@@ -171,16 +195,26 @@ export function createHttpWorker<T = unknown>(
         },
 
         async failStage(stageName: string, error: Error) {
-          currentStages = failStageInList(currentStages, stageName, error.message);
+          currentStages = failStageInList(
+            currentStages,
+            stageName,
+            error.message,
+          );
           job.stages = currentStages;
           job.currentStage = undefined;
-          logger.debug({ jobId: job.id, stage: stageName, error: error.message }, "Stage failed");
+          logger.debug(
+            { jobId: job.id, stage: stageName, error: error.message },
+            "Stage failed",
+          );
         },
 
         async addStages(stageNames: string[]) {
           currentStages = addStagesToList(currentStages, stageNames);
           job.stages = currentStages;
-          logger.debug({ jobId: job.id, addedStages: stageNames }, "Stages added");
+          logger.debug(
+            { jobId: job.id, addedStages: stageNames },
+            "Stages added",
+          );
         },
       };
 
@@ -198,14 +232,19 @@ export function createHttpWorker<T = unknown>(
       // Handle rate limit errors
       if (isRateLimitError(error)) {
         const rateLimitError = error as RateLimitError;
-        await httpClient.reschedule(job.id, workerId, rateLimitError.retryAfter);
+        await httpClient.reschedule(
+          job.id,
+          workerId,
+          rateLimitError.retryAfter,
+        );
         logger.info(
           { jobId: job.id, retryAfter: rateLimitError.retryAfter },
           "Job rescheduled (rate limited)",
         );
       } else {
         // Report failure via HTTP
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         await httpClient.fail(job.id, workerId, errorMessage);
         logger.error(
           { jobId: job.id, queue, attempts: job.attempts, error: errorMessage },
@@ -225,7 +264,10 @@ export function createHttpWorker<T = unknown>(
    * Main worker loop
    */
   async function runLoop(): Promise<void> {
-    logger.info({ queue, workerId, backendUrl, concurrency }, "HTTP worker started");
+    logger.info(
+      { queue, workerId, backendUrl, concurrency },
+      "HTTP worker started",
+    );
 
     while (running && !stopRequested) {
       // Check if we can take more jobs
@@ -242,7 +284,10 @@ export function createHttpWorker<T = unknown>(
           // Process job in background (don't await)
           processJob(jobResponse).catch((err) => {
             logger.error(
-              { jobId: jobResponse.id, error: err instanceof Error ? err.message : "Unknown" },
+              {
+                jobId: jobResponse.id,
+                error: err instanceof Error ? err.message : "Unknown",
+              },
               "Unexpected error processing job",
             );
           });
@@ -262,10 +307,7 @@ export function createHttpWorker<T = unknown>(
               "Backend connection error - retrying...",
             );
           } else {
-            logger.error(
-              { error: error.message },
-              "Error in worker loop",
-            );
+            logger.error({ error: error.message }, "Error in worker loop");
           }
         }
 
@@ -276,7 +318,10 @@ export function createHttpWorker<T = unknown>(
 
     // Wait for active jobs to complete (NOT interruptible - we want jobs to finish)
     while (activeJobs > 0) {
-      logger.debug({ queue, workerId, activeJobs }, "Waiting for active jobs to complete");
+      logger.debug(
+        { queue, workerId, activeJobs },
+        "Waiting for active jobs to complete",
+      );
       await sleep(100);
     }
 

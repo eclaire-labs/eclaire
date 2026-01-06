@@ -54,7 +54,10 @@ export interface JobAssetMetadata {
  * @param userId - User ID to send the event to
  * @param event - SSE event to publish
  */
-export type SSEPublisher = (userId: string, event: ProcessingSSEEvent) => Promise<void>;
+export type SSEPublisher = (
+  userId: string,
+  event: ProcessingSSEEvent,
+) => Promise<void>;
 
 /**
  * Artifact processor function type
@@ -178,7 +181,9 @@ function extractAssetMetadata(
  * });
  * ```
  */
-export function createEventCallbacks(config: EventCallbacksConfig): JobEventCallbacks {
+export function createEventCallbacks(
+  config: EventCallbacksConfig,
+): JobEventCallbacks {
   const { publisher, artifactProcessor, logger } = config;
 
   /**
@@ -261,7 +266,12 @@ export function createEventCallbacks(config: EventCallbacksConfig): JobEventCall
               artifacts,
             );
             logger?.debug(
-              { jobId, stage, assetType: assetMetadata.assetType, assetId: assetMetadata.assetId },
+              {
+                jobId,
+                stage,
+                assetType: assetMetadata.assetType,
+                assetId: assetMetadata.assetId,
+              },
               "Artifacts processed successfully",
             );
           } catch (error) {

@@ -1,5 +1,5 @@
-import type { JobContext } from "@eclaire/queue/core";
 import { type AIMessage, callAI } from "@eclaire/ai";
+import type { JobContext } from "@eclaire/queue/core";
 import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("task-processor");
@@ -113,7 +113,10 @@ async function processTaskJob(ctx: JobContext<TaskJobData>) {
     // Complete the final stage with artifacts - job completion is implicit when handler returns
     await ctx.completeStage(STAGE_NAME, finalArtifacts);
 
-    logger.info({ jobId: ctx.job.id, taskId }, "Task job completed successfully");
+    logger.info(
+      { jobId: ctx.job.id, taskId },
+      "Task job completed successfully",
+    );
   } catch (error: any) {
     logger.error(
       { jobId: ctx.job.id, taskId, error: error.message },

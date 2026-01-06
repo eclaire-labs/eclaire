@@ -1,6 +1,5 @@
-
-import { Eye, Flag, Pin, Zap } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { Eye, Flag, Pin, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface QuickStatsGridProps {

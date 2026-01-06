@@ -6,18 +6,15 @@
  * callbacks for the same queue should continue to receive notifications.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import {
-  createTestLogger,
-  sleep,
-} from "../testkit/index.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createInMemoryNotify,
-  createPollingNotifyListener,
   createPgNotifyListener,
+  createPollingNotifyListener,
   type PgClient,
   type PgNotification,
 } from "../../driver-db/index.js";
+import { createTestLogger, sleep } from "../testkit/index.js";
 
 describe("B7: Notify Listener Semantics", () => {
   const logger = createTestLogger();

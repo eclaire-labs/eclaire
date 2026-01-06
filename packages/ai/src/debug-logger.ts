@@ -85,7 +85,7 @@ export function logDebugEntry(entry: DebugLogEntry): void {
     // Silently fail - we don't want debug logging to break the app
     console.error(
       "[ai-debug] Failed to write debug log:",
-      error instanceof Error ? error.message : error
+      error instanceof Error ? error.message : error,
     );
   }
 }

@@ -1,13 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  buildKey,
-  parseKey,
   assetPrefix,
+  buildKey,
   categoryPrefix,
-  userPrefix,
   isValidKey,
   isValidKeyComponent,
+  parseKey,
   sanitizeKeyComponent,
+  userPrefix,
 } from "../core/keys.js";
 
 describe("buildKey", () => {

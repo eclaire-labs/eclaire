@@ -1,8 +1,8 @@
-import { config } from "../config.js";
-import { getQueue } from "../queues.js";
 import { QueueNames } from "@eclaire/queue/app";
 import { createChildLogger } from "../../lib/logger.js";
 import { updateProcessingJobStatus } from "../../lib/services/processing-status.js";
+import { config } from "../config.js";
+import { getQueue } from "../queues.js";
 
 const logger = createChildLogger("domain-rate-limiter");
 

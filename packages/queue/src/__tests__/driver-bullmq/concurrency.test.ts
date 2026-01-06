@@ -5,14 +5,14 @@
  * Verifies that jobs are distributed and each job is processed exactly once.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   eventually,
-  sleep,
   type QueueTestHarness,
+  sleep,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
 
 describe("BullMQ: Concurrency (Multiple Workers)", () => {
   let harness: QueueTestHarness;
@@ -67,10 +67,13 @@ describe("BullMQ: Concurrency (Multiple Workers)", () => {
       await worker2.start();
 
       // Wait for all jobs to complete
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 10;
-      }, { timeout: 10000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 10;
+        },
+        { timeout: 10000 },
+      );
 
       // All jobs should be processed
       expect(processedByWorker.size).toBe(10);
@@ -106,10 +109,13 @@ describe("BullMQ: Concurrency (Multiple Workers)", () => {
       await worker1.start();
       await worker2.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 20;
-      }, { timeout: 10000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 20;
+        },
+        { timeout: 10000 },
+      );
 
       // Verify no duplicates
       const uniqueIds = new Set(processedJobIds);
@@ -140,10 +146,13 @@ describe("BullMQ: Concurrency (Multiple Workers)", () => {
       await worker1.start();
       await worker2.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 50;
-      }, { timeout: 15000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 50;
+        },
+        { timeout: 15000 },
+      );
 
       expect(processedCount.value).toBe(50);
     });
@@ -172,10 +181,13 @@ describe("BullMQ: Concurrency (Multiple Workers)", () => {
       });
       await worker2.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 10;
-      }, { timeout: 10000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 10;
+        },
+        { timeout: 10000 },
+      );
 
       expect(processedCount.value).toBe(10);
     });
@@ -204,17 +216,22 @@ describe("BullMQ: Concurrency (Multiple Workers)", () => {
       await worker2.start();
 
       // Wait for some processing
-      await eventually(async () => processedCount.value >= 3, { timeout: 5000 });
+      await eventually(async () => processedCount.value >= 3, {
+        timeout: 5000,
+      });
 
       // Stop one worker
       await worker1.stop();
       worker1 = null;
 
       // Remaining worker should complete the rest
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 10;
-      }, { timeout: 10000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 10;
+        },
+        { timeout: 10000 },
+      );
 
       expect(processedCount.value).toBe(10);
     });

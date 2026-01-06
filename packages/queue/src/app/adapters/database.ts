@@ -5,22 +5,22 @@
  * Uses the queue_jobs table (via driver-db) for job storage.
  */
 
-import { type Logger, getRequestId } from "@eclaire/logger";
 import type { DbInstance } from "@eclaire/db";
+import { getRequestId, type Logger } from "@eclaire/logger";
 import type { QueueClient } from "../../core/types.js";
 import { createDbQueueClient } from "../../driver-db/client.js";
 import { getQueueSchema } from "../../driver-db/schema.js";
 import type { NotifyEmitter } from "../../driver-db/types.js";
 import { QueueNames } from "../queue-names.js";
 import type {
-  QueueAdapter,
-  BookmarkJobData,
-  ImageJobData,
-  DocumentJobData,
-  NoteJobData,
-  TaskJobData,
   AssetType,
+  BookmarkJobData,
+  DocumentJobData,
+  ImageJobData,
   JobWaitlistInterface,
+  NoteJobData,
+  QueueAdapter,
+  TaskJobData,
 } from "../types.js";
 
 export interface DatabaseAdapterConfig {
@@ -58,7 +58,9 @@ function getQueueName(assetType: AssetType, jobType?: string): string {
 /**
  * Creates a database-backed queue adapter
  */
-export function createDatabaseAdapter(config: DatabaseAdapterConfig): QueueAdapter {
+export function createDatabaseAdapter(
+  config: DatabaseAdapterConfig,
+): QueueAdapter {
   const { db, dbType, logger, waitlist, notifyEmitter } = config;
 
   // Get the appropriate schema for the database type
@@ -101,17 +103,21 @@ export function createDatabaseAdapter(config: DatabaseAdapterConfig): QueueAdapt
     const requestId = getRequestId();
 
     try {
-      await queueClient.enqueue(queueName, { ...data, requestId }, {
-        key,
-        priority: options.priority || 0,
-        runAt: options.scheduledFor,
-        // Store asset info in metadata for SSE event callbacks
-        metadata: {
-          userId,
-          assetType,
-          assetId,
+      await queueClient.enqueue(
+        queueName,
+        { ...data, requestId },
+        {
+          key,
+          priority: options.priority || 0,
+          runAt: options.scheduledFor,
+          // Store asset info in metadata for SSE event callbacks
+          metadata: {
+            userId,
+            assetType,
+            assetId,
+          },
         },
-      });
+      );
 
       logger.info(
         { queueName, assetType, assetId, userId, key },

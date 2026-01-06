@@ -52,14 +52,17 @@ const DIALECT_ENDPOINTS: Record<Dialect, string> = {
  * interpolateEnvVars("Bearer ${ENV:API_KEY}") // "Bearer sk-..."
  * interpolateEnvVars("${ENV:MISSING}", false) // "${ENV:MISSING}" (unchanged)
  */
-export function interpolateEnvVars(value: string, throwOnMissing = true): string {
+export function interpolateEnvVars(
+  value: string,
+  throwOnMissing = true,
+): string {
   return value.replace(/\$\{ENV:([^}]+)\}/g, (match, varName) => {
     const envValue = process.env[varName];
     if (envValue === undefined) {
       if (throwOnMissing) {
         throw new Error(
           `Environment variable ${varName} is not set. ` +
-            `Set it in your .env file or environment before starting the server.`
+            `Set it in your .env file or environment before starting the server.`,
         );
       }
       return match; // Return unchanged if not throwing
@@ -93,7 +96,7 @@ function interpolateAuth(auth: ProviderAuth): ProviderAuth {
  * Interpolate environment variables in headers
  */
 function interpolateHeaders(
-  headers: Record<string, string> | undefined
+  headers: Record<string, string> | undefined,
 ): Record<string, string> | undefined {
   if (!headers) return undefined;
 
@@ -107,7 +110,10 @@ function interpolateHeaders(
 /**
  * Get the endpoint path for a dialect
  */
-export function getDialectEndpoint(dialect: Dialect, overridePath?: string): string {
+export function getDialectEndpoint(
+  dialect: Dialect,
+  overridePath?: string,
+): string {
   return overridePath ?? DIALECT_ENDPOINTS[dialect];
 }
 
@@ -141,7 +147,7 @@ export function setConfigPath(configPath: string): void {
 export function getConfigPath(): string {
   if (!_configPath) {
     throw new Error(
-      "AI config path not initialized. Call initAI() before using AI functions."
+      "AI config path not initialized. Call initAI() before using AI functions.",
     );
   }
   return _configPath;
@@ -213,18 +219,19 @@ export function loadProvidersConfiguration(): ProvidersConfiguration {
     providersConfigCache = { providers };
     logger.info(
       { providersCount: Object.keys(providers).length },
-      "Providers configuration loaded successfully"
+      "Providers configuration loaded successfully",
     );
 
     return providersConfigCache;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     const isFileNotFound = errorMessage.includes("ENOENT");
     logger.error(
       { error: errorMessage },
       isFileNotFound
         ? "Failed to load providers configuration. Copy config/ai/providers.json.example to config/ai/providers.json"
-        : "Failed to load providers configuration"
+        : "Failed to load providers configuration",
     );
     throw error;
   }
@@ -262,18 +269,19 @@ export function loadModelsConfiguration(): ModelsConfiguration {
         modelsCount: Object.keys(modelsConfig.models).length,
         modelsList: Object.keys(modelsConfig.models),
       },
-      "Models configuration loaded successfully"
+      "Models configuration loaded successfully",
     );
 
     return modelsConfigCache;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     const isFileNotFound = errorMessage.includes("ENOENT");
     logger.error(
       { error: errorMessage },
       isFileNotFound
         ? "Failed to load models configuration. Run 'pnpm setup:dev' to create config/ai/models.json"
-        : "Failed to load models configuration"
+        : "Failed to load models configuration",
     );
     throw error;
   }
@@ -302,24 +310,27 @@ export function loadSelectionConfiguration(): SelectionConfiguration {
     const selectionConfig = JSON.parse(configContent) as SelectionConfiguration;
 
     if (!selectionConfig.active) {
-      throw new Error("Invalid selection configuration: no active models defined");
+      throw new Error(
+        "Invalid selection configuration: no active models defined",
+      );
     }
 
     selectionConfigCache = selectionConfig;
     logger.info(
       { active: selectionConfig.active },
-      "Selection configuration loaded successfully"
+      "Selection configuration loaded successfully",
     );
 
     return selectionConfigCache;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     const isFileNotFound = errorMessage.includes("ENOENT");
     logger.error(
       { error: errorMessage },
       isFileNotFound
         ? "Failed to load selection configuration. Run 'pnpm setup:dev' to create config/ai/selection.json"
-        : "Failed to load selection configuration"
+        : "Failed to load selection configuration",
     );
     throw error;
   }
@@ -339,8 +350,11 @@ export function getActiveModelIdForContext(context: AIContext): string | null {
     return selection.active[context] || null;
   } catch (error) {
     logger.warn(
-      { context, error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to get active model ID for context"
+      {
+        context,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Failed to get active model ID for context",
     );
     return null;
   }
@@ -349,7 +363,9 @@ export function getActiveModelIdForContext(context: AIContext): string | null {
 /**
  * Get the active model configuration for a given context
  */
-export function getActiveModelForContext(context: AIContext): ModelConfig | null {
+export function getActiveModelForContext(
+  context: AIContext,
+): ModelConfig | null {
   const logger = getLogger();
   try {
     const modelId = getActiveModelIdForContext(context);
@@ -362,15 +378,21 @@ export function getActiveModelForContext(context: AIContext): ModelConfig | null
     const model = modelsConfig.models[modelId];
 
     if (!model) {
-      logger.warn({ context, modelId }, "Active model ID not found in models list");
+      logger.warn(
+        { context, modelId },
+        "Active model ID not found in models list",
+      );
       return null;
     }
 
     return model;
   } catch (error) {
     logger.warn(
-      { context, error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to get active model for context"
+      {
+        context,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Failed to get active model for context",
     );
     return null;
   }
@@ -386,8 +408,11 @@ export function getModelConfigById(modelId: string): ModelConfig | null {
     return modelsConfig.models[modelId] || null;
   } catch (error) {
     logger.warn(
-      { modelId, error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to get model config by ID"
+      {
+        modelId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Failed to get model config by ID",
     );
     return null;
   }
@@ -403,8 +428,11 @@ export function getProviderConfig(providerId: string): ProviderConfig | null {
     return providersConfig.providers[providerId] || null;
   } catch (error) {
     logger.warn(
-      { providerId, error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to get provider config"
+      {
+        providerId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Failed to get provider config",
     );
     return null;
   }
@@ -421,7 +449,9 @@ export function getProviderConfig(providerId: string): ProviderConfig | null {
 export function parseModelId(id: string): { provider: string; model: string } {
   const colonIndex = id.indexOf(":");
   if (colonIndex === -1) {
-    throw new Error(`Invalid model ID format: "${id}". Expected "provider:model"`);
+    throw new Error(
+      `Invalid model ID format: "${id}". Expected "provider:model"`,
+    );
   }
   return {
     provider: id.slice(0, colonIndex),
@@ -459,7 +489,7 @@ export function createModelId(provider: string, model: string): string {
  */
 export function hasInputModality(
   model: ModelConfig,
-  modality: InputModality
+  modality: InputModality,
 ): boolean {
   return model.capabilities.modalities.input.includes(modality);
 }
@@ -469,10 +499,10 @@ export function hasInputModality(
  */
 export function hasAllInputModalities(
   model: ModelConfig,
-  modalities: InputModality[]
+  modalities: InputModality[],
 ): boolean {
   return modalities.every((m) =>
-    model.capabilities.modalities.input.includes(m)
+    model.capabilities.modalities.input.includes(m),
   );
 }
 
@@ -492,7 +522,7 @@ export function hasAllInputModalities(
  */
 export function getThinkingPromptPrefix(
   modelId: string,
-  enableThinking?: boolean
+  enableThinking?: boolean,
 ): string {
   const logger = getLogger();
   const modelConfig = getModelConfigById(modelId);
@@ -507,7 +537,7 @@ export function getThinkingPromptPrefix(
 
   logger.debug(
     { modelId, enableThinking, mode: reasoning.mode },
-    "Determining thinking prompt prefix"
+    "Determining thinking prompt prefix",
   );
 
   switch (reasoning.mode) {
@@ -540,9 +570,7 @@ export function getThinkingPromptPrefix(
 /**
  * Get the current active model configuration without sensitive fields
  */
-export function getCurrentModelConfig(
-  context: AIContext = "backend"
-): {
+export function getCurrentModelConfig(context: AIContext = "backend"): {
   id: string;
   name: string;
   provider: string;
@@ -573,8 +601,11 @@ export function getCurrentModelConfig(
     };
   } catch (error) {
     logger.error(
-      { context, error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to get current model configuration"
+      {
+        context,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Failed to get current model configuration",
     );
     return null;
   }
@@ -590,12 +621,12 @@ export function getCurrentModelConfig(
  */
 export function resolveProviderForModel(
   modelId: string,
-  modelConfig: ModelConfig
+  modelConfig: ModelConfig,
 ): { providerConfig: ProviderConfig; url: string } {
   const rawProviderConfig = getProviderConfig(modelConfig.provider);
   if (!rawProviderConfig) {
     throw new Error(
-      `Provider '${modelConfig.provider}' not found in providers.json for model '${modelId}'`
+      `Provider '${modelConfig.provider}' not found in providers.json for model '${modelId}'`,
     );
   }
 
@@ -612,14 +643,14 @@ export function resolveProviderForModel(
     const unresolvedVars = providerConfig.baseUrl.match(/\$\{ENV:([^}]+)\}/g);
     throw new Error(
       `Provider '${modelConfig.provider}' has unresolved env vars in baseUrl: ${unresolvedVars?.join(", ")}. ` +
-      `Set these in .env or configure the provider in providers.json.`
+        `Set these in .env or configure the provider in providers.json.`,
     );
   }
 
   // Derive endpoint from dialect (or use override)
   const endpoint = getDialectEndpoint(
     providerConfig.dialect,
-    providerConfig.overrides?.chatPath
+    providerConfig.overrides?.chatPath,
   );
 
   // Build the full URL from provider config
@@ -657,14 +688,14 @@ export function validateAIConfig(context: AIContext): ValidatedAIConfig {
   const modelId = getActiveModelIdForContext(context);
   if (!modelId) {
     throw new Error(
-      `No active model defined for ${context} context in selection.json. Please configure active.${context}.`
+      `No active model defined for ${context} context in selection.json. Please configure active.${context}.`,
     );
   }
 
   const modelConfig = getModelConfigById(modelId);
   if (!modelConfig) {
     throw new Error(
-      `Model '${modelId}' not found in models.json. Check your configuration.`
+      `Model '${modelId}' not found in models.json. Check your configuration.`,
     );
   }
 
@@ -682,7 +713,7 @@ export function validateAIConfig(context: AIContext): ValidatedAIConfig {
       url,
       hasApiKey: !!apiKey,
     },
-    "AI configuration validated"
+    "AI configuration validated",
   );
 
   return {
@@ -728,8 +759,12 @@ export function validateAIConfigOnStartup(): void {
           validateAIConfig(context);
         } catch (error) {
           logger.warn(
-            { context, modelId, error: error instanceof Error ? error.message : "Unknown" },
-            `AI config warning for ${context} context`
+            {
+              context,
+              modelId,
+              error: error instanceof Error ? error.message : "Unknown",
+            },
+            `AI config warning for ${context} context`,
           );
         }
       }
@@ -739,7 +774,7 @@ export function validateAIConfigOnStartup(): void {
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      "AI configuration validation failed on startup"
+      "AI configuration validation failed on startup",
     );
     throw error;
   }
@@ -760,7 +795,9 @@ function getConfigFilePath(filename: string): string {
 /**
  * Save providers configuration to config/ai/providers.json
  */
-export function saveProvidersConfiguration(config: ProvidersConfiguration): void {
+export function saveProvidersConfiguration(
+  config: ProvidersConfiguration,
+): void {
   const logger = getLogger();
   try {
     const configPath = getConfigFilePath("providers.json");
@@ -774,7 +811,7 @@ export function saveProvidersConfiguration(config: ProvidersConfiguration): void
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to save providers configuration"
+      "Failed to save providers configuration",
     );
     throw error;
   }
@@ -797,7 +834,7 @@ export function saveModelsConfiguration(config: ModelsConfiguration): void {
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to save models configuration"
+      "Failed to save models configuration",
     );
     throw error;
   }
@@ -806,7 +843,9 @@ export function saveModelsConfiguration(config: ModelsConfiguration): void {
 /**
  * Save selection configuration to config/ai/selection.json
  */
-export function saveSelectionConfiguration(config: SelectionConfiguration): void {
+export function saveSelectionConfiguration(
+  config: SelectionConfiguration,
+): void {
   const logger = getLogger();
   try {
     const configPath = getConfigFilePath("selection.json");
@@ -820,7 +859,7 @@ export function saveSelectionConfiguration(config: SelectionConfiguration): void
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to save selection configuration"
+      "Failed to save selection configuration",
     );
     throw error;
   }
@@ -954,7 +993,10 @@ export function getModels(filter?: {
   provider?: string;
 }): Array<{ id: string; model: ModelConfig }> {
   const config = loadModelsConfiguration();
-  let models = Object.entries(config.models).map(([id, model]) => ({ id, model }));
+  let models = Object.entries(config.models).map(([id, model]) => ({
+    id,
+    model,
+  }));
 
   if (filter) {
     if (filter.provider) {
@@ -969,7 +1011,10 @@ export function getModels(filter?: {
  * Get active models as objects with their full model data.
  * Returns a record keyed by context name.
  */
-export function getActiveModelsAsObjects(): Record<string, { id: string; model: ModelConfig }> {
+export function getActiveModelsAsObjects(): Record<
+  string,
+  { id: string; model: ModelConfig }
+> {
   const result: Record<string, { id: string; model: ModelConfig }> = {};
   const selection = loadSelectionConfiguration();
 

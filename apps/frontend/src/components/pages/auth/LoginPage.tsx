@@ -1,4 +1,3 @@
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useSearch } from "@tanstack/react-router";
 import { Github, Globe, Twitter } from "lucide-react";
@@ -173,10 +172,7 @@ export default function LoginPage() {
           </Form>
           <div className="text-center text-sm">
             Don't have an account?{" "}
-            <Link
-              to="/auth/register"
-              className="text-primary hover:underline"
-            >
+            <Link to="/auth/register" className="text-primary hover:underline">
               Create an account
             </Link>
           </div>

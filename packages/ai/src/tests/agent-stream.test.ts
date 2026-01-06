@@ -4,25 +4,29 @@
  * Tests for the streaming variant of the agent.
  */
 
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { initAI, resetAI } from "../index.js";
-import { ToolLoopAgent } from "../agent/tool-loop-agent.js";
 import { createAgentContext } from "../agent/context.js";
-import { stepCountIs, noToolCalls, anyOf } from "../agent/stop-conditions.js";
-import type { AgentContext, AgentToolDefinition, AgentStreamEvent } from "../agent/types.js";
+import { anyOf, noToolCalls, stepCountIs } from "../agent/stop-conditions.js";
+import { ToolLoopAgent } from "../agent/tool-loop-agent.js";
+import type {
+  AgentContext,
+  AgentStreamEvent,
+  AgentToolDefinition,
+} from "../agent/types.js";
+import { initAI, resetAI } from "../index.js";
 import type { ToolExecutionResult } from "../tools/types.js";
 import {
-  getFixturesPath,
-  createMockLoggerFactory,
   createMockFetch,
+  createMockLoggerFactory,
   createSSEStream,
+  getFixturesPath,
   sseContentDelta,
-  sseReasoningDelta,
-  sseFinishReason,
-  sseUsage,
-  sseToolCallDelta,
   sseDone,
+  sseFinishReason,
+  sseReasoningDelta,
+  sseToolCallDelta,
+  sseUsage,
 } from "./setup.js";
 
 describe("ToolLoopAgent Stream", () => {
@@ -51,7 +55,7 @@ describe("ToolLoopAgent Stream", () => {
 
   // Helper to collect all events from a stream
   async function collectEvents(
-    stream: ReadableStream<AgentStreamEvent>
+    stream: ReadableStream<AgentStreamEvent>,
   ): Promise<AgentStreamEvent[]> {
     const reader = stream.getReader();
     const events: AgentStreamEvent[] = [];
@@ -64,7 +68,10 @@ describe("ToolLoopAgent Stream", () => {
   }
 
   // Helper to create a simple tool
-  function createEchoTool(): AgentToolDefinition<z.ZodObject<{ message: z.ZodString }>, AgentContext> {
+  function createEchoTool(): AgentToolDefinition<
+    z.ZodObject<{ message: z.ZodString }>,
+    AgentContext
+  > {
     return {
       name: "echo",
       description: "Echoes a message back",
@@ -179,7 +186,9 @@ describe("ToolLoopAgent Stream", () => {
         const streamResult = agent.stream({ prompt: "Hi", context });
         const allEvents = await collectEvents(streamResult.eventStream);
 
-        const stepComplete = allEvents.filter((e) => e.type === "step-complete");
+        const stepComplete = allEvents.filter(
+          (e) => e.type === "step-complete",
+        );
         expect(stepComplete).toHaveLength(1);
 
         if (stepComplete[0]?.type === "step-complete") {
@@ -220,7 +229,9 @@ describe("ToolLoopAgent Stream", () => {
       it("emits tool-call-start and tool-call-complete events", async () => {
         // First step: trigger text-based tool call
         const step1Events = [
-          sseContentDelta('```json\n{"type": "tool_calls", "calls": [{"name": "echo", "args": {"message": "test"}}]}\n```'),
+          sseContentDelta(
+            '```json\n{"type": "tool_calls", "calls": [{"name": "echo", "args": {"message": "test"}}]}\n```',
+          ),
           sseFinishReason("stop"),
           sseDone(),
         ];
@@ -246,7 +257,9 @@ describe("ToolLoopAgent Stream", () => {
         const allEvents = await collectEvents(streamResult.eventStream);
 
         const toolStart = allEvents.filter((e) => e.type === "tool-call-start");
-        const toolComplete = allEvents.filter((e) => e.type === "tool-call-complete");
+        const toolComplete = allEvents.filter(
+          (e) => e.type === "tool-call-complete",
+        );
 
         expect(toolStart.length).toBeGreaterThanOrEqual(1);
         expect(toolComplete.length).toBeGreaterThanOrEqual(1);
@@ -263,7 +276,9 @@ describe("ToolLoopAgent Stream", () => {
       it("emits tool-call-error when tool fails", async () => {
         // First step: trigger tool call
         const step1Events = [
-          sseContentDelta('```json\n{"type": "tool_calls", "calls": [{"name": "failing", "args": {}}]}\n```'),
+          sseContentDelta(
+            '```json\n{"type": "tool_calls", "calls": [{"name": "failing", "args": {}}]}\n```',
+          ),
           sseFinishReason("stop"),
           sseDone(),
         ];
@@ -286,7 +301,11 @@ describe("ToolLoopAgent Stream", () => {
               description: "Always fails",
               inputSchema: z.object({}),
               execute: async (): Promise<ToolExecutionResult> => {
-                return { success: false, content: "", error: "Intentional failure" };
+                return {
+                  success: false,
+                  content: "",
+                  error: "Intentional failure",
+                };
               },
             },
           },
@@ -294,10 +313,15 @@ describe("ToolLoopAgent Stream", () => {
         });
 
         const context = createAgentContext({ userId: "user_123" });
-        const streamResult = agent.stream({ prompt: "Use failing tool", context });
+        const streamResult = agent.stream({
+          prompt: "Use failing tool",
+          context,
+        });
         const allEvents = await collectEvents(streamResult.eventStream);
 
-        const toolErrors = allEvents.filter((e) => e.type === "tool-call-error");
+        const toolErrors = allEvents.filter(
+          (e) => e.type === "tool-call-error",
+        );
         expect(toolErrors.length).toBeGreaterThanOrEqual(1);
 
         if (toolErrors[0]?.type === "tool-call-error") {
@@ -308,7 +332,9 @@ describe("ToolLoopAgent Stream", () => {
       it("emits tool-call-error for unknown tool", async () => {
         // Step with call to unknown tool
         const step1Events = [
-          sseContentDelta('```json\n{"type": "tool_calls", "calls": [{"name": "unknown", "args": {}}]}\n```'),
+          sseContentDelta(
+            '```json\n{"type": "tool_calls", "calls": [{"name": "unknown", "args": {}}]}\n```',
+          ),
           sseFinishReason("stop"),
           sseDone(),
         ];
@@ -333,7 +359,9 @@ describe("ToolLoopAgent Stream", () => {
         const streamResult = agent.stream({ prompt: "Use unknown", context });
         const allEvents = await collectEvents(streamResult.eventStream);
 
-        const toolErrors = allEvents.filter((e) => e.type === "tool-call-error");
+        const toolErrors = allEvents.filter(
+          (e) => e.type === "tool-call-error",
+        );
         expect(toolErrors.length).toBeGreaterThanOrEqual(1);
 
         if (toolErrors[0]?.type === "tool-call-error") {
@@ -387,12 +415,14 @@ describe("ToolLoopAgent Stream", () => {
         // Verify tool was executed
         expect(executeSpy).toHaveBeenCalledWith(
           { message: "hello from native" },
-          expect.objectContaining({ userId: "user_123" })
+          expect.objectContaining({ userId: "user_123" }),
         );
 
         // Verify events
         const toolStart = allEvents.filter((e) => e.type === "tool-call-start");
-        const toolComplete = allEvents.filter((e) => e.type === "tool-call-complete");
+        const toolComplete = allEvents.filter(
+          (e) => e.type === "tool-call-complete",
+        );
         expect(toolStart.length).toBeGreaterThanOrEqual(1);
         expect(toolComplete.length).toBeGreaterThanOrEqual(1);
 
@@ -445,7 +475,9 @@ describe("ToolLoopAgent Stream", () => {
         // Both native and text-based tool calls
         const events = [
           sseToolCallDelta(0, "call_123", "echo", '{"message":"native"}'),
-          sseContentDelta('```json\n{"type": "tool_calls", "calls": [{"name": "echo", "args": {"message": "text"}}]}\n```'),
+          sseContentDelta(
+            '```json\n{"type": "tool_calls", "calls": [{"name": "echo", "args": {"message": "text"}}]}\n```',
+          ),
           sseFinishReason("stop"),
           sseDone(),
         ];
@@ -601,7 +633,9 @@ describe("ToolLoopAgent Stream", () => {
       it("processes multiple steps with tools", async () => {
         // First step: tool call
         const step1Events = [
-          sseContentDelta('```json\n{"type": "tool_calls", "calls": [{"name": "echo", "args": {"message": "step1"}}]}\n```'),
+          sseContentDelta(
+            '```json\n{"type": "tool_calls", "calls": [{"name": "echo", "args": {"message": "step1"}}]}\n```',
+          ),
           sseFinishReason("stop"),
           sseDone(),
         ];
@@ -626,7 +660,9 @@ describe("ToolLoopAgent Stream", () => {
         const streamResult = agent.stream({ prompt: "Echo", context });
         const allEvents = await collectEvents(streamResult.eventStream);
 
-        const stepCompletes = allEvents.filter((e) => e.type === "step-complete");
+        const stepCompletes = allEvents.filter(
+          (e) => e.type === "step-complete",
+        );
         expect(stepCompletes).toHaveLength(2);
 
         const result = await streamResult.result;
@@ -638,7 +674,9 @@ describe("ToolLoopAgent Stream", () => {
         // Queue multiple steps with tool calls
         for (let i = 0; i < 5; i++) {
           const stepEvents = [
-            sseContentDelta(`\`\`\`json\n{"type": "tool_calls", "calls": [{"name": "echo", "args": {"message": "loop${i}"}}]}\n\`\`\``),
+            sseContentDelta(
+              `\`\`\`json\n{"type": "tool_calls", "calls": [{"name": "echo", "args": {"message": "loop${i}"}}]}\n\`\`\``,
+            ),
             sseFinishReason("stop"),
             sseDone(),
           ];

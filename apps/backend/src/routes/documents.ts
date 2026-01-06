@@ -1,9 +1,9 @@
 import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
-import { describeRoute } from "hono-openapi";
-import { resolver, validator as zValidator } from "hono-openapi";
+import { describeRoute, resolver, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { createChildLogger } from "../lib/logger.js";
 // Import response schemas
 import { ErrorResponseSchema } from "../lib/openapi-config.js";
 import {
@@ -44,8 +44,6 @@ import {
 } from "../schemas/documents-routes.js";
 import { DOCUMENT_MIMES } from "../types/mime-types.js";
 import type { RouteVariables } from "../types/route-variables.js";
-
-import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("documents");
 

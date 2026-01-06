@@ -4,15 +4,15 @@
  * Tests graceful worker shutdown behavior.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  eventually,
-  sleep,
   createDeferred,
+  eventually,
   type QueueTestHarness,
+  sleep,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
 
 describe("BullMQ: Shutdown", () => {
   let harness: QueueTestHarness;
@@ -132,11 +132,7 @@ describe("BullMQ: Shutdown", () => {
       await worker.start();
 
       // Call stop multiple times
-      await Promise.all([
-        worker.stop(),
-        worker.stop(),
-        worker.stop(),
-      ]);
+      await Promise.all([worker.stop(), worker.stop(), worker.stop()]);
 
       // Should not throw
       expect(worker.isRunning()).toBe(false);

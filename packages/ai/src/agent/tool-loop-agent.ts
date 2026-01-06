@@ -5,12 +5,19 @@
  * Inspired by AI SDK v6's ToolLoopAgent pattern.
  */
 
-import { createAILogger } from "../logger.js";
 import { callAI, callAIStream } from "../client.js";
-import { parseTextToolContent, extractToolCalls, extractFinalResponse } from "../text-parser.js";
+import { createAILogger } from "../logger.js";
 import { LLMStreamParser } from "../stream-parser.js";
+import {
+  extractFinalResponse,
+  extractToolCalls,
+  parseTextToolContent,
+} from "../text-parser.js";
 import { createToolCallSummary } from "../tools/native.js";
-import type { ToolCallSummaryOutput, ToolExecutionResult } from "../tools/types.js";
+import type {
+  ToolCallSummaryOutput,
+  ToolExecutionResult,
+} from "../tools/types.js";
 import type { AIMessage, ToolCallResult } from "../types.js";
 import {
   anyOf,
@@ -19,7 +26,7 @@ import {
   noToolCalls,
   stepCountIs,
 } from "./stop-conditions.js";
-import { toOpenAITools, executeAgentTool } from "./tool.js";
+import { executeAgentTool, toOpenAITools } from "./tool.js";
 import type {
   AgentContext,
   AgentResult,
@@ -96,7 +103,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
         userId: context.userId,
         conversationId: context.conversationId,
       },
-      "Starting agent execution"
+      "Starting agent execution",
     );
 
     // Build system prompt
@@ -129,7 +136,9 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
     // For "text" mode, we don't send tools to AI but parse text for tool calls
     // For "native" mode (default), we send tools and use native tool calls only
     const openAITools =
-      hasTools && toolCallingMode === "native" ? toOpenAITools(tools) : undefined;
+      hasTools && toolCallingMode === "native"
+        ? toOpenAITools(tools)
+        : undefined;
 
     // Agent loop
     let stepNumber = 0;
@@ -138,13 +147,16 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
 
       // Check abort signal
       if (context.abortSignal?.aborted) {
-        logger.info({ requestId: context.requestId }, "Agent execution aborted");
+        logger.info(
+          { requestId: context.requestId },
+          "Agent execution aborted",
+        );
         break;
       }
 
       logger.debug(
         { requestId: context.requestId, stepNumber },
-        "Starting agent step"
+        "Starting agent step",
       );
 
       // Apply prepareStep if configured
@@ -209,7 +221,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
         if (hasTools) {
           const parseResult = parseTextToolContent(
             aiResponse.content,
-            aiResponse.reasoning
+            aiResponse.reasoning,
           );
 
           if (parseResult.thinkingContent && !thinking) {
@@ -266,7 +278,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
           if (!toolDef) {
             logger.warn(
               { requestId: context.requestId, toolName },
-              "Tool not found"
+              "Tool not found",
             );
             const errorResult: ToolExecutionResult = {
               success: false,
@@ -311,7 +323,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
               durationMs,
               success: result.success,
             },
-            "Tool executed"
+            "Tool executed",
           );
 
           toolResults.push({
@@ -341,7 +353,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
               executionTimeMs: durationMs,
               success: result.success,
               error: result.error,
-            })
+            }),
           );
         }
 
@@ -353,7 +365,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
       // Check stop conditions
       const { shouldStop, reason } = evaluateStopConditions(
         steps,
-        this.stopConditions
+        this.stopConditions,
       );
 
       if (shouldStop) {
@@ -361,7 +373,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
         step.stopReason = reason;
         logger.info(
           { requestId: context.requestId, stepNumber, reason },
-          "Agent loop stopped"
+          "Agent loop stopped",
         );
         break;
       }
@@ -372,7 +384,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
         step.stopReason = "no_tool_calls";
         logger.info(
           { requestId: context.requestId, stepNumber },
-          "Agent loop completed (no tool calls)"
+          "Agent loop completed (no tool calls)",
         );
         break;
       }
@@ -384,9 +396,10 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
       const lastStep = steps[steps.length - 1]!;
       const parseResult = parseTextToolContent(
         lastStep.aiResponse.content,
-        lastStep.aiResponse.reasoning
+        lastStep.aiResponse.reasoning,
       );
-      finalText = extractFinalResponse(parseResult) || lastStep.aiResponse.content;
+      finalText =
+        extractFinalResponse(parseResult) || lastStep.aiResponse.content;
 
       // Also capture thinking from final step
       if (parseResult.thinkingContent && !thinking) {
@@ -413,7 +426,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
         totalToolCalls: toolCallSummaries.length,
         totalTokens: result.usage.totalTokens,
       },
-      "Agent execution completed"
+      "Agent execution completed",
     );
 
     return result;
@@ -444,7 +457,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
               userId: context.userId,
               conversationId: context.conversationId,
             },
-            "Starting streaming agent execution"
+            "Starting streaming agent execution",
           );
 
           // Build system prompt
@@ -464,8 +477,8 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
           // Tracking
           const steps: AgentStep[] = [];
           const toolCallSummaries: ToolCallSummaryOutput[] = [];
-          let totalPromptTokens = 0;
-          let totalCompletionTokens = 0;
+          const totalPromptTokens = 0;
+          const totalCompletionTokens = 0;
           let thinking: string | undefined;
 
           // Get tools in OpenAI format
@@ -477,7 +490,9 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
           // For "text" mode, we don't send tools to AI but parse text for tool calls
           // For "native" mode (default), we send tools and use native tool calls only
           const openAITools =
-            hasTools && toolCallingMode === "native" ? toOpenAITools(tools) : undefined;
+            hasTools && toolCallingMode === "native"
+              ? toOpenAITools(tools)
+              : undefined;
 
           // Agent loop
           let stepNumber = 0;
@@ -518,21 +533,28 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
                 currentMessages = prepareResult.messages;
               }
               if (prepareResult.aiOptions) {
-                stepAiOptions = { ...stepAiOptions, ...prepareResult.aiOptions };
+                stepAiOptions = {
+                  ...stepAiOptions,
+                  ...prepareResult.aiOptions,
+                };
               }
             }
 
             // Call AI with streaming
-            const { stream } = await callAIStream(currentMessages, currentAiContext, {
-              ...stepAiOptions,
-              tools: currentTools,
-              toolChoice: hasTools ? "auto" : undefined,
-              debugContext: {
-                requestId: context.requestId,
-                userId: context.userId,
-                stepNumber,
+            const { stream } = await callAIStream(
+              currentMessages,
+              currentAiContext,
+              {
+                ...stepAiOptions,
+                tools: currentTools,
+                toolChoice: hasTools ? "auto" : undefined,
+                debugContext: {
+                  requestId: context.requestId,
+                  userId: context.userId,
+                  stepNumber,
+                },
               },
-            });
+            );
 
             // Process stream
             const streamParser = new LLMStreamParser();
@@ -624,7 +646,8 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
             messages.push({
               role: "assistant",
               content: fullContent,
-              tool_calls: streamedToolCalls.length > 0 ? streamedToolCalls : undefined,
+              tool_calls:
+                streamedToolCalls.length > 0 ? streamedToolCalls : undefined,
             });
 
             // Create step record
@@ -634,7 +657,8 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
               aiResponse: {
                 content: fullContent,
                 reasoning: thinking,
-                toolCalls: streamedToolCalls.length > 0 ? streamedToolCalls : undefined,
+                toolCalls:
+                  streamedToolCalls.length > 0 ? streamedToolCalls : undefined,
               },
               toolResults: undefined,
               isTerminal: false,
@@ -745,7 +769,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
                     executionTimeMs: durationMs,
                     success: result.success,
                     error: result.error,
-                  })
+                  }),
                 );
               }
 
@@ -764,7 +788,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
             // Check stop conditions
             const { shouldStop, reason } = evaluateStopConditions(
               steps,
-              this.stopConditions
+              this.stopConditions,
             );
 
             if (shouldStop) {
@@ -787,7 +811,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
             const lastStep = steps[steps.length - 1]!;
             const parseResult = parseTextToolContent(
               lastStep.aiResponse.content,
-              lastStep.aiResponse.reasoning
+              lastStep.aiResponse.reasoning,
             );
             finalText =
               extractFinalResponse(parseResult) || lastStep.aiResponse.content;
@@ -821,7 +845,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
               totalSteps: steps.length,
               totalToolCalls: toolCallSummaries.length,
             },
-            "Streaming agent execution completed"
+            "Streaming agent execution completed",
           );
         } catch (error) {
           const errorMessage =
@@ -832,14 +856,16 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
             timestamp: new Date().toISOString(),
           });
           controller.close();
-          rejectResult(error instanceof Error ? error : new Error(errorMessage));
+          rejectResult(
+            error instanceof Error ? error : new Error(errorMessage),
+          );
 
           logger.error(
             {
               requestId: context.requestId,
               error: errorMessage,
             },
-            "Streaming agent execution failed"
+            "Streaming agent execution failed",
           );
         }
       },

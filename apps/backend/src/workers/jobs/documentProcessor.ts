@@ -1,4 +1,8 @@
 // src/workers/document-processor.ts
+
+import { createRequire } from "node:module";
+import { type AIMessage, callAI } from "@eclaire/ai";
+import type { JobContext } from "@eclaire/queue/core";
 import { Readability } from "@mozilla/readability";
 import axios from "axios";
 import { spawn } from "child_process";
@@ -8,17 +12,14 @@ import { promises as fs } from "fs";
 import { convert as htmlToText } from "html-to-text";
 import { JSDOM } from "jsdom";
 import { marked } from "marked";
-import { createRequire } from "node:module";
 import { tmpdir } from "os";
 import { chromium } from "patchright";
 import path from "path";
 import sharp from "sharp";
 import { Readable } from "stream";
-import type { JobContext } from "@eclaire/queue/core";
-import { config } from "../config.js";
-import { type AIMessage, callAI } from "@eclaire/ai";
 import { createChildLogger } from "../../lib/logger.js";
-import { getStorage, buildKey } from "../../lib/storage/index.js";
+import { buildKey, getStorage } from "../../lib/storage/index.js";
+import { config } from "../config.js";
 
 // Use createRequire for CJS-only packages in ESM context
 const require = createRequire(import.meta.url);
@@ -252,10 +253,17 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
       extractedText = rawTextContent ? markdownToText(rawTextContent) : "";
 
       // Save the complete Docling response as docling.json
-      const doclingJsonKey = buildKey(userId, "documents", documentId, "docling.json");
+      const doclingJsonKey = buildKey(
+        userId,
+        "documents",
+        documentId,
+        "docling.json",
+      );
       await storage.write(
         doclingJsonKey,
-        Readable.from([JSON.stringify(doclingResult, null, 2)]) as unknown as NodeJS.ReadableStream,
+        Readable.from([
+          JSON.stringify(doclingResult, null, 2),
+        ]) as unknown as NodeJS.ReadableStream,
         { contentType: "application/json" },
       );
 
@@ -264,7 +272,9 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
         const mdKey = buildKey(userId, "documents", documentId, "extracted.md");
         await storage.write(
           mdKey,
-          Readable.from([doclingResult.document.md_content]) as unknown as NodeJS.ReadableStream,
+          Readable.from([
+            doclingResult.document.md_content,
+          ]) as unknown as NodeJS.ReadableStream,
           { contentType: "text/markdown" },
         );
         allArtifacts.extractedMdStorageId = mdKey;
@@ -272,7 +282,12 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
 
       // Save the cleaned plain text as extracted.txt
       if (extractedText) {
-        const txtKey = buildKey(userId, "documents", documentId, "extracted.txt");
+        const txtKey = buildKey(
+          userId,
+          "documents",
+          documentId,
+          "extracted.txt",
+        );
         await storage.write(
           txtKey,
           Readable.from([extractedText]) as unknown as NodeJS.ReadableStream,
@@ -282,10 +297,17 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
       }
 
       if (doclingResult.document.json_content) {
-        const extractedJsonKey = buildKey(userId, "documents", documentId, "extracted.json");
+        const extractedJsonKey = buildKey(
+          userId,
+          "documents",
+          documentId,
+          "extracted.json",
+        );
         await storage.write(
           extractedJsonKey,
-          Readable.from([JSON.stringify(doclingResult.document.json_content, null, 2)]) as unknown as NodeJS.ReadableStream,
+          Readable.from([
+            JSON.stringify(doclingResult.document.json_content, null, 2),
+          ]) as unknown as NodeJS.ReadableStream,
           { contentType: "application/json" },
         );
       }
@@ -321,7 +343,10 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
         originalFilename,
       );
       Object.assign(allArtifacts, aiMetadata);
-      jobLogger.info({ title: aiMetadata.title, tags: aiMetadata.tags }, "AI metadata analysis complete");
+      jobLogger.info(
+        { title: aiMetadata.title, tags: aiMetadata.tags },
+        "AI metadata analysis complete",
+      );
     } else {
       jobLogger.info("Skipping AI analysis due to insufficient text.");
     }
@@ -346,9 +371,14 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
         tempDir,
       );
       const pdfKey = buildKey(userId, "documents", documentId, "converted.pdf");
-      await storage.writeBuffer(pdfKey, pdfBuffer, { contentType: "application/pdf" });
+      await storage.writeBuffer(pdfKey, pdfBuffer, {
+        contentType: "application/pdf",
+      });
       allArtifacts.pdfStorageId = pdfKey;
-      jobLogger.info({ pdfStorageId: pdfKey }, "PDF generation and storage complete");
+      jobLogger.info(
+        { pdfStorageId: pdfKey },
+        "PDF generation and storage complete",
+      );
       await ctx.completeStage(currentStage);
     } else {
       pdfBuffer = documentBuffer;
@@ -362,18 +392,35 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
 
       // Generate thumbnail
       const thumbnailBuffer = await generateHtmlThumbnail(documentBuffer);
-      const thumbnailKey = buildKey(userId, "documents", documentId, "thumbnail.jpg");
-      await storage.writeBuffer(thumbnailKey, thumbnailBuffer, { contentType: "image/jpeg" });
+      const thumbnailKey = buildKey(
+        userId,
+        "documents",
+        documentId,
+        "thumbnail.jpg",
+      );
+      await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
+        contentType: "image/jpeg",
+      });
       allArtifacts.thumbnailStorageId = thumbnailKey;
 
       // Generate screenshot
       const screenshotBuffer = await generateHtmlScreenshot(documentBuffer);
-      const screenshotKey = buildKey(userId, "documents", documentId, "screenshot.jpg");
-      await storage.writeBuffer(screenshotKey, screenshotBuffer, { contentType: "image/jpeg" });
+      const screenshotKey = buildKey(
+        userId,
+        "documents",
+        documentId,
+        "screenshot.jpg",
+      );
+      await storage.writeBuffer(screenshotKey, screenshotBuffer, {
+        contentType: "image/jpeg",
+      });
       allArtifacts.screenshotStorageId = screenshotKey;
 
       jobLogger.info(
-        { thumbnailStorageId: thumbnailKey, screenshotStorageId: screenshotKey },
+        {
+          thumbnailStorageId: thumbnailKey,
+          screenshotStorageId: screenshotKey,
+        },
         "HTML thumbnail and screenshot generation complete",
       );
       await ctx.completeStage(currentStage);
@@ -389,18 +436,35 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
 
         // Generate thumbnail
         const thumbnailBuffer = await generatePdfThumbnail(tempPdfPath);
-        const thumbnailKey = buildKey(userId, "documents", documentId, "thumbnail.jpg");
-        await storage.writeBuffer(thumbnailKey, thumbnailBuffer, { contentType: "image/jpeg" });
+        const thumbnailKey = buildKey(
+          userId,
+          "documents",
+          documentId,
+          "thumbnail.jpg",
+        );
+        await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
+          contentType: "image/jpeg",
+        });
         allArtifacts.thumbnailStorageId = thumbnailKey;
 
         // Generate screenshot
         const screenshotBuffer = await generatePdfScreenshot(tempPdfPath);
-        const screenshotKey = buildKey(userId, "documents", documentId, "screenshot.jpg");
-        await storage.writeBuffer(screenshotKey, screenshotBuffer, { contentType: "image/jpeg" });
+        const screenshotKey = buildKey(
+          userId,
+          "documents",
+          documentId,
+          "screenshot.jpg",
+        );
+        await storage.writeBuffer(screenshotKey, screenshotBuffer, {
+          contentType: "image/jpeg",
+        });
         allArtifacts.screenshotStorageId = screenshotKey;
 
         jobLogger.info(
-          { thumbnailStorageId: thumbnailKey, screenshotStorageId: screenshotKey },
+          {
+            thumbnailStorageId: thumbnailKey,
+            screenshotStorageId: screenshotKey,
+          },
           "PDF thumbnail and screenshot generation complete",
         );
       } else {
@@ -426,7 +490,10 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
       allArtifacts.extractedTxtStorageId = txtKey;
     }
     // Complete the final stage with all artifacts - job completion is implicit when handler returns
-    await ctx.completeStage(currentStage, allArtifacts as Record<string, unknown>);
+    await ctx.completeStage(
+      currentStage,
+      allArtifacts as Record<string, unknown>,
+    );
     jobLogger.info("Job completed successfully.");
   } catch (error: any) {
     jobLogger.error(

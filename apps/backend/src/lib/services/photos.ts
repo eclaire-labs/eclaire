@@ -14,21 +14,15 @@ import exifr from "exifr"; // <-- Import exifr
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 import { Readable } from "stream";
-import { db, txManager, schema, queueJobs } from "../../db/index.js";
+import { db, queueJobs, schema, txManager } from "../../db/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 
-const {
-  photos,
-  photosTags,
-  tags,
-  users,
-} = schema;
+const { photos, photosTags, tags, users } = schema;
 
-import { getQueue, QueueNames, getQueueAdapter } from "../queue/index.js";
-import { getStorage, buildKey, assetPrefix } from "../storage/index.js";
 import { generateHistoryId, generatePhotoId } from "@eclaire/core";
-
 import { createChildLogger } from "../logger.js";
+import { getQueue, getQueueAdapter, QueueNames } from "../queue/index.js";
+import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
 import { recordHistory } from "./history.js"; // Assuming this service exists and is configured
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
@@ -223,12 +217,16 @@ async function queuePhotoBackgroundJobs(
         userId: userId,
       });
 
-      logger.info({ photoId: photoData.id }, "Enqueued unified image processing job for photo");
+      logger.info(
+        { photoId: photoData.id },
+        "Enqueued unified image processing job for photo",
+      );
     } catch (innerError) {
       logger.error(
         {
           photoId: photoData.id,
-          error: innerError instanceof Error ? innerError.message : "Unknown error",
+          error:
+            innerError instanceof Error ? innerError.message : "Unknown error",
         },
         `Failed to enqueue image processing job`,
       );
@@ -282,26 +280,29 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
     const exif = extractedMetadata?.exif || {};
     const location = extractedMetadata?.location || {};
 
-    logger.info({
-      originalFilename,
-      hasExtractedMetadata: !!extractedMetadata,
-      hasExifData: !!extractedMetadata?.exif,
-      exifKeys: extractedMetadata?.exif
-        ? Object.keys(extractedMetadata.exif)
-        : [],
-      hasLocationData: !!extractedMetadata?.location,
-      locationData: extractedMetadata?.location,
-      exifSample: extractedMetadata?.exif
-        ? {
-            Make: extractedMetadata.exif.Make,
-            Model: extractedMetadata.exif.Model,
-            ISO: extractedMetadata.exif.ISO,
-            latitude: extractedMetadata.exif.latitude,
-            longitude: extractedMetadata.exif.longitude,
-            DateTimeOriginal: extractedMetadata.exif.DateTimeOriginal,
-          }
-        : null,
-    }, "[DB] Preparing EXIF data for photo");
+    logger.info(
+      {
+        originalFilename,
+        hasExtractedMetadata: !!extractedMetadata,
+        hasExifData: !!extractedMetadata?.exif,
+        exifKeys: extractedMetadata?.exif
+          ? Object.keys(extractedMetadata.exif)
+          : [],
+        hasLocationData: !!extractedMetadata?.location,
+        locationData: extractedMetadata?.location,
+        exifSample: extractedMetadata?.exif
+          ? {
+              Make: extractedMetadata.exif.Make,
+              Model: extractedMetadata.exif.Model,
+              ISO: extractedMetadata.exif.ISO,
+              latitude: extractedMetadata.exif.latitude,
+              longitude: extractedMetadata.exif.longitude,
+              DateTimeOriginal: extractedMetadata.exif.DateTimeOriginal,
+            }
+          : null,
+      },
+      "[DB] Preparing EXIF data for photo",
+    );
 
     // Convert EXIF date to Date object if available
     let dateTakenValue: Date | null = null;
@@ -310,17 +311,26 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
       !isNaN(exif.DateTimeOriginal.getTime())
     ) {
       dateTakenValue = exif.DateTimeOriginal;
-      logger.info({ dateTimeOriginal: exif.DateTimeOriginal }, "[DB] Using DateTimeOriginal");
+      logger.info(
+        { dateTimeOriginal: exif.DateTimeOriginal },
+        "[DB] Using DateTimeOriginal",
+      );
     } else if (
       exif.CreateDate instanceof Date &&
       !isNaN(exif.CreateDate.getTime())
     ) {
       // Fallback to CreateDate if DateTimeOriginal is missing
       dateTakenValue = exif.CreateDate;
-      logger.info({ createDate: exif.CreateDate }, "[DB] Using CreateDate fallback");
+      logger.info(
+        { createDate: exif.CreateDate },
+        "[DB] Using CreateDate fallback",
+      );
     } else {
       logger.info(
-        { dateTimeOriginal: exif.DateTimeOriginal, createDate: exif.CreateDate },
+        {
+          dateTimeOriginal: exif.DateTimeOriginal,
+          createDate: exif.CreateDate,
+        },
         "[DB] No valid date found",
       );
     }
@@ -334,10 +344,19 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
       : "jpg";
 
     const storage = getStorage();
-    const storageKey = buildKey(userId, "photos", photoId, `original.${fileExtension}`);
-    await storage.write(storageKey, Readable.from(content) as unknown as NodeJS.ReadableStream, {
-      contentType: verifiedMimeType,
-    });
+    const storageKey = buildKey(
+      userId,
+      "photos",
+      photoId,
+      `original.${fileExtension}`,
+    );
+    await storage.write(
+      storageKey,
+      Readable.from(content) as unknown as NodeJS.ReadableStream,
+      {
+        contentType: verifiedMimeType,
+      },
+    );
 
     // Create storageInfo for backward compatibility
     storageInfo = {
@@ -547,7 +566,7 @@ export async function updatePhotoMetadata(
     const filteredUpdateData = Object.entries(photoUpdateData).reduce(
       (acc, [key, value]) => {
         if (value !== undefined) {
-          // @ts-ignore - Trusting the structure for now
+          // @ts-expect-error - Trusting the structure for now
           acc[key] = value;
         }
         return acc;
@@ -567,7 +586,10 @@ export async function updatePhotoMetadata(
     // 3. Atomic transaction: update photo, handle tags, and record history together
     await txManager.withTransaction(async (tx) => {
       // Perform the database update for user-editable fields
-      if (Object.keys(filteredUpdateData).length > 0 || tagNames !== undefined) {
+      if (
+        Object.keys(filteredUpdateData).length > 0 ||
+        tagNames !== undefined
+      ) {
         await tx.photos.update(
           and(eq(photos.id, id), eq(photos.userId, userId)),
           { ...filteredUpdateData, updatedAt: new Date() },
@@ -657,9 +679,7 @@ export async function deletePhoto(
       await tx.photosTags.delete(eq(photosTags.photoId, id));
 
       // Delete the photo record from the database
-      await tx.photos.delete(
-        and(eq(photos.id, id), eq(photos.userId, userId)),
-      );
+      await tx.photos.delete(and(eq(photos.id, id), eq(photos.userId, userId)));
 
       // Record history - atomic with the delete
       await tx.history.insert({
@@ -686,7 +706,10 @@ export async function deletePhoto(
       try {
         const storageForDelete = getStorage();
         await storageForDelete.deletePrefix(assetPrefix(userId, "photos", id));
-        logger.info({ photoId: id, userId }, "Successfully deleted storage for photo");
+        logger.info(
+          { photoId: id, userId },
+          "Successfully deleted storage for photo",
+        );
       } catch (storageError) {
         // Log that storage deletion failed but DB entry is gone. Don't fail the whole operation.
         logger.warn(
@@ -703,7 +726,10 @@ export async function deletePhoto(
         );
       }
     } else {
-      logger.info({ photoId: id, userId }, "Storage deletion skipped for photo - deleteStorage flag set to false");
+      logger.info(
+        { photoId: id, userId },
+        "Storage deletion skipped for photo - deleteStorage flag set to false",
+      );
     }
 
     return { success: true };
@@ -729,10 +755,7 @@ async function getPhotoWithDetails(photoId: string, userId: string) {
       status: queueJobs.status,
     })
     .from(photos)
-    .leftJoin(
-      queueJobs,
-      eq(queueJobs.key, sql`'photos:' || ${photos.id}`),
-    )
+    .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
     .where(and(eq(photos.id, photoId), eq(photos.userId, userId)));
 
   if (!result) {
@@ -829,10 +852,7 @@ export async function getAllPhotos(userId: string) {
         status: queueJobs.status,
       })
       .from(photos)
-      .leftJoin(
-        queueJobs,
-        eq(queueJobs.key, sql`'photos:' || ${photos.id}`),
-      )
+      .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
       .where(eq(photos.userId, userId))
       .orderBy(desc(photos.createdAt)); // Order by creation date
 
@@ -1115,10 +1135,7 @@ export async function findPhotos(
         status: queueJobs.status,
       })
       .from(photos)
-      .leftJoin(
-        queueJobs,
-        eq(queueJobs.key, sql`'photos:' || ${photos.id}`),
-      )
+      .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
       .where(inArray(photos.id, finalPhotoIds))
       .orderBy(desc(orderByColumn)); // Maintain the same ordering
 
@@ -1742,10 +1759,7 @@ async function getPhotoStreamDetailsForViewing(
       status: queueJobs.status,
     })
     .from(photos)
-    .leftJoin(
-      queueJobs,
-      eq(queueJobs.key, sql`'photos:' || ${photos.id}`),
-    )
+    .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
     .where(and(eq(photos.id, photoId), eq(photos.userId, userId)))
     .limit(1);
 
@@ -1996,9 +2010,12 @@ export async function getConvertedStream(
 
   try {
     const storage = getStorage();
-    const { stream, metadata } = await storage.read(photo.convertedJpgStorageId);
+    const { stream, metadata } = await storage.read(
+      photo.convertedJpgStorageId,
+    );
 
-    const baseFilename = photo.originalFilename?.replace(/\.[^/.]+$/, "") || photo.id;
+    const baseFilename =
+      photo.originalFilename?.replace(/\.[^/.]+$/, "") || photo.id;
 
     return {
       stream,
@@ -2052,7 +2069,9 @@ export async function getAnalysisStream(
     };
   } catch (error: any) {
     if (error.code === "ENOENT") {
-      throw new PhotoFileNotFoundError("AI analysis not found or not yet generated");
+      throw new PhotoFileNotFoundError(
+        "AI analysis not found or not yet generated",
+      );
     }
     throw error;
   }
@@ -2095,7 +2114,9 @@ export async function getContentStream(
     };
   } catch (error: any) {
     if (error.code === "ENOENT") {
-      throw new PhotoFileNotFoundError("Content not found or not yet generated");
+      throw new PhotoFileNotFoundError(
+        "Content not found or not yet generated",
+      );
     }
     throw error;
   }
@@ -2128,10 +2149,7 @@ export async function getViewStream(
       status: queueJobs.status,
     })
     .from(photos)
-    .leftJoin(
-      queueJobs,
-      eq(queueJobs.key, sql`'photos:' || ${photos.id}`),
-    )
+    .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
     .where(and(eq(photos.id, photoId), eq(photos.userId, userId)))
     .limit(1);
 
@@ -2148,7 +2166,9 @@ export async function getViewStream(
 
   // If the photo has failed processing and has no storageId, return a specific error
   if (processingStatus === "failed" && !photoMeta.storageId) {
-    throw new PhotoFileNotFoundError("Photo processing failed and file is not available");
+    throw new PhotoFileNotFoundError(
+      "Photo processing failed and file is not available",
+    );
   }
 
   const originalMimeType = photoMeta.mimeType || "application/octet-stream";
@@ -2222,9 +2242,12 @@ export async function getThumbnailStream(
 
   try {
     const storage = getStorage();
-    const { stream, metadata } = await storage.read(photoMeta.thumbnailStorageId);
+    const { stream, metadata } = await storage.read(
+      photoMeta.thumbnailStorageId,
+    );
 
-    const baseFilename = photoMeta.originalFilename?.replace(/\.[^/.]+$/, "") || photoId;
+    const baseFilename =
+      photoMeta.originalFilename?.replace(/\.[^/.]+$/, "") || photoId;
 
     return {
       stream,

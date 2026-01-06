@@ -1,24 +1,33 @@
 // Load environment variables before anything else
 import "../src/lib/env-loader";
 
-import { hashPassword } from "better-auth/crypto";
-import type { InferInsertModel } from "drizzle-orm";
-import { drizzle as drizzlePostgres, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
-import { drizzle as drizzleSqlite, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import {
-  getDatabaseUrl,
+  createPgliteClient,
+  createPostgresClient,
+  createSqliteClient,
   getDatabaseType,
+  getDatabaseUrl,
   getPGlitePath,
   getSqlitePath,
   pgSchema,
   sqliteSchema,
-  createSqliteClient,
-  createPgliteClient,
-  createPostgresClient,
 } from "@eclaire/db";
-import { hmacBase64 } from "../src/lib/api-key-security.js";
+import { hashPassword } from "better-auth/crypto";
+import type { InferInsertModel } from "drizzle-orm";
+import {
+  type BetterSQLite3Database,
+  drizzle as drizzleSqlite,
+} from "drizzle-orm/better-sqlite3";
+import {
+  drizzle as drizzlePglite,
+  type PgliteDatabase,
+} from "drizzle-orm/pglite";
+import {
+  drizzle as drizzlePostgres,
+  type PostgresJsDatabase,
+} from "drizzle-orm/postgres-js";
 import { config } from "../src/config/index.js";
+import { hmacBase64 } from "../src/lib/api-key-security.js";
 
 // Determine which schema to use
 const dbType = getDatabaseType();
@@ -29,7 +38,10 @@ type InsertUser = InferInsertModel<typeof schema.users>;
 type InsertAccount = InferInsertModel<typeof schema.accounts>;
 type InsertApiKey = InferInsertModel<typeof schema.apiKeys>;
 
-type Database = PostgresJsDatabase<typeof pgSchema> | PgliteDatabase<typeof pgSchema> | BetterSQLite3Database<typeof sqliteSchema>;
+type Database =
+  | PostgresJsDatabase<typeof pgSchema>
+  | PgliteDatabase<typeof pgSchema>
+  | BetterSQLite3Database<typeof sqliteSchema>;
 
 // --- Helper Functions ---
 function computeApiKeyHash(fullKey: string): {
@@ -127,10 +139,12 @@ async function main() {
     if (!dbUrl) {
       throw new Error(
         `DATABASE_URL is required for PostgreSQL seeding but was not provided. ` +
-        `Either set DATABASE_URL or ensure DATABASE_TYPE=postgres.`
+          `Either set DATABASE_URL or ensure DATABASE_TYPE=postgres.`,
       );
     }
-    console.log(`Connecting to PostgreSQL database: ${dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1") ? "local" : "remote"}`);
+    console.log(
+      `Connecting to PostgreSQL database: ${dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1") ? "local" : "remote"}`,
+    );
 
     const client = createPostgresClient(dbUrl);
     db = drizzlePostgres(client, { schema: pgSchema }) as Database;
@@ -176,7 +190,10 @@ async function main() {
       },
     ];
 
-    await (db as any).insert(schema.users).values(demoUsersData).onConflictDoNothing();
+    await (db as any)
+      .insert(schema.users)
+      .values(demoUsersData)
+      .onConflictDoNothing();
     console.log(`-> ${demoUsersData.length} demo users ensured.`);
 
     // 2. Create Demo Accounts
@@ -209,7 +226,10 @@ async function main() {
       },
     ];
 
-    await (db as any).insert(schema.accounts).values(demoAccountsData).onConflictDoNothing();
+    await (db as any)
+      .insert(schema.accounts)
+      .values(demoAccountsData)
+      .onConflictDoNothing();
     console.log(`-> ${demoAccountsData.length} demo accounts ensured.`);
 
     // 3. Create Demo API Keys

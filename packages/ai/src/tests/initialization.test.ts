@@ -4,9 +4,9 @@
  * Tests for AI client initialization lifecycle and state management.
  */
 
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { initAI, resetAI, isAIInitialized } from "../index.js";
-import { getFixturesPath, createMockLoggerFactory } from "./setup.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { initAI, isAIInitialized, resetAI } from "../index.js";
+import { createMockLoggerFactory, getFixturesPath } from "./setup.js";
 
 describe("Initialization", () => {
   const mockLoggerFactory = createMockLoggerFactory();
@@ -44,7 +44,7 @@ describe("Initialization", () => {
         initAI({
           configPath: getFixturesPath(),
           createChildLogger: mockLoggerFactory.factory,
-        })
+        }),
       ).toThrow("already initialized");
     });
 
@@ -55,7 +55,7 @@ describe("Initialization", () => {
           configPath: getFixturesPath(),
           createChildLogger: mockLoggerFactory.factory,
           debugLogPath: "/tmp/ai-debug.jsonl",
-        })
+        }),
       ).not.toThrow();
 
       expect(isAIInitialized()).toBe(true);
@@ -67,7 +67,7 @@ describe("Initialization", () => {
         initAI({
           configPath: getFixturesPath(),
           createChildLogger: mockLoggerFactory.factory,
-        })
+        }),
       ).not.toThrow();
 
       expect(isAIInitialized()).toBe(true);
@@ -101,7 +101,7 @@ describe("Initialization", () => {
         initAI({
           configPath: getFixturesPath(),
           createChildLogger: mockLoggerFactory.factory,
-        })
+        }),
       ).not.toThrow();
 
       expect(isAIInitialized()).toBe(true);

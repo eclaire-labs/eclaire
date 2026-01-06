@@ -15,79 +15,82 @@
  * - @eclaire/queue/driver-bullmq (Redis/BullMQ driver)
  */
 
-// Re-export all app-specific types
-export * from "./types.js";
-
-// Re-export queue names
-export * from "./queue-names.js";
-
+// Re-export Redis utilities
+export {
+  createRedisConnection,
+  type RedisConnectionOptions,
+} from "../shared/redis-connection.js";
 // Re-export adapters
-export { createBullMQAdapter, type BullMQAdapterConfig } from "./adapters/bullmq.js";
-export { createDatabaseAdapter, type DatabaseAdapterConfig } from "./adapters/database.js";
-
+export {
+  type BullMQAdapterConfig,
+  createBullMQAdapter,
+} from "./adapters/bullmq.js";
+export {
+  createDatabaseAdapter,
+  type DatabaseAdapterConfig,
+} from "./adapters/database.js";
 // Re-export event callbacks
 export {
+  type ArtifactProcessor,
   createEventCallbacks,
   type EventCallbacksConfig,
-  type SSEPublisher,
-  type ProcessingSSEEvent,
   type JobAssetMetadata,
-  type ArtifactProcessor,
+  type ProcessingSSEEvent,
+  type SSEPublisher,
 } from "./event-callbacks.js";
-
-// Re-export job adapters (now local)
-export { adaptDatabaseJob } from "./job-adapters.js";
-export {
-  RateLimitError,
-  isRateLimitError,
-  getRateLimitDelay,
-  createRateLimitError,
-} from "./job-adapters.js";
-
-// Re-export waitlist (now local)
-export { createJobWaitlist, type WaitlistConfig } from "./waitlist.js";
-
-// Re-export poller (now local)
-export { startPolling, generateWorkerId } from "./poller.js";
-
 // Re-export database helpers (now local)
 export * from "./helpers.js";
-
-// Re-export Redis utilities
-export { createRedisConnection, type RedisConnectionOptions } from "../shared/redis-connection.js";
-export { createQueueManager, type QueueManagerConfig, type QueueManager } from "./queues.js";
-
+// Re-export job adapters (now local)
+export {
+  adaptDatabaseJob,
+  createRateLimitError,
+  getRateLimitDelay,
+  isRateLimitError,
+  RateLimitError,
+} from "./job-adapters.js";
+// Re-export poller (now local)
+export { generateWorkerId, startPolling } from "./poller.js";
+// Re-export queue names
+export * from "./queue-names.js";
 // Re-export queue options (now local)
 export {
-  getDefaultJobOptions,
+  type BaseWorkerOptions,
   bookmarkJobOptions,
-  standardJobOptions,
-  JOB_TIMEOUT,
   getBaseWorkerOptions,
+  getDefaultJobOptions,
   getLongTaskWorkerOptions,
   getMediumTaskWorkerOptions,
   getShortTaskWorkerOptions,
+  JOB_TIMEOUT,
   queueWorkerCategory,
-  type WorkerCategory,
-  type BaseWorkerOptions,
+  standardJobOptions,
   type TimedWorkerOptions,
+  type WorkerCategory,
 } from "./queue-options.js";
+export {
+  createQueueManager,
+  type QueueManager,
+  type QueueManagerConfig,
+} from "./queues.js";
+// Re-export all app-specific types
+export * from "./types.js";
+// Re-export waitlist (now local)
+export { createJobWaitlist, type WaitlistConfig } from "./waitlist.js";
 
 // --- Factory Functions ---
 
-import type { Logger } from "@eclaire/logger";
 import type { DbInstance } from "@eclaire/db";
-import type {
-  QueueAdapter,
-  QueueConfig,
-  AssetType,
-  JobWaitlistInterface,
-} from "./types.js";
-
-// Import functions needed for factory (re-exports don't make them available locally)
-import { createQueueManager as _createQueueManager } from "./queues.js";
+import type { Logger } from "@eclaire/logger";
 import { createBullMQAdapter as _createBullMQAdapter } from "./adapters/bullmq.js";
 import { createDatabaseAdapter as _createDatabaseAdapter } from "./adapters/database.js";
+// Import functions needed for factory (re-exports don't make them available locally)
+import { createQueueManager as _createQueueManager } from "./queues.js";
+import type {
+  AssetType,
+  JobWaitlistInterface,
+  QueueAdapter,
+  QueueConfig,
+} from "./types.js";
 import { createJobWaitlist as _createJobWaitlist } from "./waitlist.js";
 
 /**
@@ -130,7 +133,9 @@ import { createJobWaitlist as _createJobWaitlist } from "./waitlist.js";
  * });
  * ```
  */
-export async function createQueueAdapter(config: QueueConfig): Promise<QueueAdapter> {
+export async function createQueueAdapter(
+  config: QueueConfig,
+): Promise<QueueAdapter> {
   const { mode, logger } = config;
 
   if (mode === "redis") {
@@ -145,11 +150,16 @@ export async function createQueueAdapter(config: QueueConfig): Promise<QueueAdap
       prefix: config.redis.prefix,
     });
 
-    logger.info({ prefix: config.redis.prefix || "eclaire" }, "Using Redis/BullMQ queue adapter");
+    logger.info(
+      { prefix: config.redis.prefix || "eclaire" },
+      "Using Redis/BullMQ queue adapter",
+    );
     return _createBullMQAdapter({ queueManager, logger });
   } else if (mode === "database") {
     if (!config.database?.db || !config.database?.dbType) {
-      throw new Error("Database instance and dbType are required for database mode");
+      throw new Error(
+        "Database instance and dbType are required for database mode",
+      );
     }
 
     logger.info({}, "Using database-backed queue adapter");
@@ -180,7 +190,9 @@ export async function createQueueAdapterWithWaitlist(
   const { logger, database } = config;
 
   if (!database?.db || !database?.dbType) {
-    throw new Error("Database instance and dbType are required for database mode");
+    throw new Error(
+      "Database instance and dbType are required for database mode",
+    );
   }
 
   const waitlist = _createJobWaitlist({

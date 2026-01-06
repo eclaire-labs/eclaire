@@ -8,25 +8,24 @@
  * Use this when SERVICE_ROLE=worker and you want to use Postgres instead of Redis.
  */
 
-import {
-  createDbWorker,
-  getQueueSchema,
-  type DbWorkerConfig,
-  type DbCapabilities as QueueDbCapabilities,
-} from "@eclaire/queue/driver-db";
 import { QueueNames } from "@eclaire/queue/app";
 import type { JobContext, Worker } from "@eclaire/queue/core";
-import { db, dbType, dbCapabilities } from "../../db/index.js";
-import { createPostgresPublisher } from "./postgres-publisher.js";
+import {
+  createDbWorker,
+  type DbWorkerConfig,
+  getQueueSchema,
+  type DbCapabilities as QueueDbCapabilities,
+} from "@eclaire/queue/driver-db";
+import { db, dbCapabilities, dbType } from "../../db/index.js";
 import { createChildLogger } from "../../lib/logger.js";
-
 // Import job processors
 import processBookmarkJob from "../jobs/bookmarkProcessor.js";
 import { processDocumentJob } from "../jobs/documentProcessor.js";
 import processImageJob from "../jobs/imageProcessor.js";
 import processNoteJob from "../jobs/noteProcessor.js";
-import processTaskJob from "../jobs/taskProcessor.js";
 import processTaskExecution from "../jobs/taskExecutionProcessor.js";
+import processTaskJob from "../jobs/taskProcessor.js";
+import { createPostgresPublisher } from "./postgres-publisher.js";
 
 const logger = createChildLogger("remote-db-workers");
 
@@ -39,7 +38,7 @@ const workers: Worker[] = [];
 function getSchema() {
   if (dbType !== "postgres") {
     throw new Error(
-      `Remote database workers only support PostgreSQL, but DATABASE_TYPE is '${dbType}'`
+      `Remote database workers only support PostgreSQL, but DATABASE_TYPE is '${dbType}'`,
     );
   }
   return getQueueSchema("postgres");
@@ -102,7 +101,10 @@ export async function startRemoteDbWorkers(): Promise<void> {
     { concurrency: 1 },
   );
   workers.push(bookmarkWorker);
-  logger.info({ queue: QueueNames.BOOKMARK_PROCESSING }, "Bookmark worker started");
+  logger.info(
+    { queue: QueueNames.BOOKMARK_PROCESSING },
+    "Bookmark worker started",
+  );
 
   // Image processing worker
   const imageWorker = createDbWorker(
@@ -126,7 +128,10 @@ export async function startRemoteDbWorkers(): Promise<void> {
     { concurrency: 1 },
   );
   workers.push(documentWorker);
-  logger.info({ queue: QueueNames.DOCUMENT_PROCESSING }, "Document worker started");
+  logger.info(
+    { queue: QueueNames.DOCUMENT_PROCESSING },
+    "Document worker started",
+  );
 
   // Note processing worker
   const noteWorker = createDbWorker(
@@ -162,7 +167,10 @@ export async function startRemoteDbWorkers(): Promise<void> {
     { concurrency: 1 },
   );
   workers.push(taskExecutionWorker);
-  logger.info({ queue: QueueNames.TASK_EXECUTION_PROCESSING }, "Task execution worker started");
+  logger.info(
+    { queue: QueueNames.TASK_EXECUTION_PROCESSING },
+    "Task execution worker started",
+  );
 
   // Start all workers
   for (const worker of workers) {

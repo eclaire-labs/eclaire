@@ -2,7 +2,12 @@
  * @eclaire/queue/driver-db - Types for the database driver
  */
 
-import type { QueueLogger, BackoffStrategy, JobEventCallbacks, JobStage } from "../core/types.js";
+import type {
+  BackoffStrategy,
+  JobEventCallbacks,
+  JobStage,
+  QueueLogger,
+} from "../core/types.js";
 
 // ============================================================================
 // Database Types (generic, works with any drizzle db)

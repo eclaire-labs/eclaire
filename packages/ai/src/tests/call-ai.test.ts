@@ -4,21 +4,21 @@
  * Tests for the non-streaming AI API call function.
  */
 
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { initAI, resetAI, callAI } from "../index.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { callAI, initAI, resetAI } from "../index.js";
+import type { AICallTrace } from "../types.js";
 import {
-  getFixturesPath,
-  createMockLoggerFactory,
   createMockFetch,
+  createMockLoggerFactory,
   createOpenAIResponse,
   createSSEStream,
+  getFixturesPath,
   sseContentDelta,
-  sseReasoningDelta,
-  sseFinishReason,
-  sseUsage,
   sseDone,
+  sseFinishReason,
+  sseReasoningDelta,
+  sseUsage,
 } from "./setup.js";
-import type { AICallTrace } from "../types.js";
 
 describe("callAI", () => {
   const mockLoggerFactory = createMockLoggerFactory();
@@ -50,12 +50,12 @@ describe("callAI", () => {
         createOpenAIResponse({
           content: "Hello, world!",
           finishReason: "stop",
-        })
+        }),
       );
 
       const response = await callAI(
         [{ role: "user", content: "Say hello" }],
-        "backend"
+        "backend",
       );
 
       expect(response.content).toBe("Hello, world!");
@@ -65,14 +65,13 @@ describe("callAI", () => {
 
     it("includes model and options in request body", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
-      await callAI(
-        [{ role: "user", content: "Test" }],
-        "backend",
-        { temperature: 0.7, maxTokens: 100 }
-      );
+      await callAI([{ role: "user", content: "Test" }], "backend", {
+        temperature: 0.7,
+        maxTokens: 100,
+      });
 
       expect(mockFetch.calls).toHaveLength(1);
       const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
@@ -83,7 +82,7 @@ describe("callAI", () => {
 
     it("sends messages in request body", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       await callAI(
@@ -91,7 +90,7 @@ describe("callAI", () => {
           { role: "system", content: "You are helpful" },
           { role: "user", content: "Hello" },
         ],
-        "backend"
+        "backend",
       );
 
       const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
@@ -102,12 +101,12 @@ describe("callAI", () => {
 
     it("returns estimated input tokens", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       const response = await callAI(
         [{ role: "user", content: "Hello" }],
-        "backend"
+        "backend",
       );
 
       expect(response.estimatedInputTokens).toBeDefined();
@@ -121,12 +120,12 @@ describe("callAI", () => {
         createOpenAIResponse({
           content: "The answer is 42",
           reasoning: "Let me think about this...",
-        })
+        }),
       );
 
       const response = await callAI(
         [{ role: "user", content: "What is the answer?" }],
-        "backend"
+        "backend",
       );
 
       expect(response.content).toBe("The answer is 42");
@@ -135,12 +134,12 @@ describe("callAI", () => {
 
     it("returns undefined reasoning when not present", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Simple response" })
+        createOpenAIResponse({ content: "Simple response" }),
       );
 
       const response = await callAI(
         [{ role: "user", content: "Hello" }],
-        "backend"
+        "backend",
       );
 
       expect(response.reasoning).toBeUndefined();
@@ -148,12 +147,12 @@ describe("callAI", () => {
 
     it("returns undefined for empty reasoning", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response", reasoning: "   " })
+        createOpenAIResponse({ content: "Response", reasoning: "   " }),
       );
 
       const response = await callAI(
         [{ role: "user", content: "Hello" }],
-        "backend"
+        "backend",
       );
 
       expect(response.reasoning).toBeUndefined();
@@ -163,7 +162,7 @@ describe("callAI", () => {
   describe("tool calls", () => {
     it("includes tools in request when provided", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       const tools = [
@@ -177,11 +176,9 @@ describe("callAI", () => {
         },
       ];
 
-      await callAI(
-        [{ role: "user", content: "Search for cats" }],
-        "backend",
-        { tools }
-      );
+      await callAI([{ role: "user", content: "Search for cats" }], "backend", {
+        tools,
+      });
 
       const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
       expect(requestBody.tools).toBeDefined();
@@ -197,12 +194,12 @@ describe("callAI", () => {
             { id: "call_1", name: "search", arguments: { query: "cats" } },
           ],
           finishReason: "tool_calls",
-        })
+        }),
       );
 
       const response = await callAI(
         [{ role: "user", content: "Search for cats" }],
-        "backend"
+        "backend",
       );
 
       expect(response.toolCalls).toBeDefined();
@@ -213,7 +210,7 @@ describe("callAI", () => {
 
     it("includes toolChoice when provided with tools", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       const tools = [
@@ -227,11 +224,10 @@ describe("callAI", () => {
         },
       ];
 
-      await callAI(
-        [{ role: "user", content: "Search" }],
-        "backend",
-        { tools, toolChoice: "auto" }
-      );
+      await callAI([{ role: "user", content: "Search" }], "backend", {
+        tools,
+        toolChoice: "auto",
+      });
 
       const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
       expect(requestBody.tool_choice).toBe("auto");
@@ -241,22 +237,18 @@ describe("callAI", () => {
   describe("response format", () => {
     it("includes responseFormat when provided", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: '{"result": "test"}' })
+        createOpenAIResponse({ content: '{"result": "test"}' }),
       );
 
-      await callAI(
-        [{ role: "user", content: "Return JSON" }],
-        "backend",
-        {
-          responseFormat: {
-            type: "json_schema",
-            json_schema: {
-              name: "test",
-              schema: { type: "object" },
-            },
+      await callAI([{ role: "user", content: "Return JSON" }], "backend", {
+        responseFormat: {
+          type: "json_schema",
+          json_schema: {
+            name: "test",
+            schema: { type: "object" },
           },
-        }
-      );
+        },
+      });
 
       const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
       expect(requestBody.response_format).toBeDefined();
@@ -271,12 +263,12 @@ describe("callAI", () => {
           content: "Response",
           promptTokens: 50,
           completionTokens: 25,
-        })
+        }),
       );
 
       const response = await callAI(
         [{ role: "user", content: "Hello" }],
-        "backend"
+        "backend",
       );
 
       expect(response.usage).toBeDefined();
@@ -291,7 +283,7 @@ describe("callAI", () => {
       mockFetch.queueErrorResponse(500, "Internal Server Error");
 
       await expect(
-        callAI([{ role: "user", content: "Hello" }], "backend")
+        callAI([{ role: "user", content: "Hello" }], "backend"),
       ).rejects.toThrow("AI API error: 500");
     });
 
@@ -299,7 +291,7 @@ describe("callAI", () => {
       mockFetch.queueErrorResponse(401, "Unauthorized");
 
       await expect(
-        callAI([{ role: "user", content: "Hello" }], "backend")
+        callAI([{ role: "user", content: "Hello" }], "backend"),
       ).rejects.toThrow("AI API error: 401");
     });
 
@@ -307,7 +299,7 @@ describe("callAI", () => {
       mockFetch.queueErrorResponse(429, "Too Many Requests");
 
       await expect(
-        callAI([{ role: "user", content: "Hello" }], "backend")
+        callAI([{ role: "user", content: "Hello" }], "backend"),
       ).rejects.toThrow("AI API error: 429");
     });
   });
@@ -315,22 +307,18 @@ describe("callAI", () => {
   describe("trace capture", () => {
     it("calls onTraceCapture with trace data when enabled", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       const traces: AICallTrace[] = [];
 
-      await callAI(
-        [{ role: "user", content: "Hello" }],
-        "backend",
-        {
-          trace: {
-            enabled: true,
-            callIndex: 0,
-            onTraceCapture: (trace) => traces.push(trace),
-          },
-        }
-      );
+      await callAI([{ role: "user", content: "Hello" }], "backend", {
+        trace: {
+          enabled: true,
+          callIndex: 0,
+          onTraceCapture: (trace) => traces.push(trace),
+        },
+      });
 
       expect(traces).toHaveLength(1);
       expect(traces[0]!.callIndex).toBe(0);
@@ -341,22 +329,18 @@ describe("callAI", () => {
 
     it("redacts Authorization header in trace", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       const traces: AICallTrace[] = [];
 
-      await callAI(
-        [{ role: "user", content: "Hello" }],
-        "backend",
-        {
-          trace: {
-            enabled: true,
-            callIndex: 0,
-            onTraceCapture: (trace) => traces.push(trace),
-          },
-        }
-      );
+      await callAI([{ role: "user", content: "Hello" }], "backend", {
+        trace: {
+          enabled: true,
+          callIndex: 0,
+          onTraceCapture: (trace) => traces.push(trace),
+        },
+      });
 
       const headers = traces[0]!.requestBody.headers as Record<string, string>;
       expect(headers.Authorization).toBe("[REDACTED]");
@@ -368,17 +352,13 @@ describe("callAI", () => {
 
       const traces: AICallTrace[] = [];
 
-      await callAI(
-        [{ role: "user", content: "Hello" }],
-        "backend",
-        {
-          trace: {
-            enabled: true,
-            callIndex: 0,
-            onTraceCapture: (trace) => traces.push(trace),
-          },
-        }
-      );
+      await callAI([{ role: "user", content: "Hello" }], "backend", {
+        trace: {
+          enabled: true,
+          callIndex: 0,
+          onTraceCapture: (trace) => traces.push(trace),
+        },
+      });
 
       // Verify it's a copy, not a reference
       expect(traces[0]!.responseBody).not.toBe(responseData);
@@ -390,17 +370,13 @@ describe("callAI", () => {
       const traces: AICallTrace[] = [];
 
       try {
-        await callAI(
-          [{ role: "user", content: "Hello" }],
-          "backend",
-          {
-            trace: {
-              enabled: true,
-              callIndex: 0,
-              onTraceCapture: (trace) => traces.push(trace),
-            },
-          }
-        );
+        await callAI([{ role: "user", content: "Hello" }], "backend", {
+          trace: {
+            enabled: true,
+            callIndex: 0,
+            onTraceCapture: (trace) => traces.push(trace),
+          },
+        });
       } catch {
         // Expected error
       }
@@ -411,22 +387,18 @@ describe("callAI", () => {
 
     it("does not capture trace when disabled", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       const traces: AICallTrace[] = [];
 
-      await callAI(
-        [{ role: "user", content: "Hello" }],
-        "backend",
-        {
-          trace: {
-            enabled: false,
-            callIndex: 0,
-            onTraceCapture: (trace) => traces.push(trace),
-          },
-        }
-      );
+      await callAI([{ role: "user", content: "Hello" }], "backend", {
+        trace: {
+          enabled: false,
+          callIndex: 0,
+          onTraceCapture: (trace) => traces.push(trace),
+        },
+      });
 
       expect(traces).toHaveLength(0);
     });
@@ -447,7 +419,7 @@ describe("callAI", () => {
       const response = await callAI(
         [{ role: "user", content: "Say hello" }],
         "backend",
-        { stream: true }
+        { stream: true },
       );
 
       expect(response.content).toBe("Hello world");
@@ -467,7 +439,7 @@ describe("callAI", () => {
       const response = await callAI(
         [{ role: "user", content: "Question" }],
         "backend",
-        { stream: true }
+        { stream: true },
       );
 
       expect(response.reasoning).toBe("Thinking...");
@@ -487,7 +459,7 @@ describe("callAI", () => {
       const response = await callAI(
         [{ role: "user", content: "Hello" }],
         "backend",
-        { stream: true }
+        { stream: true },
       );
 
       expect(response.usage).toBeDefined();
@@ -509,13 +481,13 @@ describe("callAI", () => {
       });
 
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       await callAI(
         [{ role: "system", content: "You are helpful" }],
         "backend",
-        { enableThinking: true }
+        { enableThinking: true },
       );
 
       // Verify the request was made
@@ -526,7 +498,7 @@ describe("callAI", () => {
   describe("context selection", () => {
     it("uses backend model for backend context", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       await callAI([{ role: "user", content: "Hello" }], "backend");
@@ -537,7 +509,7 @@ describe("callAI", () => {
 
     it("uses workers model for workers context", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       await callAI([{ role: "user", content: "Hello" }], "workers");
@@ -550,23 +522,29 @@ describe("callAI", () => {
   describe("request headers", () => {
     it("includes Authorization header with bearer token", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       await callAI([{ role: "user", content: "Hello" }], "backend");
 
-      const headers = mockFetch.calls[0]!.init?.headers as Record<string, string>;
+      const headers = mockFetch.calls[0]!.init?.headers as Record<
+        string,
+        string
+      >;
       expect(headers.Authorization).toBe("Bearer test-api-key");
     });
 
     it("includes Content-Type header", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       await callAI([{ role: "user", content: "Hello" }], "backend");
 
-      const headers = mockFetch.calls[0]!.init?.headers as Record<string, string>;
+      const headers = mockFetch.calls[0]!.init?.headers as Record<
+        string,
+        string
+      >;
       expect(headers["Content-Type"]).toBe("application/json");
     });
   });
@@ -574,13 +552,13 @@ describe("callAI", () => {
   describe("request URL", () => {
     it("builds correct URL from provider config", async () => {
       mockFetch.queueJsonResponse(
-        createOpenAIResponse({ content: "Response" })
+        createOpenAIResponse({ content: "Response" }),
       );
 
       await callAI([{ role: "user", content: "Hello" }], "backend");
 
       expect(mockFetch.calls[0]!.url).toBe(
-        "http://localhost:8080/v1/chat/completions"
+        "http://localhost:8080/v1/chat/completions",
       );
     });
   });

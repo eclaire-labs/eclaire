@@ -4,4 +4,4 @@
 // Importing @eclaire/core triggers environment loading as a side effect
 // (via the env-loader module), then re-exports the info objects.
 
-export { envLoadInfo, ENV_LOADED } from "@eclaire/core";
+export { ENV_LOADED, envLoadInfo } from "@eclaire/core";

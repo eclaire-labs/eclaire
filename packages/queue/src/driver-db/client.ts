@@ -2,32 +2,32 @@
  * @eclaire/queue/driver-db - Database QueueClient implementation
  */
 
-import { eq, and, or, sql, count } from "drizzle-orm";
+import { and, count, eq, or, sql } from "drizzle-orm";
+import {
+  isPermanentError,
+  isRateLimitError,
+  JobAlreadyActiveError,
+  PermanentError,
+  type RateLimitError,
+} from "../core/errors.js";
+import {
+  calculateOverallProgress,
+  initializeStages,
+} from "../core/progress.js";
 import type {
-  QueueClient,
-  QueueStats,
+  BackoffStrategy,
   Job,
   JobOptions,
   JobStage,
-  BackoffStrategy,
+  QueueClient,
+  QueueStats,
 } from "../core/types.js";
 import {
-  generateJobId,
   calculateBackoff,
   DEFAULT_BACKOFF,
+  generateJobId,
 } from "../core/utils.js";
-import {
-  initializeStages,
-  calculateOverallProgress,
-} from "../core/progress.js";
-import {
-  RateLimitError,
-  PermanentError,
-  JobAlreadyActiveError,
-  isRateLimitError,
-  isPermanentError,
-} from "../core/errors.js";
-import type { DbQueueClientConfig, ClaimedJob } from "./types.js";
+import type { ClaimedJob, DbQueueClientConfig } from "./types.js";
 
 /**
  * Default configuration values
@@ -205,10 +205,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
           })
           .where(
             and(
-              or(
-                eq(queueJobs.id, jobIdOrKey),
-                eq(queueJobs.key, jobIdOrKey),
-              ),
+              or(eq(queueJobs.id, jobIdOrKey), eq(queueJobs.key, jobIdOrKey)),
               // Can only cancel pending/retry_pending jobs
               or(
                 eq(queueJobs.status, "pending"),
@@ -260,10 +257,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
           })
           .where(
             and(
-              or(
-                eq(queueJobs.id, jobIdOrKey),
-                eq(queueJobs.key, jobIdOrKey),
-              ),
+              or(eq(queueJobs.id, jobIdOrKey), eq(queueJobs.key, jobIdOrKey)),
               // Can only retry failed jobs
               eq(queueJobs.status, "failed"),
             ),
@@ -314,10 +308,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
           .select()
           .from(queueJobs)
           .where(
-            or(
-              eq(queueJobs.id, jobIdOrKey),
-              eq(queueJobs.key, jobIdOrKey),
-            ),
+            or(eq(queueJobs.id, jobIdOrKey), eq(queueJobs.key, jobIdOrKey)),
           )
           .limit(1);
 
@@ -452,7 +443,10 @@ export async function markJobCompleted(
   if (success) {
     logger.debug({ jobId, workerId }, "Job completed");
   } else {
-    logger.warn({ jobId, workerId }, "Failed to mark job completed - lock lost");
+    logger.warn(
+      { jobId, workerId },
+      "Failed to mark job completed - lock lost",
+    );
   }
 
   return success;
@@ -495,7 +489,10 @@ export async function markJobFailed(
     .limit(1);
 
   if (!job) {
-    logger.warn({ jobId, workerId }, "Job not found or lock lost when marking failed");
+    logger.warn(
+      { jobId, workerId },
+      "Job not found or lock lost when marking failed",
+    );
     return false;
   }
 
@@ -552,7 +549,10 @@ export async function markJobFailed(
       .returning({ id: queueJobs.id });
 
     if (result.length === 0) {
-      logger.warn({ jobId, workerId }, "Lock lost while marking permanent failure");
+      logger.warn(
+        { jobId, workerId },
+        "Lock lost while marking permanent failure",
+      );
       return false;
     }
 
@@ -578,17 +578,24 @@ export async function markJobFailed(
       .returning({ id: queueJobs.id });
 
     if (result.length === 0) {
-      logger.warn({ jobId, workerId }, "Lock lost while marking retries exhausted");
+      logger.warn(
+        { jobId, workerId },
+        "Lock lost while marking retries exhausted",
+      );
       return false;
     }
 
-    logger.info({ jobId, attempts: job.attempts }, "Job failed (retries exhausted)");
+    logger.info(
+      { jobId, attempts: job.attempts },
+      "Job failed (retries exhausted)",
+    );
     return true;
   }
 
   // Schedule retry with backoff
   const backoffStrategy: BackoffStrategy = {
-    type: (job.backoffType as "exponential" | "linear" | "fixed") || "exponential",
+    type:
+      (job.backoffType as "exponential" | "linear" | "fixed") || "exponential",
     delay: job.backoffMs || 1000,
   };
   const backoffMs = calculateBackoff(job.attempts, backoffStrategy);
@@ -679,13 +686,16 @@ function formatJob(row: any): Job {
   // Parse stages if stored as JSON string (SQLite) or already an array (PostgreSQL)
   let stages: JobStage[] | undefined;
   if (row.stages) {
-    const parsedStages = typeof row.stages === "string" ? JSON.parse(row.stages) : row.stages;
+    const parsedStages =
+      typeof row.stages === "string" ? JSON.parse(row.stages) : row.stages;
     // Convert date strings to Date objects in stages
     if (Array.isArray(parsedStages)) {
       stages = parsedStages.map((stage: any) => ({
         ...stage,
         startedAt: stage.startedAt ? new Date(stage.startedAt) : undefined,
-        completedAt: stage.completedAt ? new Date(stage.completedAt) : undefined,
+        completedAt: stage.completedAt
+          ? new Date(stage.completedAt)
+          : undefined,
       }));
     }
   }
@@ -693,7 +703,10 @@ function formatJob(row: any): Job {
   // Parse metadata if stored as JSON string
   let metadata: Record<string, unknown> | undefined;
   if (row.metadata) {
-    metadata = typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata;
+    metadata =
+      typeof row.metadata === "string"
+        ? JSON.parse(row.metadata)
+        : row.metadata;
   }
 
   return {
@@ -705,13 +718,15 @@ function formatJob(row: any): Job {
     priority: row.priority,
     attempts: row.attempts,
     maxAttempts: row.maxAttempts,
-    createdAt: row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
+    createdAt:
+      row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
     scheduledFor: row.scheduledFor
       ? row.scheduledFor instanceof Date
         ? row.scheduledFor
         : new Date(row.scheduledFor)
       : undefined,
-    updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
+    updatedAt:
+      row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
     // Multi-stage progress tracking
     stages,
     currentStage: row.currentStage || undefined,
@@ -765,7 +780,10 @@ async function enqueueIfNotActive(
       and(
         eq(queueJobs.queue, queue),
         eq(queueJobs.key, key),
-        or(eq(queueJobs.status, "pending"), eq(queueJobs.status, "retry_pending")),
+        or(
+          eq(queueJobs.status, "pending"),
+          eq(queueJobs.status, "retry_pending"),
+        ),
       ),
     )
     .returning({ id: queueJobs.id });
@@ -885,7 +903,8 @@ export async function getJobStages(
     return null;
   }
 
-  const stages = typeof row.stages === "string" ? JSON.parse(row.stages) : row.stages;
+  const stages =
+    typeof row.stages === "string" ? JSON.parse(row.stages) : row.stages;
 
   // Convert date strings to Date objects
   return stages.map((stage: any) => ({

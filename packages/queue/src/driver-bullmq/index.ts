@@ -64,29 +64,26 @@
  * ```
  */
 
-// Type exports
-export type {
-  RedisConfig,
-  BullMQClientConfig,
-  BullMQWorkerConfig,
-  BullMQSchedulerConfig,
-} from "./types.js";
-
-// Connection exports
-export {
-  createRedisConnection,
-  closeRedisConnection,
-} from "./connection.js";
-
 // Client exports
 export { createBullMQClient } from "./client.js";
 
-// Worker exports
+// Connection exports
 export {
-  createBullMQWorker,
-  createBullMQWorkerFactory,
-  type BullMQWorkerFactory,
-} from "./worker.js";
-
+  closeRedisConnection,
+  createRedisConnection,
+} from "./connection.js";
 // Scheduler exports
 export { createBullMQScheduler } from "./scheduler.js";
+// Type exports
+export type {
+  BullMQClientConfig,
+  BullMQSchedulerConfig,
+  BullMQWorkerConfig,
+  RedisConfig,
+} from "./types.js";
+// Worker exports
+export {
+  type BullMQWorkerFactory,
+  createBullMQWorker,
+  createBullMQWorkerFactory,
+} from "./worker.js";

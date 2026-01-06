@@ -1,8 +1,9 @@
-import { desc, eq, sql } from "drizzle-orm";
-import { db, txManager, schema } from "../../db/index.js";
 import { generateFeedbackId } from "@eclaire/core";
+import { desc, eq, sql } from "drizzle-orm";
+import { db, schema, txManager } from "../../db/index.js";
 
 const { feedback } = schema;
+
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
 
@@ -71,11 +72,17 @@ export async function createFeedback(
       throw new Error("Failed to retrieve created feedback entry");
     }
 
-    logger.info({ id: newFeedback.id, userId }, "Feedback entry created successfully");
+    logger.info(
+      { id: newFeedback.id, userId },
+      "Feedback entry created successfully",
+    );
 
     return newFeedback;
   } catch (error) {
-    logger.error({ err: error, userId, data }, "Failed to create feedback entry");
+    logger.error(
+      { err: error, userId, data },
+      "Failed to create feedback entry",
+    );
     throw error;
   }
 }
@@ -99,7 +106,10 @@ export async function getUserFeedback(
       .limit(limit)
       .offset(offset);
 
-    logger.info({ userId, count: feedbackEntries.length }, "Retrieved user feedback");
+    logger.info(
+      { userId, count: feedbackEntries.length },
+      "Retrieved user feedback",
+    );
 
     return feedbackEntries;
   } catch (error) {

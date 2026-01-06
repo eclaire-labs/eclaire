@@ -9,9 +9,9 @@
  */
 
 import { sql } from "drizzle-orm";
-import type { QueueLogger, JobStage } from "../core/types.js";
+import type { JobStage, QueueLogger } from "../core/types.js";
 import { generateJobId } from "../core/utils.js";
-import type { DbInstance, ClaimedJob, ClaimOptions } from "./types.js";
+import type { ClaimedJob, ClaimOptions, DbInstance } from "./types.js";
 
 /**
  * Claim a job using SQLite's single-statement atomic pattern
@@ -88,10 +88,14 @@ export async function claimJobSqlite(
     return formatClaimedJob(job);
   } catch (error) {
     // Extract the actual database error from DrizzleQueryError.cause
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const errorCause = error instanceof Error && error.cause
-      ? (error.cause instanceof Error ? error.cause.message : String(error.cause))
-      : undefined;
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    const errorCause =
+      error instanceof Error && error.cause
+        ? error.cause instanceof Error
+          ? error.cause.message
+          : String(error.cause)
+        : undefined;
 
     logger.error(
       {
@@ -162,6 +166,7 @@ function formatClaimedJob(row: any): ClaimedJob {
     stages: (parseJson(row.stages) as JobStage[] | null) ?? null,
     currentStage: row.currentStage ?? row.current_stage ?? null,
     overallProgress: row.overallProgress ?? row.overall_progress ?? null,
-    metadata: (parseJson(row.metadata) as Record<string, unknown> | null) ?? null,
+    metadata:
+      (parseJson(row.metadata) as Record<string, unknown> | null) ?? null,
   };
 }

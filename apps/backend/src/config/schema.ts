@@ -234,10 +234,13 @@ export function buildConfig(): EclaireConfig {
   // Normalize "postgresql" to "postgres" for backwards compatibility
   // Default to postgres for dev/prod parity (SQLite is opt-in)
   const rawDbType = env.DATABASE_TYPE?.toLowerCase();
-  const databaseType = (rawDbType === "postgresql" ? "postgres" : rawDbType || "postgres") as DatabaseType;
+  const databaseType = (
+    rawDbType === "postgresql" ? "postgres" : rawDbType || "postgres"
+  ) as DatabaseType;
   // Queue backend defaults to match database type (postgres with postgres, sqlite with sqlite)
   const defaultQueueBackend = databaseType === "sqlite" ? "sqlite" : "postgres";
-  const queueBackend = (env.QUEUE_BACKEND || defaultQueueBackend) as QueueBackend;
+  const queueBackend = (env.QUEUE_BACKEND ||
+    defaultQueueBackend) as QueueBackend;
 
   // Database config
   const dbHost = env.DATABASE_HOST || defaultDbHost;
@@ -281,14 +284,15 @@ export function buildConfig(): EclaireConfig {
     // If missing, fail with helpful error pointing to setup
     const missingSecrets: string[] = [];
     if (!secrets.betterAuthSecret) missingSecrets.push("BETTER_AUTH_SECRET");
-    if (!secrets.masterEncryptionKey) missingSecrets.push("MASTER_ENCRYPTION_KEY");
+    if (!secrets.masterEncryptionKey)
+      missingSecrets.push("MASTER_ENCRYPTION_KEY");
     if (!secrets.apiKeyHmacKeyV1) missingSecrets.push("API_KEY_HMAC_KEY_V1");
 
     if (missingSecrets.length > 0) {
       throw new Error(
         `Missing required secrets: ${missingSecrets.join(", ")}\n\n` +
-        `Run 'pnpm setup:dev' to generate secrets and configure your environment.\n` +
-        `See README.md for setup instructions.`
+          `Run 'pnpm setup:dev' to generate secrets and configure your environment.\n` +
+          `See README.md for setup instructions.`,
       );
     }
   }
@@ -332,7 +336,9 @@ export function buildConfig(): EclaireConfig {
       password: dbPassword,
       name: dbName,
       url: databaseUrl,
-      sqlitePath: env.SQLITE_DATA_DIR ? `${env.SQLITE_DATA_DIR}/sqlite.db` : `${dataDir}/sqlite/sqlite.db`,
+      sqlitePath: env.SQLITE_DATA_DIR
+        ? `${env.SQLITE_DATA_DIR}/sqlite.db`
+        : `${dataDir}/sqlite/sqlite.db`,
       pgliteDir: env.PGLITE_DATA_DIR || `${dataDir}/pglite`,
     },
 
@@ -340,7 +346,8 @@ export function buildConfig(): EclaireConfig {
     queue: {
       backend: queueBackend,
       redisUrl:
-        env.REDIS_URL || `redis://${env.REDIS_HOST || defaultRedisHost}:${int(env.REDIS_PORT, 6379)}`,
+        env.REDIS_URL ||
+        `redis://${env.REDIS_HOST || defaultRedisHost}:${int(env.REDIS_PORT, 6379)}`,
       redisKeyPrefix: env.REDIS_KEY_PREFIX || "eclaire",
     },
 
@@ -369,8 +376,7 @@ export function buildConfig(): EclaireConfig {
     worker: {
       port: int(env.WORKER_PORT, 3002),
       concurrency: int(env.WORKER_CONCURRENCY, isProduction ? 5 : 3),
-      sharedDataPath:
-        env.WORKER_SHARED_DATA_PATH || `${dataDir}/users`,
+      sharedDataPath: env.WORKER_SHARED_DATA_PATH || `${dataDir}/users`,
     },
 
     // Services
@@ -446,19 +452,20 @@ export function validateConfig(config: EclaireConfig): string[] {
   // - DATABASE_TYPE=postgres/pglite + QUEUE_BACKEND=postgres
   // - Any DATABASE_TYPE + QUEUE_BACKEND=redis (redis is independent)
   if (config.queueBackend !== "redis") {
-    const dbIsPostgresLike = config.databaseType === "postgres" || config.databaseType === "pglite";
+    const dbIsPostgresLike =
+      config.databaseType === "postgres" || config.databaseType === "pglite";
     const queueIsPostgres = config.queueBackend === "postgres";
 
     if (dbIsPostgresLike && !queueIsPostgres) {
       errors.push(
         `QUEUE_BACKEND=${config.queueBackend} is incompatible with DATABASE_TYPE=${config.databaseType}. ` +
-        `Use QUEUE_BACKEND=postgres or QUEUE_BACKEND=redis`,
+          `Use QUEUE_BACKEND=postgres or QUEUE_BACKEND=redis`,
       );
     }
     if (config.databaseType === "sqlite" && queueIsPostgres) {
       errors.push(
         `QUEUE_BACKEND=postgres is incompatible with DATABASE_TYPE=sqlite. ` +
-        `Use QUEUE_BACKEND=sqlite or QUEUE_BACKEND=redis`,
+          `Use QUEUE_BACKEND=sqlite or QUEUE_BACKEND=redis`,
       );
     }
   }
@@ -480,11 +487,23 @@ export function validateConfig(config: EclaireConfig): string[] {
 
   // Required secrets
   const requiredSecrets = [
-    { key: "BETTER_AUTH_SECRET", value: config.security.betterAuthSecret, minLen: 32 },
-    { key: "MASTER_ENCRYPTION_KEY", value: config.security.masterEncryptionKey, exactLen: 64, hex: true },
-    { key: "API_KEY_HMAC_KEY_V1", value: config.security.apiKeyHmacKeyV1, minLen: 32 },
+    {
+      key: "BETTER_AUTH_SECRET",
+      value: config.security.betterAuthSecret,
+      minLen: 32,
+    },
+    {
+      key: "MASTER_ENCRYPTION_KEY",
+      value: config.security.masterEncryptionKey,
+      exactLen: 64,
+      hex: true,
+    },
+    {
+      key: "API_KEY_HMAC_KEY_V1",
+      value: config.security.apiKeyHmacKeyV1,
+      minLen: 32,
+    },
   ];
-
 
   if (config.isProduction) {
     // Production: strict validation
@@ -498,24 +517,31 @@ export function validateConfig(config: EclaireConfig): string[] {
       if (secret.value.includes("DEVONLY")) {
         errors.push(
           `${secret.key} contains "DEVONLY" - test secrets are not allowed in production. ` +
-          `Generate proper secrets with: openssl rand -hex 32`
+            `Generate proper secrets with: openssl rand -hex 32`,
         );
         continue;
       }
 
       // Reject the specific test master encryption key (it's pure hex without DEVONLY marker)
-      if (secret.key === "MASTER_ENCRYPTION_KEY" && secret.value === TEST_SECRETS.masterEncryptionKey) {
+      if (
+        secret.key === "MASTER_ENCRYPTION_KEY" &&
+        secret.value === TEST_SECRETS.masterEncryptionKey
+      ) {
         errors.push(
-          `${secret.key} is using the test value - generate a real secret for production: openssl rand -hex 32`
+          `${secret.key} is using the test value - generate a real secret for production: openssl rand -hex 32`,
         );
         continue;
       }
 
       // Validate length/format
       if (secret.exactLen && secret.value.length !== secret.exactLen) {
-        errors.push(`${secret.key} must be exactly ${secret.exactLen} characters`);
+        errors.push(
+          `${secret.key} must be exactly ${secret.exactLen} characters`,
+        );
       } else if (secret.minLen && secret.value.length < secret.minLen) {
-        errors.push(`${secret.key} must be at least ${secret.minLen} characters`);
+        errors.push(
+          `${secret.key} must be at least ${secret.minLen} characters`,
+        );
       }
 
       // Validate hex format if required
@@ -530,7 +556,9 @@ export function validateConfig(config: EclaireConfig): string[] {
   }
 
   if (errors.length > 0) {
-    throw new Error(`Configuration validation failed:\n  - ${errors.join("\n  - ")}`);
+    throw new Error(
+      `Configuration validation failed:\n  - ${errors.join("\n  - ")}`,
+    );
   }
 
   return warnings;
@@ -539,7 +567,9 @@ export function validateConfig(config: EclaireConfig): string[] {
 /**
  * Get a summary of the config for logging (secrets redacted)
  */
-export function getConfigSummary(config: EclaireConfig): Record<string, unknown> {
+export function getConfigSummary(
+  config: EclaireConfig,
+): Record<string, unknown> {
   return {
     runtime: config.runtime,
     home: config.home,

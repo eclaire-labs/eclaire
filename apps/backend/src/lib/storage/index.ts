@@ -7,35 +7,31 @@
 
 import type { Storage, StorageLogger } from "@eclaire/storage/core";
 import { LocalStorage } from "@eclaire/storage/local";
-import { createChildLogger } from "../logger.js";
 import { config } from "../../config/index.js";
-
-// Re-export key utilities for convenience
-export {
-  buildKey,
-  parseKey,
-  assetPrefix,
-  categoryPrefix,
-  userPrefix,
-} from "@eclaire/storage/core";
+import { createChildLogger } from "../logger.js";
 
 // Re-export types
 export type {
-  Storage,
-  ObjectMetadata,
-  StorageObject,
-  WriteOptions,
   ListOptions,
   ListResult,
+  ObjectMetadata,
+  Storage,
+  StorageObject,
   StorageStats,
+  WriteOptions,
 } from "@eclaire/storage/core";
-
+// Re-export key utilities for convenience
 // Re-export errors
 export {
-  StorageError,
-  StorageNotFoundError,
+  assetPrefix,
+  buildKey,
+  categoryPrefix,
+  parseKey,
   StorageAccessDeniedError,
+  StorageError,
   StorageInvalidKeyError,
+  StorageNotFoundError,
+  userPrefix,
 } from "@eclaire/storage/core";
 
 // Create a pino-compatible logger adapter

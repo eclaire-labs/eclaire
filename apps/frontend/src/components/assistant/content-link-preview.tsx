@@ -1,4 +1,4 @@
-
+import { Link } from "@tanstack/react-router";
 import {
   Bookmark,
   CheckSquare,
@@ -7,7 +7,6 @@ import {
   Monitor,
   StickyNote,
 } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import type { ContentLink } from "@/types/message";
 

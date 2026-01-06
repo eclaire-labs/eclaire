@@ -5,15 +5,15 @@
  * These test Redis-specific behaviors and BullMQ internals.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  eventually,
-  sleep,
   createDeferred,
+  eventually,
   type QueueTestHarness,
+  sleep,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
 
 describe("BullMQ: Driver-Specific Features", () => {
   let harness: QueueTestHarness;
@@ -370,9 +370,7 @@ describe("BullMQ: Driver-Specific Features", () => {
       expect(keys.every((key) => key.startsWith(prefix))).toBe(true);
 
       // Keys should include our queue name
-      const hasQueueKey = keys.some((key) =>
-        key.includes("prefix-test-queue"),
-      );
+      const hasQueueKey = keys.some((key) => key.includes("prefix-test-queue"));
       expect(hasQueueKey).toBe(true);
     });
 

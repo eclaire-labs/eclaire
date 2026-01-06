@@ -14,8 +14,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { initAI, resetAI } from "../../index.js";
-import type { AIMessage } from "../../types.js";
-import type { ProvidersConfiguration, ModelsConfiguration, SelectionConfiguration } from "../../types.js";
+import type {
+  AIMessage,
+  ModelsConfiguration,
+  ProvidersConfiguration,
+  SelectionConfiguration,
+} from "../../types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -71,7 +75,9 @@ export function getIntegrationConfig(): IntegrationConfig | null {
     return {
       provider: "openrouter",
       apiKey,
-      modelId: process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash-lite-preview-09-2025",
+      modelId:
+        process.env.OPENROUTER_MODEL ||
+        "google/gemini-2.5-flash-lite-preview-09-2025",
       baseUrl: "https://openrouter.ai",
     };
   }
@@ -92,10 +98,14 @@ export function skipIfNoIntegration(): void {
   if (!config) {
     const provider = getIntegrationProvider();
     if (!provider) {
-      throw new Error("AI_TEST_PROVIDER not set. Set to 'openrouter' or 'local'.");
+      throw new Error(
+        "AI_TEST_PROVIDER not set. Set to 'openrouter' or 'local'.",
+      );
     }
     if (provider === "openrouter") {
-      throw new Error("OPENROUTER_API_KEY not set for OpenRouter integration tests.");
+      throw new Error(
+        "OPENROUTER_API_KEY not set for OpenRouter integration tests.",
+      );
     }
     throw new Error("Integration test configuration incomplete.");
   }
@@ -124,8 +134,10 @@ export function createIntegrationConfigDir(): string {
   let models: ModelsConfiguration;
   const selection: SelectionConfiguration = {
     active: {
-      backend: config.provider === "openrouter" ? "openrouter-default" : "local-llama",
-      workers: config.provider === "openrouter" ? "openrouter-default" : "local-llama",
+      backend:
+        config.provider === "openrouter" ? "openrouter-default" : "local-llama",
+      workers:
+        config.provider === "openrouter" ? "openrouter-default" : "local-llama",
     },
   };
 
@@ -225,15 +237,15 @@ export function createIntegrationConfigDir(): string {
   // Write config files
   fs.writeFileSync(
     path.join(tempConfigDir, "providers.json"),
-    JSON.stringify(providers, null, 2)
+    JSON.stringify(providers, null, 2),
   );
   fs.writeFileSync(
     path.join(tempConfigDir, "models.json"),
-    JSON.stringify(models, null, 2)
+    JSON.stringify(models, null, 2),
   );
   fs.writeFileSync(
     path.join(tempConfigDir, "selection.json"),
-    JSON.stringify(selection, null, 2)
+    JSON.stringify(selection, null, 2),
   );
 
   return tempConfigDir;
@@ -309,7 +321,8 @@ export function createToolTriggerPrompt(): AIMessage[] {
   return [
     {
       role: "system",
-      content: "You are a helpful assistant. When asked to perform a calculation, use the calculator tool.",
+      content:
+        "You are a helpful assistant. When asked to perform a calculation, use the calculator tool.",
     },
     {
       role: "user",
@@ -353,7 +366,11 @@ export function createCalculatorTool() {
 /**
  * Execute a calculator tool call
  */
-export function executeCalculator(args: { operation: string; a: number; b: number }): string {
+export function executeCalculator(args: {
+  operation: string;
+  a: number;
+  b: number;
+}): string {
   const { operation, a, b } = args;
   let result: number;
   switch (operation) {
@@ -383,7 +400,7 @@ export function executeCalculator(args: { operation: string; a: number; b: numbe
  * Collect all chunks from a stream
  */
 export async function collectStream(
-  stream: ReadableStream<Uint8Array>
+  stream: ReadableStream<Uint8Array>,
 ): Promise<string> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();

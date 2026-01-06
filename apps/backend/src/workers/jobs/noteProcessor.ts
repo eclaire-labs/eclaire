@@ -1,5 +1,5 @@
-import type { JobContext } from "@eclaire/queue/core";
 import { type AIMessage, callAI } from "@eclaire/ai";
+import type { JobContext } from "@eclaire/queue/core";
 import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("note-processor");
@@ -133,13 +133,7 @@ async function processNoteJob(ctx: JobContext<NoteJobData>) {
     let tags: string[] = [];
     try {
       await ctx.updateStageProgress(STAGE_NAME, 25);
-      tags = await generateNoteTags(
-        title,
-        content,
-        noteId,
-        userId,
-        ctx.job.id,
-      );
+      tags = await generateNoteTags(title, content, noteId, userId, ctx.job.id);
       logger.info({ noteId, tags }, "Generated AI tags");
       await ctx.updateStageProgress(STAGE_NAME, 75);
     } catch (aiError: any) {

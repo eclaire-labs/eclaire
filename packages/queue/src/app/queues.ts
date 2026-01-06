@@ -2,11 +2,14 @@
  * BullMQ queue management
  */
 
+import type { Logger } from "@eclaire/logger";
 import { Queue } from "bullmq";
 import type { Redis } from "ioredis";
-import type { Logger } from "@eclaire/logger";
-import { createRedisConnection, closeRedisConnection } from "../shared/redis-connection.js";
-import { QueueNames, type QueueName } from "./queue-names.js";
+import {
+  closeRedisConnection,
+  createRedisConnection,
+} from "../shared/redis-connection.js";
+import { type QueueName, QueueNames } from "./queue-names.js";
 import { getDefaultJobOptions } from "./queue-options.js";
 
 export interface QueueManagerConfig {
@@ -33,7 +36,12 @@ export interface QueueManager {
  * Creates a BullMQ queue manager with Redis connection
  */
 export function createQueueManager(config: QueueManagerConfig): QueueManager {
-  const { redisUrl, logger, serviceName = "Queue Service", prefix = "eclaire" } = config;
+  const {
+    redisUrl,
+    logger,
+    serviceName = "Queue Service",
+    prefix = "eclaire",
+  } = config;
 
   // Store queue instances to avoid recreating them
   const queues: Record<string, Queue> = {};
@@ -49,7 +57,10 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
   });
 
   if (!connection) {
-    logger.error({}, "Failed to create Redis connection - queue manager will return null for all queues");
+    logger.error(
+      {},
+      "Failed to create Redis connection - queue manager will return null for all queues",
+    );
   }
 
   return {

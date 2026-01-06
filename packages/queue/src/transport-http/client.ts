@@ -2,7 +2,7 @@
  * @eclaire/queue/transport-http - HTTP client for remote workers
  */
 
-import axios, { type AxiosInstance, AxiosError } from "axios";
+import axios, { AxiosError, type AxiosInstance } from "axios";
 import type { QueueLogger, QueueStats } from "../core/types.js";
 import type {
   HttpClientConfig,
@@ -27,7 +27,11 @@ export interface HttpQueueClient {
   /**
    * Wait for a job to become available (long-polling)
    */
-  wait(name: string, workerId: string, timeout: number): Promise<HttpJobResponse | null>;
+  wait(
+    name: string,
+    workerId: string,
+    timeout: number,
+  ): Promise<HttpJobResponse | null>;
 
   /**
    * Claim a job (non-blocking)
@@ -136,7 +140,10 @@ export function createHttpClient(config: HttpClientConfig): HttpQueueClient {
       }
     },
 
-    async claim(name: string, workerId: string): Promise<HttpJobResponse | null> {
+    async claim(
+      name: string,
+      workerId: string,
+    ): Promise<HttpJobResponse | null> {
       try {
         const response = await http.get("/fetch", {
           params: {

@@ -4,19 +4,19 @@
  * Tests for the agent loop with tool execution.
  */
 
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { initAI, resetAI } from "../index.js";
-import { ToolLoopAgent } from "../agent/tool-loop-agent.js";
 import { createAgentContext } from "../agent/context.js";
-import { stepCountIs, noToolCalls, anyOf } from "../agent/stop-conditions.js";
+import { anyOf, noToolCalls, stepCountIs } from "../agent/stop-conditions.js";
+import { ToolLoopAgent } from "../agent/tool-loop-agent.js";
 import type { AgentContext, AgentToolDefinition } from "../agent/types.js";
+import { initAI, resetAI } from "../index.js";
 import type { ToolExecutionResult } from "../tools/types.js";
 import {
-  getFixturesPath,
-  createMockLoggerFactory,
   createMockFetch,
+  createMockLoggerFactory,
   createOpenAIResponse,
+  getFixturesPath,
 } from "./setup.js";
 
 describe("ToolLoopAgent", () => {
@@ -44,7 +44,10 @@ describe("ToolLoopAgent", () => {
   });
 
   // Helper to create a simple tool
-  function createEchoTool(): AgentToolDefinition<z.ZodObject<{ message: z.ZodString }>, AgentContext> {
+  function createEchoTool(): AgentToolDefinition<
+    z.ZodObject<{ message: z.ZodString }>,
+    AgentContext
+  > {
     return {
       name: "echo",
       description: "Echoes a message back",
@@ -56,7 +59,10 @@ describe("ToolLoopAgent", () => {
   }
 
   // Helper to create a search tool
-  function createSearchTool(): AgentToolDefinition<z.ZodObject<{ query: z.ZodString }>, AgentContext> {
+  function createSearchTool(): AgentToolDefinition<
+    z.ZodObject<{ query: z.ZodString }>,
+    AgentContext
+  > {
     return {
       name: "search",
       description: "Searches for items",
@@ -74,7 +80,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "Hello! How can I help you?",
             finishReason: "stop",
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -99,7 +105,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "The answer is 42.",
             finishReason: "stop",
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -121,7 +127,7 @@ describe("ToolLoopAgent", () => {
     describe("system prompt", () => {
       it("uses string instructions", async () => {
         mockFetch.queueJsonResponse(
-          createOpenAIResponse({ content: "Response" })
+          createOpenAIResponse({ content: "Response" }),
         );
 
         const agent = new ToolLoopAgent({
@@ -133,14 +139,18 @@ describe("ToolLoopAgent", () => {
         const context = createAgentContext({ userId: "user_123" });
         await agent.generate({ prompt: "Test", context });
 
-        const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+        const requestBody = JSON.parse(
+          mockFetch.calls[0]!.init?.body as string,
+        );
         expect(requestBody.messages[0].role).toBe("system");
-        expect(requestBody.messages[0].content).toBe("You are a test assistant.");
+        expect(requestBody.messages[0].content).toBe(
+          "You are a test assistant.",
+        );
       });
 
       it("uses function to generate instructions", async () => {
         mockFetch.queueJsonResponse(
-          createOpenAIResponse({ content: "Response" })
+          createOpenAIResponse({ content: "Response" }),
         );
 
         const agent = new ToolLoopAgent({
@@ -152,13 +162,15 @@ describe("ToolLoopAgent", () => {
         const context = createAgentContext({ userId: "user_456" });
         await agent.generate({ prompt: "Test", context });
 
-        const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+        const requestBody = JSON.parse(
+          mockFetch.calls[0]!.init?.body as string,
+        );
         expect(requestBody.messages[0].content).toBe("Hello user_456!");
       });
 
       it("uses async function to generate instructions", async () => {
         mockFetch.queueJsonResponse(
-          createOpenAIResponse({ content: "Response" })
+          createOpenAIResponse({ content: "Response" }),
         );
 
         const agent = new ToolLoopAgent({
@@ -173,7 +185,9 @@ describe("ToolLoopAgent", () => {
         const context = createAgentContext({ userId: "user_789" });
         await agent.generate({ prompt: "Test", context });
 
-        const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+        const requestBody = JSON.parse(
+          mockFetch.calls[0]!.init?.body as string,
+        );
         expect(requestBody.messages[0].content).toBe("Async hello user_789!");
       });
     });
@@ -188,7 +202,7 @@ describe("ToolLoopAgent", () => {
               { id: "call_1", name: "echo", arguments: { message: "Hello" } },
             ],
             finishReason: "tool_calls",
-          })
+          }),
         );
 
         // Second response: final answer
@@ -196,7 +210,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "The echo result was: Echo: Hello",
             finishReason: "stop",
-          })
+          }),
         );
 
         const executeSpy = vi.fn().mockResolvedValue({
@@ -225,7 +239,7 @@ describe("ToolLoopAgent", () => {
 
         expect(executeSpy).toHaveBeenCalledWith(
           { message: "Hello" },
-          expect.objectContaining({ userId: "user_123" })
+          expect.objectContaining({ userId: "user_123" }),
         );
         expect(result.steps).toHaveLength(2);
         expect(result.toolCallSummaries).toHaveLength(1);
@@ -241,7 +255,7 @@ describe("ToolLoopAgent", () => {
               { id: "call_2", name: "echo", arguments: { message: "Two" } },
             ],
             finishReason: "tool_calls",
-          })
+          }),
         );
 
         // Second response: final answer
@@ -249,7 +263,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "Done!",
             finishReason: "stop",
-          })
+          }),
         );
 
         const executeSpy = vi.fn().mockImplementation((input) => ({
@@ -285,11 +299,9 @@ describe("ToolLoopAgent", () => {
         mockFetch.queueJsonResponse(
           createOpenAIResponse({
             content: "",
-            toolCalls: [
-              { id: "call_1", name: "unknown_tool", arguments: {} },
-            ],
+            toolCalls: [{ id: "call_1", name: "unknown_tool", arguments: {} }],
             finishReason: "tool_calls",
-          })
+          }),
         );
 
         // Final response
@@ -297,7 +309,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "I couldn't find that tool.",
             finishReason: "stop",
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -326,11 +338,9 @@ describe("ToolLoopAgent", () => {
         mockFetch.queueJsonResponse(
           createOpenAIResponse({
             content: "",
-            toolCalls: [
-              { id: "call_1", name: "failing", arguments: {} },
-            ],
+            toolCalls: [{ id: "call_1", name: "failing", arguments: {} }],
             finishReason: "tool_calls",
-          })
+          }),
         );
 
         // Final response
@@ -338,7 +348,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "The tool failed.",
             finishReason: "stop",
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -350,7 +360,11 @@ describe("ToolLoopAgent", () => {
               description: "Always fails",
               inputSchema: z.object({}),
               execute: async (): Promise<ToolExecutionResult> => {
-                return { success: false, content: "", error: "Intentional failure" };
+                return {
+                  success: false,
+                  content: "",
+                  error: "Intentional failure",
+                };
               },
             },
           },
@@ -376,10 +390,14 @@ describe("ToolLoopAgent", () => {
             createOpenAIResponse({
               content: "",
               toolCalls: [
-                { id: `call_${i}`, name: "echo", arguments: { message: "loop" } },
+                {
+                  id: `call_${i}`,
+                  name: "echo",
+                  arguments: { message: "loop" },
+                },
               ],
               finishReason: "tool_calls",
-            })
+            }),
           );
         }
 
@@ -405,7 +423,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "No tools needed!",
             finishReason: "stop",
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -430,7 +448,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "Response",
             finishReason: "stop",
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -456,10 +474,11 @@ describe("ToolLoopAgent", () => {
         // Response with embedded JSON tool call in content, NO native toolCalls
         mockFetch.queueJsonResponse(
           createOpenAIResponse({
-            content: '```json\n{"type": "tool_calls", "calls": [{"name": "search", "args": {"query": "test query"}}]}\n```',
+            content:
+              '```json\n{"type": "tool_calls", "calls": [{"name": "search", "args": {"query": "test query"}}]}\n```',
             toolCalls: undefined,
             finishReason: "stop",
-          })
+          }),
         );
 
         // Follow-up response after tool execution
@@ -467,7 +486,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "Based on the search results, here is your answer.",
             finishReason: "stop",
-          })
+          }),
         );
 
         const executeSpy = vi.fn().mockResolvedValue({
@@ -498,7 +517,7 @@ describe("ToolLoopAgent", () => {
         // Verify tool was parsed from text and executed
         expect(executeSpy).toHaveBeenCalledWith(
           { query: "test query" },
-          expect.objectContaining({ userId: "user_123" })
+          expect.objectContaining({ userId: "user_123" }),
         );
         expect(result.steps.length).toBeGreaterThanOrEqual(2);
         expect(result.steps[0]!.toolResults).toBeDefined();
@@ -514,7 +533,7 @@ describe("ToolLoopAgent", () => {
               { id: "call_1", name: "search", arguments: { query: "ignored" } },
             ],
             finishReason: "tool_calls",
-          })
+          }),
         );
 
         const executeSpy = vi.fn().mockResolvedValue({
@@ -551,12 +570,13 @@ describe("ToolLoopAgent", () => {
         // Response with both native and text-based tool calls
         mockFetch.queueJsonResponse(
           createOpenAIResponse({
-            content: '```json\n{"type": "tool_calls", "calls": [{"name": "search", "args": {"query": "test"}}]}\n```',
+            content:
+              '```json\n{"type": "tool_calls", "calls": [{"name": "search", "args": {"query": "test"}}]}\n```',
             toolCalls: [
               { id: "call_1", name: "search", arguments: { query: "native" } },
             ],
             finishReason: "tool_calls",
-          })
+          }),
         );
 
         const executeSpy = vi.fn().mockResolvedValue({
@@ -594,7 +614,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "Response without tools",
             finishReason: "stop",
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -610,7 +630,9 @@ describe("ToolLoopAgent", () => {
         await agent.generate({ prompt: "Hello", context });
 
         // Check that tools were not sent in the request
-        const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+        const requestBody = JSON.parse(
+          mockFetch.calls[0]!.init?.body as string,
+        );
         expect(requestBody.tools).toBeUndefined();
       });
 
@@ -619,7 +641,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "Response",
             finishReason: "stop",
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -635,7 +657,9 @@ describe("ToolLoopAgent", () => {
         await agent.generate({ prompt: "Hello", context });
 
         // Check that tools were not sent in the request
-        const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+        const requestBody = JSON.parse(
+          mockFetch.calls[0]!.init?.body as string,
+        );
         expect(requestBody.tools).toBeUndefined();
       });
 
@@ -648,14 +672,14 @@ describe("ToolLoopAgent", () => {
               { id: "call_1", name: "echo", arguments: { message: "test" } },
             ],
             finishReason: "tool_calls",
-          })
+          }),
         );
 
         mockFetch.queueJsonResponse(
           createOpenAIResponse({
             content: "Done",
             finishReason: "stop",
-          })
+          }),
         );
 
         const executeSpy = vi.fn().mockResolvedValue({
@@ -687,7 +711,9 @@ describe("ToolLoopAgent", () => {
         expect(result.steps).toHaveLength(2);
 
         // Verify tools were sent in the request
-        const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+        const requestBody = JSON.parse(
+          mockFetch.calls[0]!.init?.body as string,
+        );
         expect(requestBody.tools).toBeDefined();
       });
     });
@@ -699,7 +725,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "Step 1 response",
             finishReason: "stop",
-          })
+          }),
         );
 
         const aiContexts: string[] = [];
@@ -735,7 +761,7 @@ describe("ToolLoopAgent", () => {
               { id: "call_1", name: "echo", arguments: { message: "test" } },
             ],
             finishReason: "tool_calls",
-          })
+          }),
         );
 
         // Second step - done
@@ -743,7 +769,7 @@ describe("ToolLoopAgent", () => {
           createOpenAIResponse({
             content: "Done",
             finishReason: "stop",
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -781,7 +807,7 @@ describe("ToolLoopAgent", () => {
             finishReason: "tool_calls",
             promptTokens: 100,
             completionTokens: 50,
-          })
+          }),
         );
 
         // Second step
@@ -791,7 +817,7 @@ describe("ToolLoopAgent", () => {
             finishReason: "stop",
             promptTokens: 150,
             completionTokens: 30,
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -816,7 +842,7 @@ describe("ToolLoopAgent", () => {
             content: "The answer is 42.",
             reasoning: "Let me think about this question...",
             finishReason: "stop",
-          })
+          }),
         );
 
         const agent = new ToolLoopAgent({
@@ -862,7 +888,7 @@ describe("ToolLoopAgent", () => {
     describe("message history", () => {
       it("includes previous messages when provided", async () => {
         mockFetch.queueJsonResponse(
-          createOpenAIResponse({ content: "Response" })
+          createOpenAIResponse({ content: "Response" }),
         );
 
         const agent = new ToolLoopAgent({
@@ -881,7 +907,9 @@ describe("ToolLoopAgent", () => {
           ],
         });
 
-        const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+        const requestBody = JSON.parse(
+          mockFetch.calls[0]!.init?.body as string,
+        );
         expect(requestBody.messages).toHaveLength(3);
         expect(requestBody.messages[0].content).toBe("My name is Alice");
         expect(requestBody.messages[1].content).toBe("Hello Alice!");

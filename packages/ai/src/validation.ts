@@ -45,7 +45,7 @@ export interface RequestRequirements {
 export function deriveRequestRequirements(
   messages: AIMessage[],
   options: AICallOptions,
-  estimatedTokens: number = 0
+  estimatedTokens: number = 0,
 ): RequestRequirements {
   const inputModalities = new Set<InputModality>(["text"]);
 
@@ -91,7 +91,7 @@ export function deriveRequestRequirements(
 export class CapabilityError extends Error {
   constructor(
     public readonly modelId: string,
-    public readonly errors: string[]
+    public readonly errors: string[],
   ) {
     super(`Model '${modelId}' cannot satisfy request: ${errors.join("; ")}`);
     this.name = "CapabilityError";
@@ -104,7 +104,7 @@ export class CapabilityError extends Error {
 export function validateRequestAgainstCapabilities(
   modelId: string,
   requirements: RequestRequirements,
-  capabilities: ModelCapabilities
+  capabilities: ModelCapabilities,
 ): void {
   const logger = getLogger();
   const errors: string[] = [];
@@ -113,7 +113,7 @@ export function validateRequestAgainstCapabilities(
   for (const required of requirements.inputModalities) {
     if (!capabilities.modalities.input.includes(required)) {
       errors.push(
-        `requires ${required} input, model supports only ${capabilities.modalities.input.join(", ")}`
+        `requires ${required} input, model supports only ${capabilities.modalities.input.join(", ")}`,
       );
     }
   }
@@ -127,21 +127,21 @@ export function validateRequestAgainstCapabilities(
   if (requirements.tools && !capabilities.tools) {
     errors.push(
       "requires native tool calling, model does not support tools. " +
-        "Consider using text-based tool extraction instead."
+        "Consider using text-based tool extraction instead.",
     );
   }
 
   // Check JSON schema
   if (requirements.jsonSchema && !capabilities.jsonSchema) {
     errors.push(
-      "requires JSON schema response format, model does not support json_schema"
+      "requires JSON schema response format, model does not support json_schema",
     );
   }
 
   // Check structured outputs
   if (requirements.structuredOutputs && !capabilities.structuredOutputs) {
     errors.push(
-      "requires strict structured outputs, model does not support structured outputs"
+      "requires strict structured outputs, model does not support structured outputs",
     );
   }
 
@@ -149,7 +149,7 @@ export function validateRequestAgainstCapabilities(
   if (requirements.maxOutputTokens && capabilities.maxOutputTokens) {
     if (requirements.maxOutputTokens > capabilities.maxOutputTokens) {
       errors.push(
-        `requested ${requirements.maxOutputTokens} output tokens, model max is ${capabilities.maxOutputTokens}`
+        `requested ${requirements.maxOutputTokens} output tokens, model max is ${capabilities.maxOutputTokens}`,
       );
     }
   }
@@ -157,28 +157,30 @@ export function validateRequestAgainstCapabilities(
   // Check context window
   if (requirements.estimatedInputTokens > capabilities.contextWindow) {
     errors.push(
-      `estimated ${requirements.estimatedInputTokens} input tokens exceeds context window of ${capabilities.contextWindow}`
+      `estimated ${requirements.estimatedInputTokens} input tokens exceeds context window of ${capabilities.contextWindow}`,
     );
   }
 
   if (errors.length > 0) {
     logger.warn(
       { modelId, errors, requirements: summarizeRequirements(requirements) },
-      "Request validation failed"
+      "Request validation failed",
     );
     throw new CapabilityError(modelId, errors);
   }
 
   logger.debug(
     { modelId, requirements: summarizeRequirements(requirements) },
-    "Request validation passed"
+    "Request validation passed",
   );
 }
 
 /**
  * Summarize requirements for logging
  */
-function summarizeRequirements(req: RequestRequirements): Record<string, unknown> {
+function summarizeRequirements(
+  req: RequestRequirements,
+): Record<string, unknown> {
   return {
     modalities: Array.from(req.inputModalities),
     streaming: req.streaming,
@@ -204,7 +206,9 @@ export function modelSupportsTools(capabilities: ModelCapabilities): boolean {
 /**
  * Check if model supports JSON schema response format
  */
-export function modelSupportsJsonSchema(capabilities: ModelCapabilities): boolean {
+export function modelSupportsJsonSchema(
+  capabilities: ModelCapabilities,
+): boolean {
   return capabilities.jsonSchema === true;
 }
 
@@ -212,7 +216,7 @@ export function modelSupportsJsonSchema(capabilities: ModelCapabilities): boolea
  * Check if model supports strict structured outputs
  */
 export function modelSupportsStructuredOutputs(
-  capabilities: ModelCapabilities
+  capabilities: ModelCapabilities,
 ): boolean {
   return capabilities.structuredOutputs === true;
 }
@@ -220,14 +224,18 @@ export function modelSupportsStructuredOutputs(
 /**
  * Check if model supports streaming
  */
-export function modelSupportsStreaming(capabilities: ModelCapabilities): boolean {
+export function modelSupportsStreaming(
+  capabilities: ModelCapabilities,
+): boolean {
   return capabilities.streaming;
 }
 
 /**
  * Check if model supports reasoning/thinking
  */
-export function modelSupportsReasoning(capabilities: ModelCapabilities): boolean {
+export function modelSupportsReasoning(
+  capabilities: ModelCapabilities,
+): boolean {
   return capabilities.reasoning.supported;
 }
 
@@ -235,7 +243,12 @@ export function modelSupportsReasoning(capabilities: ModelCapabilities): boolean
  * Get reasoning mode for a model
  */
 export function getReasoningMode(
-  capabilities: ModelCapabilities
-): "always" | "never" | "prompt-controlled" | "provider-controlled" | undefined {
+  capabilities: ModelCapabilities,
+):
+  | "always"
+  | "never"
+  | "prompt-controlled"
+  | "provider-controlled"
+  | undefined {
   return capabilities.reasoning.mode;
 }

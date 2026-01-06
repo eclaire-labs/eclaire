@@ -36,7 +36,7 @@ export function stepCountIs(maxSteps: number): StopCondition {
 export function hasToolCall(toolName: string): StopCondition {
   return (steps: AgentStep[]): boolean => {
     return steps.some((step) =>
-      step.toolResults?.some((tr) => tr.toolName === toolName)
+      step.toolResults?.some((tr) => tr.toolName === toolName),
     );
   };
 }
@@ -141,7 +141,7 @@ export function maxTokens(threshold: number): StopCondition {
   return (steps: AgentStep[]): boolean => {
     const totalTokens = steps.reduce(
       (sum, step) => sum + (step.aiResponse.usage?.total_tokens ?? 0),
-      0
+      0,
     );
     return totalTokens >= threshold;
   };
@@ -167,7 +167,7 @@ export function maxDuration(thresholdMs: number): StopCondition {
  */
 export function evaluateStopConditions(
   steps: AgentStep[],
-  conditions: StopCondition | StopCondition[]
+  conditions: StopCondition | StopCondition[],
 ): { shouldStop: boolean; reason?: AgentStep["stopReason"] } {
   const conditionArray = Array.isArray(conditions) ? conditions : [conditions];
 

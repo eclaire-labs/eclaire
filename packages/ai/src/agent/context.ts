@@ -29,7 +29,7 @@ function generateRequestId(): string {
  * ```
  */
 export function createAgentContext<TUserContext = unknown>(
-  options: CreateContextOptions<TUserContext>
+  options: CreateContextOptions<TUserContext>,
 ): AgentContext<TUserContext> {
   return {
     userId: options.userId,
@@ -60,7 +60,7 @@ export function getContextElapsedMs(context: AgentContext): number {
  */
 export function extendContext<TUserContext = unknown>(
   parent: AgentContext<TUserContext>,
-  updates: Partial<CreateContextOptions<TUserContext>>
+  updates: Partial<CreateContextOptions<TUserContext>>,
 ): AgentContext<TUserContext> {
   return {
     ...parent,

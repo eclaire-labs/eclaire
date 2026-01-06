@@ -1,3 +1,4 @@
+import { type AIMessage, callAI } from "@eclaire/ai";
 import { Readability } from "@mozilla/readability";
 import axios from "axios";
 import { convert as convertHtmlToText } from "html-to-text";
@@ -5,9 +6,8 @@ import { JSDOM } from "jsdom";
 import type { Page } from "patchright";
 import { Readable } from "stream";
 import TurndownService from "turndown";
-import { type AIMessage, callAI } from "@eclaire/ai";
 import { createChildLogger } from "../../../lib/logger.js";
-import { getStorage, buildKey } from "../../../lib/storage/index.js";
+import { buildKey, getStorage } from "../../../lib/storage/index.js";
 
 const logger = createChildLogger("bookmark-utils");
 
@@ -141,8 +141,15 @@ export async function extractContentFromHtml(
             );
 
             const storage = getStorage();
-            const faviconKey = buildKey(userId, "bookmarks", bookmarkId, fileName);
-            await storage.writeBuffer(faviconKey, faviconBuffer, { contentType });
+            const faviconKey = buildKey(
+              userId,
+              "bookmarks",
+              bookmarkId,
+              fileName,
+            );
+            await storage.writeBuffer(faviconKey, faviconBuffer, {
+              contentType,
+            });
             faviconStorageId = faviconKey;
 
             logger.debug(
@@ -169,8 +176,15 @@ export async function extractContentFromHtml(
               response.headers["content-type"] || "image/x-icon";
 
             const storage = getStorage();
-            const faviconKey = buildKey(userId, "bookmarks", bookmarkId, "favicon.ico");
-            await storage.writeBuffer(faviconKey, faviconBuffer, { contentType });
+            const faviconKey = buildKey(
+              userId,
+              "bookmarks",
+              bookmarkId,
+              "favicon.ico",
+            );
+            await storage.writeBuffer(faviconKey, faviconBuffer, {
+              contentType,
+            });
             faviconStorageId = faviconKey;
           }
         }
@@ -188,12 +202,28 @@ export async function extractContentFromHtml(
 
     // Save raw and readable HTML content
     const storageForHtml = getStorage();
-    const rawHtmlKey = buildKey(userId, "bookmarks", bookmarkId, "content-raw.html");
-    await storageForHtml.writeBuffer(rawHtmlKey, Buffer.from(rawHtml), { contentType: "text/html" });
+    const rawHtmlKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "content-raw.html",
+    );
+    await storageForHtml.writeBuffer(rawHtmlKey, Buffer.from(rawHtml), {
+      contentType: "text/html",
+    });
     const rawHtmlStorageId = rawHtmlKey;
 
-    const readableHtmlKey = buildKey(userId, "bookmarks", bookmarkId, "content-readable.html");
-    await storageForHtml.writeBuffer(readableHtmlKey, Buffer.from(readableHtml), { contentType: "text/html" });
+    const readableHtmlKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "content-readable.html",
+    );
+    await storageForHtml.writeBuffer(
+      readableHtmlKey,
+      Buffer.from(readableHtml),
+      { contentType: "text/html" },
+    );
     const readableHtmlStorageId = readableHtmlKey;
 
     // Initialize turndown service for markdown conversion
@@ -216,11 +246,15 @@ export async function extractContentFromHtml(
 
     // Save both versions to storage
     const mdKey = buildKey(userId, "bookmarks", bookmarkId, "extracted.md");
-    await storageForHtml.writeBuffer(mdKey, Buffer.from(markdownContent), { contentType: "text/markdown" });
+    await storageForHtml.writeBuffer(mdKey, Buffer.from(markdownContent), {
+      contentType: "text/markdown",
+    });
     const extractedMdStorageId = mdKey;
 
     const txtKey = buildKey(userId, "bookmarks", bookmarkId, "extracted.txt");
-    await storageForHtml.writeBuffer(txtKey, Buffer.from(plainTextContent), { contentType: "text/plain" });
+    await storageForHtml.writeBuffer(txtKey, Buffer.from(plainTextContent), {
+      contentType: "text/plain",
+    });
     const extractedTxtStorageId = txtKey;
 
     return {

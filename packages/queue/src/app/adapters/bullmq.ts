@@ -4,15 +4,15 @@
  * Redis-backed queue implementation using BullMQ for high-throughput job processing.
  */
 
-import { type Logger, getRequestId } from "@eclaire/logger";
-import type { QueueManager } from "../queues.js";
+import { getRequestId, type Logger } from "@eclaire/logger";
 import { QueueNames } from "../queue-names.js";
+import type { QueueManager } from "../queues.js";
 import type {
-  QueueAdapter,
   BookmarkJobData,
-  ImageJobData,
   DocumentJobData,
+  ImageJobData,
   NoteJobData,
+  QueueAdapter,
   TaskJobData,
 } from "../types.js";
 
@@ -44,7 +44,11 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
       await queue.add("process-bookmark", {
         ...data,
         requestId,
-        __metadata: { assetType: "bookmark", assetId: data.bookmarkId, userId: data.userId },
+        __metadata: {
+          assetType: "bookmark",
+          assetId: data.bookmarkId,
+          userId: data.userId,
+        },
       });
 
       logger.info(
@@ -65,7 +69,11 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
       await queue.add("process-image", {
         ...data,
         requestId,
-        __metadata: { assetType: "image", assetId: data.imageId, userId: data.userId },
+        __metadata: {
+          assetType: "image",
+          assetId: data.imageId,
+          userId: data.userId,
+        },
       });
 
       logger.info(
@@ -86,7 +94,11 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
       await queue.add("process-document", {
         ...data,
         requestId,
-        __metadata: { assetType: "document", assetId: data.documentId, userId: data.userId },
+        __metadata: {
+          assetType: "document",
+          assetId: data.documentId,
+          userId: data.userId,
+        },
       });
 
       logger.info(
@@ -107,7 +119,11 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
       await queue.add("process-note", {
         ...data,
         requestId,
-        __metadata: { assetType: "note", assetId: data.noteId, userId: data.userId },
+        __metadata: {
+          assetType: "note",
+          assetId: data.noteId,
+          userId: data.userId,
+        },
       });
 
       logger.info(
@@ -128,7 +144,11 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
       await queue.add("process-task", {
         ...data,
         requestId,
-        __metadata: { assetType: "task", assetId: data.taskId, userId: data.userId },
+        __metadata: {
+          assetType: "task",
+          assetId: data.taskId,
+          userId: data.userId,
+        },
       });
 
       logger.info(

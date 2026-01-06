@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { BASE_URL, DEMO_API_KEY, delay, logger } from "../utils/test-helpers.js";
+import {
+  BASE_URL,
+  DEMO_API_KEY,
+  delay,
+  logger,
+} from "../utils/test-helpers.js";
 import type { Bookmark } from "../utils/types.js";
 
 // Cookie storage to ensure no session interference

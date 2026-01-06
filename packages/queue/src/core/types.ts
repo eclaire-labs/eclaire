@@ -165,10 +165,7 @@ export interface JobEventCallbacks {
   ) => void;
 
   /** Called when the entire job completes successfully */
-  onJobComplete?: (
-    jobId: string,
-    metadata?: Record<string, unknown>,
-  ) => void;
+  onJobComplete?: (jobId: string, metadata?: Record<string, unknown>) => void;
 
   /** Called when the entire job fails permanently */
   onJobFail?: (
@@ -431,7 +428,10 @@ export interface JobContext<T = unknown> {
    * @param stage - Stage name to complete
    * @param artifacts - Optional artifacts produced by this stage
    */
-  completeStage(stage: string, artifacts?: Record<string, unknown>): Promise<void>;
+  completeStage(
+    stage: string,
+    artifacts?: Record<string, unknown>,
+  ): Promise<void>;
 
   /**
    * Mark a stage as failed

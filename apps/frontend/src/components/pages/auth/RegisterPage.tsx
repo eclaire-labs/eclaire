@@ -1,7 +1,6 @@
-
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Github, Globe, Twitter } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { Github, Globe, Twitter } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -196,7 +195,11 @@ export default function RegisterPage() {
           </Form>
           <div className="text-center text-sm">
             Already have an account?{" "}
-            <Link to="/auth/login" search={{ callbackUrl: "/dashboard" }} className="text-primary hover:underline">
+            <Link
+              to="/auth/login"
+              search={{ callbackUrl: "/dashboard" }}
+              className="text-primary hover:underline"
+            >
               Sign in
             </Link>
           </div>

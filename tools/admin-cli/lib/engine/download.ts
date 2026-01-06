@@ -4,13 +4,13 @@
  * Handles downloading models from HuggingFace.
  */
 
-import { exec, spawn } from 'child_process';
-import { promisify } from 'util';
-import * as fs from 'fs';
-import * as path from 'path';
-import axios from 'axios';
-import type { DownloadResult } from '../types/engines.js';
-import { getModelsDir, ensureDirectories } from './paths.js';
+import axios from "axios";
+import { exec, spawn } from "child_process";
+import * as fs from "fs";
+import * as path from "path";
+import { promisify } from "util";
+import type { DownloadResult } from "../types/engines.js";
+import { ensureDirectories, getModelsDir } from "./paths.js";
 
 const execAsync = promisify(exec);
 
@@ -28,7 +28,11 @@ const execAsync = promisify(exec);
 export async function downloadModel(
   modelRef: string,
   destDir?: string,
-  onProgress?: (progress: { percent: number; downloaded: number; total: number }) => void
+  onProgress?: (progress: {
+    percent: number;
+    downloaded: number;
+    total: number;
+  }) => void,
 ): Promise<DownloadResult> {
   const targetDir = destDir || getModelsDir();
   ensureDirectories();
@@ -61,7 +65,7 @@ export async function downloadModel(
   }
 
   // Try huggingface-cli first (handles resume, progress, auth)
-  const hfCliAvailable = await checkCommand('huggingface-cli');
+  const hfCliAvailable = await checkCommand("huggingface-cli");
 
   if (hfCliAvailable) {
     return downloadWithHFCli(repoId, filename, targetDir);
@@ -98,9 +102,9 @@ export function listDownloadedModels(destDir?: string): string[] {
     return [];
   }
 
-  return fs.readdirSync(targetDir).filter(file =>
-    file.endsWith('.gguf') || file.endsWith('.bin')
-  );
+  return fs
+    .readdirSync(targetDir)
+    .filter((file) => file.endsWith(".gguf") || file.endsWith(".bin"));
 }
 
 // ============================================================================
@@ -113,29 +117,35 @@ export function listDownloadedModels(destDir?: string): string[] {
 async function downloadWithHFCli(
   repoId: string,
   filename: string,
-  destDir: string
+  destDir: string,
 ): Promise<DownloadResult> {
   const localPath = path.join(destDir, filename);
 
   return new Promise((resolve) => {
-    const child = spawn('huggingface-cli', [
-      'download',
-      repoId,
-      filename,
-      '--local-dir', destDir,
-      '--local-dir-use-symlinks', 'False',
-    ], {
-      stdio: 'inherit', // Show progress in terminal
-    });
+    const child = spawn(
+      "huggingface-cli",
+      [
+        "download",
+        repoId,
+        filename,
+        "--local-dir",
+        destDir,
+        "--local-dir-use-symlinks",
+        "False",
+      ],
+      {
+        stdio: "inherit", // Show progress in terminal
+      },
+    );
 
-    child.on('error', (error) => {
+    child.on("error", (error) => {
       resolve({
         success: false,
         error: `huggingface-cli failed: ${error.message}`,
       });
     });
 
-    child.on('exit', (code) => {
+    child.on("exit", (code) => {
       if (code === 0) {
         const stats = fs.existsSync(localPath) ? fs.statSync(localPath) : null;
         resolve({
@@ -160,28 +170,32 @@ async function downloadDirect(
   repoId: string,
   filename: string,
   destDir: string,
-  onProgress?: (progress: { percent: number; downloaded: number; total: number }) => void
+  onProgress?: (progress: {
+    percent: number;
+    downloaded: number;
+    total: number;
+  }) => void,
 ): Promise<DownloadResult> {
   const url = `https://huggingface.co/${repoId}/resolve/main/${filename}`;
   const localPath = path.join(destDir, filename);
-  const tempPath = localPath + '.downloading';
+  const tempPath = localPath + ".downloading";
 
   try {
     const response = await axios({
-      method: 'GET',
+      method: "GET",
       url,
-      responseType: 'stream',
+      responseType: "stream",
       headers: {
-        'User-Agent': 'eclaire-cli/1.0.0',
+        "User-Agent": "eclaire-cli/1.0.0",
       },
     });
 
-    const totalSize = parseInt(response.headers['content-length'] || '0', 10);
+    const totalSize = parseInt(response.headers["content-length"] || "0", 10);
     let downloadedSize = 0;
 
     const writer = fs.createWriteStream(tempPath);
 
-    response.data.on('data', (chunk: Buffer) => {
+    response.data.on("data", (chunk: Buffer) => {
       downloadedSize += chunk.length;
       if (onProgress && totalSize > 0) {
         onProgress({
@@ -195,7 +209,7 @@ async function downloadDirect(
     response.data.pipe(writer);
 
     return new Promise((resolve, reject) => {
-      writer.on('finish', () => {
+      writer.on("finish", () => {
         // Rename temp file to final path
         fs.renameSync(tempPath, localPath);
         const stats = fs.statSync(localPath);
@@ -206,7 +220,7 @@ async function downloadDirect(
         });
       });
 
-      writer.on('error', (error) => {
+      writer.on("error", (error) => {
         // Clean up temp file
         if (fs.existsSync(tempPath)) {
           fs.unlinkSync(tempPath);
@@ -252,8 +266,10 @@ interface ParsedModelRef {
  */
 function parseModelRef(ref: string): ParsedModelRef | null {
   // Handle HuggingFace URLs
-  if (ref.startsWith('https://huggingface.co/')) {
-    const match = ref.match(/huggingface\.co\/([^/]+\/[^/]+)\/resolve\/[^/]+\/(.+)$/);
+  if (ref.startsWith("https://huggingface.co/")) {
+    const match = ref.match(
+      /huggingface\.co\/([^/]+\/[^/]+)\/resolve\/[^/]+\/(.+)$/,
+    );
     if (match && match[1] && match[2]) {
       return {
         repoId: match[1],
@@ -264,10 +280,10 @@ function parseModelRef(ref: string): ParsedModelRef | null {
   }
 
   // Handle path-style references: "org/repo/filename.gguf"
-  const parts = ref.split('/');
+  const parts = ref.split("/");
   if (parts.length >= 3) {
     const filename = parts.pop()!;
-    const repoId = parts.join('/');
+    const repoId = parts.join("/");
     return { repoId, filename };
   }
 
@@ -290,7 +306,7 @@ async function checkCommand(command: string): Promise<boolean> {
  * Format bytes to human readable string
  */
 export function formatBytes(bytes: number): string {
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const units = ["B", "KB", "MB", "GB", "TB"];
   let size = bytes;
   let unitIndex = 0;
 

@@ -27,7 +27,11 @@ export const reviewStatusFieldSchema = reviewStatusSchema.meta({
 // TASK STATUS
 // =============================================================================
 
-export const TASK_STATUSES = ["not-started", "in-progress", "completed"] as const;
+export const TASK_STATUSES = [
+  "not-started",
+  "in-progress",
+  "completed",
+] as const;
 export const taskStatusSchema = z.enum(TASK_STATUSES);
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 
@@ -67,7 +71,7 @@ export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
     z.null(),
     z.array(jsonValueSchema),
     z.record(z.string(), jsonValueSchema),
-  ])
+  ]),
 );
 
 /**

@@ -3,38 +3,38 @@
  */
 
 import {
+  type Job as BullMQJob,
   Worker as BullMQWorker,
+  type WorkerOptions as BullMQWorkerOptions,
   DelayedError,
   UnrecoverableError,
-  type Job as BullMQJob,
-  type WorkerOptions as BullMQWorkerOptions,
 } from "bullmq";
-import type {
-  Worker,
-  WorkerOptions,
-  JobHandler,
-  JobContext,
-  Job,
-  JobStage,
-  JobEventCallbacks,
-} from "../core/types.js";
 import {
-  RateLimitError,
-  isRateLimitError,
   isPermanentError,
+  isRateLimitError,
+  type RateLimitError,
 } from "../core/errors.js";
-import { DEFAULT_BACKOFF } from "../core/utils.js";
 import {
-  initializeStages,
-  startStageInList,
-  completeStageInList,
-  failStageInList,
-  updateStageProgressInList,
   addStagesToList,
   calculateOverallProgress,
+  completeStageInList,
+  failStageInList,
+  initializeStages,
+  startStageInList,
+  updateStageProgressInList,
 } from "../core/progress.js";
+import type {
+  Job,
+  JobContext,
+  JobEventCallbacks,
+  JobHandler,
+  JobStage,
+  Worker,
+  WorkerOptions,
+} from "../core/types.js";
+import { DEFAULT_BACKOFF } from "../core/utils.js";
+import { closeRedisConnection, createRedisConnection } from "./connection.js";
 import type { BullMQWorkerConfig } from "./types.js";
-import { createRedisConnection, closeRedisConnection } from "./connection.js";
 
 /**
  * Default configuration values
@@ -117,7 +117,9 @@ export function createBullMQWorker<T = unknown>(
       // Multi-stage progress tracking (stored in job data)
       stages: data.__stages,
       currentStage: data.__currentStage,
-      overallProgress: data.__stages ? calculateOverallProgress(data.__stages) : undefined,
+      overallProgress: data.__stages
+        ? calculateOverallProgress(data.__stages)
+        : undefined,
       metadata: data.__metadata,
     };
   }
@@ -139,7 +141,10 @@ export function createBullMQWorker<T = unknown>(
       const metadata = jobData.__metadata;
 
       // Helper to persist stage updates
-      const persistStages = async (stages: JobStage[], currentStageName: string | null) => {
+      const persistStages = async (
+        stages: JobStage[],
+        currentStageName: string | null,
+      ) => {
         currentStages = stages;
         job.stages = stages;
         job.currentStage = currentStageName || undefined;
@@ -170,14 +175,22 @@ export function createBullMQWorker<T = unknown>(
         progress(percent: number) {
           bullmqJob.updateProgress(percent);
           logger.debug({ jobId: job.id, progress: percent }, "Job progress");
-          eventCallbacks?.onStageProgress?.(job.id, job.currentStage || "", percent, metadata);
+          eventCallbacks?.onStageProgress?.(
+            job.id,
+            job.currentStage || "",
+            percent,
+            metadata,
+          );
         },
 
         // Multi-stage progress tracking methods
         async initStages(stageNames: string[]) {
           const stages = initializeStages(stageNames);
           await persistStages(stages, null);
-          logger.debug({ jobId: job.id, stages: stageNames }, "Job stages initialized");
+          logger.debug(
+            { jobId: job.id, stages: stageNames },
+            "Job stages initialized",
+          );
         },
 
         async startStage(stageName: string) {
@@ -189,30 +202,66 @@ export function createBullMQWorker<T = unknown>(
 
         async updateStageProgress(stageName: string, percent: number) {
           // Lightweight operation - only update local state and emit event
-          currentStages = updateStageProgressInList(currentStages, stageName, percent);
+          currentStages = updateStageProgressInList(
+            currentStages,
+            stageName,
+            percent,
+          );
           job.stages = currentStages;
           job.overallProgress = calculateOverallProgress(currentStages);
-          eventCallbacks?.onStageProgress?.(job.id, stageName, percent, metadata);
+          eventCallbacks?.onStageProgress?.(
+            job.id,
+            stageName,
+            percent,
+            metadata,
+          );
         },
 
-        async completeStage(stageName: string, artifacts?: Record<string, unknown>) {
-          const updatedStages = completeStageInList(currentStages, stageName, artifacts);
+        async completeStage(
+          stageName: string,
+          artifacts?: Record<string, unknown>,
+        ) {
+          const updatedStages = completeStageInList(
+            currentStages,
+            stageName,
+            artifacts,
+          );
           await persistStages(updatedStages, null);
           logger.debug({ jobId: job.id, stage: stageName }, "Stage completed");
-          await eventCallbacks?.onStageComplete?.(job.id, stageName, artifacts, metadata);
+          await eventCallbacks?.onStageComplete?.(
+            job.id,
+            stageName,
+            artifacts,
+            metadata,
+          );
         },
 
         async failStage(stageName: string, error: Error) {
-          const updatedStages = failStageInList(currentStages, stageName, error.message);
+          const updatedStages = failStageInList(
+            currentStages,
+            stageName,
+            error.message,
+          );
           await persistStages(updatedStages, null);
-          logger.debug({ jobId: job.id, stage: stageName, error: error.message }, "Stage failed");
-          eventCallbacks?.onStageFail?.(job.id, stageName, error.message, metadata);
+          logger.debug(
+            { jobId: job.id, stage: stageName, error: error.message },
+            "Stage failed",
+          );
+          eventCallbacks?.onStageFail?.(
+            job.id,
+            stageName,
+            error.message,
+            metadata,
+          );
         },
 
         async addStages(stageNames: string[]) {
           const updatedStages = addStagesToList(currentStages, stageNames);
           await persistStages(updatedStages, job.currentStage || null);
-          logger.debug({ jobId: job.id, addedStages: stageNames }, "Stages added");
+          logger.debug(
+            { jobId: job.id, addedStages: stageNames },
+            "Stages added",
+          );
         },
       };
 
@@ -297,7 +346,11 @@ export function createBullMQWorker<T = unknown>(
         // Call onJobFail callback if provided
         if (job) {
           const jobData = job.data as ExtendedJobData;
-          eventCallbacks?.onJobFail?.(job.id!, error.message, jobData.__metadata);
+          eventCallbacks?.onJobFail?.(
+            job.id!,
+            error.message,
+            jobData.__metadata,
+          );
         }
       });
 

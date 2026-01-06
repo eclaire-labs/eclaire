@@ -6,14 +6,14 @@
  * Note: BullMQ doesn't support "linear" backoff - it degrades to "fixed".
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { RateLimitError, RetryableError } from "../../core/errors.js";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
-import { RetryableError, RateLimitError } from "../../core/errors.js";
 
 describe("BullMQ: Backoff", () => {
   let harness: QueueTestHarness;
@@ -56,10 +56,13 @@ describe("BullMQ: Backoff", () => {
       await worker.start();
 
       // Wait for all attempts
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "completed";
-      }, { timeout: 5000 });
+      await eventually(
+        async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "completed";
+        },
+        { timeout: 5000 },
+      );
 
       expect(attemptTimes).toHaveLength(3);
 
@@ -101,10 +104,13 @@ describe("BullMQ: Backoff", () => {
       });
       await worker.start();
 
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "completed";
-      }, { timeout: 5000 });
+      await eventually(
+        async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "completed";
+        },
+        { timeout: 5000 },
+      );
 
       expect(attemptTimes).toHaveLength(3);
 
@@ -146,10 +152,13 @@ describe("BullMQ: Backoff", () => {
       });
       await worker.start();
 
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "completed";
-      }, { timeout: 5000 });
+      await eventually(
+        async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "completed";
+        },
+        { timeout: 5000 },
+      );
 
       expect(attemptTimes).toHaveLength(3);
 
@@ -187,10 +196,13 @@ describe("BullMQ: Backoff", () => {
       });
       await worker.start();
 
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "completed";
-      }, { timeout: 5000 });
+      await eventually(
+        async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "completed";
+        },
+        { timeout: 5000 },
+      );
 
       // Job should complete after rate limit delay
       expect(attemptTimes).toHaveLength(2);
@@ -209,11 +221,7 @@ describe("BullMQ: Backoff", () => {
       const attemptTimes: number[] = [];
       const delayDuration = 300;
 
-      await client.enqueue(
-        "test-queue",
-        { value: 1 },
-        { key: "rate-delay" },
-      );
+      await client.enqueue("test-queue", { value: 1 }, { key: "rate-delay" });
 
       worker = harness.createWorker("test-queue", async () => {
         attemptTimes.push(Date.now());
@@ -253,10 +261,13 @@ describe("BullMQ: Backoff", () => {
       });
       await worker.start();
 
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "completed";
-      }, { timeout: 5000 });
+      await eventually(
+        async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "completed";
+        },
+        { timeout: 5000 },
+      );
 
       // Each retry should increment attempts
       expect(attemptNumbers).toEqual([1, 2, 3]);
@@ -281,10 +292,13 @@ describe("BullMQ: Backoff", () => {
       });
       await worker.start();
 
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "failed";
-      }, { timeout: 5000 });
+      await eventually(
+        async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "failed";
+        },
+        { timeout: 5000 },
+      );
 
       expect(attemptCount).toBe(2);
 
@@ -315,10 +329,13 @@ describe("BullMQ: Backoff", () => {
       });
       await worker.start();
 
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "completed";
-      }, { timeout: 5000 });
+      await eventually(
+        async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "completed";
+        },
+        { timeout: 5000 },
+      );
 
       // Generic errors should also consume attempts
       expect(attemptNumbers).toEqual([1, 2, 3]);

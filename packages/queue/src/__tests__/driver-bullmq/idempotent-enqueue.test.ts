@@ -4,13 +4,13 @@
  * Tests that jobs with the same key are deduplicated.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
 
 describe("BullMQ: Idempotent Enqueue", () => {
   let harness: QueueTestHarness;
@@ -38,8 +38,16 @@ describe("BullMQ: Idempotent Enqueue", () => {
   });
 
   it("should return same ID for jobs with same key", async () => {
-    const id1 = await client.enqueue("test-queue", { value: 1 }, { key: "my-key" });
-    const id2 = await client.enqueue("test-queue", { value: 2 }, { key: "my-key" });
+    const id1 = await client.enqueue(
+      "test-queue",
+      { value: 1 },
+      { key: "my-key" },
+    );
+    const id2 = await client.enqueue(
+      "test-queue",
+      { value: 2 },
+      { key: "my-key" },
+    );
 
     expect(id1).toBe(id2);
 
@@ -56,8 +64,16 @@ describe("BullMQ: Idempotent Enqueue", () => {
   it("should create separate jobs in different queues with same key", async () => {
     // Note: In BullMQ, jobs with same key in different queues are separate jobs
     // but the client.getJob searches across all queues and may return first match
-    const id1 = await client.enqueue("queue-a", { value: 1 }, { key: "shared-key-a" });
-    const id2 = await client.enqueue("queue-b", { value: 2 }, { key: "shared-key-b" });
+    const id1 = await client.enqueue(
+      "queue-a",
+      { value: 1 },
+      { key: "shared-key-a" },
+    );
+    const id2 = await client.enqueue(
+      "queue-b",
+      { value: 2 },
+      { key: "shared-key-b" },
+    );
 
     // Different keys ensure different jobs
     expect(id1).not.toBe(id2);
@@ -73,7 +89,11 @@ describe("BullMQ: Idempotent Enqueue", () => {
 
   it("should allow re-enqueue after job is completed", async () => {
     // First enqueue
-    const id1 = await client.enqueue("test-queue", { value: 1 }, { key: "my-key" });
+    const id1 = await client.enqueue(
+      "test-queue",
+      { value: 1 },
+      { key: "my-key" },
+    );
 
     // Process to completion
     worker = harness.createWorker("test-queue", async () => {});

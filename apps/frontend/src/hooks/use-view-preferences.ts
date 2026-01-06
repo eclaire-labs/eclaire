@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 // Define page types that can have view preferences
@@ -79,9 +78,14 @@ const getStorageKey = (pageType: PageType): string =>
   `view-preferences-${pageType}`;
 
 // Hook implementation with union return type
-export function useViewPreferences(pageType: PageType): [
+export function useViewPreferences(
+  pageType: PageType,
+): [
   ViewPreferences,
-  (key: keyof ViewPreferences, value: ViewPreferences[keyof ViewPreferences]) => void,
+  (
+    key: keyof ViewPreferences,
+    value: ViewPreferences[keyof ViewPreferences],
+  ) => void,
   boolean,
 ] {
   const [preferences, setPreferences] = useState<ViewPreferences>(

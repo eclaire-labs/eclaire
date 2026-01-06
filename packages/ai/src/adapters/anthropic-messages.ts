@@ -18,10 +18,10 @@ import type {
   AdapterResponse,
   AIMessage,
   FinishReason,
-  ProviderAuth,
-  ToolCallResult,
-  TokenUsage,
   MessageContent,
+  ProviderAuth,
+  TokenUsage,
+  ToolCallResult,
 } from "../types.js";
 import type { DialectAdapter } from "./types.js";
 
@@ -49,7 +49,7 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
     endpoint: string,
     params: AdapterRequestParams,
     auth: ProviderAuth,
-    customHeaders?: Record<string, string>
+    customHeaders?: Record<string, string>,
   ): AdapterRequest {
     const logger = getLogger();
     const url = `${baseUrl}${endpoint || "/v1/messages"}`;
@@ -130,7 +130,7 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
         hasTools: !!params.options.tools,
         stream: params.options.stream,
       },
-      "Building Anthropic messages request"
+      "Building Anthropic messages request",
     );
 
     return {
@@ -305,7 +305,7 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
         toolCallsCount: toolCalls.length,
         finishReason,
       },
-      "Parsed Anthropic response"
+      "Parsed Anthropic response",
     );
 
     return {
@@ -348,7 +348,9 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
    * - message_delta
    * - message_stop
    */
-  transformStream(stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+  transformStream(
+    stream: ReadableStream<Uint8Array>,
+  ): ReadableStream<Uint8Array> {
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
     const logger = getLogger();
@@ -406,12 +408,15 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
                         ],
                       };
                       controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`)
+                        encoder.encode(
+                          `data: ${JSON.stringify(openaiFormat)}\n\n`,
+                        ),
                       );
                     } else if (parsed.delta?.type === "input_json_delta") {
                       // Tool input delta - accumulate JSON
                       if (currentToolUse) {
-                        currentToolUse.inputJson += parsed.delta.partial_json || "";
+                        currentToolUse.inputJson +=
+                          parsed.delta.partial_json || "";
                       }
                     }
                   } else if (eventType === "content_block_start") {
@@ -449,7 +454,9 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
                         ],
                       };
                       controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`)
+                        encoder.encode(
+                          `data: ${JSON.stringify(openaiFormat)}\n\n`,
+                        ),
                       );
                       currentToolUse = null;
                     }
@@ -465,7 +472,9 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
                       ],
                     };
                     controller.enqueue(
-                      encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`)
+                      encoder.encode(
+                        `data: ${JSON.stringify(openaiFormat)}\n\n`,
+                      ),
                     );
                   } else if (eventType === "message_delta") {
                     // Message-level updates (stop reason, usage)
@@ -480,14 +489,19 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
                         ],
                       };
                       controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`)
+                        encoder.encode(
+                          `data: ${JSON.stringify(openaiFormat)}\n\n`,
+                        ),
                       );
                     }
                   }
                 } catch (e) {
                   logger.warn(
-                    { line, error: e instanceof Error ? e.message : "Unknown error" },
-                    "Failed to parse Anthropic SSE line"
+                    {
+                      line,
+                      error: e instanceof Error ? e.message : "Unknown error",
+                    },
+                    "Failed to parse Anthropic SSE line",
                   );
                 }
               }
@@ -496,7 +510,7 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
         } catch (error) {
           logger.error(
             { error: error instanceof Error ? error.message : "Unknown error" },
-            "Error transforming Anthropic stream"
+            "Error transforming Anthropic stream",
           );
           controller.error(error);
         } finally {

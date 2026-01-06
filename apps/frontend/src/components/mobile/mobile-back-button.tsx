@@ -1,6 +1,5 @@
-
-import { ChevronLeft } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 

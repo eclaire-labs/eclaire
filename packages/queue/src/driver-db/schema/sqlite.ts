@@ -6,10 +6,10 @@
  */
 
 import {
-  sqliteTable,
-  integer as sqliteInteger,
-  text as sqliteText,
   index,
+  integer as sqliteInteger,
+  sqliteTable,
+  text as sqliteText,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
@@ -60,8 +60,14 @@ export const queueJobsSqlite = sqliteTable(
     metadata: sqliteText("metadata", { mode: "json" }),
   },
   (table) => ({
-    queueKeyIdx: uniqueIndex("queue_jobs_queue_key_idx").on(table.queue, table.key),
-    queueStatusIdx: index("queue_jobs_queue_status_idx").on(table.queue, table.status),
+    queueKeyIdx: uniqueIndex("queue_jobs_queue_key_idx").on(
+      table.queue,
+      table.key,
+    ),
+    queueStatusIdx: index("queue_jobs_queue_status_idx").on(
+      table.queue,
+      table.status,
+    ),
     statusScheduledIdx: index("queue_jobs_status_scheduled_idx").on(
       table.status,
       table.scheduledFor,
@@ -88,7 +94,9 @@ export const queueSchedulesSqlite = sqliteTable(
     key: sqliteText("key").notNull().unique(),
     cron: sqliteText("cron").notNull(),
     data: sqliteText("data", { mode: "json" }).notNull(),
-    enabled: sqliteInteger("enabled", { mode: "boolean" }).notNull().default(true),
+    enabled: sqliteInteger("enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
     lastRunAt: sqliteInteger("last_run_at", { mode: "timestamp_ms" }),
     nextRunAt: sqliteInteger("next_run_at", { mode: "timestamp_ms" }),
     runLimit: sqliteInteger("run_limit"),

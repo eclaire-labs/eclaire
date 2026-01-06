@@ -5,10 +5,10 @@
  * notifications to waiting workers.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { createTestLogger, sleep } from "../testkit/index.js";
-import { createJobWaitlist } from "../../app/waitlist.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { JobWaitlistInterface } from "../../app/types.js";
+import { createJobWaitlist } from "../../app/waitlist.js";
+import { createTestLogger, sleep } from "../testkit/index.js";
 
 describe("G1-G3: Waitlist", () => {
   const logger = createTestLogger();
@@ -43,8 +43,16 @@ describe("G1-G3: Waitlist", () => {
     });
 
     it("should notify correct asset type", async () => {
-      const bookmarkWaiterPromise = waitlist.addWaiter("bookmarks", "worker-1", 5000);
-      const photosWaiterPromise = waitlist.addWaiter("photos", "worker-2", 5000);
+      const bookmarkWaiterPromise = waitlist.addWaiter(
+        "bookmarks",
+        "worker-1",
+        5000,
+      );
+      const photosWaiterPromise = waitlist.addWaiter(
+        "photos",
+        "worker-2",
+        5000,
+      );
 
       await sleep(10);
 
@@ -114,19 +122,25 @@ describe("G1-G3: Waitlist", () => {
     it("should notify in FIFO order", async () => {
       const order: number[] = [];
 
-      const waiter1 = waitlist.addWaiter("bookmarks", "worker-1", 5000).then(() => {
-        order.push(1);
-      });
+      const waiter1 = waitlist
+        .addWaiter("bookmarks", "worker-1", 5000)
+        .then(() => {
+          order.push(1);
+        });
       await sleep(5);
 
-      const waiter2 = waitlist.addWaiter("bookmarks", "worker-2", 5000).then(() => {
-        order.push(2);
-      });
+      const waiter2 = waitlist
+        .addWaiter("bookmarks", "worker-2", 5000)
+        .then(() => {
+          order.push(2);
+        });
       await sleep(5);
 
-      const waiter3 = waitlist.addWaiter("bookmarks", "worker-3", 5000).then(() => {
-        order.push(3);
-      });
+      const waiter3 = waitlist
+        .addWaiter("bookmarks", "worker-3", 5000)
+        .then(() => {
+          order.push(3);
+        });
 
       await sleep(10);
 
@@ -212,7 +226,7 @@ describe("G1-G3: Waitlist", () => {
     });
 
     it("should support scheduled wakeups", async () => {
-      let wakeupCalled = false;
+      const wakeupCalled = false;
 
       const waitlistWithScheduler = createJobWaitlist({
         logger,
@@ -223,7 +237,11 @@ describe("G1-G3: Waitlist", () => {
       });
 
       // Add a waiter
-      const waiterPromise = waitlistWithScheduler.addWaiter("bookmarks", "worker-1", 5000);
+      const waiterPromise = waitlistWithScheduler.addWaiter(
+        "bookmarks",
+        "worker-1",
+        5000,
+      );
       await sleep(10);
 
       // Schedule wakeup

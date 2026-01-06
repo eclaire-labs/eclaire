@@ -6,20 +6,22 @@
  */
 
 import { Readable } from "node:stream";
-
+import {
+  StorageInvalidKeyError,
+  StorageNotFoundError,
+} from "../../core/errors.js";
+import { isValidKey } from "../../core/keys.js";
 import type {
-  Storage,
-  StorageConfig,
-  StorageObject,
-  ObjectMetadata,
-  WriteOptions,
   ListOptions,
   ListResult,
-  StorageStats,
+  ObjectMetadata,
+  Storage,
+  StorageConfig,
   StorageLogger,
+  StorageObject,
+  StorageStats,
+  WriteOptions,
 } from "../../core/types.js";
-import { StorageNotFoundError, StorageInvalidKeyError } from "../../core/errors.js";
-import { isValidKey } from "../../core/keys.js";
 
 /**
  * Stored object in memory
@@ -111,7 +113,11 @@ export class MemoryStorage implements Storage {
     this.logger.debug({ key, size: buffer.length }, "Object stored");
   }
 
-  async writeBuffer(key: string, buffer: Buffer, options: WriteOptions): Promise<void> {
+  async writeBuffer(
+    key: string,
+    buffer: Buffer,
+    options: WriteOptions,
+  ): Promise<void> {
     this.validateKey(key);
 
     const now = new Date();
@@ -148,7 +154,9 @@ export class MemoryStorage implements Storage {
     };
   }
 
-  async readBuffer(key: string): Promise<{ buffer: Buffer; metadata: ObjectMetadata }> {
+  async readBuffer(
+    key: string,
+  ): Promise<{ buffer: Buffer; metadata: ObjectMetadata }> {
     this.validateKey(key);
 
     const stored = this.store.get(key);

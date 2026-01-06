@@ -4,9 +4,10 @@ import { db, schema } from "../../db/index.js";
 import { decrypt } from "../encryption.js";
 
 const { channels, users } = schema;
+
+import { processPromptRequest } from "../agent/index.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
-import { processPromptRequest } from "../agent/index.js";
 
 const logger = createChildLogger("telegram");
 
@@ -389,10 +390,7 @@ export async function startAllTelegramBots(): Promise<void> {
     logger.info("Starting all Telegram bots");
 
     const telegramChannels = await db.query.channels.findMany({
-      where: and(
-        eq(channels.platform, "telegram"),
-        channels.isActive,
-      ),
+      where: and(eq(channels.platform, "telegram"), channels.isActive),
       with: {
         user: {
           columns: {

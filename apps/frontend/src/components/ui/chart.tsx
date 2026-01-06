@@ -1,15 +1,14 @@
-
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
-import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import type {
-  LegendPayload,
   Props as LegendContentProps,
+  LegendPayload,
 } from "recharts/types/component/DefaultLegendContent";
 import type {
   NameType,
   ValueType,
 } from "recharts/types/component/DefaultTooltipContent";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import { cn } from "@/lib/utils";
 
@@ -229,7 +228,15 @@ function ChartTooltipContent({
     }
 
     return <div className={cn("font-medium", labelClassName)}>{value}</div>;
-  }, [label, labelFormatter, payload, hideLabel, labelClassName, config, labelKey]);
+  }, [
+    label,
+    labelFormatter,
+    payload,
+    hideLabel,
+    labelClassName,
+    config,
+    labelKey,
+  ]);
 
   if (!active || !payload?.length) {
     return null;

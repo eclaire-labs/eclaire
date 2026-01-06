@@ -1,10 +1,11 @@
 // lib/auth.ts
+
+import { generateSecurityId, generateUserId } from "@eclaire/core";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db, dbType, schema } from "../db/index.js"; // Your drizzle database instance and conditional schema
-import { generateSecurityId, generateUserId } from "@eclaire/core";
-import { createChildLogger } from "./logger.js";
 import { config } from "../config/index.js";
+import { db, dbType, schema } from "../db/index.js"; // Your drizzle database instance and conditional schema
+import { createChildLogger } from "./logger.js";
 import { deleteQueueJobsByUserId } from "./services/user-data.js";
 
 const logger = createChildLogger("auth");
@@ -44,7 +45,10 @@ try {
   // Determine the correct provider based on database type
   const provider = dbType === "sqlite" ? "sqlite" : "pg";
 
-  logger.info({ dbType, provider }, "Configuring Drizzle adapter with provider");
+  logger.info(
+    { dbType, provider },
+    "Configuring Drizzle adapter with provider",
+  );
 
   initializedAdapter = drizzleAdapter(db, {
     provider: provider, // Dynamically set based on DATABASE_TYPE
@@ -88,7 +92,10 @@ export const auth = betterAuth({
       beforeDelete: async (user) => {
         // Clean up queue jobs for this user (userId stored in metadata JSON)
         await deleteQueueJobsByUserId(user.id);
-        logger.info({ userId: user.id }, "Cleaned up queue jobs for deleted user");
+        logger.info(
+          { userId: user.id },
+          "Cleaned up queue jobs for deleted user",
+        );
       },
     },
     fields: {

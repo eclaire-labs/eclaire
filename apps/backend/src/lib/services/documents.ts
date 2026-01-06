@@ -17,19 +17,20 @@ import {
 } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { Readable } from "stream";
-import { db, txManager, schema, queueJobs } from "../../db/index.js";
+import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
-const {
-  documentsTags,
-  documents: schemaDocuments,
-  tags,
-} = schema;
-import { formatToISO8601, formatRequiredTimestamp, getOrCreateTags } from "../db-helpers.js";
-import { getQueue, QueueNames, getQueueAdapter } from "../queue/index.js";
-import { getStorage, buildKey, assetPrefix } from "../storage/index.js";
-import type { ProcessingStatus } from "../../types/assets.js";
+const { documentsTags, documents: schemaDocuments, tags } = schema;
+
 import { generateDocumentId, generateHistoryId } from "@eclaire/core";
+import type { ProcessingStatus } from "../../types/assets.js";
+import {
+  formatRequiredTimestamp,
+  formatToISO8601,
+  getOrCreateTags,
+} from "../db-helpers.js";
 import { createChildLogger } from "../logger.js";
+import { getQueue, getQueueAdapter, QueueNames } from "../queue/index.js";
+import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
 import { recordHistory } from "./history.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
@@ -271,10 +272,19 @@ export async function createDocument(
       : "bin";
 
     const storage = getStorage();
-    const storageKey = buildKey(userId, "documents", documentId, `original.${fileExtension}`);
-    await storage.write(storageKey, Readable.from(content) as unknown as NodeJS.ReadableStream, {
-      contentType: verifiedMimeType,
-    });
+    const storageKey = buildKey(
+      userId,
+      "documents",
+      documentId,
+      `original.${fileExtension}`,
+    );
+    await storage.write(
+      storageKey,
+      Readable.from(content) as unknown as NodeJS.ReadableStream,
+      {
+        contentType: verifiedMimeType,
+      },
+    );
 
     // Create storageInfo for backward compatibility
     storageInfo = { storageId: storageKey };
@@ -472,7 +482,10 @@ export async function deleteDocument(
       ),
     });
     if (!existingDocument) {
-      logger.warn({ documentId: id, userId }, "Document record not found during deletion attempt");
+      logger.warn(
+        { documentId: id, userId },
+        "Document record not found during deletion attempt",
+      );
       return { success: true };
     }
 
@@ -492,7 +505,10 @@ export async function deleteDocument(
         .deletePrefix(assetPrefix(userId, "documents", id))
         .catch((storageError: any) => {
           logger.warn(
-            { documentId: id, storageError: storageError.message || storageError },
+            {
+              documentId: id,
+              storageError: storageError.message || storageError,
+            },
             "DB record deleted, but failed to delete asset folder",
           );
         });
@@ -562,7 +578,9 @@ export async function getAllDocuments(
           contentUrl,
           extractedText: document.extractedText,
           processingStatus:
-      result.status && typeof result.status === "string" ? result.status : null,
+            result.status && typeof result.status === "string"
+              ? result.status
+              : null,
           reviewStatus: document.reviewStatus || "pending",
           flagColor: document.flagColor,
           isPinned: document.isPinned || false,
@@ -729,7 +747,9 @@ export async function findDocuments(
           contentUrl,
           extractedText: document.extractedText,
           processingStatus:
-      result.status && typeof result.status === "string" ? result.status : null,
+            result.status && typeof result.status === "string"
+              ? result.status
+              : null,
           reviewStatus: document.reviewStatus || "pending",
           flagColor: document.flagColor,
           isPinned: document.isPinned || false,
@@ -818,15 +838,25 @@ export async function updateDocumentArtifacts(
     if (artifacts.extractedTxtStorageId) {
       try {
         const storage = getStorage();
-        const { buffer } = await storage.readBuffer(artifacts.extractedTxtStorageId);
+        const { buffer } = await storage.readBuffer(
+          artifacts.extractedTxtStorageId,
+        );
         extractedText = buffer.toString("utf-8");
         logger.debug(
-          { documentId, storageId: artifacts.extractedTxtStorageId, textLength: extractedText.length },
+          {
+            documentId,
+            storageId: artifacts.extractedTxtStorageId,
+            textLength: extractedText.length,
+          },
           "Loaded extractedText from storage",
         );
       } catch (storageError) {
         logger.warn(
-          { documentId, storageId: artifacts.extractedTxtStorageId, error: storageError },
+          {
+            documentId,
+            storageId: artifacts.extractedTxtStorageId,
+            error: storageError,
+          },
           "Failed to load extractedText from storage, continuing without it",
         );
       }
@@ -834,7 +864,11 @@ export async function updateDocumentArtifacts(
 
     // Get or create tags BEFORE transaction if tags are provided
     let tagList: { id: string; name: string }[] = [];
-    if (artifacts.tags && Array.isArray(artifacts.tags) && artifacts.tags.length > 0) {
+    if (
+      artifacts.tags &&
+      Array.isArray(artifacts.tags) &&
+      artifacts.tags.length > 0
+    ) {
       const document = await db.query.documents.findFirst({
         columns: { userId: true },
         where: eq(schemaDocuments.id, documentId),
@@ -851,8 +885,7 @@ export async function updateDocumentArtifacts(
       if (artifacts.title) updatePayload.title = artifacts.title;
       if (artifacts.description)
         updatePayload.description = artifacts.description;
-      if (extractedText)
-        updatePayload.extractedText = extractedText;
+      if (extractedText) updatePayload.extractedText = extractedText;
       if (artifacts.extractedMdStorageId)
         updatePayload.extractedMdStorageId = artifacts.extractedMdStorageId;
       if (artifacts.extractedTxtStorageId)
@@ -864,7 +897,10 @@ export async function updateDocumentArtifacts(
       if (artifacts.screenshotStorageId)
         updatePayload.screenshotStorageId = artifacts.screenshotStorageId;
 
-      await tx.documents.update(eq(schemaDocuments.id, documentId), updatePayload);
+      await tx.documents.update(
+        eq(schemaDocuments.id, documentId),
+        updatePayload,
+      );
 
       if (artifacts.tags && Array.isArray(artifacts.tags)) {
         // Clear existing tags
@@ -878,7 +914,10 @@ export async function updateDocumentArtifacts(
         }
       }
     });
-    logger.info({ documentId }, "Successfully saved all artifacts for document");
+    logger.info(
+      { documentId },
+      "Successfully saved all artifacts for document",
+    );
   } catch (error) {
     logger.error(
       {

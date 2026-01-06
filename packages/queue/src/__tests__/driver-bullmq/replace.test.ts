@@ -5,15 +5,15 @@
  * Verifies JobAlreadyActiveError is thrown when replacing active jobs.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { JobAlreadyActiveError, PermanentError } from "../../core/errors.js";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  eventually,
   createDeferred,
+  eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
-import { JobAlreadyActiveError, PermanentError } from "../../core/errors.js";
 
 describe("BullMQ: Replace Semantics", () => {
   let harness: QueueTestHarness;
@@ -182,11 +182,7 @@ describe("BullMQ: Replace Semantics", () => {
       const canFinishProcessing = createDeferred<void>();
 
       // Create a job
-      await client.enqueue(
-        "test-queue",
-        { value: 1 },
-        { key: "active-key" },
-      );
+      await client.enqueue("test-queue", { value: 1 }, { key: "active-key" });
 
       worker = harness.createWorker("test-queue", async () => {
         // Signal that processing has started

@@ -161,7 +161,11 @@ export interface Storage {
    * @param buffer - Data to write
    * @param options - Write options including contentType
    */
-  writeBuffer(key: string, buffer: Buffer, options: WriteOptions): Promise<void>;
+  writeBuffer(
+    key: string,
+    buffer: Buffer,
+    options: WriteOptions,
+  ): Promise<void>;
 
   // ---- Read Operations ----
 
@@ -181,7 +185,9 @@ export interface Storage {
    * @returns Buffer and metadata
    * @throws StorageNotFoundError if not found
    */
-  readBuffer(key: string): Promise<{ buffer: Buffer; metadata: ObjectMetadata }>;
+  readBuffer(
+    key: string,
+  ): Promise<{ buffer: Buffer; metadata: ObjectMetadata }>;
 
   /**
    * Get object metadata without reading content

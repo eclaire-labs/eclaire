@@ -11,20 +11,28 @@
  * Run with: QUEUE_DRIVER=bullmq pnpm vitest run H1
  */
 
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
-import Redis from "ioredis";
+import type Redis from "ioredis";
 import {
-  spawnWorker,
-  waitForAllReady,
-  waitForJobsProcessed,
-  collectResults,
-  killAllWorkers,
-  type WorkerProcess,
-} from "../testkit/index.js";
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 import {
   createBullMQClient,
   createRedisConnection,
 } from "../../driver-bullmq/index.js";
+import {
+  collectResults,
+  killAllWorkers,
+  spawnWorker,
+  type WorkerProcess,
+  waitForAllReady,
+  waitForJobsProcessed,
+} from "../testkit/index.js";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
@@ -131,7 +139,9 @@ describeIfBullMQ("H1: Multi-process workers (BullMQ)", () => {
       expect(worker2.processed.length).toBeGreaterThan(0);
 
       // Total should equal job count
-      expect(worker1.processed.length + worker2.processed.length).toBe(jobCount);
+      expect(worker1.processed.length + worker2.processed.length).toBe(
+        jobCount,
+      );
     }, 60000);
   });
 });

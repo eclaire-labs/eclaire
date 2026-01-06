@@ -1,4 +1,4 @@
-
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowLeft,
@@ -33,9 +33,9 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { useNavigate, getRouteApi } from "@tanstack/react-router";
 
 const routeApi = getRouteApi("/_authenticated/bookmarks/$id");
+
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -437,7 +437,11 @@ export function BookmarkDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/bookmarks" })}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate({ to: "/bookmarks" })}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -462,7 +466,11 @@ export function BookmarkDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/bookmarks" })}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate({ to: "/bookmarks" })}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Bookmark not found</h1>
@@ -496,7 +504,11 @@ export function BookmarkDetailClient() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/bookmarks" })}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate({ to: "/bookmarks" })}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
@@ -816,16 +828,19 @@ export function BookmarkDetailClient() {
                           : "Processing is disabled for this bookmark"
                       }
                     >
-                      {bookmark.enabled === false
-                        ? "disabled"
-                        : bookmark.processingStatus === "processing"
-                          ? (
-                              <span className="flex items-center gap-1">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                processing
-                              </span>
-                            )
-                          : (bookmark.processingStatus || "unknown").replace(/_/g, " ")}
+                      {bookmark.enabled === false ? (
+                        "disabled"
+                      ) : bookmark.processingStatus === "processing" ? (
+                        <span className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          processing
+                        </span>
+                      ) : (
+                        (bookmark.processingStatus || "unknown").replace(
+                          /_/g,
+                          " ",
+                        )
+                      )}
                     </Badge>
 
                     {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}

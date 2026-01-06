@@ -11,22 +11,27 @@
  * Run with: POSTGRES_URL=postgresql://... pnpm vitest run H1-H2
  */
 
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { sql } from "drizzle-orm";
 import {
-  spawnWorker,
-  waitForAllReady,
-  waitForJobsProcessed,
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
+import { createDbQueueClient, getQueueSchema } from "../../driver-db/index.js";
+import {
   collectResults,
   killAllWorkers,
+  spawnWorker,
   type WorkerProcess,
+  waitForAllReady,
+  waitForJobsProcessed,
 } from "../testkit/index.js";
-import {
-  createDbQueueClient,
-  getQueueSchema,
-} from "../../driver-db/index.js";
 
 const POSTGRES_URL = process.env.POSTGRES_URL;
 
@@ -96,7 +101,9 @@ describeIfPostgres("H1-H2: Multi-process workers (Postgres)", () => {
 
   afterAll(async () => {
     // Clean up test data
-    await db.execute(sql`DELETE FROM queue_jobs WHERE queue LIKE 'test-multiprocess-%'`);
+    await db.execute(
+      sql`DELETE FROM queue_jobs WHERE queue LIKE 'test-multiprocess-%'`,
+    );
     await sqlClient.end();
   });
 
@@ -157,7 +164,9 @@ describeIfPostgres("H1-H2: Multi-process workers (Postgres)", () => {
       expect(worker2.processed.length).toBeGreaterThan(0);
 
       // Total should equal job count
-      expect(worker1.processed.length + worker2.processed.length).toBe(jobCount);
+      expect(worker1.processed.length + worker2.processed.length).toBe(
+        jobCount,
+      );
     }, 60000);
   });
 

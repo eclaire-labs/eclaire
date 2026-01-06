@@ -4,11 +4,11 @@
  * Re-fetches model metadata from HuggingFace for existing GGUF models.
  */
 
-import axios from 'axios';
-import ora from 'ora';
-import inquirer from 'inquirer';
-import { getModels, updateModel } from '../../config/models.js';
-import { colors, icons } from '../../ui/colors.js';
+import axios from "axios";
+import inquirer from "inquirer";
+import ora from "ora";
+import { getModels, updateModel } from "../../config/models.js";
+import { colors, icons } from "../../ui/colors.js";
 
 interface ArchitectureInfo {
   layers: number;
@@ -26,13 +26,18 @@ interface VisionInfo {
 /**
  * Try to fetch architecture info from a single HuggingFace model's config.json
  */
-async function tryFetchArchitectureFromRepo(modelId: string): Promise<ArchitectureInfo | undefined> {
+async function tryFetchArchitectureFromRepo(
+  modelId: string,
+): Promise<ArchitectureInfo | undefined> {
   try {
-    const response = await axios.get(`https://huggingface.co/${modelId}/raw/main/config.json`, {
-      headers: { 'User-Agent': 'eclaire-cli/1.0.0' },
-      timeout: 10000,
-      validateStatus: (status) => status >= 200 && status < 300
-    });
+    const response = await axios.get(
+      `https://huggingface.co/${modelId}/raw/main/config.json`,
+      {
+        headers: { "User-Agent": "eclaire-cli/1.0.0" },
+        timeout: 10000,
+        validateStatus: (status) => status >= 200 && status < 300,
+      },
+    );
 
     const config = response.data as any;
 
@@ -40,8 +45,14 @@ async function tryFetchArchitectureFromRepo(modelId: string): Promise<Architectu
     const textConfig = config.text_config || config;
 
     // Extract architecture info - different models use different field names
-    const layers = textConfig.num_hidden_layers || textConfig.n_layer || textConfig.num_layers;
-    const kvHeads = textConfig.num_key_value_heads || textConfig.n_head_kv || textConfig.num_kv_heads;
+    const layers =
+      textConfig.num_hidden_layers ||
+      textConfig.n_layer ||
+      textConfig.num_layers;
+    const kvHeads =
+      textConfig.num_key_value_heads ||
+      textConfig.n_head_kv ||
+      textConfig.num_kv_heads;
     const numHeads = textConfig.num_attention_heads || textConfig.n_head;
     const hiddenSize = textConfig.hidden_size || textConfig.n_embd;
 
@@ -78,11 +89,14 @@ async function tryFetchArchitectureFromRepo(modelId: string): Promise<Architectu
  */
 async function fetchBaseModelId(modelId: string): Promise<string | undefined> {
   try {
-    const response = await axios.get(`https://huggingface.co/api/models/${modelId}`, {
-      headers: { 'User-Agent': 'eclaire-cli/1.0.0' },
-      timeout: 10000,
-      validateStatus: (status) => status >= 200 && status < 300
-    });
+    const response = await axios.get(
+      `https://huggingface.co/api/models/${modelId}`,
+      {
+        headers: { "User-Agent": "eclaire-cli/1.0.0" },
+        timeout: 10000,
+        validateStatus: (status) => status >= 200 && status < 300,
+      },
+    );
     return response.data?.cardData?.base_model;
   } catch {
     return undefined;
@@ -95,7 +109,7 @@ async function fetchBaseModelId(modelId: string): Promise<string | undefined> {
  */
 async function fetchArchitecture(
   modelId: string,
-  baseModelId?: string
+  baseModelId?: string,
 ): Promise<ArchitectureInfo | undefined> {
   // Try the GGUF repo first
   let result = await tryFetchArchitectureFromRepo(modelId);
@@ -112,25 +126,33 @@ async function fetchArchitecture(
  * Fetch vision projector (mmproj) file size from HuggingFace
  * Prefers F16, then BF16, then any available mmproj file
  */
-async function fetchVisionInfo(modelId: string): Promise<VisionInfo | undefined> {
+async function fetchVisionInfo(
+  modelId: string,
+): Promise<VisionInfo | undefined> {
   try {
-    const response = await axios.get(`https://huggingface.co/api/models/${modelId}/tree/main`, {
-      headers: { 'User-Agent': 'eclaire-cli/1.0.0' },
-      timeout: 10000,
-      validateStatus: (status) => status >= 200 && status < 300
-    });
+    const response = await axios.get(
+      `https://huggingface.co/api/models/${modelId}/tree/main`,
+      {
+        headers: { "User-Agent": "eclaire-cli/1.0.0" },
+        timeout: 10000,
+        validateStatus: (status) => status >= 200 && status < 300,
+      },
+    );
 
     const files = (response.data as any) || [];
-    const mmprojFiles = files.filter((file: any) => file.path?.startsWith('mmproj-'));
+    const mmprojFiles = files.filter((file: any) =>
+      file.path?.startsWith("mmproj-"),
+    );
 
     if (mmprojFiles.length === 0) {
       return undefined;
     }
 
     // Prefer F16 as it's what llama-server uses by default
-    const preferredMmproj = mmprojFiles.find((f: any) => f.path === 'mmproj-F16.gguf')
-      || mmprojFiles.find((f: any) => f.path === 'mmproj-BF16.gguf')
-      || mmprojFiles[0];
+    const preferredMmproj =
+      mmprojFiles.find((f: any) => f.path === "mmproj-F16.gguf") ||
+      mmprojFiles.find((f: any) => f.path === "mmproj-BF16.gguf") ||
+      mmprojFiles[0];
 
     if (preferredMmproj?.size) {
       return { visionSizeBytes: preferredMmproj.size };
@@ -146,7 +168,7 @@ async function fetchVisionInfo(modelId: string): Promise<VisionInfo | undefined>
  * Extract HuggingFace model ID from source URL
  */
 function extractHFModelId(sourceUrl: string): string | undefined {
-  const match = sourceUrl.match(/huggingface\.co\/([^\/]+\/[^\/\?#]+)/);
+  const match = sourceUrl.match(/huggingface\.co\/([^/]+\/[^/?#]+)/);
   return match?.[1];
 }
 
@@ -154,51 +176,75 @@ export async function refreshCommand(modelId?: string): Promise<void> {
   try {
     // Get models to refresh
     const allModels = getModels();
-    const ggufModels = allModels.filter(m =>
-      m.model.source?.format === 'gguf' &&
-      m.model.source?.url?.includes('huggingface.co')
+    const ggufModels = allModels.filter(
+      (m) =>
+        m.model.source?.format === "gguf" &&
+        m.model.source?.url?.includes("huggingface.co"),
     );
 
     if (ggufModels.length === 0) {
-      console.log(colors.warning(`${icons.warning} No GGUF models from HuggingFace found`));
+      console.log(
+        colors.warning(
+          `${icons.warning} No GGUF models from HuggingFace found`,
+        ),
+      );
       return;
     }
 
     // Filter to specific model if provided
     let modelsToRefresh = ggufModels;
     if (modelId) {
-      modelsToRefresh = ggufModels.filter(m => m.id === modelId);
+      modelsToRefresh = ggufModels.filter((m) => m.id === modelId);
       if (modelsToRefresh.length === 0) {
-        console.log(colors.error(`${icons.error} Model '${modelId}' not found or is not a GGUF model from HuggingFace`));
+        console.log(
+          colors.error(
+            `${icons.error} Model '${modelId}' not found or is not a GGUF model from HuggingFace`,
+          ),
+        );
         process.exit(1);
       }
     }
 
     // Check if any models already have architecture data
-    const modelsWithArch = modelsToRefresh.filter(m => m.model.source.architecture);
+    const modelsWithArch = modelsToRefresh.filter(
+      (m) => m.model.source.architecture,
+    );
     if (modelsWithArch.length > 0) {
-      console.log(colors.dim(`\n${modelsWithArch.length} model(s) already have architecture data.`));
-      const { confirm } = await inquirer.prompt([{
-        type: 'confirm',
-        name: 'confirm',
-        message: 'Re-fetch and overwrite existing data?',
-        default: true
-      }]);
+      console.log(
+        colors.dim(
+          `\n${modelsWithArch.length} model(s) already have architecture data.`,
+        ),
+      );
+      const { confirm } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "confirm",
+          message: "Re-fetch and overwrite existing data?",
+          default: true,
+        },
+      ]);
       if (!confirm) {
-        console.log(colors.dim('Cancelled.'));
+        console.log(colors.dim("Cancelled."));
         return;
       }
     }
 
-    console.log(colors.header(`\n${icons.gear} Refreshing Model Architecture Info\n`));
-    console.log(colors.dim(`Found ${modelsToRefresh.length} GGUF model(s) to refresh\n`));
+    console.log(
+      colors.header(`\n${icons.gear} Refreshing Model Architecture Info\n`),
+    );
+    console.log(
+      colors.dim(`Found ${modelsToRefresh.length} GGUF model(s) to refresh\n`),
+    );
 
     let updated = 0;
     let skipped = 0;
     let failed = 0;
 
     for (const { id, model } of modelsToRefresh) {
-      const spinner = ora({ text: `Refreshing ${id}...`, color: 'cyan' }).start();
+      const spinner = ora({
+        text: `Refreshing ${id}...`,
+        color: "cyan",
+      }).start();
 
       try {
         const hfModelId = extractHFModelId(model.source.url);
@@ -224,13 +270,20 @@ export async function refreshCommand(modelId?: string): Promise<void> {
           layers: architecture.layers,
           kvHeads: architecture.kvHeads,
           headDim: architecture.headDim,
-          ...(architecture.slidingWindow && { slidingWindow: architecture.slidingWindow }),
-          ...(architecture.slidingWindowPattern && { slidingWindowPattern: architecture.slidingWindowPattern }),
+          ...(architecture.slidingWindow && {
+            slidingWindow: architecture.slidingWindow,
+          }),
+          ...(architecture.slidingWindowPattern && {
+            slidingWindowPattern: architecture.slidingWindowPattern,
+          }),
         };
 
         // Fetch vision info (mmproj file size) for vision models
-        const isVisionModel = model.capabilities?.modalities?.input?.includes('image');
-        const visionInfo = isVisionModel ? await fetchVisionInfo(hfModelId) : undefined;
+        const isVisionModel =
+          model.capabilities?.modalities?.input?.includes("image");
+        const visionInfo = isVisionModel
+          ? await fetchVisionInfo(hfModelId)
+          : undefined;
 
         // Update the model
         const updatedModel = {
@@ -239,18 +292,19 @@ export async function refreshCommand(modelId?: string): Promise<void> {
             ...model.source,
             architecture: archForStorage,
             ...(visionInfo && { visionSizeBytes: visionInfo.visionSizeBytes }),
-          }
+          },
         };
 
         // Also update contextWindow if we got it and current seems missing/wrong
         const currentContext = model.capabilities?.contextWindow;
-        const needsContextUpdate = architecture.maxPositionEmbeddings &&
+        const needsContextUpdate =
+          architecture.maxPositionEmbeddings &&
           (!currentContext || currentContext === 8192);
 
         if (needsContextUpdate) {
           updatedModel.capabilities = {
             ...model.capabilities,
-            contextWindow: architecture.maxPositionEmbeddings!
+            contextWindow: architecture.maxPositionEmbeddings!,
           };
         }
 
@@ -261,17 +315,18 @@ export async function refreshCommand(modelId?: string): Promise<void> {
         if (architecture.slidingWindow) {
           successMsg += `, SWA=${architecture.slidingWindow}`;
         }
-        successMsg += ')';
+        successMsg += ")";
         if (needsContextUpdate) {
           successMsg += ` + context: ${architecture.maxPositionEmbeddings!.toLocaleString()}`;
         }
         if (visionInfo) {
-          const visionMB = Math.round(visionInfo.visionSizeBytes / (1024 * 1024));
+          const visionMB = Math.round(
+            visionInfo.visionSizeBytes / (1024 * 1024),
+          );
           successMsg += ` + vision: ${visionMB} MB`;
         }
         spinner.succeed(successMsg);
         updated++;
-
       } catch (error: any) {
         spinner.fail(`${id}: ${error.message}`);
         failed++;
@@ -279,8 +334,8 @@ export async function refreshCommand(modelId?: string): Promise<void> {
     }
 
     // Summary
-    console.log('');
-    console.log(colors.subheader('Summary:'));
+    console.log("");
+    console.log(colors.subheader("Summary:"));
     if (updated > 0) {
       console.log(colors.success(`  ${icons.success} Updated: ${updated}`));
     }
@@ -292,13 +347,16 @@ export async function refreshCommand(modelId?: string): Promise<void> {
     }
 
     if (updated > 0) {
-      console.log('');
-      console.log(colors.dim('Model metadata has been updated.'));
-      console.log(colors.dim('Run `eclaire model list` to see updated estimates.'));
+      console.log("");
+      console.log(colors.dim("Model metadata has been updated."));
+      console.log(
+        colors.dim("Run `eclaire model list` to see updated estimates."),
+      );
     }
-
   } catch (error: any) {
-    console.log(colors.error(`${icons.error} Refresh failed: ${error.message}`));
+    console.log(
+      colors.error(`${icons.error} Refresh failed: ${error.message}`),
+    );
     process.exit(1);
   }
 }

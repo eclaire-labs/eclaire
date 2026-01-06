@@ -8,15 +8,15 @@
  *   OPENROUTER_API_KEY=xxx pnpm --filter @eclaire/ai test:integration:openrouter
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { callAIStream, LLMStreamParser } from "../../index.js";
 import {
-  skipIfNoIntegration,
-  initIntegrationAI,
-  resetIntegrationAI,
+  createCalculatorTool,
   createMinimalPrompt,
   createToolTriggerPrompt,
-  createCalculatorTool,
+  initIntegrationAI,
+  resetIntegrationAI,
+  skipIfNoIntegration,
 } from "./setup.js";
 
 /**
@@ -71,7 +71,7 @@ async function parseSSEStream(stream: ReadableStream<Uint8Array>): Promise<{
 
   // Get accumulated tool calls from parser state
   const accumulatedToolCalls = parser.getAccumulatedToolCalls();
-  const toolCalls = accumulatedToolCalls.map(tc => ({
+  const toolCalls = accumulatedToolCalls.map((tc) => ({
     id: tc.id,
     name: tc.functionName,
     arguments: tc.arguments,
@@ -97,7 +97,10 @@ describe("callAIStream integration", () => {
     it("returns a stream that emits content chunks", async () => {
       const messages = createMinimalPrompt();
 
-      const { stream, estimatedInputTokens } = await callAIStream(messages, "backend");
+      const { stream, estimatedInputTokens } = await callAIStream(
+        messages,
+        "backend",
+      );
 
       expect(stream).toBeInstanceOf(ReadableStream);
       expect(estimatedInputTokens).toBeGreaterThan(0);
@@ -129,7 +132,10 @@ describe("callAIStream integration", () => {
     it("streams content progressively", async () => {
       // Request a longer response to ensure multiple chunks
       const messages = [
-        { role: "user" as const, content: "Count from 1 to 10, one number per line." },
+        {
+          role: "user" as const,
+          content: "Count from 1 to 10, one number per line.",
+        },
       ];
 
       const { stream } = await callAIStream(messages, "backend");
@@ -184,7 +190,10 @@ describe("callAIStream integration", () => {
   describe("stream options", () => {
     it("respects maxTokens in streaming mode", async () => {
       const messages = [
-        { role: "user" as const, content: "Write a very long story about adventures." },
+        {
+          role: "user" as const,
+          content: "Write a very long story about adventures.",
+        },
       ];
 
       const { stream } = await callAIStream(messages, "backend", {

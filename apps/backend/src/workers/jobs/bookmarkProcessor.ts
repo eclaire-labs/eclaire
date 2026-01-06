@@ -1,7 +1,9 @@
+import type { JobContext } from "@eclaire/queue/core";
 import { type BrowserContext, chromium, type Page } from "patchright";
 import sharp from "sharp";
 import { Readable } from "stream";
-import type { JobContext } from "@eclaire/queue/core";
+import { createChildLogger } from "../../lib/logger.js";
+import { buildKey, getStorage } from "../../lib/storage/index.js";
 import { config } from "../config.js";
 import {
   type BookmarkHandlerType,
@@ -17,8 +19,6 @@ import {
 import { processRedditApiBookmark } from "../lib/bookmarks/reddit-api.js";
 import { domainRateLimiter } from "../lib/domainRateLimiter.js";
 import { createRateLimitError } from "../lib/job-utils.js";
-import { createChildLogger } from "../../lib/logger.js";
-import { getStorage, buildKey } from "../../lib/storage/index.js";
 import { TimeoutError, withTimeout } from "../lib/utils/timeout.js";
 
 const logger = createChildLogger("bookmark-processor");
@@ -29,9 +29,7 @@ validateApiCredentials();
 /**
  * Regular bookmark processing handler using ctx methods.
  */
-async function processRegularBookmarkJob(
-  ctx: JobContext<BookmarkJobData>,
-) {
+async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
   const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with REGULAR handler");
   let browser: any = null;
@@ -57,7 +55,7 @@ async function processRegularBookmarkJob(
       browser = await withTimeout(
         chromium.launch({
           headless: true,
-          args: ['--use-mock-keychain'],
+          args: ["--use-mock-keychain"],
         }),
         config.timeouts.browserContext,
         "Browser launch",
@@ -176,8 +174,15 @@ async function processRegularBookmarkJob(
         .resize(400, 400, { fit: "inside", withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toBuffer();
-      const thumbnailKey = buildKey(userId, "bookmarks", bookmarkId, "thumbnail.jpg");
-      await storage.writeBuffer(thumbnailKey, thumbnailBuffer, { contentType: "image/jpeg" });
+      const thumbnailKey = buildKey(
+        userId,
+        "bookmarks",
+        bookmarkId,
+        "thumbnail.jpg",
+      );
+      await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
+        contentType: "image/jpeg",
+      });
       allArtifacts.thumbnailStorageId = thumbnailKey;
 
       // Generate screenshot (higher resolution, 1920x1440, 90% quality)
@@ -185,8 +190,15 @@ async function processRegularBookmarkJob(
         .resize(1920, 1440, { fit: "inside", withoutEnlargement: true })
         .jpeg({ quality: 90 })
         .toBuffer();
-      const screenshotKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot.jpg");
-      await storage.writeBuffer(screenshotKey, screenshotBuffer, { contentType: "image/jpeg" });
+      const screenshotKey = buildKey(
+        userId,
+        "bookmarks",
+        bookmarkId,
+        "screenshot.jpg",
+      );
+      await storage.writeBuffer(screenshotKey, screenshotBuffer, {
+        contentType: "image/jpeg",
+      });
       allArtifacts.screenshotDesktopStorageId = screenshotKey;
     } catch (screenshotError: any) {
       const errorMessage =
@@ -222,8 +234,15 @@ async function processRegularBookmarkJob(
         "Full page screenshot completed successfully.",
       );
       const storageForFullPage = getStorage();
-      const fullpageKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot-fullpage.png");
-      await storageForFullPage.writeBuffer(fullpageKey, ssFullPageBuffer, { contentType: "image/png" });
+      const fullpageKey = buildKey(
+        userId,
+        "bookmarks",
+        bookmarkId,
+        "screenshot-fullpage.png",
+      );
+      await storageForFullPage.writeBuffer(fullpageKey, ssFullPageBuffer, {
+        contentType: "image/png",
+      });
       allArtifacts.screenshotFullPageStorageId = fullpageKey;
     } catch (fullPageError: any) {
       const errorMessage =
@@ -255,8 +274,15 @@ async function processRegularBookmarkJob(
       );
       logger.debug({ bookmarkId }, "Mobile screenshot completed successfully.");
       const storageForMobile = getStorage();
-      const mobileKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot-mobile.png");
-      await storageForMobile.writeBuffer(mobileKey, ssMobileBuffer, { contentType: "image/png" });
+      const mobileKey = buildKey(
+        userId,
+        "bookmarks",
+        bookmarkId,
+        "screenshot-mobile.png",
+      );
+      await storageForMobile.writeBuffer(mobileKey, ssMobileBuffer, {
+        contentType: "image/png",
+      });
       allArtifacts.screenshotMobileStorageId = mobileKey;
     } catch (mobileError: any) {
       const errorMessage =
@@ -289,7 +315,9 @@ async function processRegularBookmarkJob(
       logger.debug({ bookmarkId }, "PDF generation completed successfully.");
       const storageForPdf = getStorage();
       const pdfKey = buildKey(userId, "bookmarks", bookmarkId, "content.pdf");
-      await storageForPdf.writeBuffer(pdfKey, pdfBuffer, { contentType: "application/pdf" });
+      await storageForPdf.writeBuffer(pdfKey, pdfBuffer, {
+        contentType: "application/pdf",
+      });
       allArtifacts.pdfStorageId = pdfKey;
     } catch (pdfError: any) {
       const errorMessage =
@@ -310,40 +338,65 @@ async function processRegularBookmarkJob(
     currentStage = "favicon_extraction";
     let faviconStorageId: string | null = null;
     try {
-      logger.debug({ bookmarkId }, "Attempting favicon extraction via Playwright...");
+      logger.debug(
+        { bookmarkId },
+        "Attempting favicon extraction via Playwright...",
+      );
       const faviconHref = await page.evaluate(() => {
-        const link = document.querySelector("link[rel='icon']") ||
-                     document.querySelector("link[rel='shortcut icon']");
-        return link?.getAttribute('href') || null;
+        const link =
+          document.querySelector("link[rel='icon']") ||
+          document.querySelector("link[rel='shortcut icon']");
+        return link?.getAttribute("href") || null;
       });
 
       if (faviconHref) {
         const absoluteFaviconUrl = new URL(faviconHref, page.url()).href;
-        logger.debug({ bookmarkId, faviconUrl: absoluteFaviconUrl }, "Found favicon, fetching via Playwright...");
+        logger.debug(
+          { bookmarkId, faviconUrl: absoluteFaviconUrl },
+          "Found favicon, fetching via Playwright...",
+        );
         const faviconResponse = await page.request.get(absoluteFaviconUrl);
         if (faviconResponse.ok()) {
           const faviconBuffer = await faviconResponse.body();
           if (faviconBuffer.length > 0) {
-            const contentType = faviconResponse.headers()['content-type'] || 'image/x-icon';
+            const contentType =
+              faviconResponse.headers()["content-type"] || "image/x-icon";
             // Determine file extension from content type
-            let ext = '.ico';
-            if (contentType.includes('svg')) ext = '.svg';
-            else if (contentType.includes('png')) ext = '.png';
-            else if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = '.jpg';
-            else if (contentType.includes('gif')) ext = '.gif';
+            let ext = ".ico";
+            if (contentType.includes("svg")) ext = ".svg";
+            else if (contentType.includes("png")) ext = ".png";
+            else if (
+              contentType.includes("jpeg") ||
+              contentType.includes("jpg")
+            )
+              ext = ".jpg";
+            else if (contentType.includes("gif")) ext = ".gif";
 
             const storage = getStorage();
-            const faviconKey = buildKey(userId, "bookmarks", bookmarkId, `favicon${ext}`);
-            await storage.writeBuffer(faviconKey, faviconBuffer, { contentType });
+            const faviconKey = buildKey(
+              userId,
+              "bookmarks",
+              bookmarkId,
+              `favicon${ext}`,
+            );
+            await storage.writeBuffer(faviconKey, faviconBuffer, {
+              contentType,
+            });
             faviconStorageId = faviconKey;
-            logger.debug({ bookmarkId, faviconKey }, "Favicon saved successfully");
+            logger.debug(
+              { bookmarkId, faviconKey },
+              "Favicon saved successfully",
+            );
           }
         }
       } else {
         logger.debug({ bookmarkId }, "No favicon link found in page");
       }
     } catch (faviconError: any) {
-      logger.debug({ bookmarkId, error: faviconError.message }, "Could not fetch favicon via Playwright");
+      logger.debug(
+        { bookmarkId, error: faviconError.message },
+        "Could not fetch favicon via Playwright",
+      );
     }
 
     // Content extraction with error handling
@@ -474,19 +527,23 @@ async function processRegularBookmarkJob(
  * Main job processor entry point with domain-aware rate limiting and handler routing.
  * Now uses JobContext for stage tracking and progress reporting.
  */
-async function processBookmarkJob(
-  ctx: JobContext<BookmarkJobData>,
-) {
+async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
   const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
 
   // Validate required job data
   if (!bookmarkId || !originalUrl || !userId) {
     logger.error(
-      { jobId: ctx.job.id, bookmarkId, originalUrl, userId, jobData: ctx.job.data },
-      "Missing required job data - cannot process bookmark"
+      {
+        jobId: ctx.job.id,
+        bookmarkId,
+        originalUrl,
+        userId,
+        jobData: ctx.job.data,
+      },
+      "Missing required job data - cannot process bookmark",
     );
     throw new Error(
-      `Missing required job data: bookmarkId=${bookmarkId}, url=${originalUrl}, userId=${userId}`
+      `Missing required job data: bookmarkId=${bookmarkId}, url=${originalUrl}, userId=${userId}`,
     );
   }
 
@@ -540,11 +597,7 @@ async function processBookmarkJob(
     domainRateLimiter.markDomainProcessing(originalUrl, jobId);
 
     try {
-      await ctx.initStages([
-        "validation",
-        "content_extraction",
-        "ai_tagging",
-      ]);
+      await ctx.initStages(["validation", "content_extraction", "ai_tagging"]);
 
       const handlerType: BookmarkHandlerType =
         (availability.rule?.handler as BookmarkHandlerType) ||

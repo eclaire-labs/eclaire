@@ -4,9 +4,12 @@
  * Handles loading and saving conversation messages for the agent.
  */
 
-import type { AIMessage } from "@eclaire/ai";
-import type { AgentResult } from "@eclaire/ai";
-import type { ToolCallSummaryOutput } from "@eclaire/ai";
+import type {
+  AgentResult,
+  AIMessage,
+  ToolCallSummaryOutput,
+} from "@eclaire/ai";
+import { createChildLogger } from "../logger.js";
 import {
   type ConversationWithMessages,
   createConversation,
@@ -15,7 +18,6 @@ import {
   updateConversationActivity,
 } from "../services/conversations.js";
 import { buildAIMessageArray, createMessage } from "../services/messages.js";
-import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("conversation-adapter");
 
@@ -33,7 +35,10 @@ export async function loadConversation(
   conversationId: string,
   userId: string,
 ): Promise<ConversationWithMessages> {
-  const conversation = await getConversationWithMessages(conversationId, userId);
+  const conversation = await getConversationWithMessages(
+    conversationId,
+    userId,
+  );
 
   if (!conversation) {
     throw new ConversationNotFoundError("Conversation not found");
@@ -50,17 +55,16 @@ export async function loadConversationMessages(
   userId: string,
   systemPrompt?: string,
 ): Promise<AIMessage[]> {
-  const conversation = await getConversationWithMessages(conversationId, userId);
+  const conversation = await getConversationWithMessages(
+    conversationId,
+    userId,
+  );
 
   if (!conversation) {
     throw new ConversationNotFoundError("Conversation not found");
   }
 
-  return buildAIMessageArray(
-    conversation.id,
-    !!systemPrompt,
-    systemPrompt,
-  );
+  return buildAIMessageArray(conversation.id, !!systemPrompt, systemPrompt);
 }
 
 export interface SaveConversationOptions {
@@ -107,7 +111,10 @@ export async function saveConversationMessages(
       role: "assistant",
       content: result.text,
       thinkingContent: result.thinking,
-      toolCalls: result.toolCallSummaries.length > 0 ? result.toolCallSummaries : undefined,
+      toolCalls:
+        result.toolCallSummaries.length > 0
+          ? result.toolCallSummaries
+          : undefined,
       metadata: { requestId },
     });
 
@@ -134,7 +141,10 @@ export async function saveConversationMessages(
     role: "assistant",
     content: result.text,
     thinkingContent: result.thinking,
-    toolCalls: result.toolCallSummaries.length > 0 ? result.toolCallSummaries : undefined,
+    toolCalls:
+      result.toolCallSummaries.length > 0
+        ? result.toolCallSummaries
+        : undefined,
     metadata: { requestId },
   });
 

@@ -6,22 +6,22 @@
 
 // PostgreSQL exports
 export {
+  type NewQueueJobPg,
+  type NewQueueSchedulePg,
+  type QueueJobPg,
+  type QueueSchedulePg,
   queueJobsPg,
   queueSchedulesPg,
-  type QueueJobPg,
-  type NewQueueJobPg,
-  type QueueSchedulePg,
-  type NewQueueSchedulePg,
 } from "./postgres.js";
 
 // SQLite exports
 export {
+  type NewQueueJobSqlite,
+  type NewQueueScheduleSqlite,
+  type QueueJobSqlite,
+  type QueueScheduleSqlite,
   queueJobsSqlite,
   queueSchedulesSqlite,
-  type QueueJobSqlite,
-  type NewQueueJobSqlite,
-  type QueueScheduleSqlite,
-  type NewQueueScheduleSqlite,
 } from "./sqlite.js";
 
 // Import for getQueueSchema
@@ -46,4 +46,6 @@ export function getQueueSchema(dbType: "postgres" | "sqlite") {
 
 // Union types for generic use
 export type QueueJobsTable = typeof queueJobsPg | typeof queueJobsSqlite;
-export type QueueSchedulesTable = typeof queueSchedulesPg | typeof queueSchedulesSqlite;
+export type QueueSchedulesTable =
+  | typeof queueSchedulesPg
+  | typeof queueSchedulesSqlite;

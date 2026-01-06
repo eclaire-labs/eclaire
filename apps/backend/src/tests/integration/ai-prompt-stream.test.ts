@@ -936,66 +936,70 @@ describe("Streaming Prompt API Integration Tests", { timeout: 60000 }, () => {
     );
   });
 
-  it("POST /api/prompt/stream - markdown vs JSON distinction test", { timeout: 120000 }, async () => {
-    await delay(200);
+  it(
+    "POST /api/prompt/stream - markdown vs JSON distinction test",
+    { timeout: 120000 },
+    async () => {
+      await delay(200);
 
-    // Ask for something that should include legitimate code examples
-    const promptData = {
-      prompt:
-        "Show me how to handle JSON data in JavaScript with code examples",
-      deviceInfo: {
-        dateTime: new Date().toISOString(),
-        timeZone: "America/New_York",
-      },
-    };
+      // Ask for something that should include legitimate code examples
+      const promptData = {
+        prompt:
+          "Show me how to handle JSON data in JavaScript with code examples",
+        deviceInfo: {
+          dateTime: new Date().toISOString(),
+          timeZone: "America/New_York",
+        },
+      };
 
-    const response = await loggedFetch(`${BASE_URL}/prompt/stream`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${TEST_API_KEY}`,
-      },
-      body: JSON.stringify(promptData),
-    });
+      const response = await loggedFetch(`${BASE_URL}/prompt/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${TEST_API_KEY}`,
+        },
+        body: JSON.stringify(promptData),
+      });
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toBe("text/event-stream");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("text/event-stream");
 
-    const events = await parseSSEStream(response);
+      const events = await parseSSEStream(response);
 
-    console.log(
-      "\n🔍 MARKDOWN vs JSON TEST: Validating legitimate markdown is preserved...",
-    );
+      console.log(
+        "\n🔍 MARKDOWN vs JSON TEST: Validating legitimate markdown is preserved...",
+      );
 
-    // Validate overall integrity
-    validateStreamingIntegrity(events);
+      // Validate overall integrity
+      validateStreamingIntegrity(events);
 
-    const textContent = getCombinedTextContent(events);
-    expect(textContent.length).toBeGreaterThan(0);
+      const textContent = getCombinedTextContent(events);
+      expect(textContent.length).toBeGreaterThan(0);
 
-    // This test should allow legitimate code examples in markdown
-    // but still catch tool call JSON patterns
-    console.log("📄 Text content preview:", textContent.substring(0, 500));
+      // This test should allow legitimate code examples in markdown
+      // but still catch tool call JSON patterns
+      console.log("📄 Text content preview:", textContent.substring(0, 500));
 
-    // Should contain JavaScript/JSON related content
-    const textLower = textContent.toLowerCase();
-    const hasCodeContent =
-      textLower.includes("javascript") ||
-      textLower.includes("json") ||
-      textLower.includes("parse") ||
-      textLower.includes("code");
-    expect(hasCodeContent).toBe(true);
+      // Should contain JavaScript/JSON related content
+      const textLower = textContent.toLowerCase();
+      const hasCodeContent =
+        textLower.includes("javascript") ||
+        textLower.includes("json") ||
+        textLower.includes("parse") ||
+        textLower.includes("code");
+      expect(hasCodeContent).toBe(true);
 
-    // Legitimate code examples are OK, but tool call patterns should not be present
-    // Note: This validates our pattern detection is specific enough
-    expect(textContent).not.toMatch(/\[\s*\{\s*"functionName"\s*:/);
-    expect(textContent).not.toMatch(/\{\s*"functionName"\s*:\s*"[^"]+"/);
-    expect(textContent).not.toMatch(/"arguments"\s*:\s*\{[^}]*"limit"/); // Tool-specific pattern
+      // Legitimate code examples are OK, but tool call patterns should not be present
+      // Note: This validates our pattern detection is specific enough
+      expect(textContent).not.toMatch(/\[\s*\{\s*"functionName"\s*:/);
+      expect(textContent).not.toMatch(/\{\s*"functionName"\s*:\s*"[^"]+"/);
+      expect(textContent).not.toMatch(/"arguments"\s*:\s*\{[^}]*"limit"/); // Tool-specific pattern
 
-    console.log(
-      "✅ MARKDOWN vs JSON TEST: Legitimate code content preserved, tool JSON patterns absent",
-    );
-  });
+      console.log(
+        "✅ MARKDOWN vs JSON TEST: Legitimate code content preserved, tool JSON patterns absent",
+      );
+    },
+  );
 
   it("POST /api/prompt/stream - event sequencing and content separation test", async () => {
     await delay(200);

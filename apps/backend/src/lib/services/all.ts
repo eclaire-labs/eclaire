@@ -1,7 +1,6 @@
 // lib/services/all.ts
 import { fileTypeFromBuffer } from "file-type";
 import isUrl from "is-url";
-import { createChildLogger } from "../logger.js";
 import { ASSET_TYPE } from "../../types/assets.js";
 import {
   BOOKMARK_MIMES,
@@ -9,10 +8,20 @@ import {
   NOTE_MIMES,
   PHOTO_MIMES,
 } from "../../types/mime-types.js";
-import { countBookmarks, createBookmarkAndQueueJob, findBookmarks } from "./bookmarks.js";
+import { createChildLogger } from "../logger.js";
+import {
+  countBookmarks,
+  createBookmarkAndQueueJob,
+  findBookmarks,
+} from "./bookmarks.js";
 import { countDocuments, createDocument, findDocuments } from "./documents.js";
 import { countNotes, createNoteEntry, findNotes } from "./notes.js";
-import { countPhotos, createPhoto, extractAndGeocode, findPhotos } from "./photos.js";
+import {
+  countPhotos,
+  createPhoto,
+  extractAndGeocode,
+  findPhotos,
+} from "./photos.js";
 import { countTasks, createTask, findTasks } from "./tasks.js";
 
 const logger = createChildLogger("services:all");
@@ -32,7 +41,8 @@ export async function detectAndVerifyMimeType(
 
   // Special handling for SVG files that might be detected as application/xml
   if (
-    (verifiedMimeType === "application/xml" || verifiedMimeType === "text/xml") &&
+    (verifiedMimeType === "application/xml" ||
+      verifiedMimeType === "text/xml") &&
     filename
   ) {
     if (filename.toLowerCase().endsWith(".svg")) {
@@ -90,7 +100,15 @@ type CreateContentResult =
 export async function classifyAndCreateContent(
   payload: CreateContentPayload,
 ): Promise<CreateContentResult> {
-  const { contentBuffer, mimeType, metadata, filename, userId, userAgent, requestId } = payload;
+  const {
+    contentBuffer,
+    mimeType,
+    metadata,
+    filename,
+    userId,
+    userAgent,
+    requestId,
+  } = payload;
   const contentString = contentBuffer.toString("utf-8").trim();
 
   const servicePayload = {
@@ -106,7 +124,11 @@ export async function classifyAndCreateContent(
       case ASSET_TYPE.BOOKMARK: {
         const url = metadata.url || contentString;
         if (!isLaxUrl(url)) {
-          return { success: false, error: "Invalid URL for bookmark", statusCode: 400 };
+          return {
+            success: false,
+            error: "Invalid URL for bookmark",
+            statusCode: 400,
+          };
         }
         const result = await createBookmarkAndQueueJob({
           url: url,
@@ -115,22 +137,44 @@ export async function classifyAndCreateContent(
           userAgent: userAgent,
         });
         if (!result.success) {
-          return { success: false, error: result.error || "Failed to create bookmark", statusCode: 500 };
+          return {
+            success: false,
+            error: result.error || "Failed to create bookmark",
+            statusCode: 500,
+          };
         }
-        logger.info({ requestId, bookmarkId: result.bookmark.id, rule: "Rule 1 (explicit assetType)" }, "Bookmark created");
-        return { success: true, result: result.bookmark, assetType: "bookmark" };
+        logger.info(
+          {
+            requestId,
+            bookmarkId: result.bookmark.id,
+            rule: "Rule 1 (explicit assetType)",
+          },
+          "Bookmark created",
+        );
+        return {
+          success: true,
+          result: result.bookmark,
+          assetType: "bookmark",
+        };
       }
       case ASSET_TYPE.NOTE: {
         const result = await createNoteEntry(
           { ...servicePayload, content: contentString },
           userId,
         );
-        logger.info({ requestId, noteId: result.id, rule: "Rule 1 (explicit assetType)" }, "Note created");
+        logger.info(
+          { requestId, noteId: result.id, rule: "Rule 1 (explicit assetType)" },
+          "Note created",
+        );
         return { success: true, result, assetType: "note" };
       }
       case ASSET_TYPE.PHOTO: {
         if (!PHOTO_MIMES.includes(mimeType)) {
-          return { success: false, error: "Content is not a valid photo format.", statusCode: 400 };
+          return {
+            success: false,
+            error: "Content is not a valid photo format.",
+            statusCode: 400,
+          };
         }
         const extractedMetadata = await extractAndGeocode(contentBuffer);
         const result = await createPhoto(
@@ -138,11 +182,21 @@ export async function classifyAndCreateContent(
             ...servicePayload,
             content: contentBuffer,
             extractedMetadata,
-            metadata: { ...metadata, originalFilename: metadata.originalFilename || filename },
+            metadata: {
+              ...metadata,
+              originalFilename: metadata.originalFilename || filename,
+            },
           },
           userId,
         );
-        logger.info({ requestId, photoId: result.id, rule: "Rule 1 (explicit assetType)" }, "Photo created");
+        logger.info(
+          {
+            requestId,
+            photoId: result.id,
+            rule: "Rule 1 (explicit assetType)",
+          },
+          "Photo created",
+        );
         return { success: true, result, assetType: "photo" };
       }
       case ASSET_TYPE.DOCUMENT: {
@@ -150,20 +204,37 @@ export async function classifyAndCreateContent(
           {
             ...servicePayload,
             content: contentBuffer,
-            metadata: { ...metadata, originalFilename: metadata.originalFilename || filename },
+            metadata: {
+              ...metadata,
+              originalFilename: metadata.originalFilename || filename,
+            },
           },
           userId,
         );
-        logger.info({ requestId, documentId: result.id, rule: "Rule 1 (explicit assetType)" }, "Document created");
+        logger.info(
+          {
+            requestId,
+            documentId: result.id,
+            rule: "Rule 1 (explicit assetType)",
+          },
+          "Document created",
+        );
         return { success: true, result, assetType: "document" };
       }
       case ASSET_TYPE.TASK: {
         const taskData = JSON.parse(contentString);
         if (!taskData.title) {
-          return { success: false, error: "Task title is required", statusCode: 400 };
+          return {
+            success: false,
+            error: "Task title is required",
+            statusCode: 400,
+          };
         }
         const result = await createTask(taskData, userId);
-        logger.info({ requestId, taskId: result.id, rule: "Rule 1 (explicit assetType)" }, "Task created");
+        logger.info(
+          { requestId, taskId: result.id, rule: "Rule 1 (explicit assetType)" },
+          "Task created",
+        );
         return { success: true, result, assetType: "task" };
       }
     }
@@ -178,14 +249,24 @@ export async function classifyAndCreateContent(
       userAgent: userAgent,
     });
     if (!result.success) {
-      return { success: false, error: result.error || "Failed to create bookmark", statusCode: 500 };
+      return {
+        success: false,
+        error: result.error || "Failed to create bookmark",
+        statusCode: 500,
+      };
     }
-    logger.info({ requestId, bookmarkId: result.bookmark.id, rule: "Rule 2 (URI list)" }, "Bookmark created");
+    logger.info(
+      { requestId, bookmarkId: result.bookmark.id, rule: "Rule 2 (URI list)" },
+      "Bookmark created",
+    );
     return { success: true, result: result.bookmark, assetType: "bookmark" };
   }
 
   // Rule 3: Text content that is a valid URL -> Bookmarks
-  if (BOOKMARK_MIMES.URL_IN_TEXT.includes(mimeType) && isLaxUrl(contentString)) {
+  if (
+    BOOKMARK_MIMES.URL_IN_TEXT.includes(mimeType) &&
+    isLaxUrl(contentString)
+  ) {
     const result = await createBookmarkAndQueueJob({
       url: contentString,
       userId: userId,
@@ -193,9 +274,16 @@ export async function classifyAndCreateContent(
       userAgent: userAgent,
     });
     if (!result.success) {
-      return { success: false, error: result.error || "Failed to create bookmark", statusCode: 500 };
+      return {
+        success: false,
+        error: result.error || "Failed to create bookmark",
+        statusCode: 500,
+      };
     }
-    logger.info({ requestId, bookmarkId: result.bookmark.id, rule: "Rule 3 (text URL)" }, "Bookmark created");
+    logger.info(
+      { requestId, bookmarkId: result.bookmark.id, rule: "Rule 3 (text URL)" },
+      "Bookmark created",
+    );
     return { success: true, result: result.bookmark, assetType: "bookmark" };
   }
 
@@ -205,7 +293,10 @@ export async function classifyAndCreateContent(
       { ...servicePayload, content: contentString },
       userId,
     );
-    logger.info({ requestId, noteId: result.id, rule: "Rule 4 (MIME-based)" }, "Note created");
+    logger.info(
+      { requestId, noteId: result.id, rule: "Rule 4 (MIME-based)" },
+      "Note created",
+    );
     return { success: true, result, assetType: "note" };
   }
 
@@ -217,25 +308,40 @@ export async function classifyAndCreateContent(
         ...servicePayload,
         content: contentBuffer,
         extractedMetadata,
-        metadata: { ...metadata, originalFilename: metadata.originalFilename || filename },
+        metadata: {
+          ...metadata,
+          originalFilename: metadata.originalFilename || filename,
+        },
       },
       userId,
     );
-    logger.info({ requestId, photoId: result.id, rule: "Rule 5 (MIME-based)" }, "Photo created");
+    logger.info(
+      { requestId, photoId: result.id, rule: "Rule 5 (MIME-based)" },
+      "Photo created",
+    );
     return { success: true, result, assetType: "photo" };
   }
 
   // Rule 6: Document MIME types -> Documents
-  if (DOCUMENT_MIMES.SET.has(mimeType) || mimeType.startsWith(DOCUMENT_MIMES.OPENXML_PREFIX)) {
+  if (
+    DOCUMENT_MIMES.SET.has(mimeType) ||
+    mimeType.startsWith(DOCUMENT_MIMES.OPENXML_PREFIX)
+  ) {
     const result = await createDocument(
       {
         ...servicePayload,
         content: contentBuffer,
-        metadata: { ...metadata, originalFilename: metadata.originalFilename || filename },
+        metadata: {
+          ...metadata,
+          originalFilename: metadata.originalFilename || filename,
+        },
       },
       userId,
     );
-    logger.info({ requestId, documentId: result.id, rule: "Rule 6 (MIME-based)" }, "Document created");
+    logger.info(
+      { requestId, documentId: result.id, rule: "Rule 6 (MIME-based)" },
+      "Document created",
+    );
     return { success: true, result, assetType: "document" };
   }
 

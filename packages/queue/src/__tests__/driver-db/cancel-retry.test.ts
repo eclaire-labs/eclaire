@@ -4,21 +4,18 @@
  * Tests job cancellation and manual retry functionality.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import {
-  DB_TEST_CONFIGS,
-  TEST_TIMEOUTS,
-  createQueueTestDatabase,
-  eventually,
-  createTestLogger,
-  type QueueTestDatabase,
-} from "../testkit/index.js";
-import {
-  createDbQueueClient,
-  createDbWorker,
-} from "../../driver-db/index.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PermanentError } from "../../core/errors.js";
-import type { QueueClient, Worker, Job } from "../../core/types.js";
+import type { Job, QueueClient, Worker } from "../../core/types.js";
+import { createDbQueueClient, createDbWorker } from "../../driver-db/index.js";
+import {
+  createQueueTestDatabase,
+  createTestLogger,
+  DB_TEST_CONFIGS,
+  eventually,
+  type QueueTestDatabase,
+  TEST_TIMEOUTS,
+} from "../testkit/index.js";
 
 describe.each(DB_TEST_CONFIGS)("Cancel and Retry ($label)", ({ dbType }) => {
   let testDb: QueueTestDatabase;

@@ -4,24 +4,24 @@
  * Tests for configuration loading, caching, and CRUD operations.
  */
 
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  initAI,
-  resetAI,
-  loadProvidersConfiguration,
-  loadModelsConfiguration,
-  loadSelectionConfiguration,
   clearConfigCaches,
   getActiveModelIdForContext,
   getModelConfigById,
+  getModels,
   getProviderConfig,
   getProviders,
-  getModels,
+  initAI,
+  loadModelsConfiguration,
+  loadProvidersConfiguration,
+  loadSelectionConfiguration,
+  resetAI,
 } from "../index.js";
 import {
-  getFixturesPath,
   createMockLoggerFactory,
   createTempDir,
+  getFixturesPath,
   writeTempJson,
 } from "./setup.js";
 

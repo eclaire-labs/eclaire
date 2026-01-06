@@ -8,20 +8,28 @@
  * For multi-process deployments, use Postgres NOTIFY instead.
  */
 
-import { createInMemoryNotify, type NotifyEmitter, type NotifyListener } from "@eclaire/queue/driver-db";
+import {
+  createInMemoryNotify,
+  type NotifyEmitter,
+  type NotifyListener,
+} from "@eclaire/queue/driver-db";
 import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("queue-notify");
 
 // Singleton notify pair - shared across adapter and workers
-let notifyPair: { emitter: NotifyEmitter; listener: NotifyListener } | null = null;
+let notifyPair: { emitter: NotifyEmitter; listener: NotifyListener } | null =
+  null;
 
 /**
  * Get or create the shared notify pair
  *
  * This is safe to call multiple times - it returns the same instance.
  */
-export function getNotifyPair(): { emitter: NotifyEmitter; listener: NotifyListener } {
+export function getNotifyPair(): {
+  emitter: NotifyEmitter;
+  listener: NotifyListener;
+} {
   if (!notifyPair) {
     notifyPair = createInMemoryNotify({ logger });
     logger.info({}, "Created in-memory notify pair for instant worker wakeup");

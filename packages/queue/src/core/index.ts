@@ -27,116 +27,97 @@
  * ```
  */
 
-// Re-export all types
-export type {
-  // Job types
-  Job,
-  JobStatus,
-  JobOptions,
-  BackoffStrategy,
-
-  // Multi-stage progress types
-  JobStage,
-  JobStageStatus,
-  JobEventCallbacks,
-
-  // Queue client
-  QueueClient,
-  QueueStats,
-
-  // Worker types
-  Worker,
-  WorkerFactory,
-  WorkerOptions,
-  JobContext,
-  JobHandler,
-
-  // Scheduler types
-  Scheduler,
-  ScheduleConfig,
-
-  // Notification types
-  NotifyListener,
-  NotifyEmitter,
-
-  // Logger type
-  QueueLogger,
-
-  // Config types
-  DriverConfig,
-} from "./types.js";
-
 // Re-export all errors
 export {
+  ConnectionError,
+  createRateLimitError,
+  // Helper functions
+  getRateLimitDelay,
+  isPermanentError,
+  isQueueError,
+  // Type guards
+  isRateLimitError,
+  isRetryableError,
+  JobNotFoundError,
+  JobTimeoutError,
+  PermanentError,
   // Error classes
   QueueError,
   RateLimitError,
   RetryableError,
-  PermanentError,
-  JobTimeoutError,
-  JobNotFoundError,
-  ConnectionError,
-
-  // Type guards
-  isRateLimitError,
-  isRetryableError,
-  isPermanentError,
-  isQueueError,
-
-  // Helper functions
-  getRateLimitDelay,
-  createRateLimitError,
 } from "./errors.js";
-
+// Re-export progress utilities
+export {
+  addStagesToList,
+  areAllStagesCompleted,
+  // Progress calculation
+  calculateOverallProgress,
+  completeStageInList,
+  failStageInList,
+  findStage,
+  // Stage queries
+  getCurrentStageName,
+  hasFailedStage,
+  // Stage initialization
+  initializeStages,
+  startStageInList,
+  // Stage operations
+  updateStageInList,
+  updateStageProgressInList,
+} from "./progress.js";
+// Re-export all types
+export type {
+  BackoffStrategy,
+  // Config types
+  DriverConfig,
+  // Job types
+  Job,
+  JobContext,
+  JobEventCallbacks,
+  JobHandler,
+  JobOptions,
+  // Multi-stage progress types
+  JobStage,
+  JobStageStatus,
+  JobStatus,
+  NotifyEmitter,
+  // Notification types
+  NotifyListener,
+  // Queue client
+  QueueClient,
+  // Logger type
+  QueueLogger,
+  QueueStats,
+  ScheduleConfig,
+  // Scheduler types
+  Scheduler,
+  // Worker types
+  Worker,
+  WorkerFactory,
+  WorkerOptions,
+} from "./types.js";
 // Re-export all utilities
 export {
+  addJitter,
+  calculateBackoff,
+  calculateBackoffWithJitter,
+  createDeferred,
+  createWorkerId,
   // Backoff
   DEFAULT_BACKOFF,
-  calculateBackoff,
-  addJitter,
-  calculateBackoffWithJitter,
-
   // ID generation
   generateJobId,
   generateScheduleId,
-  createWorkerId,
-
   // Time utilities
   getFutureDate,
-  isInPast,
-  isInFuture,
   getMillisecondsUntil,
-
+  isInFuture,
+  isInPast,
   // Cron utilities
   isValidCronExpression,
-
+  retry,
   // Misc utilities
   sleep,
-  createDeferred,
   timeout,
   withTimeout,
-  retry,
 } from "./utils.js";
-
-// Re-export progress utilities
-export {
-  // Stage initialization
-  initializeStages,
-
-  // Progress calculation
-  calculateOverallProgress,
-
-  // Stage operations
-  updateStageInList,
-  findStage,
-  startStageInList,
-  completeStageInList,
-  failStageInList,
-  updateStageProgressInList,
-  addStagesToList,
-
-  // Stage queries
-  getCurrentStageName,
-  areAllStagesCompleted,
-  hasFailedStage,
-} from "./progress.js";

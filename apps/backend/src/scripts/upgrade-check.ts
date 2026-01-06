@@ -16,13 +16,13 @@
 
 // Global error handlers - must be set up before any async code
 process.on("unhandledRejection", (reason) => {
-	console.error("Upgrade check failed (unhandled rejection):", reason);
-	process.exit(1);
+  console.error("Upgrade check failed (unhandled rejection):", reason);
+  process.exit(1);
 });
 
 process.on("uncaughtException", (error) => {
-	console.error("Upgrade check failed (uncaught exception):", error);
-	process.exit(1);
+  console.error("Upgrade check failed (uncaught exception):", error);
+  process.exit(1);
 });
 
 // Load environment first
@@ -34,59 +34,61 @@ process.env.LOG_LEVEL = "error";
 import { checkUpgradeStatus } from "../lib/upgrade-check.js";
 
 async function main() {
-	const quiet = process.argv.includes("--quiet");
+  const quiet = process.argv.includes("--quiet");
 
-	const result = await checkUpgradeStatus();
+  const result = await checkUpgradeStatus();
 
-	switch (result.status) {
-		case "up-to-date":
-			if (!quiet) console.log(result.message);
-			process.exit(0);
-			break;
+  switch (result.status) {
+    case "up-to-date":
+      if (!quiet) console.log(result.message);
+      process.exit(0);
+      break;
 
-		case "fresh-install":
-			if (!quiet) console.log(result.message);
-			process.exit(3);
-			break;
+    case "fresh-install":
+      if (!quiet) console.log(result.message);
+      process.exit(3);
+      break;
 
-		case "needs-upgrade":
-			if (!quiet) {
-				console.log("");
-				console.log("═══════════════════════════════════════");
-				console.log(`  ${result.message}`);
-				if (result.pendingMigrations > 0) {
-					console.log(`  Pending migrations: ${result.pendingMigrations}`);
-				}
-				console.log("");
-				console.log("  This version requires manual upgrade.");
-				console.log("  Run: pnpm app:upgrade");
-				console.log("═══════════════════════════════════════");
-				console.log("");
-			}
-			process.exit(1);
-			break;
+    case "needs-upgrade":
+      if (!quiet) {
+        console.log("");
+        console.log("═══════════════════════════════════════");
+        console.log(`  ${result.message}`);
+        if (result.pendingMigrations > 0) {
+          console.log(`  Pending migrations: ${result.pendingMigrations}`);
+        }
+        console.log("");
+        console.log("  This version requires manual upgrade.");
+        console.log("  Run: pnpm app:upgrade");
+        console.log("═══════════════════════════════════════");
+        console.log("");
+      }
+      process.exit(1);
+      break;
 
-		case "safe-upgrade":
-			if (!quiet) {
-				console.log(`${result.message} (safe to auto-apply)`);
-			}
-			process.exit(4);
-			break;
+    case "safe-upgrade":
+      if (!quiet) {
+        console.log(`${result.message} (safe to auto-apply)`);
+      }
+      process.exit(4);
+      break;
 
-		case "downgrade":
-			if (!quiet) {
-				console.error(`ERROR: ${result.message}`);
-				console.error(
-					"Running an older version against a newer database may cause data corruption.",
-				);
-				console.error(`Please upgrade to at least version ${result.installedVersion}`);
-			}
-			process.exit(2);
-			break;
-	}
+    case "downgrade":
+      if (!quiet) {
+        console.error(`ERROR: ${result.message}`);
+        console.error(
+          "Running an older version against a newer database may cause data corruption.",
+        );
+        console.error(
+          `Please upgrade to at least version ${result.installedVersion}`,
+        );
+      }
+      process.exit(2);
+      break;
+  }
 }
 
 main().catch((error) => {
-	console.error("Upgrade check failed:", error);
-	process.exit(1);
+  console.error("Upgrade check failed:", error);
+  process.exit(1);
 });

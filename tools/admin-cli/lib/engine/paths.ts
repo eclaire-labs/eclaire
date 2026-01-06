@@ -8,12 +8,12 @@
  * └── models/     # Downloaded model files
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 // Base directory for eclaire runtime files
-const ECLAIRE_DIR = '.eclaire';
+const ECLAIRE_DIR = ".eclaire";
 
 // ============================================================================
 // Directory paths
@@ -30,21 +30,21 @@ export function getEclaireDir(): string {
  * Get the PIDs directory (~/.eclaire/pids)
  */
 export function getPidsDir(): string {
-  return path.join(getEclaireDir(), 'pids');
+  return path.join(getEclaireDir(), "pids");
 }
 
 /**
  * Get the logs directory (~/.eclaire/logs)
  */
 export function getLogsDir(): string {
-  return path.join(getEclaireDir(), 'logs');
+  return path.join(getEclaireDir(), "logs");
 }
 
 /**
  * Get the models directory (~/.eclaire/models)
  */
 export function getModelsDir(): string {
-  return path.join(getEclaireDir(), 'models');
+  return path.join(getEclaireDir(), "models");
 }
 
 // ============================================================================
@@ -56,7 +56,7 @@ export function getModelsDir(): string {
  */
 export function getPidFilePath(providerId: string): string {
   // Sanitize provider ID for use in filename
-  const safeId = providerId.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const safeId = providerId.replace(/[^a-zA-Z0-9-_]/g, "_");
   return path.join(getPidsDir(), `${safeId}.pid`);
 }
 
@@ -65,7 +65,7 @@ export function getPidFilePath(providerId: string): string {
  */
 export function getLogFilePath(providerId: string): string {
   // Sanitize provider ID for use in filename
-  const safeId = providerId.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const safeId = providerId.replace(/[^a-zA-Z0-9-_]/g, "_");
   return path.join(getLogsDir(), `${safeId}.log`);
 }
 
@@ -77,12 +77,7 @@ export function getLogFilePath(providerId: string): string {
  * Ensure all required directories exist
  */
 export function ensureDirectories(): void {
-  const dirs = [
-    getEclaireDir(),
-    getPidsDir(),
-    getLogsDir(),
-    getModelsDir(),
-  ];
+  const dirs = [getEclaireDir(), getPidsDir(), getLogsDir(), getModelsDir()];
 
   for (const dir of dirs) {
     if (!fs.existsSync(dir)) {
@@ -118,7 +113,7 @@ export function readPidFile(providerId: string): number | null {
   }
 
   try {
-    const content = fs.readFileSync(pidFile, 'utf-8').trim();
+    const content = fs.readFileSync(pidFile, "utf-8").trim();
     const pid = parseInt(content, 10);
     return isNaN(pid) ? null : pid;
   } catch {
@@ -184,8 +179,8 @@ export function getLogTail(providerId: string, lines: number = 50): string[] {
   }
 
   try {
-    const content = fs.readFileSync(logFile, 'utf-8');
-    const allLines = content.split('\n');
+    const content = fs.readFileSync(logFile, "utf-8");
+    const allLines = content.split("\n");
     return allLines.slice(-lines);
   } catch {
     return [];
@@ -198,6 +193,6 @@ export function getLogTail(providerId: string, lines: number = 50): string[] {
 export function clearLogFile(providerId: string): void {
   const logFile = getLogFilePath(providerId);
   if (fs.existsSync(logFile)) {
-    fs.writeFileSync(logFile, '');
+    fs.writeFileSync(logFile, "");
   }
 }

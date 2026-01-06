@@ -7,8 +7,8 @@ export type { Logger } from "pino";
 export {
   asyncLocalStorage,
   getRequestId,
-  runWithRequestId,
   type RequestContext,
+  runWithRequestId,
 } from "./context.js";
 
 export interface LoggerConfig {

@@ -21,7 +21,7 @@
  *   - slidingWindowPattern: which layers use full vs windowed attention
  */
 
-import { detectVRAM, formatBytes, type VRAMStatus } from './vram.js';
+import { detectVRAM, formatBytes, type VRAMStatus } from "./vram.js";
 
 /**
  * Memory estimation for a model configuration
@@ -33,7 +33,7 @@ export interface MemoryEstimate {
   visionOverhead: number; // bytes (mmproj weights + runtime buffers)
   total: number; // bytes
   totalGB: number; // for display
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
 }
 
 /**
@@ -63,7 +63,7 @@ export interface ModelMemoryInput {
  * Result of memory requirements check
  */
 export interface MemoryCheckResult {
-  status: 'ok' | 'warning' | 'danger';
+  status: "ok" | "warning" | "danger";
   availableVRAM: number;
   requiredVRAM: number;
   headroom: number; // bytes remaining (can be negative)
@@ -79,7 +79,7 @@ export interface MemoryCheckResult {
 const COMPUTE_BUFFER_OVERHEAD = 500 * 1024 * 1024; // 500 MB
 const BASE_KV_CACHE_7B_32K = 3 * 1024 * 1024 * 1024; // ~3 GB for 7B model at 32K context
 const VISION_BUFFER_MIN = 256 * 1024 * 1024; // 256 MB minimum vision runtime buffer
-const VISION_BUFFER_RATIO = 0.20; // 20% of mmproj size for runtime buffers
+const VISION_BUFFER_RATIO = 0.2; // 20% of mmproj size for runtime buffers
 
 /**
  * Estimate KV cache using accurate formula when architecture is known
@@ -100,7 +100,7 @@ function estimateKVCacheWithArchitecture(
   kvHeads: number,
   headDim: number = 128,
   slidingWindow?: number,
-  slidingWindowPattern?: number
+  slidingWindowPattern?: number,
 ): number {
   // Check if this is an SWA model
   if (slidingWindow && slidingWindowPattern && slidingWindowPattern > 1) {
@@ -133,7 +133,10 @@ function estimateKVCacheWithArchitecture(
  *
  * Uses a higher multiplier (4.5x instead of 3x) to be more conservative.
  */
-function estimateKVCacheFallback(contextSize: number, modelSizeGB: number): number {
+function estimateKVCacheFallback(
+  contextSize: number,
+  modelSizeGB: number,
+): number {
   const contextScale = contextSize / 32768;
   const modelScale = modelSizeGB / 7;
 
@@ -153,7 +156,10 @@ function estimateKVCacheFallback(contextSize: number, modelSizeGB: number): numb
  * - Our estimate: 812 + max(256, 162) = 812 + 256 = 1068 MiB (~14% headroom)
  */
 function estimateVisionOverhead(visionSizeBytes: number): number {
-  const runtimeBuffers = Math.max(VISION_BUFFER_MIN, visionSizeBytes * VISION_BUFFER_RATIO);
+  const runtimeBuffers = Math.max(
+    VISION_BUFFER_MIN,
+    visionSizeBytes * VISION_BUFFER_RATIO,
+  );
   return visionSizeBytes + runtimeBuffers;
 }
 
@@ -169,7 +175,7 @@ export function estimateModelMemory(
   sizeBytes: number | undefined,
   contextSize: number,
   architecture?: ModelArchitectureInput,
-  visionSizeBytes?: number
+  visionSizeBytes?: number,
 ): MemoryEstimate {
   // If no size info, return low confidence estimate
   if (!sizeBytes || sizeBytes === 0) {
@@ -180,7 +186,7 @@ export function estimateModelMemory(
       visionOverhead: 0,
       total: COMPUTE_BUFFER_OVERHEAD,
       totalGB: COMPUTE_BUFFER_OVERHEAD / (1024 * 1024 * 1024),
-      confidence: 'low',
+      confidence: "low",
     };
   }
 
@@ -189,7 +195,7 @@ export function estimateModelMemory(
   const computeBuffers = COMPUTE_BUFFER_OVERHEAD;
 
   let kvCache: number;
-  let confidence: 'high' | 'medium' | 'low';
+  let confidence: "high" | "medium" | "low";
 
   if (architecture && architecture.layers && architecture.kvHeads) {
     // Use accurate formula with architecture info
@@ -199,17 +205,19 @@ export function estimateModelMemory(
       architecture.kvHeads,
       architecture.headDim ?? 128,
       architecture.slidingWindow,
-      architecture.slidingWindowPattern
+      architecture.slidingWindowPattern,
     );
-    confidence = 'high';
+    confidence = "high";
   } else {
     // Fallback to size-based estimation
     kvCache = estimateKVCacheFallback(contextSize, modelSizeGB);
-    confidence = 'medium';
+    confidence = "medium";
   }
 
   // Calculate vision overhead if this is a multimodal model
-  const visionOverhead = visionSizeBytes ? estimateVisionOverhead(visionSizeBytes) : 0;
+  const visionOverhead = visionSizeBytes
+    ? estimateVisionOverhead(visionSizeBytes)
+    : 0;
 
   const total = modelWeights + kvCache + computeBuffers + visionOverhead;
 
@@ -229,7 +237,7 @@ export function estimateModelMemory(
  */
 export function estimateTotalMemory(
   backendModel: ModelMemoryInput | null,
-  workersModel: ModelMemoryInput | null
+  workersModel: ModelMemoryInput | null,
 ): {
   total: number;
   backend?: MemoryEstimate;
@@ -244,7 +252,7 @@ export function estimateTotalMemory(
       backendModel.sizeBytes,
       backendModel.contextSize,
       backendModel.architecture,
-      backendModel.visionSizeBytes
+      backendModel.visionSizeBytes,
     );
     total += backend.total;
   }
@@ -254,7 +262,7 @@ export function estimateTotalMemory(
       workersModel.sizeBytes,
       workersModel.contextSize,
       workersModel.architecture,
-      workersModel.visionSizeBytes
+      workersModel.visionSizeBytes,
     );
     total += workers.total;
   }
@@ -267,35 +275,38 @@ export function estimateTotalMemory(
  */
 export async function checkMemoryRequirements(
   backendModel: ModelMemoryInput | null,
-  workersModel: ModelMemoryInput | null
+  workersModel: ModelMemoryInput | null,
 ): Promise<MemoryCheckResult> {
   // Detect available VRAM
   const vramStatus = await detectVRAM();
   const availableVRAM = vramStatus.availableVRAM;
 
   // Estimate memory requirements
-  const { total, backend, workers } = estimateTotalMemory(backendModel, workersModel);
+  const { total, backend, workers } = estimateTotalMemory(
+    backendModel,
+    workersModel,
+  );
   const headroom = availableVRAM - total;
 
   // Determine status
-  let status: 'ok' | 'warning' | 'danger';
+  let status: "ok" | "warning" | "danger";
   let message: string;
 
   if (total === 0) {
     // No models configured or no size info
-    status = 'ok';
-    message = 'No memory estimation available (model size unknown)';
+    status = "ok";
+    message = "No memory estimation available (model size unknown)";
   } else if (headroom >= 2 * 1024 * 1024 * 1024) {
     // At least 2 GB headroom
-    status = 'ok';
+    status = "ok";
     message = `Sufficient VRAM available (${formatBytes(headroom)} headroom)`;
   } else if (headroom >= 0) {
     // Tight but possible
-    status = 'warning';
+    status = "warning";
     message = `Tight on VRAM - only ${formatBytes(headroom)} headroom`;
   } else {
     // Not enough
-    status = 'warning';
+    status = "warning";
     message = `Estimated memory (${formatBytes(total)}) exceeds available VRAM (${formatBytes(availableVRAM)})`;
   }
 
@@ -329,11 +340,11 @@ export function formatMemorySize(bytes: number): string {
  */
 export function formatMemoryBreakdown(
   estimate: MemoryEstimate,
-  label: string
+  label: string,
 ): string[] {
   const lines: string[] = [];
 
-  if (estimate.confidence === 'low') {
+  if (estimate.confidence === "low") {
     lines.push(`  ${label}: Unknown (model size not available)`);
     return lines;
   }

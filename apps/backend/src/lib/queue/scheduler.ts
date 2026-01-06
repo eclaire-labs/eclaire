@@ -5,12 +5,16 @@
  * abstracting over BullMQ (Redis) and Database-backed implementations.
  */
 
-import type { Scheduler, ScheduleConfig } from "@eclaire/queue/core";
+import type { ScheduleConfig, Scheduler } from "@eclaire/queue/core";
 import { createBullMQScheduler } from "@eclaire/queue/driver-bullmq";
-import { createDbScheduler, createDbQueueClient, getQueueSchema } from "@eclaire/queue/driver-db";
+import {
+  createDbQueueClient,
+  createDbScheduler,
+  getQueueSchema,
+} from "@eclaire/queue/driver-db";
+import { config } from "../../config/index.js";
 import { db, dbType } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
-import { config } from "../../config/index.js";
 
 const logger = createChildLogger("scheduler");
 

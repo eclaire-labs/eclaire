@@ -5,27 +5,27 @@
  * Replaces the monolithic prompt.ts with a clean, modular implementation.
  */
 
+import type { ToolCallSummaryOutput } from "@eclaire/ai";
 import {
-  ToolLoopAgent,
-  createAgentContext,
-  anyOf,
-  stepCountIs,
-  noToolCalls,
   type AgentResult,
   type AgentStreamEvent,
+  anyOf,
+  createAgentContext,
+  noToolCalls,
+  stepCountIs,
+  ToolLoopAgent,
 } from "@eclaire/ai";
-import type { ToolCallSummaryOutput } from "@eclaire/ai";
-import { backendTools } from "./tools/index.js";
-import { buildSystemPrompt } from "./system-prompt-builder.js";
+import type { Context } from "../../schemas/prompt-params.js";
+import { createChildLogger } from "../logger.js";
+import { getUserContextForPrompt } from "../user.js";
 import { fetchAssetContents } from "./asset-fetcher.js";
 import {
+  ConversationNotFoundError,
   loadConversationMessages,
   saveConversationMessages,
-  ConversationNotFoundError,
 } from "./conversation-adapter.js";
-import { getUserContextForPrompt } from "../user.js";
-import { createChildLogger } from "../logger.js";
-import type { Context } from "../../schemas/prompt-params.js";
+import { buildSystemPrompt } from "./system-prompt-builder.js";
+import { backendTools } from "./tools/index.js";
 import type { BackendAgentContext, UserContext } from "./types.js";
 
 const logger = createChildLogger("prompt-service");

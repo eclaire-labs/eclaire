@@ -1,4 +1,3 @@
-
 import type { ReactNode } from "react";
 import { type MobileTab, MobileTabBar } from "./mobile-tab-bar";
 

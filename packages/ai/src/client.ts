@@ -10,19 +10,12 @@
  * - Tracing and logging
  */
 
-import { createAILogger } from "./logger.js";
-import { isDebugLoggingEnabled, logDebugEntry } from "./debug-logger.js";
-import {
-  getThinkingPromptPrefix,
-  validateAIConfig,
-} from "./config.js";
-import {
-  deriveRequestRequirements,
-  validateRequestAgainstCapabilities,
-} from "./validation.js";
 import { getAdapter } from "./adapters/index.js";
-import { estimateTokenCount } from "./token-estimation.js";
+import { getThinkingPromptPrefix, validateAIConfig } from "./config.js";
+import { isDebugLoggingEnabled, logDebugEntry } from "./debug-logger.js";
+import { createAILogger } from "./logger.js";
 import { LLMStreamParser } from "./stream-parser.js";
+import { estimateTokenCount } from "./token-estimation.js";
 import type {
   AICallOptions,
   AICallTrace,
@@ -33,6 +26,10 @@ import type {
   Dialect,
   TokenUsage,
 } from "./types.js";
+import {
+  deriveRequestRequirements,
+  validateRequestAgainstCapabilities,
+} from "./validation.js";
 
 // Lazy-initialized logger
 let _logger: ReturnType<typeof createAILogger> | null = null;
@@ -57,9 +54,9 @@ function deepCopyForTrace(obj: unknown): Record<string, unknown> {
   } catch (error) {
     logger.warn(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to deep copy object for trace, using shallow copy"
+      "Failed to deep copy object for trace, using shallow copy",
     );
-    return { ...obj as Record<string, unknown> };
+    return { ...(obj as Record<string, unknown>) };
   }
 }
 
@@ -69,7 +66,7 @@ function deepCopyForTrace(obj: unknown): Record<string, unknown> {
 function applyThinkingPrefix(
   messages: AIMessage[],
   modelId: string,
-  enableThinking?: boolean
+  enableThinking?: boolean,
 ): AIMessage[] {
   const logger = getLogger();
   return messages.map((message) => {
@@ -78,7 +75,7 @@ function applyThinkingPrefix(
       if (thinkingPrefix && typeof message.content === "string") {
         logger.debug(
           { modelId, thinkingPrefix, enableThinking },
-          "Applying thinking prefix to system message"
+          "Applying thinking prefix to system message",
         );
         return {
           ...message,
@@ -128,7 +125,7 @@ function getEndpointForDialect(dialect: Dialect): string {
 export async function callAI(
   messages: AIMessage[],
   context: AIContext,
-  options: AICallOptions = {}
+  options: AICallOptions = {},
 ): Promise<AIResponse> {
   const logger = getLogger();
 
@@ -137,7 +134,9 @@ export async function callAI(
     const streamResponse = await callAIStream(messages, context, options);
 
     const streamParser = new LLMStreamParser();
-    const parsedStream = await streamParser.processSSEStream(streamResponse.stream);
+    const parsedStream = await streamParser.processSSEStream(
+      streamResponse.stream,
+    );
     const reader = parsedStream.getReader();
 
     const contentChunks: string[] = [];
@@ -170,7 +169,8 @@ export async function callAI(
     const joinedReasoning = reasoningChunks.join("");
     return {
       content: contentChunks.join(""),
-      reasoning: joinedReasoning && joinedReasoning.trim() ? joinedReasoning : undefined,
+      reasoning:
+        joinedReasoning && joinedReasoning.trim() ? joinedReasoning : undefined,
       usage: finalUsage,
       estimatedInputTokens: streamResponse.estimatedInputTokens,
       finishReason: finalFinishReason,
@@ -179,17 +179,33 @@ export async function callAI(
 
   // Non-streaming path
   const startTime = Date.now();
-  const { provider, providerConfig, modelId, modelConfig } = validateAIConfig(context);
+  const { provider, providerConfig, modelId, modelConfig } =
+    validateAIConfig(context);
 
   // Apply thinking prefix to system messages
-  const processedMessages = applyThinkingPrefix(messages, modelId, options.enableThinking);
+  const processedMessages = applyThinkingPrefix(
+    messages,
+    modelId,
+    options.enableThinking,
+  );
 
   // Estimate token count
-  const estimatedInputTokens = estimateTokenCount(processedMessages, provider.model);
+  const estimatedInputTokens = estimateTokenCount(
+    processedMessages,
+    provider.model,
+  );
 
   // Validate request against model capabilities
-  const requirements = deriveRequestRequirements(messages, options, estimatedInputTokens);
-  validateRequestAgainstCapabilities(modelId, requirements, modelConfig.capabilities);
+  const requirements = deriveRequestRequirements(
+    messages,
+    options,
+    estimatedInputTokens,
+  );
+  validateRequestAgainstCapabilities(
+    modelId,
+    requirements,
+    modelConfig.capabilities,
+  );
 
   // Get adapter for this dialect
   const dialect = getDialect(providerConfig);
@@ -215,7 +231,7 @@ export async function callAI(
       providerOverrides: providerConfig.overrides,
     },
     providerConfig.auth,
-    providerConfig.headers
+    providerConfig.headers,
   );
 
   logger.debug(
@@ -231,7 +247,7 @@ export async function callAI(
       hasResponseFormat: !!options.responseFormat,
       traceEnabled: options.trace?.enabled || false,
     },
-    "Making AI API call"
+    "Making AI API call",
   );
 
   try {
@@ -239,7 +255,10 @@ export async function callAI(
       method: request.method,
       headers: request.headers,
       body: JSON.stringify(request.body),
-      signal: options.timeout && options.timeout > 0 ? AbortSignal.timeout(options.timeout) : undefined,
+      signal:
+        options.timeout && options.timeout > 0
+          ? AbortSignal.timeout(options.timeout)
+          : undefined,
     });
 
     if (!response.ok) {
@@ -252,9 +271,11 @@ export async function callAI(
           statusText: response.statusText,
           errorText,
         },
-        "AI API error response"
+        "AI API error response",
       );
-      throw new Error(`AI API error: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `AI API error: ${response.status} ${response.statusText} - ${errorText}`,
+      );
     }
 
     const data = await response.json();
@@ -276,7 +297,7 @@ export async function callAI(
         hasToolCalls: !!parsed.toolCalls,
         durationMs,
       },
-      "AI API call successful"
+      "AI API call successful",
     );
 
     // Capture trace if enabled
@@ -289,13 +310,17 @@ export async function callAI(
           method: "POST",
           headers: {
             ...request.headers,
-            Authorization: request.headers.Authorization ? "[REDACTED]" : undefined,
+            Authorization: request.headers.Authorization
+              ? "[REDACTED]"
+              : undefined,
           },
           body: deepCopyForTrace(request.body),
         },
         responseBody: deepCopyForTrace(data),
         durationMs,
-        usage: parsed.usage ? deepCopyForTrace(parsed.usage) as TokenUsage : undefined,
+        usage: parsed.usage
+          ? (deepCopyForTrace(parsed.usage) as TokenUsage)
+          : undefined,
         estimatedInputTokens,
       };
       options.trace.onTraceCapture(traceData);
@@ -317,7 +342,9 @@ export async function callAI(
           options: {
             temperature: options.temperature,
             maxTokens: options.maxTokens,
-            tools: options.tools ? `[${options.tools.length} tools]` : undefined,
+            tools: options.tools
+              ? `[${options.tools.length} tools]`
+              : undefined,
             responseFormat: options.responseFormat ? "json_schema" : undefined,
           },
         },
@@ -333,7 +360,10 @@ export async function callAI(
 
     return {
       content: parsed.content,
-      reasoning: parsed.reasoning && parsed.reasoning.trim() ? parsed.reasoning : undefined,
+      reasoning:
+        parsed.reasoning && parsed.reasoning.trim()
+          ? parsed.reasoning
+          : undefined,
       toolCalls: parsed.toolCalls,
       usage: parsed.usage,
       estimatedInputTokens,
@@ -351,7 +381,7 @@ export async function callAI(
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       },
-      "AI API call failed"
+      "AI API call failed",
     );
 
     // Capture error trace if enabled
@@ -364,11 +394,15 @@ export async function callAI(
           method: "POST",
           headers: {
             ...request.headers,
-            Authorization: request.headers.Authorization ? "[REDACTED]" : undefined,
+            Authorization: request.headers.Authorization
+              ? "[REDACTED]"
+              : undefined,
           },
           body: deepCopyForTrace(request.body),
         },
-        responseBody: { error: error instanceof Error ? error.message : "Unknown error" },
+        responseBody: {
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
         durationMs,
         usage: undefined,
         estimatedInputTokens,
@@ -417,24 +451,40 @@ export async function callAI(
 export async function callAIStream(
   messages: AIMessage[],
   context: AIContext,
-  options: AICallOptions = {}
+  options: AICallOptions = {},
 ): Promise<AIStreamResponse> {
   const logger = getLogger();
   const startTime = Date.now();
-  const { provider, providerConfig, modelId, modelConfig } = validateAIConfig(context);
+  const { provider, providerConfig, modelId, modelConfig } =
+    validateAIConfig(context);
 
   // Apply thinking prefix to system messages
-  const processedMessages = applyThinkingPrefix(messages, modelId, options.enableThinking);
+  const processedMessages = applyThinkingPrefix(
+    messages,
+    modelId,
+    options.enableThinking,
+  );
 
   // Estimate token count
-  const estimatedInputTokens = estimateTokenCount(processedMessages, provider.model);
+  const estimatedInputTokens = estimateTokenCount(
+    processedMessages,
+    provider.model,
+  );
 
   // Force streaming option
   const streamOptions = { ...options, stream: true };
 
   // Validate request against model capabilities
-  const requirements = deriveRequestRequirements(messages, streamOptions, estimatedInputTokens);
-  validateRequestAgainstCapabilities(modelId, requirements, modelConfig.capabilities);
+  const requirements = deriveRequestRequirements(
+    messages,
+    streamOptions,
+    estimatedInputTokens,
+  );
+  validateRequestAgainstCapabilities(
+    modelId,
+    requirements,
+    modelConfig.capabilities,
+  );
 
   // Get adapter for this dialect
   const dialect = getDialect(providerConfig);
@@ -460,7 +510,7 @@ export async function callAIStream(
       providerOverrides: providerConfig.overrides,
     },
     providerConfig.auth,
-    providerConfig.headers
+    providerConfig.headers,
   );
 
   logger.debug(
@@ -474,7 +524,7 @@ export async function callAIStream(
       dialect,
       traceEnabled: options.trace?.enabled || false,
     },
-    "Making streaming AI API call"
+    "Making streaming AI API call",
   );
 
   try {
@@ -482,7 +532,10 @@ export async function callAIStream(
       method: request.method,
       headers: request.headers,
       body: JSON.stringify(request.body),
-      signal: options.timeout && options.timeout > 0 ? AbortSignal.timeout(options.timeout) : undefined,
+      signal:
+        options.timeout && options.timeout > 0
+          ? AbortSignal.timeout(options.timeout)
+          : undefined,
     });
 
     if (!response.ok) {
@@ -495,9 +548,11 @@ export async function callAIStream(
           statusText: response.statusText,
           errorText,
         },
-        "Streaming AI API error response"
+        "Streaming AI API error response",
       );
-      throw new Error(`AI API error: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `AI API error: ${response.status} ${response.statusText} - ${errorText}`,
+      );
     }
 
     if (!response.body) {
@@ -507,7 +562,10 @@ export async function callAIStream(
     // Transform stream using adapter (handles MLX/Anthropic → OpenAI format conversion)
     let stream: ReadableStream<Uint8Array> = response.body;
     if (dialect === "mlx_native" || dialect === "anthropic_messages") {
-      logger.debug({ provider: provider.name, dialect }, "Transforming stream to OpenAI format");
+      logger.debug(
+        { provider: provider.name, dialect },
+        "Transforming stream to OpenAI format",
+      );
       stream = adapter.transformStream(stream) as ReadableStream<Uint8Array>;
     }
 
@@ -521,7 +579,9 @@ export async function callAIStream(
           method: "POST",
           headers: {
             ...request.headers,
-            Authorization: request.headers.Authorization ? "[REDACTED]" : undefined,
+            Authorization: request.headers.Authorization
+              ? "[REDACTED]"
+              : undefined,
           },
           body: deepCopyForTrace(request.body),
         },
@@ -535,7 +595,7 @@ export async function callAIStream(
 
     logger.debug(
       { context, modelId, provider: provider.name },
-      "Streaming response started"
+      "Streaming response started",
     );
 
     // Debug file logging for streaming request
@@ -555,7 +615,9 @@ export async function callAIStream(
           options: {
             temperature: options.temperature,
             maxTokens: options.maxTokens,
-            tools: options.tools ? `[${options.tools.length} tools]` : undefined,
+            tools: options.tools
+              ? `[${options.tools.length} tools]`
+              : undefined,
             responseFormat: options.responseFormat ? "json_schema" : undefined,
           },
         },
@@ -574,7 +636,7 @@ export async function callAIStream(
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       },
-      "Streaming AI API call failed"
+      "Streaming AI API call failed",
     );
 
     // Debug file logging for streaming errors
@@ -607,5 +669,4 @@ export async function callAIStream(
 // RE-EXPORTS FOR CONVENIENCE
 // =============================================================================
 
-export { estimateTokenCount } from "./token-estimation.js";
-export { checkContextFit } from "./token-estimation.js";
+export { checkContextFit, estimateTokenCount } from "./token-estimation.js";

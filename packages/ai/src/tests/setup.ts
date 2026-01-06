@@ -4,10 +4,10 @@
  * Shared test infrastructure for @eclaire/ai package tests.
  */
 
-import { afterEach, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { afterEach, vi } from "vitest";
 
 // Get the directory of this file
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -195,7 +195,7 @@ export function sseReasoningDelta(reasoning: string): string {
  * Create a finish reason SSE event
  */
 export function sseFinishReason(
-  reason: "stop" | "tool_calls" | "length"
+  reason: "stop" | "tool_calls" | "length",
 ): string {
   return sseData({
     choices: [{ finish_reason: reason, delta: {} }],
@@ -207,7 +207,7 @@ export function sseFinishReason(
  */
 export function sseUsage(
   promptTokens: number,
-  completionTokens: number
+  completionTokens: number,
 ): string {
   return sseData({
     usage: {
@@ -225,7 +225,7 @@ export function sseToolCallDelta(
   index: number,
   id?: string,
   functionName?: string,
-  argumentsDelta?: string
+  argumentsDelta?: string,
 ): string {
   const toolCall: Record<string, unknown> = { index };
   if (id) toolCall.id = id;
@@ -293,7 +293,8 @@ export function createOpenAIResponse(options: {
     usage: {
       prompt_tokens: options.promptTokens ?? 10,
       completion_tokens: options.completionTokens ?? 20,
-      total_tokens: (options.promptTokens ?? 10) + (options.completionTokens ?? 20),
+      total_tokens:
+        (options.promptTokens ?? 10) + (options.completionTokens ?? 20),
     },
   };
 }
@@ -316,7 +317,11 @@ export function createTempDir(): string {
 /**
  * Write JSON to a file in a temp directory
  */
-export function writeTempJson(dir: string, filename: string, data: unknown): string {
+export function writeTempJson(
+  dir: string,
+  filename: string,
+  data: unknown,
+): string {
   const filePath = path.join(dir, filename);
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
   return filePath;
@@ -353,7 +358,11 @@ export function createMockStep(options: {
   toolCalls?: ToolCallResult[];
   toolResults?: StepToolExecution[];
   finishReason?: "stop" | "tool_calls" | "length";
-  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 }): AgentStep {
   return {
     stepNumber: options.stepNumber ?? 1,
@@ -376,7 +385,7 @@ export function createMockStep(options: {
 export function createMockToolCall(
   name: string,
   args: Record<string, unknown>,
-  id?: string
+  id?: string,
 ): ToolCallResult {
   return {
     id: id ?? `call_${name}_${Date.now()}`,
@@ -395,7 +404,7 @@ export function createMockToolExecution(
   toolName: string,
   success: boolean,
   content: string = "",
-  error?: string
+  error?: string,
 ): StepToolExecution {
   return {
     toolName,

@@ -5,35 +5,35 @@
  * Uses selection.json to determine which models to load into a single llama-server instance.
  */
 
-import { spawn, type ChildProcess } from 'child_process';
-import * as fs from 'fs';
 import {
-  getProviderConfig,
   getModelConfigById,
-  loadSelectionConfiguration,
-  parsePort,
+  getProviderConfig,
   isManaged,
-  type ProviderConfig,
+  loadSelectionConfiguration,
   type ModelConfig,
-} from '@eclaire/ai';
+  type ProviderConfig,
+  parsePort,
+} from "@eclaire/ai";
+import axios from "axios";
+import { type ChildProcess, spawn } from "child_process";
+import * as fs from "fs";
 import {
   ensureDirectories,
-  getPidFilePath,
   getLogFilePath,
-  writePidFile,
-  removePidFile,
-  readPidFile,
-  isProcessRunning,
   getModelsDir,
-} from './paths.js';
-import axios from 'axios';
+  getPidFilePath,
+  isProcessRunning,
+  readPidFile,
+  removePidFile,
+  writePidFile,
+} from "./paths.js";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 /** Fixed engine ID for PID and log files */
-export const LLAMA_CPP_ENGINE_ID = 'llama-cpp';
+export const LLAMA_CPP_ENGINE_ID = "llama-cpp";
 
 // ============================================================================
 // Types
@@ -53,7 +53,7 @@ export interface EngineStatus {
 
 /** Result of resolving which models need to be loaded */
 export interface ManagedEngineResolution {
-  status: 'ok' | 'no-managed' | 'conflict';
+  status: "ok" | "no-managed" | "conflict";
   message: string;
   providerId?: string;
   providerConfig?: ProviderConfig;
@@ -100,7 +100,7 @@ export function resolveSelectionEngine(): ManagedEngineResolution {
     // Check if this is a managed llama-cpp provider
     if (
       providerConfig.engine?.managed === true &&
-      providerConfig.engine?.name === 'llama-cpp'
+      providerConfig.engine?.name === "llama-cpp"
     ) {
       managedModels.push({
         context,
@@ -115,19 +115,20 @@ export function resolveSelectionEngine(): ManagedEngineResolution {
   // No managed models found
   if (managedModels.length === 0) {
     return {
-      status: 'no-managed',
-      message: 'No managed llama-cpp models configured in selection.json',
+      status: "no-managed",
+      message: "No managed llama-cpp models configured in selection.json",
       modelsToPreload: [],
     };
   }
 
   // Check all models use the same provider
-  const providerIds = [...new Set(managedModels.map(m => m.providerId))];
+  const providerIds = [...new Set(managedModels.map((m) => m.providerId))];
   if (providerIds.length > 1) {
     return {
-      status: 'conflict',
-      message: `Multiple managed llama-cpp providers found: ${providerIds.join(', ')}. ` +
-               `All active models must use the same managed provider.`,
+      status: "conflict",
+      message:
+        `Multiple managed llama-cpp providers found: ${providerIds.join(", ")}. ` +
+        `All active models must use the same managed provider.`,
       modelsToPreload: [],
     };
   }
@@ -136,11 +137,11 @@ export function resolveSelectionEngine(): ManagedEngineResolution {
   // We know managedModels has at least one element because we checked length === 0 above
   const primary = managedModels[0]!;
   return {
-    status: 'ok',
+    status: "ok",
     message: `Found ${managedModels.length} model(s) to preload`,
     providerId: primary.providerId,
     providerConfig: primary.providerConfig,
-    modelsToPreload: managedModels.map(m => ({
+    modelsToPreload: managedModels.map((m) => ({
       modelId: m.modelId,
       context: m.context,
       providerModel: m.modelConfig.providerModel,
@@ -173,7 +174,7 @@ export function validateManagedProvider(providerId: string): string | null {
     return `Provider '${providerId}' is not managed (managed: false)`;
   }
 
-  if (provider.engine.name !== 'llama-cpp') {
+  if (provider.engine.name !== "llama-cpp") {
     return `Provider '${providerId}' uses engine '${provider.engine.name}' which is not yet supported. Only 'llama-cpp' is currently supported.`;
   }
 
@@ -222,7 +223,9 @@ export function getEngineSettings(provider: ProviderConfig): {
  * @param options.providerConfig - Provider configuration (for port and engine settings)
  * @param options.foreground - Run in foreground mode (default: false)
  */
-export async function startLlamaServer(options: EngineStartOptions): Promise<number> {
+export async function startLlamaServer(
+  options: EngineStartOptions,
+): Promise<number> {
   const { hfModels, providerConfig, foreground = false } = options;
 
   // Empty hfModels is valid: starts in router mode, auto-discovers models from cache
@@ -234,7 +237,9 @@ export async function startLlamaServer(options: EngineStartOptions): Promise<num
   // Check if already running (using fixed engine ID)
   const existingPid = readPidFile(LLAMA_CPP_ENGINE_ID);
   if (existingPid && isProcessRunning(existingPid)) {
-    throw new Error(`llama-cpp engine is already running (PID: ${existingPid})`);
+    throw new Error(
+      `llama-cpp engine is already running (PID: ${existingPid})`,
+    );
   }
 
   // Clean up stale PID file if process is not running
@@ -243,34 +248,31 @@ export async function startLlamaServer(options: EngineStartOptions): Promise<num
   }
 
   // Get binary (use default llama-server)
-  const binary = 'llama-server';
+  const binary = "llama-server";
 
   // Build command arguments
-  const args = [
-    '--port', String(settings.port),
-    '--host', '127.0.0.1',
-  ];
+  const args = ["--port", String(settings.port), "--host", "127.0.0.1"];
 
   // For router mode (multiple models), start without -hf and let llama-server
   // auto-discover from cache. For single model, use -hf to ensure it's loaded.
   // Note: Multiple -hf flags is deprecated; comma-separated -hf is for speculative decoding.
   if (hfModels.length === 1 && hfModels[0]) {
-    args.push('-hf', hfModels[0]);
+    args.push("-hf", hfModels[0]);
   }
   // When multiple models: start in router mode, models auto-discovered from cache
 
   // Only pass if explicitly configured (let llama-server use its defaults otherwise)
   if (settings.gpuLayers !== undefined) {
-    args.push('-ngl', String(settings.gpuLayers));
+    args.push("-ngl", String(settings.gpuLayers));
   }
   if (settings.contextSize !== undefined) {
-    args.push('-c', String(settings.contextSize));
+    args.push("-c", String(settings.contextSize));
   }
   if (settings.batchSize !== undefined) {
-    args.push('-ub', String(settings.batchSize)); // -ub is ubatch-size, not -b
+    args.push("-ub", String(settings.batchSize)); // -ub is ubatch-size, not -b
   }
   if (settings.flashAttention !== undefined) {
-    args.push('-fa', settings.flashAttention ? 'on' : 'off');
+    args.push("-fa", settings.flashAttention ? "on" : "off");
   }
 
   if (settings.extraArgs.length > 0) {
@@ -278,11 +280,11 @@ export async function startLlamaServer(options: EngineStartOptions): Promise<num
   }
 
   // Log the command for debugging
-  console.log(`\n  Command: ${binary} ${args.join(' ')}\n`);
+  console.log(`\n  Command: ${binary} ${args.join(" ")}\n`);
 
   // Open log file for output (using fixed engine ID)
   const logFile = getLogFilePath(LLAMA_CPP_ENGINE_ID);
-  const logStream = fs.openSync(logFile, 'a');
+  const logStream = fs.openSync(logFile, "a");
 
   // Track if process exited early
   let processExited = false;
@@ -292,7 +294,7 @@ export async function startLlamaServer(options: EngineStartOptions): Promise<num
   // Spawn the process
   const child: ChildProcess = spawn(binary, args, {
     detached: !foreground,
-    stdio: foreground ? 'inherit' : ['ignore', logStream, logStream],
+    stdio: foreground ? "inherit" : ["ignore", logStream, logStream],
   });
 
   // Handle spawn errors
@@ -302,12 +304,12 @@ export async function startLlamaServer(options: EngineStartOptions): Promise<num
   }
 
   // Listen for early exit (indicates startup failure)
-  child.on('error', (err) => {
+  child.on("error", (err) => {
     processExited = true;
     exitErrorMsg = err.message;
   });
 
-  child.on('exit', (code) => {
+  child.on("exit", (code) => {
     processExited = true;
     exitCode = code;
   });
@@ -331,9 +333,13 @@ export async function startLlamaServer(options: EngineStartOptions): Promise<num
     if (processExited) {
       removePidFile(LLAMA_CPP_ENGINE_ID);
       if (exitErrorMsg) {
-        throw new Error(`llama-server failed to start: ${exitErrorMsg}. Check logs: ${logFile}`);
+        throw new Error(
+          `llama-server failed to start: ${exitErrorMsg}. Check logs: ${logFile}`,
+        );
       }
-      throw new Error(`llama-server exited with code ${exitCode}. Check logs: ${logFile}`);
+      throw new Error(
+        `llama-server exited with code ${exitCode}. Check logs: ${logFile}`,
+      );
     }
 
     // Check if healthy
@@ -347,12 +353,14 @@ export async function startLlamaServer(options: EngineStartOptions): Promise<num
 
   // Timeout - kill process and clean up
   try {
-    process.kill(child.pid, 'SIGTERM');
+    process.kill(child.pid, "SIGTERM");
   } catch {
     // Ignore error if process already dead
   }
   removePidFile(LLAMA_CPP_ENGINE_ID);
-  throw new Error(`llama-server started but health check timed out. Check logs: ${logFile}`);
+  throw new Error(
+    `llama-server started but health check timed out. Check logs: ${logFile}`,
+  );
 }
 
 /**
@@ -372,7 +380,7 @@ export async function stopLlamaServer(force: boolean = false): Promise<void> {
   }
 
   // Send signal
-  const signal = force ? 'SIGKILL' : 'SIGTERM';
+  const signal = force ? "SIGKILL" : "SIGTERM";
   process.kill(pid, signal);
 
   // Wait for process to exit
@@ -381,7 +389,7 @@ export async function stopLlamaServer(force: boolean = false): Promise<void> {
   if (!exited && !force) {
     // Force kill if graceful shutdown failed
     try {
-      process.kill(pid, 'SIGKILL');
+      process.kill(pid, "SIGKILL");
       await waitForProcessExit(pid, 2000);
     } catch {
       // Process may have exited between checks
@@ -444,7 +452,10 @@ async function checkHealthOnce(url: string): Promise<boolean> {
 /**
  * Wait for a process to exit
  */
-async function waitForProcessExit(pid: number, timeoutMs: number): Promise<boolean> {
+async function waitForProcessExit(
+  pid: number,
+  timeoutMs: number,
+): Promise<boolean> {
   const startTime = Date.now();
   const checkInterval = 100; // ms
 
@@ -462,5 +473,5 @@ async function waitForProcessExit(pid: number, timeoutMs: number): Promise<boole
  * Sleep for a specified duration
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -1,8 +1,7 @@
-
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
-import { useSession } from "@/lib/auth";
+import { type ReactNode, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSession } from "@/lib/auth";
 
 interface AuthGuardProps {
   children: ReactNode;

@@ -1,5 +1,8 @@
 import { createChildLogger } from "../../lib/logger.js";
-import type { RedditMediaInfo, RedditSubredditInfo } from "./reddit-api-client.js";
+import type {
+  RedditMediaInfo,
+  RedditSubredditInfo,
+} from "./reddit-api-client.js";
 
 const logger = createChildLogger("reddit-extractor");
 

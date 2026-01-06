@@ -1,8 +1,8 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
 import { AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const TaskDetailClient = lazy(() =>
   import("@/components/pages/TaskDetailPage").then((m) => ({
@@ -32,16 +32,11 @@ function DetailErrorComponent({ error }: { error: Error }) {
           {error.message || "The task could not be found or an error occurred."}
         </p>
         <div className="flex gap-3 pt-2">
-          <Button
-            variant="outline"
-            onClick={() => router.invalidate()}
-          >
+          <Button variant="outline" onClick={() => router.invalidate()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Try again
           </Button>
-          <Button
-            onClick={() => router.navigate({ to: "/tasks" })}
-          >
+          <Button onClick={() => router.navigate({ to: "/tasks" })}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Tasks
           </Button>

@@ -5,10 +5,10 @@
  * For non-API routes, serves index.html to enable client-side routing.
  */
 
-import { type Context, type Next } from "hono";
-import { serveStatic } from "@hono/node-server/serve-static";
-import path from "node:path";
 import fs from "node:fs";
+import path from "node:path";
+import { serveStatic } from "@hono/node-server/serve-static";
+import type { Context, Next } from "hono";
 import { config } from "../config/index.js";
 
 // Static file extensions to serve directly

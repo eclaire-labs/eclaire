@@ -1,4 +1,4 @@
-
+import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   BookMarked,
@@ -12,7 +12,6 @@ import {
   StickyNote,
   X,
 } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { Badge } from "@/components/ui/badge";

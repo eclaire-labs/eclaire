@@ -3,22 +3,21 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { describeRoute } from "hono-openapi";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { createChildLogger } from "../lib/logger.js";
 import {
-  validatePromptRequest,
-  resolveEffectiveUserId,
-  processPromptWithHistory,
-  processPromptStreamWithHistory,
   ConversationNotFoundError,
   PromptProcessingError,
+  processPromptStreamWithHistory,
+  processPromptWithHistory,
+  resolveEffectiveUserId,
+  validatePromptRequest,
 } from "../lib/services/prompt.js";
-
 // Import schemas
 import { PromptRequestSchema } from "../schemas/prompt-params.js";
 import { postPromptRouteDescription } from "../schemas/prompt-routes.js";
 import { StreamPromptRequestSchema } from "../schemas/prompt-stream-params.js";
 import { postPromptStreamRouteDescription } from "../schemas/prompt-stream-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
-import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("prompt");
 
@@ -92,7 +91,10 @@ promptRoutes.post("/", describeRoute(postPromptRouteDescription), async (c) => {
     }
 
     if (error instanceof PromptProcessingError) {
-      logger.error({ requestId, error: error.message }, "Prompt processing error");
+      logger.error(
+        { requestId, error: error.message },
+        "Prompt processing error",
+      );
       return c.json(
         {
           type: "text_response",
@@ -105,7 +107,10 @@ promptRoutes.post("/", describeRoute(postPromptRouteDescription), async (c) => {
     }
 
     if (error instanceof z.ZodError) {
-      logger.warn({ requestId, error: error.issues }, "Request validation failed");
+      logger.warn(
+        { requestId, error: error.issues },
+        "Request validation failed",
+      );
       return c.json(
         {
           error: "Invalid request format",
@@ -222,7 +227,10 @@ promptRoutes.post(
       }
 
       if (error instanceof z.ZodError) {
-        logger.warn({ requestId, error: error.issues }, "Streaming request validation failed");
+        logger.warn(
+          { requestId, error: error.issues },
+          "Streaming request validation failed",
+        );
         return c.json(
           {
             error: "Invalid request format",

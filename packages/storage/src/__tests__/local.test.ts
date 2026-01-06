@@ -1,9 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm, readdir } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LocalStorage } from "../adapters/local/index.js";
-import { StorageNotFoundError, StorageInvalidKeyError } from "../core/errors.js";
+import {
+  StorageInvalidKeyError,
+  StorageNotFoundError,
+} from "../core/errors.js";
 
 describe("LocalStorage", () => {
   let storage: LocalStorage;
@@ -68,15 +71,17 @@ describe("LocalStorage", () => {
     });
 
     it("throws StorageNotFoundError for missing key", async () => {
-      await expect(storage.readBuffer("user-1/docs/doc-1/nonexistent.txt")).rejects.toThrow(
-        StorageNotFoundError,
-      );
+      await expect(
+        storage.readBuffer("user-1/docs/doc-1/nonexistent.txt"),
+      ).rejects.toThrow(StorageNotFoundError);
     });
 
     it("throws StorageInvalidKeyError for path traversal", async () => {
       const buffer = Buffer.from("test");
       await expect(
-        storage.writeBuffer("user-1/../../../evil", buffer, { contentType: "text/plain" }),
+        storage.writeBuffer("user-1/../../../evil", buffer, {
+          contentType: "text/plain",
+        }),
       ).rejects.toThrow(StorageInvalidKeyError);
     });
   });
@@ -114,20 +119,26 @@ describe("LocalStorage", () => {
   describe("exists", () => {
     it("returns true for existing key", async () => {
       const key = "user-1/docs/doc-1/file.txt";
-      await storage.writeBuffer(key, Buffer.from("test"), { contentType: "text/plain" });
+      await storage.writeBuffer(key, Buffer.from("test"), {
+        contentType: "text/plain",
+      });
 
       expect(await storage.exists(key)).toBe(true);
     });
 
     it("returns false for non-existing key", async () => {
-      expect(await storage.exists("user-1/docs/doc-1/nonexistent.txt")).toBe(false);
+      expect(await storage.exists("user-1/docs/doc-1/nonexistent.txt")).toBe(
+        false,
+      );
     });
   });
 
   describe("head", () => {
     it("returns metadata for existing key", async () => {
       const key = "user-1/docs/doc-1/file.txt";
-      await storage.writeBuffer(key, Buffer.from("test"), { contentType: "text/plain" });
+      await storage.writeBuffer(key, Buffer.from("test"), {
+        contentType: "text/plain",
+      });
 
       const metadata = await storage.head(key);
       expect(metadata).not.toBeNull();
@@ -136,14 +147,18 @@ describe("LocalStorage", () => {
     });
 
     it("returns null for non-existing key", async () => {
-      expect(await storage.head("user-1/docs/doc-1/nonexistent.txt")).toBeNull();
+      expect(
+        await storage.head("user-1/docs/doc-1/nonexistent.txt"),
+      ).toBeNull();
     });
   });
 
   describe("delete", () => {
     it("deletes an existing file and its metadata", async () => {
       const key = "user-1/docs/doc-1/file.txt";
-      await storage.writeBuffer(key, Buffer.from("test"), { contentType: "text/plain" });
+      await storage.writeBuffer(key, Buffer.from("test"), {
+        contentType: "text/plain",
+      });
 
       await storage.delete(key);
 
@@ -188,7 +203,9 @@ describe("LocalStorage", () => {
     });
 
     it("throws for path traversal", async () => {
-      await expect(storage.deletePrefix("../evil/")).rejects.toThrow(StorageInvalidKeyError);
+      await expect(storage.deletePrefix("../evil/")).rejects.toThrow(
+        StorageInvalidKeyError,
+      );
     });
   });
 
@@ -212,9 +229,13 @@ describe("LocalStorage", () => {
       await storage.writeBuffer("user-1/docs/doc-1/a.txt", Buffer.from("a"), {
         contentType: "text/plain",
       });
-      await storage.writeBuffer("user-1/photos/photo-1/b.jpg", Buffer.from("b"), {
-        contentType: "image/jpeg",
-      });
+      await storage.writeBuffer(
+        "user-1/photos/photo-1/b.jpg",
+        Buffer.from("b"),
+        {
+          contentType: "image/jpeg",
+        },
+      );
 
       const result = await storage.list({ prefix: "user-1/docs/" });
 
@@ -223,9 +244,13 @@ describe("LocalStorage", () => {
     });
 
     it("excludes metadata files from listing", async () => {
-      await storage.writeBuffer("user-1/docs/doc-1/file.txt", Buffer.from("test"), {
-        contentType: "text/plain",
-      });
+      await storage.writeBuffer(
+        "user-1/docs/doc-1/file.txt",
+        Buffer.from("test"),
+        {
+          contentType: "text/plain",
+        },
+      );
 
       const result = await storage.list();
 
@@ -237,15 +262,27 @@ describe("LocalStorage", () => {
 
   describe("stats", () => {
     it("calculates stats for prefix", async () => {
-      await storage.writeBuffer("user-1/docs/doc-1/a.txt", Buffer.from("hello"), {
-        contentType: "text/plain",
-      });
-      await storage.writeBuffer("user-1/docs/doc-1/b.txt", Buffer.from("world"), {
-        contentType: "text/plain",
-      });
-      await storage.writeBuffer("user-1/photos/photo-1/c.jpg", Buffer.from("jpg"), {
-        contentType: "image/jpeg",
-      });
+      await storage.writeBuffer(
+        "user-1/docs/doc-1/a.txt",
+        Buffer.from("hello"),
+        {
+          contentType: "text/plain",
+        },
+      );
+      await storage.writeBuffer(
+        "user-1/docs/doc-1/b.txt",
+        Buffer.from("world"),
+        {
+          contentType: "text/plain",
+        },
+      );
+      await storage.writeBuffer(
+        "user-1/photos/photo-1/c.jpg",
+        Buffer.from("jpg"),
+        {
+          contentType: "image/jpeg",
+        },
+      );
 
       const docsStats = await storage.stats("user-1/docs/");
       expect(docsStats.count).toBe(2);
@@ -263,7 +300,9 @@ describe("LocalStorage", () => {
     });
 
     it("throws for path traversal", async () => {
-      await expect(storage.stats("../evil/")).rejects.toThrow(StorageInvalidKeyError);
+      await expect(storage.stats("../evil/")).rejects.toThrow(
+        StorageInvalidKeyError,
+      );
     });
   });
 });

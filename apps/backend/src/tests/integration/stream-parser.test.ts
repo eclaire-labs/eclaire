@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import { LLMStreamParser } from "@eclaire/ai";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("LLMStreamParser Character Preservation", () => {
   let parser: LLMStreamParser;

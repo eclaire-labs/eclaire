@@ -7,15 +7,15 @@
  * - Edge cases
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { PermanentError } from "../../core/errors.js";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   eventually,
-  sleep,
   type QueueTestHarness,
+  sleep,
 } from "../testkit/index.js";
-import { PermanentError } from "../../core/errors.js";
-import type { QueueClient, Worker } from "../../core/types.js";
 
 describe("BullMQ: Manual Reprocess", () => {
   let harness: QueueTestHarness;
@@ -169,11 +169,7 @@ describe("BullMQ: Manual Reprocess", () => {
       let processCount = 0;
 
       // First enqueue and process
-      const jobId1 = await client.enqueue(
-        "test-queue",
-        { value: 1 },
-        { key },
-      );
+      const jobId1 = await client.enqueue("test-queue", { value: 1 }, { key });
 
       worker = harness.createWorker("test-queue", async () => {
         processCount++;

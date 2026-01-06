@@ -1,11 +1,8 @@
-import {
-  createRootRouteWithContext,
-  Outlet,
-} from "@tanstack/react-router";
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { AssistantPreferencesProvider } from "@/providers/AssistantPreferencesProvider";
-import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import type { RouterContext } from "@/router";
 
 export const Route = createRootRouteWithContext<RouterContext>()({

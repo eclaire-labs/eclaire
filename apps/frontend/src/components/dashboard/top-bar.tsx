@@ -1,4 +1,4 @@
-
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   Bell,
   CreditCard,
@@ -10,7 +10,6 @@ import {
   Minimize2,
   User,
 } from "lucide-react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";

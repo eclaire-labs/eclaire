@@ -4,39 +4,39 @@
  * Re-exports config functions from @eclaire/ai with CLI-specific wrappers.
  */
 
-import path from 'path';
+import type { AIContext, ModelConfig } from "@eclaire/ai";
 import {
-  // Config loading
-  loadProvidersConfiguration,
-  loadModelsConfiguration,
-  loadSelectionConfiguration,
-  // Config saving
-  saveProvidersConfiguration,
-  saveModelsConfiguration,
-  saveSelectionConfiguration,
   // Model CRUD
   addModel,
-  updateModel,
-  removeModel,
-  // Selection management
-  setActiveModel,
-  removeActiveModel,
+  getActiveModelForContext,
+  getActiveModelIdForContext,
+  getActiveModelsAsObjects,
+  getConfigPath,
+  getModelConfigById,
+  getModels,
   // Accessors
   getProviderConfig,
-  getModelConfigById,
   getProviders,
-  getModels,
-  getActiveModelsAsObjects,
-  getActiveModelIdForContext,
-  getActiveModelForContext,
+  hasAllInputModalities,
   // Generic modality helpers
   hasInputModality,
-  hasAllInputModalities,
+  loadModelsConfiguration,
+  // Config loading
+  loadProvidersConfiguration,
+  loadSelectionConfiguration,
+  removeActiveModel,
+  removeModel,
+  saveModelsConfiguration,
+  // Config saving
+  saveProvidersConfiguration,
+  saveSelectionConfiguration,
+  // Selection management
+  setActiveModel,
   // Config path
   setConfigPath,
-  getConfigPath,
-} from '@eclaire/ai';
-import type { AIContext, ModelConfig } from '@eclaire/ai';
+  updateModel,
+} from "@eclaire/ai";
+import path from "path";
 
 // ============================================================================
 // CLI-specific config path initialization
@@ -103,7 +103,7 @@ export {
  * Backend requires text input modality.
  */
 export function isModelSuitableForBackend(model: ModelConfig): boolean {
-  return hasInputModality(model, 'text');
+  return hasInputModality(model, "text");
 }
 
 /**
@@ -111,7 +111,7 @@ export function isModelSuitableForBackend(model: ModelConfig): boolean {
  * Workers requires text + image input modalities (for vision tasks).
  */
 export function isModelSuitableForWorkers(model: ModelConfig): boolean {
-  return hasAllInputModalities(model, ['text', 'image']);
+  return hasAllInputModalities(model, ["text", "image"]);
 }
 
 /**
@@ -119,23 +119,25 @@ export function isModelSuitableForWorkers(model: ModelConfig): boolean {
  */
 export function isModelSuitableForContext(
   model: ModelConfig,
-  context: AIContext
+  context: AIContext,
 ): boolean {
-  if (context === 'backend') return isModelSuitableForBackend(model);
-  if (context === 'workers') return isModelSuitableForWorkers(model);
+  if (context === "backend") return isModelSuitableForBackend(model);
+  if (context === "workers") return isModelSuitableForWorkers(model);
   return false;
 }
 
 // Also provide a getActiveModels helper for backward compatibility
 export function getActiveModels(): { backend?: string; workers?: string } {
   return {
-    backend: getActiveModelIdForContext('backend') || undefined,
-    workers: getActiveModelIdForContext('workers') || undefined,
+    backend: getActiveModelIdForContext("backend") || undefined,
+    workers: getActiveModelIdForContext("workers") || undefined,
   };
 }
 
 // Provide getActiveModel helper
-export function getActiveModel(context: 'backend' | 'workers'): { id: string; model: import('@eclaire/ai').ModelConfig } | undefined {
+export function getActiveModel(
+  context: "backend" | "workers",
+): { id: string; model: import("@eclaire/ai").ModelConfig } | undefined {
   const result = getActiveModelForContext(context);
   if (!result) return undefined;
 

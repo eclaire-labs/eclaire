@@ -4,22 +4,19 @@
  * Tests that queue statistics accurately reflect job states.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import {
-  DB_TEST_CONFIGS,
-  TEST_TIMEOUTS,
-  createQueueTestDatabase,
-  eventually,
-  createTestLogger,
-  createDeferred,
-  type QueueTestDatabase,
-} from "../testkit/index.js";
-import {
-  createDbQueueClient,
-  createDbWorker,
-} from "../../driver-db/index.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PermanentError } from "../../core/errors.js";
 import type { QueueClient, Worker } from "../../core/types.js";
+import { createDbQueueClient, createDbWorker } from "../../driver-db/index.js";
+import {
+  createDeferred,
+  createQueueTestDatabase,
+  createTestLogger,
+  DB_TEST_CONFIGS,
+  eventually,
+  type QueueTestDatabase,
+  TEST_TIMEOUTS,
+} from "../testkit/index.js";
 
 describe.each(DB_TEST_CONFIGS)("A13: Stats ($label)", ({ dbType }) => {
   let testDb: QueueTestDatabase;

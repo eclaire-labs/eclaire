@@ -6,31 +6,34 @@
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { HonoAdapter } from "@bull-board/hono";
+import { isAIInitialized, validateAIConfigOnStartup } from "@eclaire/ai";
+import { runWithRequestId } from "@eclaire/logger";
+import { QueueNames } from "@eclaire/queue/app";
+import type { Worker } from "@eclaire/queue/core";
+import {
+  type BullMQWorkerConfig,
+  createBullMQWorker,
+} from "@eclaire/queue/driver-bullmq";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import fs from "fs";
 import { Hono } from "hono";
-import { createBullMQWorker, type BullMQWorkerConfig } from "@eclaire/queue/driver-bullmq";
-import { QueueNames } from "@eclaire/queue/app";
-import type { Worker } from "@eclaire/queue/core";
-import { config } from "./config.js";
 import { config as appConfig } from "../config/index.js";
+import { initializeAI } from "../lib/ai-init.js";
+import { createChildLogger } from "../lib/logger.js";
+import { config } from "./config.js";
 import processBookmarkJob from "./jobs/bookmarkProcessor.js";
 import { processDocumentJob } from "./jobs/documentProcessor.js";
 import processImageJob from "./jobs/imageProcessor.js";
 import processNoteJob from "./jobs/noteProcessor.js";
 import processTaskExecution from "./jobs/taskExecutionProcessor.js";
 import processTaskJob from "./jobs/taskProcessor.js";
-import { validateAIConfigOnStartup, isAIInitialized } from "@eclaire/ai";
-import { initializeAI } from "../lib/ai-init.js";
-import { startDirectDbWorkers, stopDirectDbWorkers } from "./lib/direct-db-workers.js";
-import { createRedisPublisher } from "./lib/redis-publisher.js";
-import { createChildLogger } from "../lib/logger.js";
-import { runWithRequestId } from "@eclaire/logger";
 import {
-  closeQueues,
-  getAllQueues,
-} from "./queues.js";
+  startDirectDbWorkers,
+  stopDirectDbWorkers,
+} from "./lib/direct-db-workers.js";
+import { createRedisPublisher } from "./lib/redis-publisher.js";
+import { closeQueues, getAllQueues } from "./queues.js";
 
 const logger = createChildLogger("workers");
 
@@ -94,10 +97,17 @@ export async function startBullMQWorkers(): Promise<void> {
   });
 
   // Initialize all BullMQ workers
-  logger.info({ concurrency: config.worker.concurrency }, "Initializing BullMQ workers");
+  logger.info(
+    { concurrency: config.worker.concurrency },
+    "Initializing BullMQ workers",
+  );
 
   // Create event callbacks for SSE publishing via Redis pub/sub
-  const eventCallbacks = createRedisPublisher(config.redis.url, logger, config.redis.keyPrefix);
+  const eventCallbacks = createRedisPublisher(
+    config.redis.url,
+    logger,
+    config.redis.keyPrefix,
+  );
 
   // Shared worker configuration
   const workerConfig: BullMQWorkerConfig = {
@@ -197,7 +207,10 @@ export async function startBullMQWorkers(): Promise<void> {
     await worker.start();
   }
 
-  logger.info({ workerCount: bullmqWorkers.length }, "All BullMQ workers initialized");
+  logger.info(
+    { workerCount: bullmqWorkers.length },
+    "All BullMQ workers initialized",
+  );
 
   // Start Bull Board server
   const port = config.server.port || 3002;

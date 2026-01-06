@@ -50,50 +50,45 @@
  * ```
  */
 
-// Types
-export type {
-  TestDbType,
-  QueueDriverType,
-  HarnessCapabilities,
-  QueueTestHarnessConfig,
-} from "./types.js";
-
 // Configuration
 export {
   DB_TEST_CONFIGS,
   TEST_TIMEOUTS,
 } from "./config.js";
-
 // Database setup (for DB-only tests)
 export {
   createQueueTestDatabase,
   type QueueTestDatabase,
 } from "./db-setup.js";
-
 // Test harnesses
 export {
-  createDbTestHarness,
   createBullMQTestHarness,
+  createDbTestHarness,
   type QueueTestHarness,
 } from "./harness.js";
-
-// Utilities
-export {
-  eventually,
-  sleep,
-  createTestLogger,
-  createDeferred,
-  type Deferred,
-} from "./utils.js";
-
 // Subprocess utilities (for H-series multi-process tests)
 export {
-  spawnWorker,
-  waitForAllReady,
-  waitForJobsProcessed,
   collectResults,
   killAllWorkers,
+  type ProcessedJob,
+  spawnWorker,
   type WorkerConfig,
   type WorkerProcess,
-  type ProcessedJob,
+  waitForAllReady,
+  waitForJobsProcessed,
 } from "./subprocess.js";
+// Types
+export type {
+  HarnessCapabilities,
+  QueueDriverType,
+  QueueTestHarnessConfig,
+  TestDbType,
+} from "./types.js";
+// Utilities
+export {
+  createDeferred,
+  createTestLogger,
+  type Deferred,
+  eventually,
+  sleep,
+} from "./utils.js";

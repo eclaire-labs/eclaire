@@ -4,7 +4,7 @@
  * (container vs local dev, pnpm deploy vs monorepo)
  */
 
-import { readFileSync, existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 
 /**
@@ -17,31 +17,34 @@ import { resolve } from "path";
  * Containers must be built with scripts/build.sh to ensure proper versioning.
  */
 export function getAppVersion(): string {
-	// In container context, APP_VERSION is required (set by scripts/build.sh)
-	if (process.env.ECLAIRE_RUNTIME === "container") {
-		if (!process.env.APP_VERSION || process.env.APP_VERSION === "N/A") {
-			throw new Error(
-				"APP_VERSION not set. Container must be built with scripts/build.sh to set proper version.",
-			);
-		}
-		return process.env.APP_VERSION;
-	}
+  // In container context, APP_VERSION is required (set by scripts/build.sh)
+  if (process.env.ECLAIRE_RUNTIME === "container") {
+    if (!process.env.APP_VERSION || process.env.APP_VERSION === "N/A") {
+      throw new Error(
+        "APP_VERSION not set. Container must be built with scripts/build.sh to set proper version.",
+      );
+    }
+    return process.env.APP_VERSION;
+  }
 
-	// Local dev: prefer APP_VERSION if set, otherwise read from package.json
-	if (process.env.APP_VERSION && process.env.APP_VERSION !== "N/A") {
-		return process.env.APP_VERSION;
-	}
+  // Local dev: prefer APP_VERSION if set, otherwise read from package.json
+  if (process.env.APP_VERSION && process.env.APP_VERSION !== "N/A") {
+    return process.env.APP_VERSION;
+  }
 
-	// Fallback to package.json (local dev)
-	// Path: lib/version-utils.ts -> scripts -> src -> backend -> apps -> monorepo root
-	const rootPackageJson = resolve(import.meta.dirname, "../../../../../package.json");
-	try {
-		return JSON.parse(readFileSync(rootPackageJson, "utf-8")).version;
-	} catch {
-		throw new Error(
-			`Cannot determine app version: APP_VERSION env not set and ${rootPackageJson} not found`,
-		);
-	}
+  // Fallback to package.json (local dev)
+  // Path: lib/version-utils.ts -> scripts -> src -> backend -> apps -> monorepo root
+  const rootPackageJson = resolve(
+    import.meta.dirname,
+    "../../../../../package.json",
+  );
+  try {
+    return JSON.parse(readFileSync(rootPackageJson, "utf-8")).version;
+  } catch {
+    throw new Error(
+      `Cannot determine app version: APP_VERSION env not set and ${rootPackageJson} not found`,
+    );
+  }
 }
 
 /**
@@ -57,19 +60,19 @@ export function getAppVersion(): string {
  *   - packages/db/src/migrations (linked workspace packages)
  */
 function getMigrationPaths(): string[] {
-	// Path: lib/version-utils.ts -> scripts -> src -> backend
-	const backendRoot = resolve(import.meta.dirname, "../../../..");
+  // Path: lib/version-utils.ts -> scripts -> src -> backend
+  const backendRoot = resolve(import.meta.dirname, "../../../..");
 
-	return [
-		// Container: pnpm deploy bundles @eclaire/db with src/
-		resolve(backendRoot, "node_modules/@eclaire/db/src/migrations"),
-		// Container: explicit copy in Dockerfile to /app/migrations
-		resolve(backendRoot, "migrations"),
-		// Local dev with built packages
-		resolve(backendRoot, "node_modules/@eclaire/db/dist/migrations"),
-		// Local dev with linked packages (monorepo)
-		resolve(backendRoot, "../packages/db/src/migrations"),
-	];
+  return [
+    // Container: pnpm deploy bundles @eclaire/db with src/
+    resolve(backendRoot, "node_modules/@eclaire/db/src/migrations"),
+    // Container: explicit copy in Dockerfile to /app/migrations
+    resolve(backendRoot, "migrations"),
+    // Local dev with built packages
+    resolve(backendRoot, "node_modules/@eclaire/db/dist/migrations"),
+    // Local dev with linked packages (monorepo)
+    resolve(backendRoot, "../packages/db/src/migrations"),
+  ];
 }
 
 /**
@@ -85,15 +88,15 @@ type DbDialect = "postgres" | "pglite" | "sqlite";
  * @returns Path to the journal file, or null if not found
  */
 export function findMigrationJournal(dbType: DbDialect): string | null {
-	// Map dialect to migration folder name (postgres and pglite both use postgres migrations)
-	const subdir = dbType === "sqlite" ? "sqlite" : "postgres";
+  // Map dialect to migration folder name (postgres and pglite both use postgres migrations)
+  const subdir = dbType === "sqlite" ? "sqlite" : "postgres";
 
-	for (const basePath of getMigrationPaths()) {
-		const journalPath = resolve(basePath, subdir, "meta/_journal.json");
-		if (existsSync(journalPath)) {
-			return journalPath;
-		}
-	}
+  for (const basePath of getMigrationPaths()) {
+    const journalPath = resolve(basePath, subdir, "meta/_journal.json");
+    if (existsSync(journalPath)) {
+      return journalPath;
+    }
+  }
 
-	return null;
+  return null;
 }

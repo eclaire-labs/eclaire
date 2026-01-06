@@ -6,14 +6,14 @@
  */
 
 import {
-  pgTable,
+  boolean as pgBoolean,
   index as pgIndex,
   integer as pgInteger,
+  jsonb as pgJsonb,
+  pgTable,
   text as pgText,
   timestamp as pgTimestamp,
-  jsonb as pgJsonb,
   uniqueIndex as pgUniqueIndex,
-  boolean as pgBoolean,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -112,10 +112,16 @@ export const queueJobsPg = pgTable(
   },
   (table) => ({
     /** Unique constraint for idempotent enqueue */
-    queueKeyIdx: pgUniqueIndex("queue_jobs_queue_key_idx").on(table.queue, table.key),
+    queueKeyIdx: pgUniqueIndex("queue_jobs_queue_key_idx").on(
+      table.queue,
+      table.key,
+    ),
 
     /** Index for claim query: find pending/retry_pending jobs by queue */
-    queueStatusIdx: pgIndex("queue_jobs_queue_status_idx").on(table.queue, table.status),
+    queueStatusIdx: pgIndex("queue_jobs_queue_status_idx").on(
+      table.queue,
+      table.status,
+    ),
 
     /** Index for scheduled jobs */
     statusScheduledIdx: pgIndex("queue_jobs_status_scheduled_idx").on(

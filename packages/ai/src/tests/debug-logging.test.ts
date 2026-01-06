@@ -4,15 +4,15 @@
  * Tests for debug file logging functionality.
  */
 
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  setDebugLogPath,
   clearDebugLogPath,
+  type DebugLogEntry,
   isDebugLoggingEnabled,
   logDebugEntry,
-  type DebugLogEntry,
+  setDebugLogPath,
 } from "../debug-logger.js";
 import { createTempDir } from "./setup.js";
 
@@ -309,7 +309,9 @@ describe("Debug Logging", () => {
       // Set to a path that will fail (read-only or invalid)
       setDebugLogPath("/root/definitely-not-writable/debug.jsonl");
 
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       const entry: DebugLogEntry = {
         timestamp: new Date().toISOString(),

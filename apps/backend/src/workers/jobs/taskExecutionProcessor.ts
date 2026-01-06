@@ -1,12 +1,12 @@
-import type { JobContext } from "@eclaire/queue/core";
 import { type AIMessage, callAI } from "@eclaire/ai";
-import { createChildLogger } from "../../lib/logger.js";
-import {
-  updateTaskStatusAsAssistant,
-  updateTaskExecutionTracking,
-} from "../../lib/services/tasks.js";
+import type { JobContext } from "@eclaire/queue/core";
 import { processPromptRequest } from "../../lib/agent/index.js";
+import { createChildLogger } from "../../lib/logger.js";
 import { createTaskComment as createTaskCommentService } from "../../lib/services/taskComments.js";
+import {
+  updateTaskExecutionTracking,
+  updateTaskStatusAsAssistant,
+} from "../../lib/services/tasks.js";
 
 const logger = createChildLogger("task-execution-processor");
 
@@ -37,7 +37,10 @@ async function updateTaskStatus(
   } catch (error) {
     // If task was deleted during execution, log a warning but don't fail the job
     if (error instanceof Error && error.message.includes("Task not found")) {
-      logger.warn({ taskId }, "Task was deleted during execution, skipping status update");
+      logger.warn(
+        { taskId },
+        "Task was deleted during execution, skipping status update",
+      );
       return;
     }
     logger.error(
@@ -66,7 +69,10 @@ async function updateLastExecutedAt(taskId: string): Promise<void> {
     const found = await updateTaskExecutionTracking(taskId, now);
     if (!found) {
       // Task was deleted during execution - log a warning but don't fail
-      logger.warn({ taskId }, "Task was deleted during execution, skipping lastExecutedAt update");
+      logger.warn(
+        { taskId },
+        "Task was deleted during execution, skipping lastExecutedAt update",
+      );
       return;
     }
     logger.info({ taskId }, "Task lastExecutedAt updated successfully");
@@ -285,7 +291,8 @@ async function processUserTask(ctx: JobContext<TaskExecutionJobData>) {
  * Main task execution processor - handles both AI assistant and user tasks
  */
 async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
-  const { taskId, title, description, userId, assignedToId, isAssignedToAI } = ctx.job.data;
+  const { taskId, title, description, userId, assignedToId, isAssignedToAI } =
+    ctx.job.data;
   logger.info(
     { jobId: ctx.job.id, taskId, userId, assignedToId },
     "Starting task execution processing job",

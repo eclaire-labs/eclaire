@@ -81,7 +81,11 @@ export function parseKey(key: string): ParsedKey | null {
  * assetPrefix('user-123', 'documents', 'doc-456')
  * // => 'user-123/documents/doc-456/'
  */
-export function assetPrefix(userId: string, category: string, assetId: string): string {
+export function assetPrefix(
+  userId: string,
+  category: string,
+  assetId: string,
+): string {
   return `${userId}/${category}/${assetId}/`;
 }
 
@@ -126,7 +130,11 @@ export function isValidKeyComponent(component: string): boolean {
     return false;
   }
   // Reject absolute paths or path traversal attempts
-  if (component.includes("..") || component.startsWith("/") || component.startsWith("\\")) {
+  if (
+    component.includes("..") ||
+    component.startsWith("/") ||
+    component.startsWith("\\")
+  ) {
     return false;
   }
   return true;

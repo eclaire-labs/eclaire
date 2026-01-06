@@ -1,4 +1,3 @@
-
 import { Calendar, Clock, Filter, Search, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";

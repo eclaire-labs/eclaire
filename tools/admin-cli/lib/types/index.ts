@@ -4,34 +4,32 @@
  * Re-exports types from @eclaire/ai with CLI-specific aliases and additions.
  */
 
+// Re-export engine types from @eclaire/ai
+// Re-export types from @eclaire/ai with CLI-friendly aliases
+export type {
+  AIContext,
+  Dialect,
+  EngineConfig,
+  InputModality,
+  ModelCapabilities,
+  ModelConfig as Model,
+  ModelPricing,
+  ModelSource,
+  ModelsConfiguration as ModelsConfig,
+  OutputModality,
+  ProviderAuth,
+  ProviderConfig,
+  ProviderOverrides,
+  ProvidersConfiguration as ProvidersConfig,
+  ReasoningConfig,
+  SelectionConfiguration as SelectionConfig,
+  TokenizerConfig,
+} from "@eclaire/ai";
 // Re-export utility types for engine commands
 export type {
   DoctorCheck,
   DownloadResult,
-} from './engines.js';
-
-// Re-export engine types from @eclaire/ai
-export type { EngineConfig } from '@eclaire/ai';
-
-// Re-export types from @eclaire/ai with CLI-friendly aliases
-export type {
-  Dialect,
-  ProviderAuth,
-  ProviderOverrides,
-  ProviderConfig,
-  ProvidersConfiguration as ProvidersConfig,
-  InputModality,
-  OutputModality,
-  ReasoningConfig,
-  ModelCapabilities,
-  TokenizerConfig,
-  ModelSource,
-  ModelPricing,
-  ModelConfig as Model,
-  ModelsConfiguration as ModelsConfig,
-  AIContext,
-  SelectionConfiguration as SelectionConfig,
-} from '@eclaire/ai';
+} from "./engines.js";
 
 // ============================================================================
 // CLI-specific types
@@ -76,11 +74,11 @@ export interface ProviderPreset {
     batchSize?: number;
   };
   config: {
-    dialect: 'openai_compatible' | 'mlx_native' | 'anthropic_messages';
+    dialect: "openai_compatible" | "mlx_native" | "anthropic_messages";
     baseUrl: string;
     headers?: Record<string, string>;
     auth: {
-      type: 'none' | 'bearer' | 'header';
+      type: "none" | "bearer" | "header";
       requiresApiKey: boolean;
       /** Environment variable name for the API key (e.g., 'OPENAI_API_KEY') */
       envVar?: string;

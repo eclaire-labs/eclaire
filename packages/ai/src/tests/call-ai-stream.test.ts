@@ -4,21 +4,21 @@
  * Tests for the streaming AI API call function.
  */
 
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { initAI, resetAI, callAIStream } from "../index.js";
-import {
-  getFixturesPath,
-  createMockLoggerFactory,
-  createMockFetch,
-  createSSEStream,
-  sseContentDelta,
-  sseReasoningDelta,
-  sseFinishReason,
-  sseUsage,
-  sseDone,
-} from "./setup.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { callAIStream, initAI, resetAI } from "../index.js";
 import { LLMStreamParser } from "../stream-parser.js";
 import type { AICallTrace } from "../types.js";
+import {
+  createMockFetch,
+  createMockLoggerFactory,
+  createSSEStream,
+  getFixturesPath,
+  sseContentDelta,
+  sseDone,
+  sseFinishReason,
+  sseReasoningDelta,
+  sseUsage,
+} from "./setup.js";
 
 describe("callAIStream", () => {
   const mockLoggerFactory = createMockLoggerFactory();
@@ -51,7 +51,7 @@ describe("callAIStream", () => {
 
       const response = await callAIStream(
         [{ role: "user", content: "Say hello" }],
-        "backend"
+        "backend",
       );
 
       expect(response.stream).toBeInstanceOf(ReadableStream);
@@ -63,7 +63,7 @@ describe("callAIStream", () => {
 
       const response = await callAIStream(
         [{ role: "user", content: "Hello" }],
-        "backend"
+        "backend",
       );
 
       expect(response.estimatedInputTokens).toBeDefined();
@@ -83,7 +83,7 @@ describe("callAIStream", () => {
 
       const response = await callAIStream(
         [{ role: "user", content: "Say hello" }],
-        "backend"
+        "backend",
       );
 
       const parser = new LLMStreamParser();
@@ -113,7 +113,7 @@ describe("callAIStream", () => {
 
       const response = await callAIStream(
         [{ role: "user", content: "Question" }],
-        "backend"
+        "backend",
       );
 
       const parser = new LLMStreamParser();
@@ -145,14 +145,16 @@ describe("callAIStream", () => {
 
       const response = await callAIStream(
         [{ role: "user", content: "Hello" }],
-        "backend"
+        "backend",
       );
 
       const parser = new LLMStreamParser();
       const parsedStream = await parser.processSSEStream(response.stream);
       const reader = parsedStream.getReader();
 
-      let usage: { prompt_tokens: number; completion_tokens: number } | undefined;
+      let usage:
+        | { prompt_tokens: number; completion_tokens: number }
+        | undefined;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -176,7 +178,7 @@ describe("callAIStream", () => {
 
       const response = await callAIStream(
         [{ role: "user", content: "Hello" }],
-        "backend"
+        "backend",
       );
 
       const parser = new LLMStreamParser();
@@ -204,7 +206,7 @@ describe("callAIStream", () => {
       await callAIStream(
         [{ role: "user", content: "Hello" }],
         "backend",
-        { stream: false } // Try to set to false
+        { stream: false }, // Try to set to false
       );
 
       const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
@@ -225,11 +227,10 @@ describe("callAIStream", () => {
       const events = [sseContentDelta("Hello"), sseDone()];
       mockFetch.queueStreamResponse(createSSEStream(events));
 
-      await callAIStream(
-        [{ role: "user", content: "Hello" }],
-        "backend",
-        { temperature: 0.8, maxTokens: 500 }
-      );
+      await callAIStream([{ role: "user", content: "Hello" }], "backend", {
+        temperature: 0.8,
+        maxTokens: 500,
+      });
 
       const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
       expect(requestBody.temperature).toBe(0.8);
@@ -251,11 +252,9 @@ describe("callAIStream", () => {
         },
       ];
 
-      await callAIStream(
-        [{ role: "user", content: "Search" }],
-        "backend",
-        { tools }
-      );
+      await callAIStream([{ role: "user", content: "Search" }], "backend", {
+        tools,
+      });
 
       const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
       expect(requestBody.tools).toHaveLength(1);
@@ -269,7 +268,7 @@ describe("callAIStream", () => {
       await callAIStream([{ role: "user", content: "Hello" }], "backend");
 
       expect(mockFetch.calls[0]!.url).toBe(
-        "http://localhost:8080/v1/chat/completions"
+        "http://localhost:8080/v1/chat/completions",
       );
     });
 
@@ -279,7 +278,10 @@ describe("callAIStream", () => {
 
       await callAIStream([{ role: "user", content: "Hello" }], "backend");
 
-      const headers = mockFetch.calls[0]!.init?.headers as Record<string, string>;
+      const headers = mockFetch.calls[0]!.init?.headers as Record<
+        string,
+        string
+      >;
       expect(headers.Authorization).toBe("Bearer test-api-key");
     });
   });
@@ -289,7 +291,7 @@ describe("callAIStream", () => {
       mockFetch.queueErrorResponse(500, "Internal Server Error");
 
       await expect(
-        callAIStream([{ role: "user", content: "Hello" }], "backend")
+        callAIStream([{ role: "user", content: "Hello" }], "backend"),
       ).rejects.toThrow("AI API error: 500");
     });
 
@@ -302,7 +304,7 @@ describe("callAIStream", () => {
       });
 
       await expect(
-        callAIStream([{ role: "user", content: "Hello" }], "backend")
+        callAIStream([{ role: "user", content: "Hello" }], "backend"),
       ).rejects.toThrow("No response body available for streaming");
     });
 
@@ -310,7 +312,7 @@ describe("callAIStream", () => {
       mockFetch.queueErrorResponse(401, "Unauthorized");
 
       await expect(
-        callAIStream([{ role: "user", content: "Hello" }], "backend")
+        callAIStream([{ role: "user", content: "Hello" }], "backend"),
       ).rejects.toThrow("AI API error: 401");
     });
   });
@@ -322,17 +324,13 @@ describe("callAIStream", () => {
 
       const traces: AICallTrace[] = [];
 
-      await callAIStream(
-        [{ role: "user", content: "Hello" }],
-        "backend",
-        {
-          trace: {
-            enabled: true,
-            callIndex: 0,
-            onTraceCapture: (trace) => traces.push(trace),
-          },
-        }
-      );
+      await callAIStream([{ role: "user", content: "Hello" }], "backend", {
+        trace: {
+          enabled: true,
+          callIndex: 0,
+          onTraceCapture: (trace) => traces.push(trace),
+        },
+      });
 
       expect(traces).toHaveLength(1);
       expect(traces[0]!.callIndex).toBe(0);
@@ -346,17 +344,13 @@ describe("callAIStream", () => {
 
       const traces: AICallTrace[] = [];
 
-      await callAIStream(
-        [{ role: "user", content: "Hello" }],
-        "backend",
-        {
-          trace: {
-            enabled: true,
-            callIndex: 0,
-            onTraceCapture: (trace) => traces.push(trace),
-          },
-        }
-      );
+      await callAIStream([{ role: "user", content: "Hello" }], "backend", {
+        trace: {
+          enabled: true,
+          callIndex: 0,
+          onTraceCapture: (trace) => traces.push(trace),
+        },
+      });
 
       const headers = traces[0]!.requestBody.headers as Record<string, string>;
       expect(headers.Authorization).toBe("[REDACTED]");
@@ -368,17 +362,13 @@ describe("callAIStream", () => {
 
       const traces: AICallTrace[] = [];
 
-      await callAIStream(
-        [{ role: "user", content: "Hello" }],
-        "backend",
-        {
-          trace: {
-            enabled: true,
-            callIndex: 0,
-            onTraceCapture: (trace) => traces.push(trace),
-          },
-        }
-      );
+      await callAIStream([{ role: "user", content: "Hello" }], "backend", {
+        trace: {
+          enabled: true,
+          callIndex: 0,
+          onTraceCapture: (trace) => traces.push(trace),
+        },
+      });
 
       expect(traces[0]!.estimatedInputTokens).toBeGreaterThan(0);
     });
@@ -428,7 +418,7 @@ describe("callAIStream", () => {
 
       const response = await callAIStream(
         [{ role: "user", content: "Hello" }],
-        "backend"
+        "backend",
       );
 
       expect(response.stream).toBeInstanceOf(ReadableStream);

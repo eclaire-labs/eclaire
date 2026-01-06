@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
-import { customAlphabet } from "nanoid";
 import { generateCleanId } from "@eclaire/core";
-import { createChildLogger } from "./logger.js";
+import { customAlphabet } from "nanoid";
 import { config } from "../config/index.js";
+import { createChildLogger } from "./logger.js";
 
 const logger = createChildLogger("api-key-security");
 

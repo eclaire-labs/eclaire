@@ -1,4 +1,4 @@
-
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Calendar,
@@ -14,9 +14,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useNavigate, getRouteApi } from "@tanstack/react-router";
 
 const routeApi = getRouteApi("/_authenticated/documents/$id");
+
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -456,7 +456,11 @@ export function DocumentDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/documents" })}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate({ to: "/documents" })}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -481,7 +485,11 @@ export function DocumentDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/documents" })}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate({ to: "/documents" })}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Document not found</h1>
@@ -839,16 +847,19 @@ export function DocumentDetailClient() {
                           : "Processing is disabled for this document"
                       }
                     >
-                      {document.enabled === false
-                        ? "disabled"
-                        : document.processingStatus === "processing"
-                          ? (
-                              <span className="flex items-center gap-1">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                processing
-                              </span>
-                            )
-                          : (document.processingStatus || "unknown").replace(/_/g, " ")}
+                      {document.enabled === false ? (
+                        "disabled"
+                      ) : document.processingStatus === "processing" ? (
+                        <span className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          processing
+                        </span>
+                      ) : (
+                        (document.processingStatus || "unknown").replace(
+                          /_/g,
+                          " ",
+                        )
+                      )}
                     </Badge>
 
                     {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}

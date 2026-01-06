@@ -4,14 +4,14 @@
  * Tests advanced scheduler options: limit, endDate, immediately.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { Scheduler, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   eventually,
-  sleep,
   type QueueTestHarness,
+  sleep,
 } from "../testkit/index.js";
-import type { Worker, Scheduler } from "../../core/types.js";
 
 describe("BullMQ: Scheduler Advanced", () => {
   let harness: QueueTestHarness;

@@ -5,9 +5,9 @@
  * Extracted from the original prompt.ts for better modularity.
  */
 
-import type { UserContext } from "./types.js";
-import { backendTools } from "./tools/index.js";
 import { toOpenAITools } from "@eclaire/ai";
+import { backendTools } from "./tools/index.js";
+import type { UserContext } from "./types.js";
 
 export interface AssetContent {
   type: string;
@@ -32,7 +32,9 @@ function getToolSignatures(): string {
   const tools = toOpenAITools(backendTools);
   return tools
     .map((t) => {
-      const params = t.function.parameters as { properties?: Record<string, unknown> };
+      const params = t.function.parameters as {
+        properties?: Record<string, unknown>;
+      };
       const paramStr = params.properties
         ? Object.entries(params.properties)
             .map(([name, schema]) => {

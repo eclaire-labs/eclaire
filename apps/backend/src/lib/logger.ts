@@ -1,5 +1,5 @@
-import type { Context, Next } from "hono";
 import { createLoggerFactory, runWithRequestId } from "@eclaire/logger";
+import type { Context, Next } from "hono";
 import { config } from "../config/index.js";
 
 // Re-export Logger type for convenience
@@ -19,7 +19,8 @@ const messageFormat =
 const { logger, createChildLogger } = createLoggerFactory({
   service: serviceName,
   level: config.logLevel,
-  version: process.env.APP_VERSION || process.env.npm_package_version || "0.1.0",
+  version:
+    process.env.APP_VERSION || process.env.npm_package_version || "0.1.0",
   environment: process.env.NODE_ENV || "development",
   messageFormat,
 });

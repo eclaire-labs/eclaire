@@ -7,9 +7,9 @@
 
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
-import { getStorage } from "../storage/index.js";
-import { createChildLogger } from "../logger.js";
 import type { AssetReference } from "../../schemas/prompt-params.js";
+import { createChildLogger } from "../logger.js";
+import { getStorage } from "../storage/index.js";
 import type { AssetContent } from "./system-prompt-builder.js";
 
 const { bookmarks, documents, notes, photos, tasks } = schema;
@@ -186,9 +186,11 @@ export async function fetchAssetContent(
           return null;
         }
 
-        const contentParts = [photo.title, photo.description, photo.ocrText].filter(
-          Boolean,
-        );
+        const contentParts = [
+          photo.title,
+          photo.description,
+          photo.ocrText,
+        ].filter(Boolean);
         return contentParts.length > 0 ? contentParts.join("\n\n") : null;
       }
 

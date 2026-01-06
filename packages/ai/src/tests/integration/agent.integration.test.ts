@@ -8,21 +8,25 @@
  *   OPENROUTER_API_KEY=xxx pnpm --filter @eclaire/ai test:integration:openrouter
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
-  ToolLoopAgent,
-  createAgentContext,
-  stepCountIs,
-  noToolCalls,
   anyOf,
+  createAgentContext,
+  noToolCalls,
+  stepCountIs,
+  ToolLoopAgent,
 } from "../../agent/index.js";
-import type { AgentContext, AgentToolDefinition, AnyZodType } from "../../agent/types.js";
+import type {
+  AgentContext,
+  AgentToolDefinition,
+  AnyZodType,
+} from "../../agent/types.js";
 import type { ToolExecutionResult } from "../../tools/types.js";
 import {
-  skipIfNoIntegration,
   initIntegrationAI,
   resetIntegrationAI,
+  skipIfNoIntegration,
 } from "./setup.js";
 
 describe("ToolLoopAgent integration", () => {
@@ -48,7 +52,10 @@ describe("ToolLoopAgent integration", () => {
     b: z.number(),
   });
 
-  function createCalculatorTool(): AgentToolDefinition<typeof calculatorInputSchema, AgentContext> {
+  function createCalculatorTool(): AgentToolDefinition<
+    typeof calculatorInputSchema,
+    AgentContext
+  > {
     return {
       name: "calculator",
       description: "Perform basic arithmetic calculations",
@@ -116,7 +123,7 @@ describe("ToolLoopAgent integration", () => {
       expect(result.usage.totalPromptTokens).toBeGreaterThan(0);
       expect(result.usage.totalCompletionTokens).toBeGreaterThan(0);
       expect(result.usage.totalTokens).toBe(
-        result.usage.totalPromptTokens + result.usage.totalCompletionTokens
+        result.usage.totalPromptTokens + result.usage.totalCompletionTokens,
       );
     });
   });
@@ -152,7 +159,7 @@ describe("ToolLoopAgent integration", () => {
 
       // Check that calculator was called
       const toolSteps = result.steps.filter(
-        (s) => s.toolResults && s.toolResults.length > 0
+        (s) => s.toolResults && s.toolResults.length > 0,
       );
       expect(toolSteps.length).toBeGreaterThan(0);
 
@@ -222,7 +229,8 @@ describe("ToolLoopAgent integration", () => {
 
       const agent = new ToolLoopAgent({
         aiContext: "backend",
-        instructions: "You are a helpful assistant. Only use tools when explicitly asked to perform calculations. For greetings and casual conversation, respond directly without using any tools.",
+        instructions:
+          "You are a helpful assistant. Only use tools when explicitly asked to perform calculations. For greetings and casual conversation, respond directly without using any tools.",
         tools: { calculator },
         stopWhen: anyOf(stepCountIs(3), noToolCalls()), // Step limit as safety fallback
       });
@@ -332,13 +340,20 @@ describe("ToolLoopAgent integration", () => {
     it("handles tool execution errors gracefully", async () => {
       const failingToolSchema = z.object({ shouldFail: z.boolean() });
 
-      const failingTool: AgentToolDefinition<typeof failingToolSchema, AgentContext> = {
+      const failingTool: AgentToolDefinition<
+        typeof failingToolSchema,
+        AgentContext
+      > = {
         name: "mayFail",
         description: "A tool that may fail",
         inputSchema: failingToolSchema,
         execute: async (input): Promise<ToolExecutionResult> => {
           if (input.shouldFail) {
-            return { success: false, content: "", error: "Intentional failure" };
+            return {
+              success: false,
+              content: "",
+              error: "Intentional failure",
+            };
           }
           return { success: true, content: "Success!" };
         },
@@ -363,7 +378,7 @@ describe("ToolLoopAgent integration", () => {
       // Should have recorded the failure
       const toolExecutions = result.steps.flatMap((s) => s.toolResults || []);
       const failedExecution = toolExecutions.find(
-        (e) => e.toolName === "mayFail" && !e.output.success
+        (e) => e.toolName === "mayFail" && !e.output.success,
       );
       expect(failedExecution).toBeDefined();
       expect(failedExecution!.output.error).toBe("Intentional failure");

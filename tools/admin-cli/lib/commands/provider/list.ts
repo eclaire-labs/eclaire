@@ -1,7 +1,7 @@
-import { getAllProviders } from '../../config/providers.js';
-import { createProvidersTable } from '../../ui/tables.js';
-import { colors, icons } from '../../ui/colors.js';
-import type { CommandOptions } from '../../types/index.js';
+import { getAllProviders } from "../../config/providers.js";
+import type { CommandOptions } from "../../types/index.js";
+import { colors, icons } from "../../ui/colors.js";
+import { createProvidersTable } from "../../ui/tables.js";
 
 export async function listCommand(options: CommandOptions): Promise<void> {
   try {
@@ -29,14 +29,25 @@ export async function listCommand(options: CommandOptions): Promise<void> {
     console.log(createProvidersTable(providers));
 
     // Show helpful commands
-    console.log(colors.dim('\nCommands:'));
-    console.log(colors.dim('  eclaire provider add          - Add a new provider'));
-    console.log(colors.dim('  eclaire provider edit <id>    - Edit a provider'));
-    console.log(colors.dim('  eclaire provider test <id>    - Test provider connectivity'));
-    console.log(colors.dim('  eclaire provider remove <id>  - Remove a provider'));
-
+    console.log(colors.dim("\nCommands:"));
+    console.log(
+      colors.dim("  eclaire provider add          - Add a new provider"),
+    );
+    console.log(
+      colors.dim("  eclaire provider edit <id>    - Edit a provider"),
+    );
+    console.log(
+      colors.dim(
+        "  eclaire provider test <id>    - Test provider connectivity",
+      ),
+    );
+    console.log(
+      colors.dim("  eclaire provider remove <id>  - Remove a provider"),
+    );
   } catch (error: any) {
-    console.log(colors.error(`${icons.error} Failed to list providers: ${error.message}`));
+    console.log(
+      colors.error(`${icons.error} Failed to list providers: ${error.message}`),
+    );
     process.exit(1);
   }
 }

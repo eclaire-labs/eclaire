@@ -1,4 +1,4 @@
-
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowLeft,
@@ -15,9 +15,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useNavigate, getRouteApi } from "@tanstack/react-router";
 
 const routeApi = getRouteApi("/_authenticated/tasks/$id");
+
 import React, { useEffect, useState } from "react";
 import { MarkdownDisplayWithAssets } from "@/components/markdown-display-with-assets";
 import { Badge } from "@/components/ui/badge";
@@ -563,7 +563,11 @@ export function TaskDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/tasks" })}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate({ to: "/tasks" })}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -588,7 +592,11 @@ export function TaskDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/tasks" })}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate({ to: "/tasks" })}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Task not found</h1>
@@ -599,7 +607,9 @@ export function TaskDetailClient() {
           <p className="text-muted-foreground mb-4">
             The task you're looking for doesn't exist or couldn't be loaded.
           </p>
-          <Button onClick={() => navigate({ to: "/tasks" })}>Go to Tasks</Button>
+          <Button onClick={() => navigate({ to: "/tasks" })}>
+            Go to Tasks
+          </Button>
         </div>
       </div>
     );
@@ -1189,16 +1199,19 @@ export function TaskDetailClient() {
                               : "Processing is disabled for this task"
                           }
                         >
-                          {task.enabled === false
-                            ? "disabled"
-                            : task.processingStatus === "processing"
-                              ? (
-                                  <span className="flex items-center gap-1">
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                    processing
-                                  </span>
-                                )
-                              : (task.processingStatus || "unknown").replace(/_/g, " ")}
+                          {task.enabled === false ? (
+                            "disabled"
+                          ) : task.processingStatus === "processing" ? (
+                            <span className="flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              processing
+                            </span>
+                          ) : (
+                            (task.processingStatus || "unknown").replace(
+                              /_/g,
+                              " ",
+                            )
+                          )}
                         </Badge>
 
                         {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}

@@ -8,9 +8,9 @@
 // Re-export tool types from main types file
 export type {
   JSONSchema,
-  ToolDefinition,
-  ToolChoice,
   ToolCallResult,
+  ToolChoice,
+  ToolDefinition,
 } from "../types.js";
 
 // =============================================================================
@@ -41,7 +41,7 @@ export interface ToolExecutionResult {
  * Tool executor function type
  */
 export type ToolExecutor = (
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
 ) => Promise<ToolExecutionResult>;
 
 /**

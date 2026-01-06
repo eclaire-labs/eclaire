@@ -49,9 +49,9 @@
  * ```
  */
 
-import { setLoggerFactory, clearLoggerFactory } from "./logger.js";
-import { setConfigPath, clearConfigPath, clearConfigCaches } from "./config.js";
-import { setDebugLogPath, clearDebugLogPath } from "./debug-logger.js";
+import { clearConfigCaches, clearConfigPath, setConfigPath } from "./config.js";
+import { clearDebugLogPath, setDebugLogPath } from "./debug-logger.js";
+import { clearLoggerFactory, setLoggerFactory } from "./logger.js";
 import type { AILogger } from "./types.js";
 
 // =============================================================================
@@ -110,7 +110,7 @@ let _initialized = false;
 export function initAI(config: AIClientConfig): void {
   if (_initialized) {
     throw new Error(
-      "AI client already initialized. Call resetAI() first if reconfiguration is needed."
+      "AI client already initialized. Call resetAI() first if reconfiguration is needed.",
     );
   }
 
@@ -160,10 +160,10 @@ export { callAI, callAIStream } from "./client.js";
 
 export {
   LLMStreamParser,
-  type StreamParseResult,
-  type SSEParseResult,
-  type ToolCallData,
   type RawSSEBufferCallback,
+  type SSEParseResult,
+  type StreamParseResult,
+  type ToolCallData,
 } from "./stream-parser.js";
 
 // =============================================================================
@@ -171,12 +171,12 @@ export {
 // =============================================================================
 
 export {
-  extractThinkingContent,
-  parseTextToolContent,
   extractFinalResponse,
+  extractThinkingContent,
   extractToolCalls,
-  type ToolCall,
+  parseTextToolContent,
   type TextToolParseResult,
+  type ToolCall,
 } from "./text-parser.js";
 
 // =============================================================================
@@ -184,169 +184,166 @@ export {
 // =============================================================================
 
 export {
-  // Config loading
-  loadProvidersConfiguration,
-  loadModelsConfiguration,
-  loadSelectionConfiguration,
-  clearConfigCaches,
-  // Config accessors
-  getActiveModelIdForContext,
-  getActiveModelForContext,
-  getModelConfigById,
-  getProviderConfig,
-  getCurrentModelConfig,
-  // Reasoning helpers
-  getThinkingPromptPrefix,
-  // Provider resolution
-  resolveProviderForModel,
-  validateAIConfig,
-  validateAIConfigOnStartup,
-  getAIProviderInfo,
-  // Config write operations
-  saveProvidersConfiguration,
-  saveModelsConfiguration,
-  saveSelectionConfiguration,
   // Model CRUD
   addModel,
-  updateModel,
-  removeModel,
-  // Selection management
-  setActiveModel,
-  removeActiveModel,
+  clearConfigCaches,
+  getActiveModelForContext,
+  // Config accessors
+  getActiveModelIdForContext,
+  getActiveModelsAsObjects,
+  getAIProviderInfo,
+  getConfigPath,
+  getCurrentModelConfig,
+  getEngineConfig,
+  getLocalProviders,
+  getManagedProviders,
+  getModelConfigById,
+  getModels,
+  getProviderConfig,
   // Helper functions
   getProviders,
-  getModels,
-  getActiveModelsAsObjects,
-  // Modality helpers (generic)
-  hasInputModality,
+  // Reasoning helpers
+  getThinkingPromptPrefix,
   hasAllInputModalities,
-  // Config path management
-  setConfigPath,
-  getConfigPath,
   // Engine helpers
   hasEngine,
+  // Modality helpers (generic)
+  hasInputModality,
   isManaged,
+  loadModelsConfiguration,
+  // Config loading
+  loadProvidersConfiguration,
+  loadSelectionConfiguration,
   parsePort,
-  getManagedProviders,
-  getLocalProviders,
-  getEngineConfig,
+  removeActiveModel,
+  removeModel,
+  // Provider resolution
+  resolveProviderForModel,
+  saveModelsConfiguration,
+  // Config write operations
+  saveProvidersConfiguration,
+  saveSelectionConfiguration,
+  // Selection management
+  setActiveModel,
+  // Config path management
+  setConfigPath,
+  updateModel,
+  validateAIConfig,
+  validateAIConfigOnStartup,
 } from "./config.js";
 
 // =============================================================================
 // VALIDATION
 // =============================================================================
 
+export type { RequestRequirements } from "./validation.js";
 export {
+  CapabilityError,
   // Validation
   deriveRequestRequirements,
-  validateRequestAgainstCapabilities,
-  CapabilityError,
+  getReasoningMode,
+  modelSupportsJsonSchema,
+  modelSupportsReasoning,
+  modelSupportsStreaming,
+  modelSupportsStructuredOutputs,
   // Capability checks
   modelSupportsTools,
-  modelSupportsJsonSchema,
-  modelSupportsStructuredOutputs,
-  modelSupportsStreaming,
-  modelSupportsReasoning,
-  getReasoningMode,
+  validateRequestAgainstCapabilities,
 } from "./validation.js";
-
-export type { RequestRequirements } from "./validation.js";
 
 // =============================================================================
 // TOKEN ESTIMATION
 // =============================================================================
 
-export { estimateTokenCount, checkContextFit } from "./token-estimation.js";
+export { checkContextFit, estimateTokenCount } from "./token-estimation.js";
 
 // =============================================================================
 // ADAPTERS
 // =============================================================================
 
+export type { AdapterRegistry, DialectAdapter } from "./adapters/index.js";
 export {
+  adapterRegistry,
+  anthropicMessagesAdapter,
   getAdapter,
   isDialectSupported,
-  adapterRegistry,
-  openaiCompatibleAdapter,
   mlxNativeAdapter,
-  anthropicMessagesAdapter,
+  openaiCompatibleAdapter,
 } from "./adapters/index.js";
-
-export type { DialectAdapter, AdapterRegistry } from "./adapters/index.js";
 
 // =============================================================================
 // TOOLS
 // =============================================================================
 
 export {
-  // Tool types
-  type ToolExecutionResult,
-  type ToolExecutor,
-  type ToolRegistry,
-  type ToolCallSummaryInput,
-  type ToolCallSummaryOutput,
-  // Tool functions
-  parseToolCallArguments,
-  hasToolCalls,
-  getToolNames,
-  executeToolCall,
-  executeAllToolCalls,
   buildAssistantToolCallMessage,
   buildToolResultMessage,
   buildToolResultMessages,
-  createToolDefinition,
   createObjectSchema,
-  shouldContinueToolLoop,
   createToolCallSummary,
+  createToolDefinition,
+  executeAllToolCalls,
+  executeToolCall,
+  getToolNames,
+  hasToolCalls,
+  // Tool functions
+  parseToolCallArguments,
+  shouldContinueToolLoop,
+  type ToolCallSummaryInput,
+  type ToolCallSummaryOutput,
+  // Tool types
+  type ToolExecutionResult,
+  type ToolExecutor,
   type ToolLoopOptions,
   type ToolLoopResult,
+  type ToolRegistry,
 } from "./tools/index.js";
 
 // =============================================================================
 // AGENT
 // =============================================================================
 
-export {
-  // Main class
-  ToolLoopAgent,
-  // Context
-  createAgentContext,
-  isContextAborted,
-  getContextElapsedMs,
-  extendContext,
-  // Tool helpers
-  tool,
-  toOpenAIToolDefinition,
-  toOpenAITools,
-  executeAgentTool,
-  // Stop conditions
-  stepCountIs,
-  hasToolCall,
-  noToolCalls,
-  finishReasonStop,
-  anyOf,
-  allOf,
-  custom as customStopCondition,
-  maxTokens as maxTokensCondition,
-  maxDuration,
-  evaluateStopConditions,
-  defaultStopConditions,
-} from "./agent/index.js";
-
 export type {
   // Agent types
   AgentContext,
-  CreateContextOptions,
-  AgentToolDefinition,
-  StopCondition,
-  StepToolExecution,
-  AgentStep,
-  PrepareStepInfo,
-  PrepareStepResult,
-  ToolLoopAgentConfig,
   AgentResult,
+  AgentStep,
   AgentStreamEvent,
   AgentStreamResult,
+  AgentToolDefinition,
+  CreateContextOptions,
   GenerateOptions,
+  PrepareStepInfo,
+  PrepareStepResult,
+  StepToolExecution,
+  StopCondition,
+  ToolLoopAgentConfig,
+} from "./agent/index.js";
+export {
+  allOf,
+  anyOf,
+  // Context
+  createAgentContext,
+  custom as customStopCondition,
+  defaultStopConditions,
+  evaluateStopConditions,
+  executeAgentTool,
+  extendContext,
+  finishReasonStop,
+  getContextElapsedMs,
+  hasToolCall,
+  isContextAborted,
+  maxDuration,
+  maxTokens as maxTokensCondition,
+  noToolCalls,
+  // Stop conditions
+  stepCountIs,
+  // Main class
+  ToolLoopAgent,
+  toOpenAIToolDefinition,
+  toOpenAITools,
+  // Tool helpers
+  tool,
 } from "./agent/index.js";
 
 // =============================================================================
@@ -354,56 +351,56 @@ export type {
 // =============================================================================
 
 export type {
-  // Dialect types
-  Dialect,
-  // Provider types
-  ProviderAuth,
-  ProviderOverrides,
-  EngineConfig,
-  ProviderConfig,
-  ProvidersConfiguration,
-  // Model types
-  InputModality,
-  OutputModality,
-  ReasoningConfig,
-  ModelCapabilities,
-  TokenizerConfig,
-  ModelSource,
-  ModelPricing,
-  ModelConfig,
-  ModelsConfiguration,
+  AdapterRequest,
+  // Adapter types
+  AdapterRequestParams,
+  AdapterResponse,
+  AICallOptions,
+  AICallTrace,
   // Selection types
   AIContext,
-  SelectionConfiguration,
-  // Tool calling types
-  JSONSchema,
-  ToolDefinition,
-  ToolChoice,
-  ToolCallResult,
-  // Structured output types
-  JSONSchemaDefinition,
-  ResponseFormat,
-  // Message types
-  TextContentPart,
-  ImageContentPart,
-  MessageContent,
+  // Logger type
+  AILogger,
   AIMessage,
-  // API call types
-  TokenUsage,
-  TraceOptions,
-  AICallTrace,
-  AICallOptions,
-  FinishReason,
   AIResponse,
   AIStreamChunk,
   AIStreamResponse,
-  // Adapter types
-  AdapterRequestParams,
-  AdapterRequest,
-  AdapterResponse,
+  // Dialect types
+  Dialect,
+  EngineConfig,
+  FinishReason,
+  ImageContentPart,
+  // Model types
+  InputModality,
+  // Tool calling types
+  JSONSchema,
+  // Structured output types
+  JSONSchemaDefinition,
+  MessageContent,
+  ModelCapabilities,
+  ModelConfig,
+  ModelPricing,
+  ModelSource,
+  ModelsConfiguration,
+  OutputModality,
+  // Provider types
+  ProviderAuth,
+  ProviderConfig,
+  ProviderOverrides,
+  ProvidersConfiguration,
+  ReasoningConfig,
   // Resolved provider
   ResolvedProvider,
+  ResponseFormat,
+  SelectionConfiguration,
+  // Message types
+  TextContentPart,
+  TokenizerConfig,
+  // API call types
+  TokenUsage,
+  ToolCallResult,
+  ToolChoice,
+  ToolDefinition,
+  TraceOptions,
   ValidatedAIConfig,
-  // Logger type
-  AILogger,
 } from "./types.js";

@@ -1,6 +1,6 @@
+import { getCurrentModelConfig } from "@eclaire/ai";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { getCurrentModelConfig } from "@eclaire/ai";
 import { createChildLogger } from "../lib/logger.js";
 import { getCurrentModelRouteDescription } from "../schemas/model-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";

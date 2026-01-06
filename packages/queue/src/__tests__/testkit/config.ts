@@ -3,14 +3,14 @@
  */
 
 import type {
-  QueueTestHarnessConfig,
   HarnessCapabilities,
-  TestDbType,
   QueueDriverType,
+  QueueTestHarnessConfig,
+  TestDbType,
 } from "./types.js";
 
 // Re-export types for backwards compatibility
-export type { TestDbType, QueueDriverType } from "./types.js";
+export type { QueueDriverType, TestDbType } from "./types.js";
 
 const allDbConfigs: Array<{ dbType: TestDbType; label: string }> = [
   { dbType: "sqlite", label: "SQLite" },

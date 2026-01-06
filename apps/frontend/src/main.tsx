@@ -1,10 +1,10 @@
+import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { RouterProvider } from "@tanstack/react-router";
-import { router } from "./router";
 import { useSession } from "@/lib/auth";
-import { SessionProvider } from "@/providers/SessionProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { SessionProvider } from "@/providers/SessionProvider";
+import { router } from "./router";
 import "./styles/globals.css";
 
 function InnerApp() {

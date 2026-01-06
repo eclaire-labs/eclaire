@@ -28,13 +28,18 @@ function getLogger() {
  * @param model - Model name for tokenizer selection
  * @returns Estimated token count
  */
-export function estimateTokenCount(messages: AIMessage[], model: string): number {
+export function estimateTokenCount(
+  messages: AIMessage[],
+  model: string,
+): number {
   const logger = getLogger();
   try {
     let encoding;
     try {
       // Try to get model-specific encoding
-      encoding = encoding_for_model(model as Parameters<typeof encoding_for_model>[0]);
+      encoding = encoding_for_model(
+        model as Parameters<typeof encoding_for_model>[0],
+      );
     } catch {
       // Fall back to cl100k_base (GPT-4 / ChatGPT default)
       encoding = get_encoding("cl100k_base");
@@ -74,8 +79,11 @@ export function estimateTokenCount(messages: AIMessage[], model: string): number
     return totalTokens;
   } catch (error) {
     logger.warn(
-      { error: error instanceof Error ? error.message : "Unknown error", model },
-      "Failed to estimate tokens with tiktoken, using fallback estimation"
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+        model,
+      },
+      "Failed to estimate tokens with tiktoken, using fallback estimation",
     );
 
     // Fallback: rough character-based estimate (1 token ≈ 4 characters)
@@ -130,7 +138,7 @@ export function checkContextFit(
   messages: AIMessage[],
   model: string,
   contextWindow: number,
-  maxOutputTokens: number = 2000
+  maxOutputTokens: number = 2000,
 ): {
   fits: boolean;
   estimatedInputTokens: number;
@@ -150,7 +158,7 @@ export function checkContextFit(
         contextWindow,
         maxOutputTokens,
       },
-      "Messages may not fit in context window"
+      "Messages may not fit in context window",
     );
   }
 

@@ -25,14 +25,22 @@ export interface WaitlistConfig {
 /**
  * Creates a job waitlist for managing worker notifications
  */
-export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface {
+export function createJobWaitlist(
+  config: WaitlistConfig,
+): JobWaitlistInterface {
   const { logger, findNextScheduledJob } = config;
 
   const waiters = new Map<AssetType, Waiter[]>();
   const wakeTimers = new Map<AssetType, NodeJS.Timeout>();
 
   // Initialize empty arrays for each asset type
-  const assetTypes: AssetType[] = ["bookmarks", "photos", "documents", "notes", "tasks"];
+  const assetTypes: AssetType[] = [
+    "bookmarks",
+    "photos",
+    "documents",
+    "notes",
+    "tasks",
+  ];
   for (const assetType of assetTypes) {
     waiters.set(assetType, []);
   }
@@ -45,8 +53,12 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
     if (index !== -1) {
       waitersForType.splice(index, 1);
       logger.debug(
-        { assetType, workerId: waiter.workerId, remainingWaiters: waitersForType.length },
-        "Removed worker from waitlist"
+        {
+          assetType,
+          workerId: waiter.workerId,
+          remainingWaiters: waitersForType.length,
+        },
+        "Removed worker from waitlist",
       );
     }
   }
@@ -55,7 +67,7 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
     async addWaiter(
       assetType: AssetType,
       workerId: string,
-      timeout: number = 30000
+      timeout: number = 30000,
     ): Promise<any> {
       return new Promise((resolve, reject) => {
         const waiter: Waiter = {
@@ -74,7 +86,7 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
         waitersForType.push(waiter);
         logger.debug(
           { assetType, workerId, waitersCount: waitersForType.length },
-          "Added worker to waitlist"
+          "Added worker to waitlist",
         );
 
         // Set timeout to reject if no job arrives
@@ -103,7 +115,7 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
       const toNotify = Math.min(count, waitersForType.length);
       logger.info(
         { assetType, count: toNotify, totalWaiters: waitersForType.length },
-        "Notifying waiters"
+        "Notifying waiters",
       );
 
       for (let i = 0; i < toNotify; i++) {
@@ -133,7 +145,10 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
       }
 
       if (!findNextScheduledJob) {
-        logger.debug({ assetType }, "No findNextScheduledJob function provided - skipping wakeup scheduling");
+        logger.debug(
+          { assetType },
+          "No findNextScheduledJob function provided - skipping wakeup scheduling",
+        );
         return;
       }
 
@@ -148,7 +163,7 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
             // Max 24 hours
             logger.info(
               { assetType, nextRun: nextRun.toISOString(), delay },
-              "Scheduled next wakeup"
+              "Scheduled next wakeup",
             );
 
             const timer = setTimeout(() => {
@@ -163,8 +178,11 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
         }
       } catch (error) {
         logger.error(
-          { assetType, error: error instanceof Error ? error.message : "Unknown" },
-          "Failed to schedule next wakeup"
+          {
+            assetType,
+            error: error instanceof Error ? error.message : "Unknown",
+          },
+          "Failed to schedule next wakeup",
         );
       }
     },
@@ -195,7 +213,10 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
       for (const [assetType, waitersForType] of waiters.entries()) {
         const count = waitersForType.length;
         if (count > 0) {
-          logger.debug({ assetType, count }, "Resolving pending waiters on close");
+          logger.debug(
+            { assetType, count },
+            "Resolving pending waiters on close",
+          );
           for (const waiter of waitersForType) {
             waiter.resolve(null);
           }

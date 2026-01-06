@@ -5,8 +5,8 @@
  */
 
 import { z } from "zod";
-import type { AgentContext, AgentToolDefinition, AnyZodType } from "./types.js";
 import type { ToolExecutionResult } from "../tools/types.js";
+import type { AgentContext, AgentToolDefinition, AnyZodType } from "./types.js";
 
 /**
  * Create a declarative tool definition with full type inference.
@@ -40,7 +40,7 @@ export function tool<
   TInput extends AnyZodType,
   TContext extends AgentContext = AgentContext,
 >(
-  definition: AgentToolDefinition<TInput, TContext>
+  definition: AgentToolDefinition<TInput, TContext>,
 ): AgentToolDefinition<TInput, TContext> {
   return definition;
 }
@@ -51,7 +51,7 @@ export function tool<
  */
 export function toOpenAIToolDefinition(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  agentTool: AgentToolDefinition<AnyZodType, any>
+  agentTool: AgentToolDefinition<AnyZodType, any>,
 ): import("../types.js").ToolDefinition {
   return {
     type: "function",
@@ -69,7 +69,7 @@ export function toOpenAIToolDefinition(
  */
 export function toOpenAITools(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools: Record<string, AgentToolDefinition<AnyZodType, any>>
+  tools: Record<string, AgentToolDefinition<AnyZodType, any>>,
 ): import("../types.js").ToolDefinition[] {
   return Object.values(tools).map(toOpenAIToolDefinition);
 }
@@ -83,7 +83,7 @@ export async function executeAgentTool<
 >(
   toolDef: AgentToolDefinition<TInput, TContext>,
   rawInput: Record<string, unknown>,
-  context: TContext
+  context: TContext,
 ): Promise<ToolExecutionResult> {
   // Validate and parse input
   const parseResult = toolDef.inputSchema.safeParse(rawInput);

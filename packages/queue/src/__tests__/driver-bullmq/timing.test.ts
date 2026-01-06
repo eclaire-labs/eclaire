@@ -7,14 +7,14 @@
  * Priority 1 processes before priority 10.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   eventually,
-  sleep,
   type QueueTestHarness,
+  sleep,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
 
 describe("BullMQ: Timing", () => {
   let harness: QueueTestHarness;

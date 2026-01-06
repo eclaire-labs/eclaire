@@ -3,6 +3,7 @@ import { db, schema } from "../../db/index.js";
 import { formatToISO8601 } from "../db-helpers.js";
 
 const { taskComments, tasks, users } = schema;
+
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
 

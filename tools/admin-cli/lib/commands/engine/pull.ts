@@ -4,12 +4,12 @@
  * Downloads models from HuggingFace.
  */
 
-import ora from 'ora';
-import { colors, icons } from '../../ui/colors.js';
-import { downloadModel, formatBytes } from '../../engine/download.js';
-import { getModelsDir } from '../../engine/paths.js';
-import { findModelById, updateModel } from '../../config/models.js';
-import type { CommandOptions } from '../../types/index.js';
+import ora from "ora";
+import { findModelById, updateModel } from "../../config/models.js";
+import { downloadModel, formatBytes } from "../../engine/download.js";
+import { getModelsDir } from "../../engine/paths.js";
+import type { CommandOptions } from "../../types/index.js";
+import { colors, icons } from "../../ui/colors.js";
 
 interface PullOptions extends CommandOptions {
   modelId?: string;
@@ -17,17 +17,17 @@ interface PullOptions extends CommandOptions {
 
 export async function pullCommand(
   modelRef: string,
-  options: PullOptions = {}
+  options: PullOptions = {},
 ): Promise<void> {
   try {
     console.log(colors.header(`\n${icons.download} Downloading Model\n`));
     console.log(colors.dim(`Source: ${modelRef}`));
     console.log(colors.dim(`Destination: ${getModelsDir()}`));
-    console.log('');
+    console.log("");
 
     const spinner = ora({
-      text: 'Preparing download...',
-      color: 'cyan',
+      text: "Preparing download...",
+      color: "cyan",
     }).start();
 
     const result = await downloadModel(modelRef);
@@ -37,10 +37,12 @@ export async function pullCommand(
       process.exit(1);
     }
 
-    const sizeStr = result.sizeBytes ? formatBytes(result.sizeBytes) : 'unknown size';
+    const sizeStr = result.sizeBytes
+      ? formatBytes(result.sizeBytes)
+      : "unknown size";
     spinner.succeed(`Download complete (${sizeStr})`);
 
-    console.log('');
+    console.log("");
     console.log(colors.success(`${icons.success} Model saved to:`));
     console.log(colors.dim(`  ${result.localPath}`));
 
@@ -48,15 +50,21 @@ export async function pullCommand(
     if (options.modelId) {
       await updateModelWithLocalPath(options.modelId, result.localPath!);
     } else {
-      console.log('');
-      console.log(colors.subheader('Next steps:'));
-      console.log(colors.dim('  1. Update your model config with the local path:'));
+      console.log("");
+      console.log(colors.subheader("Next steps:"));
+      console.log(
+        colors.dim("  1. Update your model config with the local path:"),
+      );
       console.log(colors.dim(`     eclaire model info <model-id>`));
-      console.log(colors.dim('  2. Or use --model-id to auto-update:'));
-      console.log(colors.dim(`     eclaire engine pull ${modelRef} --model-id <model-id>`));
+      console.log(colors.dim("  2. Or use --model-id to auto-update:"));
+      console.log(
+        colors.dim(
+          `     eclaire engine pull ${modelRef} --model-id <model-id>`,
+        ),
+      );
     }
 
-    console.log('');
+    console.log("");
   } catch (error: any) {
     console.log(colors.error(`${icons.error} Pull failed: ${error.message}`));
     process.exit(1);
@@ -65,15 +73,23 @@ export async function pullCommand(
 
 async function updateModelWithLocalPath(
   modelId: string,
-  localPath: string
+  localPath: string,
 ): Promise<void> {
   const model = findModelById(modelId);
 
   if (!model) {
-    console.log('');
-    console.log(colors.warning(`${icons.warning} Model '${modelId}' not found in config`));
-    console.log(colors.dim('  The model was downloaded but config was not updated.'));
-    console.log(colors.dim('  You may need to add the model manually or check the model ID.'));
+    console.log("");
+    console.log(
+      colors.warning(`${icons.warning} Model '${modelId}' not found in config`),
+    );
+    console.log(
+      colors.dim("  The model was downloaded but config was not updated."),
+    );
+    console.log(
+      colors.dim(
+        "  You may need to add the model manually or check the model ID.",
+      ),
+    );
     return;
   }
 
@@ -89,11 +105,21 @@ async function updateModelWithLocalPath(
 
     updateModel(modelId, updatedModel);
 
-    console.log('');
-    console.log(colors.success(`${icons.success} Updated model '${modelId}' with local path`));
+    console.log("");
+    console.log(
+      colors.success(
+        `${icons.success} Updated model '${modelId}' with local path`,
+      ),
+    );
   } catch (error: any) {
-    console.log('');
-    console.log(colors.warning(`${icons.warning} Failed to update model config: ${error.message}`));
-    console.log(colors.dim('  The model was downloaded but config was not updated.'));
+    console.log("");
+    console.log(
+      colors.warning(
+        `${icons.warning} Failed to update model config: ${error.message}`,
+      ),
+    );
+    console.log(
+      colors.dim("  The model was downloaded but config was not updated."),
+    );
   }
 }

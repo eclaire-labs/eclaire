@@ -6,16 +6,17 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  extractThinkingContent,
-  parseTextToolContent,
   extractFinalResponse,
+  extractThinkingContent,
   extractToolCalls,
+  parseTextToolContent,
 } from "../text-parser.js";
 
 describe("Text Parser", () => {
   describe("extractThinkingContent", () => {
     it("extracts think tags and returns cleaned content", () => {
-      const content = "<think>I need to think about this</think>Here is my response";
+      const content =
+        "<think>I need to think about this</think>Here is my response";
       const result = extractThinkingContent(content);
 
       expect(result.thinkingContent).toBe("I need to think about this");
@@ -27,7 +28,9 @@ describe("Text Parser", () => {
       const result = extractThinkingContent(content);
 
       expect(result.thinkingContent).toBeNull();
-      expect(result.cleanedContent).toBe("Hello, this is my response without thinking.");
+      expect(result.cleanedContent).toBe(
+        "Hello, this is my response without thinking.",
+      );
     });
 
     it("handles think tags with whitespace", () => {

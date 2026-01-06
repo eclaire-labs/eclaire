@@ -5,9 +5,9 @@
  * this reports unified memory which is shared between CPU and GPU.
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as os from 'os';
+import { exec } from "child_process";
+import * as os from "os";
+import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
@@ -27,14 +27,16 @@ async function getMetalRecommendedMemory(): Promise<number | null> {
   try {
     // llama-cli outputs Metal info to stderr before failing with "error: --model is required"
     // We capture both stdout and stderr since the output goes to stderr
-    const { stdout, stderr } = await execAsync('llama-cli 2>&1', {
+    const { stdout, stderr } = await execAsync("llama-cli 2>&1", {
       timeout: 5000,
     });
 
     const output = stdout + stderr;
 
     // Parse: "recommendedMaxWorkingSetSize  = 22906.50 MB"
-    const match = output.match(/recommendedMaxWorkingSetSize\s*=\s*([\d.]+)\s*MB/);
+    const match = output.match(
+      /recommendedMaxWorkingSetSize\s*=\s*([\d.]+)\s*MB/,
+    );
     if (match && match[1]) {
       const mb = parseFloat(match[1]);
       return mb * 1024 * 1024; // Convert MB to bytes
@@ -77,21 +79,24 @@ export async function detectVRAM(): Promise<VRAMStatus> {
     return cachedVRAMStatus;
   }
 
-  if (process.platform !== 'darwin') {
-    throw new Error('VRAM detection is currently only supported on macOS');
+  if (process.platform !== "darwin") {
+    throw new Error("VRAM detection is currently only supported on macOS");
   }
 
   try {
-    const { stdout } = await execAsync('system_profiler SPDisplaysDataType -json', {
-      timeout: 10000,
-    });
+    const { stdout } = await execAsync(
+      "system_profiler SPDisplaysDataType -json",
+      {
+        timeout: 10000,
+      },
+    );
 
     const data = JSON.parse(stdout);
     const gpus = parseSystemProfilerData(data);
 
     const primaryGPU = gpus[0];
     if (!primaryGPU) {
-      throw new Error('No GPU detected');
+      throw new Error("No GPU detected");
     }
 
     // Calculate total VRAM (use the primary GPU)
@@ -106,7 +111,9 @@ export async function detectVRAM(): Promise<VRAMStatus> {
         availableVRAM = metalRecommended;
       } else {
         // Fallback: use 68% of total (approximate match to Metal API)
-        availableVRAM = Math.floor(totalVRAM * UNIFIED_MEMORY_GPU_RATIO_FALLBACK);
+        availableVRAM = Math.floor(
+          totalVRAM * UNIFIED_MEMORY_GPU_RATIO_FALLBACK,
+        );
       }
     } else {
       // Discrete GPU: keep existing 512MB reservation
@@ -144,7 +151,7 @@ function parseSystemProfilerData(data: any): GPUInfo[] {
   }
 
   for (const display of displays) {
-    const name = display.sppci_model || display._name || 'Unknown GPU';
+    const name = display.sppci_model || display._name || "Unknown GPU";
     const isAppleSilicon = isAppleSiliconChip(name);
     const isUnifiedMemory = isAppleSilicon;
 
@@ -159,7 +166,7 @@ function parseSystemProfilerData(data: any): GPUInfo[] {
         display.spdisplays_vram ||
         display.sppci_vram ||
         display._spdisplays_vram ||
-        '';
+        "";
 
       vramBytes = parseVRAMString(vramString);
     }
@@ -184,11 +191,11 @@ function parseSystemProfilerData(data: any): GPUInfo[] {
 function isAppleSiliconChip(name: string): boolean {
   const lowerName = name.toLowerCase();
   return (
-    lowerName.includes('apple m1') ||
-    lowerName.includes('apple m2') ||
-    lowerName.includes('apple m3') ||
-    lowerName.includes('apple m4') ||
-    lowerName.includes('apple gpu')
+    lowerName.includes("apple m1") ||
+    lowerName.includes("apple m2") ||
+    lowerName.includes("apple m3") ||
+    lowerName.includes("apple m4") ||
+    lowerName.includes("apple gpu")
   );
 }
 
@@ -205,11 +212,11 @@ function parseVRAMString(vramString: string): number {
   const unit = match[2].toUpperCase();
 
   switch (unit) {
-    case 'TB':
+    case "TB":
       return value * 1024 * 1024 * 1024 * 1024;
-    case 'GB':
+    case "GB":
       return value * 1024 * 1024 * 1024;
-    case 'MB':
+    case "MB":
       return value * 1024 * 1024;
     default:
       return 0;
@@ -222,20 +229,20 @@ function parseVRAMString(vramString: string): number {
 async function detectAppleSiliconFallback(): Promise<VRAMStatus | null> {
   try {
     // Check if we're on Apple Silicon
-    const { stdout: archOutput } = await execAsync('uname -m');
+    const { stdout: archOutput } = await execAsync("uname -m");
     const arch = archOutput.trim();
 
-    if (arch !== 'arm64') {
+    if (arch !== "arm64") {
       return null;
     }
 
     // Get chip name via sysctl
-    let chipName = 'Apple Silicon';
+    let chipName = "Apple Silicon";
     try {
       const { stdout: chipOutput } = await execAsync(
-        'sysctl -n machdep.cpu.brand_string'
+        "sysctl -n machdep.cpu.brand_string",
       );
-      chipName = chipOutput.trim() || 'Apple Silicon';
+      chipName = chipOutput.trim() || "Apple Silicon";
     } catch {
       // Ignore - use default name
     }

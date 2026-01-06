@@ -21,17 +21,17 @@ import * as semver from "semver";
 
 // Union type for all supported database types
 export type Database =
-	| BetterSQLite3Database<Record<string, unknown>>
-	| PgliteDatabase<Record<string, unknown>>
-	| PostgresJsDatabase<Record<string, unknown>>;
+  | BetterSQLite3Database<Record<string, unknown>>
+  | PgliteDatabase<Record<string, unknown>>
+  | PostgresJsDatabase<Record<string, unknown>>;
 
 export interface UpgradeStep {
-	version: string; // Target version (e.g., '0.7.0')
-	description: string;
-	/** If true, blocks automatic upgrade - user must run upgrade command manually */
-	requiresManualUpgrade?: boolean;
-	/** Optional data migration function (can be omitted for marker-only entries) */
-	run?: (db: Database) => Promise<void>;
+  version: string; // Target version (e.g., '0.7.0')
+  description: string;
+  /** If true, blocks automatic upgrade - user must run upgrade command manually */
+  requiresManualUpgrade?: boolean;
+  /** Optional data migration function (can be omitted for marker-only entries) */
+  run?: (db: Database) => Promise<void>;
 }
 
 /**
@@ -39,44 +39,44 @@ export interface UpgradeStep {
  * Steps are run in order for versions between installed and target.
  */
 export const upgradeSteps: UpgradeStep[] = [
-	// Example for future releases:
-	// {
-	//   version: '0.7.0',
-	//   description: 'Migrate bookmark storage format',
-	//   run: async (db) => {
-	//     // Your data transformation logic here
-	//   }
-	// },
+  // Example for future releases:
+  // {
+  //   version: '0.7.0',
+  //   description: 'Migrate bookmark storage format',
+  //   run: async (db) => {
+  //     // Your data transformation logic here
+  //   }
+  // },
 ];
 
 /**
  * Get upgrade steps that need to run between two versions.
  */
 export function getUpgradeSteps(
-	fromVersion: string,
-	toVersion: string,
+  fromVersion: string,
+  toVersion: string,
 ): UpgradeStep[] {
-	return upgradeSteps
-		.filter((step) => {
-			const stepVersion = semver.valid(step.version);
-			const from = semver.valid(fromVersion);
-			const to = semver.valid(toVersion);
+  return upgradeSteps
+    .filter((step) => {
+      const stepVersion = semver.valid(step.version);
+      const from = semver.valid(fromVersion);
+      const to = semver.valid(toVersion);
 
-			if (!stepVersion || !from || !to) return false;
+      if (!stepVersion || !from || !to) return false;
 
-			// Include step if its version is > fromVersion AND <= toVersion
-			return semver.gt(stepVersion, from) && semver.lte(stepVersion, to);
-		})
-		.sort((a, b) => semver.compare(a.version, b.version));
+      // Include step if its version is > fromVersion AND <= toVersion
+      return semver.gt(stepVersion, from) && semver.lte(stepVersion, to);
+    })
+    .sort((a, b) => semver.compare(a.version, b.version));
 }
 
 /**
  * Check if any upgrade step between two versions requires manual upgrade.
  */
 export function hasManualUpgradeRequired(
-	fromVersion: string | null,
-	toVersion: string,
+  fromVersion: string | null,
+  toVersion: string,
 ): boolean {
-	const steps = getUpgradeSteps(fromVersion || "0.0.0", toVersion);
-	return steps.some((step) => step.requiresManualUpgrade === true);
+  const steps = getUpgradeSteps(fromVersion || "0.0.0", toVersion);
+  return steps.some((step) => step.requiresManualUpgrade === true);
 }

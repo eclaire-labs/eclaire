@@ -5,9 +5,9 @@
  */
 
 import { Queue } from "bullmq";
-import type { Scheduler, ScheduleConfig, QueueLogger } from "../core/types.js";
+import type { QueueLogger, ScheduleConfig, Scheduler } from "../core/types.js";
+import { closeRedisConnection, createRedisConnection } from "./connection.js";
 import type { BullMQSchedulerConfig } from "./types.js";
-import { createRedisConnection, closeRedisConnection } from "./connection.js";
 
 /**
  * Default configuration values
@@ -25,12 +25,10 @@ const DEFAULTS = {
  * @param config - Scheduler configuration
  * @returns Scheduler instance
  */
-export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler {
-  const {
-    redis,
-    logger,
-    prefix = DEFAULTS.prefix,
-  } = config;
+export function createBullMQScheduler(
+  config: BullMQSchedulerConfig,
+): Scheduler {
+  const { redis, logger, prefix = DEFAULTS.prefix } = config;
 
   // Create Redis connection
   const connection = createRedisConnection(redis, logger);
@@ -93,7 +91,10 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
               data,
             },
           );
-          logger.info({ key, queue: queueName, cron, enabled }, "Schedule upserted");
+          logger.info(
+            { key, queue: queueName, cron, enabled },
+            "Schedule upserted",
+          );
         } else {
           // If disabled, ensure it's removed from BullMQ (in case it existed before)
           try {
@@ -101,7 +102,10 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
           } catch {
             // Ignore if it doesn't exist
           }
-          logger.info({ key, queue: queueName, cron, enabled }, "Schedule stored (disabled)");
+          logger.info(
+            { key, queue: queueName, cron, enabled },
+            "Schedule stored (disabled)",
+          );
         }
 
         // Store for list functionality (with defaults applied)
@@ -191,7 +195,10 @@ export function createBullMQScheduler(config: BullMQSchedulerConfig): Scheduler 
           await bullmqQueue.close();
         } catch (error) {
           logger.error(
-            { queue: queueName, error: error instanceof Error ? error.message : "Unknown" },
+            {
+              queue: queueName,
+              error: error instanceof Error ? error.message : "Unknown",
+            },
             "Error closing queue",
           );
         }

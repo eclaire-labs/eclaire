@@ -1,4 +1,3 @@
-
 import { useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
@@ -135,7 +134,10 @@ export function ProcessingEventsProvider({
 
             // All processing events should have assetType and assetId
             if (!assetType || !assetId) {
-              console.warn("Processing event missing assetType or assetId:", data);
+              console.warn(
+                "Processing event missing assetType or assetId:",
+                data,
+              );
               return;
             }
 
@@ -164,9 +166,9 @@ export function ProcessingEventsProvider({
                     return oldData.map((item: any) =>
                       item.id === assetId
                         ? { ...item, processingStatus: "processing" }
-                        : item
+                        : item,
                     );
-                  }
+                  },
                 );
                 // Optimistically update the asset's processingStatus in the detail view
                 queryClient.setQueriesData<any>(
@@ -174,7 +176,7 @@ export function ProcessingEventsProvider({
                   (oldData: any) => {
                     if (!oldData) return oldData;
                     return { ...oldData, processingStatus: "processing" };
-                  }
+                  },
                 );
                 break;
 
@@ -196,7 +198,7 @@ export function ProcessingEventsProvider({
                 }
                 break;
 
-              case "job_completed":
+              case "job_completed": {
                 // Invalidate processing status
                 queryClient.invalidateQueries({
                   queryKey: ["processing-status", assetType, assetId],
@@ -225,6 +227,7 @@ export function ProcessingEventsProvider({
                   callback();
                 }
                 break;
+              }
 
               case "stage_failed":
               case "job_failed":

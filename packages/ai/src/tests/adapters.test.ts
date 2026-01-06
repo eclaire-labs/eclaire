@@ -8,8 +8,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   getAdapter,
   isDialectSupported,
-  openaiCompatibleAdapter,
   mlxNativeAdapter,
+  openaiCompatibleAdapter,
 } from "../adapters/index.js";
 import { createMockLoggerFactory } from "./setup.js";
 
@@ -65,7 +65,7 @@ describe("Adapters", () => {
               maxTokens: 100,
             },
           },
-          { type: "none" }
+          { type: "none" },
         );
 
         expect(request.url).toBe("http://localhost:8080/v1/chat/completions");
@@ -86,7 +86,11 @@ describe("Adapters", () => {
             model: "test-model",
             options: {},
           },
-          { type: "bearer", header: "Authorization", value: "Bearer test-api-key" }
+          {
+            type: "bearer",
+            header: "Authorization",
+            value: "Bearer test-api-key",
+          },
         );
 
         expect(request.headers.Authorization).toBe("Bearer test-api-key");
@@ -101,7 +105,7 @@ describe("Adapters", () => {
             model: "test-model",
             options: {},
           },
-          { type: "header", header: "X-API-Key", value: "test-key" }
+          { type: "header", header: "X-API-Key", value: "test-key" },
         );
 
         expect(request.headers["X-API-Key"]).toBe("test-key");
@@ -116,7 +120,7 @@ describe("Adapters", () => {
             model: "test-model",
             options: {},
           },
-          { type: "none" }
+          { type: "none" },
         );
 
         expect(request.headers.Authorization).toBeUndefined();
@@ -142,7 +146,7 @@ describe("Adapters", () => {
             model: "test-model",
             options: { tools },
           },
-          { type: "none" }
+          { type: "none" },
         );
 
         const body = request.body as Record<string, unknown>;
@@ -163,12 +167,14 @@ describe("Adapters", () => {
               },
             },
           },
-          { type: "none" }
+          { type: "none" },
         );
 
         const body = request.body as Record<string, unknown>;
         expect(body.response_format).toBeDefined();
-        expect((body.response_format as Record<string, unknown>).type).toBe("json_schema");
+        expect((body.response_format as Record<string, unknown>).type).toBe(
+          "json_schema",
+        );
       });
 
       it("includes custom headers", () => {
@@ -181,7 +187,7 @@ describe("Adapters", () => {
             options: {},
           },
           { type: "none" },
-          { "X-Custom-Header": "custom-value" }
+          { "X-Custom-Header": "custom-value" },
         );
 
         expect(request.headers["X-Custom-Header"]).toBe("custom-value");
@@ -196,7 +202,7 @@ describe("Adapters", () => {
             model: "test-model",
             options: { stream: true },
           },
-          { type: "none" }
+          { type: "none" },
         );
 
         const body = request.body as Record<string, unknown>;
@@ -323,7 +329,7 @@ describe("Adapters", () => {
               maxTokens: 100,
             },
           },
-          { type: "none" }
+          { type: "none" },
         );
 
         expect(request.url).toBe("http://localhost:8081/responses");

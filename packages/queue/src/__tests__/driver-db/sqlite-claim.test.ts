@@ -6,19 +6,16 @@
  * These tests ensure the SQLite implementation maintains the same safety properties.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { QueueClient } from "../../core/types.js";
+import { claimJobSqlite, createDbQueueClient } from "../../driver-db/index.js";
 import {
-  DB_TEST_CONFIGS,
-  TEST_TIMEOUTS,
   createQueueTestDatabase,
   createTestLogger,
+  DB_TEST_CONFIGS,
   type QueueTestDatabase,
+  TEST_TIMEOUTS,
 } from "../testkit/index.js";
-import {
-  createDbQueueClient,
-  claimJobSqlite,
-} from "../../driver-db/index.js";
-import type { QueueClient } from "../../core/types.js";
 
 // Only run for SQLite
 const sqliteConfig = DB_TEST_CONFIGS.find((c) => c.dbType === "sqlite");

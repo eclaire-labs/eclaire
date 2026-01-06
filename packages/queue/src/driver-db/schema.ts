@@ -11,23 +11,23 @@
  */
 
 export {
-  // PostgreSQL
-  queueJobsPg,
-  queueSchedulesPg,
-  type QueueJobPg,
-  type NewQueueJobPg,
-  type QueueSchedulePg,
-  type NewQueueSchedulePg,
-  // SQLite
-  queueJobsSqlite,
-  queueSchedulesSqlite,
-  type QueueJobSqlite,
-  type NewQueueJobSqlite,
-  type QueueScheduleSqlite,
-  type NewQueueScheduleSqlite,
   // Factory
   getQueueSchema,
+  type NewQueueJobPg,
+  type NewQueueJobSqlite,
+  type NewQueueSchedulePg,
+  type NewQueueScheduleSqlite,
+  type QueueJobPg,
+  type QueueJobSqlite,
   // Union types
   type QueueJobsTable,
+  type QueueSchedulePg,
+  type QueueScheduleSqlite,
   type QueueSchedulesTable,
+  // PostgreSQL
+  queueJobsPg,
+  // SQLite
+  queueJobsSqlite,
+  queueSchedulesPg,
+  queueSchedulesSqlite,
 } from "./schema/index.js";

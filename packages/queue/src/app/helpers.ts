@@ -16,7 +16,7 @@ export { getCurrentTimestamp } from "@eclaire/core";
  * @returns Date object for scheduled time
  */
 export function getScheduledTime(delay: number): Date {
-	return new Date(Date.now() + delay);
+  return new Date(Date.now() + delay);
 }
 
 /**
@@ -25,8 +25,8 @@ export function getScheduledTime(delay: number): Date {
  * @returns true if job has expired
  */
 export function isJobExpired(expiresAt: Date | null): boolean {
-	if (!expiresAt) return false;
-	return new Date() > expiresAt;
+  if (!expiresAt) return false;
+  return new Date() > expiresAt;
 }
 
 /**
@@ -35,8 +35,8 @@ export function isJobExpired(expiresAt: Date | null): boolean {
  * @returns true if job should be processed now
  */
 export function isJobReady(scheduledFor: Date | null): boolean {
-	if (!scheduledFor) return true;
-	return new Date() >= scheduledFor;
+  if (!scheduledFor) return true;
+  return new Date() >= scheduledFor;
 }
 
 /**
@@ -45,21 +45,21 @@ export function isJobReady(scheduledFor: Date | null): boolean {
  * @returns Formatted ClaimedJob or null
  */
 export function formatJobResult(row: any): ClaimedJob | null {
-	if (!row) return null;
+  if (!row) return null;
 
-	return {
-		id: row.id,
-		asset_type: row.assetType,
-		asset_id: row.assetId,
-		user_id: row.userId,
-		job_type: row.jobType || "processing",
-		status: row.status,
-		job_data: row.jobData,
-		locked_by: row.lockedBy,
-		locked_at: row.lockedAt,
-		expires_at: row.expiresAt,
-		retry_count: row.retryCount,
-		max_retries: row.maxRetries,
-		created_at: row.createdAt,
-	};
+  return {
+    id: row.id,
+    asset_type: row.assetType,
+    asset_id: row.assetId,
+    user_id: row.userId,
+    job_type: row.jobType || "processing",
+    status: row.status,
+    job_data: row.jobData,
+    locked_by: row.lockedBy,
+    locked_at: row.lockedAt,
+    expires_at: row.expiresAt,
+    retry_count: row.retryCount,
+    max_retries: row.maxRetries,
+    created_at: row.createdAt,
+  };
 }

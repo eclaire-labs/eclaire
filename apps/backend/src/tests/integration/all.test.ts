@@ -180,7 +180,10 @@ describe("POST /api/all Integration Tests", () => {
   it("should create a photo from a JPEG file", async () => {
     await delay(100);
     const formData = new FormData();
-    const photoPath = resolve(import.meta.dirname, "../fixtures/photos/photo1.jpg");
+    const photoPath = resolve(
+      import.meta.dirname,
+      "../fixtures/photos/photo1.jpg",
+    );
     const photoBuffer = await readFile(photoPath);
     const metadata = {
       title: "Test Landscape",
@@ -213,7 +216,10 @@ describe("POST /api/all Integration Tests", () => {
   it("should create a document from a PDF file", async () => {
     await delay(100);
     const formData = new FormData();
-    const docPath = resolve(import.meta.dirname, "../fixtures/documents/document2.pdf");
+    const docPath = resolve(
+      import.meta.dirname,
+      "../fixtures/documents/document2.pdf",
+    );
     const docBuffer = await readFile(docPath);
     const metadata = { title: "Test PDF Document", tags: ["pdf", "test-doc"] };
 

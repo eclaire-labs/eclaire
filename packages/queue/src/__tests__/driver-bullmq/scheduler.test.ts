@@ -8,13 +8,13 @@
  * schedules created by other processes.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { QueueClient, Scheduler, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
-import type { QueueClient, Worker, Scheduler } from "../../core/types.js";
 
 describe("BullMQ: Scheduler", () => {
   let harness: QueueTestHarness;
@@ -322,9 +322,9 @@ describe("BullMQ: Scheduler", () => {
       scheduler = harness.createScheduler();
       await scheduler.start();
 
-      await expect(
-        scheduler.setEnabled("non-existent", true),
-      ).rejects.toThrow("Schedule not found");
+      await expect(scheduler.setEnabled("non-existent", true)).rejects.toThrow(
+        "Schedule not found",
+      );
     });
   });
 

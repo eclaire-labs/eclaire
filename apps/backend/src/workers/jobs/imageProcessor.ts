@@ -1,11 +1,11 @@
+import { type AIMessage, callAI } from "@eclaire/ai";
+import type { JobContext } from "@eclaire/queue/core";
 import { Buffer } from "buffer";
 import heicConvert from "heic-convert";
 import sharp from "sharp";
-import type { JobContext } from "@eclaire/queue/core";
-import { config } from "../config.js";
-import { type AIMessage, callAI } from "@eclaire/ai";
 import { createChildLogger } from "../../lib/logger.js";
-import { getStorage, buildKey } from "../../lib/storage/index.js";
+import { buildKey, getStorage } from "../../lib/storage/index.js";
+import { config } from "../config.js";
 
 const logger = createChildLogger("image-processor");
 
@@ -121,7 +121,9 @@ async function executeImageConversion(
     // Save the converted JPEG and use the required artifact name.
     const storage = getStorage();
     const convertedKey = buildKey(userId, "photos", photoId, "converted.jpg");
-    await storage.writeBuffer(convertedKey, jpegBuffer, { contentType: "image/jpeg" });
+    await storage.writeBuffer(convertedKey, jpegBuffer, {
+      contentType: "image/jpeg",
+    });
     const artifacts = { convertedJpgStorageId: convertedKey };
 
     await ctx.completeStage(stageName, artifacts);
@@ -163,7 +165,9 @@ async function executeThumbnailGeneration(
     await ctx.updateStageProgress(stageName, 50);
     const storage = getStorage();
     const thumbnailKey = buildKey(userId, "photos", photoId, "thumbnail.jpg");
-    await storage.writeBuffer(thumbnailKey, thumbnailBuffer, { contentType: "image/jpeg" });
+    await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
+      contentType: "image/jpeg",
+    });
     const artifacts = { thumbnailStorageId: thumbnailKey };
 
     await ctx.completeStage(stageName, artifacts);
@@ -298,7 +302,11 @@ async function executeAIWorkflowStep(
     // Check for repetitive content (model stuck in a loop)
     if (modelResponse.content && detectRepetition(modelResponse.content)) {
       logger.warn(
-        { photoId, step: stageName, contentLength: modelResponse.content.length },
+        {
+          photoId,
+          step: stageName,
+          contentLength: modelResponse.content.length,
+        },
         "Detected repetitive pattern in AI response - model may be stuck in a loop",
       );
       throw new Error(
@@ -388,7 +396,8 @@ function parseModelResponse(responseText: string | any): any {
  * Main processing function for an image.
  */
 async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
-  const { photoId, storageId, mimeType, userId, originalFilename } = ctx.job.data;
+  const { photoId, storageId, mimeType, userId, originalFilename } =
+    ctx.job.data;
   logger.info(
     { photoId, jobId: ctx.job.id, userId, mimeType, storageId },
     "Starting image processing job",
@@ -538,8 +547,15 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
     const extractedJsonBuffer = Buffer.from(
       JSON.stringify(extractedData, null, 2),
     );
-    const extractedJsonKey = buildKey(userId, "photos", photoId, "extracted.json");
-    await storage.writeBuffer(extractedJsonKey, extractedJsonBuffer, { contentType: "application/json" });
+    const extractedJsonKey = buildKey(
+      userId,
+      "photos",
+      photoId,
+      "extracted.json",
+    );
+    await storage.writeBuffer(extractedJsonKey, extractedJsonBuffer, {
+      contentType: "application/json",
+    });
     allArtifacts.extractedJsonStorageId = extractedJsonKey;
 
     logger.info(

@@ -211,7 +211,10 @@ export function createPgNotifyListener(
           callback();
         } catch (err) {
           logger.error(
-            { queueName, error: err instanceof Error ? err.message : "Unknown" },
+            {
+              queueName,
+              error: err instanceof Error ? err.message : "Unknown",
+            },
             "Error in notification callback",
           );
         }
@@ -221,10 +224,7 @@ export function createPgNotifyListener(
 
   // Error handler
   const errorHandler = (err: Error) => {
-    logger.error(
-      { channel, error: err.message },
-      "PG notification error",
-    );
+    logger.error({ channel, error: err.message }, "PG notification error");
   };
 
   return {
@@ -243,14 +243,20 @@ export function createPgNotifyListener(
         client.on("error", errorHandler);
 
         // Issue LISTEN command
-        client.query(`LISTEN ${channel}`).then(() => {
-          logger.info({ channel }, "Listening for job notifications");
-        }).catch((err) => {
-          logger.error(
-            { channel, error: err instanceof Error ? err.message : "Unknown" },
-            "Failed to start listening",
-          );
-        });
+        client
+          .query(`LISTEN ${channel}`)
+          .then(() => {
+            logger.info({ channel }, "Listening for job notifications");
+          })
+          .catch((err) => {
+            logger.error(
+              {
+                channel,
+                error: err instanceof Error ? err.message : "Unknown",
+              },
+              "Failed to start listening",
+            );
+          });
 
         listening = true;
       }

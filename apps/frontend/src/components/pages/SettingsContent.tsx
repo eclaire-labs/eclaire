@@ -1,14 +1,15 @@
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
-import { Link, useNavigate, getRouteApi } from "@tanstack/react-router";
 
 const routeApi = getRouteApi("/_authenticated/settings");
+
 import { useEffect, useState } from "react";
+import { MobileSettingsMenu } from "@/components/mobile/mobile-settings-menu";
 import AccountSettings from "@/components/settings/AccountSettings";
+import ApiKeyManager from "@/components/settings/ApiKeyManager";
 import AssistantSettings from "@/components/settings/AssistantSettings";
 import NotificationSettings from "@/components/settings/NotificationSettings";
 import ProfileSettings from "@/components/settings/ProfileSettings";
-import { MobileSettingsMenu } from "@/components/mobile/mobile-settings-menu";
-import ApiKeyManager from "@/components/settings/ApiKeyManager";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -48,12 +49,20 @@ function formatBuildDate(isoString: string): string {
   });
 }
 
-type SettingsTab = "profile" | "account" | "assistant" | "notifications" | "api-keys" | "about";
+type SettingsTab =
+  | "profile"
+  | "account"
+  | "assistant"
+  | "notifications"
+  | "api-keys"
+  | "about";
 
 export default function SettingsContent() {
   const navigate = useNavigate();
   const { tab: tabParam } = routeApi.useSearch();
-  const [activeTab, setActiveTab] = useState<SettingsTab>(tabParam || "profile");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(
+    tabParam || "profile",
+  );
   const isMobile = useIsMobile();
   const [healthData, setHealthData] = useState({
     version: "Loading...",

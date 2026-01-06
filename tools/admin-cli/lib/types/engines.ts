@@ -10,7 +10,7 @@
  */
 export interface DoctorCheck {
   name: string;
-  status: 'pass' | 'warn' | 'fail';
+  status: "pass" | "warn" | "fail";
   message: string;
   fix?: string;
 }

@@ -1,3 +1,4 @@
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   Activity,
   AlertTriangle,
@@ -15,7 +16,6 @@ import {
   Settings,
   Upload,
 } from "lucide-react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   type ReactNode,
   useCallback,

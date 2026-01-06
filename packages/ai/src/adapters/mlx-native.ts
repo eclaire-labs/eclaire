@@ -38,7 +38,7 @@ export class MLXNativeAdapter implements DialectAdapter {
     endpoint: string,
     params: AdapterRequestParams,
     auth: ProviderAuth,
-    customHeaders?: Record<string, string>
+    customHeaders?: Record<string, string>,
   ): AdapterRequest {
     const logger = getLogger();
     const url = `${baseUrl}${endpoint || "/responses"}`;
@@ -81,7 +81,7 @@ export class MLXNativeAdapter implements DialectAdapter {
         stream: params.options.stream,
         messagesCount: inputMessages.length,
       },
-      "Building MLX native request"
+      "Building MLX native request",
     );
 
     return {
@@ -113,10 +113,7 @@ export class MLXNativeAdapter implements DialectAdapter {
       throw new Error("No content in MLX response");
     }
 
-    logger.debug(
-      { contentLength: content.length },
-      "Parsed MLX response"
-    );
+    logger.debug({ contentLength: content.length }, "Parsed MLX response");
 
     // MLX doesn't support reasoning, tools, or structured usage
     return {
@@ -131,7 +128,9 @@ export class MLXNativeAdapter implements DialectAdapter {
   /**
    * Transform MLX streaming response to OpenAI-compatible SSE format
    */
-  transformStream(stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+  transformStream(
+    stream: ReadableStream<Uint8Array>,
+  ): ReadableStream<Uint8Array> {
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
     const logger = getLogger();
@@ -196,7 +195,9 @@ export class MLXNativeAdapter implements DialectAdapter {
                       };
 
                       controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`)
+                        encoder.encode(
+                          `data: ${JSON.stringify(openaiFormat)}\n\n`,
+                        ),
                       );
                     }
                   } else if (eventType === "response.completed") {
@@ -212,7 +213,9 @@ export class MLXNativeAdapter implements DialectAdapter {
                     };
 
                     controller.enqueue(
-                      encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`)
+                      encoder.encode(
+                        `data: ${JSON.stringify(openaiFormat)}\n\n`,
+                      ),
                     );
                   } else {
                     // Unknown event type, log and skip
@@ -220,8 +223,11 @@ export class MLXNativeAdapter implements DialectAdapter {
                   }
                 } catch (e) {
                   logger.warn(
-                    { line, error: e instanceof Error ? e.message : "Unknown error" },
-                    "Failed to parse MLX SSE line"
+                    {
+                      line,
+                      error: e instanceof Error ? e.message : "Unknown error",
+                    },
+                    "Failed to parse MLX SSE line",
                   );
                   // Pass through unparseable lines
                   controller.enqueue(encoder.encode(line + "\n"));
@@ -235,7 +241,7 @@ export class MLXNativeAdapter implements DialectAdapter {
         } catch (error) {
           logger.error(
             { error: error instanceof Error ? error.message : "Unknown error" },
-            "Error transforming MLX stream"
+            "Error transforming MLX stream",
           );
           controller.error(error);
         } finally {

@@ -4,13 +4,13 @@
  * Tests that a job can be enqueued and processed by a worker.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { Job, QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
-import type { QueueClient, Worker, Job } from "../../core/types.js";
 
 describe("BullMQ: Basic Processing", () => {
   let harness: QueueTestHarness;

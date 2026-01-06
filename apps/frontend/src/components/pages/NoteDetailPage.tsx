@@ -1,3 +1,4 @@
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Calendar,
@@ -11,9 +12,9 @@ import {
   Type,
   X,
 } from "lucide-react";
-import { useNavigate, getRouteApi } from "@tanstack/react-router";
 
 const routeApi = getRouteApi("/_authenticated/notes/$id");
+
 import React, { useEffect, useState } from "react";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { Badge } from "@/components/ui/badge";
@@ -360,7 +361,11 @@ export function NoteDetailClient() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/notes" })}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate({ to: "/notes" })}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
@@ -385,7 +390,11 @@ export function NoteDetailClient() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/notes" })}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate({ to: "/notes" })}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Note not found</h1>
@@ -395,7 +404,9 @@ export function NoteDetailClient() {
           <p className="text-muted-foreground mb-4">
             The note you're looking for doesn't exist or couldn't be loaded.
           </p>
-          <Button onClick={() => navigate({ to: "/notes" })}>Go to Notes</Button>
+          <Button onClick={() => navigate({ to: "/notes" })}>
+            Go to Notes
+          </Button>
         </div>
       </div>
     );
@@ -410,7 +421,11 @@ export function NoteDetailClient() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/notes" })}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate({ to: "/notes" })}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
@@ -664,16 +679,19 @@ export function NoteDetailClient() {
                                 : "Processing is disabled for this note"
                             }
                           >
-                            {note.enabled === false
-                              ? "disabled"
-                              : note.processingStatus === "processing"
-                                ? (
-                                    <span className="flex items-center gap-1">
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                      processing
-                                    </span>
-                                  )
-                                : (note.processingStatus || "unknown").replace(/_/g, " ")}
+                            {note.enabled === false ? (
+                              "disabled"
+                            ) : note.processingStatus === "processing" ? (
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                processing
+                              </span>
+                            ) : (
+                              (note.processingStatus || "unknown").replace(
+                                /_/g,
+                                " ",
+                              )
+                            )}
                           </Badge>
 
                           {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}

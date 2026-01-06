@@ -52,7 +52,10 @@ export function createRedisConnection(
 
   if (config.url) {
     connection = new Redis(config.url, bullmqOptions);
-    logger.debug({ url: config.url.replace(/:[^:@]+@/, ':***@') }, "Creating Redis connection from URL");
+    logger.debug(
+      { url: config.url.replace(/:[^:@]+@/, ":***@") },
+      "Creating Redis connection from URL",
+    );
   } else {
     connection = new Redis(bullmqOptions);
     logger.debug({}, "Creating Redis connection from options");

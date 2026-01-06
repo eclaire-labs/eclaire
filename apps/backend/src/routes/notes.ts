@@ -1,8 +1,8 @@
 import { Hono } from "hono";
-import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi";
+import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { createChildLogger } from "../lib/logger.js";
 import {
   countNotes,
   createNoteEntry,
@@ -35,7 +35,6 @@ import {
   putNoteRouteDescription,
 } from "../schemas/notes-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
-import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("notes");
 
@@ -288,7 +287,9 @@ notesRoutes.post(
       }
 
       // Validate metadata schema
-      const validatedMetadata = NoteMetadataSchema.parse(metadataResult.metadata);
+      const validatedMetadata = NoteMetadataSchema.parse(
+        metadataResult.metadata,
+      );
 
       // Prepare note from upload
       const prepared = await prepareNoteFromUpload(file, validatedMetadata);

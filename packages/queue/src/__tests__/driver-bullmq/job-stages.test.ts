@@ -8,14 +8,14 @@
  * Note: BullMQ stores stages in job.data as __stages, __currentStage, __metadata
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { JobStage, QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  eventually,
   createDeferred,
+  eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
-import type { QueueClient, Worker, JobStage } from "../../core/types.js";
 
 describe("BullMQ: Job Stages", () => {
   let harness: QueueTestHarness;
@@ -99,7 +99,10 @@ describe("BullMQ: Job Stages", () => {
     expect(stageAfterComplete?.status).toBe("completed");
     expect(stageAfterComplete?.progress).toBe(100);
     expect(stageAfterComplete?.completedAt).toBeInstanceOf(Date);
-    expect(stageAfterComplete?.artifacts).toEqual({ fileCount: 5, valid: true });
+    expect(stageAfterComplete?.artifacts).toEqual({
+      fileCount: 5,
+      valid: true,
+    });
   });
 
   it("ctx.failStage() marks stage failed", async () => {
@@ -112,7 +115,10 @@ describe("BullMQ: Job Stages", () => {
       await ctx.initStages(["validation", "processing"]);
       await ctx.startStage("validation");
       await ctx.updateStageProgress("validation", 50);
-      await ctx.failStage("validation", new Error("Validation failed: invalid format"));
+      await ctx.failStage(
+        "validation",
+        new Error("Validation failed: invalid format"),
+      );
       stageAfterFail = ctx.job.stages?.find((s) => s.name === "validation");
       done.resolve();
     });
@@ -225,7 +231,7 @@ describe("BullMQ: Job Stages", () => {
     await client.enqueue(
       "test-queue",
       { value: "test" },
-      { initialStages: ["validate", "process", "complete"] }
+      { initialStages: ["validate", "process", "complete"] },
     );
 
     worker = harness.createWorker("test-queue", async (ctx) => {
@@ -259,34 +265,37 @@ describe("BullMQ: Job Stages", () => {
 
     await client.enqueue("test-queue", { filename: "photo.jpg" });
 
-    worker = harness.createWorker<{ filename: string }>("test-queue", async (ctx) => {
-      await ctx.initStages(["classify"]);
-      await ctx.startStage("classify");
+    worker = harness.createWorker<{ filename: string }>(
+      "test-queue",
+      async (ctx) => {
+        await ctx.initStages(["classify"]);
+        await ctx.startStage("classify");
 
-      // Simulate classification based on data
-      const filename = ctx.job.data.filename;
-      let stages: string[];
+        // Simulate classification based on data
+        const filename = ctx.job.data.filename;
+        let stages: string[];
 
-      if (filename.endsWith(".jpg")) {
-        stages = ["resize", "optimize", "upload"];
-      } else if (filename.endsWith(".pdf")) {
-        stages = ["parse", "index"];
-      } else {
-        stages = ["transcode", "thumbnail", "upload"];
-      }
+        if (filename.endsWith(".jpg")) {
+          stages = ["resize", "optimize", "upload"];
+        } else if (filename.endsWith(".pdf")) {
+          stages = ["parse", "index"];
+        } else {
+          stages = ["transcode", "thumbnail", "upload"];
+        }
 
-      // Add dynamic stages based on classification
-      await ctx.addStages(stages);
-      await ctx.completeStage("classify", { type: "image" });
+        // Add dynamic stages based on classification
+        await ctx.addStages(stages);
+        await ctx.completeStage("classify", { type: "image" });
 
-      // Process all dynamic stages
-      for (const stageName of stages) {
-        await ctx.startStage(stageName);
-        processedStages.push(stageName);
-        await ctx.completeStage(stageName);
-      }
-      done.resolve();
-    });
+        // Process all dynamic stages
+        for (const stageName of stages) {
+          await ctx.startStage(stageName);
+          processedStages.push(stageName);
+          await ctx.completeStage(stageName);
+        }
+        done.resolve();
+      },
+    );
     await worker.start();
 
     await done.promise;
@@ -302,7 +311,13 @@ describe("BullMQ: Job Stages", () => {
     await client.enqueue(
       "test-queue",
       { value: "test" },
-      { metadata: { userId: "user_123", assetType: "photos", assetId: "photo_456" } }
+      {
+        metadata: {
+          userId: "user_123",
+          assetType: "photos",
+          assetId: "photo_456",
+        },
+      },
     );
 
     worker = harness.createWorker("test-queue", async (ctx) => {

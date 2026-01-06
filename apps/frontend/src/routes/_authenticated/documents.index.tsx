@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const DocumentsIndexPage = lazy(() => import("@/components/pages/DocumentsPage"));
+const DocumentsIndexPage = lazy(
+  () => import("@/components/pages/DocumentsPage"),
+);
 
 function PageLoading() {
   return (

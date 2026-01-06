@@ -327,15 +327,12 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
       ).not.toBeNull();
 
       // Use standard fetch directly for this test case
-      const response = await fetch(
-        `${BASE_URL}/tasks/${createdTaskId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${TEST_API_KEY}`,
-          },
+      const response = await fetch(`${BASE_URL}/tasks/${createdTaskId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${TEST_API_KEY}`,
         },
-      );
+      });
 
       expect(response.status).toBe(404); // Expect Not Found
     });

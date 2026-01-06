@@ -54,7 +54,9 @@ export function sleep(ms: number): Promise<void> {
  */
 export function createTestLogger(options?: {
   capture?: boolean;
-}): QueueLogger & { logs: Array<{ level: string; obj: object; msg?: string }> } {
+}): QueueLogger & {
+  logs: Array<{ level: string; obj: object; msg?: string }>;
+} {
   const logs: Array<{ level: string; obj: object; msg?: string }> = [];
   const capture = options?.capture ?? false;
 

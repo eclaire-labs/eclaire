@@ -2,29 +2,39 @@
  * @eclaire/queue/driver-db - Database Worker implementation
  */
 
-import type {
-  Worker,
-  WorkerOptions,
-  JobHandler,
-  JobContext,
-  Job,
-  JobStage,
-  JobEventCallbacks,
-} from "../core/types.js";
-import { createWorkerId, sleep, cancellableSleep, createDeferred } from "../core/utils.js";
 import {
-  initializeStages,
-  startStageInList,
-  completeStageInList,
-  failStageInList,
-  updateStageProgressInList,
   addStagesToList,
   calculateOverallProgress,
+  completeStageInList,
+  failStageInList,
+  initializeStages,
+  startStageInList,
+  updateStageProgressInList,
 } from "../core/progress.js";
-import type { DbWorkerConfig, ClaimedJob } from "./types.js";
+import type {
+  Job,
+  JobContext,
+  JobEventCallbacks,
+  JobHandler,
+  JobStage,
+  Worker,
+  WorkerOptions,
+} from "../core/types.js";
+import {
+  cancellableSleep,
+  createDeferred,
+  createWorkerId,
+  sleep,
+} from "../core/utils.js";
 import { claimJobPostgres } from "./claim-postgres.js";
 import { claimJobSqlite } from "./claim-sqlite.js";
-import { markJobCompleted, markJobFailed, extendJobLock, updateJobStages } from "./client.js";
+import {
+  extendJobLock,
+  markJobCompleted,
+  markJobFailed,
+  updateJobStages,
+} from "./client.js";
+import type { ClaimedJob, DbWorkerConfig } from "./types.js";
 
 /**
  * Default configuration values
@@ -118,11 +128,17 @@ export function createDbWorker<T = unknown>(
               logger,
             );
             if (!extended) {
-              logger.warn({ jobId: claimed.id }, "Lock extension failed - lock may be lost");
+              logger.warn(
+                { jobId: claimed.id },
+                "Lock extension failed - lock may be lost",
+              );
             }
           } catch (err) {
             logger.error(
-              { jobId: claimed.id, error: err instanceof Error ? err.message : "Unknown" },
+              {
+                jobId: claimed.id,
+                error: err instanceof Error ? err.message : "Unknown",
+              },
               "Heartbeat failed",
             );
           }
@@ -155,7 +171,10 @@ export function createDbWorker<T = unknown>(
         };
 
         // Helper to persist stage updates to DB
-        const persistStages = async (stages: JobStage[], currentStageName: string | null) => {
+        const persistStages = async (
+          stages: JobStage[],
+          currentStageName: string | null,
+        ) => {
           currentStages = stages;
           job.stages = stages;
           job.currentStage = currentStageName || undefined;
@@ -176,58 +195,123 @@ export function createDbWorker<T = unknown>(
         const ctx: JobContext<T> = {
           job,
           async heartbeat() {
-            await extendJobLock(db, queueJobs, claimed.id, workerId, lockToken, lockDuration, logger);
+            await extendJobLock(
+              db,
+              queueJobs,
+              claimed.id,
+              workerId,
+              lockToken,
+              lockDuration,
+              logger,
+            );
           },
           log(message: string) {
             logger.info({ jobId: claimed.id }, message);
           },
           progress(percent: number) {
-            logger.debug({ jobId: claimed.id, progress: percent }, "Job progress");
+            logger.debug(
+              { jobId: claimed.id, progress: percent },
+              "Job progress",
+            );
             // Also call event callback if provided
-            eventCallbacks?.onStageProgress?.(claimed.id, job.currentStage || "", percent, claimed.metadata || undefined);
+            eventCallbacks?.onStageProgress?.(
+              claimed.id,
+              job.currentStage || "",
+              percent,
+              claimed.metadata || undefined,
+            );
           },
 
           // Multi-stage progress tracking methods
           async initStages(stageNames: string[]) {
             const stages = initializeStages(stageNames);
             await persistStages(stages, null);
-            logger.debug({ jobId: claimed.id, stages: stageNames }, "Job stages initialized");
+            logger.debug(
+              { jobId: claimed.id, stages: stageNames },
+              "Job stages initialized",
+            );
           },
 
           async startStage(stageName: string) {
             const updatedStages = startStageInList(currentStages, stageName);
             await persistStages(updatedStages, stageName);
-            logger.debug({ jobId: claimed.id, stage: stageName }, "Stage started");
-            eventCallbacks?.onStageStart?.(claimed.id, stageName, claimed.metadata || undefined);
+            logger.debug(
+              { jobId: claimed.id, stage: stageName },
+              "Stage started",
+            );
+            eventCallbacks?.onStageStart?.(
+              claimed.id,
+              stageName,
+              claimed.metadata || undefined,
+            );
           },
 
           async updateStageProgress(stageName: string, percent: number) {
             // This is a lightweight operation - only update local state and emit event
             // Don't persist to DB to avoid excessive writes
-            currentStages = updateStageProgressInList(currentStages, stageName, percent);
+            currentStages = updateStageProgressInList(
+              currentStages,
+              stageName,
+              percent,
+            );
             job.stages = currentStages;
             job.overallProgress = calculateOverallProgress(currentStages);
-            eventCallbacks?.onStageProgress?.(claimed.id, stageName, percent, claimed.metadata || undefined);
+            eventCallbacks?.onStageProgress?.(
+              claimed.id,
+              stageName,
+              percent,
+              claimed.metadata || undefined,
+            );
           },
 
-          async completeStage(stageName: string, artifacts?: Record<string, unknown>) {
-            const updatedStages = completeStageInList(currentStages, stageName, artifacts);
+          async completeStage(
+            stageName: string,
+            artifacts?: Record<string, unknown>,
+          ) {
+            const updatedStages = completeStageInList(
+              currentStages,
+              stageName,
+              artifacts,
+            );
             await persistStages(updatedStages, null); // Clear current stage since this one is done
-            logger.debug({ jobId: claimed.id, stage: stageName }, "Stage completed");
-            await eventCallbacks?.onStageComplete?.(claimed.id, stageName, artifacts, claimed.metadata || undefined);
+            logger.debug(
+              { jobId: claimed.id, stage: stageName },
+              "Stage completed",
+            );
+            await eventCallbacks?.onStageComplete?.(
+              claimed.id,
+              stageName,
+              artifacts,
+              claimed.metadata || undefined,
+            );
           },
 
           async failStage(stageName: string, error: Error) {
-            const updatedStages = failStageInList(currentStages, stageName, error.message);
+            const updatedStages = failStageInList(
+              currentStages,
+              stageName,
+              error.message,
+            );
             await persistStages(updatedStages, null);
-            logger.debug({ jobId: claimed.id, stage: stageName, error: error.message }, "Stage failed");
-            eventCallbacks?.onStageFail?.(claimed.id, stageName, error.message, claimed.metadata || undefined);
+            logger.debug(
+              { jobId: claimed.id, stage: stageName, error: error.message },
+              "Stage failed",
+            );
+            eventCallbacks?.onStageFail?.(
+              claimed.id,
+              stageName,
+              error.message,
+              claimed.metadata || undefined,
+            );
           },
 
           async addStages(stageNames: string[]) {
             const updatedStages = addStagesToList(currentStages, stageNames);
             await persistStages(updatedStages, job.currentStage || null);
-            logger.debug({ jobId: claimed.id, addedStages: stageNames }, "Stages added");
+            logger.debug(
+              { jobId: claimed.id, addedStages: stageNames },
+              "Stages added",
+            );
           },
         };
 
@@ -235,16 +319,29 @@ export function createDbWorker<T = unknown>(
         await handler(ctx);
 
         // Mark as completed (with ownership verification)
-        const completed = await markJobCompleted(db, queueJobs, claimed.id, workerId, lockToken, logger);
+        const completed = await markJobCompleted(
+          db,
+          queueJobs,
+          claimed.id,
+          workerId,
+          lockToken,
+          logger,
+        );
         if (!completed) {
-          logger.warn({ jobId: claimed.id }, "Job completion failed - lock was lost");
+          logger.warn(
+            { jobId: claimed.id },
+            "Job completion failed - lock was lost",
+          );
         } else {
           logger.info(
             { jobId: claimed.id, queue, attempts: claimed.attempts },
             "Job completed successfully",
           );
           // Call onJobComplete callback
-          await eventCallbacks?.onJobComplete?.(claimed.id, claimed.metadata || undefined);
+          await eventCallbacks?.onJobComplete?.(
+            claimed.id,
+            claimed.metadata || undefined,
+          );
         }
       } catch (error) {
         // Mark as failed (handles retry logic internally, with ownership verification)
@@ -259,10 +356,14 @@ export function createDbWorker<T = unknown>(
         );
 
         if (!marked) {
-          logger.warn({ jobId: claimed.id }, "Job failure marking failed - lock was lost");
+          logger.warn(
+            { jobId: claimed.id },
+            "Job failure marking failed - lock was lost",
+          );
         }
 
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         logger.error(
           {
             jobId: claimed.id,
@@ -273,7 +374,11 @@ export function createDbWorker<T = unknown>(
           "Job failed",
         );
         // Call onJobFail callback
-        eventCallbacks?.onJobFail?.(claimed.id, errorMessage, claimed.metadata || undefined);
+        eventCallbacks?.onJobFail?.(
+          claimed.id,
+          errorMessage,
+          claimed.metadata || undefined,
+        );
       } finally {
         // Stop heartbeat
         if (heartbeatTimer) {
@@ -317,7 +422,10 @@ export function createDbWorker<T = unknown>(
           // Process job in background (don't await)
           processJob(claimed).catch((err) => {
             logger.error(
-              { jobId: claimed.id, error: err instanceof Error ? err.message : "Unknown" },
+              {
+                jobId: claimed.id,
+                error: err instanceof Error ? err.message : "Unknown",
+              },
               "Unexpected error processing job",
             );
           });
@@ -325,7 +433,11 @@ export function createDbWorker<T = unknown>(
           // No job available, wait for notification or poll interval
           if (notifyListener) {
             // Wait for notification (use separate timeout for Postgres NOTIFY)
-            await waitForNotification(queue, notifyWaitTimeout, abortController?.signal);
+            await waitForNotification(
+              queue,
+              notifyWaitTimeout,
+              abortController?.signal,
+            );
           } else {
             // Fall back to polling
             await cancellableSleep(pollInterval, abortController?.signal);
@@ -347,7 +459,10 @@ export function createDbWorker<T = unknown>(
 
     // Wait for active jobs to complete (NOT interruptible - we want jobs to finish)
     while (activeJobs > 0) {
-      logger.debug({ queue, workerId, activeJobs }, "Waiting for active jobs to complete");
+      logger.debug(
+        { queue, workerId, activeJobs },
+        "Waiting for active jobs to complete",
+      );
       await sleep(100);
     }
 

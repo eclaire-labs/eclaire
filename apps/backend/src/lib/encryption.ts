@@ -1,6 +1,6 @@
 import { createEncryption, parseEncryptionKey } from "@eclaire/core";
-import { createChildLogger } from "./logger.js";
 import { config } from "../config/index.js";
+import { createChildLogger } from "./logger.js";
 
 const logger = createChildLogger("encryption");
 
@@ -18,14 +18,18 @@ const encryptionService = key ? createEncryption(key, { logger }) : null;
 // These will throw if encryption is not configured (no MASTER_ENCRYPTION_KEY)
 export const encrypt = (plaintext: string): string => {
   if (!encryptionService) {
-    throw new Error("Encryption not configured - MASTER_ENCRYPTION_KEY not set");
+    throw new Error(
+      "Encryption not configured - MASTER_ENCRYPTION_KEY not set",
+    );
   }
   return encryptionService.encrypt(plaintext);
 };
 
 export const decrypt = (ciphertext: string): string => {
   if (!encryptionService) {
-    throw new Error("Encryption not configured - MASTER_ENCRYPTION_KEY not set");
+    throw new Error(
+      "Encryption not configured - MASTER_ENCRYPTION_KEY not set",
+    );
   }
   const result = encryptionService.decrypt(ciphertext);
   if (result === null) {
@@ -36,7 +40,9 @@ export const decrypt = (ciphertext: string): string => {
 
 export const validateEncryptionService = (): void => {
   if (!encryptionService) {
-    throw new Error("Encryption not configured - MASTER_ENCRYPTION_KEY not set");
+    throw new Error(
+      "Encryption not configured - MASTER_ENCRYPTION_KEY not set",
+    );
   }
   encryptionService.validate();
 };

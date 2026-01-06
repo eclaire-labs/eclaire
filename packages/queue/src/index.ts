@@ -21,4 +21,7 @@
 export * from "./core/index.js";
 
 // Re-export generic Redis utilities (no app dependencies)
-export { createRedisConnection, type RedisConnectionOptions } from "./shared/redis-connection.js";
+export {
+  createRedisConnection,
+  type RedisConnectionOptions,
+} from "./shared/redis-connection.js";

@@ -11,14 +11,14 @@
 
 import {
   buildConfig,
-  validateConfig,
-  getConfigSummary,
+  type DatabaseType,
   type EclaireConfig,
   type EclaireRuntime,
-  type DatabaseType,
+  getConfigSummary,
   type QueueBackend,
-  type ServiceRole,
   type SecretsSource,
+  type ServiceRole,
+  validateConfig,
 } from "./schema.js";
 
 // Build the configuration from environment
@@ -53,9 +53,7 @@ export function initConfig(): EclaireConfig {
     env: "loaded from .env",
     environment: "loaded from environment",
   };
-  console.log(
-    `ℹ️  Secrets: ${sourceMessages[_config.security.secretsSource]}`,
-  );
+  console.log(`ℹ️  Secrets: ${sourceMessages[_config.security.secretsSource]}`);
 
   // Log warnings
   if (warnings.length > 0) {

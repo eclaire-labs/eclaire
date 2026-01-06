@@ -3,11 +3,11 @@
  */
 
 import {
+  loadModelsConfiguration,
   loadProvidersConfiguration,
   saveProvidersConfiguration,
-  loadModelsConfiguration,
-} from '@eclaire/ai';
-import type { ProviderConfig } from '../types/index.js';
+} from "@eclaire/ai";
+import type { ProviderConfig } from "../types/index.js";
 
 /**
  * Add a new provider
@@ -26,7 +26,10 @@ export function addProvider(id: string, config: ProviderConfig): void {
 /**
  * Update an existing provider
  */
-export function updateProvider(id: string, updates: Partial<ProviderConfig>): void {
+export function updateProvider(
+  id: string,
+  updates: Partial<ProviderConfig>,
+): void {
   const providers = loadProvidersConfiguration();
 
   if (!providers.providers[id]) {

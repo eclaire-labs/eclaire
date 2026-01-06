@@ -8,15 +8,15 @@
  * scheduled for the future - both are in the "delayed" state.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { PermanentError } from "../../core/errors.js";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  eventually,
   createDeferred,
+  eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
-import { PermanentError } from "../../core/errors.js";
 
 describe("BullMQ: Stats", () => {
   let harness: QueueTestHarness;

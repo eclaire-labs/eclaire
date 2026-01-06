@@ -5,36 +5,33 @@
  * and schedulers for both DB (SQLite/PGlite) and BullMQ drivers.
  */
 
-import type {
-  QueueClient,
-  Worker,
-  Scheduler,
-  JobHandler,
-  WorkerOptions,
-} from "../../core/types.js";
-import type {
-  TestDbType,
-  QueueTestHarnessConfig,
-  HarnessCapabilities,
-} from "./types.js";
-import { TEST_TIMEOUTS } from "./config.js";
-import { createTestLogger } from "./utils.js";
-import {
-  createQueueTestDatabase,
-  type QueueTestDatabase,
-} from "./db-setup.js";
-import {
-  createDbQueueClient,
-  createDbWorker,
-  createDbScheduler,
-} from "../../driver-db/index.js";
-import {
-  createBullMQClient,
-  createBullMQWorker,
-  createBullMQScheduler,
-} from "../../driver-bullmq/index.js";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
+import type {
+  JobHandler,
+  QueueClient,
+  Scheduler,
+  Worker,
+  WorkerOptions,
+} from "../../core/types.js";
+import {
+  createBullMQClient,
+  createBullMQScheduler,
+  createBullMQWorker,
+} from "../../driver-bullmq/index.js";
+import {
+  createDbQueueClient,
+  createDbScheduler,
+  createDbWorker,
+} from "../../driver-db/index.js";
+import { TEST_TIMEOUTS } from "./config.js";
+import { createQueueTestDatabase, type QueueTestDatabase } from "./db-setup.js";
+import type {
+  HarnessCapabilities,
+  QueueTestHarnessConfig,
+  TestDbType,
+} from "./types.js";
+import { createTestLogger } from "./utils.js";
 
 // Re-export types for convenience
 export type { HarnessCapabilities, QueueTestHarnessConfig } from "./types.js";

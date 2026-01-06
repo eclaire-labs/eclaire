@@ -1,9 +1,9 @@
 import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
-import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi";
+import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { createChildLogger } from "../lib/logger.js";
 import {
   // CRUD functions
   countPhotos,
@@ -12,20 +12,20 @@ import {
   extractAndGeocode,
   findPhotos,
   getAllPhotos,
-  getPhotoById,
-  reprocessPhoto,
-  updatePhotoMetadata,
-  // Stream functions (return streams directly)
-  getViewStream,
-  getThumbnailStream,
-  getOriginalStream,
-  getConvertedStream,
   getAnalysisStream,
   getContentStream,
+  getConvertedStream,
+  getOriginalStream,
+  getPhotoById,
+  getThumbnailStream,
+  // Stream functions (return streams directly)
+  getViewStream,
+  PhotoFileNotFoundError,
+  PhotoForbiddenError,
   // Error classes
   PhotoNotFoundError,
-  PhotoForbiddenError,
-  PhotoFileNotFoundError,
+  reprocessPhoto,
+  updatePhotoMetadata,
 } from "../lib/services/photos.js";
 // Import schemas
 import {
@@ -52,7 +52,6 @@ import {
 } from "../schemas/photos-routes.js";
 import { PHOTO_MIMES } from "../types/mime-types.js";
 import type { RouteVariables } from "../types/route-variables.js";
-import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("photos");
 
@@ -539,7 +538,10 @@ photosRoutes.get(
         return c.json({ error: error.message }, 404);
       }
       logger.error(
-        { photoId, error: error instanceof Error ? error.message : "Unknown error" },
+        {
+          photoId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
         "Error serving photo (/view)",
       );
       return c.json({ error: "Internal Server Error" }, 500);
@@ -583,7 +585,10 @@ photosRoutes.get(
         return c.json({ error: error.message }, 404);
       }
       logger.error(
-        { photoId, error: error instanceof Error ? error.message : "Unknown error" },
+        {
+          photoId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
         "Error serving thumbnail for photo",
       );
       return c.json({ error: "Internal Server Error" }, 500);
@@ -608,7 +613,10 @@ photosRoutes.get(
     }
 
     try {
-      const { stream, metadata, filename } = await getAnalysisStream(photoId, userId);
+      const { stream, metadata, filename } = await getAnalysisStream(
+        photoId,
+        userId,
+      );
 
       const headers = new Headers();
       headers.set("Content-Type", metadata.contentType + "; charset=utf-8");
@@ -625,7 +633,10 @@ photosRoutes.get(
       if (isInlineView) {
         headers.set("Content-Disposition", `inline; filename="${filename}"`);
       } else {
-        headers.set("Content-Disposition", `attachment; filename="${filename}"`);
+        headers.set(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
       }
 
       return new Response(stream, { status: 200, headers });
@@ -637,7 +648,10 @@ photosRoutes.get(
         return c.json({ error: error.message }, 404);
       }
       logger.error(
-        { photoId, error: error instanceof Error ? error.message : "Unknown error" },
+        {
+          photoId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
         "Error serving AI analysis for photo",
       );
       return c.json({ error: "Internal Server Error" }, 500);
@@ -659,7 +673,10 @@ photosRoutes.get("/:id/original", async (c) => {
   }
 
   try {
-    const { stream, metadata, filename } = await getOriginalStream(photoId, userId);
+    const { stream, metadata, filename } = await getOriginalStream(
+      photoId,
+      userId,
+    );
 
     const headers = new Headers();
     headers.set("Content-Type", metadata.contentType);
@@ -676,7 +693,10 @@ photosRoutes.get("/:id/original", async (c) => {
       return c.json({ error: error.message }, 404);
     }
     logger.error(
-      { photoId, error: error instanceof Error ? error.message : "Unknown error" },
+      {
+        photoId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
       "Error serving original photo",
     );
     return c.json({ error: "Internal Server Error" }, 500);
@@ -697,7 +717,10 @@ photosRoutes.get("/:id/converted", async (c) => {
   }
 
   try {
-    const { stream, metadata, filename } = await getConvertedStream(photoId, userId);
+    const { stream, metadata, filename } = await getConvertedStream(
+      photoId,
+      userId,
+    );
 
     const headers = new Headers();
     headers.set("Content-Type", metadata.contentType);
@@ -714,7 +737,10 @@ photosRoutes.get("/:id/converted", async (c) => {
       return c.json({ error: error.message }, 404);
     }
     logger.error(
-      { photoId, error: error instanceof Error ? error.message : "Unknown error" },
+      {
+        photoId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
       "Error serving converted photo",
     );
     return c.json({ error: "Internal Server Error" }, 500);
@@ -738,7 +764,10 @@ photosRoutes.get(
     }
 
     try {
-      const { stream, metadata, filename } = await getContentStream(photoId, userId);
+      const { stream, metadata, filename } = await getContentStream(
+        photoId,
+        userId,
+      );
 
       const headers = new Headers();
       headers.set("Content-Type", metadata.contentType + "; charset=utf-8");
@@ -752,7 +781,10 @@ photosRoutes.get(
       if (isInlineView) {
         headers.set("Content-Disposition", `inline; filename="${filename}"`);
       } else {
-        headers.set("Content-Disposition", `attachment; filename="${filename}"`);
+        headers.set(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
       }
 
       return new Response(stream, { status: 200, headers });
@@ -764,7 +796,10 @@ photosRoutes.get(
         return c.json({ error: error.message }, 404);
       }
       logger.error(
-        { photoId, error: error instanceof Error ? error.message : "Unknown error" },
+        {
+          photoId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
         "Error serving content for photo",
       );
       return c.json({ error: "Internal Server Error" }, 500);

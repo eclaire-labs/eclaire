@@ -2,7 +2,7 @@
  * @eclaire/queue/transport-http - Types for the HTTP transport layer
  */
 
-import type { QueueLogger, Job, JobContext } from "../core/types.js";
+import type { Job, JobContext, QueueLogger } from "../core/types.js";
 
 /**
  * Configuration for the HTTP server
@@ -27,7 +27,11 @@ export interface HttpRoutesHandler {
    * @param timeout - How long to wait for a job (milliseconds)
    * @returns Claimed job or null if timeout
    */
-  wait(name: string, workerId: string, timeout: number): Promise<HttpJobResponse | null>;
+  wait(
+    name: string,
+    workerId: string,
+    timeout: number,
+  ): Promise<HttpJobResponse | null>;
 
   /**
    * Claim a job (non-blocking)

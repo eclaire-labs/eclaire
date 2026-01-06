@@ -1,6 +1,5 @@
-
-import { ArrowLeft, Mail } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { ArrowLeft, Mail } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -92,7 +91,9 @@ export default function ForgotPasswordPage() {
         ) : (
           <div className="space-y-4">
             <Button variant="outline" className="w-full" asChild>
-              <Link to="/auth/login" search={{ callbackUrl: "/dashboard" }}>Return to login</Link>
+              <Link to="/auth/login" search={{ callbackUrl: "/dashboard" }}>
+                Return to login
+              </Link>
             </Button>
             <div className="text-center text-sm">
               Didn't receive the email?{" "}

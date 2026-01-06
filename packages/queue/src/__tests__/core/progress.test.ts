@@ -5,20 +5,20 @@
  * testing multi-stage job progress tracking utilities.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  initializeStages,
+  addStagesToList,
+  areAllStagesCompleted,
   calculateOverallProgress,
-  updateStageInList,
-  findStage,
-  startStageInList,
   completeStageInList,
   failStageInList,
-  updateStageProgressInList,
-  addStagesToList,
+  findStage,
   getCurrentStageName,
-  areAllStagesCompleted,
   hasFailedStage,
+  initializeStages,
+  startStageInList,
+  updateStageInList,
+  updateStageProgressInList,
 } from "../../core/progress.js";
 import type { JobStage } from "../../core/types.js";
 
@@ -171,9 +171,11 @@ describe("startStageInList", () => {
 
     expect(updated[0].startedAt).toBeInstanceOf(Date);
     expect(updated[0].startedAt!.getTime()).toBeGreaterThanOrEqual(
-      before.getTime()
+      before.getTime(),
     );
-    expect(updated[0].startedAt!.getTime()).toBeLessThanOrEqual(after.getTime());
+    expect(updated[0].startedAt!.getTime()).toBeLessThanOrEqual(
+      after.getTime(),
+    );
   });
 
   it("resets progress to 0", () => {
@@ -209,10 +211,10 @@ describe("completeStageInList", () => {
 
     expect(updated[0].completedAt).toBeInstanceOf(Date);
     expect(updated[0].completedAt!.getTime()).toBeGreaterThanOrEqual(
-      before.getTime()
+      before.getTime(),
     );
     expect(updated[0].completedAt!.getTime()).toBeLessThanOrEqual(
-      after.getTime()
+      after.getTime(),
     );
   });
 
@@ -250,10 +252,10 @@ describe("failStageInList", () => {
 
     expect(updated[0].completedAt).toBeInstanceOf(Date);
     expect(updated[0].completedAt!.getTime()).toBeGreaterThanOrEqual(
-      before.getTime()
+      before.getTime(),
     );
     expect(updated[0].completedAt!.getTime()).toBeLessThanOrEqual(
-      after.getTime()
+      after.getTime(),
     );
   });
 

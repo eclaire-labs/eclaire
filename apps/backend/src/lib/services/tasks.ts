@@ -1,4 +1,9 @@
 import {
+  generateHistoryId,
+  generateTaskId,
+  type TaskStatus,
+} from "@eclaire/core";
+import {
   and,
   Column,
   count,
@@ -13,31 +18,25 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { db, txManager, schema, queueJobs } from "../../db/index.js";
-import { generateHistoryId, generateTaskId, type TaskStatus } from "@eclaire/core";
+import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
-const {
-  tags,
-  taskComments,
-  tasks,
-  tasksTags,
-  users,
-} = schema;
-import {
-  getNextExecutionTime,
-  isValidCronExpression,
-  getQueue,
-  QueueNames,
-  getCurrentTimestamp,
-  getQueueAdapter,
-  getScheduler,
-  getRecurringTaskScheduleKey,
-  RECURRING_TASK_KEY_PREFIX,
-} from "../queue/index.js";
+const { tags, taskComments, tasks, tasksTags, users } = schema;
+
+import { config } from "../../config/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { ValidationError } from "../errors.js";
-import { config } from "../../config/index.js";
 import { createChildLogger } from "../logger.js";
+import {
+  getCurrentTimestamp,
+  getNextExecutionTime,
+  getQueue,
+  getQueueAdapter,
+  getRecurringTaskScheduleKey,
+  getScheduler,
+  isValidCronExpression,
+  QueueNames,
+  RECURRING_TASK_KEY_PREFIX,
+} from "../queue/index.js";
 import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:tasks");
@@ -266,11 +265,16 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
       if (job) {
         try {
           await job.remove();
-          logger.info({ taskId, jobId, queueBackend }, "Cancelled task execution job (Redis)");
+          logger.info(
+            { taskId, jobId, queueBackend },
+            "Cancelled task execution job (Redis)",
+          );
         } catch (removeError) {
           // Job might be locked by another worker - this is expected during execution
           const errorMessage =
-            removeError instanceof Error ? removeError.message : "Unknown error";
+            removeError instanceof Error
+              ? removeError.message
+              : "Unknown error";
           if (errorMessage.includes("locked by another worker")) {
             logger.warn(
               { taskId, jobId },
@@ -286,7 +290,10 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
           }
         }
       } else {
-        logger.debug({ taskId, jobId }, "No task execution job found to cancel");
+        logger.debug(
+          { taskId, jobId },
+          "No task execution job found to cancel",
+        );
       }
     } else {
       // Database mode: Delete pending jobs for this task
@@ -295,11 +302,14 @@ async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
         .where(
           and(
             eq(queueJobs.key, `tasks:${taskId}`),
-            eq(queueJobs.status, "pending")
-          )
+            eq(queueJobs.status, "pending"),
+          ),
         );
 
-      logger.info({ taskId, queueBackend }, "Cancelled pending task execution jobs (Database)");
+      logger.info(
+        { taskId, queueBackend },
+        "Cancelled pending task execution jobs (Database)",
+      );
     }
 
     return true;
@@ -333,7 +343,10 @@ async function removeTaskScheduler(taskId: string): Promise<boolean> {
     const removed = await scheduler.remove(scheduleKey);
 
     if (removed) {
-      logger.info({ taskId, scheduleKey }, "Successfully removed task scheduler");
+      logger.info(
+        { taskId, scheduleKey },
+        "Successfully removed task scheduler",
+      );
     } else {
       logger.debug({ taskId, scheduleKey }, "No scheduler found to remove");
     }
@@ -439,7 +452,10 @@ async function getTaskScheduleData(taskId: string): Promise<{
     };
   } catch (error) {
     logger.error(
-      { taskId, error: error instanceof Error ? error.message : "Unknown error" },
+      {
+        taskId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
       "Failed to fetch task schedule data",
     );
     return null;
@@ -463,7 +479,9 @@ interface TaskScheduleData {
 async function getTaskSchedulesMap(): Promise<Map<string, TaskScheduleData>> {
   try {
     const scheduler = await getScheduler();
-    const schedules = await scheduler.list(QueueNames.TASK_EXECUTION_PROCESSING);
+    const schedules = await scheduler.list(
+      QueueNames.TASK_EXECUTION_PROCESSING,
+    );
 
     const map = new Map<string, TaskScheduleData>();
     for (const schedule of schedules) {
@@ -746,7 +764,8 @@ export async function updateTask(
       const existingSchedule = await getTaskScheduleData(id);
 
       // For partial updates, use existing schedule values as defaults
-      const finalIsRecurring = taskData.isRecurring ?? existingSchedule?.isRecurring ?? false;
+      const finalIsRecurring =
+        taskData.isRecurring ?? existingSchedule?.isRecurring ?? false;
       const finalCronExpression =
         taskData.cronExpression ?? existingSchedule?.cronExpression ?? null;
       const finalRecurrenceEndDate =
@@ -1015,7 +1034,8 @@ export async function updateTask(
             ? dueDateValue
             : existingTask.dueDate;
           const delay = calculateAIAssistantJobDelay(finalDueDate);
-          const scheduledFor = delay > 0 ? new Date(Date.now() + delay) : undefined;
+          const scheduledFor =
+            delay > 0 ? new Date(Date.now() + delay) : undefined;
 
           const queueAdapter = await getQueueAdapter();
           await queueAdapter.enqueueTask({
@@ -1065,7 +1085,7 @@ export async function updateTask(
     if (shouldUpdateRecurringScheduler) {
       const finalRecurrenceEndDate = includeRecurrenceEndDateUpdate
         ? recurrenceEndDateValue
-        : existingSchedule?.recurrenceEndDate ?? null;
+        : (existingSchedule?.recurrenceEndDate ?? null);
 
       logger.info(
         {
@@ -1089,7 +1109,7 @@ export async function updateTask(
           : false;
         const finalRecurrenceLimit = includeRecurrenceLimitUpdate
           ? recurrenceLimitValue
-          : existingSchedule?.recurrenceLimit ?? null;
+          : (existingSchedule?.recurrenceLimit ?? null);
         // Note: runImmediately is only used when first creating the schedule
         const finalRunImmediately = includeRunImmediatelyUpdate
           ? runImmediatelyValue
@@ -1431,10 +1451,7 @@ export async function updateTaskExecutionTracking(
       return false;
     }
 
-    logger.debug(
-      { taskId, lastExecutedAt },
-      "Task execution tracking updated",
-    );
+    logger.debug({ taskId, lastExecutedAt }, "Task execution tracking updated");
     return true;
   } catch (error) {
     logger.error(
@@ -1640,7 +1657,13 @@ export async function getAllTasks(userId: string) {
         const task = result.task;
         const taskTagNames = await getTaskTags(task.id);
         const scheduleData = schedulesMap.get(task.id) || null;
-        return cleanTaskForResponse(task, taskTagNames, result.status, [], scheduleData);
+        return cleanTaskForResponse(
+          task,
+          taskTagNames,
+          result.status,
+          [],
+          scheduleData,
+        );
       }),
     );
 
@@ -1945,7 +1968,13 @@ export async function findTasks(
         const task = result.task;
         const entryTagNames = await getTaskTags(task.id);
         const scheduleData = schedulesMap.get(task.id) || null;
-        return cleanTaskForResponse(task, entryTagNames, result.status, [], scheduleData);
+        return cleanTaskForResponse(
+          task,
+          entryTagNames,
+          result.status,
+          [],
+          scheduleData,
+        );
       }),
     );
 

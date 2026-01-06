@@ -12,8 +12,8 @@ import type {
   AdapterResponse,
   FinishReason,
   ProviderAuth,
-  ToolCallResult,
   TokenUsage,
+  ToolCallResult,
 } from "../types.js";
 import type { DialectAdapter } from "./types.js";
 
@@ -41,7 +41,7 @@ export class OpenAICompatibleAdapter implements DialectAdapter {
     endpoint: string,
     params: AdapterRequestParams,
     auth: ProviderAuth,
-    customHeaders?: Record<string, string>
+    customHeaders?: Record<string, string>,
   ): AdapterRequest {
     const logger = getLogger();
     const url = `${baseUrl}${endpoint || "/chat/completions"}`;
@@ -117,7 +117,7 @@ export class OpenAICompatibleAdapter implements DialectAdapter {
         hasResponseFormat: !!params.options.responseFormat,
         stream: params.options.stream,
       },
-      "Building OpenAI-compatible request"
+      "Building OpenAI-compatible request",
     );
 
     return {
@@ -186,12 +186,13 @@ export class OpenAICompatibleAdapter implements DialectAdapter {
         hasToolCalls: !!toolCalls,
         finishReason,
       },
-      "Parsed OpenAI-compatible response"
+      "Parsed OpenAI-compatible response",
     );
 
     return {
       content,
-      reasoning: reasoning && typeof reasoning === "string" ? reasoning : undefined,
+      reasoning:
+        reasoning && typeof reasoning === "string" ? reasoning : undefined,
       toolCalls,
       usage,
       finishReason,
@@ -204,7 +205,9 @@ export class OpenAICompatibleAdapter implements DialectAdapter {
    * OpenAI-compatible streams are already in the correct format,
    * so we just pass them through. The LLMStreamParser handles the actual parsing.
    */
-  transformStream(stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+  transformStream(
+    stream: ReadableStream<Uint8Array>,
+  ): ReadableStream<Uint8Array> {
     // OpenAI streams are already in the correct SSE format
     return stream;
   }

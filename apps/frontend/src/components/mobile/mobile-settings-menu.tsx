@@ -1,4 +1,4 @@
-
+import { getRouteApi, Link, useLocation } from "@tanstack/react-router";
 import {
   Bell,
   Bot,
@@ -8,9 +8,9 @@ import {
   Settings,
   User,
 } from "lucide-react";
-import { Link, useLocation, getRouteApi } from "@tanstack/react-router";
 
 const routeApi = getRouteApi("/_authenticated/settings");
+
 import { cn } from "@/lib/utils";
 
 interface SettingsMenuItem {

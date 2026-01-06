@@ -1,9 +1,12 @@
-import { removeModel, findModelById } from '../../config/models.js';
-import { promptConfirmation } from '../../ui/prompts.js';
-import { colors, icons } from '../../ui/colors.js';
-import type { CommandOptions } from '../../types/index.js';
+import { findModelById, removeModel } from "../../config/models.js";
+import type { CommandOptions } from "../../types/index.js";
+import { colors, icons } from "../../ui/colors.js";
+import { promptConfirmation } from "../../ui/prompts.js";
 
-export async function removeCommand(id: string, options: CommandOptions): Promise<void> {
+export async function removeCommand(
+  id: string,
+  options: CommandOptions,
+): Promise<void> {
   try {
     const model = findModelById(id);
     if (!model) {
@@ -21,21 +24,22 @@ export async function removeCommand(id: string, options: CommandOptions): Promis
     // Confirm removal unless --force flag
     if (!options.force) {
       const confirmed = await promptConfirmation(
-        colors.warning('Are you sure you want to remove this model?'),
-        false
+        colors.warning("Are you sure you want to remove this model?"),
+        false,
       );
 
       if (!confirmed) {
-        console.log(colors.dim('Cancelled by user'));
+        console.log(colors.dim("Cancelled by user"));
         return;
       }
     }
 
     removeModel(id);
     console.log(colors.success(`${icons.success} Removed model: ${id}`));
-
   } catch (error: any) {
-    console.log(colors.error(`${icons.error} Failed to remove model: ${error.message}`));
+    console.log(
+      colors.error(`${icons.error} Failed to remove model: ${error.message}`),
+    );
     process.exit(1);
   }
 }

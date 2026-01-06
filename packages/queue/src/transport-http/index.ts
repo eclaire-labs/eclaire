@@ -55,25 +55,23 @@
  * ```
  */
 
-// Type exports
-export type {
-  HttpServerConfig,
-  HttpRoutesHandler,
-  HttpJobResponse,
-  HttpStatsResponse,
-  HttpClientConfig,
-  HttpPollerConfig,
-} from "./types.js";
-
 // Client exports
 export {
   createHttpClient,
   type HttpQueueClient,
 } from "./client.js";
-
 // Poller exports
 export {
   createHttpWorker,
   createHttpWorkerFactory,
   type HttpWorkerFactory,
 } from "./poller.js";
+// Type exports
+export type {
+  HttpClientConfig,
+  HttpJobResponse,
+  HttpPollerConfig,
+  HttpRoutesHandler,
+  HttpServerConfig,
+  HttpStatsResponse,
+} from "./types.js";

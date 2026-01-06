@@ -57,9 +57,9 @@ export { ToolLoopAgent } from "./tool-loop-agent.js";
 
 export {
   createAgentContext,
-  isContextAborted,
-  getContextElapsedMs,
   extendContext,
+  getContextElapsedMs,
+  isContextAborted,
 } from "./context.js";
 
 // =============================================================================
@@ -67,10 +67,10 @@ export {
 // =============================================================================
 
 export {
-  tool,
+  executeAgentTool,
   toOpenAIToolDefinition,
   toOpenAITools,
-  executeAgentTool,
+  tool,
 } from "./tool.js";
 
 // =============================================================================
@@ -78,17 +78,17 @@ export {
 // =============================================================================
 
 export {
-  stepCountIs,
-  hasToolCall,
-  noToolCalls,
-  finishReasonStop,
-  anyOf,
   allOf,
+  anyOf,
   custom,
-  maxTokens,
-  maxDuration,
-  evaluateStopConditions,
   defaultStopConditions,
+  evaluateStopConditions,
+  finishReasonStop,
+  hasToolCall,
+  maxDuration,
+  maxTokens,
+  noToolCalls,
+  stepCountIs,
 } from "./stop-conditions.js";
 
 // =============================================================================
@@ -98,22 +98,22 @@ export {
 export type {
   // Context types
   AgentContext,
-  CreateContextOptions,
+  // Result types
+  AgentResult,
+  AgentStep,
+  AgentStreamEvent,
+  AgentStreamResult,
   // Tool types
   AgentToolDefinition,
   AnyZodType,
-  // Stop condition types
-  StopCondition,
-  // Step types
-  StepToolExecution,
-  AgentStep,
+  CreateContextOptions,
+  GenerateOptions,
   // Config types
   PrepareStepInfo,
   PrepareStepResult,
+  // Step types
+  StepToolExecution,
+  // Stop condition types
+  StopCondition,
   ToolLoopAgentConfig,
-  // Result types
-  AgentResult,
-  AgentStreamEvent,
-  AgentStreamResult,
-  GenerateOptions,
 } from "./types.js";

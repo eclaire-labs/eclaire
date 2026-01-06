@@ -622,21 +622,27 @@ describe("Better Auth Session Integration Tests", () => {
       // First, create and sign in as a test user
       cookieUtils.clearCookies();
 
-      const signUpResponse = await loggedFetch(`${BASE_URL}/auth/sign-up/email`, {
-        method: "POST",
-        body: JSON.stringify(passwordChangeUser),
-      });
+      const signUpResponse = await loggedFetch(
+        `${BASE_URL}/auth/sign-up/email`,
+        {
+          method: "POST",
+          body: JSON.stringify(passwordChangeUser),
+        },
+      );
       expect(signUpResponse.status).toBe(200);
 
       // Now change the password
-      const changeResponse = await loggedFetch(`${BASE_URL}/auth/change-password`, {
-        method: "POST",
-        body: JSON.stringify({
-          currentPassword: passwordChangeUser.password,
-          newPassword: newPassword,
-          revokeOtherSessions: false,
-        }),
-      });
+      const changeResponse = await loggedFetch(
+        `${BASE_URL}/auth/change-password`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            currentPassword: passwordChangeUser.password,
+            newPassword: newPassword,
+            revokeOtherSessions: false,
+          }),
+        },
+      );
 
       expect(changeResponse.status).toBe(200);
       const changeData = (await changeResponse.json()) as any;
@@ -651,13 +657,16 @@ describe("Better Auth Session Integration Tests", () => {
       });
       cookieUtils.clearCookies();
 
-      const signInResponse = await loggedFetch(`${BASE_URL}/auth/sign-in/email`, {
-        method: "POST",
-        body: JSON.stringify({
-          email: passwordChangeUser.email,
-          password: newPassword,
-        }),
-      });
+      const signInResponse = await loggedFetch(
+        `${BASE_URL}/auth/sign-in/email`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: passwordChangeUser.email,
+            password: newPassword,
+          }),
+        },
+      );
 
       expect(signInResponse.status).toBe(200);
       console.log("✅ Successfully signed in with new password");
@@ -667,47 +676,60 @@ describe("Better Auth Session Integration Tests", () => {
       // Sign in with the new password first
       cookieUtils.clearCookies();
 
-      const signInResponse = await loggedFetch(`${BASE_URL}/auth/sign-in/email`, {
-        method: "POST",
-        body: JSON.stringify({
-          email: passwordChangeUser.email,
-          password: newPassword,
-        }),
-      });
+      const signInResponse = await loggedFetch(
+        `${BASE_URL}/auth/sign-in/email`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: passwordChangeUser.email,
+            password: newPassword,
+          }),
+        },
+      );
       expect(signInResponse.status).toBe(200);
 
       // Try to change password with wrong current password
-      const changeResponse = await loggedFetch(`${BASE_URL}/auth/change-password`, {
-        method: "POST",
-        body: JSON.stringify({
-          currentPassword: "WrongPassword@999",
-          newPassword: "AnotherPassword@789",
-          revokeOtherSessions: false,
-        }),
-      });
+      const changeResponse = await loggedFetch(
+        `${BASE_URL}/auth/change-password`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            currentPassword: "WrongPassword@999",
+            newPassword: "AnotherPassword@789",
+            revokeOtherSessions: false,
+          }),
+        },
+      );
 
       expect(changeResponse.status).toBe(400);
       const changeData = (await changeResponse.json()) as any;
       expect(changeData.code).toBe("INVALID_PASSWORD");
 
-      console.log("✅ Password change correctly rejected with wrong current password");
+      console.log(
+        "✅ Password change correctly rejected with wrong current password",
+      );
     });
 
     it("POST /api/auth/change-password - should fail when not authenticated", async () => {
       cookieUtils.clearCookies();
 
-      const changeResponse = await loggedFetch(`${BASE_URL}/auth/change-password`, {
-        method: "POST",
-        body: JSON.stringify({
-          currentPassword: "SomePassword@123",
-          newPassword: "NewPassword@456",
-          revokeOtherSessions: false,
-        }),
-      });
+      const changeResponse = await loggedFetch(
+        `${BASE_URL}/auth/change-password`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            currentPassword: "SomePassword@123",
+            newPassword: "NewPassword@456",
+            revokeOtherSessions: false,
+          }),
+        },
+      );
 
       expect(changeResponse.status).toBe(401);
 
-      console.log("✅ Password change correctly rejected when not authenticated");
+      console.log(
+        "✅ Password change correctly rejected when not authenticated",
+      );
     });
   });
 
@@ -723,10 +745,13 @@ describe("Better Auth Session Integration Tests", () => {
 
       cookieUtils.clearCookies();
 
-      const signUpResponse = await loggedFetch(`${BASE_URL}/auth/sign-up/email`, {
-        method: "POST",
-        body: JSON.stringify(deleteTestUser),
-      });
+      const signUpResponse = await loggedFetch(
+        `${BASE_URL}/auth/sign-up/email`,
+        {
+          method: "POST",
+          body: JSON.stringify(deleteTestUser),
+        },
+      );
       expect(signUpResponse.status).toBe(200);
 
       // Delete the user
@@ -744,13 +769,16 @@ describe("Better Auth Session Integration Tests", () => {
       // Verify: user can no longer sign in
       cookieUtils.clearCookies();
 
-      const signInResponse = await loggedFetch(`${BASE_URL}/auth/sign-in/email`, {
-        method: "POST",
-        body: JSON.stringify({
-          email: deleteTestUser.email,
-          password: deleteTestUser.password,
-        }),
-      });
+      const signInResponse = await loggedFetch(
+        `${BASE_URL}/auth/sign-in/email`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: deleteTestUser.email,
+            password: deleteTestUser.password,
+          }),
+        },
+      );
 
       expect(signInResponse.status).toBe(401);
       console.log("✅ Deleted user can no longer sign in");
@@ -766,10 +794,13 @@ describe("Better Auth Session Integration Tests", () => {
 
       cookieUtils.clearCookies();
 
-      const signUpResponse = await loggedFetch(`${BASE_URL}/auth/sign-up/email`, {
-        method: "POST",
-        body: JSON.stringify(wrongPwUser),
-      });
+      const signUpResponse = await loggedFetch(
+        `${BASE_URL}/auth/sign-up/email`,
+        {
+          method: "POST",
+          body: JSON.stringify(wrongPwUser),
+        },
+      );
       expect(signUpResponse.status).toBe(200);
 
       // Try to delete with wrong password
@@ -807,7 +838,9 @@ describe("Better Auth Session Integration Tests", () => {
 
       expect(deleteResponse.status).toBe(401);
 
-      console.log("✅ Account deletion correctly rejected when not authenticated");
+      console.log(
+        "✅ Account deletion correctly rejected when not authenticated",
+      );
     });
   });
 });

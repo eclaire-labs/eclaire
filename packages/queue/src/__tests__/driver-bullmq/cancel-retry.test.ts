@@ -4,15 +4,15 @@
  * Tests job cancellation and manual retry functionality.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { PermanentError } from "../../core/errors.js";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  eventually,
   createDeferred,
+  eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
-import { PermanentError } from "../../core/errors.js";
 
 describe("BullMQ: Cancel and Retry", () => {
   let harness: QueueTestHarness;

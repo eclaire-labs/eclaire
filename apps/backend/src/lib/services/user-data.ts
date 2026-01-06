@@ -1,14 +1,24 @@
 import { verifyPassword } from "better-auth/crypto";
-import { and, count, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  lte,
+  sql,
+} from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import path from "path";
 import sharp from "sharp";
-import { db, dbType, txManager, schema, queueJobs } from "../../db/index.js";
-import { createChildLogger } from "../logger.js";
+import { db, dbType, queueJobs, schema, txManager } from "../../db/index.js";
 import {
   formatApiKeyForDisplay,
   generateFullApiKey,
 } from "../api-key-security.js";
+import { createChildLogger } from "../logger.js";
 import { getUserProfile } from "../user.js";
 
 const {
@@ -27,7 +37,8 @@ const {
   tasksTags,
   users,
 } = schema;
-import { getStorage, userPrefix, categoryPrefix } from "../storage/index.js";
+
+import { categoryPrefix, getStorage, userPrefix } from "../storage/index.js";
 
 // ============================================================================
 // Error Classes
@@ -131,19 +142,23 @@ export async function deleteAllUserData(
     }
 
     // 2. Get all user asset IDs for bulk deletion (needed for storage cleanup)
-    const [
-      userBookmarks,
-      userDocuments,
-      userPhotos,
-      userNotes,
-      userTasks,
-    ] = await Promise.all([
-      db.select({ id: bookmarks.id }).from(bookmarks).where(eq(bookmarks.userId, userId)),
-      db.select({ id: documents.id }).from(documents).where(eq(documents.userId, userId)),
-      db.select({ id: photos.id }).from(photos).where(eq(photos.userId, userId)),
-      db.select({ id: notes.id }).from(notes).where(eq(notes.userId, userId)),
-      db.select({ id: tasks.id }).from(tasks).where(eq(tasks.userId, userId)),
-    ]);
+    const [userBookmarks, userDocuments, userPhotos, userNotes, userTasks] =
+      await Promise.all([
+        db
+          .select({ id: bookmarks.id })
+          .from(bookmarks)
+          .where(eq(bookmarks.userId, userId)),
+        db
+          .select({ id: documents.id })
+          .from(documents)
+          .where(eq(documents.userId, userId)),
+        db
+          .select({ id: photos.id })
+          .from(photos)
+          .where(eq(photos.userId, userId)),
+        db.select({ id: notes.id }).from(notes).where(eq(notes.userId, userId)),
+        db.select({ id: tasks.id }).from(tasks).where(eq(tasks.userId, userId)),
+      ]);
 
     const totalAssets =
       userBookmarks.length +
@@ -172,26 +187,36 @@ export async function deleteAllUserData(
     if (userBookmarks.length > 0) {
       const bookmarkIds = userBookmarks.map((b) => b.id);
       await txManager.withTransaction(async (tx) => {
-        await tx.bookmarksTags.delete(inArray(bookmarksTags.bookmarkId, bookmarkIds));
+        await tx.bookmarksTags.delete(
+          inArray(bookmarksTags.bookmarkId, bookmarkIds),
+        );
         await tx.bookmarks.delete(eq(bookmarks.userId, userId));
       });
       // Delete queue jobs outside transaction (non-critical)
       const bookmarkKeys = bookmarkIds.map((id) => `bookmarks:${id}`);
       await db.delete(queueJobs).where(inArray(queueJobs.key, bookmarkKeys));
-      logger.info({ userId, count: userBookmarks.length }, "Deleted all bookmarks");
+      logger.info(
+        { userId, count: userBookmarks.length },
+        "Deleted all bookmarks",
+      );
     }
 
     // Delete documents (one atomic transaction)
     if (userDocuments.length > 0) {
       const documentIds = userDocuments.map((d) => d.id);
       await txManager.withTransaction(async (tx) => {
-        await tx.documentsTags.delete(inArray(documentsTags.documentId, documentIds));
+        await tx.documentsTags.delete(
+          inArray(documentsTags.documentId, documentIds),
+        );
         await tx.documents.delete(eq(documents.userId, userId));
       });
       // Delete queue jobs outside transaction (non-critical)
       const documentKeys = documentIds.map((id) => `documents:${id}`);
       await db.delete(queueJobs).where(inArray(queueJobs.key, documentKeys));
-      logger.info({ userId, count: userDocuments.length }, "Deleted all documents");
+      logger.info(
+        { userId, count: userDocuments.length },
+        "Deleted all documents",
+      );
     }
 
     // Delete photos (one atomic transaction)
@@ -248,11 +273,17 @@ export async function deleteAllUserData(
       await storage.deletePrefix(userPrefix(userId));
       logger.info({ userId }, "Cleaned up user storage folder");
     } catch (storageError) {
-      logger.warn({ err: storageError, userId }, "Failed to clean user storage folder");
+      logger.warn(
+        { err: storageError, userId },
+        "Failed to clean user storage folder",
+      );
       // Don't fail the entire operation if storage cleanup fails
     }
 
-    logger.info({ userId }, "Successfully completed bulk data deletion for user");
+    logger.info(
+      { userId },
+      "Successfully completed bulk data deletion for user",
+    );
   } catch (error) {
     logger.error(
       {
@@ -372,7 +403,13 @@ export async function getDashboardStatistics(userId: string) {
 
     // Get storage statistics using the new storage API
     const storage = getStorage();
-    const [bookmarksStorage, documentsStorage, photosStorage, notesStorage, tasksStorage] = await Promise.all([
+    const [
+      bookmarksStorage,
+      documentsStorage,
+      photosStorage,
+      notesStorage,
+      tasksStorage,
+    ] = await Promise.all([
       storage.stats(categoryPrefix(userId, "bookmarks")),
       storage.stats(categoryPrefix(userId, "documents")),
       storage.stats(categoryPrefix(userId, "photos")),
@@ -385,7 +422,7 @@ export async function getDashboardStatistics(userId: string) {
       if (bytes === 0) return "0 B";
       const sizes = ["B", "KB", "MB", "GB", "TB"];
       const i = Math.floor(Math.log(bytes) / Math.log(1024));
-      return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+      return `${(bytes / 1024 ** i).toFixed(2)} ${sizes[i]}`;
     };
 
     // Combine the data
@@ -395,13 +432,17 @@ export async function getDashboardStatistics(userId: string) {
           count: bookmarksCount[0]?.count || 0,
           storageSize: bookmarksStorage.size,
           storageSizeFormatted:
-            bookmarksStorage.size > 0 ? formatBytes(bookmarksStorage.size) : "0 B",
+            bookmarksStorage.size > 0
+              ? formatBytes(bookmarksStorage.size)
+              : "0 B",
         },
         documents: {
           count: documentsCount[0]?.count || 0,
           storageSize: documentsStorage.size,
           storageSizeFormatted:
-            documentsStorage.size > 0 ? formatBytes(documentsStorage.size) : "0 B",
+            documentsStorage.size > 0
+              ? formatBytes(documentsStorage.size)
+              : "0 B",
         },
         photos: {
           count: photosCount[0]?.count || 0,
@@ -428,9 +469,18 @@ export async function getDashboardStatistics(userId: string) {
             (photosCount[0]?.count || 0) +
             (notesCount[0]?.count || 0) +
             (tasksCount[0]?.count || 0),
-          storageSize: bookmarksStorage.size + documentsStorage.size + photosStorage.size + notesStorage.size + tasksStorage.size,
+          storageSize:
+            bookmarksStorage.size +
+            documentsStorage.size +
+            photosStorage.size +
+            notesStorage.size +
+            tasksStorage.size,
           storageSizeFormatted: formatBytes(
-            bookmarksStorage.size + documentsStorage.size + photosStorage.size + notesStorage.size + tasksStorage.size
+            bookmarksStorage.size +
+              documentsStorage.size +
+              photosStorage.size +
+              notesStorage.size +
+              tasksStorage.size,
           ),
         },
       },

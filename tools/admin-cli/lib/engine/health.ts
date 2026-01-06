@@ -2,27 +2,27 @@
  * Health check utilities for engine management
  */
 
-import axios from 'axios';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as fs from 'fs';
-import * as os from 'os';
-import type { DoctorCheck } from '../types/engines.js';
 import {
-  getProviderConfig,
-  parsePort,
   getActiveModelIdForContext,
   getModelConfigById,
-} from '@eclaire/ai';
-import { isEngineRunning, readPidFile } from './paths.js';
-import { detectVRAM, formatBytes } from './vram.js';
-import { estimateModelMemory } from './memory.js';
+  getProviderConfig,
+  parsePort,
+} from "@eclaire/ai";
+import axios from "axios";
+import { exec } from "child_process";
+import * as fs from "fs";
+import * as os from "os";
+import { promisify } from "util";
+import type { DoctorCheck } from "../types/engines.js";
+import { estimateModelMemory } from "./memory.js";
+import { isEngineRunning, readPidFile } from "./paths.js";
 import {
   getEngineSettings,
-  resolveSelectionEngine,
   getServerStatus,
   LLAMA_CPP_ENGINE_ID,
-} from './process.js';
+  resolveSelectionEngine,
+} from "./process.js";
+import { detectVRAM, formatBytes } from "./vram.js";
 
 const execAsync = promisify(exec);
 
@@ -49,7 +49,7 @@ export async function checkServerHealth(port: number): Promise<boolean> {
  */
 export async function waitForHealthy(
   baseUrl: string,
-  timeoutMs: number = 30000
+  timeoutMs: number = 30000,
 ): Promise<boolean> {
   const startTime = Date.now();
   const checkInterval = 500; // ms
@@ -84,7 +84,7 @@ export async function isPortAvailable(port: number): Promise<boolean> {
     return false;
   } catch (error: any) {
     // ECONNREFUSED means nothing is listening - port is available
-    if (error.code === 'ECONNREFUSED') {
+    if (error.code === "ECONNREFUSED") {
       return true;
     }
     // Any other response means something is listening
@@ -126,7 +126,7 @@ export async function runDoctorChecks(): Promise<DoctorCheck[]> {
  * Check if llama-server binary is available
  */
 async function checkLlamaServerBinary(): Promise<DoctorCheck> {
-  const binary = 'llama-server';
+  const binary = "llama-server";
 
   try {
     const { stdout } = await execAsync(`which ${binary}`);
@@ -140,16 +140,16 @@ async function checkLlamaServerBinary(): Promise<DoctorCheck> {
     }
 
     return {
-      name: 'llama-server binary',
-      status: 'pass',
+      name: "llama-server binary",
+      status: "pass",
       message: `Found at ${binaryPath}`,
     };
   } catch {
     return {
-      name: 'llama-server binary',
-      status: 'fail',
+      name: "llama-server binary",
+      status: "fail",
       message: `'${binary}' not found in PATH`,
-      fix: 'Install llama.cpp: brew install llama.cpp (macOS) or build from source',
+      fix: "Install llama.cpp: brew install llama.cpp (macOS) or build from source",
     };
   }
 }
@@ -161,37 +161,39 @@ async function checkManagedProviders(): Promise<DoctorCheck> {
   try {
     const resolution = resolveSelectionEngine();
 
-    if (resolution.status === 'no-managed') {
+    if (resolution.status === "no-managed") {
       return {
-        name: 'Managed engine',
-        status: 'warn',
-        message: 'No managed llama-cpp models in selection.json',
-        fix: 'Select a model that uses a managed llama-cpp provider',
+        name: "Managed engine",
+        status: "warn",
+        message: "No managed llama-cpp models in selection.json",
+        fix: "Select a model that uses a managed llama-cpp provider",
       };
     }
 
-    if (resolution.status === 'conflict') {
+    if (resolution.status === "conflict") {
       return {
-        name: 'Managed engine',
-        status: 'fail',
+        name: "Managed engine",
+        status: "fail",
         message: resolution.message,
-        fix: 'Update selection.json to use models from the same managed provider',
+        fix: "Update selection.json to use models from the same managed provider",
       };
     }
 
     const modelCount = resolution.modelsToPreload.length;
-    const modelIds = resolution.modelsToPreload.map(m => m.modelId).join(', ');
+    const modelIds = resolution.modelsToPreload
+      .map((m) => m.modelId)
+      .join(", ");
     return {
-      name: 'Managed engine',
-      status: 'pass',
+      name: "Managed engine",
+      status: "pass",
       message: `${modelCount} model(s) configured: ${modelIds}`,
     };
   } catch (error: any) {
     return {
-      name: 'Managed engine',
-      status: 'fail',
+      name: "Managed engine",
+      status: "fail",
       message: error.message,
-      fix: 'Check config/ai/*.json for syntax errors',
+      fix: "Check config/ai/*.json for syntax errors",
     };
   }
 }
@@ -201,7 +203,7 @@ async function checkManagedProviders(): Promise<DoctorCheck> {
  */
 async function checkModelsExist(): Promise<DoctorCheck[]> {
   const checks: DoctorCheck[] = [];
-  const contexts: Array<'backend' | 'workers'> = ['backend', 'workers'];
+  const contexts: Array<"backend" | "workers"> = ["backend", "workers"];
 
   for (const context of contexts) {
     const modelId = getActiveModelIdForContext(context);
@@ -209,8 +211,8 @@ async function checkModelsExist(): Promise<DoctorCheck[]> {
     if (!modelId) {
       checks.push({
         name: `Model for ${context}`,
-        status: 'warn',
-        message: 'No active model configured',
+        status: "warn",
+        message: "No active model configured",
         fix: `Run: eclaire model activate --${context} <model-id>`,
       });
       continue;
@@ -220,7 +222,7 @@ async function checkModelsExist(): Promise<DoctorCheck[]> {
     if (!model) {
       checks.push({
         name: `Model for ${context}`,
-        status: 'fail',
+        status: "fail",
         message: `Model '${modelId}' not found in models.json`,
         fix: `Add the model to models.json or choose a different model`,
       });
@@ -232,7 +234,7 @@ async function checkModelsExist(): Promise<DoctorCheck[]> {
     if (!source?.localPath) {
       checks.push({
         name: `Model for ${context}`,
-        status: 'warn',
+        status: "warn",
         message: `${modelId} configured but no local path set`,
         fix: `Run: eclaire engine pull ${modelId}`,
       });
@@ -243,7 +245,7 @@ async function checkModelsExist(): Promise<DoctorCheck[]> {
     if (!fs.existsSync(source.localPath)) {
       checks.push({
         name: `Model for ${context}`,
-        status: 'fail',
+        status: "fail",
         message: `File not found: ${source.localPath}`,
         fix: `Run: eclaire engine pull ${modelId}`,
       });
@@ -252,7 +254,7 @@ async function checkModelsExist(): Promise<DoctorCheck[]> {
 
     checks.push({
       name: `Model for ${context}`,
-      status: 'pass',
+      status: "pass",
       message: `${modelId} ready`,
     });
   }
@@ -268,7 +270,7 @@ async function checkPortsAvailable(): Promise<DoctorCheck[]> {
   const resolution = resolveSelectionEngine();
 
   // Only check port if we have a configured provider
-  if (resolution.status !== 'ok' || !resolution.providerConfig) {
+  if (resolution.status !== "ok" || !resolution.providerConfig) {
     return checks;
   }
 
@@ -278,7 +280,7 @@ async function checkPortsAvailable(): Promise<DoctorCheck[]> {
   if (status.running) {
     checks.push({
       name: `Port ${port} (llama-cpp)`,
-      status: 'pass',
+      status: "pass",
       message: `In use by managed server (PID: ${status.pid})`,
     });
   } else {
@@ -286,14 +288,14 @@ async function checkPortsAvailable(): Promise<DoctorCheck[]> {
     if (available) {
       checks.push({
         name: `Port ${port} (llama-cpp)`,
-        status: 'pass',
-        message: 'Available',
+        status: "pass",
+        message: "Available",
       });
     } else {
       checks.push({
         name: `Port ${port} (llama-cpp)`,
-        status: 'warn',
-        message: 'In use by another process',
+        status: "warn",
+        message: "In use by another process",
         fix: `Stop the process using port ${port} or change the baseUrl in providers.json`,
       });
     }
@@ -309,8 +311,8 @@ async function checkGPUMemory(): Promise<DoctorCheck> {
   try {
     const vramStatus = await detectVRAM();
     const gpu = vramStatus.gpus[0];
-    const gpuName = gpu?.name || 'Unknown GPU';
-    const memoryType = gpu?.isUnifiedMemory ? 'unified' : 'dedicated';
+    const gpuName = gpu?.name || "Unknown GPU";
+    const memoryType = gpu?.isUnifiedMemory ? "unified" : "dedicated";
     const availableGB = vramStatus.availableVRAM / (1024 * 1024 * 1024);
     const totalGB = vramStatus.totalVRAM / (1024 * 1024 * 1024);
 
@@ -329,31 +331,31 @@ async function checkGPUMemory(): Promise<DoctorCheck> {
         model.source.sizeBytes,
         contextSize,
         model.source.architecture,
-        model.source.visionSizeBytes
+        model.source.visionSizeBytes,
       );
       requiredGB += estimate.totalGB;
     }
 
     if (requiredGB > 0 && requiredGB > availableGB) {
       return {
-        name: 'GPU memory',
-        status: 'warn',
+        name: "GPU memory",
+        status: "warn",
         message: `${gpuName}: ${availableGB.toFixed(1)}GB available (${memoryType}), ~${requiredGB.toFixed(1)}GB required`,
-        fix: 'Consider using smaller models or reducing context size',
+        fix: "Consider using smaller models or reducing context size",
       };
     }
 
     if (requiredGB > 0) {
       return {
-        name: 'GPU memory',
-        status: 'pass',
+        name: "GPU memory",
+        status: "pass",
         message: `${gpuName}: ${availableGB.toFixed(1)}GB available (${memoryType}), ~${requiredGB.toFixed(1)}GB required`,
       };
     }
 
     return {
-      name: 'GPU memory',
-      status: 'pass',
+      name: "GPU memory",
+      status: "pass",
       message: `${gpuName}: ${totalGB.toFixed(1)}GB ${memoryType} memory`,
     };
   } catch (error: any) {
@@ -362,8 +364,8 @@ async function checkGPUMemory(): Promise<DoctorCheck> {
     const freeMemGB = os.freemem() / (1024 * 1024 * 1024);
 
     return {
-      name: 'System memory',
-      status: 'warn',
+      name: "System memory",
+      status: "warn",
       message: `${freeMemGB.toFixed(1)}GB free of ${totalMemGB.toFixed(1)}GB total (GPU detection failed: ${error.message})`,
     };
   }
@@ -374,5 +376,5 @@ async function checkGPUMemory(): Promise<DoctorCheck> {
 // ============================================================================
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

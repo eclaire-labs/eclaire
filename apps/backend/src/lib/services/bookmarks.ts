@@ -1,5 +1,6 @@
 // lib/services/bookmarks.ts
 
+import { generateBookmarkId, generateHistoryId } from "@eclaire/core";
 import {
   and,
   count,
@@ -13,22 +14,16 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { db, txManager, schema, queueJobs } from "../../db/index.js";
-import { generateBookmarkId, generateHistoryId } from "@eclaire/core";
+import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
-const {
-  bookmarks,
-  bookmarksTags,
-  tags,
-} = schema;
+const { bookmarks, bookmarksTags, tags } = schema;
 
+import isUrl from "is-url";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
-import { getQueue, QueueNames, getQueueAdapter } from "../queue/index.js";
 import { createChildLogger } from "../logger.js";
-
+import { getQueue, getQueueAdapter, QueueNames } from "../queue/index.js";
 import { recordHistory } from "./history.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
-import isUrl from "is-url";
 
 const logger = createChildLogger("services:bookmarks");
 
@@ -53,7 +48,9 @@ export function normalizeBookmarkUrl(url: string): string {
  * Validates and normalizes a bookmark URL.
  * Returns the normalized URL if valid, or an error message if invalid.
  */
-export function validateAndNormalizeBookmarkUrl(url: string | undefined | null): {
+export function validateAndNormalizeBookmarkUrl(
+  url: string | undefined | null,
+): {
   valid: boolean;
   normalizedUrl?: string;
   error?: string;
@@ -755,15 +752,25 @@ export async function updateBookmarkArtifacts(
       try {
         const { getStorage } = await import("../storage/index.js");
         const storage = getStorage();
-        const { buffer } = await storage.readBuffer(artifacts.extractedTxtStorageId);
+        const { buffer } = await storage.readBuffer(
+          artifacts.extractedTxtStorageId,
+        );
         bookmarkUpdateData.extractedText = buffer.toString("utf-8");
         logger.debug(
-          { bookmarkId, storageId: artifacts.extractedTxtStorageId, textLength: bookmarkUpdateData.extractedText.length },
+          {
+            bookmarkId,
+            storageId: artifacts.extractedTxtStorageId,
+            textLength: bookmarkUpdateData.extractedText.length,
+          },
           "Loaded extractedText from storage",
         );
       } catch (storageError) {
         logger.warn(
-          { bookmarkId, storageId: artifacts.extractedTxtStorageId, error: storageError },
+          {
+            bookmarkId,
+            storageId: artifacts.extractedTxtStorageId,
+            error: storageError,
+          },
           "Failed to load extractedText from storage, continuing without it",
         );
       }
@@ -771,7 +778,11 @@ export async function updateBookmarkArtifacts(
 
     // Get or create tags BEFORE transaction if tags are provided
     let tagList: { id: string; name: string }[] = [];
-    if (tagNames !== undefined && Array.isArray(tagNames) && tagNames.length > 0) {
+    if (
+      tagNames !== undefined &&
+      Array.isArray(tagNames) &&
+      tagNames.length > 0
+    ) {
       // Find the bookmark's userId for tag scoping
       const bookmarkResult = await db.query.bookmarks.findFirst({
         columns: { userId: true },

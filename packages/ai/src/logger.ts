@@ -9,7 +9,7 @@ import type { AILogger } from "./types.js";
 
 // Module-level state for logger factory
 let _loggerFactory: ((name: string) => AILogger) | null = null;
-let _loggerCache: Map<string, AILogger> = new Map();
+const _loggerCache: Map<string, AILogger> = new Map();
 
 /**
  * Set the logger factory (called by initAI)

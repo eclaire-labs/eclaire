@@ -4,12 +4,15 @@
  * Provides utilities to spawn worker subprocesses and collect their results.
  */
 
-import { fork, type ChildProcess } from "child_process";
-import { createInterface } from "readline";
+import { type ChildProcess, fork } from "child_process";
 import { join } from "path";
+import { createInterface } from "readline";
 
 // Path to the worker subprocess script
-const WORKER_SCRIPT = join(import.meta.dirname, "../fixtures/worker-subprocess.ts");
+const WORKER_SCRIPT = join(
+  import.meta.dirname,
+  "../fixtures/worker-subprocess.ts",
+);
 
 export interface WorkerConfig {
   /** Unique identifier for this worker */
@@ -158,13 +161,13 @@ export async function waitForAllReady(
   timeoutMs = 10000,
 ): Promise<void> {
   const timeout = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error("Timeout waiting for workers to be ready")), timeoutMs);
+    setTimeout(
+      () => reject(new Error("Timeout waiting for workers to be ready")),
+      timeoutMs,
+    );
   });
 
-  await Promise.race([
-    Promise.all(workers.map((w) => w.ready)),
-    timeout,
-  ]);
+  await Promise.race([Promise.all(workers.map((w) => w.ready)), timeout]);
 }
 
 /**
@@ -178,14 +181,20 @@ export async function waitForJobsProcessed(
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeoutMs) {
-    const totalProcessed = workers.reduce((sum, w) => sum + w.processed.length, 0);
+    const totalProcessed = workers.reduce(
+      (sum, w) => sum + w.processed.length,
+      0,
+    );
     if (totalProcessed >= expectedCount) {
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
-  const totalProcessed = workers.reduce((sum, w) => sum + w.processed.length, 0);
+  const totalProcessed = workers.reduce(
+    (sum, w) => sum + w.processed.length,
+    0,
+  );
   throw new Error(
     `Timeout: expected ${expectedCount} jobs processed, got ${totalProcessed}`,
   );
@@ -195,7 +204,9 @@ export async function waitForJobsProcessed(
  * Collect all processed jobs from workers
  * Returns a map of jobId -> workerId[]
  */
-export function collectResults(workers: WorkerProcess[]): Map<string, string[]> {
+export function collectResults(
+  workers: WorkerProcess[],
+): Map<string, string[]> {
   const results = new Map<string, string[]>();
 
   for (const worker of workers) {

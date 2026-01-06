@@ -7,15 +7,15 @@
  * The heartbeat() method updates progress to show activity.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { JobContext, QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  eventually,
   createDeferred,
-  sleep,
+  eventually,
   type QueueTestHarness,
+  sleep,
 } from "../testkit/index.js";
-import type { QueueClient, Worker, JobContext } from "../../core/types.js";
 
 describe("BullMQ: Job Context", () => {
   let harness: QueueTestHarness;
@@ -153,7 +153,7 @@ describe("BullMQ: Job Context", () => {
       worker = harness.createWorker("test-queue", async (ctx) => {
         ctx.log("Message with special chars: \n\t\"quotes\" and 'apostrophes'");
         ctx.log("Unicode: 你好世界 🎉");
-        ctx.log("JSON: {\"key\": \"value\"}");
+        ctx.log('JSON: {"key": "value"}');
         completed.resolve();
       });
       await worker.start();
@@ -301,10 +301,13 @@ describe("BullMQ: Job Context", () => {
       });
       await worker.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 1;
-      }, { timeout: 5000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 1;
+        },
+        { timeout: 5000 },
+      );
 
       expect(attemptNumbers).toEqual([1, 2, 3]);
     });

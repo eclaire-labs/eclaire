@@ -4,8 +4,8 @@
  * Count photos matching criteria.
  */
 
-import z from "zod/v4";
 import { tool } from "@eclaire/ai";
+import z from "zod/v4";
 import { countPhotos as countPhotosService } from "../../services/photos.js";
 import type { BackendAgentContext } from "../types.js";
 

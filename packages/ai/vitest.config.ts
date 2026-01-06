@@ -11,9 +11,7 @@ export default defineConfig({
     include: isIntegration
       ? ["src/tests/integration/**/*.test.ts"]
       : ["src/tests/**/*.test.ts"],
-    exclude: isIntegration
-      ? []
-      : ["src/tests/integration/**"],
+    exclude: isIntegration ? [] : ["src/tests/integration/**"],
     setupFiles: ["src/tests/setup.ts"],
     // Integration tests need longer timeout for real API calls (local models can be slow)
     testTimeout: isIntegration ? 120000 : 10000,

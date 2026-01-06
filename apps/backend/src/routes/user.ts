@@ -1,30 +1,30 @@
 import { Hono } from "hono";
-import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi";
+import { describeRoute, validator as zValidator } from "hono-openapi";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { createChildLogger } from "../lib/logger.js";
 import {
+  ApiKeyNotFoundError,
+  AvatarNotFoundError,
+  createApiKey,
   // Dashboard & data functions (already delegated)
   deleteAllUserData,
+  deleteApiKey,
+  deleteUserAvatar,
   getActivityTimeline,
   getDashboardStatistics,
   getDueItems,
+  getPublicUserProfile,
   getQuickStats,
+  getUserApiKeys,
+  getUserAvatar,
   // New service functions
   getUserWithAssignees,
-  updateUserProfile,
-  getPublicUserProfile,
-  getUserApiKeys,
-  createApiKey,
-  deleteApiKey,
-  updateApiKeyName,
-  uploadUserAvatar,
-  deleteUserAvatar,
-  getUserAvatar,
+  InvalidImageError,
   // Error classes
   UserNotFoundError,
-  ApiKeyNotFoundError,
-  AvatarNotFoundError,
-  InvalidImageError,
+  updateApiKeyName,
+  updateUserProfile,
+  uploadUserAvatar,
 } from "../lib/services/user-data.js";
 // Import schemas
 import {
@@ -40,7 +40,6 @@ import {
   updateUserProfileRouteDescription,
 } from "../schemas/user-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
-import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("user");
 
@@ -100,7 +99,10 @@ userRoutes.patch(
         );
       }
 
-      const updatedUser = await updateUserProfile(userId, validationResult.data);
+      const updatedUser = await updateUserProfile(
+        userId,
+        validationResult.data,
+      );
       return c.json(updatedUser);
     } catch (error) {
       if (error instanceof UserNotFoundError) {
@@ -138,10 +140,14 @@ userRoutes.post(
     try {
       await deleteAllUserData(userId, password);
 
-      logger.info({ requestId: c.get("requestId"), userId }, "All user data deleted successfully");
+      logger.info(
+        { requestId: c.get("requestId"), userId },
+        "All user data deleted successfully",
+      );
 
       return c.json({
-        message: "All user data deleted successfully. Your account remains active.",
+        message:
+          "All user data deleted successfully. Your account remains active.",
         accountKept: true,
       });
     } catch (error: unknown) {
@@ -357,7 +363,10 @@ userRoutes.delete("/avatar", async (c) => {
 
   try {
     const result = await deleteUserAvatar(userId);
-    logger.info({ requestId: c.get("requestId"), userId }, "Avatar removed successfully");
+    logger.info(
+      { requestId: c.get("requestId"), userId },
+      "Avatar removed successfully",
+    );
     return c.json(result);
   } catch (error) {
     if (error instanceof AvatarNotFoundError) {

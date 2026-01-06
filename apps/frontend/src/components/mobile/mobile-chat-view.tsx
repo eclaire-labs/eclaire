@@ -1,4 +1,3 @@
-
 import type { RefObject } from "react";
 import type { ToolCall } from "@/components/ui/tool-execution-tracker";
 import type { ConversationSummary } from "@/lib/frontend-api";

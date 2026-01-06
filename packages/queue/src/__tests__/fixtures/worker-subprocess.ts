@@ -23,17 +23,17 @@
 
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import {
-  createDbQueueClient,
-  createDbWorker,
-  getQueueSchema,
-} from "../../driver-db/index.js";
+import type { JobContext } from "../../core/types.js";
 import {
   createBullMQClient,
   createBullMQWorker,
   createRedisConnection,
 } from "../../driver-bullmq/index.js";
-import type { JobContext } from "../../core/types.js";
+import {
+  createDbQueueClient,
+  createDbWorker,
+  getQueueSchema,
+} from "../../driver-db/index.js";
 
 // Helper to output JSON line
 function output(data: Record<string, unknown>) {
@@ -47,7 +47,9 @@ const config = {
   databaseUrl: process.env.DATABASE_URL,
   redisUrl: process.env.REDIS_URL,
   workerId: process.env.WORKER_ID,
-  maxJobs: process.env.MAX_JOBS ? parseInt(process.env.MAX_JOBS, 10) : undefined,
+  maxJobs: process.env.MAX_JOBS
+    ? parseInt(process.env.MAX_JOBS, 10)
+    : undefined,
   notifyEnabled: process.env.NOTIFY_ENABLED === "true",
 };
 
@@ -65,7 +67,10 @@ if (!config.workerId) {
   process.exit(1);
 }
 if (config.backend === "postgres" && !config.databaseUrl) {
-  output({ type: "error", message: "DATABASE_URL is required for postgres backend" });
+  output({
+    type: "error",
+    message: "DATABASE_URL is required for postgres backend",
+  });
   process.exit(1);
 }
 if (config.backend === "redis" && !config.redisUrl) {

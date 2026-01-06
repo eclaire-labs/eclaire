@@ -1,13 +1,17 @@
+import {
+  createPostgresClient,
+  getDatabaseType,
+  getDatabaseUrl,
+} from "@eclaire/db";
+import { createRedisConnection } from "@eclaire/queue";
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import type { Redis } from "ioredis";
-import postgres from "postgres";
-import { createRedisConnection } from "@eclaire/queue";
-import { createPostgresClient, getDatabaseUrl, getDatabaseType } from "@eclaire/db";
-import type { RouteVariables } from "../types/route-variables.js";
+import type postgres from "postgres";
+import { config } from "../config/index.js";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
-import { config } from "../config/index.js";
+import type { RouteVariables } from "../types/route-variables.js";
 import { sanitizeChannelName } from "../workers/lib/postgres-publisher.js";
 
 const logger = createChildLogger("processing-events");
@@ -35,20 +39,27 @@ const redisUrl = config.queue.redisUrl;
 
 // Warn if redis mode but no valid URL
 if (useRedisPubSub && (!redisUrl || !redisUrl.startsWith("redis://"))) {
-  logger.warn({}, "Redis URL not available but queue mode is 'redis' - pub/sub will not work");
+  logger.warn(
+    {},
+    "Redis URL not available but queue mode is 'redis' - pub/sub will not work",
+  );
 }
 
 // Reusable Redis publisher connection (only created in redis mode with valid URL)
-let publisherConnection: Redis | null = useRedisPubSub && redisUrl && redisUrl.startsWith("redis://")
-  ? createRedisConnection({
-      url: redisUrl,
-      logger,
-      serviceName: "Processing Events Publisher",
-    })
-  : null;
+let publisherConnection: Redis | null =
+  useRedisPubSub && redisUrl && redisUrl.startsWith("redis://")
+    ? createRedisConnection({
+        url: redisUrl,
+        logger,
+        serviceName: "Processing Events Publisher",
+      })
+    : null;
 
 if (!publisherConnection) {
-  logger.info({ queueBackend }, "Using in-memory events only (no Redis pub/sub)");
+  logger.info(
+    { queueBackend },
+    "Using in-memory events only (no Redis pub/sub)",
+  );
 }
 
 // Map to track active SSE streams by userId
@@ -107,7 +118,9 @@ processingEventsRoutes.get("/stream", async (c) => {
           });
 
           if (subscriber) {
-            await subscriber.subscribe(`${redisKeyPrefix}:processing:${userId}`);
+            await subscriber.subscribe(
+              `${redisKeyPrefix}:processing:${userId}`,
+            );
 
             // Handle incoming messages
             subscriber.on("message", (_channel, message) => {
@@ -118,14 +131,18 @@ processingEventsRoutes.get("/stream", async (c) => {
                 logger.error(
                   {
                     userId,
-                    error: error instanceof Error ? error.message : "Unknown error",
+                    error:
+                      error instanceof Error ? error.message : "Unknown error",
                   },
                   "Error sending SSE message from Redis",
                 );
               }
             });
 
-            logger.info({ userId }, "Redis subscriber active for processing events");
+            logger.info(
+              { userId },
+              "Redis subscriber active for processing events",
+            );
           }
         } else if (usePostgresListen && postgresUrl) {
           // Create Postgres LISTEN subscriber for remote database workers
@@ -139,33 +156,46 @@ processingEventsRoutes.get("/stream", async (c) => {
 
             // Subscribe to Postgres notifications
             // listen() returns a subscription object with an unlisten() method
-            pgListenSubscription = await pgSubscriber.listen(channel, (payload) => {
-              try {
-                // Send the payload as SSE data (already JSON stringified by publisher)
-                stream.write(`data: ${payload}\n\n`);
-              } catch (error) {
-                logger.error(
-                  {
-                    userId,
-                    error: error instanceof Error ? error.message : "Unknown error",
-                  },
-                  "Error sending SSE message from Postgres NOTIFY",
-                );
-              }
-            });
+            pgListenSubscription = await pgSubscriber.listen(
+              channel,
+              (payload) => {
+                try {
+                  // Send the payload as SSE data (already JSON stringified by publisher)
+                  stream.write(`data: ${payload}\n\n`);
+                } catch (error) {
+                  logger.error(
+                    {
+                      userId,
+                      error:
+                        error instanceof Error
+                          ? error.message
+                          : "Unknown error",
+                    },
+                    "Error sending SSE message from Postgres NOTIFY",
+                  );
+                }
+              },
+            );
 
-            logger.info({ userId, channel }, "Postgres LISTEN subscriber active for processing events");
+            logger.info(
+              { userId, channel },
+              "Postgres LISTEN subscriber active for processing events",
+            );
           } catch (pgError) {
             logger.error(
               {
                 userId,
-                error: pgError instanceof Error ? pgError.message : "Unknown error",
+                error:
+                  pgError instanceof Error ? pgError.message : "Unknown error",
               },
               "Failed to set up Postgres LISTEN subscriber",
             );
           }
         } else {
-          logger.info({ userId, queueBackend, dbType }, "Using in-memory events only (unified mode)");
+          logger.info(
+            { userId, queueBackend, dbType },
+            "Using in-memory events only (unified mode)",
+          );
         }
 
         // Send initial connection confirmation
@@ -231,7 +261,9 @@ processingEventsRoutes.get("/stream", async (c) => {
 
         if (subscriber) {
           try {
-            await subscriber.unsubscribe(`${redisKeyPrefix}:processing:${userId}`);
+            await subscriber.unsubscribe(
+              `${redisKeyPrefix}:processing:${userId}`,
+            );
             await subscriber.quit();
           } catch (cleanupError) {
             logger.warn(

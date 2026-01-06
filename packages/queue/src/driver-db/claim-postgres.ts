@@ -4,10 +4,21 @@
  * Uses FOR UPDATE SKIP LOCKED for optimal concurrent claiming.
  */
 
-import { eq, and, or, lte, lt, isNull, inArray, desc, asc, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import type { QueueLogger } from "../core/types.js";
 import { generateJobId } from "../core/utils.js";
-import type { DbInstance, ClaimedJob, ClaimOptions } from "./types.js";
+import type { ClaimedJob, ClaimOptions, DbInstance } from "./types.js";
 
 /**
  * Claim a job using PostgreSQL's FOR UPDATE SKIP LOCKED
@@ -93,10 +104,14 @@ export async function claimJobPostgres(
     return formatClaimedJob(job);
   } catch (error) {
     // Extract the actual database error from DrizzleQueryError.cause
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const errorCause = error instanceof Error && error.cause
-      ? (error.cause instanceof Error ? error.cause.message : String(error.cause))
-      : undefined;
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    const errorCause =
+      error instanceof Error && error.cause
+        ? error.cause instanceof Error
+          ? error.cause.message
+          : String(error.cause)
+        : undefined;
 
     logger.error(
       {

@@ -1,14 +1,10 @@
+import { generateJobId } from "@eclaire/queue/core";
 import type { Queue } from "bullmq";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
-import { db, schema, txManager, queueJobs } from "../../db/index.js";
-import { generateJobId } from "@eclaire/queue/core";
-const {
-  bookmarks,
-  documents,
-  notes,
-  photos,
-  tasks,
-} = schema;
+import { db, queueJobs, schema, txManager } from "../../db/index.js";
+
+const { bookmarks, documents, notes, photos, tasks } = schema;
+
 import { publishProcessingEvent } from "../../routes/processing-events.js";
 import type { AssetType, ProcessingStatus } from "../../types/assets.js";
 import { createChildLogger } from "../logger.js";
@@ -414,7 +410,10 @@ export async function updateProcessingJobStatus(
       updateData.completedAt = null;
       // Store startedAt in metadata since queueJobs doesn't have this column
       if (!existingMetadata.startedAt) {
-        updateData.metadata = { ...existingMetadata, startedAt: nowDate.toISOString() };
+        updateData.metadata = {
+          ...existingMetadata,
+          startedAt: nowDate.toISOString(),
+        };
       }
     }
 
@@ -526,8 +525,8 @@ export async function getProcessingJob(
         and(
           eq(queueJobs.key, jobKey),
           eq(queueJobs.queue, queueName),
-          sql`${queueJobs.metadata}->>'userId' = ${userId}`
-        )
+          sql`${queueJobs.metadata}->>'userId' = ${userId}`,
+        ),
       )
       .limit(1);
 
@@ -715,11 +714,17 @@ export async function getUserProcessingJobs(
   logger.debug({ userId, filters }, "getUserProcessingJobs called");
 
   try {
-    const { status, assetType, search, limit: queryLimit = 100, offset: queryOffset = 0 } = filters;
+    const {
+      status,
+      assetType,
+      search,
+      limit: queryLimit = 100,
+      offset: queryOffset = 0,
+    } = filters;
 
     // Build where conditions using SQL for jsonb metadata access
     const conditions: ReturnType<typeof sql>[] = [
-      sql`${queueJobs.metadata}->>'userId' = ${userId}`
+      sql`${queueJobs.metadata}->>'userId' = ${userId}`,
     ];
 
     if (status) {
@@ -731,14 +736,22 @@ export async function getUserProcessingJobs(
     }
 
     if (search) {
-      conditions.push(sql`${queueJobs.metadata}->>'assetId' LIKE ${'%' + search + '%'}`);
+      conditions.push(
+        sql`${queueJobs.metadata}->>'assetId' LIKE ${"%" + search + "%"}`,
+      );
     }
 
     logger.debug(
       {
         userId,
         conditionsCount: conditions.length,
-        parsedFilters: { status, assetType, search, limit: queryLimit, offset: queryOffset },
+        parsedFilters: {
+          status,
+          assetType,
+          search,
+          limit: queryLimit,
+          offset: queryOffset,
+        },
       },
       "Built query conditions for processing jobs",
     );
@@ -914,7 +927,13 @@ export async function updateProcessingStatusWithArtifacts(
 
     // 1. Handle Job Initialization
     if (stages && Array.isArray(stages)) {
-      await createOrUpdateProcessingJob(assetType, assetId, userId, stages, jobType);
+      await createOrUpdateProcessingJob(
+        assetType,
+        assetId,
+        userId,
+        stages,
+        jobType,
+      );
     }
 
     // 2. Handle Artifacts Processing
@@ -1468,8 +1487,7 @@ async function retryDocumentProcessing(
     await queueAdapter.enqueueDocument({
       documentId: assetId,
       storageId: document.storageId || undefined,
-      mimeType:
-        document.originalMimeType || document.mimeType || undefined,
+      mimeType: document.originalMimeType || document.mimeType || undefined,
       userId: userId,
       originalFilename: document.originalFilename || undefined,
     });
@@ -1627,19 +1645,30 @@ function formatJobDetails(job: any): ProcessingJobDetails {
     startedAt: stage.startedAt
       ? typeof stage.startedAt === "number"
         ? stage.startedAt
-        : Math.floor(new Date(stage.startedAt as unknown as string).getTime() / 1000)
+        : Math.floor(
+            new Date(stage.startedAt as unknown as string).getTime() / 1000,
+          )
       : undefined,
     completedAt: stage.completedAt
       ? typeof stage.completedAt === "number"
         ? stage.completedAt
-        : Math.floor(new Date(stage.completedAt as unknown as string).getTime() / 1000)
+        : Math.floor(
+            new Date(stage.completedAt as unknown as string).getTime() / 1000,
+          )
       : undefined,
   }));
 
   // Handle queueJobs format (metadata contains userId, assetType, assetId, startedAt)
-  const metadata = job.metadata as { userId?: string; assetType?: string; assetId?: string; startedAt?: string } | null;
-  const assetType = job.assetType || metadata?.assetType || parseAssetTypeFromKey(job.key);
-  const assetId = job.assetId || metadata?.assetId || parseAssetIdFromKey(job.key);
+  const metadata = job.metadata as {
+    userId?: string;
+    assetType?: string;
+    assetId?: string;
+    startedAt?: string;
+  } | null;
+  const assetType =
+    job.assetType || metadata?.assetType || parseAssetTypeFromKey(job.key);
+  const assetId =
+    job.assetId || metadata?.assetId || parseAssetIdFromKey(job.key);
   const userId = job.userId || metadata?.userId;
 
   const retryCount = job.attempts ?? 0;

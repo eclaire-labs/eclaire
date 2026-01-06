@@ -4,7 +4,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const SettingsPage = lazy(() => import("@/components/pages/SettingsPage"));
 
-const validTabs = ["profile", "account", "assistant", "notifications", "api-keys", "about"] as const;
+const validTabs = [
+  "profile",
+  "account",
+  "assistant",
+  "notifications",
+  "api-keys",
+  "about",
+] as const;
 type SettingsTab = (typeof validTabs)[number];
 
 function PageLoading() {

@@ -1,4 +1,3 @@
-
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { FileUpload } from "@/components/upload/file-upload";
 import { useIsMobile } from "@/hooks/use-mobile";

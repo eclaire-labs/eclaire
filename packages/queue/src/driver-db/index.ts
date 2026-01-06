@@ -85,75 +85,70 @@
  * ```
  */
 
-// Schema exports
-export {
-  // PostgreSQL tables
-  queueJobsPg,
-  queueSchedulesPg,
-  // SQLite tables
-  queueJobsSqlite,
-  queueSchedulesSqlite,
-  // Types
-  type QueueJobPg,
-  type NewQueueJobPg,
-  type QueueSchedulePg,
-  type NewQueueSchedulePg,
-  type QueueJobSqlite,
-  type NewQueueJobSqlite,
-  type QueueScheduleSqlite,
-  type NewQueueScheduleSqlite,
-  // Helpers
-  getQueueSchema,
-  type QueueJobsTable,
-  type QueueSchedulesTable,
-} from "./schema.js";
-
-// Type exports
-export type {
-  DbInstance,
-  DbCapabilities,
-  DbQueueClientConfig,
-  DbWorkerConfig,
-  NotifyEmitter,
-  NotifyListener,
-  ClaimedJob,
-  ClaimResult,
-  ClaimOptions,
-} from "./types.js";
+// Claim exports (for advanced use cases)
+export { claimJobPostgres } from "./claim-postgres.js";
+export { claimJobSqlite } from "./claim-sqlite.js";
 
 // Client exports
 export {
   createDbQueueClient,
+  extendJobLock,
   markJobCompleted,
   markJobFailed,
-  extendJobLock,
 } from "./client.js";
-
+// Notify exports
+export {
+  createInMemoryNotify,
+  createPgNotifyEmitter,
+  createPgNotifyListener,
+  createPollingNotifyListener,
+  type PgClient,
+  type PgNotification,
+  type PgNotifyConfig,
+  type PollingNotifyConfig,
+} from "./notify.js";
+// Scheduler exports
+export {
+  createDbScheduler,
+  type DbSchedulerConfig,
+} from "./scheduler.js";
+// Schema exports
+export {
+  // Helpers
+  getQueueSchema,
+  type NewQueueJobPg,
+  type NewQueueJobSqlite,
+  type NewQueueSchedulePg,
+  type NewQueueScheduleSqlite,
+  // Types
+  type QueueJobPg,
+  type QueueJobSqlite,
+  type QueueJobsTable,
+  type QueueSchedulePg,
+  type QueueScheduleSqlite,
+  type QueueSchedulesTable,
+  // PostgreSQL tables
+  queueJobsPg,
+  // SQLite tables
+  queueJobsSqlite,
+  queueSchedulesPg,
+  queueSchedulesSqlite,
+} from "./schema.js";
+// Type exports
+export type {
+  ClaimedJob,
+  ClaimOptions,
+  ClaimResult,
+  DbCapabilities,
+  DbInstance,
+  DbQueueClientConfig,
+  DbWorkerConfig,
+  NotifyEmitter,
+  NotifyListener,
+} from "./types.js";
 // Worker exports
 export {
   createDbWorker,
   createDbWorkerFactory,
   type DbWorkerFactory,
 } from "./worker.js";
-
-// Claim exports (for advanced use cases)
-export { claimJobPostgres } from "./claim-postgres.js";
-export { claimJobSqlite } from "./claim-sqlite.js";
-
-// Notify exports
-export {
-  createPgNotifyEmitter,
-  createPgNotifyListener,
-  createInMemoryNotify,
-  createPollingNotifyListener,
-  type PgNotifyConfig,
-  type PollingNotifyConfig,
-  type PgClient,
-  type PgNotification,
-} from "./notify.js";
-
-// Scheduler exports
-export {
-  createDbScheduler,
-  type DbSchedulerConfig,
-} from "./scheduler.js";

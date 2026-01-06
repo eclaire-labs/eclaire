@@ -8,16 +8,24 @@
  *   OPENROUTER_API_KEY=xxx pnpm --filter @eclaire/ai test:integration:openrouter
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 import { callAI } from "../../index.js";
 import {
-  skipIfNoIntegration,
+  createCalculatorTool,
+  createMinimalPrompt,
+  createToolTriggerPrompt,
   getIntegrationConfig,
   initIntegrationAI,
   resetIntegrationAI,
-  createMinimalPrompt,
-  createToolTriggerPrompt,
-  createCalculatorTool,
+  skipIfNoIntegration,
 } from "./setup.js";
 
 describe("callAI integration", () => {
@@ -56,13 +64,19 @@ describe("callAI integration", () => {
         expect(result.usage.prompt_tokens ?? 0).toBeGreaterThan(0);
         expect(result.usage.completion_tokens ?? 0).toBeGreaterThan(0);
         expect(result.usage.total_tokens).toBe(
-          (result.usage.prompt_tokens ?? 0) + (result.usage.completion_tokens ?? 0)
+          (result.usage.prompt_tokens ?? 0) +
+            (result.usage.completion_tokens ?? 0),
         );
       }
     });
 
     it("respects maxTokens option", async () => {
-      const messages = [{ role: "user" as const, content: "Write a very long story about a dragon." }];
+      const messages = [
+        {
+          role: "user" as const,
+          content: "Write a very long story about a dragon.",
+        },
+      ];
 
       const result = await callAI(messages, "backend", {
         maxTokens: 50,
@@ -73,7 +87,9 @@ describe("callAI integration", () => {
     });
 
     it("respects temperature option", async () => {
-      const messages = [{ role: "user" as const, content: "Reply with exactly: HELLO" }];
+      const messages = [
+        { role: "user" as const, content: "Reply with exactly: HELLO" },
+      ];
 
       // Temperature 0 should give deterministic output
       const result1 = await callAI(messages, "backend", { temperature: 0 });
@@ -110,7 +126,9 @@ describe("callAI integration", () => {
     });
 
     it("uses required tool when toolChoice specifies it", async () => {
-      const messages = [{ role: "user" as const, content: "Hello, how are you?" }];
+      const messages = [
+        { role: "user" as const, content: "Hello, how are you?" },
+      ];
       const tools = [createCalculatorTool()];
 
       const result = await callAI(messages, "backend", {
@@ -128,7 +146,10 @@ describe("callAI integration", () => {
   describe("system messages", () => {
     it("respects system message instructions", async () => {
       const messages = [
-        { role: "system" as const, content: "You are a pirate. Always respond like a pirate would." },
+        {
+          role: "system" as const,
+          content: "You are a pirate. Always respond like a pirate would.",
+        },
         { role: "user" as const, content: "Hello!" },
       ];
 
@@ -161,6 +182,4 @@ describe("callAI integration", () => {
       await expect(callAI([], "backend")).rejects.toThrow();
     });
   });
-
 });
-

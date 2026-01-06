@@ -8,22 +8,25 @@ import type { DatabaseJob, MockBullMQJob } from "./types.js";
 
 // Re-export from core for backward compatibility
 export {
-  RateLimitError,
-  isRateLimitError,
-  getRateLimitDelay,
   createRateLimitError,
+  getRateLimitDelay,
+  isRateLimitError,
+  RateLimitError,
 } from "../core/errors.js";
 
 /**
  * Adapt database job to BullMQ-like job object
  */
-export function adaptDatabaseJob(dbJob: DatabaseJob, logger?: Logger): MockBullMQJob {
+export function adaptDatabaseJob(
+  dbJob: DatabaseJob,
+  logger?: Logger,
+): MockBullMQJob {
   // Validate that job_data exists
   if (!dbJob.job_data) {
     const errMsg = `Job ${dbJob.id} has no job_data`;
     logger?.error(
       { jobId: dbJob.id, assetType: dbJob.asset_type, assetId: dbJob.asset_id },
-      "Job data is missing - cannot process job"
+      "Job data is missing - cannot process job",
     );
     throw new Error(errMsg);
   }

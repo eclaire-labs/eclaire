@@ -60,7 +60,7 @@ export function calculateBackoff(
   switch (type) {
     case "exponential":
       // 2^(attempt-1) * baseDelay: 1x, 2x, 4x, 8x, 16x...
-      calculatedDelay = Math.pow(2, safeAttempt - 1) * delay;
+      calculatedDelay = 2 ** (safeAttempt - 1) * delay;
       break;
 
     case "linear":
@@ -270,7 +270,10 @@ export function sleep(ms: number): Promise<void> {
  * controller.abort();
  * ```
  */
-export function cancellableSleep(ms: number, signal?: AbortSignal): Promise<void> {
+export function cancellableSleep(
+  ms: number,
+  signal?: AbortSignal,
+): Promise<void> {
   return new Promise((resolve) => {
     // If already aborted, resolve immediately
     if (signal?.aborted) {
@@ -363,7 +366,11 @@ export async function retry<T>(
     shouldRetry?: (error: unknown) => boolean;
   } = {},
 ): Promise<T> {
-  const { attempts = 3, backoff = DEFAULT_BACKOFF, shouldRetry = () => true } = options;
+  const {
+    attempts = 3,
+    backoff = DEFAULT_BACKOFF,
+    shouldRetry = () => true,
+  } = options;
 
   let lastError: unknown;
 

@@ -7,7 +7,16 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/data/**"]
+    "includes": [
+      "apps/**",
+      "packages/**",
+      "tools/**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.next",
+      "!**/data",
+      "!**/build"
+    ]
   },
   "formatter": {
     "enabled": true,

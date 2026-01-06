@@ -22,8 +22,9 @@
     }
   },
   "devDependencies": {
-    "node-gyp": "^12.1.0",
-    "node-addon-api": "^8.5.0"
+    "@biomejs/biome": "2.3.11",
+    "node-addon-api": "^8.5.0",
+    "node-gyp": "^12.1.0"
   },
   "scripts": {
     "setup": "node scripts/setup.js",
@@ -44,6 +45,8 @@
     "test:integration:bullmq": "pnpm --filter @eclaire/queue test:bullmq",
     "lint": "pnpm --filter @eclaire/backend lint && pnpm --filter @eclaire/frontend lint",
     "format": "pnpm --filter @eclaire/backend format && pnpm --filter @eclaire/frontend format",
+    "check": "biome check ./",
+    "fix": "biome check --write ./",
     "typecheck": "pnpm -r typecheck",
     "typecheck:backend": "pnpm --filter @eclaire/backend typecheck",
     "typecheck:frontend": "pnpm --filter @eclaire/frontend typecheck",

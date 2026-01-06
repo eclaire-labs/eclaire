@@ -47,7 +47,13 @@ export interface ToolCallData {
 }
 
 export interface SSEParseResult {
-  type: "content" | "reasoning" | "done" | "usage" | "finish_reason" | "tool_call_delta";
+  type:
+    | "content"
+    | "reasoning"
+    | "done"
+    | "usage"
+    | "finish_reason"
+    | "tool_call_delta";
   content?: string;
   usage?: {
     prompt_tokens?: number;
@@ -75,7 +81,10 @@ interface ParserState {
   codeBlockStartLine: string;
   accumulatedReasoning: string;
   accumulatedThinking: string;
-  accumulatedToolCalls: Map<number, { id: string; functionName: string; arguments: string }>;
+  accumulatedToolCalls: Map<
+    number,
+    { id: string; functionName: string; arguments: string }
+  >;
 }
 
 /**
@@ -153,7 +162,10 @@ export class LLMStreamParser {
               { finishReason: choice.finish_reason },
               "Extracted finish_reason from SSE chunk",
             );
-            return { type: "finish_reason", finishReason: choice.finish_reason };
+            return {
+              type: "finish_reason",
+              finishReason: choice.finish_reason,
+            };
           }
 
           if (choice.delta) {
@@ -600,7 +612,10 @@ export class LLMStreamParser {
                   type: "usage",
                   usage: sseResult.usage,
                 });
-              } else if (sseResult.type === "finish_reason" && sseResult.finishReason) {
+              } else if (
+                sseResult.type === "finish_reason" &&
+                sseResult.finishReason
+              ) {
                 // Pass through finish reason
                 controller.enqueue({
                   type: "finish_reason",
@@ -614,10 +629,15 @@ export class LLMStreamParser {
                   type: "reasoning",
                   content: sseResult.content,
                 });
-              } else if (sseResult.type === "tool_call_delta" && sseResult.toolCallDelta) {
+              } else if (
+                sseResult.type === "tool_call_delta" &&
+                sseResult.toolCallDelta
+              ) {
                 // Accumulate tool call deltas
                 const delta = sseResult.toolCallDelta;
-                const existing = parser.state.accumulatedToolCalls.get(delta.index);
+                const existing = parser.state.accumulatedToolCalls.get(
+                  delta.index,
+                );
 
                 if (existing) {
                   // Accumulate arguments delta

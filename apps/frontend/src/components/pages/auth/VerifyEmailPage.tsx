@@ -1,6 +1,5 @@
-
-import { ArrowLeft, Mail } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Mail } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

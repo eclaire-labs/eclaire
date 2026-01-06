@@ -116,7 +116,10 @@ function extractToolCallsFromContent(content: string): {
       // Remove the matched JSON from remaining content
       remainingContent = remainingContent.replace(match[0], "");
     } catch (e) {
-      logger.warn({ toolCall: match[0] }, "Could not parse potential tool call");
+      logger.warn(
+        { toolCall: match[0] },
+        "Could not parse potential tool call",
+      );
     }
   }
 
@@ -155,7 +158,10 @@ export function parseTextToolContent(
   if (reasoning && reasoning.trim()) {
     result.thinkingContent = reasoning.trim();
     result.thinkingSource = "reasoning_field";
-    logger.debug({}, "Using reasoning field from AI provider as thinking content");
+    logger.debug(
+      {},
+      "Using reasoning field from AI provider as thinking content",
+    );
   } else {
     // Fallback to extracting from embedded <think> tags
     const { thinkingContent } = extractThinkingContent(content);

@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { estimateTokenCount, checkContextFit } from "../token-estimation.js";
+import { checkContextFit, estimateTokenCount } from "../token-estimation.js";
 import type { AIMessage } from "../types.js";
 import { createMockLoggerFactory } from "./setup.js";
 
@@ -177,7 +177,12 @@ describe("Token Estimation", () => {
       const contextWindow = tokenCount + 100; // tokens + max output
       const maxOutput = 100;
 
-      const result = checkContextFit(messages, "test-model", contextWindow, maxOutput);
+      const result = checkContextFit(
+        messages,
+        "test-model",
+        contextWindow,
+        maxOutput,
+      );
 
       expect(result.fits).toBe(true);
     });

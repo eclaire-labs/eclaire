@@ -2,8 +2,8 @@
  * Queue adapter types and interfaces
  */
 
-import type { Logger } from "@eclaire/logger";
 import type { DbInstance, TransactionManager } from "@eclaire/db";
+import type { Logger } from "@eclaire/logger";
 import type { Redis } from "ioredis";
 
 // --- Job Data Types ---
@@ -70,7 +70,12 @@ export interface QueueAdapter {
 
 // --- Configuration Types ---
 
-export type AssetType = "bookmarks" | "photos" | "documents" | "notes" | "tasks";
+export type AssetType =
+  | "bookmarks"
+  | "photos"
+  | "documents"
+  | "notes"
+  | "tasks";
 
 export interface RedisQueueConfig {
   /** Redis connection URL */
@@ -173,7 +178,11 @@ export interface ClaimedJob {
 // --- Waitlist Interface ---
 
 export interface JobWaitlistInterface {
-  addWaiter(assetType: AssetType, workerId: string, timeout?: number): Promise<any>;
+  addWaiter(
+    assetType: AssetType,
+    workerId: string,
+    timeout?: number,
+  ): Promise<any>;
   notifyWaiters(assetType: AssetType, count?: number): number;
   notifyAllWaiters(assetType: AssetType): number;
   scheduleNextWakeup(assetType: AssetType): Promise<void>;

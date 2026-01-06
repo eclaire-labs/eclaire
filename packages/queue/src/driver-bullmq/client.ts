@@ -2,20 +2,20 @@
  * @eclaire/queue/driver-bullmq - BullMQ QueueClient implementation
  */
 
-import { Queue, type JobsOptions } from "bullmq";
+import { type JobsOptions, Queue } from "bullmq";
 import type { Redis } from "ioredis";
+import { JobAlreadyActiveError } from "../core/errors.js";
+import { initializeStages } from "../core/progress.js";
 import type {
-  QueueClient,
-  QueueStats,
+  BackoffStrategy,
   Job,
   JobOptions,
-  BackoffStrategy,
+  QueueClient,
+  QueueStats,
 } from "../core/types.js";
 import { DEFAULT_BACKOFF } from "../core/utils.js";
-import { initializeStages } from "../core/progress.js";
-import { JobAlreadyActiveError } from "../core/errors.js";
+import { closeRedisConnection, createRedisConnection } from "./connection.js";
 import type { BullMQClientConfig } from "./types.js";
-import { createRedisConnection, closeRedisConnection } from "./connection.js";
 
 /**
  * Default configuration values
@@ -97,7 +97,8 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
     // Note: BullMQ only supports "exponential" and "fixed", not "linear".
     // Map "linear" to "fixed" as the closest approximation.
     if (backoff) {
-      const bullmqBackoffType = backoff.type === "linear" ? "fixed" : backoff.type;
+      const bullmqBackoffType =
+        backoff.type === "linear" ? "fixed" : backoff.type;
       bullmqOptions.backoff = {
         type: bullmqBackoffType,
         delay: backoff.delay,
@@ -155,15 +156,26 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
             // This matches DB semantics where terminal states are treated as "no job exists".
             // Note: We only handle common states. Other BullMQ states (paused, waiting-children)
             // are not handled and may cause "job already exists" errors on enqueue.
-            if (state === "waiting" || state === "delayed" || state === "completed" || state === "failed") {
+            if (
+              state === "waiting" ||
+              state === "delayed" ||
+              state === "completed" ||
+              state === "failed"
+            ) {
               try {
                 await existing.remove();
               } catch (removeError) {
                 // Race condition: job may have become active between state check and remove.
                 // Re-check state and throw JobAlreadyActiveError if now active.
-                const newState = await existing.getState().catch(() => "unknown");
+                const newState = await existing
+                  .getState()
+                  .catch(() => "unknown");
                 if (newState === "active") {
-                  throw new JobAlreadyActiveError(queue, options.key, existing.id!);
+                  throw new JobAlreadyActiveError(
+                    queue,
+                    options.key,
+                    existing.id!,
+                  );
                 }
                 // Not a race to active state, re-throw original error
                 throw removeError;
@@ -184,7 +196,10 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
         } as T;
 
         const job = await bullmqQueue.add(queue, wrappedData, bullmqOptions);
-        logger.debug({ queue, jobId: job.id, key: options.key }, "Job enqueued");
+        logger.debug(
+          { queue, jobId: job.id, key: options.key },
+          "Job enqueued",
+        );
         return job.id!;
       } catch (error) {
         // Re-throw JobAlreadyActiveError as-is
@@ -206,7 +221,11 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
             if (racedJob) {
               const racedState = await racedJob.getState();
               if (racedState === "active") {
-                throw new JobAlreadyActiveError(queue, options.key, racedJob.id!);
+                throw new JobAlreadyActiveError(
+                  queue,
+                  options.key,
+                  racedJob.id!,
+                );
               }
             }
           } catch (checkError) {
@@ -244,13 +263,20 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
             const state = await job.getState();
             if (state === "waiting" || state === "delayed") {
               await job.remove();
-              logger.info({ jobId: jobIdOrKey, queue: queueName }, "Job cancelled");
+              logger.info(
+                { jobId: jobIdOrKey, queue: queueName },
+                "Job cancelled",
+              );
               return true;
             }
           }
         } catch (error) {
           logger.debug(
-            { queue: queueName, jobIdOrKey, error: error instanceof Error ? error.message : "Unknown" },
+            {
+              queue: queueName,
+              jobIdOrKey,
+              error: error instanceof Error ? error.message : "Unknown",
+            },
             "Queue lookup error during cancel",
           );
         }
@@ -271,13 +297,20 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
             const state = await job.getState();
             if (state === "failed") {
               await job.retry();
-              logger.info({ jobId: jobIdOrKey, queue: queueName }, "Job retried");
+              logger.info(
+                { jobId: jobIdOrKey, queue: queueName },
+                "Job retried",
+              );
               return true;
             }
           }
         } catch (error) {
           logger.debug(
-            { queue: queueName, jobIdOrKey, error: error instanceof Error ? error.message : "Unknown" },
+            {
+              queue: queueName,
+              jobIdOrKey,
+              error: error instanceof Error ? error.message : "Unknown",
+            },
             "Queue lookup error during retry",
           );
         }
@@ -311,9 +344,10 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
             // - BullMQ's attemptsMade is 0 until first processing completes
             // - For pending jobs (waiting/delayed), report attemptsMade directly
             // - For jobs that have been processed, add +1 to match DB semantics
-            const attempts = state === "waiting" || state === "delayed"
-              ? bullmqJob.attemptsMade
-              : bullmqJob.attemptsMade + 1;
+            const attempts =
+              state === "waiting" || state === "delayed"
+                ? bullmqJob.attemptsMade
+                : bullmqJob.attemptsMade + 1;
 
             return {
               id: bullmqJob.id!,
@@ -334,7 +368,11 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           }
         } catch (error) {
           logger.debug(
-            { queue: queueName, jobIdOrKey, error: error instanceof Error ? error.message : "Unknown" },
+            {
+              queue: queueName,
+              jobIdOrKey,
+              error: error instanceof Error ? error.message : "Unknown",
+            },
             "Queue lookup error during getJob",
           );
         }
@@ -355,7 +393,9 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
         retryPending: 0,
       };
 
-      const queuesToCheck = queue ? [queues.get(queue)].filter(Boolean) : Array.from(queues.values());
+      const queuesToCheck = queue
+        ? [queues.get(queue)].filter(Boolean)
+        : Array.from(queues.values());
 
       for (const bullmqQueue of queuesToCheck) {
         if (!bullmqQueue) continue;
@@ -403,7 +443,10 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           logger.debug({ queue: queueName }, "BullMQ queue closed");
         } catch (error) {
           logger.error(
-            { queue: queueName, error: error instanceof Error ? error.message : "Unknown" },
+            {
+              queue: queueName,
+              error: error instanceof Error ? error.message : "Unknown",
+            },
             "Error closing queue",
           );
         }

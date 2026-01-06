@@ -6,21 +6,21 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
-  parseToolCallArguments,
-  hasToolCalls,
-  getToolNames,
-  executeToolCall,
-  executeAllToolCalls,
   buildAssistantToolCallMessage,
   buildToolResultMessage,
   buildToolResultMessages,
-  createToolDefinition,
   createObjectSchema,
-  shouldContinueToolLoop,
   createToolCallSummary,
+  createToolDefinition,
+  executeAllToolCalls,
+  executeToolCall,
+  getToolNames,
+  hasToolCalls,
+  parseToolCallArguments,
+  shouldContinueToolLoop,
 } from "../tools/native.js";
+import type { ToolExecutionResult, ToolRegistry } from "../tools/types.js";
 import type { ToolCallResult } from "../types.js";
-import type { ToolRegistry, ToolExecutionResult } from "../tools/types.js";
 import { createMockLoggerFactory } from "./setup.js";
 
 // Mock the logger module
@@ -56,7 +56,7 @@ describe("Tool Utilities", () => {
 
     it("parses complex nested objects", () => {
       const result = parseToolCallArguments(
-        '{"filters": {"status": ["active", "pending"]}, "options": {"sort": "asc"}}'
+        '{"filters": {"status": ["active", "pending"]}, "options": {"sort": "asc"}}',
       );
 
       expect(result).toEqual({
@@ -97,12 +97,28 @@ describe("Tool Utilities", () => {
   describe("getToolNames", () => {
     it("extracts function names from tool calls", () => {
       const toolCalls: ToolCallResult[] = [
-        { id: "1", type: "function", function: { name: "search", arguments: "{}" } },
-        { id: "2", type: "function", function: { name: "createNote", arguments: "{}" } },
-        { id: "3", type: "function", function: { name: "search", arguments: "{}" } },
+        {
+          id: "1",
+          type: "function",
+          function: { name: "search", arguments: "{}" },
+        },
+        {
+          id: "2",
+          type: "function",
+          function: { name: "createNote", arguments: "{}" },
+        },
+        {
+          id: "3",
+          type: "function",
+          function: { name: "search", arguments: "{}" },
+        },
       ];
 
-      expect(getToolNames(toolCalls)).toEqual(["search", "createNote", "search"]);
+      expect(getToolNames(toolCalls)).toEqual([
+        "search",
+        "createNote",
+        "search",
+      ]);
     });
 
     it("returns empty array for empty input", () => {
@@ -118,7 +134,8 @@ describe("Tool Utilities", () => {
       });
 
       const registry: ToolRegistry = {
-        getExecutor: (name: string) => (name === "search" ? executor : undefined),
+        getExecutor: (name: string) =>
+          name === "search" ? executor : undefined,
         getDefinitions: () => [],
         hasTool: (name: string) => name === "search",
       };
@@ -177,7 +194,9 @@ describe("Tool Utilities", () => {
     });
 
     it("catches executor errors", async () => {
-      const executor = vi.fn().mockRejectedValue(new Error("Database connection failed"));
+      const executor = vi
+        .fn()
+        .mockRejectedValue(new Error("Database connection failed"));
       const registry: ToolRegistry = {
         getExecutor: () => executor,
         getDefinitions: () => [],
@@ -202,19 +221,32 @@ describe("Tool Utilities", () => {
       const executionOrder: string[] = [];
 
       const registry: ToolRegistry = {
-        getExecutor: (name: string) => async (args: Record<string, unknown>) => {
-          executionOrder.push(name);
-          await new Promise((resolve) => setTimeout(resolve, 10));
-          return { success: true, content: `Result for ${name}` };
-        },
+        getExecutor:
+          (name: string) => async (args: Record<string, unknown>) => {
+            executionOrder.push(name);
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            return { success: true, content: `Result for ${name}` };
+          },
         getDefinitions: () => [],
         hasTool: () => true,
       };
 
       const toolCalls: ToolCallResult[] = [
-        { id: "call_1", type: "function", function: { name: "tool1", arguments: "{}" } },
-        { id: "call_2", type: "function", function: { name: "tool2", arguments: "{}" } },
-        { id: "call_3", type: "function", function: { name: "tool3", arguments: "{}" } },
+        {
+          id: "call_1",
+          type: "function",
+          function: { name: "tool1", arguments: "{}" },
+        },
+        {
+          id: "call_2",
+          type: "function",
+          function: { name: "tool2", arguments: "{}" },
+        },
+        {
+          id: "call_3",
+          type: "function",
+          function: { name: "tool3", arguments: "{}" },
+        },
       ];
 
       const results = await executeAllToolCalls(toolCalls, registry);
@@ -229,7 +261,11 @@ describe("Tool Utilities", () => {
   describe("buildAssistantToolCallMessage", () => {
     it("formats assistant message with tool_calls", () => {
       const toolCalls: ToolCallResult[] = [
-        { id: "call_1", type: "function", function: { name: "search", arguments: '{"q":"test"}' } },
+        {
+          id: "call_1",
+          type: "function",
+          function: { name: "search", arguments: '{"q":"test"}' },
+        },
       ];
 
       const message = buildAssistantToolCallMessage(toolCalls);
@@ -283,8 +319,16 @@ describe("Tool Utilities", () => {
   describe("buildToolResultMessages", () => {
     it("builds messages for all tool calls", () => {
       const toolCalls: ToolCallResult[] = [
-        { id: "call_1", type: "function", function: { name: "tool1", arguments: "{}" } },
-        { id: "call_2", type: "function", function: { name: "tool2", arguments: "{}" } },
+        {
+          id: "call_1",
+          type: "function",
+          function: { name: "tool1", arguments: "{}" },
+        },
+        {
+          id: "call_2",
+          type: "function",
+          function: { name: "tool2", arguments: "{}" },
+        },
       ];
 
       const results = new Map<string, ToolExecutionResult>([
@@ -301,7 +345,11 @@ describe("Tool Utilities", () => {
 
     it("handles missing results", () => {
       const toolCalls: ToolCallResult[] = [
-        { id: "call_1", type: "function", function: { name: "tool1", arguments: "{}" } },
+        {
+          id: "call_1",
+          type: "function",
+          function: { name: "tool1", arguments: "{}" },
+        },
       ];
 
       const results = new Map<string, ToolExecutionResult>();
@@ -357,7 +405,7 @@ describe("Tool Utilities", () => {
           name: { type: "string" },
           age: { type: "number" },
         },
-        ["name"]
+        ["name"],
       );
 
       expect(schema.required).toEqual(["name"]);
@@ -368,7 +416,11 @@ describe("Tool Utilities", () => {
     it("returns true when tools are present", () => {
       const response = {
         toolCalls: [
-          { id: "1", type: "function" as const, function: { name: "search", arguments: "{}" } },
+          {
+            id: "1",
+            type: "function" as const,
+            function: { name: "search", arguments: "{}" },
+          },
         ],
       };
 
@@ -378,7 +430,11 @@ describe("Tool Utilities", () => {
     it("returns false at max rounds", () => {
       const response = {
         toolCalls: [
-          { id: "1", type: "function" as const, function: { name: "search", arguments: "{}" } },
+          {
+            id: "1",
+            type: "function" as const,
+            function: { name: "search", arguments: "{}" },
+          },
         ],
       };
 

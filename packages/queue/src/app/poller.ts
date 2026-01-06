@@ -3,9 +3,9 @@
  * Workers poll the backend API to fetch and process jobs
  */
 
-import axios from "axios";
 import type { Logger } from "@eclaire/logger";
-import type { DatabaseJob, PollingConfig, AssetType } from "./types.js";
+import axios from "axios";
+import type { AssetType, DatabaseJob, PollingConfig } from "./types.js";
 
 const DEFAULT_WAIT_TIMEOUT = 30000; // 30 seconds - how long to wait for a job
 const DEFAULT_ERROR_RETRY_DELAY = 2000; // 2 seconds - delay after errors
@@ -129,7 +129,10 @@ export async function startPolling(config: PollingConfig): Promise<void> {
             { assetType },
             "Backend API not available - connection refused. Retrying...",
           );
-        } else if (error.code === "ETIMEDOUT" || error.code === "ECONNABORTED") {
+        } else if (
+          error.code === "ETIMEDOUT" ||
+          error.code === "ECONNABORTED"
+        ) {
           // Timeout is expected with long-polling, just reconnect
           logger.debug({ assetType }, "Wait timeout, reconnecting");
         } else if (error.response) {
@@ -161,9 +164,11 @@ export async function startPolling(config: PollingConfig): Promise<void> {
       }
 
       // Wait before retrying on errors (but not on normal timeout)
-      if (axios.isAxiosError(error) &&
-          error.code !== "ETIMEDOUT" &&
-          error.code !== "ECONNABORTED") {
+      if (
+        axios.isAxiosError(error) &&
+        error.code !== "ETIMEDOUT" &&
+        error.code !== "ECONNABORTED"
+      ) {
         await sleep(errorRetryDelay);
       }
     }

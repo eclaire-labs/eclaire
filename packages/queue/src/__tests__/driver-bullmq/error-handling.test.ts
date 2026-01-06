@@ -4,18 +4,18 @@
  * Tests RetryableError, PermanentError, and RateLimitError behavior.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  PermanentError,
+  RateLimitError,
+  RetryableError,
+} from "../../core/errors.js";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
-import {
-  RetryableError,
-  PermanentError,
-  RateLimitError,
-} from "../../core/errors.js";
 
 describe("BullMQ: Error Handling", () => {
   let harness: QueueTestHarness;

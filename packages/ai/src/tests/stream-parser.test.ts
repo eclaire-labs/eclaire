@@ -4,17 +4,17 @@
  * Tests for LLMStreamParser SSE parsing with all content types.
  */
 
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LLMStreamParser } from "../stream-parser.js";
 import {
+  createMockLoggerFactory,
   createSSEStream,
   sseContentDelta,
-  sseReasoningDelta,
-  sseFinishReason,
-  sseUsage,
-  sseToolCallDelta,
   sseDone,
-  createMockLoggerFactory,
+  sseFinishReason,
+  sseReasoningDelta,
+  sseToolCallDelta,
+  sseUsage,
 } from "./setup.js";
 
 // Mock the logger module
@@ -46,7 +46,7 @@ describe("LLMStreamParser", () => {
 
     it("extracts content from delta", () => {
       const result = parser.parseSSELine(
-        'data: {"choices":[{"delta":{"content":"Hello"}}]}'
+        'data: {"choices":[{"delta":{"content":"Hello"}}]}',
       );
 
       expect(result?.type).toBe("content");
@@ -55,7 +55,7 @@ describe("LLMStreamParser", () => {
 
     it("extracts reasoning from delta", () => {
       const result = parser.parseSSELine(
-        'data: {"choices":[{"delta":{"reasoning":"Let me think..."}}]}'
+        'data: {"choices":[{"delta":{"reasoning":"Let me think..."}}]}',
       );
 
       expect(result?.type).toBe("reasoning");
@@ -64,7 +64,7 @@ describe("LLMStreamParser", () => {
 
     it("extracts reasoning_content field", () => {
       const result = parser.parseSSELine(
-        'data: {"choices":[{"delta":{"reasoning_content":"Thinking here"}}]}'
+        'data: {"choices":[{"delta":{"reasoning_content":"Thinking here"}}]}',
       );
 
       expect(result?.type).toBe("reasoning");
@@ -73,7 +73,7 @@ describe("LLMStreamParser", () => {
 
     it("skips empty reasoning and returns content", () => {
       const result = parser.parseSSELine(
-        'data: {"choices":[{"delta":{"reasoning":"","content":"Hello"}}]}'
+        'data: {"choices":[{"delta":{"reasoning":"","content":"Hello"}}]}',
       );
 
       expect(result?.type).toBe("content");
@@ -82,7 +82,7 @@ describe("LLMStreamParser", () => {
 
     it("extracts usage from chunk", () => {
       const result = parser.parseSSELine(
-        'data: {"usage":{"prompt_tokens":10,"completion_tokens":20,"total_tokens":30}}'
+        'data: {"usage":{"prompt_tokens":10,"completion_tokens":20,"total_tokens":30}}',
       );
 
       expect(result?.type).toBe("usage");
@@ -95,7 +95,7 @@ describe("LLMStreamParser", () => {
 
     it("extracts finish_reason", () => {
       const result = parser.parseSSELine(
-        'data: {"choices":[{"finish_reason":"stop","delta":{}}]}'
+        'data: {"choices":[{"finish_reason":"stop","delta":{}}]}',
       );
 
       expect(result?.type).toBe("finish_reason");
@@ -114,7 +114,7 @@ describe("LLMStreamParser", () => {
 
     it("extracts tool_call delta with id and function name", () => {
       const result = parser.parseSSELine(
-        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_abc123","function":{"name":"calculator"}}]}}]}'
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_abc123","function":{"name":"calculator"}}]}}]}',
       );
 
       expect(result?.type).toBe("tool_call_delta");
@@ -128,7 +128,7 @@ describe("LLMStreamParser", () => {
 
     it("extracts tool_call delta with arguments chunk", () => {
       const result = parser.parseSSELine(
-        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"operation\\":"}}]}}]}'
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"operation\\":"}}]}}]}',
       );
 
       expect(result?.type).toBe("tool_call_delta");
@@ -137,7 +137,7 @@ describe("LLMStreamParser", () => {
 
     it("handles tool_call delta without function", () => {
       const result = parser.parseSSELine(
-        'data: {"choices":[{"delta":{"tool_calls":[{"index":1}]}}]}'
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":1}]}}]}',
       );
 
       expect(result?.type).toBe("tool_call_delta");
@@ -156,7 +156,7 @@ describe("LLMStreamParser", () => {
 
     it("extracts think tags", () => {
       const results = parser.processContent(
-        "<think>I need to analyze this</think>Here is my response"
+        "<think>I need to analyze this</think>Here is my response",
       );
 
       const types = results.map((r) => r.type);
@@ -175,7 +175,7 @@ describe("LLMStreamParser", () => {
     it("handles content with embedded think tags", () => {
       // Process content with think tags in middle
       const processResults = parser.processContent(
-        "Before <think>thinking</think> After"
+        "Before <think>thinking</think> After",
       );
       const flushResults = parser.flush();
 
@@ -207,7 +207,7 @@ describe("LLMStreamParser", () => {
 
     it("detects inline JSON tool calls", () => {
       const results = parser.processContent(
-        '{"type": "tool_calls", "calls": [{"name": "test", "args": {}}]}'
+        '{"type": "tool_calls", "calls": [{"name": "test", "args": {}}]}',
       );
 
       const toolCall = results.find((r) => r.type === "tool_call");
@@ -264,7 +264,9 @@ describe("LLMStreamParser", () => {
 
     it("handles incomplete think section", () => {
       // Process partial think content
-      const processResults = parser.processContent("<think>Incomplete thinking");
+      const processResults = parser.processContent(
+        "<think>Incomplete thinking",
+      );
       const flushResults = parser.flush();
 
       // Combine all results
@@ -342,11 +344,7 @@ describe("LLMStreamParser", () => {
     });
 
     it("processes usage information", async () => {
-      const events = [
-        sseContentDelta("Hello"),
-        sseUsage(10, 5),
-        sseDone(),
-      ];
+      const events = [sseContentDelta("Hello"), sseUsage(10, 5), sseDone()];
 
       const stream = createSSEStream(events);
       const parsedStream = await parser.processSSEStream(stream);

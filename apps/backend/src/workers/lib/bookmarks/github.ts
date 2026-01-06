@@ -1,7 +1,9 @@
+import type { JobContext } from "@eclaire/queue/core";
 import { type BrowserContext, chromium } from "patchright";
 import sharp from "sharp";
 import { Readable } from "stream";
-import type { JobContext } from "@eclaire/queue/core";
+import { createChildLogger } from "../../../lib/logger.js";
+import { buildKey, getStorage } from "../../../lib/storage/index.js";
 import {
   fetchGitHubRepoInfo,
   type GitHubRepoInfo,
@@ -9,8 +11,6 @@ import {
   isGitHubUrl,
   parseGitHubUrl,
 } from "../github-api.js";
-import { createChildLogger } from "../../../lib/logger.js";
-import { getStorage, buildKey } from "../../../lib/storage/index.js";
 import type {
   BookmarkHandler,
   BookmarkHandlerType,
@@ -63,7 +63,7 @@ export async function processGitHubBookmark(
     // Standard browser-based content extraction
     browser = await chromium.launch({
       headless: true,
-      args: ['--use-mock-keychain'],
+      args: ["--use-mock-keychain"],
     });
     context = await browser.newContext({ viewport: null });
     const page = await context!.newPage();
@@ -118,8 +118,15 @@ export async function processGitHubBookmark(
       .resize(400, 400, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 85 })
       .toBuffer();
-    const thumbnailKey = buildKey(userId, "bookmarks", bookmarkId, "thumbnail.jpg");
-    await storage.writeBuffer(thumbnailKey, thumbnailBuffer, { contentType: "image/jpeg" });
+    const thumbnailKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "thumbnail.jpg",
+    );
+    await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
+      contentType: "image/jpeg",
+    });
     allArtifacts.thumbnailStorageId = thumbnailKey;
 
     // Generate screenshot (higher resolution, 1920x1440, 90% quality)
@@ -127,22 +134,43 @@ export async function processGitHubBookmark(
       .resize(1920, 1440, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 90 })
       .toBuffer();
-    const screenshotKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot.jpg");
-    await storage.writeBuffer(screenshotKey, screenshotBuffer, { contentType: "image/jpeg" });
+    const screenshotKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "screenshot.jpg",
+    );
+    await storage.writeBuffer(screenshotKey, screenshotBuffer, {
+      contentType: "image/jpeg",
+    });
     allArtifacts.screenshotDesktopStorageId = screenshotKey;
 
     const ssFullPageBuffer = await page.screenshot({
       type: "png",
       fullPage: true,
     });
-    const fullpageKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot-fullpage.png");
-    await storage.writeBuffer(fullpageKey, ssFullPageBuffer, { contentType: "image/png" });
+    const fullpageKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "screenshot-fullpage.png",
+    );
+    await storage.writeBuffer(fullpageKey, ssFullPageBuffer, {
+      contentType: "image/png",
+    });
     allArtifacts.screenshotFullPageStorageId = fullpageKey;
 
     await page.setViewportSize({ width: 375, height: 667 });
     const ssMobileBuffer = await page.screenshot({ type: "png" });
-    const mobileKey = buildKey(userId, "bookmarks", bookmarkId, "screenshot-mobile.png");
-    await storage.writeBuffer(mobileKey, ssMobileBuffer, { contentType: "image/png" });
+    const mobileKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "screenshot-mobile.png",
+    );
+    await storage.writeBuffer(mobileKey, ssMobileBuffer, {
+      contentType: "image/png",
+    });
     allArtifacts.screenshotMobileStorageId = mobileKey;
 
     // Reset viewport for PDF generation
@@ -150,7 +178,9 @@ export async function processGitHubBookmark(
 
     const pdfBuffer = await generateOptimizedPdf(page, bookmarkId);
     const pdfKey = buildKey(userId, "bookmarks", bookmarkId, "content.pdf");
-    await storage.writeBuffer(pdfKey, pdfBuffer, { contentType: "application/pdf" });
+    await storage.writeBuffer(pdfKey, pdfBuffer, {
+      contentType: "application/pdf",
+    });
     allArtifacts.pdfStorageId = pdfKey;
 
     // Extract HTML content
@@ -203,8 +233,17 @@ export async function processGitHubBookmark(
 
       // Save README content if available
       if (repoInfo.readmeContent) {
-        const readmeKey = buildKey(userId, "bookmarks", bookmarkId, "readme.md");
-        await storage.writeBuffer(readmeKey, Buffer.from(repoInfo.readmeContent), { contentType: "text/markdown" });
+        const readmeKey = buildKey(
+          userId,
+          "bookmarks",
+          bookmarkId,
+          "readme.md",
+        );
+        await storage.writeBuffer(
+          readmeKey,
+          Buffer.from(repoInfo.readmeContent),
+          { contentType: "text/markdown" },
+        );
         allArtifacts.readmeStorageId = readmeKey;
 
         // Include README content in extracted text for better AI processing
@@ -257,9 +296,7 @@ export class GitHubBookmarkHandler implements BookmarkHandler {
     return "github";
   }
 
-  async processBookmark(
-    ctx: JobContext<BookmarkJobData>,
-  ): Promise<void> {
+  async processBookmark(ctx: JobContext<BookmarkJobData>): Promise<void> {
     return processGitHubBookmark(ctx);
   }
 }

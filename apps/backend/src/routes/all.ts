@@ -1,9 +1,9 @@
 // routes/all.ts
 import { Hono } from "hono";
-import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi";
+import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { createChildLogger } from "../lib/logger.js";
 // Import service functions
 import {
   classifyAndCreateContent,
@@ -12,14 +12,15 @@ import {
   findAllEntries,
 } from "../lib/services/all.js";
 // Import schemas
-import { CreateMetadataSchema, SearchQuerySchema } from "../schemas/all-params.js";
+import {
+  CreateMetadataSchema,
+  SearchQuerySchema,
+} from "../schemas/all-params.js";
 import {
   getAllRouteDescription,
   postAllRouteDescription,
 } from "../schemas/all-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
-
-import { createChildLogger } from "../lib/logger.js";
 
 const logger = createChildLogger("all");
 

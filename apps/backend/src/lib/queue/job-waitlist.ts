@@ -1,7 +1,11 @@
-import { createJobWaitlist, type AssetType, type JobWaitlistInterface } from "@eclaire/queue/app";
-import { createChildLogger } from "../logger.js";
+import {
+  type AssetType,
+  createJobWaitlist,
+  type JobWaitlistInterface,
+} from "@eclaire/queue/app";
+import { and, eq, gt, or, sql } from "drizzle-orm";
 import { db, queueJobs } from "../../db/index.js";
-import { and, or, eq, gt, sql } from "drizzle-orm";
+import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("job-waitlist");
 
@@ -12,7 +16,9 @@ export type { AssetType };
  * Find the next scheduled job for a specific asset type
  * This is used by the waitlist to schedule wakeup timers
  */
-async function findNextScheduledJob(assetType: AssetType): Promise<Date | null> {
+async function findNextScheduledJob(
+  assetType: AssetType,
+): Promise<Date | null> {
   const result = await db
     .select({ scheduledFor: queueJobs.scheduledFor })
     .from(queueJobs)
@@ -21,10 +27,10 @@ async function findNextScheduledJob(assetType: AssetType): Promise<Date | null> 
         sql`${queueJobs.metadata}->>'assetType' = ${assetType}`,
         or(
           eq(queueJobs.status, "pending"),
-          eq(queueJobs.status, "retry_pending")
+          eq(queueJobs.status, "retry_pending"),
         ),
-        gt(queueJobs.scheduledFor, new Date())
-      )
+        gt(queueJobs.scheduledFor, new Date()),
+      ),
     )
     .orderBy(queueJobs.scheduledFor)
     .limit(1);

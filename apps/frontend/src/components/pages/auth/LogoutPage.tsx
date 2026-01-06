@@ -1,4 +1,3 @@
-
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { signOut } from "@/lib/auth";

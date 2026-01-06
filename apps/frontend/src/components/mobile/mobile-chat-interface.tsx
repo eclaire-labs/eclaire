@@ -1,4 +1,3 @@
-
 import { Bot, Edit2, History, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ChatPanel } from "@/components/assistant/chat-panel";

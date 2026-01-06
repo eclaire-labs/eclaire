@@ -7,21 +7,20 @@
  */
 
 import { createRequire } from "node:module";
-import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
-import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
 import { PGlite } from "@electric-sql/pglite";
 import Database from "better-sqlite3";
-
-import type { TestDbType } from "./config.js";
-import type { DbCapabilities } from "../../driver-db/types.js";
+import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
+import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
+import * as postgresSchema from "../../driver-db/schema/postgres.js";
+import * as sqliteSchema from "../../driver-db/schema/sqlite.js";
 import {
   queueJobsPg,
   queueJobsSqlite,
   queueSchedulesPg,
   queueSchedulesSqlite,
 } from "../../driver-db/schema.js";
-import * as sqliteSchema from "../../driver-db/schema/sqlite.js";
-import * as postgresSchema from "../../driver-db/schema/postgres.js";
+import type { DbCapabilities } from "../../driver-db/types.js";
+import type { TestDbType } from "./config.js";
 
 // ESM workaround for drizzle-kit/api (see https://github.com/drizzle-team/drizzle-orm/discussions/4373)
 const require = createRequire(import.meta.url);
@@ -92,7 +91,8 @@ async function createSqliteTestDatabase(): Promise<QueueTestDatabase> {
   // Generate schema from Drizzle definitions using drizzle-kit
   // This ensures tests always match the production schema
   const emptySchema = await drizzleKit.generateSQLiteDrizzleJson({});
-  const currentSchema = await drizzleKit.generateSQLiteDrizzleJson(sqliteSchema);
+  const currentSchema =
+    await drizzleKit.generateSQLiteDrizzleJson(sqliteSchema);
   const statements = await drizzleKit.generateSQLiteMigration(
     emptySchema,
     currentSchema,

@@ -13,7 +13,7 @@ process.on("uncaughtException", (error) => {
 // CRITICAL: Load environment variables FIRST, before any other imports
 import "./lib/env-loader.js";
 // Config system initializes immediately on import, auto-generating secrets if needed
-import { initConfig, config } from "./config/index.js";
+import { config, initConfig } from "./config/index.js";
 
 // Validate configuration (logs warnings in dev, fails fast in production)
 initConfig();
@@ -21,17 +21,21 @@ initConfig();
 const SERVICE_ROLE = config.serviceRole;
 const QUEUE_BACKEND = config.queueBackend;
 
+import { validateAIConfigOnStartup } from "@eclaire/ai";
 // Now import modules that depend on environment variables
 import { serve } from "@hono/node-server";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { showRoutes } from "hono/dev";
-import { validateAIConfigOnStartup } from "@eclaire/ai";
 import { initializeAI } from "./lib/ai-init.js";
 import { auth } from "./lib/auth.js";
 import { validateEncryptionService } from "./lib/encryption.js";
 import { logger, smartLogger } from "./lib/logger.js";
-import { closeQueues, startScheduler, stopScheduler } from "./lib/queue/index.js";
+import {
+  closeQueues,
+  startScheduler,
+  stopScheduler,
+} from "./lib/queue/index.js";
 import {
   recordLoginHistory,
   recordLogoutHistory,
@@ -358,6 +362,7 @@ app.route("/api/processing-events", processingEventsRoutes);
 // SPA middleware - serves frontend static files and falls back to index.html
 // Must be registered AFTER all API routes
 import { createSpaMiddleware } from "./middleware/static-spa.js";
+
 app.use("*", createSpaMiddleware());
 
 // Start the server
@@ -412,14 +417,19 @@ const start = async () => {
         hostname: host,
       });
 
-      logger.info({ port, host, SERVICE_ROLE, QUEUE_BACKEND }, "HTTP server running successfully");
+      logger.info(
+        { port, host, SERVICE_ROLE, QUEUE_BACKEND },
+        "HTTP server running successfully",
+      );
 
       // Start Telegram bots after server is running
       if (config.security.masterEncryptionKey) {
         logger.info("Starting Telegram bots...");
         await startAllTelegramBots();
       } else {
-        logger.info("Skipping Telegram bot startup - encryption not configured");
+        logger.info(
+          "Skipping Telegram bot startup - encryption not configured",
+        );
       }
 
       // In 'all' mode, start the scheduler for recurring tasks
@@ -437,7 +447,10 @@ const start = async () => {
         await startBullMQWorkers();
       } else {
         // postgres or sqlite backend
-        logger.info({ queueBackend: QUEUE_BACKEND }, "Starting database queue workers");
+        logger.info(
+          { queueBackend: QUEUE_BACKEND },
+          "Starting database queue workers",
+        );
         const { startDatabaseWorkers } = await import("./workers/index.js");
         await startDatabaseWorkers();
       }
@@ -453,7 +466,7 @@ const start = async () => {
         SERVICE_ROLE,
         QUEUE_BACKEND,
       },
-      "Failed to start service"
+      "Failed to start service",
     );
     // Also log to console for visibility in case logger fails
     console.error("Failed to start service:", err);
@@ -501,7 +514,9 @@ const shutdown = async (signal: string) => {
 
   try {
     // Close processing events
-    const { closeProcessingEvents } = await import("./routes/processing-events.js");
+    const { closeProcessingEvents } = await import(
+      "./routes/processing-events.js"
+    );
     await closeProcessingEvents();
     logger.info("Processing events closed");
   } catch (error) {

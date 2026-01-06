@@ -1,9 +1,14 @@
-import { createFileRoute, redirect, Outlet, useRouter } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  useRouter,
+} from "@tanstack/react-router";
+import { AlertCircle, Home, RefreshCw } from "lucide-react";
 import { Suspense } from "react";
-import { AlertCircle, RefreshCw, Home } from "lucide-react";
 import { MainLayoutClient } from "@/components/dashboard/main-layout-client";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function AuthLoadingSkeleton() {
   return (
@@ -40,19 +45,15 @@ function RouteErrorComponent({ error }: { error: Error }) {
           </div>
           <h2 className="text-xl font-semibold">Something went wrong</h2>
           <p className="text-muted-foreground">
-            {error.message || "An unexpected error occurred while loading this page."}
+            {error.message ||
+              "An unexpected error occurred while loading this page."}
           </p>
           <div className="flex gap-3 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => router.invalidate()}
-            >
+            <Button variant="outline" onClick={() => router.invalidate()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Try again
             </Button>
-            <Button
-              onClick={() => router.navigate({ to: "/dashboard" })}
-            >
+            <Button onClick={() => router.navigate({ to: "/dashboard" })}>
               <Home className="h-4 w-4 mr-2" />
               Go to Dashboard
             </Button>

@@ -7,10 +7,16 @@
  * Used when SERVICE_ROLE=worker (separate container with Redis access).
  */
 
-import { createEventCallbacks, type ProcessingSSEEvent } from "@eclaire/queue/app";
-import type { JobEventCallbacks } from "@eclaire/queue/core";
-import { createRedisConnection, type RedisConnectionOptions } from "@eclaire/queue";
 import type { Logger } from "@eclaire/logger";
+import {
+  createRedisConnection,
+  type RedisConnectionOptions,
+} from "@eclaire/queue";
+import {
+  createEventCallbacks,
+  type ProcessingSSEEvent,
+} from "@eclaire/queue/app";
+import type { JobEventCallbacks } from "@eclaire/queue/core";
 import type { Redis } from "ioredis";
 
 /**
@@ -43,7 +49,10 @@ export function createRedisPublisher(
     return redis;
   };
 
-  const publisher = async (userId: string, event: ProcessingSSEEvent): Promise<void> => {
+  const publisher = async (
+    userId: string,
+    event: ProcessingSSEEvent,
+  ): Promise<void> => {
     const connection = getRedis();
     if (!connection) {
       logger.warn({ userId }, "Redis not available for SSE publishing");
@@ -78,7 +87,9 @@ export function createRedisPublisher(
  *
  * Call this during graceful shutdown to clean up connections.
  */
-export async function closeRedisPublisher(publisher: JobEventCallbacks): Promise<void> {
+export async function closeRedisPublisher(
+  publisher: JobEventCallbacks,
+): Promise<void> {
   // Note: The Redis connection is managed internally by createRedisConnection
   // and will be cleaned up when the process exits or when explicitly closed.
   // This function is a placeholder for future explicit cleanup if needed.

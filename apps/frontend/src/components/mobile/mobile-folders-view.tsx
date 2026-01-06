@@ -1,4 +1,4 @@
-
+import { Link, useLocation } from "@tanstack/react-router";
 import {
   Activity,
   AlertTriangle,
@@ -16,7 +16,6 @@ import {
   Search,
   Upload,
 } from "lucide-react";
-import { Link, useLocation } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 
 interface MobileFoldersViewProps {

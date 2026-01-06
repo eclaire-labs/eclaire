@@ -7,21 +7,21 @@
  * - Queue management (for Bull Board)
  */
 
-import { Queue, type WorkerOptions } from "bullmq";
-import type { Redis } from "ioredis";
-import { config } from "./config.js";
-import { createChildLogger } from "../lib/logger.js";
 import { createRedisConnection } from "@eclaire/queue";
 import {
   createQueueManager,
   getLongTaskWorkerOptions,
   getMediumTaskWorkerOptions,
   getShortTaskWorkerOptions,
-  QueueNames,
   type QueueManager,
   type QueueName,
+  QueueNames,
 } from "@eclaire/queue/app";
+import type { Queue, WorkerOptions } from "bullmq";
+import type { Redis } from "ioredis";
 import { config as appConfig } from "../config/index.js";
+import { createChildLogger } from "../lib/logger.js";
+import { config } from "./config.js";
 
 const logger = createChildLogger("queues");
 
@@ -104,7 +104,10 @@ export function getAllQueues(): Queue[] {
 
 export async function closeQueues(): Promise<void> {
   if (queueBackend !== "redis") {
-    logger.info({ queueBackend }, "No Redis queues to close (not in redis mode)");
+    logger.info(
+      { queueBackend },
+      "No Redis queues to close (not in redis mode)",
+    );
     return;
   }
 

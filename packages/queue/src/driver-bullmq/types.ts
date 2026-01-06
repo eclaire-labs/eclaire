@@ -2,9 +2,13 @@
  * @eclaire/queue/driver-bullmq - Types for the BullMQ driver
  */
 
-import type { QueueLogger, BackoffStrategy, JobEventCallbacks } from "../core/types.js";
-import type { Redis, RedisOptions } from "ioredis";
 import type { WorkerOptions as BullMQWorkerOptions } from "bullmq";
+import type { Redis, RedisOptions } from "ioredis";
+import type {
+  BackoffStrategy,
+  JobEventCallbacks,
+  QueueLogger,
+} from "../core/types.js";
 
 /**
  * Redis connection configuration

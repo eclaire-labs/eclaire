@@ -10,13 +10,18 @@
  * channel names don't support colons or special characters).
  */
 
-import { createEventCallbacks, type ProcessingSSEEvent } from "@eclaire/queue/app";
+import type { Logger } from "@eclaire/logger";
+import {
+  createEventCallbacks,
+  type ProcessingSSEEvent,
+} from "@eclaire/queue/app";
 import type { JobEventCallbacks } from "@eclaire/queue/core";
 import { sql } from "drizzle-orm";
-import type { Logger } from "@eclaire/logger";
 
 // Use the exported db type from the backend
-type DbInstance = ReturnType<typeof import("drizzle-orm/postgres-js").drizzle<any>>;
+type DbInstance = ReturnType<
+  typeof import("drizzle-orm/postgres-js").drizzle<any>
+>;
 
 /**
  * Sanitize user ID for use as Postgres channel name.
@@ -41,7 +46,10 @@ export function createPostgresPublisher(
   db: DbInstance,
   logger: Logger,
 ): JobEventCallbacks {
-  const publisher = async (userId: string, event: ProcessingSSEEvent): Promise<void> => {
+  const publisher = async (
+    userId: string,
+    event: ProcessingSSEEvent,
+  ): Promise<void> => {
     try {
       const channel = sanitizeChannelName(userId);
       const payload = JSON.stringify(event);

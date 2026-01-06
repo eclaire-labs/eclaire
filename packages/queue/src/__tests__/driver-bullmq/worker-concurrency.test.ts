@@ -5,15 +5,15 @@
  * a single worker processes simultaneously.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  eventually,
-  sleep,
   createDeferred,
+  eventually,
   type QueueTestHarness,
+  sleep,
 } from "../testkit/index.js";
-import type { QueueClient, Worker } from "../../core/types.js";
 
 describe("BullMQ: Worker Concurrency Option", () => {
   let harness: QueueTestHarness;
@@ -57,10 +57,13 @@ describe("BullMQ: Worker Concurrency Option", () => {
       );
       await worker.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 5;
-      }, { timeout: 5000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 5;
+        },
+        { timeout: 5000 },
+      );
 
       // With concurrency 1, max should be 1
       expect(maxConcurrent).toBe(1);
@@ -91,10 +94,13 @@ describe("BullMQ: Worker Concurrency Option", () => {
       );
       await worker.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 15;
-      }, { timeout: 10000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 15;
+        },
+        { timeout: 10000 },
+      );
 
       // Should have reached concurrency of 3
       expect(maxConcurrent).toBeGreaterThanOrEqual(2);
@@ -122,10 +128,13 @@ describe("BullMQ: Worker Concurrency Option", () => {
       );
       await worker.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 20;
-      }, { timeout: 10000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 20;
+        },
+        { timeout: 10000 },
+      );
 
       // Should never exceed 3
       expect(maxConcurrent).toBeLessThanOrEqual(3);
@@ -156,10 +165,13 @@ describe("BullMQ: Worker Concurrency Option", () => {
       );
       await worker.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 25;
-      }, { timeout: 10000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 25;
+        },
+        { timeout: 10000 },
+      );
 
       expect(processedCount.value).toBe(25);
       expect(maxConcurrent).toBeLessThanOrEqual(5);
@@ -187,10 +199,13 @@ describe("BullMQ: Worker Concurrency Option", () => {
       );
       await worker.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 10;
-      }, { timeout: 5000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 10;
+        },
+        { timeout: 5000 },
+      );
 
       // All job IDs should be present
       for (let i = 0; i < 10; i++) {
@@ -218,10 +233,13 @@ describe("BullMQ: Worker Concurrency Option", () => {
       );
       await worker.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed === 20;
-      }, { timeout: 10000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed === 20;
+        },
+        { timeout: 10000 },
+      );
 
       // All jobs should be processed
       expect(processedOrder.length).toBe(20);
@@ -258,10 +276,13 @@ describe("BullMQ: Worker Concurrency Option", () => {
       );
       await worker.start();
 
-      await eventually(async () => {
-        const stats = await client.stats("test-queue");
-        return stats.completed + stats.failed === 10;
-      }, { timeout: 10000 });
+      await eventually(
+        async () => {
+          const stats = await client.stats("test-queue");
+          return stats.completed + stats.failed === 10;
+        },
+        { timeout: 10000 },
+      );
 
       const stats = await client.stats("test-queue");
 

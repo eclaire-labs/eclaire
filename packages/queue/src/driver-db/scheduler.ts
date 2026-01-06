@@ -6,14 +6,23 @@
  * and enqueues jobs accordingly.
  */
 
-import { eq, and, lte, sql } from "drizzle-orm";
-import type { QueueClient, Scheduler, ScheduleConfig, QueueLogger } from "../core/types.js";
-import { generateScheduleId, cancellableSleep, isValidCronExpression, createDeferred } from "../core/utils.js";
-import type { DbInstance } from "./types.js";
-
 // We'll use a simple cron parser - users can provide their own
 // For now, this is a minimal implementation
 import { CronExpressionParser } from "cron-parser";
+import { and, eq, lte, sql } from "drizzle-orm";
+import type {
+  QueueClient,
+  QueueLogger,
+  ScheduleConfig,
+  Scheduler,
+} from "../core/types.js";
+import {
+  cancellableSleep,
+  createDeferred,
+  generateScheduleId,
+  isValidCronExpression,
+} from "../core/utils.js";
+import type { DbInstance } from "./types.js";
 
 /**
  * Configuration for the database scheduler
@@ -72,10 +81,15 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
    */
   function getNextRunTime(cron: string, fromDate: Date = new Date()): Date {
     try {
-      const interval = CronExpressionParser.parse(cron, { currentDate: fromDate });
+      const interval = CronExpressionParser.parse(cron, {
+        currentDate: fromDate,
+      });
       return interval.next().toDate();
     } catch (error) {
-      logger.error({ cron, error: error instanceof Error ? error.message : "Unknown" }, "Invalid cron expression");
+      logger.error(
+        { cron, error: error instanceof Error ? error.message : "Unknown" },
+        "Invalid cron expression",
+      );
       // Fall back to 1 hour from now
       return new Date(fromDate.getTime() + 3600000);
     }
@@ -120,7 +134,10 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
           }
 
           // Check if we've hit the run limit
-          if (schedule.runLimit !== null && schedule.runCount >= schedule.runLimit) {
+          if (
+            schedule.runLimit !== null &&
+            schedule.runCount >= schedule.runLimit
+          ) {
             // Disable the schedule
             await (db as any)
               .update(queueSchedules)

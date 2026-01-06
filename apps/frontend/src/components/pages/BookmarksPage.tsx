@@ -1,4 +1,4 @@
-
+import { useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowDown,
@@ -25,7 +25,6 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
 import React, {
   useCallback,
   useEffect,

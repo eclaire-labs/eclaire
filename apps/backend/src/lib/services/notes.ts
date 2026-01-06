@@ -1,3 +1,4 @@
+import { generateHistoryId, generateNoteId } from "@eclaire/core";
 import {
   and,
   Column,
@@ -14,13 +15,13 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { db, txManager, schema, queueJobs } from "../../db/index.js";
-import { generateHistoryId, generateNoteId } from "@eclaire/core";
+import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { notes, notesTags, tags } = schema;
+
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
-import { getQueue, QueueNames, getQueueAdapter } from "../queue/index.js";
 import { createChildLogger } from "../logger.js";
+import { getQueue, getQueueAdapter, QueueNames } from "../queue/index.js";
 import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:notes");
@@ -106,7 +107,12 @@ export function parseNoteUploadMetadata(metadataStr: string | undefined): {
  */
 export async function prepareNoteFromUpload(
   file: File,
-  validatedMetadata: { title?: string; tags?: string[]; dueDate?: string | null; enabled?: boolean },
+  validatedMetadata: {
+    title?: string;
+    tags?: string[];
+    dueDate?: string | null;
+    enabled?: boolean;
+  },
 ): Promise<{
   content: string;
   title: string;
@@ -445,10 +451,7 @@ export async function getAllNoteEntries(userId: string) {
         status: queueJobs.status,
       })
       .from(notes)
-      .leftJoin(
-        queueJobs,
-        eq(queueJobs.key, sql`'notes:' || ${notes.id}`),
-      )
+      .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
       .where(eq(notes.userId, userId));
 
     // For each entry, get its tags
@@ -502,10 +505,7 @@ export async function getNoteEntryById(entryId: string, userId: string) {
         status: queueJobs.status,
       })
       .from(notes)
-      .leftJoin(
-        queueJobs,
-        eq(queueJobs.key, sql`'notes:' || ${notes.id}`),
-      )
+      .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
       .where(and(eq(notes.id, entryId), eq(notes.userId, userId)));
 
     if (!result) {
@@ -582,10 +582,7 @@ async function getNoteEntryWithTags(entryId: string) {
       status: queueJobs.status,
     })
     .from(notes)
-    .leftJoin(
-      queueJobs,
-      eq(queueJobs.key, sql`'notes:' || ${notes.id}`),
-    )
+    .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
     .where(eq(notes.id, entryId))
     .limit(1);
 
@@ -703,10 +700,7 @@ export async function findNotes(
           status: queueJobs.status,
         })
         .from(notes)
-        .leftJoin(
-          queueJobs,
-          eq(queueJobs.key, sql`'notes:' || ${notes.id}`),
-        )
+        .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
         .innerJoin(notesTags, eq(notes.id, notesTags.noteId))
         .innerJoin(tags, eq(notesTags.tagId, tags.id))
         .where(
@@ -729,10 +723,7 @@ export async function findNotes(
           status: queueJobs.status,
         })
         .from(notes)
-        .leftJoin(
-          queueJobs,
-          eq(queueJobs.key, sql`'notes:' || ${notes.id}`),
-        )
+        .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
         .where(and(...baseConditions))
         .orderBy(desc(notes.createdAt))
         .limit(limit)

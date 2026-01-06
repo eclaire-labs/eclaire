@@ -14,13 +14,13 @@
 
 // Global error handlers - must be set up before any async code
 process.on("unhandledRejection", (reason) => {
-	console.error("Upgrade failed (unhandled rejection):", reason);
-	process.exit(1);
+  console.error("Upgrade failed (unhandled rejection):", reason);
+  process.exit(1);
 });
 
 process.on("uncaughtException", (error) => {
-	console.error("Upgrade failed (uncaught exception):", error);
-	process.exit(1);
+  console.error("Upgrade failed (uncaught exception):", error);
+  process.exit(1);
 });
 
 // Load environment first
@@ -33,31 +33,31 @@ import { runUpgrade } from "../lib/run-upgrade.js";
 import { getAppVersion } from "./lib/version-utils.js";
 
 async function main() {
-	const appVersion = getAppVersion();
+  const appVersion = getAppVersion();
 
-	console.log(`Eclaire Upgrade`);
-	console.log(`===============`);
-	console.log(`Target version: ${appVersion}`);
-	console.log("");
+  console.log(`Eclaire Upgrade`);
+  console.log(`===============`);
+  console.log(`Target version: ${appVersion}`);
+  console.log("");
 
-	const result = await runUpgrade({ verbose: true, closeDb: true });
+  const result = await runUpgrade({ verbose: true, closeDb: true });
 
-	if (!result.success) {
-		console.error("");
-		console.error("Upgrade failed:", result.error?.message || "Unknown error");
-		process.exit(1);
-	}
+  if (!result.success) {
+    console.error("");
+    console.error("Upgrade failed:", result.error?.message || "Unknown error");
+    process.exit(1);
+  }
 
-	console.log("");
-	console.log("═══════════════════════════════════════");
-	console.log(`  Upgraded to ${result.toVersion}`);
-	console.log("═══════════════════════════════════════");
-	console.log("");
+  console.log("");
+  console.log("═══════════════════════════════════════");
+  console.log(`  Upgraded to ${result.toVersion}`);
+  console.log("═══════════════════════════════════════");
+  console.log("");
 }
 
 main()
-	.then(() => process.exit(0))
-	.catch((error) => {
-		console.error("Upgrade failed:", error);
-		process.exit(1);
-	});
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error("Upgrade failed:", error);
+    process.exit(1);
+  });

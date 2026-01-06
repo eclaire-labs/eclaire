@@ -6,19 +6,23 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  stepCountIs,
-  hasToolCall,
-  noToolCalls,
-  finishReasonStop,
-  anyOf,
   allOf,
+  anyOf,
   custom,
-  maxTokens,
-  maxDuration,
-  evaluateStopConditions,
   defaultStopConditions,
+  evaluateStopConditions,
+  finishReasonStop,
+  hasToolCall,
+  maxDuration,
+  maxTokens,
+  noToolCalls,
+  stepCountIs,
 } from "../agent/stop-conditions.js";
-import { createMockStep, createMockToolCall, createMockToolExecution } from "./setup.js";
+import {
+  createMockStep,
+  createMockToolCall,
+  createMockToolExecution,
+} from "./setup.js";
 
 describe("Stop Conditions", () => {
   describe("stepCountIs", () => {
@@ -201,7 +205,7 @@ describe("Stop Conditions", () => {
       const condition = anyOf(
         stepCountIs(10),
         hasToolCall("finalAnswer"),
-        noToolCalls()
+        noToolCalls(),
       );
 
       // This matches noToolCalls
@@ -216,10 +220,7 @@ describe("Stop Conditions", () => {
     });
 
     it("continues when none match", () => {
-      const condition = anyOf(
-        stepCountIs(10),
-        hasToolCall("finalAnswer")
-      );
+      const condition = anyOf(stepCountIs(10), hasToolCall("finalAnswer"));
 
       const steps = [
         createMockStep({
@@ -238,7 +239,7 @@ describe("Stop Conditions", () => {
         custom(() => {
           secondCalled = true;
           return false;
-        })
+        }),
       );
 
       const steps = [createMockStep({ stepNumber: 1 })];
@@ -251,10 +252,7 @@ describe("Stop Conditions", () => {
 
   describe("allOf", () => {
     it("stops when all conditions match", () => {
-      const condition = allOf(
-        stepCountIs(1),
-        noToolCalls()
-      );
+      const condition = allOf(stepCountIs(1), noToolCalls());
 
       const steps = [
         createMockStep({
@@ -268,10 +266,7 @@ describe("Stop Conditions", () => {
     });
 
     it("continues when some conditions do not match", () => {
-      const condition = allOf(
-        stepCountIs(1),
-        hasToolCall("finalAnswer")
-      );
+      const condition = allOf(stepCountIs(1), hasToolCall("finalAnswer"));
 
       const steps = [
         createMockStep({
@@ -290,7 +285,7 @@ describe("Stop Conditions", () => {
         custom(() => {
           secondCalled = true;
           return true;
-        })
+        }),
       );
 
       const steps = [createMockStep({ stepNumber: 1 })];
@@ -421,7 +416,7 @@ describe("Stop Conditions", () => {
     it("returns shouldStop true and reason when condition matches", () => {
       const result = evaluateStopConditions(
         [createMockStep({ stepNumber: 1 })],
-        stepCountIs(1)
+        stepCountIs(1),
       );
 
       expect(result.shouldStop).toBe(true);
@@ -431,7 +426,7 @@ describe("Stop Conditions", () => {
     it("returns shouldStop false when no condition matches", () => {
       const result = evaluateStopConditions(
         [createMockStep({ stepNumber: 1 })],
-        stepCountIs(10)
+        stepCountIs(10),
       );
 
       expect(result.shouldStop).toBe(false);
@@ -441,7 +436,7 @@ describe("Stop Conditions", () => {
     it("accepts array of conditions", () => {
       const result = evaluateStopConditions(
         [createMockStep({ stepNumber: 1 })],
-        [stepCountIs(10), stepCountIs(1)]
+        [stepCountIs(10), stepCountIs(1)],
       );
 
       expect(result.shouldStop).toBe(true);
@@ -450,7 +445,7 @@ describe("Stop Conditions", () => {
     it("returns no_tool_calls reason when last step has no tools", () => {
       const result = evaluateStopConditions(
         [createMockStep({ stepNumber: 1, content: "response" })],
-        noToolCalls()
+        noToolCalls(),
       );
 
       expect(result.shouldStop).toBe(true);
@@ -460,12 +455,14 @@ describe("Stop Conditions", () => {
     it("returns finish_reason when finish reason is stop with tool calls", () => {
       // Must have tool calls to not trigger no_tool_calls reason first
       const result = evaluateStopConditions(
-        [createMockStep({
-          stepNumber: 1,
-          finishReason: "stop",
-          toolCalls: [createMockToolCall("search", { query: "test" })],
-        })],
-        finishReasonStop()
+        [
+          createMockStep({
+            stepNumber: 1,
+            finishReason: "stop",
+            toolCalls: [createMockToolCall("search", { query: "test" })],
+          }),
+        ],
+        finishReasonStop(),
       );
 
       expect(result.shouldStop).toBe(true);
@@ -479,7 +476,7 @@ describe("Stop Conditions", () => {
         createMockStep({
           stepNumber: i + 1,
           toolCalls: [createMockToolCall("tool", {})],
-        })
+        }),
       );
 
       expect(defaultStopConditions(steps)).toBe(true);

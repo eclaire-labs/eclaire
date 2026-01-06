@@ -4,19 +4,19 @@
  * Tests for request requirements derivation and capability checking.
  */
 
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AICallOptions, AIMessage, ModelCapabilities } from "../types.js";
 import {
-  deriveRequestRequirements,
-  validateRequestAgainstCapabilities,
   CapabilityError,
-  modelSupportsTools,
-  modelSupportsJsonSchema,
-  modelSupportsStructuredOutputs,
-  modelSupportsStreaming,
-  modelSupportsReasoning,
+  deriveRequestRequirements,
   getReasoningMode,
+  modelSupportsJsonSchema,
+  modelSupportsReasoning,
+  modelSupportsStreaming,
+  modelSupportsStructuredOutputs,
+  modelSupportsTools,
+  validateRequestAgainstCapabilities,
 } from "../validation.js";
-import type { AIMessage, ModelCapabilities, AICallOptions } from "../types.js";
 import { createMockLoggerFactory } from "./setup.js";
 
 // Mock the logger module
@@ -27,9 +27,7 @@ vi.mock("../logger.js", () => ({
 describe("Validation", () => {
   describe("deriveRequestRequirements", () => {
     it("detects text input modality", () => {
-      const messages: AIMessage[] = [
-        { role: "user", content: "Hello world" },
-      ];
+      const messages: AIMessage[] = [{ role: "user", content: "Hello world" }];
       const options: AICallOptions = {};
 
       const requirements = deriveRequestRequirements(messages, options);
@@ -43,7 +41,10 @@ describe("Validation", () => {
           role: "user",
           content: [
             { type: "text", text: "What's in this image?" },
-            { type: "image_url", image_url: { url: "data:image/png;base64,..." } },
+            {
+              type: "image_url",
+              image_url: { url: "data:image/png;base64,..." },
+            },
           ],
         },
       ];
@@ -200,7 +201,11 @@ describe("Validation", () => {
 
       // Should not throw
       expect(() =>
-        validateRequestAgainstCapabilities("test-model", requirements, fullCapabilities)
+        validateRequestAgainstCapabilities(
+          "test-model",
+          requirements,
+          fullCapabilities,
+        ),
       ).not.toThrow();
     });
 
@@ -216,7 +221,11 @@ describe("Validation", () => {
       };
 
       expect(() =>
-        validateRequestAgainstCapabilities("test-model", requirements, noStreamCapabilities)
+        validateRequestAgainstCapabilities(
+          "test-model",
+          requirements,
+          noStreamCapabilities,
+        ),
       ).toThrow(CapabilityError);
     });
 
@@ -231,7 +240,11 @@ describe("Validation", () => {
       };
 
       expect(() =>
-        validateRequestAgainstCapabilities("test-model", requirements, basicCapabilities)
+        validateRequestAgainstCapabilities(
+          "test-model",
+          requirements,
+          basicCapabilities,
+        ),
       ).toThrow(CapabilityError);
     });
 
@@ -246,7 +259,11 @@ describe("Validation", () => {
       };
 
       expect(() =>
-        validateRequestAgainstCapabilities("test-model", requirements, basicCapabilities)
+        validateRequestAgainstCapabilities(
+          "test-model",
+          requirements,
+          basicCapabilities,
+        ),
       ).toThrow(CapabilityError);
     });
 
@@ -261,7 +278,11 @@ describe("Validation", () => {
       };
 
       expect(() =>
-        validateRequestAgainstCapabilities("test-model", requirements, basicCapabilities)
+        validateRequestAgainstCapabilities(
+          "test-model",
+          requirements,
+          basicCapabilities,
+        ),
       ).toThrow(CapabilityError);
     });
 
@@ -277,7 +298,11 @@ describe("Validation", () => {
       };
 
       expect(() =>
-        validateRequestAgainstCapabilities("test-model", requirements, basicCapabilities)
+        validateRequestAgainstCapabilities(
+          "test-model",
+          requirements,
+          basicCapabilities,
+        ),
       ).toThrow(CapabilityError);
     });
 
@@ -292,7 +317,11 @@ describe("Validation", () => {
       };
 
       expect(() =>
-        validateRequestAgainstCapabilities("test-model", requirements, basicCapabilities)
+        validateRequestAgainstCapabilities(
+          "test-model",
+          requirements,
+          basicCapabilities,
+        ),
       ).toThrow(CapabilityError);
     });
 
@@ -307,7 +336,11 @@ describe("Validation", () => {
       };
 
       expect(() =>
-        validateRequestAgainstCapabilities("test-model", requirements, basicCapabilities)
+        validateRequestAgainstCapabilities(
+          "test-model",
+          requirements,
+          basicCapabilities,
+        ),
       ).toThrow(CapabilityError);
     });
   });
@@ -368,7 +401,7 @@ describe("Validation", () => {
           structuredOutputs: false,
           reasoning: { supported: false },
           modalities: { input: ["text"], output: ["text"] },
-        })
+        }),
       ).toBe(true);
 
       expect(
@@ -380,7 +413,7 @@ describe("Validation", () => {
           structuredOutputs: false,
           reasoning: { supported: false },
           modalities: { input: ["text"], output: ["text"] },
-        })
+        }),
       ).toBe(false);
     });
   });
@@ -396,7 +429,7 @@ describe("Validation", () => {
           structuredOutputs: false,
           reasoning: { supported: false },
           modalities: { input: ["text"], output: ["text"] },
-        })
+        }),
       ).toBe(true);
     });
   });
@@ -412,7 +445,7 @@ describe("Validation", () => {
           structuredOutputs: true,
           reasoning: { supported: false },
           modalities: { input: ["text"], output: ["text"] },
-        })
+        }),
       ).toBe(true);
     });
   });
@@ -428,7 +461,7 @@ describe("Validation", () => {
           structuredOutputs: false,
           reasoning: { supported: true },
           modalities: { input: ["text"], output: ["text"] },
-        })
+        }),
       ).toBe(true);
     });
   });
@@ -448,7 +481,7 @@ describe("Validation", () => {
             disablePrefix: "/no_think",
           },
           modalities: { input: ["text"], output: ["text"] },
-        })
+        }),
       ).toBe("prompt-controlled");
     });
 
@@ -462,7 +495,7 @@ describe("Validation", () => {
           structuredOutputs: false,
           reasoning: { supported: false },
           modalities: { input: ["text"], output: ["text"] },
-        })
+        }),
       ).toBeUndefined();
     });
   });

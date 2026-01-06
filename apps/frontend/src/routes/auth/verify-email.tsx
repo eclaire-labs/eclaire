@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const VerifyEmailPage = lazy(() => import("@/components/pages/auth/VerifyEmailPage"));
+const VerifyEmailPage = lazy(
+  () => import("@/components/pages/auth/VerifyEmailPage"),
+);
 
 function PageLoading() {
   return (

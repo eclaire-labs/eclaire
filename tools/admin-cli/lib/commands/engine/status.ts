@@ -4,14 +4,14 @@
  * Shows the status of the llama-cpp engine.
  */
 
-import { colors, icons } from '../../ui/colors.js';
+import { checkServerHealth } from "../../engine/health.js";
 import {
+  getEngineSettings,
   getServerStatus,
   resolveSelectionEngine,
-  getEngineSettings,
-} from '../../engine/process.js';
-import { checkServerHealth } from '../../engine/health.js';
-import type { CommandOptions } from '../../types/index.js';
+} from "../../engine/process.js";
+import type { CommandOptions } from "../../types/index.js";
+import { colors, icons } from "../../ui/colors.js";
 
 export async function statusCommand(options: CommandOptions): Promise<void> {
   try {
@@ -31,20 +31,26 @@ export async function statusCommand(options: CommandOptions): Promise<void> {
 
     // JSON output
     if (options.json) {
-      console.log(JSON.stringify({
-        engine: 'llama-cpp',
-        port,
-        running: engineStatus.running,
-        pid: engineStatus.pid,
-        healthy,
-        modelsConfigured: resolution.modelsToPreload.map(m => ({
-          context: m.context,
-          modelId: m.modelId,
-          providerModel: m.providerModel,
-        })),
-        status: resolution.status,
-        message: resolution.message,
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            engine: "llama-cpp",
+            port,
+            running: engineStatus.running,
+            pid: engineStatus.pid,
+            healthy,
+            modelsConfigured: resolution.modelsToPreload.map((m) => ({
+              context: m.context,
+              modelId: m.modelId,
+              providerModel: m.providerModel,
+            })),
+            status: resolution.status,
+            message: resolution.message,
+          },
+          null,
+          2,
+        ),
+      );
       return;
     }
 
@@ -56,8 +62,10 @@ export async function statusCommand(options: CommandOptions): Promise<void> {
       : colors.dim(`${icons.inactive} Stopped`);
 
     const healthLine = engineStatus.running
-      ? (healthy ? colors.success(`${icons.success} Healthy`) : colors.warning(`${icons.warning} Unhealthy`))
-      : colors.dim('-');
+      ? healthy
+        ? colors.success(`${icons.success} Healthy`)
+        : colors.warning(`${icons.warning} Unhealthy`)
+      : colors.dim("-");
 
     console.log(`  Engine:  llama-cpp`);
     if (port) {
@@ -65,35 +73,39 @@ export async function statusCommand(options: CommandOptions): Promise<void> {
     }
     console.log(`  Status:  ${statusLine}`);
     console.log(`  Health:  ${healthLine}`);
-    console.log('');
+    console.log("");
 
     // Show models from selection.json
     if (resolution.modelsToPreload.length > 0) {
-      console.log(colors.subheader('  Models from selection.json:'));
+      console.log(colors.subheader("  Models from selection.json:"));
       for (const m of resolution.modelsToPreload) {
         console.log(`    ${colors.info(m.context)}: ${m.modelId}`);
         console.log(colors.dim(`             ${m.providerModel}`));
       }
-      console.log('');
-    } else if (resolution.status === 'no-managed') {
-      console.log(colors.dim('  No managed llama-cpp models in selection.json'));
-      console.log('');
-    } else if (resolution.status === 'conflict') {
+      console.log("");
+    } else if (resolution.status === "no-managed") {
+      console.log(
+        colors.dim("  No managed llama-cpp models in selection.json"),
+      );
+      console.log("");
+    } else if (resolution.status === "conflict") {
       console.log(colors.error(`  ${icons.error} ${resolution.message}`));
-      console.log('');
+      console.log("");
     }
 
     // Helpful commands
-    if (!engineStatus.running && resolution.status === 'ok') {
-      console.log(colors.dim('Start engine: eclaire engine up'));
+    if (!engineStatus.running && resolution.status === "ok") {
+      console.log(colors.dim("Start engine: eclaire engine up"));
     } else if (engineStatus.running) {
-      console.log(colors.dim('Stop engine:  eclaire engine down'));
-      console.log(colors.dim('View logs:    eclaire engine logs'));
+      console.log(colors.dim("Stop engine:  eclaire engine down"));
+      console.log(colors.dim("View logs:    eclaire engine logs"));
     }
 
-    console.log('');
+    console.log("");
   } catch (error: any) {
-    console.log(colors.error(`${icons.error} Failed to get status: ${error.message}`));
+    console.log(
+      colors.error(`${icons.error} Failed to get status: ${error.message}`),
+    );
     process.exit(1);
   }
 }

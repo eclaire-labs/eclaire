@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowDown,
@@ -18,7 +19,6 @@ import {
   X,
 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useNavigate } from "@tanstack/react-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { MarkdownPreview } from "@/components/markdown-preview";

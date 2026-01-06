@@ -5,14 +5,14 @@
  */
 
 import type {
+  ListOptions,
+  ListResult,
+  ObjectMetadata,
   Storage,
   StorageConfig,
   StorageObject,
-  ObjectMetadata,
-  WriteOptions,
-  ListOptions,
-  ListResult,
   StorageStats,
+  WriteOptions,
 } from "../../core/types.js";
 
 /**
@@ -45,7 +45,9 @@ export interface S3StorageConfig extends StorageConfig {
  */
 export class S3Storage implements Storage {
   constructor(_config: S3StorageConfig) {
-    throw new Error("S3Storage is not yet implemented. Use LocalStorage or MemoryStorage.");
+    throw new Error(
+      "S3Storage is not yet implemented. Use LocalStorage or MemoryStorage.",
+    );
   }
 
   write(
@@ -56,7 +58,11 @@ export class S3Storage implements Storage {
     throw new Error("Not implemented");
   }
 
-  writeBuffer(_key: string, _buffer: Buffer, _options: WriteOptions): Promise<void> {
+  writeBuffer(
+    _key: string,
+    _buffer: Buffer,
+    _options: WriteOptions,
+  ): Promise<void> {
     throw new Error("Not implemented");
   }
 
@@ -64,7 +70,9 @@ export class S3Storage implements Storage {
     throw new Error("Not implemented");
   }
 
-  readBuffer(_key: string): Promise<{ buffer: Buffer; metadata: ObjectMetadata }> {
+  readBuffer(
+    _key: string,
+  ): Promise<{ buffer: Buffer; metadata: ObjectMetadata }> {
     throw new Error("Not implemented");
   }
 

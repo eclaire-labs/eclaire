@@ -31,7 +31,7 @@ function getLogger() {
  * Parse tool call arguments from JSON string
  */
 export function parseToolCallArguments(
-  args: string
+  args: string,
 ): Record<string, unknown> | null {
   try {
     return JSON.parse(args);
@@ -39,7 +39,7 @@ export function parseToolCallArguments(
     const logger = getLogger();
     logger.warn(
       { args, error: error instanceof Error ? error.message : "Unknown" },
-      "Failed to parse tool call arguments"
+      "Failed to parse tool call arguments",
     );
     return null;
   }
@@ -48,9 +48,9 @@ export function parseToolCallArguments(
 /**
  * Check if a response contains tool calls
  */
-export function hasToolCalls(
-  response: { toolCalls?: ToolCallResult[] }
-): boolean {
+export function hasToolCalls(response: {
+  toolCalls?: ToolCallResult[];
+}): boolean {
   return !!response.toolCalls && response.toolCalls.length > 0;
 }
 
@@ -70,7 +70,7 @@ export function getToolNames(toolCalls: ToolCallResult[]): string[] {
  */
 export async function executeToolCall(
   toolCall: ToolCallResult,
-  registry: ToolRegistry
+  registry: ToolRegistry,
 ): Promise<ToolExecutionResult> {
   const logger = getLogger();
   const { name, arguments: argsString } = toolCall.function;
@@ -101,12 +101,18 @@ export async function executeToolCall(
   // Execute
   try {
     const result = await executor(args);
-    logger.debug({ toolName: name, success: result.success }, "Tool execution complete");
+    logger.debug(
+      { toolName: name, success: result.success },
+      "Tool execution complete",
+    );
     return result;
   } catch (error) {
     logger.error(
-      { toolName: name, error: error instanceof Error ? error.message : "Unknown" },
-      "Tool execution failed"
+      {
+        toolName: name,
+        error: error instanceof Error ? error.message : "Unknown",
+      },
+      "Tool execution failed",
     );
     return {
       success: false,
@@ -121,7 +127,7 @@ export async function executeToolCall(
  */
 export async function executeAllToolCalls(
   toolCalls: ToolCallResult[],
-  registry: ToolRegistry
+  registry: ToolRegistry,
 ): Promise<Map<string, ToolExecutionResult>> {
   const results = new Map<string, ToolExecutionResult>();
 
@@ -148,7 +154,7 @@ export async function executeAllToolCalls(
  * Build an assistant message with tool calls
  */
 export function buildAssistantToolCallMessage(
-  toolCalls: ToolCallResult[]
+  toolCalls: ToolCallResult[],
 ): AIMessage {
   return {
     role: "assistant",
@@ -163,7 +169,7 @@ export function buildAssistantToolCallMessage(
 export function buildToolResultMessage(
   toolCallId: string,
   toolName: string,
-  result: ToolExecutionResult
+  result: ToolExecutionResult,
 ): AIMessage {
   return {
     role: "tool",
@@ -180,7 +186,7 @@ export function buildToolResultMessage(
  */
 export function buildToolResultMessages(
   toolCalls: ToolCallResult[],
-  results: Map<string, ToolExecutionResult>
+  results: Map<string, ToolExecutionResult>,
 ): AIMessage[] {
   return toolCalls.map((tc) => {
     const result = results.get(tc.id);
@@ -205,7 +211,7 @@ export function buildToolResultMessages(
 export function createToolDefinition(
   name: string,
   description: string,
-  parameters: Record<string, unknown>
+  parameters: Record<string, unknown>,
 ): ToolDefinition {
   return {
     type: "function",
@@ -222,7 +228,7 @@ export function createToolDefinition(
  */
 export function createObjectSchema(
   properties: Record<string, unknown>,
-  required?: string[]
+  required?: string[],
 ): Record<string, unknown> {
   return {
     type: "object",
@@ -249,7 +255,7 @@ export interface ToolLoopOptions {
    */
   onToolResult?: (
     toolCall: ToolCallResult,
-    result: ToolExecutionResult
+    result: ToolExecutionResult,
   ) => void;
 }
 
@@ -279,13 +285,16 @@ export interface ToolLoopResult {
 export function shouldContinueToolLoop(
   response: { toolCalls?: ToolCallResult[]; finishReason?: string },
   currentRound: number,
-  maxRounds: number
+  maxRounds: number,
 ): boolean {
   const logger = getLogger();
 
   // Stop if we've hit max rounds
   if (currentRound >= maxRounds) {
-    logger.debug({ currentRound, maxRounds }, "Stopping tool loop at max rounds");
+    logger.debug(
+      { currentRound, maxRounds },
+      "Stopping tool loop at max rounds",
+    );
     return false;
   }
 
@@ -356,9 +365,16 @@ function summarizeResult(result: unknown, error?: string): string {
  * @returns Summary suitable for UI display
  */
 export function createToolCallSummary(
-  input: ToolCallSummaryInput
+  input: ToolCallSummaryInput,
 ): ToolCallSummaryOutput {
-  const { functionName, executionTimeMs, arguments: args, success, error, result } = input;
+  const {
+    functionName,
+    executionTimeMs,
+    arguments: args,
+    success,
+    error,
+    result,
+  } = input;
 
   return {
     functionName,

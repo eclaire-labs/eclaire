@@ -42,7 +42,7 @@ export interface DialectAdapter {
     endpoint: string,
     params: AdapterRequestParams,
     auth: ProviderAuth,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
   ): AdapterRequest;
 
   /**
@@ -57,7 +57,9 @@ export interface DialectAdapter {
    *
    * @param stream - Raw byte stream from provider
    */
-  transformStream(stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array>;
+  transformStream(
+    stream: ReadableStream<Uint8Array>,
+  ): ReadableStream<Uint8Array>;
 }
 
 /**

@@ -4,8 +4,8 @@
  * Create a new note with text or markdown content.
  */
 
-import z from "zod/v4";
 import { tool } from "@eclaire/ai";
+import z from "zod/v4";
 import { createNoteEntry } from "../../services/notes.js";
 import type { BackendAgentContext } from "../types.js";
 

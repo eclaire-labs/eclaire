@@ -5,15 +5,15 @@
  * In database mode, returns null for all queue operations (expected behavior).
  */
 
-import type { Queue } from "bullmq";
-import { createChildLogger } from "../logger.js";
 import {
   createQueueManager,
-  QueueNames,
   type QueueManager,
   type QueueName,
+  QueueNames,
 } from "@eclaire/queue/app";
+import type { Queue } from "bullmq";
 import { config } from "../../config/index.js";
+import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("queues");
 

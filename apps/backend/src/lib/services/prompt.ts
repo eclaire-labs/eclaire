@@ -6,17 +6,17 @@
  */
 
 import { isValidConversationId } from "@eclaire/core";
-import {
-  processPromptRequest,
-  processPromptRequestStream,
-  ConversationNotFoundError,
-  type PromptResponse,
-  type StreamEvent,
-} from "../agent/index.js";
-import { recordHistory } from "./history.js";
-import { createChildLogger } from "../logger.js";
 import type { PromptRequest } from "../../schemas/prompt-params.js";
 import type { StreamPromptRequest } from "../../schemas/prompt-stream-params.js";
+import {
+  ConversationNotFoundError,
+  type PromptResponse,
+  processPromptRequest,
+  processPromptRequestStream,
+  type StreamEvent,
+} from "../agent/index.js";
+import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:prompt");
 

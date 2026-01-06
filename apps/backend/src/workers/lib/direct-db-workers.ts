@@ -6,32 +6,33 @@
  * for real-time SSE updates.
  */
 
+import { runWithRequestId } from "@eclaire/logger";
+import { createEventCallbacks, QueueNames } from "@eclaire/queue/app";
+import type {
+  JobContext,
+  JobEventCallbacks,
+  Worker,
+} from "@eclaire/queue/core";
 import {
   createDbWorker,
-  getQueueSchema,
   type DbWorkerConfig,
+  getQueueSchema,
   type DbCapabilities as QueueDbCapabilities,
 } from "@eclaire/queue/driver-db";
-import {
-  createEventCallbacks,
-  QueueNames,
-} from "@eclaire/queue/app";
-import type { JobContext, Worker, JobEventCallbacks } from "@eclaire/queue/core";
-import { db, dbType, dbCapabilities } from "../../db/index.js";
-import { publishDirectSSEEvent } from "../../routes/processing-events.js";
-import { processArtifacts } from "../../lib/services/artifact-processor.js";
-import type { AssetType } from "../../types/assets.js";
+import { db, dbCapabilities, dbType } from "../../db/index.js";
 import { createChildLogger } from "../../lib/logger.js";
-import { runWithRequestId } from "@eclaire/logger";
 import { getNotifyListener } from "../../lib/queue/notify.js";
+import { processArtifacts } from "../../lib/services/artifact-processor.js";
+import { publishDirectSSEEvent } from "../../routes/processing-events.js";
+import type { AssetType } from "../../types/assets.js";
 
 // Import job processors
 import processBookmarkJob from "../jobs/bookmarkProcessor.js";
 import { processDocumentJob } from "../jobs/documentProcessor.js";
 import processImageJob from "../jobs/imageProcessor.js";
 import processNoteJob from "../jobs/noteProcessor.js";
-import processTaskJob from "../jobs/taskProcessor.js";
 import processTaskExecution from "../jobs/taskExecutionProcessor.js";
+import processTaskJob from "../jobs/taskProcessor.js";
 
 const logger = createChildLogger("direct-db-workers");
 
@@ -123,7 +124,10 @@ export async function startDirectDbWorkers(): Promise<void> {
     { concurrency: 1 },
   );
   workers.push(bookmarkWorker);
-  logger.info({ queue: QueueNames.BOOKMARK_PROCESSING }, "Bookmark worker started");
+  logger.info(
+    { queue: QueueNames.BOOKMARK_PROCESSING },
+    "Bookmark worker started",
+  );
 
   // Image processing worker
   const imageWorker = createDbWorker(
@@ -147,7 +151,10 @@ export async function startDirectDbWorkers(): Promise<void> {
     { concurrency: 1 },
   );
   workers.push(documentWorker);
-  logger.info({ queue: QueueNames.DOCUMENT_PROCESSING }, "Document worker started");
+  logger.info(
+    { queue: QueueNames.DOCUMENT_PROCESSING },
+    "Document worker started",
+  );
 
   // Note processing worker
   const noteWorker = createDbWorker(
@@ -181,7 +188,10 @@ export async function startDirectDbWorkers(): Promise<void> {
     { concurrency: 1 },
   );
   workers.push(taskExecutionWorker);
-  logger.info({ queue: QueueNames.TASK_EXECUTION_PROCESSING }, "Task execution worker started");
+  logger.info(
+    { queue: QueueNames.TASK_EXECUTION_PROCESSING },
+    "Task execution worker started",
+  );
 
   // Start all workers
   for (const worker of workers) {

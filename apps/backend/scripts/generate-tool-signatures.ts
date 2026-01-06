@@ -24,7 +24,11 @@ async function generateToolSignatures() {
       "tools",
       "index.ts",
     );
-    const outputPath = path.join(import.meta.dirname, "..", "tool-signatures.json");
+    const outputPath = path.join(
+      import.meta.dirname,
+      "..",
+      "tool-signatures.json",
+    );
 
     console.log("📖 Reading tools from:", toolsFilePath);
 

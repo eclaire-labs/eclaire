@@ -6,10 +6,10 @@
  */
 
 import type { Dialect } from "../types.js";
-import type { DialectAdapter, AdapterRegistry } from "./types.js";
-import { openaiCompatibleAdapter } from "./openai-compatible.js";
-import { mlxNativeAdapter } from "./mlx-native.js";
 import { anthropicMessagesAdapter } from "./anthropic-messages.js";
+import { mlxNativeAdapter } from "./mlx-native.js";
+import { openaiCompatibleAdapter } from "./openai-compatible.js";
+import type { AdapterRegistry, DialectAdapter } from "./types.js";
 
 // =============================================================================
 // ADAPTER REGISTRY
@@ -46,7 +46,7 @@ export function isDialectSupported(dialect: string): dialect is Dialect {
 // RE-EXPORTS
 // =============================================================================
 
-export { openaiCompatibleAdapter } from "./openai-compatible.js";
-export { mlxNativeAdapter } from "./mlx-native.js";
 export { anthropicMessagesAdapter } from "./anthropic-messages.js";
-export type { DialectAdapter, AdapterRegistry } from "./types.js";
+export { mlxNativeAdapter } from "./mlx-native.js";
+export { openaiCompatibleAdapter } from "./openai-compatible.js";
+export type { AdapterRegistry, DialectAdapter } from "./types.js";

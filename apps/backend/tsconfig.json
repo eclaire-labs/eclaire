@@ -21,6 +21,11 @@
     "rootDir": "./",
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.test.ts", "src/**/*.spec.ts", "scripts/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "scripts/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
