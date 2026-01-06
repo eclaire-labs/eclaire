@@ -2,7 +2,7 @@
   "name": "@eclaire/monorepo",
   "version": "0.6.0",
   "private": true,
-  "packageManager": "pnpm@10.26.2",
+  "packageManager": "pnpm@10.27.0",
   "license": "MIT",
   "description": "Eclaire - AI-powered productivity platform",
   "repository": {
