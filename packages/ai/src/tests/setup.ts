@@ -29,10 +29,23 @@ export function getFixturesPath(): string {
 // MOCK LOGGER
 // =============================================================================
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockFn = (...args: any[]) => any;
+
+export interface MockLogger {
+  debug: MockFn;
+  info: MockFn;
+  warn: MockFn;
+  error: MockFn;
+  trace: MockFn;
+  fatal: MockFn;
+  child: MockFn;
+}
+
 /**
  * Create a mock logger for testing
  */
-export function createMockLogger() {
+export function createMockLogger(): MockLogger {
   return {
     debug: vi.fn(),
     info: vi.fn(),
@@ -44,11 +57,18 @@ export function createMockLogger() {
   };
 }
 
+export interface MockLoggerFactory {
+  factory: (name: string) => MockLogger;
+  getLogger: (name: string) => MockLogger | undefined;
+  getAllLoggers: () => Map<string, MockLogger>;
+  reset: () => void;
+}
+
 /**
  * Create a logger factory that returns mock loggers
  */
-export function createMockLoggerFactory() {
-  const loggers = new Map<string, ReturnType<typeof createMockLogger>>();
+export function createMockLoggerFactory(): MockLoggerFactory {
+  const loggers = new Map<string, MockLogger>();
 
   return {
     factory: (name: string) => {
@@ -77,10 +97,20 @@ export interface MockFetchResponse {
   text?: () => Promise<string>;
 }
 
+export interface MockFetchInstance {
+  fetch: MockFn;
+  calls: Array<{ url: string; init?: RequestInit }>;
+  queueResponse: (response: MockFetchResponse) => void;
+  queueJsonResponse: (data: unknown, status?: number) => void;
+  queueErrorResponse: (status: number, message: string) => void;
+  queueStreamResponse: (stream: ReadableStream<Uint8Array>, status?: number) => void;
+  reset: () => void;
+}
+
 /**
  * Create a mock fetch function
  */
-export function createMockFetch() {
+export function createMockFetch(): MockFetchInstance {
   const calls: Array<{ url: string; init?: RequestInit }> = [];
   let responseQueue: MockFetchResponse[] = [];
 
