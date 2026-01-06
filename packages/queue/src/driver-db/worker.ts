@@ -214,7 +214,7 @@ export function createDbWorker<T = unknown>(
             const updatedStages = completeStageInList(currentStages, stageName, artifacts);
             await persistStages(updatedStages, null); // Clear current stage since this one is done
             logger.debug({ jobId: claimed.id, stage: stageName }, "Stage completed");
-            eventCallbacks?.onStageComplete?.(claimed.id, stageName, artifacts, claimed.metadata || undefined);
+            await eventCallbacks?.onStageComplete?.(claimed.id, stageName, artifacts, claimed.metadata || undefined);
           },
 
           async failStage(stageName: string, error: Error) {
@@ -244,7 +244,7 @@ export function createDbWorker<T = unknown>(
             "Job completed successfully",
           );
           // Call onJobComplete callback
-          eventCallbacks?.onJobComplete?.(claimed.id, claimed.metadata || undefined);
+          await eventCallbacks?.onJobComplete?.(claimed.id, claimed.metadata || undefined);
         }
       } catch (error) {
         // Mark as failed (handles retry logic internally, with ownership verification)

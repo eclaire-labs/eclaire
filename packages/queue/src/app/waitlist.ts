@@ -78,10 +78,11 @@ export function createJobWaitlist(config: WaitlistConfig): JobWaitlistInterface 
         );
 
         // Set timeout to reject if no job arrives
+        const safeTimeout = Math.max(1, timeout);
         const timeoutTimer = setTimeout(() => {
           removeWaiter(assetType, waiter);
           resolve(null); // Timeout - no job available
-        }, timeout);
+        }, safeTimeout);
 
         // Store original resolve to clear timeout when called
         const originalResolve = waiter.resolve;

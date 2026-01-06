@@ -199,7 +199,7 @@ export function createBullMQWorker<T = unknown>(
           const updatedStages = completeStageInList(currentStages, stageName, artifacts);
           await persistStages(updatedStages, null);
           logger.debug({ jobId: job.id, stage: stageName }, "Stage completed");
-          eventCallbacks?.onStageComplete?.(job.id, stageName, artifacts, metadata);
+          await eventCallbacks?.onStageComplete?.(job.id, stageName, artifacts, metadata);
         },
 
         async failStage(stageName: string, error: Error) {
@@ -219,7 +219,7 @@ export function createBullMQWorker<T = unknown>(
       try {
         await handler(ctx);
         // Call onJobComplete callback
-        eventCallbacks?.onJobComplete?.(job.id, metadata);
+        await eventCallbacks?.onJobComplete?.(job.id, metadata);
       } catch (error) {
         // Handle rate limit errors: reschedule just this job without consuming attempt
         // Note: We use moveToDelayed instead of worker.rateLimit() because rateLimit()

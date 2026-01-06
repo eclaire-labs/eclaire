@@ -93,14 +93,15 @@ export function createHttpClient(config: HttpClientConfig): HttpQueueClient {
       workerId: string,
       timeout: number,
     ): Promise<HttpJobResponse | null> {
+      const safeTimeout = Math.max(0, timeout);
       try {
         const response = await http.get("/wait", {
           params: {
             name,
             workerId,
-            timeout,
+            timeout: safeTimeout,
           },
-          timeout: timeout + 5000, // Allow extra time for HTTP overhead
+          timeout: safeTimeout + 5000, // Allow extra time for HTTP overhead
         });
 
         return response.data || null;
