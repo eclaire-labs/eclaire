@@ -1,12 +1,18 @@
-export const BASE_URL = "http://127.0.0.1:3001/api";
+// Test configuration - can be overridden via environment variables
+export const BASE_URL =
+  process.env.ECLAIRE_TEST_BASE_URL ?? "http://127.0.0.1:3001/api";
 export const TEST_API_KEY =
+  process.env.ECLAIRE_TEST_API_KEY ??
   "sk-DEVONLYUSER0001-DEVONLY2222222222222222222222222";
 export const TEST_API_KEY_2 =
+  process.env.ECLAIRE_TEST_API_KEY_2 ??
   "sk-DEVONLYUSER0002-DEVONLY3333333333333333333333333";
-export const DEMO_EMAIL = "demo@example.com";
-export const DEMO_PASSWORD = "Demo@123";
-export const DEMO_API_KEY =
-  "sk-DEVONLYUSER0001-DEVONLY2222222222222222222222222";
+export const TEST_EMAIL = process.env.ECLAIRE_TEST_EMAIL ?? "demo@example.com";
+export const TEST_PASSWORD = process.env.ECLAIRE_TEST_PASSWORD ?? "Demo@123";
+// Alias for backwards compatibility
+export const DEMO_EMAIL = TEST_EMAIL;
+export const DEMO_PASSWORD = TEST_PASSWORD;
+export const DEMO_API_KEY = TEST_API_KEY;
 
 export const VERBOSE = process.env.VERBOSE === "true" || false;
 

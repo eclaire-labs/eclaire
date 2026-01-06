@@ -2,17 +2,15 @@
 set -e
 
 # =============================================================================
-# API Integration Test Runner
+# API Integration Test Server
 # =============================================================================
-# Orchestrates the full API test workflow:
+# Sets up the environment for API integration tests:
 #   1. Ensures Postgres is running
 #   2. Runs migrations
-#   3. Seeds demo data
-#   4. Starts the backend server
-#   5. Runs API tests
-#   6. Cleans up
+#   3. Seeds test data
+#   4. Starts the backend server (foreground)
 #
-# This guarantees that seeded API key hashes match the running server's HMAC key.
+# Run tests in another terminal with: pnpm test:integration:api
 # =============================================================================
 
 # Colors
@@ -26,18 +24,6 @@ info() { echo -e "${CYAN}→${NC} $1"; }
 success() { echo -e "${GREEN}✓${NC} $1"; }
 warn() { echo -e "${YELLOW}!${NC} $1"; }
 error() { echo -e "${RED}✗${NC} $1"; exit 1; }
-
-# Cleanup function
-cleanup() {
-  if [ -n "$SERVER_PID" ]; then
-    info "Stopping backend server (PID: $SERVER_PID)..."
-    kill $SERVER_PID 2>/dev/null || true
-    wait $SERVER_PID 2>/dev/null || true
-    success "Server stopped"
-  fi
-}
-
-trap cleanup EXIT
 
 # Check prerequisites
 check_prerequisites() {
@@ -85,49 +71,33 @@ run_migrations() {
   success "Migrations complete"
 }
 
-# Seed demo data
+# Seed test data
 seed_data() {
-  info "Seeding demo data..."
-  pnpm --filter @eclaire/backend db:seed:demo
-  success "Demo data seeded"
+  info "Seeding test data..."
+  pnpm --filter @eclaire/backend db:seed:test
+  success "Test data seeded"
 }
 
-# Start backend server
+# Start backend server (foreground)
 start_server() {
-  info "Starting backend server..."
+  echo ""
+  success "Setup complete. Starting backend server..."
+  echo ""
+  echo -e "${YELLOW}Server running at http://127.0.0.1:3001${NC}"
+  echo -e "${YELLOW}Run tests in another terminal: pnpm test:integration:api${NC}"
+  echo -e "${YELLOW}Press Ctrl+C to stop the server${NC}"
+  echo ""
 
-  # Start server in background using the proper entry point
+  # Start server in foreground
   cd apps/backend
-  NODE_ENV=development NODE_OPTIONS='--conditions=development' pnpm tsx src/startup.ts &
-  SERVER_PID=$!
-  cd ../..
-
-  # Wait for server to be ready
-  info "Waiting for server to be ready..."
-  timeout=30
-  while ! curl -fsS http://127.0.0.1:3001/health &>/dev/null; do
-    timeout=$((timeout - 1))
-    if [ $timeout -le 0 ]; then
-      error "Server failed to start"
-    fi
-    sleep 1
-  done
-
-  success "Backend server running on http://127.0.0.1:3001"
-}
-
-# Run API tests
-run_tests() {
-  info "Running API integration tests..."
-  pnpm --filter @eclaire/backend vitest run src/tests/api/
-  success "API tests complete"
+  NODE_ENV=development NODE_OPTIONS='--conditions=development' exec pnpm tsx src/startup.ts
 }
 
 # Main
 main() {
   echo ""
   echo -e "${CYAN}╔══════════════════════════════════════════════╗${NC}"
-  echo -e "${CYAN}║          API Integration Test Runner         ║${NC}"
+  echo -e "${CYAN}║       API Integration Test Environment       ║${NC}"
   echo -e "${CYAN}╚══════════════════════════════════════════════╝${NC}"
   echo ""
 
@@ -136,10 +106,6 @@ main() {
   run_migrations
   seed_data
   start_server
-  run_tests
-
-  echo ""
-  success "All API tests passed!"
 }
 
 main "$@"

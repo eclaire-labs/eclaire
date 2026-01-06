@@ -15,8 +15,8 @@ export default defineConfig({
       ? []
       : ["src/tests/integration/**"],
     setupFiles: ["src/tests/setup.ts"],
-    // Integration tests need longer timeout for real API calls
-    testTimeout: isIntegration ? 60000 : 10000,
+    // Integration tests need longer timeout for real API calls (local models can be slow)
+    testTimeout: isIntegration ? 120000 : 10000,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

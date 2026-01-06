@@ -7,7 +7,7 @@
  * - AI_TEST_PROVIDER: "openrouter" | "local" (required)
  * - OPENROUTER_API_KEY: API key for OpenRouter (required if provider=openrouter)
  * - OPENROUTER_MODEL: Model ID for OpenRouter (default: google/gemini-2.5-flash-lite-preview-09-2025)
- * - LOCAL_MODEL_URL: URL for local llama-server (default: http://localhost:11435)
+ * - LLAMA_CPP_BASE_URL: URL for local llama-server (default: http://127.0.0.1:11500/v1)
  */
 
 import * as fs from "node:fs";
@@ -80,7 +80,7 @@ export function getIntegrationConfig(): IntegrationConfig | null {
   return {
     provider: "local",
     modelId: "local-llama",
-    baseUrl: process.env.LOCAL_MODEL_URL || "http://localhost:11435",
+    baseUrl: process.env.LLAMA_CPP_BASE_URL || "http://127.0.0.1:11500/v1",
   };
 }
 
@@ -178,12 +178,12 @@ export function createIntegrationConfigDir(): string {
       },
     };
   } else {
-    // Local provider
+    // Local provider (baseUrl already includes /v1)
     providers = {
       providers: {
         "local-llama": {
           dialect: "openai_compatible",
-          baseUrl: `${config.baseUrl}/v1`,
+          baseUrl: config.baseUrl,
           auth: {
             type: "none",
           },
@@ -215,7 +215,7 @@ export function createIntegrationConfigDir(): string {
             name: "cl100k_base",
           },
           source: {
-            url: "http://localhost:11435",
+            url: config.baseUrl,
           },
         },
       },
