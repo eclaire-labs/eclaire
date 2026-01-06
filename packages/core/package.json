@@ -39,11 +39,11 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "dotenv": "^17.2.3",
-    "nanoid": "^5.1.6"
+    "dotenv": "17.2.3",
+    "nanoid": "5.1.6"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "typescript": "^5.9.3"
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
   }
 }

@@ -56,19 +56,19 @@
     "@eclaire/core": "workspace:*",
     "@eclaire/db": "workspace:*",
     "@eclaire/logger": "workspace:*",
-    "bullmq": "^5.66.4",
-    "cron-parser": "^5.4.0",
+    "bullmq": "5.66.4",
+    "cron-parser": "5.4.0",
     "ioredis": "5.8.2",
-    "axios": "^1.13.2",
-    "drizzle-orm": "^0.45.1"
+    "axios": "1.13.2",
+    "drizzle-orm": "0.45.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",
     "@types/better-sqlite3": "7.6.13",
-    "@types/node": "^24.10.4",
+    "@types/node": "24.10.4",
     "better-sqlite3": "12.5.0",
-    "postgres": "^3.4.7",
-    "typescript": "^5.9.3",
+    "postgres": "3.4.7",
+    "typescript": "5.9.3",
     "vitest": "4.0.16"
   }
 }

@@ -26,14 +26,14 @@
     "test:all": "vitest run && AI_TEST_PROVIDER=local vitest run"
   },
   "dependencies": {
-    "tiktoken": "^1.0.22"
+    "tiktoken": "1.0.22"
   },
   "peerDependencies": {
     "@eclaire/logger": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@types/node": "^24.10.4",
+    "@types/node": "24.10.4",
     "typescript": "5.9.3",
     "vitest": "4.0.16",
     "zod": "4.3.5"

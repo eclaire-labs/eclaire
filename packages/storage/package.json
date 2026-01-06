@@ -40,8 +40,8 @@
     "@eclaire/logger": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^24.10.4",
-    "typescript": "^5.9.3",
+    "@types/node": "24.10.4",
+    "typescript": "5.9.3",
     "vitest": "4.0.16"
   }
 }
