@@ -1,5 +1,85 @@
 # Eclaire Changelog
 
+## [0.6.0] - 2026-01-07
+
+### Highlights
+
+- **Unified deployment**: frontend + backend + workers can run in a single container
+- **Simplified Self-Hosting**  - new one-command `setup.sh` flow, plus a streamlined `compose.yaml`
+- **Better AI Support**  - New vision models, llama.cpp router, expanded provider support
+- **Modern Frontend**  - Migrated from Next.js to Vite + TanStack Router
+- **New Admin CLI**  - Manage your instance from the command line
+
+### Features
+
+- **Unified Deployment**: Single container can serve as backend, workers, or both via `SERVICE_ROLE` environment variable
+- **SQLite Support**: Full SQLite database support alongside Postgres with comprehensive parity tests
+- **Database Queue Mode**: Use Postgres or SQLite for job processing instead of Redis/BullMQ
+- **In-Memory Notifications**: Single-process deployments no longer require Redis
+- **Admin CLI**: New `admin-cli` integrated into Docker for instance management
+- **Auto-Upgrade System**: Database migrations run automatically at startup
+- **Qwen3-VL-8B**: Added support for Qwen3-VL-8B vision model
+- **llama.cpp Router**: Support for llama-server's new router endpoint
+- **Request ID Tracing**: Better observability and debugging across distributed components
+- **Version-Prefixed Encryption**: Enables future key rotation support
+
+### Improvements
+
+- **Frontend**: Migrated from Next.js to Vite with TanStack Router for faster builds and modern routing
+- **ES Modules**: Complete migration from CommonJS to ES modules
+- **Tailwind CSS v4**: Upgraded to latest Tailwind with tw-animate-css support
+- **Transaction Support**: Read-Modify-Write for Postgres, mutex serialization for SQLite
+- **Services Architecture**: Thin routes pattern with extracted services layer
+- **Modular Packages**: New @eclaire/ai, @eclaire/storage, @eclaire/queue packages
+- **AI Tool Calling**: More robust native tool calling support
+- **AI Providers**: Improved support for llama.cpp, MLX-LM, MLX-VLM, and LM Studio backends
+- **Dependency Upgrades**: Vite 7, Vitest 4, Playwright 1.57, Pino 10, Recharts 3, Better Auth 1.4.5
+
+### Bug Fixes
+
+- User queue jobs now deleted when account is deleted
+- Fixed AI response truncation/repetition detection with improved JSON parsing
+- SQLite case-insensitive sorting for text columns
+- Docker layer caching optimized for faster builds
+- Queue callback race conditions resolved with timeout safety guards
+- Route detail views render correctly
+- Image URL fallback uses thumbnailUrl consistently
+- Auth session tests include Origin header for CSRF validation
+- Sharp/native dependency handling with SHARP_IGNORE_GLOBAL_LIBVIPS
+
+### Breaking Changes
+
+- **TaskStatus**: Removed `cancelled` status from enum
+- **SERVICE_ROLE**: New environment variable for deployment mode configuration
+- **Data Directories**: Changed from `data/db` to `data/postgres`, `data/pglite`, `data/sqlite`
+- **SQLITE_DB_PATH**: Renamed from `SQLITE_DATA_DIR`
+- **Environment**: Simplified to single `.env` file configuration
+- **Admin CLI**: `model-cli` replaced with `admin-cli`
+- **Build Script**: `build.sh` now defaults to dev mode (use `--prod` for production)
+- **Production Port**: Standardized to port 3000
+
+### Migration from v0.5.x
+
+**There is no automated upgrade path from v0.5.x to v0.6.0.** Due to significant architectural changes, we recommend setting up a fresh v0.6.0 instance and transferring your data from your previous installation.
+
+If you need help migrating, please [open an issue](https://github.com/eclaire-labs/eclaire/issues) or reach out to us  - we're happy to assist.
+
+### Infrastructure
+
+- All dependencies pinned to exact versions for reproducible builds
+- Root biome config for consistent formatting/linting
+- Restructured tests directory (`__tests__` → `tests`)
+- TypeScript config standardized (typecheck includes tests, build excludes)
+- ioredis pinned to 5.8.2 for BullMQ compatibility
+
+### Documentation
+
+- AI Model Configuration guide with Qwen3-VL-8B examples
+- First login instructions added to README
+- Clarified WORKER_AI_LOCAL_PROVIDER_URL documentation
+
+---
+
 ## [0.5.2] - 2025-12-03
 
 ### Security

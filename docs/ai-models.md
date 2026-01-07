@@ -19,7 +19,7 @@ You have two options for running local models with llama.cpp:
 
 ### Single Model (Simple)
 
-Use one model for both backend and workers. This is the simplest setup—just run one llama-server instance:
+Use one model for both backend and workers. This is the simplest setup -just run one llama-server instance:
 
 ```bash
 llama-server -hf unsloth/Qwen3-VL-8B-Instruct-GGUF:Q4_K_XL --ctx-size 16384 --port 11500
@@ -30,8 +30,8 @@ Configure both contexts to use the same model in `selection.json`.
 ### Dual Model (Recommended)
 
 Use different models optimized for each purpose:
-- **Backend (port 11500)**: A smarter/larger model for the AI assistant—better reasoning and tool calling
-- **Workers (port 11501)**: A smaller/faster model with vision for background processing—efficient document and image analysis
+- **Backend (port 11500)**: A smarter/larger model for the AI assistant -better reasoning and tool calling
+- **Workers (port 11501)**: A smaller/faster model with vision for background processing -efficient document and image analysis
 
 This setup requires two separate llama-server instances:
 
@@ -47,7 +47,7 @@ The default configuration uses the `llama-cpp` provider (port 11500) and `llama-
 
 > **Note**: llama-server has a router mode that can serve multiple models from one instance, but it's not yet production-ready. We recommend running separate instances for reliability.
 
-> **Context size**: The `--ctx-size 16384` flag limits context to 16K tokens to reduce GPU memory usage. Adjust based on your hardware—higher values allow longer conversations but require more memory.
+> **Context size**: The `--ctx-size 16384` flag limits context to 16K tokens to reduce GPU memory usage. Adjust based on your hardware -higher values allow longer conversations but require more memory.
 
 Choose your setup based on your hardware and available memory. See [Model Recommendations](#model-recommendations) below for guidance.
 

@@ -70,10 +70,19 @@ There are are lot of existing frameworks and libraries enabling various AI capab
 
 With AI gaining rapid adoption, there is a growing need for alternatives to closed ecosystems and hosted models, especially for personal, private, or otherwise sensitive data.
 
-- **Self-hosted** — runs entirely on your hardware with local models and data storage
-- **Unified data** — one place where AI can see and connect everything
-- **AI-powered** — content understanding, search, classification, OCR, and automation
-- **Open source** — transparent, extensible, and community-driven
+- **Self-hosted**  - runs entirely on your hardware with local models and data storage
+- **Unified data**  - one place where AI can see and connect everything
+- **AI-powered**  - content understanding, search, classification, OCR, and automation
+- **Open source**  - transparent, extensible, and community-driven
+
+### What's New in v0.6.0
+
+- **Simplified self-hosting**  - Single unified container, optional Redis
+- **SQLite support**  - Lightweight alternative to Postgres
+- **Expanded AI models**  - Vision models, llama.cpp router, MLX backends
+- **Auto-upgrades**  - Database migrations run automatically on startup
+
+See the [CHANGELOG](./CHANGELOG.md) for full details.
   
 ## Features
 - **Cross-platform**: macOS, Linux and Windows. 
@@ -81,7 +90,7 @@ With AI gaining rapid adoption, there is a growing need for alternatives to clos
 - **Unified data**: Manage across tasks, notes, documents, photos, bookmarks and more.
 - **AI conversations**: chat with context from your content; see sources for answers; supports streaming and thinking tokens.
 - **AI tool calling**: The assistant has tools to search data, open content, resolve tasks, add comments, create notes, and more
-- **Layered architecture**: frontend, backend, and workers are separate services. Run only the backend for API-only/data-processing use cases. *(See [Architecture](#architecture) section below.)*
+- **Flexible deployment**: Run as a single unified container or separate services. SQLite or Postgres. Database queue or Redis. *(See [Architecture](#architecture) section below.)*
 - **Full API**: OpenAI-compatible REST endpoints with session tokens or API keys. [API Docs](https://eclaire.co/docs/api)
 - **Model backends**: works with llama.cpp, vLLM, mlx-lm/mlx-vlm, LM Studio, Ollama, and more via the standard OpenAI-compatible API. *(See [Selecting Models](#selecting-models).)*
 - **Model support**: text and vision models from Qwen, Gemma, DeepSeek, Mistral, Kimi, and others. *(See [Selecting Models](#selecting-models).)*
@@ -131,7 +140,7 @@ With AI gaining rapid adoption, there is a growing need for alternatives to clos
 ### Prerequisites
 
 - **Docker** and **Docker Compose**
-- **A local LLM server** — [llama.cpp](https://github.com/ggml-org/llama.cpp) recommended
+- **A local LLM server**  - [llama.cpp](https://github.com/ggml-org/llama.cpp) recommended
 
 ### Quick Start
 
@@ -162,8 +171,8 @@ Open http://localhost:3000 and click "Sign up" to create your account.
 ### Configuration
 
 Configuration lives in two places:
-- **`.env`** — secrets, database settings, ports
-- **`config/ai/`** — LLM provider URLs and model definitions
+- **`.env`**  - secrets, database settings, ports
+- **`config/ai/`**  - LLM provider URLs and model definitions
 
 ### Upgrading
 
@@ -204,27 +213,22 @@ Eclaire follows a modular architecture with clear separation between the fronten
 **📋 [View detailed architecture diagram →](docs/architecture.md)**
 
 ### Key Components
-- **Frontend**: Next.js web application with React 19 and Radix UI
+- **Frontend**: Vite web application with React 19, TanStack Router, and Radix UI
 - **Backend API**: Node.js/Hono server with REST APIs
-- **Background Workers**: Job processing and scheduling
-- **Data Layer**: PostgreSQL (default) or SQLite for persistence, file storage for assets
-- **AI Services**: Local LLM backends (llama.cpp, etc.) for inference; Docling for document processing
+- **Background Workers**: Job processing and scheduling (runs unified with backend by default)
+- **Data Layer**: PostgreSQL (recommended) or SQLite for persistence; database or Redis for job queue
+- **AI Services**: Local LLM backends (llama.cpp, MLX, LM Studio, etc.) for inference; Docling for document processing
 - **External Integrations**: GitHub and Reddit APIs for bookmark fetching
 
 ## Roadmap
-- Capacity and Scalability
-- More streamlined system design
-- Easier installs and upgrades
 - Native mobile and desktop clients
-- Support for more data sources
+- Support for more data sources and integrations
 - Data source linking and synchronization
 - More robust full text indexing and search
-- Better extensibility
-- Improved AI capabilities
+- Better extensibility and plugin system
+- Improved AI capabilities and model support
 - Evals for models and content pipelines
-- Unified CLI
-- Easier LLM backend and models management
-- More Hardening and Security
+- More hardening and security
 - Top requests from the community
 
 ## Development
