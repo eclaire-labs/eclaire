@@ -12,6 +12,7 @@
  *   2 - Downgrade detected (app version older than installed)
  *   3 - Fresh install (no database tables exist)
  *   4 - Safe upgrade (can be auto-applied without manual intervention)
+ *   5 - Blocked upgrade (no migration path from prior version)
  */
 
 // Global error handlers - must be set up before any async code
@@ -84,6 +85,19 @@ async function main() {
         );
       }
       process.exit(2);
+      break;
+
+    case "blocked-upgrade":
+      if (!quiet) {
+        console.log("");
+        console.log("═══════════════════════════════════════════════════════════");
+        console.log("  Upgrade from prior versions is not supported.");
+        console.log("");
+        console.log(`  ${result.message.split("\n").join("\n  ")}`);
+        console.log("═══════════════════════════════════════════════════════════");
+        console.log("");
+      }
+      process.exit(5);
       break;
   }
 }

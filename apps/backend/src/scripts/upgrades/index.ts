@@ -30,6 +30,10 @@ export interface UpgradeStep {
   description: string;
   /** If true, blocks automatic upgrade - user must run upgrade command manually */
   requiresManualUpgrade?: boolean;
+  /** If true, upgrades from prior versions are completely blocked (no migration path) */
+  blocksUpgradePath?: boolean;
+  /** Message to show when upgrade path is blocked */
+  blockedUpgradeMessage?: string;
   /** Optional data migration function (can be omitted for marker-only entries) */
   run?: (db: Database) => Promise<void>;
 }
@@ -39,14 +43,13 @@ export interface UpgradeStep {
  * Steps are run in order for versions between installed and target.
  */
 export const upgradeSteps: UpgradeStep[] = [
-  // Example for future releases:
-  // {
-  //   version: '0.7.0',
-  //   description: 'Migrate bookmark storage format',
-  //   run: async (db) => {
-  //     // Your data transformation logic here
-  //   }
-  // },
+  {
+    version: "0.6.0",
+    description: "Breaking release - no automated migration from prior versions",
+    blocksUpgradePath: true,
+    blockedUpgradeMessage: `There is no automated upgrade path from prior versions to 0.6.0.
+See CHANGELOG.md for migration instructions.`,
+  },
 ];
 
 /**
@@ -79,4 +82,26 @@ export function hasManualUpgradeRequired(
 ): boolean {
   const steps = getUpgradeSteps(fromVersion || "0.0.0", toVersion);
   return steps.some((step) => step.requiresManualUpgrade === true);
+}
+
+/**
+ * Check if the upgrade path between two versions is blocked (no migration available).
+ */
+export function getBlockedUpgradePath(
+  fromVersion: string | null,
+  toVersion: string,
+): { blocked: boolean; message: string } {
+  const steps = getUpgradeSteps(fromVersion || "0.0.0", toVersion);
+  const blockedStep = steps.find((step) => step.blocksUpgradePath === true);
+
+  if (blockedStep) {
+    return {
+      blocked: true,
+      message:
+        blockedStep.blockedUpgradeMessage ||
+        `Upgrade to ${blockedStep.version} is not supported from prior versions.`,
+    };
+  }
+
+  return { blocked: false, message: "" };
 }

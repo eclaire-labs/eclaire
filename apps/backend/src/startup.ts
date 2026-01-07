@@ -65,6 +65,10 @@ if (process.env.ECLAIRE_RUNTIME !== "container") {
       case "downgrade":
         handleDowngrade(upgradeResult);
         break;
+
+      case "blocked-upgrade":
+        handleBlockedUpgrade(upgradeResult);
+        break;
     }
   }
 }
@@ -176,6 +180,26 @@ function handleDowngrade(result: UpgradeCheckResult): never {
   );
   console.error("  data corruption. Please upgrade to at least version");
   console.error(`  ${result.installedVersion}`);
+  console.error("");
+  console.error(
+    "===============================================================",
+  );
+  console.error("");
+
+  process.exit(1);
+}
+
+function handleBlockedUpgrade(result: UpgradeCheckResult): never {
+  console.error("");
+  console.error(
+    "===============================================================",
+  );
+  console.error("  UPGRADE FROM PRIOR VERSIONS NOT SUPPORTED");
+  console.error(
+    "===============================================================",
+  );
+  console.error("");
+  console.error(`  ${result.message.split("\n").join("\n  ")}`);
   console.error("");
   console.error(
     "===============================================================",

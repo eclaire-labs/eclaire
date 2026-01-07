@@ -18,7 +18,7 @@ case "${1:-}" in
     echo "[entrypoint] Runtime: $ECLAIRE_RUNTIME, Home: $ECLAIRE_HOME"
 
     # Check if upgrade is needed
-    # Exit codes: 0 = up-to-date, 1 = manual upgrade needed, 2 = downgrade, 3 = fresh install, 4 = safe auto-upgrade
+    # Exit codes: 0 = up-to-date, 1 = manual upgrade needed, 2 = downgrade, 3 = fresh install, 4 = safe auto-upgrade, 5 = blocked upgrade
     # Use || to prevent set -e from exiting on non-zero return
     upgrade_result=0
     node dist/src/scripts/upgrade-check.js --quiet 2>/dev/null || upgrade_result=$?
@@ -89,6 +89,17 @@ case "${1:-}" in
         echo "  Run: docker compose run --rm eclaire upgrade"
       fi
       echo "================================================"
+      echo ""
+      # Sleep forever to prevent restart loops - container will show as running but unhealthy
+      exec sleep infinity
+    elif [ $upgrade_result -eq 5 ]; then
+      echo ""
+      echo "========================================================"
+      echo "  Upgrade from prior versions is not supported."
+      echo ""
+      echo "  There is no automated upgrade path to this version."
+      echo "  See CHANGELOG.md for migration instructions."
+      echo "========================================================"
       echo ""
       # Sleep forever to prevent restart loops - container will show as running but unhealthy
       exec sleep infinity

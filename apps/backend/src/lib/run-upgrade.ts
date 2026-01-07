@@ -11,7 +11,10 @@ import {
   findMigrationJournal,
   getAppVersion,
 } from "../scripts/lib/version-utils.js";
-import { getUpgradeSteps } from "../scripts/upgrades/index.js";
+import {
+  getBlockedUpgradePath,
+  getUpgradeSteps,
+} from "../scripts/upgrades/index.js";
 
 interface JournalEntry {
   idx: number;
@@ -85,6 +88,12 @@ export async function runUpgrade(
       throw new Error(
         `Cannot upgrade to ${appVersion} - database is already at ${installedVersion}`,
       );
+    }
+
+    // Check for blocked upgrade path (no migration available)
+    const blockedPath = getBlockedUpgradePath(installedVersion, appVersion);
+    if (blockedPath.blocked) {
+      throw new Error(blockedPath.message);
     }
 
     const needsMigrations = migrationStatus.pending > 0;

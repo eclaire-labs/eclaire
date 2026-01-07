@@ -14,7 +14,10 @@ import {
   findMigrationJournal,
   getAppVersion,
 } from "../scripts/lib/version-utils.js";
-import { hasManualUpgradeRequired } from "../scripts/upgrades/index.js";
+import {
+  getBlockedUpgradePath,
+  hasManualUpgradeRequired,
+} from "../scripts/upgrades/index.js";
 
 export interface UpgradeCheckResult {
   status:
@@ -22,7 +25,8 @@ export interface UpgradeCheckResult {
     | "needs-upgrade"
     | "safe-upgrade"
     | "downgrade"
-    | "fresh-install";
+    | "fresh-install"
+    | "blocked-upgrade";
   appVersion: string;
   installedVersion: string | null;
   pendingMigrations: number;
@@ -92,6 +96,21 @@ export async function checkUpgradeStatus(): Promise<UpgradeCheckResult> {
       migrationStatus.pending > 0 || versionStatus.needsUpgrade;
 
     if (needsUpgrade) {
+      // Check if upgrade path is blocked (no migration available)
+      const blockedPath = getBlockedUpgradePath(
+        versionStatus.installed,
+        appVersion,
+      );
+      if (blockedPath.blocked) {
+        return {
+          status: "blocked-upgrade",
+          appVersion,
+          installedVersion: versionStatus.installed,
+          pendingMigrations: migrationStatus.pending,
+          message: blockedPath.message,
+        };
+      }
+
       // Check if any version in the upgrade path requires manual upgrade
       const requiresManual = hasManualUpgradeRequired(
         versionStatus.installed,
