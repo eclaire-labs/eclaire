@@ -64,7 +64,7 @@
     "better-sqlite3": "12.5.0",
     "dotenv": "17.2.3",
     "drizzle-orm": "0.45.1",
-    "postgres": "3.4.7"
+    "postgres": "3.4.8"
   },
   "devDependencies": {
     "@types/better-sqlite3": "7.6.13",

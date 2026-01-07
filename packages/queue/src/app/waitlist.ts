@@ -166,12 +166,13 @@ export function createJobWaitlist(
               "Scheduled next wakeup",
             );
 
+            const safeDelay = Math.max(1, delay || 0);
             const timer = setTimeout(() => {
               logger.debug({ assetType }, "Wakeup timer fired");
               this.notifyAllWaiters(assetType);
               // Schedule the next wakeup
               this.scheduleNextWakeup(assetType);
-            }, delay);
+            }, safeDelay);
 
             wakeTimers.set(assetType, timer);
           }

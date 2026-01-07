@@ -246,7 +246,7 @@ export function isValidCronExpression(expression: string): boolean {
  * @returns Promise that resolves after the delay
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, Math.max(1, ms || 0)));
 }
 
 /**
@@ -281,7 +281,7 @@ export function cancellableSleep(
       return;
     }
 
-    const timer = setTimeout(resolve, ms);
+    const timer = setTimeout(resolve, Math.max(1, ms || 0));
 
     // Listen for abort signal
     signal?.addEventListener(

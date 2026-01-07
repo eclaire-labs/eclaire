@@ -68,7 +68,7 @@
     "@types/node": "24.10.4",
     "better-sqlite3": "12.5.0",
     "drizzle-kit": "0.31.8",
-    "postgres": "3.4.7",
+    "postgres": "3.4.8",
     "typescript": "5.9.3",
     "vitest": "4.0.16"
   }

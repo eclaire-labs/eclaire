@@ -22,7 +22,7 @@ export function generateWorkerId(): string {
  * Sleep for specified milliseconds
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, Math.max(1, ms || 0)));
 }
 
 /**
