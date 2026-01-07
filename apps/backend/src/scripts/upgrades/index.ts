@@ -91,7 +91,12 @@ export function getBlockedUpgradePath(
   fromVersion: string | null,
   toVersion: string,
 ): { blocked: boolean; message: string } {
-  const steps = getUpgradeSteps(fromVersion || "0.0.0", toVersion);
+  // Fresh installs (no prior version) are never blocked
+  if (fromVersion === null) {
+    return { blocked: false, message: "" };
+  }
+
+  const steps = getUpgradeSteps(fromVersion, toVersion);
   const blockedStep = steps.find((step) => step.blocksUpgradePath === true);
 
   if (blockedStep) {

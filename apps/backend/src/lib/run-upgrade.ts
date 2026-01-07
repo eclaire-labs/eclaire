@@ -139,8 +139,6 @@ export async function runUpgrade(
       await closeDatabase!();
     }
 
-    log(`  Upgraded to ${appVersion}`);
-
     return {
       success: true,
       fromVersion: installedVersion,
