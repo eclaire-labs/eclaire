@@ -16,7 +16,6 @@ export function registerConfigCommands(program: Command): void {
   config
     .command("validate")
     .description("Validate AI configuration files")
-    .option("--fix", "Attempt to fix issues automatically")
     .action(validateCommand);
 
   program.addCommand(config);

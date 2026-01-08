@@ -40,16 +40,6 @@ export async function validateCommand(options: CommandOptions): Promise<void> {
     } else {
       console.log(colors.error(`${icons.error} Configuration has issues:\n`));
       console.log(createIssuesTable(result.issues));
-
-      if (options.fix) {
-        console.log(
-          colors.warning(`${icons.warning} Auto-fix not yet implemented`),
-        );
-        console.log(
-          colors.dim("Please resolve issues manually and run validation again"),
-        );
-      }
-
       process.exit(1);
     }
   } catch (error: any) {
@@ -158,10 +148,14 @@ function validateProvider(
       type: "error",
       message: `${ref}: Missing dialect`,
     });
-  } else if (!["openai-chat", "mlx-responses"].includes(provider.dialect)) {
+  } else if (
+    !["openai_compatible", "mlx_native", "anthropic_messages"].includes(
+      provider.dialect,
+    )
+  ) {
     issues.push({
       type: "warning",
-      message: `${ref}: Unknown dialect '${provider.dialect}'. Expected 'openai-chat' or 'mlx-responses'`,
+      message: `${ref}: Unknown dialect '${provider.dialect}'. Expected 'openai_compatible', 'mlx_native', or 'anthropic_messages'`,
     });
   }
 
@@ -185,13 +179,151 @@ function validateProvider(
         type: "error",
         message: `${ref}: Missing auth.type`,
       });
-    } else if (
-      !["none", "bearer", "api-key-header"].includes(provider.auth.type)
+    } else if (!["none", "bearer", "header"].includes(provider.auth.type)) {
+      issues.push({
+        type: "error",
+        message: `${ref}: Invalid auth.type '${provider.auth.type}'. Expected 'none', 'bearer', or 'header'`,
+      });
+    }
+  }
+
+  // Validate headers (optional)
+  if (provider.headers !== undefined) {
+    if (
+      typeof provider.headers !== "object" ||
+      provider.headers === null ||
+      Array.isArray(provider.headers)
     ) {
       issues.push({
         type: "error",
-        message: `${ref}: Invalid auth.type '${provider.auth.type}'. Expected 'none', 'bearer', or 'api-key-header'`,
+        message: `${ref}: headers must be an object`,
       });
+    } else {
+      for (const [key, value] of Object.entries(provider.headers)) {
+        if (typeof value !== "string") {
+          issues.push({
+            type: "warning",
+            message: `${ref}: headers.${key} should be a string`,
+          });
+        }
+      }
+    }
+  }
+
+  // Validate overrides (optional)
+  if (provider.overrides !== undefined) {
+    if (
+      typeof provider.overrides !== "object" ||
+      provider.overrides === null ||
+      Array.isArray(provider.overrides)
+    ) {
+      issues.push({
+        type: "error",
+        message: `${ref}: overrides must be an object`,
+      });
+    } else {
+      if (
+        provider.overrides.reasoningFields !== undefined &&
+        !Array.isArray(provider.overrides.reasoningFields)
+      ) {
+        issues.push({
+          type: "warning",
+          message: `${ref}: overrides.reasoningFields should be an array of strings`,
+        });
+      }
+      if (
+        provider.overrides.chatPath !== undefined &&
+        typeof provider.overrides.chatPath !== "string"
+      ) {
+        issues.push({
+          type: "warning",
+          message: `${ref}: overrides.chatPath should be a string`,
+        });
+      }
+      if (
+        provider.overrides.modelsPath !== undefined &&
+        typeof provider.overrides.modelsPath !== "string"
+      ) {
+        issues.push({
+          type: "warning",
+          message: `${ref}: overrides.modelsPath should be a string`,
+        });
+      }
+    }
+  }
+
+  // Validate engine (optional - for local providers)
+  if (provider.engine !== undefined) {
+    if (
+      typeof provider.engine !== "object" ||
+      provider.engine === null ||
+      Array.isArray(provider.engine)
+    ) {
+      issues.push({
+        type: "error",
+        message: `${ref}: engine must be an object`,
+      });
+    } else {
+      if (typeof provider.engine.managed !== "boolean") {
+        issues.push({
+          type: "error",
+          message: `${ref}: engine.managed must be a boolean`,
+        });
+      }
+      if (
+        !provider.engine.name ||
+        typeof provider.engine.name !== "string" ||
+        provider.engine.name.trim().length === 0
+      ) {
+        issues.push({
+          type: "error",
+          message: `${ref}: engine.name must be a non-empty string`,
+        });
+      }
+      if (
+        provider.engine.gpuLayers !== undefined &&
+        typeof provider.engine.gpuLayers !== "number"
+      ) {
+        issues.push({
+          type: "warning",
+          message: `${ref}: engine.gpuLayers should be a number`,
+        });
+      }
+      if (
+        provider.engine.contextSize !== undefined &&
+        typeof provider.engine.contextSize !== "number"
+      ) {
+        issues.push({
+          type: "warning",
+          message: `${ref}: engine.contextSize should be a number`,
+        });
+      }
+      if (
+        provider.engine.batchSize !== undefined &&
+        typeof provider.engine.batchSize !== "number"
+      ) {
+        issues.push({
+          type: "warning",
+          message: `${ref}: engine.batchSize should be a number`,
+        });
+      }
+      if (
+        provider.engine.flashAttention !== undefined &&
+        typeof provider.engine.flashAttention !== "boolean"
+      ) {
+        issues.push({
+          type: "warning",
+          message: `${ref}: engine.flashAttention should be a boolean`,
+        });
+      }
+      if (provider.engine.extraArgs !== undefined) {
+        if (!Array.isArray(provider.engine.extraArgs)) {
+          issues.push({
+            type: "warning",
+            message: `${ref}: engine.extraArgs should be an array of strings`,
+          });
+        }
+      }
     }
   }
 }

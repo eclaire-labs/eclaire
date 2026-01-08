@@ -46,7 +46,6 @@ export interface CommandOptions {
   workers?: string;
   interactive?: boolean;
   force?: boolean;
-  fix?: boolean;
   preset?: string;
   timeout?: string;
   memory?: boolean;
