@@ -3,10 +3,6 @@ packages:
   - 'tools/*'
   - 'packages/*'
 
-injectWorkspacePackages: true
-syncInjectedDepsAfterScripts:
-  - build
-
 onlyBuiltDependencies:
   - better-sqlite3
   - sharp

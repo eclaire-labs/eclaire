@@ -5,6 +5,9 @@
   "description": "Database abstraction for Eclaire applications - schemas, transactions, migrations",
   "license": "MIT",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -55,7 +58,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/migrations dist/",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "db:migrate": "tsx src/scripts/migrate.ts",

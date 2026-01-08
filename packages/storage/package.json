@@ -5,6 +5,9 @@
   "description": "Storage abstraction - local filesystem and S3-compatible backends with zero-dependency core",
   "license": "MIT",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {

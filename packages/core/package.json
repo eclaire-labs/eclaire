@@ -5,6 +5,9 @@
   "description": "Core utilities for Eclaire applications - ID generation, encryption, types",
   "license": "MIT",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {

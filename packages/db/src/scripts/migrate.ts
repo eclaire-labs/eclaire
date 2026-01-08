@@ -33,14 +33,16 @@ import {
 import * as pgSchema from "../schema/postgres.js";
 import * as sqliteSchema from "../schema/sqlite.js";
 
-// Migration folders relative to this script (from dist/scripts/ back to src/migrations/)
+// Migration folders relative to this script
+// Works for both: src/scripts/migrate.ts -> src/migrations/ (dev)
+//                 dist/scripts/migrate.js -> dist/migrations/ (prod)
 const SQLITE_MIGRATIONS = resolve(
   import.meta.dirname,
-  "../../src/migrations/sqlite",
+  "../migrations/sqlite",
 );
 const POSTGRES_MIGRATIONS = resolve(
   import.meta.dirname,
-  "../../src/migrations/postgres",
+  "../migrations/postgres",
 );
 
 async function main() {

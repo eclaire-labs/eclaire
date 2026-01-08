@@ -55,7 +55,7 @@ WORKDIR /app
 
 # Build tools needed to compile native deps + worker processing tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 make g++ \
+    python3 make g++ git ca-certificates \
     # Document & image tooling needed at build-time:
     libreoffice libreoffice-writer libreoffice-calc libreoffice-impress \
     graphicsmagick imagemagick ghostscript poppler-utils libheif1 \
@@ -117,13 +117,6 @@ RUN pnpm --filter @eclaire/core build && \
     pnpm --filter @eclaire/queue build && \
     pnpm --filter @eclaire/cli build
 
-# pnpm can be configured to "inject" workspace packages (copying them into node_modules).
-# In Docker, we install deps before copying full sources for better caching; that can leave
-# injected workspace packages missing freshly-built `dist/` outputs during the backend build.
-# Delete stale injected copies and re-install to get freshly-built dist/ folders.
-RUN rm -rf node_modules/@eclaire && \
-    pnpm install --frozen-lockfile --filter=@eclaire/backend... --filter=@eclaire/cli... --prefer-offline
-
 RUN pnpm build
 
 # ===== Production deps (pruned) =====
@@ -132,11 +125,11 @@ FROM builder AS prod-deps
 # At this point, /app/apps/backend/dist already exists from builder
 # Deploy the standalone backend with prod dependencies (now includes worker deps)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm deploy --filter=@eclaire/backend --prod /deploy
+    pnpm deploy --legacy --filter=@eclaire/backend --prod /deploy
 
 # Deploy CLI with its production dependencies
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm deploy --filter=@eclaire/cli --prod /deploy-cli
+    pnpm deploy --legacy --filter=@eclaire/cli --prod /deploy-cli
 
 # ===== Runner Stage =====
 FROM base AS runner

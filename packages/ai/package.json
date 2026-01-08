@@ -5,6 +5,9 @@
   "description": "Unified AI client for Eclaire - multi-provider support with adapters",
   "license": "MIT",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {

@@ -5,6 +5,9 @@
   "description": "Pino-based structured logging for Eclaire applications",
   "license": "MIT",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {

@@ -5,6 +5,9 @@
   "description": "Job queue abstraction - BullMQ and database-backed modes with zero-dependency core",
   "license": "MIT",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
