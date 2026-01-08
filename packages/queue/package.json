@@ -10,34 +10,42 @@
   "exports": {
     ".": {
       "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./core": {
       "development": "./src/core/index.ts",
+      "types": "./dist/core/index.d.ts",
       "default": "./dist/core/index.js"
     },
     "./driver-db": {
       "development": "./src/driver-db/index.ts",
+      "types": "./dist/driver-db/index.d.ts",
       "default": "./dist/driver-db/index.js"
     },
     "./driver-bullmq": {
       "development": "./src/driver-bullmq/index.ts",
+      "types": "./dist/driver-bullmq/index.d.ts",
       "default": "./dist/driver-bullmq/index.js"
     },
     "./transport-http": {
       "development": "./src/transport-http/index.ts",
+      "types": "./dist/transport-http/index.d.ts",
       "default": "./dist/transport-http/index.js"
     },
     "./app": {
       "development": "./src/app/index.ts",
+      "types": "./dist/app/index.d.ts",
       "default": "./dist/app/index.js"
     },
     "./driver-db/schema/sqlite": {
       "development": "./src/driver-db/schema/sqlite.ts",
+      "types": "./dist/driver-db/schema/sqlite.d.ts",
       "default": "./dist/driver-db/schema/sqlite.js"
     },
     "./driver-db/schema/postgres": {
       "development": "./src/driver-db/schema/postgres.ts",
+      "types": "./dist/driver-db/schema/postgres.d.ts",
       "default": "./dist/driver-db/schema/postgres.js"
     }
   },

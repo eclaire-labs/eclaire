@@ -10,22 +10,27 @@
   "exports": {
     ".": {
       "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./core": {
       "development": "./src/core/index.ts",
+      "types": "./dist/core/index.d.ts",
       "default": "./dist/core/index.js"
     },
     "./local": {
       "development": "./src/adapters/local/index.ts",
+      "types": "./dist/adapters/local/index.d.ts",
       "default": "./dist/adapters/local/index.js"
     },
     "./memory": {
       "development": "./src/adapters/memory/index.ts",
+      "types": "./dist/adapters/memory/index.d.ts",
       "default": "./dist/adapters/memory/index.js"
     },
     "./s3": {
       "development": "./src/adapters/s3/index.ts",
+      "types": "./dist/adapters/s3/index.d.ts",
       "default": "./dist/adapters/s3/index.js"
     }
   },
