@@ -49,7 +49,7 @@ The default configuration uses the `llama-cpp` provider (port 11500) and `llama-
 
 > **Context size**: The `--ctx-size 16384` flag limits context to 16K tokens to reduce GPU memory usage. Adjust based on your hardware -higher values allow longer conversations but require more memory.
 
-Choose your setup based on your hardware and available memory. See [Model Recommendations](#model-recommendations) below for guidance.
+Choose your setup based on your hardware and available memory.
 
 ## Using the CLI
 
@@ -61,14 +61,27 @@ The recommended way to manage models is through the Eclaire CLI. In Docker deplo
 # Show all configured models and which are active
 eclaire model list
 
-# Show memory requirements for local models
-eclaire model list --memory
-
 # Filter by context
 eclaire model list --context backend
 ```
 
+### Import Models
+
+Import models directly from HuggingFace or OpenRouter. This fetches model metadata and adds it to your local model registry.
+
+> **Note**: For HuggingFace models, import only adds the model configuration. You'll still need to download the model file when you first use it (llama-server downloads automatically on startup).
+
+```bash
+# Import from HuggingFace (GGUF format for llama.cpp)
+eclaire model import https://huggingface.co/unsloth/Qwen3-14B-GGUF
+
+# Import from OpenRouter
+eclaire model import https://openrouter.ai/qwen/qwen3-vl-30b-a3b-instruct
+```
+
 ### Activate a Model
+
+Activate a model that has already been configured (either imported or manually added):
 
 ```bash
 # Set the backend (assistant) model
@@ -79,18 +92,6 @@ eclaire model activate --workers llama-cpp:gemma-3-4b-q4
 
 # Interactive selection
 eclaire model activate
-```
-
-### Import Models
-
-Import models directly from HuggingFace or OpenRouter:
-
-```bash
-# Import from HuggingFace (GGUF format for llama.cpp)
-eclaire model import https://huggingface.co/unsloth/Qwen3-14B-GGUF
-
-# Import from OpenRouter
-eclaire model import https://openrouter.ai/models/anthropic/claude-3.5-sonnet
 ```
 
 ### Manage Providers
@@ -114,30 +115,6 @@ eclaire provider test llama-cpp
 ```bash
 # Check configuration for errors
 eclaire config validate
-
-# Attempt to fix issues automatically
-eclaire config validate --fix
-```
-
-### Engine Management (Local Only)
-
-These commands manage the llama.cpp inference server. They only work when running Eclaire directly on the host (not in Docker):
-
-```bash
-# Check system readiness
-eclaire engine doctor
-
-# Start the inference server
-eclaire engine up
-
-# Stop the server
-eclaire engine down
-
-# View server logs
-eclaire engine logs -f
-
-# Download a model file
-eclaire engine pull unsloth/Qwen3-14B-GGUF/Qwen3-14B-Q4_K_XL.gguf
 ```
 
 ## Configuration Files
@@ -211,10 +188,10 @@ Defines individual models and their capabilities:
         "contextWindow": 32768
       }
     },
-    "openrouter:claude-3.5-sonnet": {
-      "name": "Claude 3.5 Sonnet",
+    "openrouter:qwen-qwen3-vl-30b-a3b-instruct": {
+      "name": "Qwen: Qwen3 VL 30B A3B Instruct",
       "provider": "openrouter",
-      "providerModel": "anthropic/claude-3.5-sonnet",
+      "providerModel": "qwen/qwen3-vl-30b-a3b-instruct",
       "capabilities": {
         "modalities": {
           "input": ["text", "image"],
@@ -222,7 +199,7 @@ Defines individual models and their capabilities:
         },
         "streaming": true,
         "tools": true,
-        "contextWindow": 200000
+        "contextWindow": 131072
       }
     }
   }
@@ -243,7 +220,7 @@ Specifies which models are active:
 {
   "active": {
     "backend": "llama-cpp:qwen3-14b-q4",
-    "workers": "llama-cpp:gemma-3-4b-q4"
+    "workers": "llama-cpp-2:gemma-3-4b-q4"
   }
 }
 ```
@@ -264,7 +241,7 @@ The values must match model IDs from `models.json`.
 
 ## MLX on Apple Silicon
 
-Mac users with Apple Silicon (M1/M2/M3/M4) can take advantage of [MLX](https://github.com/ml-explore/mlx), Apple's machine learning framework optimized for the unified memory architecture.
+Mac users with Apple Silicon (M1/M2/M3/M4/M5) can take advantage of [MLX](https://github.com/ml-explore/mlx), Apple's machine learning framework optimized for the unified memory architecture.
 
 ### Requirements
 
@@ -295,73 +272,52 @@ Configure your MLX-compatible server as a provider in `config/ai/providers.json`
 
 Then add models to `config/ai/models.json` and activate them with the CLI.
 
-## Model Recommendations
-
-Choose models based on your available memory:
-
-### 8GB Memory
-- **Backend**: Qwen3 4B or Gemma 3 4B (Q4 quantization)
-- **Workers**: Same model for both contexts
-
-### 16GB Memory
-- **Backend**: Qwen3 8B (Q4) or Mistral 7B
-- **Workers**: Gemma 3 4B (vision)
-
-### 32GB+ Memory
-- **Backend**: Qwen3 14B (Q4) - excellent tool calling
-- **Workers**: Gemma 3 12B (vision) or Qwen3 VL 8B
-
-### Cloud/Hybrid
-For best results, use cloud models for complex reasoning and local models for routine processing:
-- **Backend**: Claude 3.5 Sonnet or GPT-4o via OpenRouter
-- **Workers**: Local vision model to keep data private
-
 ## Adding a HuggingFace Model Manually
 
-1. Find a GGUF model on HuggingFace (e.g., `unsloth/Mistral-7B-GGUF`)
+1. Find a GGUF model on HuggingFace (e.g., `unsloth/Qwen3-VL-30B-A3B-Instruct-GGUF`)
 
 2. Add to `models.json`:
 ```json
-"llama-cpp:mistral-7b-q4": {
-  "name": "Mistral 7B (Q4)",
+"llama-cpp:qwen3-vl-30b-a3b-instruct-gguf-q4-k-xl": {
+  "name": "Qwen3 VL 30B A3B Instruct (Q4_K_XL)",
   "provider": "llama-cpp",
-  "providerModel": "unsloth/Mistral-7B-GGUF:Q4_K_M",
+  "providerModel": "unsloth/Qwen3-VL-30B-A3B-Instruct-GGUF:Q4_K_XL",
   "capabilities": {
-    "modalities": { "input": ["text"], "output": ["text"] },
+    "modalities": { "input": ["text", "image"], "output": ["text"] },
     "streaming": true,
     "tools": true,
-    "contextWindow": 32768
+    "contextWindow": 262144
   }
 }
 ```
 
 3. Activate it:
 ```bash
-eclaire model activate --backend llama-cpp:mistral-7b-q4
+eclaire model activate --backend llama-cpp:qwen3-vl-30b-a3b-instruct-gguf-q4-k-xl
 ```
 
 ## Adding an OpenRouter Model Manually
 
-1. Find the model on [OpenRouter](https://openrouter.ai/models)
+1. Find the model on [OpenRouter](https://openrouter.ai/models) (e.g., [qwen/qwen3-vl-30b-a3b-instruct](https://openrouter.ai/models/qwen/qwen3-vl-30b-a3b-instruct))
 
 2. Ensure the `openrouter` provider is configured in `providers.json` with your API key
 
 3. Add to `models.json`:
 ```json
-"openrouter:gpt-4o": {
-  "name": "GPT-4o",
+"openrouter:qwen-qwen3-vl-30b-a3b-instruct": {
+  "name": "Qwen: Qwen3 VL 30B A3B Instruct",
   "provider": "openrouter",
-  "providerModel": "openai/gpt-4o",
+  "providerModel": "qwen/qwen3-vl-30b-a3b-instruct",
   "capabilities": {
     "modalities": { "input": ["text", "image"], "output": ["text"] },
     "streaming": true,
     "tools": true,
-    "contextWindow": 128000
+    "contextWindow": 131072
   }
 }
 ```
 
 4. Activate it:
 ```bash
-eclaire model activate --backend openrouter:gpt-4o
+eclaire model activate --backend openrouter:qwen-qwen3-vl-30b-a3b-instruct
 ```
