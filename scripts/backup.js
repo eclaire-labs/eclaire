@@ -200,8 +200,7 @@ function showBackupPreview() {
   // 3. Configuration files
   console.log(`\n${colors.bright}${colors.magenta}3. Configuration Files${colors.reset}`);
   const configFiles = [
-    'compose.yaml',
-    'pm2.deps.config.js'
+    'compose.yaml'
   ];
   const configDirs = [
     'config/ai'
@@ -300,8 +299,7 @@ async function createBackup() {
   // 3. Backup configuration files
   console.log(`\n${colors.bright}${colors.magenta}3. Configuration Files${colors.reset}`);
   const configFiles = [
-    { src: path.join(PROJECT_ROOT, 'compose.yaml'), dest: path.join(backupDir, 'compose.yaml') },
-    { src: path.join(PROJECT_ROOT, 'pm2.deps.config.js'), dest: path.join(backupDir, 'pm2.deps.config.js') }
+    { src: path.join(PROJECT_ROOT, 'compose.yaml'), dest: path.join(backupDir, 'compose.yaml') }
   ];
 
   for (const { src, dest } of configFiles) {

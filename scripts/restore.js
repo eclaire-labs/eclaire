@@ -353,8 +353,7 @@ function showRestorePreview(backupDir) {
   // 3. Configuration files
   console.log(`\n${colors.bright}${colors.magenta}3. Configuration Files${colors.reset}`);
   const configFiles = [
-    'compose.yaml',
-    'pm2.deps.config.js'
+    'compose.yaml'
   ];
   const configDirs = [
     'config/ai'
@@ -494,8 +493,7 @@ async function restoreBackup(backupDir, options = {}) {
   // 3. Restore configuration files
   console.log(`\n${colors.bright}${colors.magenta}⚙️ Configuration Files${colors.reset}`);
   const configFiles = [
-    { src: 'compose.yaml', dest: 'compose.yaml' },
-    { src: 'pm2.deps.config.js', dest: 'pm2.deps.config.js' }
+    { src: 'compose.yaml', dest: 'compose.yaml' }
   ];
 
   for (const { src, dest } of configFiles) {

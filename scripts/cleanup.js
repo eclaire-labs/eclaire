@@ -204,7 +204,6 @@ async function dropDatabase(dryRun = false) {
       console.log('');
       console.log('To start PostgreSQL:');
       console.log(`  ${colors.cyan}•${colors.reset} Docker: ${colors.yellow}docker start eclaire-postgres${colors.reset}`);
-      console.log(`  ${colors.cyan}•${colors.reset} PM2: ${colors.yellow}pm2 start postgres${colors.reset}`);
       console.log(`  ${colors.cyan}•${colors.reset} Or check your PostgreSQL service status`);
     } else {
       console.error(`${colors.red}✗${colors.reset} Database cleanup failed: ${error.message}`);
@@ -392,7 +391,6 @@ async function performCleanup(options = {}) {
     // Post-cleanup reminders
     console.log(`\n${colors.bright}${colors.yellow}📝 Next Steps:${colors.reset}`);
     console.log(`${colors.yellow}Don't forget to stop external dependencies:${colors.reset}`);
-    console.log(`  • PM2 processes: ${colors.cyan}pm2 stop all${colors.reset}`);
     console.log(`  • Docker containers: ${colors.cyan}docker stop eclaire-redis eclaire-postgres${colors.reset}`);
     console.log(`  • Or stop all: ${colors.cyan}docker stop $(docker ps -q)${colors.reset}`);
     console.log(`\n${colors.cyan}💡 To set up a fresh system, run your setup script or restore from backup.${colors.reset}`);

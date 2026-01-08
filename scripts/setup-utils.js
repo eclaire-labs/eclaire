@@ -221,14 +221,6 @@ async function checkDependencies() {
       })
     },
     {
-      name: 'PM2',
-      command: 'pm2',
-      check: () => ({
-        exists: commandExists('pm2'),
-        version: getVersion('pm2', '-v')
-      })
-    },
-    {
       name: 'llama.cpp',
       command: 'llama-server',
       optional: true,
@@ -328,9 +320,7 @@ async function checkDependencies() {
     if (!result.exists && !dep.optional) {
       allGood = false;
       console.log(`     ${colors.red}Please install ${dep.name}${colors.reset}`);
-      if (dep.name === 'PM2') {
-        console.log(`     Run: ${colors.cyan}pnpm add -g pm2${colors.reset}`);
-      } else if (dep.name === 'LibreOffice') {
+      if (dep.name === 'LibreOffice') {
         console.log(`     macOS: ${colors.cyan}brew install --cask libreoffice${colors.reset}`);
         console.log(`     Ubuntu/Debian: ${colors.cyan}sudo apt-get install libreoffice${colors.reset}`);
       } else if (dep.name === 'Poppler Utils (pdftocairo)') {

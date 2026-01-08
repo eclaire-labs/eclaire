@@ -54,7 +54,7 @@ async function showPreflightSummary() {
   console.log('\nThis setup will:');
 
   if (!flags.skipDeps) {
-    console.log(`  1. ${colors.blue}Check system dependencies${colors.reset} (Node.js, Docker, PM2, LibreOffice, Poppler, etc.)`);
+    console.log(`  1. ${colors.blue}Check system dependencies${colors.reset} (Node.js, Docker, LibreOffice, Poppler, etc.)`);
   }
   console.log(`  2. ${colors.blue}Copy environment files${colors.reset} (.env, AI config files)`);
   console.log(`  3. ${colors.blue}Choose database${colors.reset} (SQLite or PostgreSQL)`);
