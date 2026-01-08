@@ -76,26 +76,22 @@ export function getStorage(): Storage {
 
   const backend = getBackend();
 
-  switch (backend) {
-    case "local":
-      storageInstance = new LocalStorage({
-        baseDir: getBaseDir(),
-        logger: storageLogger,
-      });
-      break;
-
-    case "s3":
-      throw new Error(
-        "S3 storage backend is not yet implemented. Use STORAGE_BACKEND=local or omit the variable.",
-      );
-
-    default:
-      throw new Error(`Unknown storage backend: ${backend}`);
+  if (backend === "local") {
+    storageInstance = new LocalStorage({
+      baseDir: getBaseDir(),
+      logger: storageLogger,
+    });
+    pinoLogger.info({ backend, baseDir: getBaseDir() }, "Storage initialized");
+    return storageInstance;
   }
 
-  pinoLogger.info({ backend, baseDir: getBaseDir() }, "Storage initialized");
+  if (backend === "s3") {
+    throw new Error(
+      "S3 storage backend is not yet implemented. Use STORAGE_BACKEND=local or omit the variable.",
+    );
+  }
 
-  return storageInstance;
+  throw new Error(`Unknown storage backend: ${backend}`);
 }
 
 /**

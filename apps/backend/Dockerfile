@@ -117,6 +117,13 @@ RUN pnpm --filter @eclaire/core build && \
     pnpm --filter @eclaire/queue build && \
     pnpm --filter @eclaire/cli build
 
+# pnpm can be configured to "inject" workspace packages (copying them into node_modules).
+# In Docker, we install deps before copying full sources for better caching; that can leave
+# injected workspace packages missing freshly-built `dist/` outputs during the backend build.
+# Re-running install after building workspace packages ensures injected copies are updated.
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    SHARP_IGNORE_GLOBAL_LIBVIPS=1 pnpm install --frozen-lockfile --filter=@eclaire/backend... --filter=@eclaire/cli... --prefer-offline --force
+
 RUN pnpm build
 
 # ===== Production deps (pruned) =====
