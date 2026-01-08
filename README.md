@@ -77,10 +77,13 @@ With AI gaining rapid adoption, there is a growing need for alternatives to clos
 
 ### What's New in v0.6.0
 
-- **Simplified self-hosting**  - Single unified container, optional Redis
-- **SQLite support**  - Lightweight alternative to Postgres
-- **Expanded AI models**  - Vision models, llama.cpp router, MLX backends
-- **Auto-upgrades**  - Database migrations run automatically on startup
+- **Unified deployment**: frontend + backend + workers can run in a single container
+- **Simplified Self-Hosting**  - new one-command `setup.sh` flow, plus a streamlined `compose.yaml`
+- **Better AI Support**  - New vision models (including Qwen3-VL), llama.cpp router, improved MLX support.
+- **Modern Frontend**  - Migrated from Next.js to Vite + TanStack Router
+- **SQLite Support**: Full SQLite database support alongside Postgres for simpler workloads
+- **Database Queue Mode**: Support Postgres or SQLite for job processing instead of Redis/BullMQ
+- **New Admin CLI**  - Manage your instance from the command line
 
 See the [CHANGELOG](./CHANGELOG.md) for full details.
   
@@ -158,15 +161,18 @@ After setup completes:
 
 ```bash
 # 1. Start your LLM servers (in separate terminals)
-#    Models download automatically on first run
+#    Models download automatically on first run if not already cached
 llama-server -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL --ctx-size 16384 --port 11500
 llama-server -hf unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --ctx-size 16384 --port 11501
 
 # 2. Start Eclaire
 docker compose up -d
 ```
-
 Open http://localhost:3000 and click "Sign up" to create your account.
+
+See [AI Model Configuration](docs/ai-models.md) to use other AI providers and models.
+
+
 
 ### Configuration
 
@@ -174,14 +180,6 @@ Configuration lives in two places:
 - **`.env`**  - secrets, database settings, ports
 - **`config/ai/`**  - LLM provider URLs and model definitions
 
-### Upgrading
-
-```bash
-cd eclaire
-docker compose pull
-docker compose run --rm eclaire upgrade
-docker compose up -d
-```
 
 ### Stopping
 
@@ -221,9 +219,7 @@ Eclaire follows a modular architecture with clear separation between the fronten
 - **External Integrations**: GitHub and Reddit APIs for bookmark fetching
 
 ## Roadmap
-- Native mobile and desktop clients
 - Support for more data sources and integrations
-- Data source linking and synchronization
 - More robust full text indexing and search
 - Better extensibility and plugin system
 - Improved AI capabilities and model support
@@ -241,7 +237,6 @@ Beyond Docker and an LLM server, you'll need:
 
 - **Node.js ≥ 24** with corepack enabled
 - **pnpm** (managed via corepack)
-- **PM2** process manager (`npm install -g pm2`)
 
 **Document/image processing tools:**
 
