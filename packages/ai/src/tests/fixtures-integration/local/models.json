@@ -1,0 +1,26 @@
+{
+  "models": {
+    "local-llama": {
+      "provider": "local-llama",
+      "name": "Local Llama Server Model",
+      "providerModel": "local-model",
+      "capabilities": {
+        "contextWindow": 8192,
+        "maxOutputTokens": 4096,
+        "supportsStreaming": true,
+        "supportsTools": true,
+        "supportsJsonSchema": false,
+        "supportsStructuredOutputs": false,
+        "supportsReasoning": false,
+        "modalities": {
+          "input": ["text"],
+          "output": ["text"]
+        }
+      },
+      "tokenizer": {
+        "type": "tiktoken",
+        "encoding": "cl100k_base"
+      }
+    }
+  }
+}

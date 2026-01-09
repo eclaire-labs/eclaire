@@ -35,7 +35,6 @@ Thumbs.db
 # Data directories
 data/
 backups/
-local/
 
 # Logs
 logs/

@@ -35,7 +35,7 @@
     "dev:backend:nowatch": "cd apps/backend && pnpm dev:nowatch",
     "dev:frontend": "cd apps/frontend && pnpm dev",
     "build": "pnpm -r build",
-    "clean:all": "pnpm -r clean && find . -name '*.tsbuildinfo' -type f -delete",
+    "clean:all": "pnpm -r clean && find . -name '*.tsbuildinfo' -type f -delete && rm -rf node_modules apps/*/node_modules packages/*/node_modules tools/*/node_modules",
     "test": "pnpm test:unit",
     "test:unit": "pnpm --filter @eclaire/backend test && pnpm --filter @eclaire/frontend test && pnpm --filter @eclaire/ai test && pnpm --filter @eclaire/queue test",
     "test:integration": "echo 'Run a specific integration suite: test:integration:api, test:integration:ai:local, etc.' && exit 1",

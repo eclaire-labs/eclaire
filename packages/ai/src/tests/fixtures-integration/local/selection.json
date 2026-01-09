@@ -1,0 +1,6 @@
+{
+  "active": {
+    "backend": "local-llama",
+    "workers": "local-llama"
+  }
+}

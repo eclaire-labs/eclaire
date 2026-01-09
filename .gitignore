@@ -68,7 +68,6 @@ config/ai/providers.json
 config/ai/selection.json
 
 backups/
-local/
 
 # Monorepo tools
 .turbo/

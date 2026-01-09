@@ -1,0 +1,12 @@
+{
+  "providers": {
+    "local-llama": {
+      "dialect": "openai-chat",
+      "baseUrl": "http://localhost:11435",
+      "endpoint": "/v1/chat/completions",
+      "auth": {
+        "type": "none"
+      }
+    }
+  }
+}
