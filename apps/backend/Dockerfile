@@ -218,9 +218,6 @@ COPY --from=browser-installer --chown=nodeapp:nodeapp /root/.cache/ms-playwright
 COPY --from=frontend-builder --chown=nodeapp:nodeapp /app/apps/frontend/dist ./frontend-dist
 ENV FRONTEND_DIST_PATH=/app/frontend-dist
 
-# Copy additional runtime files
-COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/tool-signatures.json ./
-
 # --- Optional runtime DB tooling (only if used at container runtime) ---
 # If your entrypoint or ops scripts call these, keep them; otherwise omit.
 COPY --from=builder  --chown=nodeapp:nodeapp /app/apps/backend/scripts ./scripts
