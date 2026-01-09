@@ -53,15 +53,9 @@ RUN pnpm build
 FROM node:24-bookworm-slim AS builder-base
 WORKDIR /app
 
-# Build tools needed to compile native deps + worker processing tools
+# Build tools needed to compile native deps (runtime tools are in runner stage only)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ git ca-certificates \
-    # Document & image tooling needed at build-time:
-    libreoffice libreoffice-writer libreoffice-calc libreoffice-impress \
-    graphicsmagick imagemagick ghostscript poppler-utils libheif1 \
-    # Playwright deps
-    libnss3 libnspr4 libatk-bridge2.0-0 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
-    libxrandr2 libgbm1 libxss1 libasound2 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
