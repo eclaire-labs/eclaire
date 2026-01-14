@@ -1,5 +1,13 @@
 # Eclaire Changelog
 
+## [0.6.1] - 2026-01-13
+
+### Security
+
+- **backend**: upgrade hono to 4.11.4 for CVE-2026-22817 (JWT Algorithm Confusion)
+
+---
+
 ## [0.6.0] - 2026-01-07
 
 ### Highlights
