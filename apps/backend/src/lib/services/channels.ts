@@ -29,9 +29,12 @@ const logger = createChildLogger("channels");
  */
 function validateAndEncryptConfig(
   platform: ChannelPlatform,
+  // biome-ignore lint/suspicious/noExplicitAny: platform-specific config validation
   config: any,
+  // biome-ignore lint/suspicious/noExplicitAny: platform-specific config validation
 ): any | null {
   try {
+    // biome-ignore lint/suspicious/noExplicitAny: platform-specific config validation
     let validatedConfig: any;
 
     switch (platform) {
@@ -73,6 +76,7 @@ function validateAndEncryptConfig(
 /**
  * Formats a channel for API response (excludes sensitive config)
  */
+// biome-ignore lint/suspicious/noExplicitAny: raw DB row
 function formatChannelForResponse(channel: any): ChannelResponse {
   return {
     id: channel.id,
@@ -229,6 +233,7 @@ export async function updateChannel(
     }
 
     // Prepare update object
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic update object
     const updateValues: any = {
       updatedAt: new Date(),
     };
@@ -417,10 +422,12 @@ export async function deleteChannel(
 export async function getNotificationChannels(
   userId: string,
   targetChannelIds?: string[],
+  // biome-ignore lint/suspicious/noExplicitAny: raw DB row
 ): Promise<any[]> {
   try {
     const { inArray, or } = await import("drizzle-orm");
 
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic query object
     const whereConditions: any[] = [
       eq(channels.userId, userId),
       channels.isActive,

@@ -80,6 +80,7 @@ export interface RedditExtractedData {
  * Transform raw Reddit API response into a simplified, structured format
  * suitable for rendering and storage
  */
+// biome-ignore lint/suspicious/noExplicitAny: raw Reddit API response with variable structure
 export function extractRedditData(rawApiResponse: any): RedditExtractedData {
   try {
     logger.info("Extracting Reddit data from API response");
@@ -168,15 +169,17 @@ export function extractRedditData(rawApiResponse: any): RedditExtractedData {
     );
 
     return extractedData;
-  } catch (error: any) {
-    logger.error({ error: error.message }, "Failed to extract Reddit data");
-    throw new Error(`Reddit data extraction failed: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error({ error: message }, "Failed to extract Reddit data");
+    throw new Error(`Reddit data extraction failed: ${message}`);
   }
 }
 
 /**
  * Recursively transform comment tree to ensure consistent structure
  */
+// biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree with kind/data discriminated union
 function transformComments(comments: any[]): RedditCommentData[] {
   if (!Array.isArray(comments)) {
     return [];
@@ -320,7 +323,9 @@ export function getFormattedTitle(data: RedditExtractedData): string {
  * Extract Reddit-specific metadata from raw post and subreddit data
  */
 export function extractRedditMetadata(
+  // biome-ignore lint/suspicious/noExplicitAny: raw Reddit post data object
   postData: any,
+  // biome-ignore lint/suspicious/noExplicitAny: raw Reddit subreddit data object
   subredditData?: any,
 ): RedditMetadata {
   // Determine post type based on media

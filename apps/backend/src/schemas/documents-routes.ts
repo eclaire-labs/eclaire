@@ -5,6 +5,7 @@ import {
   UnauthorizedSchema,
   ValidationErrorSchema,
 } from "./all-responses.js";
+import { requestBodyResolver } from "./common.js";
 import {
   DocumentFlagUpdateSchema,
   DocumentPinUpdateSchema,
@@ -275,7 +276,7 @@ export const putDocumentRouteDescription = {
     description: "Complete document metadata",
     content: {
       "application/json": {
-        schema: resolver(DocumentSchema) as any,
+        schema: requestBodyResolver(DocumentSchema),
       },
     },
   },
@@ -333,7 +334,7 @@ export const patchDocumentRouteDescription = {
     description: "Partial document metadata",
     content: {
       "application/json": {
-        schema: resolver(PartialDocumentSchema) as any,
+        schema: requestBodyResolver(PartialDocumentSchema),
       },
     },
   },
@@ -749,7 +750,7 @@ export const patchDocumentReviewRouteDescription = {
     description: "New review status",
     content: {
       "application/json": {
-        schema: resolver(DocumentReviewUpdateSchema) as any,
+        schema: requestBodyResolver(DocumentReviewUpdateSchema),
       },
     },
   },
@@ -806,7 +807,7 @@ export const patchDocumentFlagRouteDescription = {
     description: "New flag color (or null to remove flag)",
     content: {
       "application/json": {
-        schema: resolver(DocumentFlagUpdateSchema) as any,
+        schema: requestBodyResolver(DocumentFlagUpdateSchema),
       },
     },
   },
@@ -863,7 +864,7 @@ export const patchDocumentPinRouteDescription = {
     description: "New pin status",
     content: {
       "application/json": {
-        schema: resolver(DocumentPinUpdateSchema) as any,
+        schema: requestBodyResolver(DocumentPinUpdateSchema),
       },
     },
   },

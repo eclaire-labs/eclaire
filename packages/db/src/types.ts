@@ -41,10 +41,14 @@ export type {
 } from "@eclaire/core/types";
 
 /**
- * Database instance types for each supported dialect
+ * Database instance types for each supported dialect.
+ * Schema type params are `any` because the actual schema differs per dialect.
  */
+// biome-ignore lint/suspicious/noExplicitAny: Drizzle schema type varies by dialect
 export type PostgresDbInstance = PostgresJsDatabase<any>;
+// biome-ignore lint/suspicious/noExplicitAny: Drizzle schema type varies by dialect
 export type PgliteDbInstance = PgliteDatabase<any>;
+// biome-ignore lint/suspicious/noExplicitAny: Drizzle schema type varies by dialect
 export type SqliteDbInstance = BetterSQLite3Database<any>;
 
 /**
@@ -92,46 +96,57 @@ export interface BaseRepository<TInsert, TUpdate, TSelect> {
 /**
  * Transaction context - provides access to repositories for database operations.
  * All methods are async for consistent Read-Modify-Write support.
+ *
+ * Repository type params are `any` because the actual Insert/Update/Select types
+ * differ between PostgreSQL and SQLite schemas. The Tx interface is the shared
+ * contract between adapters and service layer.
  */
 export interface Tx {
-  // User repositories
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   users: BaseRepository<any, any, any>;
 
-  // Bookmark repositories
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   bookmarks: BaseRepository<any, any, any>;
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   bookmarksTags: BaseRepository<any, any, any>;
 
-  // Task repositories
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   tasks: BaseRepository<any, any, any>;
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   tasksTags: BaseRepository<any, any, any>;
 
-  // Document repositories
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   documents: BaseRepository<any, any, any>;
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   documentsTags: BaseRepository<any, any, any>;
 
-  // Photo repositories
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   photos: BaseRepository<any, any, any>;
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   photosTags: BaseRepository<any, any, any>;
 
-  // Note repositories
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   notes: BaseRepository<any, any, any>;
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   notesTags: BaseRepository<any, any, any>;
 
-  // Tags
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   tags: BaseRepository<any, any, any>;
 
-  // History
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   history: BaseRepository<any, any, any>;
 
-  // Conversations & Messages
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   conversations: BaseRepository<any, any, any>;
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   messages: BaseRepository<any, any, any>;
 
-  // Channels & Feedback
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   channels: BaseRepository<any, any, any>;
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   feedback: BaseRepository<any, any, any>;
 
-  // Outbox for atomic side-effects (optional, for future use)
+  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
   outbox?: BaseRepository<any, any, any>;
 
   /**

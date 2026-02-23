@@ -75,11 +75,10 @@ export async function removeCommand(
         colors.dim('\nRun "eclaire config validate" to check configuration'),
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
-      colors.error(
-        `${icons.error} Failed to remove provider: ${error.message}`,
-      ),
+      colors.error(`${icons.error} Failed to remove provider: ${message}`),
     );
     process.exit(1);
   }

@@ -7,7 +7,7 @@ import {
   UnauthorizedSchema,
   ValidationErrorSchema,
 } from "./all-responses.js";
-import { reviewStatusSchema } from "./common.js";
+import { requestBodyResolver, reviewStatusSchema } from "./common.js";
 import {
   PartialTaskSchema,
   TaskCommentCreateSchema,
@@ -146,7 +146,7 @@ export const postTasksRouteDescription = {
     description: "Task creation data",
     content: {
       "application/json": {
-        schema: resolver(TaskSchema) as any,
+        schema: requestBodyResolver(TaskSchema),
       },
     },
   },
@@ -237,7 +237,7 @@ export const putTaskRouteDescription = {
     description: "Complete task data",
     content: {
       "application/json": {
-        schema: resolver(PartialTaskSchema) as any,
+        schema: requestBodyResolver(PartialTaskSchema),
       },
     },
   },
@@ -295,7 +295,7 @@ export const patchTaskRouteDescription = {
     description: "Partial task data",
     content: {
       "application/json": {
-        schema: resolver(PartialTaskSchema) as any,
+        schema: requestBodyResolver(PartialTaskSchema),
       },
     },
   },
@@ -435,7 +435,7 @@ export const patchTaskReviewRouteDescription = {
     description: "Review status update data",
     content: {
       "application/json": {
-        schema: resolver(TaskReviewUpdateSchema) as any,
+        schema: requestBodyResolver(TaskReviewUpdateSchema),
       },
     },
   },
@@ -492,7 +492,7 @@ export const patchTaskFlagRouteDescription = {
     description: "Flag color update data",
     content: {
       "application/json": {
-        schema: resolver(TaskFlagUpdateSchema) as any,
+        schema: requestBodyResolver(TaskFlagUpdateSchema),
       },
     },
   },
@@ -549,7 +549,7 @@ export const patchTaskPinRouteDescription = {
     description: "Pin status update data",
     content: {
       "application/json": {
-        schema: resolver(TaskPinUpdateSchema) as any,
+        schema: requestBodyResolver(TaskPinUpdateSchema),
       },
     },
   },
@@ -647,7 +647,7 @@ export const postTaskCommentRouteDescription = {
     description: "Comment creation data",
     content: {
       "application/json": {
-        schema: resolver(TaskCommentCreateSchema) as any,
+        schema: requestBodyResolver(TaskCommentCreateSchema),
       },
     },
   },
@@ -704,7 +704,7 @@ export const putTaskCommentRouteDescription = {
     description: "Comment update data",
     content: {
       "application/json": {
-        schema: resolver(TaskCommentUpdateSchema) as any,
+        schema: requestBodyResolver(TaskCommentUpdateSchema),
       },
     },
   },

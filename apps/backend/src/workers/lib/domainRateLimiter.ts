@@ -367,6 +367,7 @@ export class DomainRateLimiter {
         currentlyRunning: new Set<string>(),
       });
     }
+    // biome-ignore lint/style/noNonNullAssertion: guarded by .has() check and .set() above
     return this.domainStates.get(domain)!;
   }
 
@@ -521,9 +522,13 @@ async function handleStaleJob(
       { jobId, domain, staleTimeMs },
       "Successfully updated database state for stale job via domain rate limiter cleanup",
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
-      { jobId, domain, error: error.message },
+      {
+        jobId,
+        domain,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Failed to fail stale job during cleanup",
     );
   }

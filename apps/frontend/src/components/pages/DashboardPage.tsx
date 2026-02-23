@@ -11,10 +11,15 @@ export default function DashboardPage() {
   const { data: session, isPending: isSessionPending } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<{
+    // biome-ignore lint/suspicious/noExplicitAny: untyped API response
     stats: any;
+    // biome-ignore lint/suspicious/noExplicitAny: untyped API response
     recentActivities: any[];
+    // biome-ignore lint/suspicious/noExplicitAny: untyped API response
     activityTimeline: any[];
+    // biome-ignore lint/suspicious/noExplicitAny: untyped API response
     dueItems: any;
+    // biome-ignore lint/suspicious/noExplicitAny: untyped API response
     quickStats: any;
   } | null>(null);
 
@@ -88,6 +93,7 @@ export default function DashboardPage() {
 
   const userName =
     session.user.name ||
+    // biome-ignore lint/suspicious/noExplicitAny: auth user type lacks displayName
     (session.user as any).displayName ||
     session.user.email;
 

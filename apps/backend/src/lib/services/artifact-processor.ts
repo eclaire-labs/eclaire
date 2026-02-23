@@ -20,6 +20,7 @@ const logger = createChildLogger("artifact-processor");
 export async function processArtifacts(
   assetType: AssetType,
   assetId: string,
+  // biome-ignore lint/suspicious/noExplicitAny: generic artifact record
   artifacts: Record<string, any>,
 ): Promise<void> {
   const rawContent = JSON.stringify(artifacts, null, 2);

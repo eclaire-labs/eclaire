@@ -23,7 +23,7 @@ export interface BackendMessage {
   thinkingContent?: string | null;
   toolCalls?: ToolCallSummary[];
   createdAt: Date | string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ConversationWithMessages extends ConversationSummary {

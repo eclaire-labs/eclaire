@@ -43,6 +43,7 @@ export interface StreamParseResult {
 
 export interface ToolCallData {
   type: "tool_calls";
+  // biome-ignore lint/suspicious/noExplicitAny: tool call structure varies by provider and is parsed dynamically
   calls: any[];
 }
 
@@ -153,7 +154,7 @@ export class LLMStreamParser {
           return { type: "usage", usage: parsed.usage };
         }
 
-        if (parsed.choices && parsed.choices[0]) {
+        if (parsed.choices?.[0]) {
           const choice = parsed.choices[0];
 
           // Handle finish_reason from final chunk
@@ -690,18 +691,12 @@ export class LLMStreamParser {
     thinkingContent: string | null;
     thinkingSource: "reasoning_field" | "embedded_tags" | null;
   } {
-    if (
-      this.state.accumulatedReasoning &&
-      this.state.accumulatedReasoning.trim()
-    ) {
+    if (this.state.accumulatedReasoning?.trim()) {
       return {
         thinkingContent: this.state.accumulatedReasoning.trim(),
         thinkingSource: "reasoning_field",
       };
-    } else if (
-      this.state.accumulatedThinking &&
-      this.state.accumulatedThinking.trim()
-    ) {
+    } else if (this.state.accumulatedThinking?.trim()) {
       return {
         thinkingContent: this.state.accumulatedThinking.trim(),
         thinkingSource: "embedded_tags",

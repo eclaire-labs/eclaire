@@ -47,6 +47,7 @@ export interface GitHubMetadata {
     version: string;
     date: string;
   };
+  // biome-ignore lint/suspicious/noExplicitAny: GitHub API response shape varies by endpoint
   repositoryData: any;
 }
 
@@ -80,7 +81,8 @@ export interface RawMetadata {
   twitter?: TwitterMetadata;
   github?: GitHubMetadata;
   reddit?: RedditMetadata;
-  [key: string]: any; // Allow for other metadata types
+  // biome-ignore lint/suspicious/noExplicitAny: extensible metadata allows arbitrary platform-specific fields
+  [key: string]: any;
 }
 
 export interface Bookmark {

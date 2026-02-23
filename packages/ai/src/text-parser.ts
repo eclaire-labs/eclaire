@@ -7,6 +7,7 @@ const logger = createAILogger("text-parser");
  */
 export interface ToolCall {
   functionName: string;
+  // biome-ignore lint/suspicious/noExplicitAny: tool arguments are dynamically typed JSON from AI model
   arguments: Record<string, any>;
 }
 
@@ -33,7 +34,7 @@ export function extractThinkingContent(content: string): {
   const thinkRegex = /<think>\s*([\s\S]*?)\s*<\/think>/i;
   const thinkMatch = content.match(thinkRegex);
 
-  if (thinkMatch && thinkMatch[1]) {
+  if (thinkMatch?.[1]) {
     const thinkingContent = thinkMatch[1].trim();
     const cleanedContent = content.replace(thinkRegex, "").trim();
     return { thinkingContent, cleanedContent };
@@ -146,7 +147,7 @@ export function parseTextToolContent(
   if (!content || !content.trim()) {
     logger.warn({}, "Content is empty in parseTextToolContent");
     // Still check for reasoning field even if content is empty
-    if (reasoning && reasoning.trim()) {
+    if (reasoning?.trim()) {
       result.thinkingContent = reasoning.trim();
       result.thinkingSource = "reasoning_field";
     }
@@ -155,7 +156,7 @@ export function parseTextToolContent(
 
   // 1. Handle thinking content with precedence logic
   // Reasoning field from AI provider takes precedence over embedded <think> tags
-  if (reasoning && reasoning.trim()) {
+  if (reasoning?.trim()) {
     result.thinkingContent = reasoning.trim();
     result.thinkingSource = "reasoning_field";
     logger.debug(

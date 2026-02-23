@@ -40,7 +40,9 @@ export function PWAInstallPrompt({ className }: PWAInstallPromptProps) {
     const isStandalone = window.matchMedia(
       "(display-mode: standalone)",
     ).matches;
-    const isIOSInstalled = (window.navigator as any).standalone === true;
+    const isIOSInstalled =
+      (window.navigator as unknown as { standalone?: boolean }).standalone ===
+      true;
 
     if (isStandalone || isIOSInstalled) {
       setIsInstalled(true);

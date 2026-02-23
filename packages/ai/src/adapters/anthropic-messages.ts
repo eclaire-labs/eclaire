@@ -194,6 +194,7 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
           content: [
             {
               type: "tool_result",
+              // biome-ignore lint/style/noNonNullAssertion: tool_call_id is always present when role is "tool"
               tool_use_id: msg.tool_call_id!,
               content: this.contentToString(msg.content),
             },

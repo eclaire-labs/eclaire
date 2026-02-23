@@ -3,8 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 // import { Blob } from 'node:buffer'; // Uncomment if needed for Node < 15 or specific envs
 
 // Node.js built-in modules for file handling
-import { promises as fs } from "fs";
-import path from "path";
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import {
   BASE_URL,
   delay,

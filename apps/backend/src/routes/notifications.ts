@@ -125,6 +125,7 @@ notificationsRoutes.post(
           return {
             channelId: "unknown",
             channelName: "unknown",
+            // biome-ignore lint/suspicious/noExplicitAny: platform union fallback value
             platform: "unknown" as any,
             success: false,
             error:

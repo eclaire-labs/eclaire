@@ -4,7 +4,7 @@
  * Reads configuration from environment variables with sensible defaults.
  */
 
-import { resolve } from "path";
+import { resolve } from "node:path";
 
 export const isDev = process.env.NODE_ENV === "development";
 

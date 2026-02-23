@@ -347,7 +347,7 @@ function summarizeResult(result: unknown, error?: string): string {
   }
 
   if (typeof result === "string") {
-    return result.length > 100 ? result.substring(0, 100) + "..." : result;
+    return result.length > 100 ? `${result.substring(0, 100)}...` : result;
   }
 
   return "Operation completed successfully";

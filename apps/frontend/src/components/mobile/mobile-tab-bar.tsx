@@ -18,8 +18,8 @@ export function MobileTabBar({
   onChatToggle,
   onFoldersToggle,
 }: MobileTabBarProps) {
-  const { pathname } = useLocation();
-  const { count: dueNowCount } = useDueNowCount();
+  const { pathname: _pathname } = useLocation();
+  const { count: _dueNowCount } = useDueNowCount();
 
   const handleTabClick = (tab: MobileTab) => {
     onTabChange(tab);
@@ -88,6 +88,7 @@ export function MobileTabBar({
 
           return (
             <button
+              type="button"
               key={tab.id}
               onClick={"onClick" in tab ? tab.onClick : undefined}
               role="tab"

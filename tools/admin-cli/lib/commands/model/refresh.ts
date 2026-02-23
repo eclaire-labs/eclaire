@@ -39,6 +39,7 @@ async function tryFetchArchitectureFromRepo(
       },
     );
 
+    // biome-ignore lint/suspicious/noExplicitAny: external API response — shape varies by provider
     const config = response.data as any;
 
     // For multimodal models, check text_config first (e.g., Gemma 3 vision models)
@@ -139,7 +140,9 @@ async function fetchVisionInfo(
       },
     );
 
+    // biome-ignore lint/suspicious/noExplicitAny: HuggingFace API file listing — untyped response
     const files = (response.data as any) || [];
+    // biome-ignore lint/suspicious/noExplicitAny: HuggingFace API file listing — untyped response
     const mmprojFiles = files.filter((file: any) =>
       file.path?.startsWith("mmproj-"),
     );
@@ -150,7 +153,9 @@ async function fetchVisionInfo(
 
     // Prefer F16 as it's what llama-server uses by default
     const preferredMmproj =
+      // biome-ignore lint/suspicious/noExplicitAny: HuggingFace API file listing — untyped response
       mmprojFiles.find((f: any) => f.path === "mmproj-F16.gguf") ||
+      // biome-ignore lint/suspicious/noExplicitAny: HuggingFace API file listing — untyped response
       mmprojFiles.find((f: any) => f.path === "mmproj-BF16.gguf") ||
       mmprojFiles[0];
 
@@ -304,6 +309,7 @@ export async function refreshCommand(modelId?: string): Promise<void> {
         if (needsContextUpdate) {
           updatedModel.capabilities = {
             ...model.capabilities,
+            // biome-ignore lint/style/noNonNullAssertion: checked via needsContextUpdate guard above
             contextWindow: architecture.maxPositionEmbeddings!,
           };
         }
@@ -317,7 +323,7 @@ export async function refreshCommand(modelId?: string): Promise<void> {
         }
         successMsg += ")";
         if (needsContextUpdate) {
-          successMsg += ` + context: ${architecture.maxPositionEmbeddings!.toLocaleString()}`;
+          successMsg += ` + context: ${architecture.maxPositionEmbeddings?.toLocaleString()}`;
         }
         if (visionInfo) {
           const visionMB = Math.round(
@@ -327,8 +333,9 @@ export async function refreshCommand(modelId?: string): Promise<void> {
         }
         spinner.succeed(successMsg);
         updated++;
-      } catch (error: any) {
-        spinner.fail(`${id}: ${error.message}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        spinner.fail(`${id}: ${message}`);
         failed++;
       }
     }
@@ -353,10 +360,9 @@ export async function refreshCommand(modelId?: string): Promise<void> {
         colors.dim("Run `eclaire model list` to see updated estimates."),
       );
     }
-  } catch (error: any) {
-    console.log(
-      colors.error(`${icons.error} Refresh failed: ${error.message}`),
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(colors.error(`${icons.error} Refresh failed: ${message}`));
     process.exit(1);
   }
 }

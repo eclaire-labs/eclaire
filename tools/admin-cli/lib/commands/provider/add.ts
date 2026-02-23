@@ -309,13 +309,14 @@ export async function addCommand(options: CommandOptions): Promise<void> {
         colors.dim(`\nTest connectivity: eclaire provider test ${providerId}`),
       );
     }
-  } catch (error: any) {
-    if (error.message.includes("User force closed")) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("User force closed")) {
       console.log(colors.dim("\nCancelled by user"));
       return;
     }
     console.log(
-      colors.error(`${icons.error} Failed to add provider: ${error.message}`),
+      colors.error(`${icons.error} Failed to add provider: ${message}`),
     );
     process.exit(1);
   }

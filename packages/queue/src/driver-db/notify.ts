@@ -59,6 +59,7 @@ export interface PgClient {
   query(text: string, values?: unknown[]): Promise<unknown>;
   on(event: "notification", handler: (msg: PgNotification) => void): void;
   on(event: "error", handler: (err: Error) => void): void;
+  // biome-ignore lint/suspicious/noExplicitAny: Node.js EventEmitter compatibility — handler signature must accept any args
   removeListener(event: string, handler: (...args: any[]) => void): void;
 }
 

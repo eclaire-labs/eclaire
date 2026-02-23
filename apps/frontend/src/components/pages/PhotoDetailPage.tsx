@@ -455,8 +455,10 @@ export function PhotoDetailClient() {
     // Use the global function to open assistant with pre-attached assets
     if (
       typeof window !== "undefined" &&
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets
     ) {
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets([
         {
           type: "photo",
@@ -1088,7 +1090,9 @@ export function PhotoDetailClient() {
 
         {/* Fullscreen Modal */}
         {showFullscreen && (
+          // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-close overlay
           <div
+            role="presentation"
             className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
             onClick={() => setShowFullscreen(false)}
           >
@@ -1100,9 +1104,10 @@ export function PhotoDetailClient() {
             >
               <X className="h-4 w-4" />
             </Button>
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: click handler only stops propagation to backdrop */}
             <img
               src={getAbsoluteApiUrl(photo.imageUrl)}
-              alt={photo.title || "Photo"}
+              alt={photo.title || "Full size view"}
               className="max-w-full max-h-full object-contain"
               onClick={(e) => e.stopPropagation()}
             />

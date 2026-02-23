@@ -5,6 +5,7 @@ import { apiFetch, getAbsoluteApiUrl } from "@/lib/frontend-api";
 import type { Photo } from "@/types/photo";
 
 // Transform backend photo data to frontend format
+// biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 const transformPhotoData = (backendPhoto: any): Photo => {
   return {
     id: backendPhoto.id,

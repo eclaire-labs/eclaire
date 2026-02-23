@@ -29,7 +29,6 @@ export function getFixturesPath(): string {
 // MOCK LOGGER
 // =============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MockFn = (...args: any[]) => any;
 
 export interface MockLogger {
@@ -190,7 +189,7 @@ export function createSSEStream(events: string[]): ReadableStream<Uint8Array> {
     pull(controller) {
       if (index < events.length) {
         const event = events[index]!;
-        controller.enqueue(encoder.encode(event + "\n\n"));
+        controller.enqueue(encoder.encode(`${event}\n\n`));
         index++;
       } else {
         controller.close();

@@ -4,11 +4,11 @@
  * Handles downloading models from HuggingFace.
  */
 
-import axios from "axios";
 import { exec, spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { promisify } from "node:util";
+import axios from "axios";
 import type { DownloadResult } from "../types/engines.js";
 import { ensureDirectories, getModelsDir } from "./paths.js";
 
@@ -178,7 +178,7 @@ async function downloadDirect(
 ): Promise<DownloadResult> {
   const url = `https://huggingface.co/${repoId}/resolve/main/${filename}`;
   const localPath = path.join(destDir, filename);
-  const tempPath = localPath + ".downloading";
+  const tempPath = `${localPath}.downloading`;
 
   try {
     const response = await axios({
@@ -228,22 +228,23 @@ async function downloadDirect(
         reject(error);
       });
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Clean up temp file
     if (fs.existsSync(tempPath)) {
       fs.unlinkSync(tempPath);
     }
 
-    if (error.response?.status === 404) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
       return {
         success: false,
         error: `Model not found: ${url}`,
       };
     }
 
+    const message = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: `Download failed: ${error.message}`,
+      error: `Download failed: ${message}`,
     };
   }
 }
@@ -270,7 +271,7 @@ function parseModelRef(ref: string): ParsedModelRef | null {
     const match = ref.match(
       /huggingface\.co\/([^/]+\/[^/]+)\/resolve\/[^/]+\/(.+)$/,
     );
-    if (match && match[1] && match[2]) {
+    if (match?.[1] && match[2]) {
       return {
         repoId: match[1],
         filename: match[2],
@@ -282,6 +283,7 @@ function parseModelRef(ref: string): ParsedModelRef | null {
   // Handle path-style references: "org/repo/filename.gguf"
   const parts = ref.split("/");
   if (parts.length >= 3) {
+    // biome-ignore lint/style/noNonNullAssertion: parts.length >= 3 guarantees pop() is non-null
     const filename = parts.pop()!;
     const repoId = parts.join("/");
     return { repoId, filename };

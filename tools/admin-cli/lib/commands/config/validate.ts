@@ -1,3 +1,8 @@
+import type {
+  ModelsConfiguration,
+  ProvidersConfiguration,
+  SelectionConfiguration,
+} from "@eclaire/ai";
 import {
   isModelSuitableForBackend,
   isModelSuitableForWorkers,
@@ -42,10 +47,11 @@ export async function validateCommand(_options: CommandOptions): Promise<void> {
       console.log(createIssuesTable(result.issues));
       process.exit(1);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
       colors.error(
-        `${icons.error} Failed to validate configuration: ${error.message}`,
+        `${icons.error} Failed to validate configuration: ${message}`,
       ),
     );
     process.exit(1);
@@ -56,36 +62,39 @@ function validateConfig(): ValidationResult {
   const issues: ValidationIssue[] = [];
 
   // Load all configs
-  let providersConfig;
-  let modelsConfig;
-  let selectionConfig;
+  let providersConfig: ProvidersConfiguration;
+  let modelsConfig: ModelsConfiguration;
+  let selectionConfig: SelectionConfiguration;
 
   try {
     providersConfig = loadProvidersConfig();
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
     issues.push({
       type: "error",
-      message: `Failed to load providers.json: ${error.message}`,
+      message: `Failed to load providers.json: ${msg}`,
     });
     return { valid: false, issues };
   }
 
   try {
     modelsConfig = loadModelsConfig();
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
     issues.push({
       type: "error",
-      message: `Failed to load models.json: ${error.message}`,
+      message: `Failed to load models.json: ${msg}`,
     });
     return { valid: false, issues };
   }
 
   try {
     selectionConfig = loadSelectionConfig();
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
     issues.push({
       type: "error",
-      message: `Failed to load selection.json: ${error.message}`,
+      message: `Failed to load selection.json: ${msg}`,
     });
     return { valid: false, issues };
   }
@@ -416,6 +425,7 @@ function validateModel(
     // Validate boolean flags
     const boolFlags = ["streaming", "tools", "jsonSchema", "structuredOutputs"];
     for (const flag of boolFlags) {
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic capability flag check by name
       if (typeof (model.capabilities as any)[flag] !== "boolean") {
         issues.push({
           type: "warning",

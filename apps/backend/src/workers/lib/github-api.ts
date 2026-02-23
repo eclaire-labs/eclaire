@@ -38,7 +38,8 @@ export interface GitHubRepoInfo {
   readmeContent: string | null;
   created_at: string;
   updated_at: string;
-  repositoryData: any; // Full API response for storage in rawMetadata
+  // biome-ignore lint/suspicious/noExplicitAny: full Octokit response stored for rawMetadata
+  repositoryData: any;
 }
 
 // Initialize GitHub API client with throttling
@@ -48,7 +49,9 @@ const octokit = new ThrottledOctokit({
   throttle: {
     onRateLimit: (
       retryAfter: number,
+      // biome-ignore lint/suspicious/noExplicitAny: Octokit throttling plugin callback parameter
       options: any,
+      // biome-ignore lint/suspicious/noExplicitAny: Octokit throttling plugin callback parameter
       _octokitInstance: any,
       retryCount: number,
     ) => {
@@ -61,7 +64,9 @@ const octokit = new ThrottledOctokit({
     },
     onSecondaryRateLimit: (
       retryAfter: number,
+      // biome-ignore lint/suspicious/noExplicitAny: Octokit throttling plugin callback parameter
       options: any,
+      // biome-ignore lint/suspicious/noExplicitAny: Octokit throttling plugin callback parameter
       _octokitInstance: any,
     ) => {
       const authStatus = GITHUB_API_TOKEN ? "authenticated" : "unauthenticated";
@@ -161,9 +166,16 @@ export async function fetchGitHubRepoInfo(
           "Last commit date fetched",
         );
       }
-    } catch (commitError: any) {
+    } catch (commitError: unknown) {
       logger.warn(
-        { owner, repo, error: commitError.message },
+        {
+          owner,
+          repo,
+          error:
+            commitError instanceof Error
+              ? commitError.message
+              : String(commitError),
+        },
         `Could not fetch commit data for ${owner}/${repo}`,
       );
     }
@@ -188,12 +200,20 @@ export async function fetchGitHubRepoInfo(
           "Latest release fetched",
         );
       }
-    } catch (releaseError: any) {
-      if (releaseError.status === 404) {
+    } catch (releaseError: unknown) {
+      const releaseErr = releaseError as { status?: number; message?: string };
+      if (releaseErr.status === 404) {
         logger.debug({ owner, repo }, "No releases found for repository");
       } else {
         logger.warn(
-          { owner, repo, error: releaseError.message },
+          {
+            owner,
+            repo,
+            error:
+              releaseError instanceof Error
+                ? releaseError.message
+                : String(releaseError),
+          },
           `Could not fetch release data for ${owner}/${repo}`,
         );
       }
@@ -218,12 +238,20 @@ export async function fetchGitHubRepoInfo(
           "README content fetched",
         );
       }
-    } catch (readmeError: any) {
-      if (readmeError.status === 404) {
+    } catch (readmeError: unknown) {
+      const readmeErr = readmeError as { status?: number; message?: string };
+      if (readmeErr.status === 404) {
         logger.debug({ owner, repo }, "No README found for repository");
       } else {
         logger.warn(
-          { owner, repo, error: readmeError.message },
+          {
+            owner,
+            repo,
+            error:
+              readmeError instanceof Error
+                ? readmeError.message
+                : String(readmeError),
+          },
           `Could not fetch README for ${owner}/${repo}`,
         );
       }
@@ -261,28 +289,34 @@ export async function fetchGitHubRepoInfo(
       `Successfully fetched GitHub data for ${owner}/${repo}`,
     );
     return { repoInfo };
-  } catch (error: any) {
-    const errorMessage = `Error fetching GitHub API data for ${owner}/${repo}: ${error.message}`;
+  } catch (error: unknown) {
+    const err = error as { status?: number; message?: string };
+    const errorMessage = `Error fetching GitHub API data for ${owner}/${repo}: ${error instanceof Error ? error.message : String(error)}`;
 
     // Log different error types appropriately
-    if (error.status === 404) {
+    if (err.status === 404) {
       logger.warn(
         { owner, repo },
         `Repository ${owner}/${repo} not found or not accessible`,
       );
-    } else if (error.status === 403) {
+    } else if (err.status === 403) {
       logger.warn(
         { owner, repo },
         `Access denied to ${owner}/${repo} - check authentication or repository visibility`,
       );
-    } else if (error.status === 401) {
+    } else if (err.status === 401) {
       logger.warn(
         { owner, repo },
         `Authentication failed for GitHub API - check GITHUB_TOKEN`,
       );
     } else {
       logger.error(
-        { owner, repo, error: error.message, status: error.status },
+        {
+          owner,
+          repo,
+          error: error instanceof Error ? error.message : String(error),
+          status: err.status,
+        },
         errorMessage,
       );
     }

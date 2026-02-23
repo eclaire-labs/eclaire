@@ -38,10 +38,9 @@ export async function doctorCommand(): Promise<void> {
     if (failed > 0) {
       process.exit(1);
     }
-  } catch (error: any) {
-    console.log(
-      colors.error(`${icons.error} Doctor check failed: ${error.message}`),
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(colors.error(`${icons.error} Doctor check failed: ${message}`));
     process.exit(1);
   }
 }

@@ -59,7 +59,9 @@ interface HistoryItem {
   itemType: HistoryItemType;
   itemId: string;
   itemName: string;
+  // biome-ignore lint/suspicious/noExplicitAny: history data shape varies by action type
   beforeData: any | null;
+  // biome-ignore lint/suspicious/noExplicitAny: history data shape varies by action type
   afterData: any | null;
   actor: HistoryActor;
   timestamp: string;
@@ -297,6 +299,7 @@ export default function HistoryPage() {
   };
 
   // Adapter function to safely map auth user to UserAvatar expected format
+  // biome-ignore lint/suspicious/noExplicitAny: auth user type varies across providers
   const adaptUserForAvatar = (user: any) => {
     if (!user) {
       return {
@@ -603,7 +606,9 @@ export default function HistoryPage() {
                       )}
                       {item.actor === "user"
                         ? auth?.user
-                          ? (auth.user as any).displayName ||
+                          ? // biome-ignore lint/suspicious/noExplicitAny: auth user type lacks displayName/name
+                            (auth.user as any).displayName ||
+                            // biome-ignore lint/suspicious/noExplicitAny: auth user type lacks displayName/name
                             (auth.user as any).name ||
                             auth.user.email ||
                             "You"

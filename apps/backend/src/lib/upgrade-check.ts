@@ -6,9 +6,9 @@
  * - scripts/upgrade-check.ts (CLI tool)
  */
 
+import { readFileSync } from "node:fs";
 import { executeQuery } from "@eclaire/db";
 import { sql } from "drizzle-orm";
-import { readFileSync } from "node:fs";
 import * as semver from "semver";
 import {
   findMigrationJournal,

@@ -1,5 +1,6 @@
 import { resolver } from "hono-openapi";
 import { UnauthorizedSchema } from "./all-responses.js";
+import { requestBodyResolver } from "./common.js";
 import {
   CreateConversationSchema,
   UpdateConversationSchema,
@@ -26,7 +27,7 @@ export const postConversationRouteDescription = {
     description: "Conversation creation data",
     content: {
       "application/json": {
-        schema: resolver(CreateConversationSchema) as any,
+        schema: requestBodyResolver(CreateConversationSchema),
       },
     },
     required: true,
@@ -205,7 +206,7 @@ export const putConversationRouteDescription = {
     description: "Conversation update data",
     content: {
       "application/json": {
-        schema: resolver(UpdateConversationSchema) as any,
+        schema: requestBodyResolver(UpdateConversationSchema),
       },
     },
     required: true,

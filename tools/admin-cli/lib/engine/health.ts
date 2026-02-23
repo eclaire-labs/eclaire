@@ -2,16 +2,16 @@
  * Health check utilities for engine management
  */
 
+import { exec } from "node:child_process";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import { promisify } from "node:util";
 import {
   getActiveModelIdForContext,
   getModelConfigById,
   parsePort,
 } from "@eclaire/ai";
 import axios from "axios";
-import { exec } from "node:child_process";
-import * as fs from "node:fs";
-import * as os from "node:os";
-import { promisify } from "node:util";
 import type { DoctorCheck } from "../types/engines.js";
 import { estimateModelMemory } from "./memory.js";
 import { getServerStatus, resolveSelectionEngine } from "./process.js";
@@ -75,9 +75,9 @@ export async function isPortAvailable(port: number): Promise<boolean> {
     });
     // If we get a response, port is in use
     return false;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // ECONNREFUSED means nothing is listening - port is available
-    if (error.code === "ECONNREFUSED") {
+    if (axios.isAxiosError(error) && error.code === "ECONNREFUSED") {
       return true;
     }
     // Any other response means something is listening
@@ -181,11 +181,12 @@ async function checkManagedProviders(): Promise<DoctorCheck> {
       status: "pass",
       message: `${modelCount} model(s) configured: ${modelIds}`,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
       name: "Managed engine",
       status: "fail",
-      message: error.message,
+      message,
       fix: "Check config/ai/*.json for syntax errors",
     };
   }
@@ -351,15 +352,16 @@ async function checkGPUMemory(): Promise<DoctorCheck> {
       status: "pass",
       message: `${gpuName}: ${totalGB.toFixed(1)}GB ${memoryType} memory`,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Fallback to system memory check if GPU detection fails
     const totalMemGB = os.totalmem() / (1024 * 1024 * 1024);
     const freeMemGB = os.freemem() / (1024 * 1024 * 1024);
+    const message = error instanceof Error ? error.message : String(error);
 
     return {
       name: "System memory",
       status: "warn",
-      message: `${freeMemGB.toFixed(1)}GB free of ${totalMemGB.toFixed(1)}GB total (GPU detection failed: ${error.message})`,
+      message: `${freeMemGB.toFixed(1)}GB free of ${totalMemGB.toFixed(1)}GB total (GPU detection failed: ${message})`,
     };
   }
 }

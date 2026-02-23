@@ -4,6 +4,7 @@
  * Re-exports config functions from @eclaire/ai with CLI-specific wrappers.
  */
 
+import path from "node:path";
 import type { AIContext, ModelConfig } from "@eclaire/ai";
 import {
   // Model CRUD
@@ -36,7 +37,6 @@ import {
   setConfigPath,
   updateModel,
 } from "@eclaire/ai";
-import path from "node:path";
 
 // ============================================================================
 // CLI-specific config path initialization

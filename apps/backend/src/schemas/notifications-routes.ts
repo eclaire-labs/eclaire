@@ -8,6 +8,7 @@ import {
 } from "./all-responses.js";
 import { SendNotificationSchema } from "./channels-params.js";
 import { SendNotificationResponseSchema } from "./channels-responses.js";
+import { requestBodyResolver } from "./common.js";
 
 // POST /api/notifications - Send notification
 export const postNotificationsRouteDescription = {
@@ -18,7 +19,7 @@ export const postNotificationsRouteDescription = {
     description: "Notification data",
     content: {
       "application/json": {
-        schema: resolver(SendNotificationSchema) as any,
+        schema: requestBodyResolver(SendNotificationSchema),
       },
     },
   },

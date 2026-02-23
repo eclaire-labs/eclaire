@@ -201,7 +201,7 @@ export default function BookmarksPage() {
   } = useBookmarks();
 
   // --- Initialize SSE for real-time updates ---
-  const { isConnected } = useProcessingEvents();
+  const { isConnected: _isConnected } = useProcessingEvents();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBookmark, setSelectedBookmark] = useState<Bookmark | null>(
     null,
@@ -536,8 +536,10 @@ export default function BookmarksPage() {
     // Use the global function to open assistant with pre-attached assets
     if (
       typeof window !== "undefined" &&
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets
     ) {
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets([
         {
           type: "bookmark",
@@ -709,9 +711,11 @@ export default function BookmarksPage() {
 
             {/* Tag Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tag</label>
+              <label className="text-sm font-medium" htmlFor="filter-tag">
+                Tag
+              </label>
               <Select value={filterTag} onValueChange={handleTagFilterChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="filter-tag">
                   <SelectValue placeholder="Filter by Tag" />
                 </SelectTrigger>
                 <SelectContent>
@@ -734,9 +738,11 @@ export default function BookmarksPage() {
 
             {/* Sort By */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort By</label>
+              <label className="text-sm font-medium" htmlFor="sort-by">
+                Sort By
+              </label>
               <Select value={sortBy} onValueChange={handleSortByChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="sort-by">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -749,11 +755,14 @@ export default function BookmarksPage() {
 
             {/* Sort Direction */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort Direction</label>
+              <label className="text-sm font-medium" htmlFor="sort-direction">
+                Sort Direction
+              </label>
               <Button
                 variant="outline"
                 onClick={toggleSortDir}
                 className="w-full justify-start"
+                id="sort-direction"
               >
                 {sortDir === "asc" ? (
                   <>
@@ -771,12 +780,15 @@ export default function BookmarksPage() {
 
             {/* View Mode */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">View Mode</label>
+              <label className="text-sm font-medium" htmlFor="view-mode">
+                View Mode
+              </label>
               <ToggleGroup
                 type="single"
                 value={viewMode}
                 onValueChange={handleViewModeChange}
                 className="w-full justify-start"
+                id="view-mode"
               >
                 <ToggleGroupItem
                   value="tile"
@@ -907,6 +919,7 @@ export default function BookmarksPage() {
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={clearSearch}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
                     title="Clear search"
@@ -1594,9 +1607,18 @@ function BookmarkListItem({
   onChatClick,
 }: { bookmark: Bookmark } & Omit<ViewProps, "bookmarks">) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
     <div
+      role="button"
+      tabIndex={0}
       className="flex items-center px-4 py-2.5 hover:bg-muted/50 cursor-pointer"
       onClick={() => onBookmarkClick(bookmark)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onBookmarkClick(bookmark);
+        }
+      }}
     >
       <div className="w-10 flex-shrink-0 mr-3 flex items-center justify-center relative">
         <Favicon bookmark={bookmark} className="h-6 w-6" />

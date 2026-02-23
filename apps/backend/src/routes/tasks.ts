@@ -724,11 +724,13 @@ tasksRoutes.put(
         success: true,
         message: `Task status updated to ${status}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       logger.error(
         {
           taskId: c.req.param("id"),
-          error: error.message,
+          error: errorMessage,
           stack: error instanceof Error ? error.stack : undefined,
         },
         "Error updating task status as assistant",
@@ -736,10 +738,10 @@ tasksRoutes.put(
 
       // Return appropriate error status
       if (
-        error.message.includes("not assigned") ||
-        error.message.includes("Task not found")
+        errorMessage.includes("not assigned") ||
+        errorMessage.includes("Task not found")
       ) {
-        return c.json({ error: error.message }, 404);
+        return c.json({ error: errorMessage }, 404);
       }
 
       return c.json({ error: "Failed to update task status" }, 500);

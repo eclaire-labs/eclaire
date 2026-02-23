@@ -5,7 +5,10 @@ import { useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StreamingMessage } from "@/components/ui/streaming-message";
 import { ThinkingIndicator } from "@/components/ui/thinking-indicator";
-import { ToolExecutionTracker } from "@/components/ui/tool-execution-tracker";
+import {
+  type ToolCall,
+  ToolExecutionTracker,
+} from "@/components/ui/tool-execution-tracker";
 import type { Message } from "@/types/message";
 import { MessageItem } from "./message-item";
 import { TypingIndicator } from "./typing-indicator";
@@ -39,7 +42,7 @@ interface MessageListProps {
   isStreaming?: boolean;
   streamingThought?: string;
   streamingText?: string;
-  streamingToolCalls?: any[];
+  streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
   isClient?: boolean;
 }

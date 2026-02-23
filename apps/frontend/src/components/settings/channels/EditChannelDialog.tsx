@@ -61,7 +61,7 @@ export default function EditChannelDialog({
   const handleUpdateChannel = async (data: {
     name: string;
     capability: Channel["capability"];
-    config: any;
+    config: TelegramConfig | Partial<TelegramConfig>;
   }) => {
     if (!channel) return;
 

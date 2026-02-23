@@ -18,7 +18,7 @@ export function ProcessingSummaryDashboard({
   const { summary, isLoading } = useProcessingSummary();
 
   // Initialize global processing events for real-time updates
-  const { isConnected } = useProcessingEvents();
+  const { isConnected: _isConnected } = useProcessingEvents();
 
   if (isLoading) {
     const content = (

@@ -5,6 +5,7 @@ import { apiFetch, getAbsoluteApiUrl } from "@/lib/frontend-api";
 import type { Document } from "@/types/document";
 
 // Transform backend document data to frontend format
+// biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 const transformDocumentData = (backendDoc: any): Document => {
   return {
     id: backendDoc.id,

@@ -390,6 +390,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
     // Extract final text response
     let finalText = "";
     if (steps.length > 0) {
+      // biome-ignore lint/style/noNonNullAssertion: length check guarantees element exists
       const lastStep = steps[steps.length - 1]!;
       const parseResult = parseTextToolContent(
         lastStep.aiResponse.content,
@@ -696,6 +697,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
                     type: "tool-call-error",
                     toolName,
                     toolCallId: toolCall.id,
+                    // biome-ignore lint/style/noNonNullAssertion: error field is set in the literal above
                     error: errorResult.error!,
                     timestamp: new Date().toISOString(),
                   });
@@ -805,6 +807,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
           // Extract final text response
           let finalText = "";
           if (steps.length > 0) {
+            // biome-ignore lint/style/noNonNullAssertion: length check guarantees element exists
             const lastStep = steps[steps.length - 1]!;
             const parseResult = parseTextToolContent(
               lastStep.aiResponse.content,

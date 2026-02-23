@@ -327,20 +327,20 @@ export default function NotesPage() {
   const {
     notes: entries,
     isLoading,
-    error,
+    error: _error,
     createNote,
     updateNote,
     deleteNote,
     uploadNote,
     refresh,
-    isCreating,
-    isUpdating,
+    isCreating: _isCreating,
+    isUpdating: _isUpdating,
     isDeleting,
     isUploading,
   } = useNotes();
 
   // --- Initialize SSE for real-time updates ---
-  const { isConnected } = useProcessingEvents();
+  const { isConnected: _isConnected } = useProcessingEvents();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEntry, setSelectedEntry] = useState<NoteEntry | null>(null);
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
@@ -841,8 +841,10 @@ export default function NotesPage() {
     // Use the global function to open assistant with pre-attached assets
     if (
       typeof window !== "undefined" &&
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets
     ) {
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets([
         {
           type: "note",

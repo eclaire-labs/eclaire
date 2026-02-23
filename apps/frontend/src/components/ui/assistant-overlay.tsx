@@ -105,6 +105,7 @@ export function AssistantOverlay({
         className,
       )}
     >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: hover detection wrapper for assistant menu, not a clickable element */}
       <div
         className="relative w-full h-full flex justify-end items-end pointer-events-auto"
         onMouseEnter={handleMouseEnter}
@@ -172,6 +173,7 @@ export function AssistantOverlay({
 
           {/* Main assistant button */}
           <button
+            type="button"
             className={cn(
               "relative z-30 w-16 h-16 rounded-full border-none cursor-pointer shadow-lg flex items-center justify-center transition-all duration-300",
               "hover:scale-110 hover:shadow-xl",
@@ -196,6 +198,7 @@ export function AssistantOverlay({
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
             >
+              <title>AI Assistant</title>
               <path d="M19 6h-2.28a3 3 0 0 0-5.44 0H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3ZM7.5 15a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" />
               <path d="M12 5a1 1 0 0 1-1-1V2a1 1 0 0 1 2 0v2a1 1 0 0 1-1 1Z" />
             </svg>
@@ -206,8 +209,11 @@ export function AssistantOverlay({
         {actions.map((action, index) => {
           const position = actionPositions[index];
           return (
+            // biome-ignore lint/a11y/useSemanticElements: positioned action item not suited for button element
             <div
               key={action.name}
+              role="button"
+              tabIndex={0}
               className={cn(
                 "absolute bottom-3.5 right-3.5 w-9 h-9 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-all duration-300 pointer-events-none",
                 "opacity-0 scale-50",
@@ -225,6 +231,12 @@ export function AssistantOverlay({
               onMouseEnter={() => setHoveredAction(action.name)}
               onMouseLeave={() => setHoveredAction(null)}
               onClick={() => handleActionClick(action.action)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleActionClick(action.action);
+                }
+              }}
             >
               <action.icon className="w-4 h-4 text-white" />
             </div>

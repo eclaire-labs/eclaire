@@ -76,6 +76,7 @@ export {
 export * from "./types.js";
 // Re-export waitlist (now local)
 export { createJobWaitlist, type WaitlistConfig } from "./waitlist.js";
+
 // --- Factory Functions ---
 
 import { createBullMQAdapter as _createBullMQAdapter } from "./adapters/bullmq.js";

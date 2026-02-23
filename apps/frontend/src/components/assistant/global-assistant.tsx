@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { ToolCall } from "@/components/ui/tool-execution-tracker";
 import {
   type BackendMessage,
   type ConversationSummary,
@@ -68,7 +69,7 @@ interface GlobalAssistantProps {
   isStreaming?: boolean;
   streamingThought?: string;
   streamingText?: string;
-  streamingToolCalls?: any[];
+  streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
 }
 
@@ -226,8 +227,8 @@ const ConversationHistoryDialog = ({
           </div>
         )}
       </DialogContent>
-  </Dialog>
-  )
+    </Dialog>
+  );
 };
 
 // --- Helper Component: AssistantContent ---
@@ -254,18 +255,18 @@ interface AssistantContentProps {
   isStreaming?: boolean;
   streamingThought?: string;
   streamingText?: string;
-  streamingToolCalls?: any[];
+  streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
 }
 
 const AssistantContent = ({
   messages,
   isLoading,
-  messagesEndRef,
+  messagesEndRef: _messagesEndRef,
   attachedAssets,
   setAttachedAssets,
   input,
-  inputRef,
+  inputRef: _inputRef,
   setInput,
   handleKeyDown,
   handleSend,

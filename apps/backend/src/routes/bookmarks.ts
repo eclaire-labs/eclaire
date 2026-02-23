@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
@@ -101,6 +102,7 @@ bookmarksRoutes.post(
 
       // 3. Call the service to create the DB entries and queue the job
       const result = await createBookmarkAndQueueJob({
+        // biome-ignore lint/style/noNonNullAssertion: guarded by validation check above
         url: urlValidation.normalizedUrl!,
         userId: userId,
         rawMetadata: enrichedMetadata,
@@ -287,7 +289,7 @@ bookmarksRoutes.delete(
 );
 
 // Helper function to serve a bookmark asset
-const serveBookmarkAsset = async (c: any, assetType: BookmarkAssetType) => {
+const serveBookmarkAsset = async (c: Context, assetType: BookmarkAssetType) => {
   try {
     const bookmarkId = c.req.param("id");
     const userId = await getAuthenticatedUserId(c);
@@ -322,12 +324,16 @@ const serveBookmarkAsset = async (c: any, assetType: BookmarkAssetType) => {
     }
 
     return new Response(stream, { status: 200, headers });
-  } catch (error: any) {
-    logger.error(`Error serving bookmark asset (${assetType}):`, error);
+  } catch (error: unknown) {
+    logger.error(
+      { err: error instanceof Error ? error : String(error) },
+      `Error serving bookmark asset (${assetType})`,
+    );
     if (
-      error.name === "NotFoundError" ||
-      error.name === "FileNotFoundError" ||
-      error.code === "ENOENT"
+      error instanceof Error &&
+      ((error as Error & { code?: string }).code === "ENOENT" ||
+        error.name === "NotFoundError" ||
+        error.name === "FileNotFoundError")
     ) {
       return c.json({ error: error.message }, 404);
     }

@@ -5,6 +5,7 @@ import {
   UnauthorizedSchema,
   ValidationErrorSchema,
 } from "./all-responses.js";
+import { requestBodyResolver } from "./common.js";
 import {
   NoteFlagUpdateSchema,
   NotePinUpdateSchema,
@@ -126,7 +127,7 @@ export const postNotesRouteDescription = {
     description: "Note data in JSON format",
     content: {
       "application/json": {
-        schema: resolver(NoteSchema) as any,
+        schema: requestBodyResolver(NoteSchema),
       },
     },
   },
@@ -217,7 +218,7 @@ export const putNoteRouteDescription = {
     description: "Complete note data",
     content: {
       "application/json": {
-        schema: resolver(NoteSchema) as any,
+        schema: requestBodyResolver(NoteSchema),
       },
     },
   },
@@ -274,7 +275,7 @@ export const patchNoteRouteDescription = {
     description: "Partial note data",
     content: {
       "application/json": {
-        schema: resolver(PartialNoteSchema) as any,
+        schema: requestBodyResolver(PartialNoteSchema),
       },
     },
   },
@@ -372,7 +373,7 @@ export const patchNoteReviewRouteDescription = {
     description: "Review status update data",
     content: {
       "application/json": {
-        schema: resolver(NoteReviewUpdateSchema) as any,
+        schema: requestBodyResolver(NoteReviewUpdateSchema),
       },
     },
   },
@@ -421,7 +422,7 @@ export const patchNoteFlagRouteDescription = {
     description: "Flag color update data",
     content: {
       "application/json": {
-        schema: resolver(NoteFlagUpdateSchema) as any,
+        schema: requestBodyResolver(NoteFlagUpdateSchema),
       },
     },
   },
@@ -470,7 +471,7 @@ export const patchNotePinRouteDescription = {
     description: "Pin status update data",
     content: {
       "application/json": {
-        schema: resolver(NotePinUpdateSchema) as any,
+        schema: requestBodyResolver(NotePinUpdateSchema),
       },
     },
   },

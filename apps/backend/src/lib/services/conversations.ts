@@ -33,6 +33,7 @@ export interface ConversationWithMessages {
     thinkingContent?: string | null;
     toolCalls?: ToolCallSummary[];
     createdAt: Date;
+    // biome-ignore lint/suspicious/noExplicitAny: JSON metadata blob
     metadata?: any;
   }>;
 }

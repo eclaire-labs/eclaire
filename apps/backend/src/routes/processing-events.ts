@@ -96,6 +96,7 @@ processingEventsRoutes.get("/stream", async (c) => {
       if (!activeStreams.has(userId)) {
         activeStreams.set(userId, new Set());
       }
+      // biome-ignore lint/style/noNonNullAssertion: map entry set on preceding line
       const userStreams = activeStreams.get(userId)!;
       const streamRef = {
         write: stream.write.bind(stream) as (data: string) => Promise<unknown>,
@@ -356,6 +357,7 @@ export async function publishProcessingEvent(
     stage?: string;
     progress?: number;
     error?: string;
+    // biome-ignore lint/suspicious/noExplicitAny: event index signature
     [key: string]: any;
   },
 ): Promise<void> {
@@ -421,6 +423,7 @@ export async function publishDirectSSEEvent(
     progress?: number;
     error?: string;
     timestamp?: number;
+    // biome-ignore lint/suspicious/noExplicitAny: event index signature
     [key: string]: any;
   },
 ): Promise<void> {
@@ -442,6 +445,7 @@ export async function publishDirectSSEEvent(
     const sseData = `data: ${JSON.stringify(eventWithTimestamp)}\n\n`;
 
     // Send to all active streams for this user
+    // biome-ignore lint/suspicious/noExplicitAny: heterogeneous stream references
     const streamsToRemove: any[] = [];
     for (const streamRef of Array.from(userStreams)) {
       try {

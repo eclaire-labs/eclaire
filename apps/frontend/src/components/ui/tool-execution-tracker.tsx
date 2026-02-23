@@ -24,8 +24,8 @@ export interface ToolCall {
   id: string;
   name: string;
   status: ToolStatus;
-  arguments?: Record<string, any>;
-  result?: any;
+  arguments?: Record<string, unknown>;
+  result?: unknown;
   error?: string;
   startTime?: Date;
   endTime?: Date;
@@ -57,7 +57,7 @@ function ToolExecutionItem({
     }
   };
 
-  const formatArguments = (args: Record<string, any>) => {
+  const formatArguments = (args: Record<string, unknown>) => {
     try {
       return JSON.stringify(args, null, 2);
     } catch {
@@ -65,7 +65,7 @@ function ToolExecutionItem({
     }
   };
 
-  const formatResult = (result: any) => {
+  const formatResult = (result: unknown): string => {
     if (typeof result === "string") return result;
     try {
       return JSON.stringify(result, null, 2);
@@ -102,7 +102,7 @@ function ToolExecutionItem({
         <CollapsibleContent className="px-3 pb-3">
           <div className="space-y-3">
             {/* Arguments */}
-            {toolCall.arguments &&
+            {toolCall.arguments !== undefined &&
               Object.keys(toolCall.arguments).length > 0 && (
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground mb-2">
@@ -115,7 +115,7 @@ function ToolExecutionItem({
               )}
 
             {/* Result */}
-            {toolCall.result && (
+            {toolCall.result !== undefined && toolCall.result !== null && (
               <div>
                 <h4 className="text-xs font-medium text-muted-foreground mb-2">
                   Result:
@@ -253,8 +253,8 @@ export function useToolExecutionTracker() {
     (
       name: string,
       status: ToolStatus,
-      args?: Record<string, any>,
-      result?: any,
+      args?: Record<string, unknown>,
+      result?: unknown,
       error?: string,
     ) => {
       const toolId = `${name}-${Date.now()}`;
@@ -273,9 +273,9 @@ export function useToolExecutionTracker() {
           updated[existingIndex] = {
             ...existing,
             status,
-            ...(args && { arguments: args }),
-            ...(result && { result }),
-            ...(error && { error }),
+            ...(args ? { arguments: args } : {}),
+            ...(result !== undefined ? { result } : {}),
+            ...(error ? { error } : {}),
             ...(status === "completed" || status === "error"
               ? { endTime: new Date() }
               : {}),

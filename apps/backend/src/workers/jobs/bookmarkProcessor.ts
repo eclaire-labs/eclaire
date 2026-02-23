@@ -31,9 +31,11 @@ validateApiCredentials();
 async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
   const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with REGULAR handler");
+  // biome-ignore lint/suspicious/noExplicitAny: Patchright Browser instance, no exported type available
   let browser: any = null;
   let context: BrowserContext | null = null;
   let page: Page | null = null;
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic artifact accumulator populated across processing stages
   const allArtifacts: Record<string, any> = {};
   let currentStage = "initialization";
 
@@ -100,9 +102,14 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         { bookmarkId, url: processUrl },
         "Page navigation successful.",
       );
-    } catch (navError: any) {
+    } catch (navError: unknown) {
       logger.warn(
-        { bookmarkId, url: processUrl, error: navError.message },
+        {
+          bookmarkId,
+          url: processUrl,
+          error:
+            navError instanceof Error ? navError.message : String(navError),
+        },
         "Navigation failed, attempting with reduced timeout",
       );
       // Retry with reduced timeout and different wait condition
@@ -115,7 +122,7 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
           35000, // Hard timeout slightly longer than Playwright timeout
           "Page navigation (retry)",
         );
-      } catch (retryError: any) {
+      } catch (retryError: unknown) {
         if (retryError instanceof TimeoutError) {
           throw new Error(
             `Page navigation timed out after retries (${retryError.message})`,
@@ -200,11 +207,13 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         contentType: "image/jpeg",
       });
       allArtifacts.screenshotDesktopStorageId = screenshotKey;
-    } catch (screenshotError: any) {
+    } catch (screenshotError: unknown) {
       const errorMessage =
         screenshotError instanceof TimeoutError
           ? `Desktop screenshot timed out after ${screenshotError.timeoutMs}ms`
-          : screenshotError.message;
+          : screenshotError instanceof Error
+            ? screenshotError.message
+            : String(screenshotError);
       logger.error(
         {
           bookmarkId,
@@ -244,11 +253,13 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         contentType: "image/png",
       });
       allArtifacts.screenshotFullPageStorageId = fullpageKey;
-    } catch (fullPageError: any) {
+    } catch (fullPageError: unknown) {
       const errorMessage =
         fullPageError instanceof TimeoutError
           ? `Full page screenshot timed out after ${fullPageError.timeoutMs}ms`
-          : fullPageError.message;
+          : fullPageError instanceof Error
+            ? fullPageError.message
+            : String(fullPageError);
       logger.warn(
         {
           bookmarkId,
@@ -284,11 +295,13 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         contentType: "image/png",
       });
       allArtifacts.screenshotMobileStorageId = mobileKey;
-    } catch (mobileError: any) {
+    } catch (mobileError: unknown) {
       const errorMessage =
         mobileError instanceof TimeoutError
           ? `Mobile screenshot timed out after ${mobileError.timeoutMs}ms`
-          : mobileError.message;
+          : mobileError instanceof Error
+            ? mobileError.message
+            : String(mobileError);
       logger.warn(
         {
           bookmarkId,
@@ -319,11 +332,13 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         contentType: "application/pdf",
       });
       allArtifacts.pdfStorageId = pdfKey;
-    } catch (pdfError: any) {
+    } catch (pdfError: unknown) {
       const errorMessage =
         pdfError instanceof TimeoutError
           ? `PDF generation timed out after ${pdfError.timeoutMs}ms`
-          : pdfError.message;
+          : pdfError instanceof Error
+            ? pdfError.message
+            : String(pdfError);
       logger.warn(
         {
           bookmarkId,
@@ -392,9 +407,15 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       } else {
         logger.debug({ bookmarkId }, "No favicon link found in page");
       }
-    } catch (faviconError: any) {
+    } catch (faviconError: unknown) {
       logger.debug(
-        { bookmarkId, error: faviconError.message },
+        {
+          bookmarkId,
+          error:
+            faviconError instanceof Error
+              ? faviconError.message
+              : String(faviconError),
+        },
         "Could not fetch favicon via Playwright",
       );
     }
@@ -416,9 +437,16 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         { bookmarkId },
         "HTML content extraction completed successfully.",
       );
-    } catch (contentError: any) {
+    } catch (contentError: unknown) {
       logger.error(
-        { bookmarkId, error: contentError.message, stack: contentError.stack },
+        {
+          bookmarkId,
+          error:
+            contentError instanceof Error
+              ? contentError.message
+              : String(contentError),
+          stack: contentError instanceof Error ? contentError.stack : undefined,
+        },
         "Content extraction failed with happy-dom error",
       );
 
@@ -444,9 +472,12 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         false,
       );
       logger.debug({ bookmarkId }, "AI tag generation completed successfully.");
-    } catch (aiError: any) {
+    } catch (aiError: unknown) {
       logger.warn(
-        { bookmarkId, error: aiError.message },
+        {
+          bookmarkId,
+          error: aiError instanceof Error ? aiError.message : String(aiError),
+        },
         "AI tagging failed, using fallback tags",
       );
       // Use fallback tags based on domain or basic content
@@ -457,19 +488,22 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
     const { extractedText: _excludeText, ...finalArtifacts } = allArtifacts;
     await ctx.completeStage("ai_tagging", finalArtifacts);
     // Job completes implicitly when handler returns successfully
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       {
         bookmarkId,
         currentStage,
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       },
       "Regular bookmark processing failed at stage",
     );
 
     // Report the error with stage context
-    await ctx.failStage(currentStage, error);
+    await ctx.failStage(
+      currentStage,
+      error instanceof Error ? error : new Error(String(error)),
+    );
     throw error;
   } finally {
     logger.debug(
@@ -484,9 +518,15 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         await page.close();
         logger.debug({ bookmarkId }, "Page closed successfully.");
       }
-    } catch (pageCloseError: any) {
+    } catch (pageCloseError: unknown) {
       logger.warn(
-        { bookmarkId, error: pageCloseError.message },
+        {
+          bookmarkId,
+          error:
+            pageCloseError instanceof Error
+              ? pageCloseError.message
+              : String(pageCloseError),
+        },
         "Failed to close page during cleanup",
       );
     }
@@ -497,9 +537,15 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         await context.close();
         logger.debug({ bookmarkId }, "Browser context closed successfully.");
       }
-    } catch (contextCloseError: any) {
+    } catch (contextCloseError: unknown) {
       logger.warn(
-        { bookmarkId, error: contextCloseError.message },
+        {
+          bookmarkId,
+          error:
+            contextCloseError instanceof Error
+              ? contextCloseError.message
+              : String(contextCloseError),
+        },
         "Failed to close browser context during cleanup",
       );
     }
@@ -510,9 +556,15 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         await browser.close();
         logger.debug({ bookmarkId }, "Browser closed successfully.");
       }
-    } catch (browserCloseError: any) {
+    } catch (browserCloseError: unknown) {
       logger.warn(
-        { bookmarkId, error: browserCloseError.message },
+        {
+          bookmarkId,
+          error:
+            browserCloseError instanceof Error
+              ? browserCloseError.message
+              : String(browserCloseError),
+        },
         "Failed to close browser during cleanup",
       );
     }
@@ -617,12 +669,12 @@ async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
     } finally {
       domainRateLimiter.markDomainComplete(originalUrl, jobId);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // RateLimitError is not a real error - it's a signal to BullMQ to reschedule
     // We must let it bubble up without any error handling
     if (
-      error.name === "RateLimitError" ||
-      error.message === "bullmq:rateLimitExceeded"
+      (error instanceof Error && error.name === "RateLimitError") ||
+      (error instanceof Error && error.message === "bullmq:rateLimitExceeded")
     ) {
       logger.info(
         { jobId, bookmarkId, domain: availability?.domain },
@@ -632,13 +684,19 @@ async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
     }
 
     logger.error(
-      { jobId, bookmarkId, error: error.message, stack: error.stack },
+      {
+        jobId,
+        bookmarkId,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      },
       "Bookmark job failed",
     );
 
     // Only block domain for certain types of errors, not module resolution issues
     if (availability?.domain) {
-      const errorMessage = error.message || "";
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const isModuleError =
         errorMessage.includes("ERR_MODULE_NOT_FOUND") ||
         errorMessage.includes("Cannot find module");
@@ -648,7 +706,7 @@ async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       if (!isModuleError && !isTimeoutError) {
         domainRateLimiter.blockDomain(
           availability.domain,
-          `Job failed: ${error.message}`,
+          `Job failed: ${errorMessage}`,
         );
       } else {
         logger.info(

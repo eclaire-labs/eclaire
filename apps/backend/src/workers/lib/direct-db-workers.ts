@@ -26,13 +26,18 @@ import { processArtifacts } from "../../lib/services/artifact-processor.js";
 import { publishDirectSSEEvent } from "../../routes/processing-events.js";
 import type { AssetType } from "../../types/assets.js";
 
-// Import job processors
+// Import job processors and their data types
 import processBookmarkJob from "../jobs/bookmarkProcessor.js";
+import type { DocumentJobData } from "../jobs/documentProcessor.js";
 import { processDocumentJob } from "../jobs/documentProcessor.js";
+import type { ImageJobData } from "../jobs/imageProcessor.js";
 import processImageJob from "../jobs/imageProcessor.js";
 import processNoteJob from "../jobs/noteProcessor.js";
+import type { TaskExecutionJobData } from "../jobs/taskExecutionProcessor.js";
 import processTaskExecution from "../jobs/taskExecutionProcessor.js";
+import type { TaskJobData } from "../jobs/taskProcessor.js";
 import processTaskJob from "../jobs/taskProcessor.js";
+import type { BookmarkJobData } from "./bookmarks/index.js";
 
 const logger = createChildLogger("direct-db-workers");
 
@@ -117,7 +122,7 @@ export async function startDirectDbWorkers(): Promise<void> {
   // Bookmark processing worker - now uses ctx directly
   const bookmarkWorker = createDbWorker(
     QueueNames.BOOKMARK_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<BookmarkJobData>) => {
       await processBookmarkJob(ctx);
     },
     config,
@@ -132,7 +137,7 @@ export async function startDirectDbWorkers(): Promise<void> {
   // Image processing worker
   const imageWorker = createDbWorker(
     QueueNames.IMAGE_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<ImageJobData>) => {
       await processImageJob(ctx);
     },
     config,
@@ -144,7 +149,7 @@ export async function startDirectDbWorkers(): Promise<void> {
   // Document processing worker
   const documentWorker = createDbWorker(
     QueueNames.DOCUMENT_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<DocumentJobData>) => {
       await processDocumentJob(ctx);
     },
     config,
@@ -169,7 +174,7 @@ export async function startDirectDbWorkers(): Promise<void> {
   // Task processing worker (tag generation)
   const taskWorker = createDbWorker(
     QueueNames.TASK_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<TaskJobData>) => {
       await processTaskJob(ctx);
     },
     config,
@@ -181,7 +186,7 @@ export async function startDirectDbWorkers(): Promise<void> {
   // Task execution worker
   const taskExecutionWorker = createDbWorker(
     QueueNames.TASK_EXECUTION_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<TaskExecutionJobData>) => {
       await processTaskExecution(ctx);
     },
     config,

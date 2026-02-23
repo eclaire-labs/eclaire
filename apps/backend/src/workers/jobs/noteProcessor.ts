@@ -105,7 +105,7 @@ async function generateNoteTags(
   }
 }
 
-interface NoteJobData {
+export interface NoteJobData {
   noteId: string;
   title: string;
   content: string;
@@ -136,11 +136,14 @@ async function processNoteJob(ctx: JobContext<NoteJobData>) {
       tags = await generateNoteTags(title, content, noteId, userId, ctx.job.id);
       logger.info({ noteId, tags }, "Generated AI tags");
       await ctx.updateStageProgress(STAGE_NAME, 75);
-    } catch (aiError: any) {
+    } catch (aiError: unknown) {
       // If AI fails, we no longer just continue. We let the job fail
       // so it can be retried. The user will see the error on the UI.
       logger.error(
-        { noteId, error: aiError.message },
+        {
+          noteId,
+          error: aiError instanceof Error ? aiError.message : String(aiError),
+        },
         "AI tag generation error",
       );
       // The error will be caught by the main catch block.
@@ -156,14 +159,21 @@ async function processNoteJob(ctx: JobContext<NoteJobData>) {
     await ctx.completeStage(STAGE_NAME, finalArtifacts);
 
     logger.info({ jobId: ctx.job.id, noteId }, "Job completed successfully");
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
-      { jobId: ctx.job.id, noteId, error: error.message },
+      {
+        jobId: ctx.job.id,
+        noteId,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "FAILED note processing job",
     );
 
     // Report the error on the specific stage
-    await ctx.failStage(STAGE_NAME, error);
+    await ctx.failStage(
+      STAGE_NAME,
+      error instanceof Error ? error : new Error(String(error)),
+    );
 
     // Re-throw so the queue knows the job failed
     throw error;

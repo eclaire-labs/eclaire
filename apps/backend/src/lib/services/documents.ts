@@ -1,6 +1,7 @@
 // lib/services/documents.ts
 
 import type { Buffer } from "node:buffer";
+import { Readable } from "node:stream";
 import {
   and,
   asc,
@@ -16,7 +17,6 @@ import {
   sql,
 } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
-import { Readable } from "node:stream";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { documentsTags, documents: schemaDocuments, tags } = schema;
@@ -42,14 +42,15 @@ interface CreateDocumentData {
   content: Buffer;
   metadata: {
     title?: string;
-    description?: string;
-    dueDate?: string;
+    description?: string | null;
+    dueDate?: string | null;
     tags?: string[];
     originalFilename?: string;
     enabled?: boolean;
     reviewStatus?: "pending" | "accepted" | "rejected";
     flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
     isPinned?: boolean;
+    // biome-ignore lint/suspicious/noExplicitAny: open-ended metadata from upload clients
     [key: string]: any;
   };
   originalMimeType: string;
@@ -90,7 +91,7 @@ interface DocumentDetails {
   enabled: boolean;
 }
 
-class NotFoundError extends Error {
+export class NotFoundError extends Error {
   public code = "NOT_FOUND";
   constructor(message: string) {
     super(message);
@@ -159,9 +160,7 @@ async function getDocumentWithDetails(
     );
 
   if (!result) {
-    const error = new Error("Document not found");
-    (error as any).code = "NOT_FOUND";
-    throw error;
+    throw new NotFoundError("Document not found");
   }
 
   const document = result.document;
@@ -401,9 +400,7 @@ export async function updateDocument(
       ),
     });
     if (!existingDocument) {
-      const error = new Error("Document not found");
-      (error as any).code = "NOT_FOUND";
-      throw error;
+      throw new NotFoundError("Document not found");
     }
 
     const { tags: tagNames, dueDate, ...docUpdateData } = documentData;
@@ -412,6 +409,7 @@ export async function updateDocument(
     // Filter out undefined values to avoid overwriting with them
     Object.entries(docUpdateData).forEach(([key, value]) => {
       if (value !== undefined) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic property assignment on Drizzle partial insert type
         (updatePayload as any)[key] = value;
       }
     });
@@ -463,8 +461,7 @@ export async function updateDocument(
     return getDocumentWithDetails(id, userId);
   } catch (error) {
     logger.error({ err: error, documentId: id }, "Error updating document");
-    if (error instanceof Error && (error as any).code === "NOT_FOUND")
-      throw error;
+    if (error instanceof NotFoundError) throw error;
     throw new Error("Failed to update document metadata");
   }
 }
@@ -503,11 +500,14 @@ export async function deleteDocument(
       const storageForDelete = getStorage();
       await storageForDelete
         .deletePrefix(assetPrefix(userId, "documents", id))
-        .catch((storageError: any) => {
+        .catch((storageError: unknown) => {
           logger.warn(
             {
               documentId: id,
-              storageError: storageError.message || storageError,
+              storageError:
+                storageError instanceof Error
+                  ? storageError.message
+                  : String(storageError),
             },
             "DB record deleted, but failed to delete asset folder",
           );
@@ -602,8 +602,7 @@ export async function getDocumentById(
   try {
     return await getDocumentWithDetails(documentId, userId);
   } catch (error) {
-    if (error instanceof Error && (error as any).code === "NOT_FOUND")
-      throw error;
+    if (error instanceof NotFoundError) throw error;
     logger.error({ err: error, documentId }, "Error getting document by ID");
     throw new Error("Failed to fetch document");
   }
@@ -631,6 +630,7 @@ export async function findDocuments(
       dueDateStart,
       dueDateEnd,
     );
+    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects of varying types
     const sortColumnMap: Record<string, any> = {
       createdAt: schemaDocuments.createdAt,
       updatedAt: schemaDocuments.updatedAt,
@@ -1000,9 +1000,14 @@ export async function getDocumentAsset(
     const storage = getStorage();
     const { stream, metadata } = await storage.read(storageId);
     return { stream, contentLength: metadata.size, mimeType, filename };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If the file is missing from storage (e.g., deleted manually or processing failed)
-    if (error.code === "ENOENT" || error.name === "StorageNotFoundError") {
+    if (
+      error instanceof Error &&
+      (("code" in error &&
+        (error as NodeJS.ErrnoException).code === "ENOENT") ||
+        error.name === "StorageNotFoundError")
+    ) {
       logger.warn(
         `Storage file not found for document ${documentId}, asset ${assetType}, storageId ${storageId}`,
       );

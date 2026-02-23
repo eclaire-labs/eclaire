@@ -35,6 +35,7 @@ interface ModelInfo {
   quantizations?: QuantizationInfo[];
   selectedQuantization?: QuantizationInfo;
   fileSize?: number;
+  // biome-ignore lint/suspicious/noExplicitAny: unstructured model config from external API
   architecture?: any;
   modelArchitecture?: ModelArchitectureInfo; // For VRAM estimation
   hasVision?: boolean;
@@ -100,9 +101,10 @@ export async function importCommand(
       }
 
       spinner.succeed("Model information retrieved");
-    } catch (error: any) {
+    } catch (error: unknown) {
       spinner.fail("Failed to fetch model information");
-      console.log(colors.error(`${icons.error} ${error.message}`));
+      const message = error instanceof Error ? error.message : String(error);
+      console.log(colors.error(`${icons.error} ${message}`));
       process.exit(1);
     }
 
@@ -158,9 +160,12 @@ export async function importCommand(
         if (!canEstimateMemory || !arch) return "-";
         const estimate = estimateModelMemory(
           size,
+          // biome-ignore lint/style/noNonNullAssertion: checked via canEstimateMemory guard above
           modelInfo.maxTokens!,
           {
+            // biome-ignore lint/style/noNonNullAssertion: checked via canEstimateMemory guard above
             layers: arch.layers!,
+            // biome-ignore lint/style/noNonNullAssertion: checked via canEstimateMemory guard above
             kvHeads: arch.kvHeads!,
             headDim: arch.headDim,
             slidingWindow: arch.slidingWindow,
@@ -191,7 +196,7 @@ export async function importCommand(
       if (canEstimateMemory) {
         console.log(
           colors.dim(
-            `Memory estimates at ${modelInfo.maxTokens!.toLocaleString()} context`,
+            `Memory estimates at ${modelInfo.maxTokens?.toLocaleString()} context`,
           ),
         );
       }
@@ -358,7 +363,9 @@ export async function importCommand(
         visionSizeBytes: modelInfo.visionSizeBytes,
         architecture: modelInfo.modelArchitecture
           ? {
+              // biome-ignore lint/style/noNonNullAssertion: modelArchitecture is checked in ternary above
               layers: modelInfo.modelArchitecture.layers!,
+              // biome-ignore lint/style/noNonNullAssertion: modelArchitecture is checked in ternary above
               kvHeads: modelInfo.modelArchitecture.kvHeads!,
               headDim: modelInfo.modelArchitecture.headDim,
               ...(modelInfo.modelArchitecture.slidingWindow && {
@@ -428,12 +435,14 @@ export async function importCommand(
       if (suitableForBackend) contexts.push("backend");
       if (suitableForWorkers) contexts.push("workers");
       printProviderReminder(selectedProvider, contexts);
-    } catch (error: any) {
-      console.log(colors.error(`${icons.error} ${error.message}`));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.log(colors.error(`${icons.error} ${message}`));
       process.exit(1);
     }
-  } catch (error: any) {
-    console.log(colors.error(`${icons.error} Import failed: ${error.message}`));
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(colors.error(`${icons.error} Import failed: ${message}`));
     process.exit(1);
   }
 }
@@ -450,6 +459,7 @@ function isValidUrl(string: string): boolean {
 function hasVisionSupport(
   tags: string[] = [],
   pipelineTag?: string,
+  // biome-ignore lint/suspicious/noExplicitAny: unstructured model config from external API
   architecture?: any,
 ): boolean {
   // Check HuggingFace models: look for image-text-to-text tag
@@ -497,6 +507,7 @@ async function tryFetchArchitectureFromRepo(
       },
     );
 
+    // biome-ignore lint/suspicious/noExplicitAny: external API response — shape varies by provider
     const config = response.data as any;
 
     // For multimodal models, check text_config first (e.g., Gemma 3 vision models)
@@ -590,6 +601,7 @@ async function fetchHuggingFaceModel(url: string): Promise<ModelInfo> {
       },
     );
 
+    // biome-ignore lint/suspicious/noExplicitAny: external API response — shape varies by provider
     const data = response.data as any;
 
     // Extract base model ID for GGUF repos (used to fetch architecture from source)
@@ -628,8 +640,10 @@ async function fetchHuggingFaceModel(url: string): Promise<ModelInfo> {
           },
         );
 
+        // biome-ignore lint/suspicious/noExplicitAny: HuggingFace API file listing — untyped response
         const files = (filesResponse.data as any) || [];
         const ggufFiles = files.filter(
+          // biome-ignore lint/suspicious/noExplicitAny: HuggingFace API file listing — untyped response
           (file: any) =>
             file.path?.endsWith(".gguf") && !file.path?.startsWith("mmproj-"),
         );
@@ -637,6 +651,7 @@ async function fetchHuggingFaceModel(url: string): Promise<ModelInfo> {
         if (ggufFiles.length > 0) {
           modelInfo.isGGUF = true;
           modelInfo.quantizations = ggufFiles
+            // biome-ignore lint/suspicious/noExplicitAny: HuggingFace API file listing — untyped response
             .map((file: any) => ({
               filename: file.path,
               size: file.size,
@@ -649,12 +664,15 @@ async function fetchHuggingFaceModel(url: string): Promise<ModelInfo> {
 
           // Detect vision projector (mmproj) files for multimodal models
           // Prefer F16 as it's what llama-server uses by default
+          // biome-ignore lint/suspicious/noExplicitAny: HuggingFace API file listing — untyped response
           const mmprojFiles = files.filter((file: any) =>
             file.path?.startsWith("mmproj-"),
           );
           if (mmprojFiles.length > 0) {
             const preferredMmproj =
+              // biome-ignore lint/suspicious/noExplicitAny: HuggingFace API file listing — untyped response
               mmprojFiles.find((f: any) => f.path === "mmproj-F16.gguf") ||
+              // biome-ignore lint/suspicious/noExplicitAny: HuggingFace API file listing — untyped response
               mmprojFiles.find((f: any) => f.path === "mmproj-BF16.gguf") ||
               mmprojFiles[0];
             if (preferredMmproj) {
@@ -686,16 +704,19 @@ async function fetchHuggingFaceModel(url: string): Promise<ModelInfo> {
     }
 
     return modelInfo;
-  } catch (error: any) {
-    if (error.response?.status === 404) {
-      throw new Error(`Model '${modelId}' not found on HuggingFace`);
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 404) {
+        throw new Error(`Model '${modelId}' not found on HuggingFace`);
+      }
+      if (error.response?.status === 403) {
+        throw new Error(
+          `Access denied to model '${modelId}'. It may be private or gated.`,
+        );
+      }
     }
-    if (error.response?.status === 403) {
-      throw new Error(
-        `Access denied to model '${modelId}'. It may be private or gated.`,
-      );
-    }
-    throw new Error(`Failed to fetch HuggingFace model: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to fetch HuggingFace model: ${message}`);
   }
 }
 
@@ -724,7 +745,9 @@ async function fetchOpenRouterModel(url: string): Promise<ModelInfo> {
       validateStatus: (status) => status >= 200 && status < 300,
     });
 
+    // biome-ignore lint/suspicious/noExplicitAny: external API response — shape varies by provider
     const models = (response.data as any).data;
+    // biome-ignore lint/suspicious/noExplicitAny: external API response — shape varies by provider
     const model = models.find((m: any) => m.id === modelId);
 
     if (!model) {
@@ -754,13 +777,14 @@ async function fetchOpenRouterModel(url: string): Promise<ModelInfo> {
     };
 
     return modelInfo;
-  } catch (error: any) {
-    if (error.response?.status === 404) {
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
       throw new Error(
         `OpenRouter API not found or model '${modelId}' doesn't exist`,
       );
     }
-    throw new Error(`Failed to fetch OpenRouter model: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to fetch OpenRouter model: ${message}`);
   }
 }
 
@@ -786,6 +810,7 @@ function generateModelId(
   return `${provider}:${modelPart}`;
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: external API response — shape varies by provider
 function extractMaxTokens(huggingFaceData: any): number | undefined {
   // Try to extract max tokens from various sources
   if (huggingFaceData.cardData?.max_position_embeddings) {
@@ -806,7 +831,10 @@ function extractMaxTokens(huggingFaceData: any): number | undefined {
     /(\d+)k?\s*context|context.*?(\d+)k?|(\d+)k?\s*tokens/i,
   );
   if (contextMatch) {
-    const num = parseInt(contextMatch[1] || contextMatch[2] || contextMatch[3]);
+    const num = parseInt(
+      contextMatch[1] || contextMatch[2] || contextMatch[3],
+      10,
+    );
     return num > 100 ? num : num * 1000;
   }
 
@@ -827,6 +855,6 @@ function formatFileSize(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
 
-  if (i === 0) return bytes + " " + sizes[i];
-  return (bytes / 1024 ** i).toFixed(1) + " " + sizes[i];
+  if (i === 0) return `${bytes} ${sizes[i]}`;
+  return `${(bytes / 1024 ** i).toFixed(1)} ${sizes[i]}`;
 }

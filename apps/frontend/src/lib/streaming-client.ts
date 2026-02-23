@@ -7,7 +7,9 @@ export interface StreamEvent {
   content?: string;
   name?: string;
   status?: "starting" | "executing" | "completed" | "error";
+  // biome-ignore lint/suspicious/noExplicitAny: tool call arguments are arbitrary JSON from AI tools
   arguments?: Record<string, any>;
+  // biome-ignore lint/suspicious/noExplicitAny: tool call results vary by tool type
   result?: any;
   error?: string;
   requestId?: string;
@@ -45,7 +47,9 @@ export interface StreamEventHandlers {
   onToolCall?: (
     name: string,
     status: "starting" | "executing" | "completed" | "error",
+    // biome-ignore lint/suspicious/noExplicitAny: tool call arguments are arbitrary JSON from AI tools
     args?: Record<string, any>,
+    // biome-ignore lint/suspicious/noExplicitAny: tool call results vary by tool type
     result?: any,
     error?: string,
   ) => void;
@@ -291,7 +295,10 @@ export class StreamingClient {
         break;
 
       default:
-        console.warn("Unknown stream event type:", (event as any).type);
+        console.warn(
+          "Unknown stream event type:",
+          (event as unknown as Record<string, unknown>).type,
+        );
     }
   }
 

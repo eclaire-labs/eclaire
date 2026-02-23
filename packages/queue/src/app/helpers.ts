@@ -44,6 +44,7 @@ export function isJobReady(scheduledFor: Date | null): boolean {
  * @param row - Database row from queueJobs
  * @returns Formatted ClaimedJob or null
  */
+// biome-ignore lint/suspicious/noExplicitAny: raw database row — column names vary by ORM mapping
 export function formatJobResult(row: any): ClaimedJob | null {
   if (!row) return null;
 

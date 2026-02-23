@@ -163,6 +163,7 @@ export function initializeDatabase(
     const client = createSqliteClient(sqlitePath);
     rawClient = client;
     currentDbType = dbType;
+    // biome-ignore lint/suspicious/noExplicitAny: Drizzle driver return type doesn't match DbInstance union
     dbInstance = drizzleSqlite(client, { schema: sqliteSchema }) as any;
     txManagerInstance = createSqliteTransactionManager(
       dbInstance as SqliteDbInstance,
@@ -175,8 +176,11 @@ export function initializeDatabase(
     );
 
     return {
+      // biome-ignore lint/style/noNonNullAssertion: singleton initialized above
       db: dbInstance!,
+      // biome-ignore lint/style/noNonNullAssertion: singleton initialized above
       txManager: txManagerInstance!,
+      // biome-ignore lint/style/noNonNullAssertion: singleton initialized above
       capabilities: capabilitiesInstance!,
       schema: sqliteSchema,
       dbType,
@@ -189,6 +193,7 @@ export function initializeDatabase(
     const client = createPgliteClient(pglitePath);
     rawClient = client;
     currentDbType = dbType;
+    // biome-ignore lint/suspicious/noExplicitAny: Drizzle driver return type doesn't match DbInstance union
     dbInstance = drizzlePglite(client, { schema: pgSchema }) as any;
     txManagerInstance = createPgTransactionManager(
       dbInstance as PgliteDbInstance,
@@ -197,8 +202,11 @@ export function initializeDatabase(
     logger?.info({ path: pglitePath }, "PGlite database initialized");
 
     return {
+      // biome-ignore lint/style/noNonNullAssertion: singleton initialized above
       db: dbInstance!,
+      // biome-ignore lint/style/noNonNullAssertion: singleton initialized above
       txManager: txManagerInstance!,
+      // biome-ignore lint/style/noNonNullAssertion: singleton initialized above
       capabilities: capabilitiesInstance!,
       schema: pgSchema,
       dbType,
@@ -241,8 +249,11 @@ export function initializeDatabase(
     );
 
     return {
+      // biome-ignore lint/style/noNonNullAssertion: singleton initialized above
       db: dbInstance!,
+      // biome-ignore lint/style/noNonNullAssertion: singleton initialized above
       txManager: txManagerInstance!,
+      // biome-ignore lint/style/noNonNullAssertion: singleton initialized above
       capabilities: capabilitiesInstance!,
       schema: pgSchema,
       dbType,

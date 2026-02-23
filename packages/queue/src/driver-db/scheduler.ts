@@ -32,6 +32,7 @@ export interface DbSchedulerConfig {
   db: DbInstance;
 
   /** Queue schedules table */
+  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
   queueSchedules: any;
 
   /** Queue client for enqueuing jobs */
@@ -103,6 +104,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
 
     try {
       // Find all enabled schedules that are due
+      // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
       const dueSchedules = await (db as any)
         .select()
         .from(queueSchedules)
@@ -118,6 +120,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
           // Check if we've passed the end date
           if (schedule.endDate && now >= schedule.endDate) {
             // Disable the schedule
+            // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
             await (db as any)
               .update(queueSchedules)
               .set({
@@ -139,6 +142,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
             schedule.runCount >= schedule.runLimit
           ) {
             // Disable the schedule
+            // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
             await (db as any)
               .update(queueSchedules)
               .set({
@@ -162,6 +166,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
 
           // Update schedule
           const nextRunAt = getNextRunTime(schedule.cron, now);
+          // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
           await (db as any)
             .update(queueSchedules)
             .set({
@@ -232,6 +237,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
 
       try {
         // Try to insert, update on conflict
+        // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
         await (db as any)
           .insert(queueSchedules)
           .values({
@@ -275,6 +281,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
 
     async remove(key: string): Promise<boolean> {
       try {
+        // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
         const result = await (db as any)
           .delete(queueSchedules)
           .where(eq(queueSchedules.key, key))
@@ -298,6 +305,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
 
     async setEnabled(key: string, enabled: boolean): Promise<void> {
       try {
+        // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
         await (db as any)
           .update(queueSchedules)
           .set({
@@ -318,6 +326,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
 
     async get(key: string): Promise<ScheduleConfig | null> {
       try {
+        // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
         const rows = await (db as any)
           .select()
           .from(queueSchedules)
@@ -351,11 +360,13 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
       try {
         const conditions = queue ? eq(queueSchedules.queue, queue) : undefined;
 
+        // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
         const rows = await (db as any)
           .select()
           .from(queueSchedules)
           .where(conditions);
 
+        // biome-ignore lint/suspicious/noExplicitAny: raw database row type varies by dialect
         return rows.map((row: any) => ({
           key: row.key,
           queue: row.queue,

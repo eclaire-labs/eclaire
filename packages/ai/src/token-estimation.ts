@@ -34,7 +34,7 @@ export function estimateTokenCount(
 ): number {
   const logger = getLogger();
   try {
-    let encoding;
+    let encoding: ReturnType<typeof get_encoding>;
     try {
       // Try to get model-specific encoding
       encoding = encoding_for_model(

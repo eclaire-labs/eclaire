@@ -120,9 +120,10 @@ export async function testCommand(
 
       process.exit(1);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
-      colors.error(`${icons.error} Failed to test provider: ${error.message}`),
+      colors.error(`${icons.error} Failed to test provider: ${message}`),
     );
     process.exit(1);
   }
@@ -157,6 +158,7 @@ async function testProviderConnectivity(
 
   // Create a minimal valid request body
   // Most providers accept this and will respond (even if with an error about missing model)
+  // biome-ignore lint/suspicious/noExplicitAny: minimal test payload — shape varies by provider
   const testBody: Record<string, any> = {
     messages: [{ role: "user", content: "test" }],
     max_tokens: 1,

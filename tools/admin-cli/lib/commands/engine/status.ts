@@ -102,9 +102,10 @@ export async function statusCommand(options: CommandOptions): Promise<void> {
     }
 
     console.log("");
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
-      colors.error(`${icons.error} Failed to get status: ${error.message}`),
+      colors.error(`${icons.error} Failed to get status: ${message}`),
     );
     process.exit(1);
   }

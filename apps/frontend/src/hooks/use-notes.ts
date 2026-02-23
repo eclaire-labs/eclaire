@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/frontend-api";
 import type { NoteEntry } from "@/types/note";
 
 // Transform backend note data to frontend format
+// biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 const transformNoteData = (backendNote: any): NoteEntry => {
   return {
     id: backendNote.id,

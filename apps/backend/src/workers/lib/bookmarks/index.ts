@@ -36,6 +36,7 @@ export interface BookmarkArtifacts {
   pdfStorageId: string;
   extractedText: string;
   tags: string[];
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic artifact accumulator for various bookmark types
   rawMetadata?: Record<string, any>;
   // Platform-specific optional artifacts
   readmeStorageId?: string;

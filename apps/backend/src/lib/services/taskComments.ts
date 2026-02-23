@@ -18,6 +18,7 @@ export interface UpdateTaskCommentParams {
   content: string;
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: raw DB row parameter
 function cleanTaskCommentForResponse(comment: any) {
   const { createdAt, updatedAt, ...cleanedComment } = comment;
 

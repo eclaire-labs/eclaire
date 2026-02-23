@@ -5,8 +5,8 @@
  * Call this early in application startup, before using any AI functions.
  */
 
-import { initAI } from "@eclaire/ai";
 import * as path from "node:path";
+import { initAI } from "@eclaire/ai";
 import { config } from "../config/index.js";
 import { createChildLogger } from "./logger.js";
 

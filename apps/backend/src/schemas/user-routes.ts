@@ -1,5 +1,6 @@
 import { resolver } from "hono-openapi";
 import { ErrorResponseSchema, UnauthorizedSchema } from "./all-responses.js";
+import { requestBodyResolver } from "./common.js";
 import { DeleteAllUserDataSchema, UpdateProfileSchema } from "./user-params.js";
 import {
   DeleteAllUserDataResponseSchema,
@@ -63,7 +64,7 @@ export const updateUserProfileRouteDescription = {
     description: "Profile update data",
     content: {
       "application/json": {
-        schema: resolver(UpdateProfileSchema) as any,
+        schema: requestBodyResolver(UpdateProfileSchema),
       },
     },
     required: true,
@@ -122,7 +123,7 @@ export const deleteAllUserDataRouteDescription = {
     description: "Password confirmation for data deletion",
     content: {
       "application/json": {
-        schema: resolver(DeleteAllUserDataSchema) as any,
+        schema: requestBodyResolver(DeleteAllUserDataSchema),
       },
     },
     required: true,

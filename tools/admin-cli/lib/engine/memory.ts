@@ -197,7 +197,7 @@ export function estimateModelMemory(
   let kvCache: number;
   let confidence: "high" | "medium" | "low";
 
-  if (architecture && architecture.layers && architecture.kvHeads) {
+  if (architecture?.layers && architecture.kvHeads) {
     // Use accurate formula with architecture info
     kvCache = estimateKVCacheWithArchitecture(
       contextSize,

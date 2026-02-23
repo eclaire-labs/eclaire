@@ -181,13 +181,14 @@ export async function activateCommand(
     } else {
       await setActiveForContext(context, allModels);
     }
-  } catch (error: any) {
-    if (error.message.includes("User force closed")) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("User force closed")) {
       console.log(colors.dim("\nCancelled by user"));
       return;
     }
     console.log(
-      colors.error(`${icons.error} Failed to activate model: ${error.message}`),
+      colors.error(`${icons.error} Failed to activate model: ${message}`),
     );
     process.exit(1);
   }
@@ -287,15 +288,14 @@ export async function deactivateCommand(context?: string): Promise<void> {
         `${icons.success} Deactivated ${currentModelId} from ${context} context`,
       ),
     );
-  } catch (error: any) {
-    if (error.message.includes("User force closed")) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("User force closed")) {
       console.log(colors.dim("\nCancelled by user"));
       return;
     }
     console.log(
-      colors.error(
-        `${icons.error} Failed to deactivate model: ${error.message}`,
-      ),
+      colors.error(`${icons.error} Failed to deactivate model: ${message}`),
     );
     process.exit(1);
   }

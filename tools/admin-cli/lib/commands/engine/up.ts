@@ -82,6 +82,7 @@ export async function upCommand(options: UpOptions = {}): Promise<void> {
       .join("\n");
     console.log(colors.dim(`Models to preload:\n${modelList}\n`));
 
+    // biome-ignore lint/style/noNonNullAssertion: providerConfig is set when resolution.status is "ok"
     const settings = getEngineSettings(resolution.providerConfig!);
     const spinner = ora({
       text: `Starting llama-server on port ${settings.port}...`,
@@ -92,6 +93,7 @@ export async function upCommand(options: UpOptions = {}): Promise<void> {
       const hfModels = resolution.modelsToPreload.map((m) => m.providerModel);
       const pid = await startLlamaServer({
         hfModels,
+        // biome-ignore lint/style/noNonNullAssertion: providerConfig is set when resolution.status is "ok"
         providerConfig: resolution.providerConfig!,
         foreground: options.foreground ?? false,
       });
@@ -99,15 +101,17 @@ export async function upCommand(options: UpOptions = {}): Promise<void> {
       spinner.succeed(
         `llama-cpp engine started (PID: ${pid}, port: ${settings.port})`,
       );
-    } catch (error: any) {
-      spinner.fail(`Failed to start engine: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      spinner.fail(`Failed to start engine: ${message}`);
       process.exit(1);
     }
 
     console.log("");
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
-      colors.error(`${icons.error} Failed to start engine: ${error.message}`),
+      colors.error(`${icons.error} Failed to start engine: ${message}`),
     );
     process.exit(1);
   }
@@ -171,12 +175,11 @@ async function runMemoryPreflight(
     }
 
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If VRAM detection fails, warn but allow proceeding
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
-      colors.warning(
-        `\n${icons.warning} Could not check memory: ${error.message}`,
-      ),
+      colors.warning(`\n${icons.warning} Could not check memory: ${message}`),
     );
     console.log(colors.dim("Proceeding without memory verification\n"));
     return true;

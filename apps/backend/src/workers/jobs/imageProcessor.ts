@@ -1,6 +1,6 @@
+import { Buffer } from "node:buffer";
 import { type AIMessage, callAI } from "@eclaire/ai";
 import type { JobContext } from "@eclaire/queue/core";
-import { Buffer } from "node:buffer";
 import heicConvert from "heic-convert";
 import sharp from "sharp";
 import { createChildLogger } from "../../lib/logger.js";
@@ -9,7 +9,7 @@ import { config } from "../config.js";
 
 const logger = createChildLogger("image-processor");
 
-interface ImageJobData {
+export interface ImageJobData {
   photoId: string;
   storageId: string;
   mimeType: string;
@@ -133,12 +133,19 @@ async function executeImageConversion(
     );
 
     return { ...artifacts, imageBuffer: jpegBuffer };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
-      { photoId, from: sourceMimeType, error: error.message },
+      {
+        photoId,
+        from: sourceMimeType,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Image conversion failed",
     );
-    await ctx.failStage(stageName, error);
+    await ctx.failStage(
+      stageName,
+      error instanceof Error ? error : new Error(String(error)),
+    );
     throw error;
   }
 }
@@ -177,12 +184,18 @@ async function executeThumbnailGeneration(
     );
 
     return artifacts;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
-      { photoId, error: error.message },
+      {
+        photoId,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Thumbnail generation failed",
     );
-    await ctx.failStage(stageName, error);
+    await ctx.failStage(
+      stageName,
+      error instanceof Error ? error : new Error(String(error)),
+    );
     throw error;
   }
 }
@@ -195,6 +208,7 @@ async function executeAIWorkflowStep(
   imageBase64: string,
   photoId: string,
   ctx: JobContext<ImageJobData>,
+  // biome-ignore lint/suspicious/noExplicitAny: AI model returns dynamic JSON output
 ): Promise<any> {
   await ctx.startStage(stageName);
   await ctx.updateStageProgress(stageName, 10);
@@ -319,12 +333,19 @@ async function executeAIWorkflowStep(
 
     await ctx.completeStage(stageName, parsedResponse);
     return parsedResponse;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
-      { photoId, step: stageName, error: error.message },
+      {
+        photoId,
+        step: stageName,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "AI workflow step failed",
     );
-    await ctx.failStage(stageName, error);
+    await ctx.failStage(
+      stageName,
+      error instanceof Error ? error : new Error(String(error)),
+    );
     throw error;
   }
 }
@@ -344,6 +365,7 @@ function detectRepetition(text: string): boolean {
  * Handles both string responses and AIResponse objects from callAI().
  * Strips markdown code blocks if present.
  */
+// biome-ignore lint/suspicious/noExplicitAny: AI model response can be string or pre-parsed object
 function parseModelResponse(responseText: string | any): any {
   try {
     // Handle AIResponse objects from callAI()
@@ -383,12 +405,17 @@ function parseModelResponse(responseText: string | any): any {
     }
 
     return JSON.parse(cleanedJsonString);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn(
-      { responseText, error: error.message },
+      {
+        responseText,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Failed to parse AI response as JSON.",
     );
-    throw new Error(`Could not parse AI response: ${error.message}`);
+    throw new Error(
+      `Could not parse AI response: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
@@ -422,7 +449,9 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
 
   await ctx.initStages(initialStages);
 
+  // biome-ignore lint/suspicious/noExplicitAny: parsed AI model output
   const allArtifacts: Record<string, any> = {};
+  // biome-ignore lint/suspicious/noExplicitAny: parsed AI model output
   const extractedData: Record<string, any> = {
     photoId,
     mimeType,
@@ -570,9 +599,14 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
       { photoId, jobId: ctx.job.id },
       "Successfully completed image processing job.",
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
-      { photoId, jobId: ctx.job.id, error: error.message, stack: error.stack },
+      {
+        photoId,
+        jobId: ctx.job.id,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      },
       "FAILED image processing job",
     );
     // Re-throw so queue knows the job failed

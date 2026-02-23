@@ -4,6 +4,7 @@
  * Shared zod schemas and types used across multiple schema files.
  */
 
+import { resolver } from "hono-openapi";
 import z from "zod/v4";
 
 // =============================================================================
@@ -78,3 +79,19 @@ export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
  * Schema for tool call arguments - a record of JSON values.
  */
 export const toolArgumentsSchema = z.record(z.string(), jsonValueSchema);
+
+// =============================================================================
+// REQUEST BODY RESOLVER
+// =============================================================================
+
+/**
+ * Wrapper around hono-openapi resolver() for use in requestBody schemas.
+ * DescribeRouteOptions.requestBody inherits from OpenAPIV3_1.OperationObject
+ * which expects SchemaObject, not ResolverReturnType.
+ */
+export function requestBodyResolver(
+  schema: Parameters<typeof resolver>[0],
+  // biome-ignore lint/suspicious/noExplicitAny: resolver() returns ResolverReturnType but requestBody.schema expects SchemaObject
+): any {
+  return resolver(schema);
+}

@@ -45,6 +45,7 @@ export function MobileBackButton({
 
   return (
     <button
+      type="button"
       onClick={handleBack}
       className={cn(
         "flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors",

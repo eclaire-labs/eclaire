@@ -27,6 +27,20 @@ import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:bookmarks");
 
+class BookmarkNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
+class BookmarkFileNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FileNotFoundError";
+  }
+}
+
 // --- URL VALIDATION AND NORMALIZATION ---
 
 /**
@@ -72,6 +86,7 @@ export function validateAndNormalizeBookmarkUrl(
 interface CreateBookmarkPayload {
   url: string;
   userId: string;
+  // biome-ignore lint/suspicious/noExplicitAny: open-ended metadata from external APIs
   rawMetadata: Record<string, any>;
   userAgent: string;
 }
@@ -165,23 +180,20 @@ export async function getBookmarkAssetDetails(
     .where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)));
 
   if (!result) {
-    const notFoundError = new Error("Bookmark not found");
-    (notFoundError as any).name = "NotFoundError";
-    throw notFoundError;
+    throw new BookmarkNotFoundError("Bookmark not found");
   }
 
   if (!result.storageId) {
-    const fileNotFoundError = new Error(
+    throw new BookmarkFileNotFoundError(
       `${assetType} not found for this bookmark`,
     );
-    (fileNotFoundError as any).name = "FileNotFoundError";
-    throw fileNotFoundError;
   }
 
   // Use dynamic MIME type detection for favicons, static for others
-  const mimeType = (assetInfo as any).dynamicMime
-    ? getMimeTypeFromStorageId(result.storageId)
-    : assetInfo.mime;
+  const mimeType =
+    "dynamicMime" in assetInfo && assetInfo.dynamicMime
+      ? getMimeTypeFromStorageId(result.storageId)
+      : assetInfo.mime;
 
   logger.debug(
     { assetType, storageId: result.storageId, mimeType },
@@ -470,11 +482,14 @@ export async function deleteBookmark(
         logger.info(
           `Successfully deleted storage for bookmark ${id} (user: ${userId})`,
         );
-      } catch (storageError: any) {
+      } catch (storageError: unknown) {
         // Log that storage deletion failed but DB entry is gone.
         logger.warn(
-          `DB record ${id} deleted, but failed to delete asset folder for bookmark ${id} (user: ${userId}):`,
-          storageError.message || storageError,
+          {
+            err: storageError instanceof Error ? storageError : undefined,
+            bookmarkId: id,
+          },
+          `DB record deleted, but failed to delete asset folder for bookmark ${id} (user: ${userId})`,
         );
         // Do not throw here, allow the operation to succeed from user's perspective.
       }
@@ -507,6 +522,7 @@ export async function deleteBookmark(
  * - normalizedUrl -> normalizedUrl (separate field, only if exists)
  * - timestamps converted to ISO strings
  */
+// biome-ignore lint/suspicious/noExplicitAny: raw DB row with variable shape
 function mapBookmarkToApiResponse(dbBookmark: any) {
   const {
     originalUrl,
@@ -585,6 +601,7 @@ function mapBookmarkToApiResponse(dbBookmark: any) {
  * Maps API request fields to database fields for updates
  * - url -> originalUrl (but preserve normalizedUrl if it exists)
  */
+// biome-ignore lint/suspicious/noExplicitAny: dynamic field remapping from API request
 function mapApiRequestToDbFields(apiData: any) {
   const { url, ...rest } = apiData;
 
@@ -741,6 +758,7 @@ export async function getBookmarkById(bookmarkId: string, userId: string) {
  */
 export async function updateBookmarkArtifacts(
   bookmarkId: string,
+  // biome-ignore lint/suspicious/noExplicitAny: generic artifact record from processors
   artifacts: Record<string, any>, // Use a generic Record type now
 ): Promise<void> {
   // Changed to void for cleaner try/catch
@@ -1153,6 +1171,7 @@ function extractBookmarksFromFolder(
  */
 export async function importBookmarkFile(
   userId: string,
+  // biome-ignore lint/suspicious/noExplicitAny: Chrome/Brave bookmark JSON import data
   bookmarkData: any,
 ): Promise<BookmarkImportResult> {
   const result: BookmarkImportResult = {

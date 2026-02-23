@@ -61,13 +61,14 @@ export async function editCommand(id: string): Promise<void> {
       ),
     );
     console.log(colors.dim(`\nTest connectivity: eclaire provider test ${id}`));
-  } catch (error: any) {
-    if (error.message.includes("User force closed")) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("User force closed")) {
       console.log(colors.dim("\nCancelled by user"));
       return;
     }
     console.log(
-      colors.error(`${icons.error} Failed to edit provider: ${error.message}`),
+      colors.error(`${icons.error} Failed to edit provider: ${message}`),
     );
     process.exit(1);
   }

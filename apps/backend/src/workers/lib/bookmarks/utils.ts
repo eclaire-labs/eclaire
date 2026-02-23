@@ -32,9 +32,11 @@ export async function extractContentFromHtml(
   readableHtmlStorageId: string;
   faviconStorageId: string | null;
   extractedText: string;
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic external metadata from various sources
   rawMetadata?: Record<string, any>;
 }> {
   let readableHtml = "";
+  // biome-ignore lint/suspicious/noExplicitAny: Readability parse result, no exported type available
   let article: any = null;
 
   try {
@@ -189,12 +191,12 @@ export async function extractContentFromHtml(
             faviconStorageId = faviconKey;
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         logger.warn(
           {
             bookmarkId,
             url,
-            error: error.response ? error.response.status : error.message,
+            error: error instanceof Error ? error.message : String(error),
           },
           "Could not fetch or save favicon",
         );
@@ -276,13 +278,13 @@ export async function extractContentFromHtml(
       extractedText: plainTextContent,
       rawMetadata: {},
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       {
         bookmarkId,
         url,
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       },
       "Error processing HTML with JSDOM",
     );
@@ -302,10 +304,14 @@ export async function generateOptimizedPdf(
   logger.debug({ bookmarkId }, "Generating optimized PDF");
 
   // Wait for images to load with per-image timeout (5s each)
-  await page.evaluate(() =>
-    Promise.all(
-      Array.from((globalThis as any).document.images)
+  await page.evaluate(() => {
+    // biome-ignore lint/suspicious/noExplicitAny: browser-context code, no DOM types available in Node
+    const images = Array.from((globalThis as any).document.images);
+    return Promise.all(
+      images
+        // biome-ignore lint/suspicious/noExplicitAny: browser-context HTMLImageElement, no DOM types available
         .filter((img: any) => !img.complete)
+        // biome-ignore lint/suspicious/noExplicitAny: browser-context HTMLImageElement, no DOM types available
         .map((img: any) =>
           Promise.race([
             new Promise((resolve) => {
@@ -314,8 +320,8 @@ export async function generateOptimizedPdf(
             new Promise((resolve) => setTimeout(resolve, 5000)),
           ]),
         ),
-    ),
-  );
+    );
+  });
 
   await page.waitForTimeout(3000);
   await page.emulateMedia({ media: "screen" });
@@ -366,7 +372,9 @@ export async function generateBookmarkTags(
     }
 
     if (parsed && typeof parsed === "object" && Array.isArray(parsed.tags)) {
-      return parsed.tags.filter((t: any): t is string => typeof t === "string");
+      return parsed.tags.filter(
+        (t: unknown): t is string => typeof t === "string",
+      );
     }
 
     return [];

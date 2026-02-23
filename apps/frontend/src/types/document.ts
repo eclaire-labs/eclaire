@@ -24,7 +24,8 @@ export interface Document {
   processingStatus: "pending" | "processing" | "completed" | "failed" | null;
 
   // Document metadata
-  rawMetadata: any; // Raw metadata from upload
+  // biome-ignore lint/suspicious/noExplicitAny: raw metadata structure varies by document type and upload source
+  rawMetadata: any;
   originalMimeType: string | null; // Original MIME type
 
   // User management fields

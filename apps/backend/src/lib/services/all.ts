@@ -82,6 +82,7 @@ export function isLaxUrl(str: string): boolean {
 interface CreateContentPayload {
   contentBuffer: Buffer;
   mimeType: string;
+  // biome-ignore lint/suspicious/noExplicitAny: metadata record from mixed item types
   metadata: Record<string, any>;
   filename?: string;
   userId: string;
@@ -90,6 +91,7 @@ interface CreateContentPayload {
 }
 
 type CreateContentResult =
+  // biome-ignore lint/suspicious/noExplicitAny: union result from polymorphic query
   | { success: true; result: any; assetType: string }
   | { success: false; error: string; statusCode: number };
 

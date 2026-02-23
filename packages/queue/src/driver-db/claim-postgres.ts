@@ -26,6 +26,7 @@ import type { ClaimedJob, ClaimOptions, DbInstance } from "./types.js";
  */
 export async function claimJobPostgres(
   db: DbInstance,
+  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
   queueJobs: any,
   queue: string,
   options: ClaimOptions,
@@ -44,6 +45,7 @@ export async function claimJobPostgres(
     // Use a single atomic UPDATE with subquery to avoid race condition
     // The subquery uses FOR UPDATE SKIP LOCKED to find and lock the job
     // The UPDATE happens in the same statement, so the lock is held
+    // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
     const result = await (db as any).execute(sql`
       UPDATE ${queueJobs}
       SET
@@ -129,6 +131,7 @@ function toDate(value: unknown): Date | null {
  * Handles both camelCase (drizzle ORM) and snake_case (raw SQL) column names
  * Normalizes all timestamp fields to Date objects
  */
+// biome-ignore lint/suspicious/noExplicitAny: raw SQL RETURNING row — columns vary by dialect
 function formatClaimedJob(row: any): ClaimedJob {
   return {
     id: row.id,
@@ -149,7 +152,9 @@ function formatClaimedJob(row: any): ClaimedJob {
     lockToken: row.lockToken ?? row.lock_token,
     errorMessage: row.errorMessage ?? row.error_message,
     errorDetails: row.errorDetails ?? row.error_details,
+    // biome-ignore lint/style/noNonNullAssertion: createdAt is always present in queue job rows
     createdAt: toDate(row.createdAt ?? row.created_at)!,
+    // biome-ignore lint/style/noNonNullAssertion: updatedAt is always present in queue job rows
     updatedAt: toDate(row.updatedAt ?? row.updated_at)!,
     completedAt: toDate(row.completedAt ?? row.completed_at),
     // Multi-stage progress tracking

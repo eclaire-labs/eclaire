@@ -5,6 +5,7 @@ import {
   UnauthorizedSchema,
   ValidationErrorSchema,
 } from "./all-responses.js";
+import { requestBodyResolver } from "./common.js";
 import { PartialPhotoSchema, PhotoSchema } from "./photos-params.js";
 import {
   CreatedPhotoResponseSchema,
@@ -254,7 +255,7 @@ export const putPhotoRouteDescription = {
     description: "Complete photo metadata",
     content: {
       "application/json": {
-        schema: resolver(PhotoSchema) as any,
+        schema: requestBodyResolver(PhotoSchema),
       },
     },
   },
@@ -312,7 +313,7 @@ export const patchPhotoRouteDescription = {
     description: "Partial photo metadata",
     content: {
       "application/json": {
-        schema: resolver(PartialPhotoSchema) as any,
+        schema: requestBodyResolver(PartialPhotoSchema),
       },
     },
   },

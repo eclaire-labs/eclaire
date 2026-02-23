@@ -27,8 +27,10 @@ declare module "cli-table3" {
     };
   }
 
+  // biome-ignore lint/suspicious/noExplicitAny: third-party type declaration for cli-table3
   class Table extends Array<any[]> {
     constructor(options?: TableConstructorOptions);
+    // biome-ignore lint/suspicious/noExplicitAny: third-party type declaration for cli-table3
     push(...items: any[][]): number;
     toString(): string;
   }

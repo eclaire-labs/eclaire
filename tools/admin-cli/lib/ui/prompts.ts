@@ -211,7 +211,7 @@ export async function promptPort(
       message,
       default: defaultValue,
       validate: (input: number) => {
-        if (isNaN(input) || input < 1 || input > 65535) {
+        if (Number.isNaN(input) || input < 1 || input > 65535) {
           return "Please enter a valid port number (1-65535)";
         }
         return true;

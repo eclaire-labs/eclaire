@@ -53,11 +53,11 @@ interface MobileChatInterfaceProps {
 export function MobileChatInterface({
   messages,
   isLoading,
-  messagesEndRef,
+  messagesEndRef: _messagesEndRef,
   attachedAssets,
   setAttachedAssets,
   input,
-  inputRef,
+  inputRef: _inputRef,
   setInput,
   handleKeyDown,
   handleSend,
@@ -67,7 +67,7 @@ export function MobileChatInterface({
   onEditConversationTitle,
   onSelectConversation,
   onDeleteConversation,
-  onDeleteAllConversations,
+  onDeleteAllConversations: _onDeleteAllConversations,
   isStreaming,
   streamingThought,
   streamingText,
@@ -219,6 +219,7 @@ export function MobileChatInterface({
                 <div className="space-y-1">
                   {conversations.map((conversation) => (
                     <button
+                      type="button"
                       key={conversation.id}
                       onClick={() => handleSelectConversation(conversation)}
                       className="w-full text-left p-2 text-sm rounded hover:bg-muted/50 truncate"

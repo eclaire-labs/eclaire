@@ -106,9 +106,10 @@ export async function listCommand(options: CommandOptions): Promise<void> {
       colors.dim("  eclaire model import <url>    - Import new model"),
     );
     console.log(colors.dim("  eclaire model remove <ID>     - Remove a model"));
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
-      colors.error(`${icons.error} Failed to list models: ${error.message}`),
+      colors.error(`${icons.error} Failed to list models: ${message}`),
     );
     process.exit(1);
   }

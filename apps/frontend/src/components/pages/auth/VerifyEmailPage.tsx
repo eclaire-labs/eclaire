@@ -86,6 +86,7 @@ export default function VerifyEmailPage() {
         <div className="text-center text-sm">
           Didn't receive the email?{" "}
           <button
+            type="button"
             onClick={handleResendEmail}
             disabled={isResending}
             className="text-primary hover:underline disabled:opacity-70"

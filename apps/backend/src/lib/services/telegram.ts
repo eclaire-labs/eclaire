@@ -30,6 +30,7 @@ const activeBots = new Map<string, TelegramBotInstance>();
 /**
  * Validates and decrypts a Telegram channel config
  */
+// biome-ignore lint/suspicious/noExplicitAny: encrypted platform config varies per provider
 function decryptTelegramConfig(encryptedConfig: any): TelegramConfig | null {
   try {
     if (!encryptedConfig || typeof encryptedConfig !== "object") {
@@ -203,6 +204,7 @@ async function createBotInstance(
             // Update the instance with new promise
             const instance = activeBots.get(channelId);
             if (instance) {
+              // biome-ignore lint/suspicious/noExplicitAny: Telegraf instance property not in type definition
               (instance as any).launchPromise = retryPromise;
             }
             await retryPromise;
@@ -258,6 +260,7 @@ async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ) {
+  // biome-ignore lint/style/noNonNullAssertion: Telegraf text handler guarantees message
   if (!("text" in ctx.message!) || !ctx.message.text) {
     return;
   }

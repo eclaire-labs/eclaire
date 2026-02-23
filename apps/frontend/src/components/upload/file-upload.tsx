@@ -59,22 +59,19 @@ export function FileUpload() {
     return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
-  const addFiles = useCallback(
-    (newFiles: File[], basePath = "") => {
-      const generateFileId = () =>
-        `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const addFiles = useCallback((newFiles: File[], basePath = "") => {
+    const generateFileId = () =>
+      `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      const fileItems: FileItem[] = newFiles.map((file) => ({
-        file,
-        status: "pending" as const,
-        id: generateFileId(),
-        relativePath: basePath ? `${basePath}/${file.name}` : file.name,
-      }));
+    const fileItems: FileItem[] = newFiles.map((file) => ({
+      file,
+      status: "pending" as const,
+      id: generateFileId(),
+      relativePath: basePath ? `${basePath}/${file.name}` : file.name,
+    }));
 
-      setFiles((prev) => [...prev, ...fileItems]);
-    },
-    [],
-  );
+    setFiles((prev) => [...prev, ...fileItems]);
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -213,7 +210,9 @@ export function FileUpload() {
       type: file.type,
       lastModified: file.lastModified,
       relativePath: relativePath || file.name,
-      webkitRelativePath: (file as any).webkitRelativePath || "",
+      webkitRelativePath:
+        (file as unknown as { webkitRelativePath?: string })
+          .webkitRelativePath || "",
       uploadTimestamp: new Date().toISOString(),
       fileExtension: file.name.split(".").pop()?.toLowerCase() || "",
       baseName: file.name.substring(0, file.name.lastIndexOf(".")) || file.name,
@@ -241,7 +240,9 @@ export function FileUpload() {
     const handleDocumentDragOver = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      e.dataTransfer!.dropEffect = "copy";
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = "copy";
+      }
     };
 
     const handleDocumentDragEnter = (e: DragEvent) => {
@@ -357,7 +358,7 @@ export function FileUpload() {
         ref={folderInputRef}
         type="file"
         multiple
-        {...({ webkitdirectory: "" } as any)}
+        {...({ webkitdirectory: "" } as Record<string, unknown>)}
         className="hidden"
         onChange={handleFileSelect}
       />

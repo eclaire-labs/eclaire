@@ -85,6 +85,7 @@ export function validateNoteFileUpload(file: File | undefined): {
  */
 export function parseNoteUploadMetadata(metadataStr: string | undefined): {
   valid: boolean;
+  // biome-ignore lint/suspicious/noExplicitAny: open-ended metadata record
   metadata?: Record<string, any>;
   error?: string;
 } {
@@ -148,6 +149,7 @@ interface CreateNoteData {
     reviewStatus?: "pending" | "accepted" | "rejected";
     flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
     isPinned?: boolean;
+    // biome-ignore lint/suspicious/noExplicitAny: metadata index signature
     [key: string]: any;
   };
   originalMimeType: string;
@@ -316,6 +318,7 @@ export async function updateNoteEntry(
 
     // Prepare the update set
     const updateSet = {
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic update spread
       ...(updateData as any),
       description,
       updatedAt: new Date(),

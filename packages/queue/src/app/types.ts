@@ -10,6 +10,7 @@ import type { Logger } from "@eclaire/logger";
 export interface JobData {
   /** Request ID for tracing - propagated from HTTP request that triggered the job */
   requestId?: string;
+  // biome-ignore lint/suspicious/noExplicitAny: job data is user-defined and can contain any value
   [key: string]: any;
 }
 
@@ -136,6 +137,7 @@ export interface DatabaseJob {
   user_id: string;
   job_type: string;
   status: string;
+  // biome-ignore lint/suspicious/noExplicitAny: job data is user-defined JSON — shape varies by job type
   job_data: any;
   locked_by: string | null;
   locked_at: string | null;
@@ -149,6 +151,7 @@ export interface DatabaseJob {
  * Mock BullMQ Job object for processors
  */
 export interface MockBullMQJob {
+  // biome-ignore lint/suspicious/noExplicitAny: mock job data — must accept any shape for testing
   data: any;
   id: string;
   updateProgress?: (progress: number) => Promise<void>;
@@ -165,6 +168,7 @@ export interface ClaimedJob {
   user_id: string;
   job_type: string;
   status: string;
+  // biome-ignore lint/suspicious/noExplicitAny: job data is user-defined JSON — shape varies by job type
   job_data: any;
   locked_by: string | null;
   locked_at: Date | null;
@@ -181,6 +185,7 @@ export interface JobWaitlistInterface {
     assetType: AssetType,
     workerId: string,
     timeout?: number,
+    // biome-ignore lint/suspicious/noExplicitAny: return type varies — resolves with claimed job or null
   ): Promise<any>;
   notifyWaiters(assetType: AssetType, count?: number): number;
   notifyAllWaiters(assetType: AssetType): number;

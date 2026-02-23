@@ -5,6 +5,7 @@ import { apiFetch, getAbsoluteApiUrl } from "@/lib/frontend-api";
 import type { Bookmark } from "@/types/bookmark";
 
 // Transform backend bookmark data to frontend format
+// biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 const transformBookmarkData = (backendBookmark: any): Bookmark => {
   return {
     id: backendBookmark.id,

@@ -615,24 +615,24 @@ export default function PendingItemsPage() {
           {isLoading ? (
             // Loading skeleton
             [0, 1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 p-3 border rounded-lg"
-                >
-                  <div className="p-2 rounded-md bg-muted">
-                    <Skeleton className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <Skeleton className="h-5 w-3/4 mb-2" />
-                    <Skeleton className="h-4 w-1/2 mb-3" />
-                    <div className="flex gap-2">
-                      <Skeleton className="h-4 w-16" />
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-4 w-20" />
-                    </div>
+              <div
+                key={i}
+                className="flex items-start gap-3 p-3 border rounded-lg"
+              >
+                <div className="p-2 rounded-md bg-muted">
+                  <Skeleton className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <Skeleton className="h-5 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2 mb-3" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-20" />
                   </div>
                 </div>
-              ))
+              </div>
+            ))
           ) : filteredItems.length > 0 ? (
             filteredItems.map((item) => (
               <div

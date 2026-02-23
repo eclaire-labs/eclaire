@@ -39,20 +39,22 @@ export async function downCommand(options: DownOptions = {}): Promise<void> {
       spinner.succeed(
         `llama-cpp engine stopped${options.force ? " (forced)" : ""}`,
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       // Handle the case where process wasn't running but had stale PID file
-      if (error.message.includes("Cleaned up stale PID file")) {
-        spinner.warn(error.message);
+      if (message.includes("Cleaned up stale PID file")) {
+        spinner.warn(message);
         return;
       }
-      spinner.fail(`Failed to stop engine: ${error.message}`);
+      spinner.fail(`Failed to stop engine: ${message}`);
       process.exit(1);
     }
 
     console.log("");
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
-      colors.error(`${icons.error} Failed to stop engine: ${error.message}`),
+      colors.error(`${icons.error} Failed to stop engine: ${message}`),
     );
     process.exit(1);
   }

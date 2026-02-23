@@ -50,10 +50,9 @@ export async function logsCommand(options: LogsOptions = {}): Promise<void> {
     }
 
     console.log("");
-  } catch (error: any) {
-    console.log(
-      colors.error(`${icons.error} Failed to read logs: ${error.message}`),
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(colors.error(`${icons.error} Failed to read logs: ${message}`));
     process.exit(1);
   }
 }

@@ -89,6 +89,7 @@ import type { TaskStatus as SharedTaskStatus, Task, User } from "@/types/task";
 // --- Helper Functions ---
 
 // Transform backend user data to frontend User type
+// biome-ignore lint/suspicious/noExplicitAny: backend user shape may differ from frontend User type
 const transformBackendUser = (backendUser: any): User => {
   return {
     id: backendUser.id,
@@ -101,6 +102,7 @@ const transformBackendUser = (backendUser: any): User => {
 };
 
 // Transform auth user to match UserAvatar expected format
+// biome-ignore lint/suspicious/noExplicitAny: auth user shape varies across providers
 const transformAuthUserForAvatar = (authUser: any) => {
   return {
     displayName: authUser.displayName || authUser.name || null,
@@ -523,7 +525,10 @@ export default function TasksPage() {
       let compareResult = 0;
 
       // Helper for string/status comparison (can remain similar)
-      const getComparable = (value: any, type: "string" | "status"): string => {
+      const getComparable = (
+        value: string | null | undefined,
+        type: "string" | "status",
+      ): string => {
         // ... (implementation for string/status null handling) ...
         if (value === null || value === undefined) {
           return sortDir === "asc" ? "~~~~~" : "";
@@ -583,7 +588,7 @@ export default function TasksPage() {
               .localeCompare(b.title.toLowerCase());
           } else {
             // Both are valid dates, compare chronologically
-            compareResult = timeA! - timeB!;
+            compareResult = (timeA as number) - (timeB as number);
             // Apply sort direction ONLY to the valid date comparison
             compareResult = compareResult * (sortDir === "asc" ? 1 : -1);
           }
@@ -970,8 +975,10 @@ export default function TasksPage() {
     // Use the global function to open assistant with pre-attached assets
     if (
       typeof window !== "undefined" &&
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets
     ) {
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets([
         {
           type: "task",
@@ -2241,11 +2248,11 @@ function _TileView({
   onStatusChange,
   onDeleteTask,
   onEditClick,
-  onPinToggle,
-  onFlagColorChange,
-  onChatClick,
+  onPinToggle: _onPinToggle,
+  onFlagColorChange: _onFlagColorChange,
+  onChatClick: _onChatClick,
   allAssignees,
-  currentUserId,
+  currentUserId: _currentUserId,
   currentUser,
 }: TileViewProps) {
   return (
@@ -2454,7 +2461,7 @@ function _ListView({
   onFlagColorChange,
   onChatClick,
   allAssignees,
-  currentUserId,
+  currentUserId: _currentUserId,
   currentUser,
 }: ListViewProps) {
   return (
@@ -2484,7 +2491,7 @@ function _ListView({
         <TableBody>
           {tasks.map((task) => {
             // Simplify status icon selection
-            let statusIcon;
+            let statusIcon: React.JSX.Element;
             if (task.status === "completed") {
               statusIcon = <CheckCircle2 className="h-4 w-4 text-green-500" />;
             } else if (task.status === "in-progress") {
@@ -2711,7 +2718,7 @@ function TaskTileItem({
   onPinToggle,
   onFlagColorChange,
   onChatClick,
-  currentUserId,
+  currentUserId: _currentUserId,
   allAssignees,
   currentUser,
 }: TaskTileItemProps) {
@@ -2940,7 +2947,7 @@ function TaskListItem({
   onPinToggle,
   onFlagColorChange,
   onChatClick,
-  currentUserId,
+  currentUserId: _currentUserId,
   allAssignees,
   currentUser,
 }: TaskListItemProps) {
@@ -2949,7 +2956,7 @@ function TaskListItem({
   // Replace references to 'task' with the 'task' prop.
 
   // Simplify status icon selection
-  let statusIcon;
+  let statusIcon: React.JSX.Element;
   if (task.status === "completed") {
     statusIcon = <CheckCircle2 className="h-4 w-4 text-green-500" />;
   } else if (task.status === "in-progress") {

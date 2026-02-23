@@ -18,13 +18,19 @@ import {
 } from "@eclaire/queue/driver-db";
 import { db, dbCapabilities, dbType } from "../../db/index.js";
 import { createChildLogger } from "../../lib/logger.js";
-// Import job processors
+// Import job processors and their data types
 import processBookmarkJob from "../jobs/bookmarkProcessor.js";
+import type { DocumentJobData } from "../jobs/documentProcessor.js";
 import { processDocumentJob } from "../jobs/documentProcessor.js";
+import type { ImageJobData } from "../jobs/imageProcessor.js";
 import processImageJob from "../jobs/imageProcessor.js";
+import type { NoteJobData } from "../jobs/noteProcessor.js";
 import processNoteJob from "../jobs/noteProcessor.js";
+import type { TaskExecutionJobData } from "../jobs/taskExecutionProcessor.js";
 import processTaskExecution from "../jobs/taskExecutionProcessor.js";
+import type { TaskJobData } from "../jobs/taskProcessor.js";
 import processTaskJob from "../jobs/taskProcessor.js";
+import type { BookmarkJobData } from "./bookmarks/index.js";
 import { createPostgresPublisher } from "./postgres-publisher.js";
 
 const logger = createChildLogger("remote-db-workers");
@@ -83,6 +89,7 @@ export async function startRemoteDbWorkers(): Promise<void> {
   logger.info({}, "Starting remote database workers (Postgres mode)");
 
   // Create event callbacks that publish via Postgres NOTIFY
+  // biome-ignore lint/suspicious/noExplicitAny: db type mismatch between backend drizzle instance and postgres-publisher type alias
   const eventCallbacks = createPostgresPublisher(db as any, logger);
 
   const baseConfig = getWorkerConfig();
@@ -94,7 +101,7 @@ export async function startRemoteDbWorkers(): Promise<void> {
   // Bookmark processing worker
   const bookmarkWorker = createDbWorker(
     QueueNames.BOOKMARK_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<BookmarkJobData>) => {
       await processBookmarkJob(ctx);
     },
     config,
@@ -109,7 +116,7 @@ export async function startRemoteDbWorkers(): Promise<void> {
   // Image processing worker
   const imageWorker = createDbWorker(
     QueueNames.IMAGE_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<ImageJobData>) => {
       await processImageJob(ctx);
     },
     config,
@@ -121,7 +128,7 @@ export async function startRemoteDbWorkers(): Promise<void> {
   // Document processing worker
   const documentWorker = createDbWorker(
     QueueNames.DOCUMENT_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<DocumentJobData>) => {
       await processDocumentJob(ctx);
     },
     config,
@@ -136,7 +143,7 @@ export async function startRemoteDbWorkers(): Promise<void> {
   // Note processing worker
   const noteWorker = createDbWorker(
     QueueNames.NOTE_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<NoteJobData>) => {
       await processNoteJob(ctx);
     },
     config,
@@ -148,7 +155,7 @@ export async function startRemoteDbWorkers(): Promise<void> {
   // Task processing worker (tag generation)
   const taskWorker = createDbWorker(
     QueueNames.TASK_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<TaskJobData>) => {
       await processTaskJob(ctx);
     },
     config,
@@ -160,7 +167,7 @@ export async function startRemoteDbWorkers(): Promise<void> {
   // Task execution worker
   const taskExecutionWorker = createDbWorker(
     QueueNames.TASK_EXECUTION_PROCESSING,
-    async (ctx: JobContext<any>) => {
+    async (ctx: JobContext<TaskExecutionJobData>) => {
       await processTaskExecution(ctx);
     },
     config,

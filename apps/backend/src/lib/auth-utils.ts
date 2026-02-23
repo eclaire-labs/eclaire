@@ -24,6 +24,7 @@ export async function verifyApiKey(
 
     // Find the key record by keyId
     const keyRecord = await db.query.apiKeys.findFirst({
+      // biome-ignore lint/style/noNonNullAssertion: guaranteed by regex match above
       where: and(eq(apiKeys.keyId, keyId!), apiKeys.isActive),
     });
 

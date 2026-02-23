@@ -1,4 +1,5 @@
 import type { Buffer } from "node:buffer"; // Node.js Buffer
+import { Readable } from "node:stream";
 import {
   and,
   count,
@@ -13,7 +14,6 @@ import {
 import exifr from "exifr"; // <-- Import exifr
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
-import { Readable } from "node:stream";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 
@@ -27,6 +27,14 @@ import { recordHistory } from "./history.js"; // Assuming this service exists an
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:photos");
+
+function isStorageNotFound(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    (error as NodeJS.ErrnoException).code === "ENOENT"
+  );
+}
 
 // ============================================================================
 // Error Classes
@@ -138,7 +146,8 @@ export interface FileInfo {
 
 // Interface for extracted metadata (internal use)
 interface ExtractedMetadata {
-  exif?: Record<string, any>; // Raw EXIF data from exifr
+  // biome-ignore lint/suspicious/noExplicitAny: raw EXIF data structure varies per image
+  exif?: Record<string, any>;
   location?: {
     cityName?: string;
     countryIso2?: string;
@@ -150,15 +159,16 @@ interface ExtractedMetadata {
 export interface CreatePhotoData {
   content: Buffer;
   metadata: {
-    title?: string;
-    description?: string;
-    dueDate?: string;
+    title?: string | null;
+    description?: string | null;
+    dueDate?: string | null;
     tags?: string[];
-    originalFilename?: string;
-    deviceId?: string;
+    originalFilename?: string | null;
+    deviceId?: string | null;
     reviewStatus?: "pending" | "accepted" | "rejected";
     flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
     isPinned?: boolean;
+    // biome-ignore lint/suspicious/noExplicitAny: open-ended metadata from EXIF/upload clients
     [key: string]: any;
   };
   originalMimeType: string;
@@ -198,6 +208,7 @@ export interface PhotoStreamDetails {
  * @param originalFilename - The original filename
  */
 async function queuePhotoBackgroundJobs(
+  // biome-ignore lint/suspicious/noExplicitAny: Drizzle insert return type
   photoData: any,
   userId: string,
   originalMimeType: string,
@@ -429,6 +440,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
         isPinned: metadata.isPinned || false,
 
         enabled: enabled, // Set the enabled flag based on metadata
+        // biome-ignore lint/suspicious/noExplicitAny: Drizzle insert type mismatch with optional columns
       } as any)
       .returning();
 
@@ -1395,6 +1407,7 @@ function handleServiceError(error: unknown, defaultMessage: string): never {
 export async function extractAndGeocode(
   fileBuffer: Buffer,
 ): Promise<ExtractedMetadata> {
+  // biome-ignore lint/suspicious/noExplicitAny: raw EXIF data structure varies per image
   let exifData: Record<string, any> | undefined;
   let locationData: ExtractedMetadata["location"] | undefined;
 
@@ -1490,9 +1503,14 @@ export async function extractAndGeocode(
               "[EXIF] No usable EXIF data from comprehensive parsing",
             );
           }
-        } catch (exifrError: any) {
+        } catch (exifrError: unknown) {
           logger.debug(
-            { error: exifrError?.message },
+            {
+              error:
+                exifrError instanceof Error
+                  ? exifrError.message
+                  : String(exifrError),
+            },
             "[EXIF] Comprehensive EXIF parsing failed",
           );
 
@@ -1532,9 +1550,14 @@ export async function extractAndGeocode(
             } else {
               logger.debug("[EXIF] Alternative parsing found no data");
             }
-          } catch (altError: any) {
+          } catch (altError: unknown) {
             logger.debug(
-              { error: altError?.message },
+              {
+                error:
+                  altError instanceof Error
+                    ? altError.message
+                    : String(altError),
+              },
               "[EXIF] Alternative EXIF parsing also failed",
             );
             logger.debug("[EXIF] Using Sharp metadata only for this HEIC file");
@@ -1546,9 +1569,14 @@ export async function extractAndGeocode(
         { fieldCount: Object.keys(exifData || {}).length },
         "[EXIF] Sharp extraction completed",
       );
-    } catch (sharpError: any) {
+    } catch (sharpError: unknown) {
       logger.debug(
-        { error: sharpError?.message },
+        {
+          error:
+            sharpError instanceof Error
+              ? sharpError.message
+              : String(sharpError),
+        },
         "[EXIF] Sharp extraction failed",
       );
 
@@ -1557,9 +1585,14 @@ export async function extractAndGeocode(
       try {
         exifData = await exifr.parse(fileBuffer, { gps: true });
         logger.debug("[EXIF] exifr fallback successful");
-      } catch (exifrError: any) {
+      } catch (exifrError: unknown) {
         logger.debug(
-          { error: exifrError?.message },
+          {
+            error:
+              exifrError instanceof Error
+                ? exifrError.message
+                : String(exifrError),
+          },
           "[EXIF] exifr fallback also failed",
         );
         exifData = undefined;
@@ -1970,8 +2003,8 @@ export async function getOriginalStream(
       },
       filename: photo.originalFilename || `${photo.id}-original`,
     };
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (isStorageNotFound(error)) {
       throw new PhotoFileNotFoundError("Original file not found in storage");
     }
     throw error;
@@ -2025,8 +2058,8 @@ export async function getConvertedStream(
       },
       filename: `${baseFilename}-converted.jpg`,
     };
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (isStorageNotFound(error)) {
       throw new PhotoFileNotFoundError("Converted file not found in storage");
     }
     throw error;
@@ -2067,8 +2100,8 @@ export async function getAnalysisStream(
       },
       filename: `${photo.id}-analysis.json`,
     };
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (isStorageNotFound(error)) {
       throw new PhotoFileNotFoundError(
         "AI analysis not found or not yet generated",
       );
@@ -2112,8 +2145,8 @@ export async function getContentStream(
       filename: `${photo.title || photo.id}-content.md`,
       title: photo.title,
     };
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (isStorageNotFound(error)) {
       throw new PhotoFileNotFoundError(
         "Content not found or not yet generated",
       );
@@ -2202,8 +2235,8 @@ export async function getViewStream(
       },
       filename: photoMeta.originalFilename || `${photoId}-view`,
     };
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (isStorageNotFound(error)) {
       throw new PhotoFileNotFoundError("Photo file not found in storage");
     }
     throw error;
@@ -2257,8 +2290,8 @@ export async function getThumbnailStream(
       },
       filename: `${baseFilename}-thumbnail.jpg`,
     };
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (isStorageNotFound(error)) {
       throw new PhotoFileNotFoundError("Thumbnail file not found in storage");
     }
     throw error;

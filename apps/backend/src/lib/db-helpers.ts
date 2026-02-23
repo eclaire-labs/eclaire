@@ -25,6 +25,7 @@ export async function getOrCreateTags(
 /**
  * Format item data with formatted date and tags
  */
+// biome-ignore lint/suspicious/noExplicitAny: generic item formatter
 export function formatItemData(item: any, itemTags: { name: string }[]) {
   // First create a new object without the old date fields
   const { createdAt, updatedAt, ...rest } = item;

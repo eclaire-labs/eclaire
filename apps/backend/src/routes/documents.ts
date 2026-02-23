@@ -1,4 +1,5 @@
 import { fileTypeFromBuffer } from "file-type";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
@@ -12,6 +13,7 @@ import {
   getAllDocuments,
   getDocumentAsset,
   getDocumentById,
+  NotFoundError,
   reprocessDocument,
   updateDocument,
 } from "../lib/services/documents.js";
@@ -413,7 +415,7 @@ documentsRoutes.get(
 
       const asset = await getDocumentAsset(documentId, userId, "original");
       return createAssetResponse(c, asset, "private, max-age=3600");
-    } catch (error: any) {
+    } catch (error: unknown) {
       return handleAssetError(c, error);
     }
   },
@@ -431,7 +433,7 @@ documentsRoutes.get(
 
       const asset = await getDocumentAsset(documentId, userId, "thumbnail");
       return createAssetResponse(c, asset, "public, max-age=86400");
-    } catch (error: any) {
+    } catch (error: unknown) {
       return handleAssetError(c, error);
     }
   },
@@ -449,7 +451,7 @@ documentsRoutes.get(
 
       const asset = await getDocumentAsset(documentId, userId, "screenshot");
       return createAssetResponse(c, asset, "public, max-age=86400");
-    } catch (error: any) {
+    } catch (error: unknown) {
       return handleAssetError(c, error);
     }
   },
@@ -470,7 +472,7 @@ documentsRoutes.get(
 
       // Use the generic response helper
       return createAssetResponse(c, asset, "private, max-age=3600");
-    } catch (error: any) {
+    } catch (error: unknown) {
       return handleAssetError(c, error);
     }
   },
@@ -491,7 +493,7 @@ documentsRoutes.get(
 
       // Use the generic response helper
       return createAssetResponse(c, asset, "private, max-age=3600");
-    } catch (error: any) {
+    } catch (error: unknown) {
       return handleAssetError(c, error);
     }
   },
@@ -608,8 +610,8 @@ documentsRoutes.patch(
         }
 
         return c.json(updatedDocument);
-      } catch (error: any) {
-        if ((error as any).code === "NOT_FOUND") {
+      } catch (error: unknown) {
+        if (error instanceof NotFoundError) {
           return c.json({ error: "Document not found" }, 404);
         }
         throw error;
@@ -656,8 +658,8 @@ documentsRoutes.patch(
         }
 
         return c.json(updatedDocument);
-      } catch (error: any) {
-        if ((error as any).code === "NOT_FOUND") {
+      } catch (error: unknown) {
+        if (error instanceof NotFoundError) {
           return c.json({ error: "Document not found" }, 404);
         }
         throw error;
@@ -701,8 +703,8 @@ documentsRoutes.patch(
         }
 
         return c.json(updatedDocument);
-      } catch (error: any) {
-        if ((error as any).code === "NOT_FOUND") {
+      } catch (error: unknown) {
+        if (error instanceof NotFoundError) {
           return c.json({ error: "Document not found" }, 404);
         }
         throw error;
@@ -721,7 +723,7 @@ documentsRoutes.patch(
  * @param cacheControl The Cache-Control header value
  */
 const createAssetResponse = (
-  c: any,
+  c: Context,
   asset: {
     stream: ReadableStream<Uint8Array>;
     contentLength?: number;
@@ -753,7 +755,7 @@ const createAssetResponse = (
  * @param c Hono context
  * @param error The caught error
  */
-const handleAssetError = async (c: any, error: any) => {
+const handleAssetError = async (c: Context, error: unknown) => {
   const requestId = c.get("requestId");
   logger.error(
     {
@@ -762,12 +764,15 @@ const handleAssetError = async (c: any, error: any) => {
       userId: await getAuthenticatedUserId(c),
       error: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
-      errorCode: error.code,
+      errorCode:
+        error instanceof Error && "code" in error
+          ? (error as { code: string }).code
+          : undefined,
     },
     "Error serving document asset",
   );
 
-  if (error.name === "NotFoundError") {
+  if (error instanceof Error && error.name === "NotFoundError") {
     return c.json({ error: error.message }, 404);
   }
 
@@ -786,7 +791,7 @@ documentsRoutes.get(
 
       const asset = await getDocumentAsset(documentId, userId, "extracted-md");
       return createAssetResponse(c, asset, "private, max-age=3600");
-    } catch (error: any) {
+    } catch (error: unknown) {
       return handleAssetError(c, error);
     }
   },
@@ -804,7 +809,7 @@ documentsRoutes.get(
 
       const asset = await getDocumentAsset(documentId, userId, "extracted-txt");
       return createAssetResponse(c, asset, "private, max-age=3600");
-    } catch (error: any) {
+    } catch (error: unknown) {
       return handleAssetError(c, error);
     }
   },

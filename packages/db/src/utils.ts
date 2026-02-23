@@ -18,8 +18,10 @@ export async function executeQuery<T = Record<string, unknown>>(
   query: SQL,
 ): Promise<T[]> {
   if (dbType === "sqlite") {
+    // biome-ignore lint/suspicious/noExplicitAny: vendor-specific .all() on DbInstance union
     return (db as any).all(query) as T[];
   } else {
+    // biome-ignore lint/suspicious/noExplicitAny: vendor-specific .execute() on DbInstance union
     const result = await (db as any).execute(query);
     // postgres-js returns array, pglite returns { rows: [] }
     return Array.isArray(result) ? result : (result.rows ?? []);

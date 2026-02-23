@@ -24,13 +24,13 @@ export interface CreateChannelData {
   name: string;
   platform: Channel["platform"];
   capability: Channel["capability"];
-  config: TelegramConfig | Record<string, any>;
+  config: TelegramConfig | Record<string, unknown>;
 }
 
 export interface UpdateChannelData {
   name?: string;
   capability?: Channel["capability"];
-  config?: TelegramConfig | Record<string, any>;
+  config?: TelegramConfig | Record<string, unknown>;
   isActive?: boolean;
 }
 

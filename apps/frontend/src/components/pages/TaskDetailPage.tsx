@@ -426,7 +426,10 @@ export function TaskDetailClient() {
     }));
   };
 
-  const handleInputChange = (field: keyof typeof editForm, value: any) => {
+  const handleInputChange = (
+    field: keyof typeof editForm,
+    value: (typeof editForm)[keyof typeof editForm] | null,
+  ) => {
     setEditForm((prev) => ({
       ...prev,
       [field]: value,
@@ -666,8 +669,10 @@ export function TaskDetailClient() {
             onClick={() => {
               if (
                 typeof window !== "undefined" &&
+                // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
                 (window as any).openAssistantWithAssets
               ) {
+                // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
                 (window as any).openAssistantWithAssets([
                   {
                     type: "task",
@@ -1334,7 +1339,13 @@ export function TaskDetailClient() {
 }
 
 // Simple task icon component for the delete dialog
-function TaskIcon({ task, className }: { task: Task; className?: string }) {
+function TaskIcon({
+  task: _task,
+  className,
+}: {
+  task: Task;
+  className?: string;
+}) {
   // Use the CheckCircle2 icon as default for tasks
   return <CheckCircle2 className={className} />;
 }

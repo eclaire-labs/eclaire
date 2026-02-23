@@ -4,6 +4,9 @@ import {
   ArrowUp,
   CalendarDays,
   Camera,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Edit,
   FileText, // Lucide icons
@@ -20,9 +23,6 @@ import {
   Trash2,
   UploadCloud, // New Icons
   X,
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle2,
   XCircle,
 } from "lucide-react";
 import { nanoid } from "nanoid"; // For unique upload IDs
@@ -235,7 +235,7 @@ export default function PhotosPage() {
   } = usePhotos();
 
   // --- Initialize SSE for real-time updates ---
-  const { isConnected } = useProcessingEvents();
+  const { isConnected: _isConnected } = useProcessingEvents();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTag, setFilterTag] = useState("all");
   const [tagInput, setTagInput] = useState("");
@@ -475,7 +475,7 @@ export default function PhotosPage() {
   const navigateGallery = (direction: "next" | "prev") => {
     if (galleryIndex === null) return;
     const total = sortedAndFilteredPhotos.length;
-    let nextIndex;
+    let nextIndex: number;
     if (direction === "next") {
       nextIndex = (galleryIndex + 1) % total;
     } else {
@@ -602,8 +602,10 @@ export default function PhotosPage() {
     // Use the global function to open assistant with pre-attached assets
     if (
       typeof window !== "undefined" &&
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets
     ) {
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets([
         {
           type: "photo",
@@ -832,6 +834,7 @@ export default function PhotosPage() {
       const itemsPerRow =
         viewMode === "tile"
           ? Number.parseInt(
+              // biome-ignore lint/style/noNonNullAssertion: ref is guaranteed non-null in this keyboard handler
               getComputedStyle(photosContainerRef.current!)
                 .gridTemplateColumns.split(" ")
                 .length.toString(),
@@ -2338,15 +2341,14 @@ function ListView({
                       <Trash2 className="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
-  </DropdownMenu>
+                </DropdownMenu>
               </div>
             </div>
-          )
-}
-)}
+          );
+        })}
       </div>
     </div>
-  )
+  );
 }
 
 // --- 4. Gallery View ---

@@ -281,8 +281,10 @@ export function NoteDetailClient() {
     // Use the global function to open assistant with pre-attached assets
     if (
       typeof window !== "undefined" &&
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets
     ) {
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets([
         {
           type: "note",
@@ -822,7 +824,13 @@ export function NoteDetailClient() {
 }
 
 // Simple note icon component for the delete dialog
-function NoteIcon({ note, className }: { note: Note; className?: string }) {
+function NoteIcon({
+  note: _note,
+  className,
+}: {
+  note: Note;
+  className?: string;
+}) {
   // Use the FileText icon as default for notes
   return <FileText className={className} />;
 }

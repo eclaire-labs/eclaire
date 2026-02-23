@@ -160,7 +160,7 @@ interface StreamingMessageContainerProps {
   isThinking?: boolean;
   textContent: string;
   isTextComplete?: boolean;
-  toolCalls?: any[];
+  toolCalls?: Array<{ name: string; status: string }>;
   enableTypewriter?: boolean;
   className?: string;
   onContentUpdate?: (content: string) => void;
@@ -245,7 +245,9 @@ export function RealTimeStreamingMessage({
   const [isThinking, setIsThinking] = useState(false);
   const [textContent, setTextContent] = useState("");
   const [isTextComplete, setIsTextComplete] = useState(false);
-  const [toolCalls, setToolCalls] = useState<any[]>([]);
+  const [toolCalls, setToolCalls] = useState<
+    Array<{ name: string; status: string }>
+  >([]);
 
   // Methods to be called from parent via ref
   const _addThinkingContent = useCallback((content: string) => {

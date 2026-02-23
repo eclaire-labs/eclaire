@@ -1,22 +1,22 @@
 // src/workers/document-processor.ts
 
+import { spawn } from "node:child_process";
+import { promises as fs } from "node:fs";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { Readable } from "node:stream";
 import { type AIMessage, callAI } from "@eclaire/ai";
 import type { JobContext } from "@eclaire/queue/core";
 import { Readability } from "@mozilla/readability";
 import axios from "axios";
-import { spawn } from "node:child_process";
 import { execa } from "execa";
 import FormData from "form-data";
-import { promises as fs } from "node:fs";
 import { convert as htmlToText } from "html-to-text";
 import { JSDOM } from "jsdom";
 import { marked } from "marked";
-import { tmpdir } from "node:os";
 import { chromium } from "patchright";
-import path from "node:path";
 import sharp from "sharp";
-import { Readable } from "node:stream";
 import { createChildLogger } from "../../lib/logger.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
 import { config } from "../config.js";
@@ -118,9 +118,12 @@ async function generatePdfThumbnailWithPdftocairo(
       "pdftocairo thumbnail generation successful",
     );
     return jpgBuffer;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn(
-      { error: error.message, pdfPath },
+      {
+        error: error instanceof Error ? error.message : String(error),
+        pdfPath,
+      },
       "pdftocairo thumbnail generation failed, falling back to pdfjs-dist",
     );
     throw error;
@@ -153,7 +156,7 @@ function markdownToText(markdownContent: string): string {
 
 // --- Interfaces ---
 
-interface DocumentJobData {
+export interface DocumentJobData {
   documentId: string;
   storageId: string;
   mimeType: string;
@@ -495,14 +498,16 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
       allArtifacts as Record<string, unknown>,
     );
     jobLogger.info("Job completed successfully.");
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : undefined;
     jobLogger.error(
-      { error: error.message, stack: error.stack, currentStage },
+      { error: errMsg, stack: errStack, currentStage },
       "Document processing job failed.",
     );
 
     // Enhanced error handling with context
-    const errorMessage = error.message || "Unknown error";
+    const errorMessage = errMsg || "Unknown error";
     const isModuleError =
       errorMessage.includes("ERR_MODULE_NOT_FOUND") ||
       errorMessage.includes("Cannot find module");
@@ -525,9 +530,15 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
         };
         await ctx.completeStage(currentStage, fallbackArtifacts);
         return; // Don't throw error for recoverable module issues
-      } catch (fallbackError: any) {
+      } catch (fallbackError: unknown) {
         jobLogger.error(
-          { documentId, fallbackError: fallbackError.message },
+          {
+            documentId,
+            fallbackError:
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : String(fallbackError),
+          },
           "Failed to provide fallback result",
         );
       }
@@ -535,10 +546,19 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
 
     // Report the error on the current stage
     try {
-      await ctx.failStage(currentStage, error);
-    } catch (reportError: any) {
+      await ctx.failStage(
+        currentStage,
+        error instanceof Error ? error : new Error(String(error)),
+      );
+    } catch (reportError: unknown) {
       jobLogger.error(
-        { documentId, reportError: reportError.message },
+        {
+          documentId,
+          reportError:
+            reportError instanceof Error
+              ? reportError.message
+              : String(reportError),
+        },
         "Failed to report job failure",
       );
     }
@@ -550,9 +570,15 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
       try {
         await fs.rm(tempDir, { recursive: true, force: true });
         jobLogger.debug({ tempDir }, "Temp directory cleaned up successfully");
-      } catch (cleanupError: any) {
+      } catch (cleanupError: unknown) {
         jobLogger.warn(
-          { error: cleanupError.message, tempDir },
+          {
+            error:
+              cleanupError instanceof Error
+                ? cleanupError.message
+                : String(cleanupError),
+            tempDir,
+          },
           "Failed to clean up temp directory",
         );
         // Try alternative cleanup approach
@@ -562,9 +588,15 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
             await fs.unlink(path.join(tempDir, file)).catch(() => {});
           }
           await fs.rmdir(tempDir).catch(() => {});
-        } catch (altCleanupError: any) {
+        } catch (altCleanupError: unknown) {
           jobLogger.error(
-            { error: altCleanupError.message, tempDir },
+            {
+              error:
+                altCleanupError instanceof Error
+                  ? altCleanupError.message
+                  : String(altCleanupError),
+              tempDir,
+            },
             "Alternative cleanup also failed",
           );
         }
@@ -768,9 +800,9 @@ async function extractTextFromHtml(
     const article = reader.parse();
 
     return { text: htmlToText(article?.content || "", { wordwrap: false }) };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : String(error) },
       "HTML extraction failed with JSDOM, using fallback plain text extraction",
     );
 
@@ -951,6 +983,7 @@ async function processWithDoclingServer(
   documentBuffer: Buffer,
   mimeType: string,
   originalFilename: string,
+  // biome-ignore lint/suspicious/noExplicitAny: Docling API response has variable structure
 ): Promise<any> {
   // Docling API documentation: https://github.com/docling-project/docling-serve/blob/main/docs/usage.md
   const formData = new FormData();
@@ -989,12 +1022,17 @@ async function processWithDoclingServer(
       );
     }
     return response.data;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStatus =
+      error != null && typeof error === "object" && "response" in error
+        ? (error as { response?: { status?: number } }).response?.status
+        : undefined;
     logger.error(
-      { error: error.message, status: error.response?.status },
+      { error: errMsg, status: errStatus },
       "Docling server API call failed",
     );
-    throw new Error(`Docling processing failed: ${error.message}`);
+    throw new Error(`Docling processing failed: ${errMsg}`);
   }
 }
 
@@ -1033,11 +1071,14 @@ async function generateDocumentMetadata(
       title: parsed.title || null,
       description: parsed.description || null,
       tags: Array.isArray(parsed.tags)
-        ? parsed.tags.filter((t: any): t is string => typeof t === "string")
+        ? parsed.tags.filter((t: unknown): t is string => typeof t === "string")
         : [],
     };
-  } catch (error: any) {
-    logger.error({ error: error.message }, "AI metadata generation failed");
+  } catch (error: unknown) {
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "AI metadata generation failed",
+    );
     return { title: null, description: null, tags: [] };
   }
 }
@@ -1213,9 +1254,9 @@ async function generatePdfThumbnail(pdfPath: string): Promise<Buffer> {
     // If pdftocairo is not available, log warning and use placeholder
     logger.warn("pdftocairo not available, using placeholder thumbnail");
     return generatePlaceholderThumbnail();
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : String(error) },
       "PDF thumbnail generation failed, using placeholder",
     );
     return generatePlaceholderThumbnail();
@@ -1234,9 +1275,9 @@ async function generatePdfScreenshot(pdfPath: string): Promise<Buffer> {
     // If pdftocairo is not available, log warning and use placeholder
     logger.warn("pdftocairo not available, using placeholder screenshot");
     return generatePlaceholderScreenshot();
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : String(error) },
       "PDF screenshot generation failed, using placeholder",
     );
     return generatePlaceholderScreenshot();
@@ -1430,9 +1471,11 @@ function extractTextFromJsonFallback(jsonString: string): string {
 /**
  * Recursively extracts text values from a JSON object.
  */
+// biome-ignore lint/suspicious/noExplicitAny: recursive JSON traversal handles arbitrary nested structures
 function extractTextFromObject(obj: any): string {
   const textValues: string[] = [];
 
+  // biome-ignore lint/suspicious/noExplicitAny: recursive JSON traversal handles arbitrary nested structures
   function traverse(value: any) {
     if (typeof value === "string") {
       // Skip URLs, file paths, and other non-textual strings

@@ -94,7 +94,9 @@ processingStatusRoutes.get(
       const offset = parseInt(c.req.query("offset") || "0", 10);
 
       const jobs = await getUserProcessingJobs(userId, {
+        // biome-ignore lint/suspicious/noExplicitAny: query param string to enum type
         status: status as any,
+        // biome-ignore lint/suspicious/noExplicitAny: query param string to enum type
         assetType: assetType as any,
         search,
         limit,
@@ -369,14 +371,14 @@ processingStatusRoutes.put(
       }
 
       return c.json({ success: true, job });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(
         {
           requestId,
           assetType: c.req.param("assetType"),
           assetId: c.req.param("assetId"),
-          error: error.message,
-          stack: error.stack,
+          error: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
         },
         "Error updating processing status",
       );
@@ -389,19 +391,23 @@ processingStatusRoutes.put(
  * Basic heuristic to estimate completion time for processing jobs
  * (No changes to this helper function)
  */
+// biome-ignore lint/suspicious/noExplicitAny: raw formatted job with dynamic stages
 function estimateCompletion(job: any): string | null {
   // ... (code is unchanged)
   if (!job.stages || job.stages.length === 0) return null;
   const completedStages = job.stages.filter(
+    // biome-ignore lint/suspicious/noExplicitAny: raw formatted job with dynamic stages
     (s: any) => s.status === "completed",
   ).length;
   if (completedStages === 0) return null;
   const completedWithTime = job.stages.filter(
+    // biome-ignore lint/suspicious/noExplicitAny: raw formatted job with dynamic stages
     (s: any) => s.status === "completed" && s.startedAt && s.completedAt,
   );
   if (completedWithTime.length === 0) return null;
   const avgTime =
     completedWithTime.reduce(
+      // biome-ignore lint/suspicious/noExplicitAny: raw formatted job with dynamic stages
       (sum: number, s: any) => sum + (s.completedAt - s.startedAt),
       0,
     ) / completedWithTime.length;

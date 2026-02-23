@@ -188,6 +188,7 @@ export type { TaskStatus };
 async function upsertTaskScheduler(
   taskId: string,
   cronExpression: string,
+  // biome-ignore lint/suspicious/noExplicitAny: scheduler task data
   taskData: any,
   endDate?: Date | null,
   limit?: number,
@@ -509,9 +510,11 @@ async function getTaskSchedulesMap(): Promise<Map<string, TaskScheduleData>> {
  * Recurrence data is fetched from the scheduler (queue_schedules table).
  */
 function cleanTaskForResponse(
+  // biome-ignore lint/suspicious/noExplicitAny: raw DB row formatter
   task: any,
   tags: string[],
   processingStatus?: string | null,
+  // biome-ignore lint/suspicious/noExplicitAny: raw DB row formatter
   comments: any[] = [],
   scheduleData?: TaskScheduleData | null,
 ) {
@@ -880,6 +883,7 @@ export async function updateTask(
 
     // Prepare the base update object (excluding dueDate initially)
     // Use a type that allows flexible properties for .set()
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic update object
     const updateSet: { [key: string]: any } = {
       ...taskUpdateData,
       updatedAt: new Date(), // Use current date
@@ -1263,6 +1267,7 @@ export async function updateTaskStatusAsAssistant(
     };
 
     // Prepare update data
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic update object
     const updateData: any = {
       status,
       updatedAt: new Date(),

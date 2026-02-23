@@ -144,6 +144,7 @@ export async function apiGet(endpoint: string): Promise<Response> {
 /**
  * Convenience wrapper for POST requests
  */
+// biome-ignore lint/suspicious/noExplicitAny: API request body type varies by endpoint
 export async function apiPost(endpoint: string, data?: any): Promise<Response> {
   const body = data instanceof FormData ? data : JSON.stringify(data);
   return apiFetch(endpoint, {
@@ -155,6 +156,7 @@ export async function apiPost(endpoint: string, data?: any): Promise<Response> {
 /**
  * Convenience wrapper for PUT requests
  */
+// biome-ignore lint/suspicious/noExplicitAny: API request body type varies by endpoint
 export async function apiPut(endpoint: string, data?: any): Promise<Response> {
   const body = data instanceof FormData ? data : JSON.stringify(data);
   return apiFetch(endpoint, {
@@ -445,6 +447,7 @@ export interface ToolCallSummary {
   executionTimeMs: number;
   success: boolean;
   error?: string;
+  // biome-ignore lint/suspicious/noExplicitAny: tool call arguments are arbitrary JSON from AI tools
   arguments?: Record<string, any>;
   resultSummary?: string;
 }
@@ -456,6 +459,7 @@ export interface PromptResponse {
   conversationId?: string;
   thinkingContent?: string;
   toolCalls?: ToolCallSummary[];
+  // biome-ignore lint/suspicious/noExplicitAny: trace data has variable structure from AI provider
   trace?: any;
 }
 

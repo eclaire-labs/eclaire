@@ -31,7 +31,7 @@ export async function infoCommand(id: string): Promise<void> {
     const isActive = isActiveBackend || isActiveWorkers;
 
     // Build info display
-    const info: Record<string, any> = {
+    const info: Record<string, string> = {
       ID: id,
       Name: model.name,
       Provider: formatProvider(model.provider),
@@ -39,16 +39,16 @@ export async function infoCommand(id: string): Promise<void> {
     };
 
     // Add suitability/contexts (derived from modalities)
-    info["Suitability"] = formatSuitability(model);
+    info.Suitability = formatSuitability(model);
 
     // Add status
     if (isActive) {
       const activeContexts: string[] = [];
       if (isActiveBackend) activeContexts.push("backend");
       if (isActiveWorkers) activeContexts.push("workers");
-      info["Status"] = colors.active(`ACTIVE (${activeContexts.join(", ")})`);
+      info.Status = colors.active(`ACTIVE (${activeContexts.join(", ")})`);
     } else {
-      info["Status"] = colors.inactive("INACTIVE");
+      info.Status = colors.inactive("INACTIVE");
     }
 
     // Add capabilities
@@ -57,8 +57,8 @@ export async function infoCommand(id: string): Promise<void> {
     // Capabilities section
     console.log(colors.subheader("\nCapabilities:"));
     const capabilities = model.capabilities;
-    const capsInfo: Record<string, any> = {
-      "Context Window": capabilities.contextWindow.toLocaleString() + " tokens",
+    const capsInfo: Record<string, string> = {
+      "Context Window": `${capabilities.contextWindow.toLocaleString()} tokens`,
       Streaming: capabilities.streaming
         ? colors.success("Yes")
         : colors.dim("No"),
@@ -87,18 +87,18 @@ export async function infoCommand(id: string): Promise<void> {
 
     // Source section
     console.log(colors.subheader("\nSource:"));
-    const sourceInfo: Record<string, any> = {
+    const sourceInfo: Record<string, string> = {
       URL: colors.dim(model.source.url),
     };
     if (model.source.format) {
-      sourceInfo["Format"] = model.source.format;
+      sourceInfo.Format = model.source.format;
     }
     if (model.source.quantization) {
-      sourceInfo["Quantization"] = model.source.quantization;
+      sourceInfo.Quantization = model.source.quantization;
     }
     if (model.source.sizeBytes) {
       const sizeGB = (model.source.sizeBytes / (1024 * 1024 * 1024)).toFixed(2);
-      sourceInfo["Size"] = `${sizeGB} GB`;
+      sourceInfo.Size = `${sizeGB} GB`;
     }
     console.log(createInfoTable(sourceInfo));
 
@@ -119,9 +119,9 @@ export async function infoCommand(id: string): Promise<void> {
         model.source.visionSizeBytes,
       );
 
-      const memoryInfo: Record<string, any> = {
-        [`Context Size`]: `${contextSize.toLocaleString()} tokens`,
-        [`Estimated Memory`]: `~${formatMemorySize(estimate.total)}`,
+      const memoryInfo: Record<string, string> = {
+        "Context Size": `${contextSize.toLocaleString()} tokens`,
+        "Estimated Memory": `~${formatMemorySize(estimate.total)}`,
       };
       console.log(createInfoTable(memoryInfo));
 
@@ -143,7 +143,7 @@ export async function infoCommand(id: string): Promise<void> {
     // Provider info
     if (providerConfig) {
       console.log(colors.subheader("\nProvider Configuration:"));
-      const providerInfo: Record<string, any> = {
+      const providerInfo: Record<string, string> = {
         Dialect: providerConfig.dialect,
         "Base URL": colors.dim(providerConfig.baseUrl),
         "Auth Type": providerConfig.auth.type,
@@ -154,7 +154,7 @@ export async function infoCommand(id: string): Promise<void> {
     // Pricing section (if present)
     if (model.pricing) {
       console.log(colors.subheader("\nPricing (per 1M tokens):"));
-      const pricingInfo: Record<string, any> = {
+      const pricingInfo: Record<string, string> = {
         Input: `$${model.pricing.inputPer1M.toFixed(4)}`,
         Output: `$${model.pricing.outputPer1M.toFixed(4)}`,
       };
@@ -164,19 +164,18 @@ export async function infoCommand(id: string): Promise<void> {
     // Tokenizer info (if present)
     if (model.tokenizer) {
       console.log(colors.subheader("\nTokenizer:"));
-      const tokenizerInfo: Record<string, any> = {
+      const tokenizerInfo: Record<string, string> = {
         Type: model.tokenizer.type,
       };
       if (model.tokenizer.name) {
-        tokenizerInfo["Name"] = model.tokenizer.name;
+        tokenizerInfo.Name = model.tokenizer.name;
       }
       console.log(createInfoTable(tokenizerInfo));
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
-      colors.error(
-        `${icons.error} Failed to show model info: ${error.message}`,
-      ),
+      colors.error(`${icons.error} Failed to show model info: ${message}`),
     );
     process.exit(1);
   }

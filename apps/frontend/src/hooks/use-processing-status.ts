@@ -36,7 +36,7 @@ export interface ProcessingStatusData {
   currentStage?: string;
   overallProgress: number;
   error?: string;
-  errorDetails?: any;
+  errorDetails?: Record<string, unknown>;
   retryCount: number;
   canRetry: boolean;
   estimatedCompletion?: string;

@@ -50,7 +50,7 @@ export function tool<
  * Uses Zod 4's built-in JSON Schema conversion.
  */
 export function toOpenAIToolDefinition(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: context type erased — only schema/name/description used for OpenAI conversion
   agentTool: AgentToolDefinition<AnyZodType, any>,
 ): import("../types.js").ToolDefinition {
   return {
@@ -68,7 +68,7 @@ export function toOpenAIToolDefinition(
  * Context type doesn't matter for conversion since we only use name, description, and schema.
  */
 export function toOpenAITools(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: context type erased — only schema/name/description used for OpenAI conversion
   tools: Record<string, AgentToolDefinition<AnyZodType, any>>,
 ): import("../types.js").ToolDefinition[] {
   return Object.values(tools).map(toOpenAIToolDefinition);

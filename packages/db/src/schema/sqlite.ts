@@ -29,16 +29,7 @@ import {
 
 // Type definitions for JSON fields
 type RawMetadata = Record<string, unknown>;
-type ErrorDetails = Record<string, unknown>;
-type StageInfo = {
-  name: string;
-  status: string;
-  progress?: number;
-  startedAt?: number;
-  completedAt?: number;
-};
 type DominantColors = string[];
-type JobData = Record<string, unknown>;
 type MessageMetadata = Record<string, unknown>;
 type ChannelConfig = Record<string, unknown>;
 type HistoryBeforeData = Record<string, unknown>;

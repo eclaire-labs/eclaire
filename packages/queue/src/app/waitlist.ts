@@ -9,6 +9,7 @@ import type { QueueLogger } from "../core/types.js";
 import type { AssetType, JobWaitlistInterface } from "./types.js";
 
 interface Waiter {
+  // biome-ignore lint/suspicious/noExplicitAny: resolve callback accepts any job type or null
   resolve: (job: any) => void;
   reject: (error: Error) => void;
   timestamp: Date;
@@ -68,6 +69,7 @@ export function createJobWaitlist(
       assetType: AssetType,
       workerId: string,
       timeout: number = 30000,
+      // biome-ignore lint/suspicious/noExplicitAny: return type varies — resolves with claimed job or null
     ): Promise<any> {
       return new Promise((resolve, reject) => {
         const waiter: Waiter = {
@@ -98,6 +100,7 @@ export function createJobWaitlist(
 
         // Store original resolve to clear timeout when called
         const originalResolve = waiter.resolve;
+        // biome-ignore lint/suspicious/noExplicitAny: resolve callback accepts any job type or null
         waiter.resolve = (job: any) => {
           clearTimeout(timeoutTimer);
           originalResolve(job);

@@ -161,7 +161,7 @@ export class MLXNativeAdapter implements DialectAdapter {
             for (const line of lines) {
               // Pass through empty lines and comments
               if (line.trim() === "" || line.startsWith(":")) {
-                controller.enqueue(encoder.encode(line + "\n"));
+                controller.enqueue(encoder.encode(`${line}\n`));
                 continue;
               }
 
@@ -230,11 +230,11 @@ export class MLXNativeAdapter implements DialectAdapter {
                     "Failed to parse MLX SSE line",
                   );
                   // Pass through unparseable lines
-                  controller.enqueue(encoder.encode(line + "\n"));
+                  controller.enqueue(encoder.encode(`${line}\n`));
                 }
               } else {
                 // Pass through non-data lines
-                controller.enqueue(encoder.encode(line + "\n"));
+                controller.enqueue(encoder.encode(`${line}\n`));
               }
             }
           }

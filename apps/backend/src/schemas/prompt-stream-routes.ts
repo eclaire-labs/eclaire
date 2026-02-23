@@ -1,6 +1,7 @@
 // schemas/prompt-stream-routes.ts
 import { resolver } from "hono-openapi";
 import { UnauthorizedSchema } from "./all-responses.js";
+import { requestBodyResolver } from "./common.js";
 import {
   AIAPIErrorSchema,
   AIConfigErrorSchema,
@@ -19,7 +20,7 @@ export const postPromptStreamRouteDescription = {
     description: "AI prompt request for streaming response",
     content: {
       "application/json": {
-        schema: resolver(StreamPromptRequestSchema) as any,
+        schema: requestBodyResolver(StreamPromptRequestSchema),
       },
     },
     required: true,

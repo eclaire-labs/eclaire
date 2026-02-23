@@ -88,7 +88,7 @@ async function updateLastExecutedAt(taskId: string): Promise<void> {
   }
 }
 
-interface TaskExecutionJobData {
+export interface TaskExecutionJobData {
   taskId: string;
   title: string;
   description: string;
@@ -277,12 +277,18 @@ async function processUserTask(ctx: JobContext<TaskExecutionJobData>) {
     await ctx.completeStage(STAGE_NAME, { processed: true });
 
     // Note: Recurrence is handled by the scheduler - no need to update nextRunAt
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
-      { taskId, error: error.message },
+      {
+        taskId,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Failed to process user task",
     );
-    await ctx.failStage(STAGE_NAME, error);
+    await ctx.failStage(
+      STAGE_NAME,
+      error instanceof Error ? error : new Error(String(error)),
+    );
     throw error;
   }
 }
@@ -470,12 +476,19 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
           { jobId: ctx.job.id, taskId },
           "AI assistant task processing completed successfully",
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         logger.error(
-          { jobId: ctx.job.id, taskId, error: error.message },
+          {
+            jobId: ctx.job.id,
+            taskId,
+            error: error instanceof Error ? error.message : String(error),
+          },
           "Failed AI assistant task processing",
         );
-        await ctx.failStage(STAGE_NAME, error);
+        await ctx.failStage(
+          STAGE_NAME,
+          error instanceof Error ? error : new Error(String(error)),
+        );
         throw error;
       }
     } else {
@@ -506,9 +519,13 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
       { jobId: ctx.job.id, taskId },
       "Task execution completed successfully",
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
-      { jobId: ctx.job.id, taskId, error: error.message },
+      {
+        jobId: ctx.job.id,
+        taskId,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Failed task execution processing job",
     );
     throw error;

@@ -22,6 +22,7 @@ export function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
@@ -34,6 +35,7 @@ export function ThemeToggle() {
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
+          <title>Switch to light mode</title>
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -49,6 +51,7 @@ export function ThemeToggle() {
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
+          <title>Switch to dark mode</title>
           <path
             strokeLinecap="round"
             strokeLinejoin="round"

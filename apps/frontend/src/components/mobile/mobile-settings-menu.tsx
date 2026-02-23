@@ -67,7 +67,7 @@ const settingsMenuItems: SettingsMenuItem[] = [
 ];
 
 export function MobileSettingsMenu() {
-  const { pathname } = useLocation();
+  const { pathname: _pathname } = useLocation();
   const { tab } = routeApi.useSearch();
   const currentTab = tab || "profile";
 

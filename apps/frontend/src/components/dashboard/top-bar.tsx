@@ -40,7 +40,7 @@ export function TopBar({
   onAssistantFullScreenToggle,
   assistantFullScreen,
 }: TopBarProps) {
-  const { pathname } = useLocation();
+  const { pathname: _pathname } = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { count: dueNowCount } = useDueNowCount();

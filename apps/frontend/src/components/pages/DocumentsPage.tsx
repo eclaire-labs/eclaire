@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowUp,
   CalendarDays,
+  CheckCircle2,
   Download,
   Edit,
   File as FileIconGeneric, // Renamed generic File icon
@@ -17,7 +18,6 @@ import {
   Trash2,
   UploadCloud, // UI Icons
   X,
-  CheckCircle2,
   XCircle,
 } from "lucide-react";
 import { nanoid } from "nanoid";
@@ -298,7 +298,7 @@ export default function DocumentsPage() {
   } = useDocuments();
 
   // --- Initialize SSE for real-time updates ---
-  const { isConnected } = useProcessingEvents();
+  const { isConnected: _isConnected } = useProcessingEvents();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTag, setFilterTag] = useState("all");
   const [tagInput, setTagInput] = useState("");
@@ -669,8 +669,10 @@ export default function DocumentsPage() {
     // Use the global function to open assistant with pre-attached assets
     if (
       typeof window !== "undefined" &&
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets
     ) {
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets([
         {
           type: "document",
@@ -848,6 +850,7 @@ export default function DocumentsPage() {
       const itemsPerRow =
         viewMode === "tile"
           ? Number.parseInt(
+              // biome-ignore lint/style/noNonNullAssertion: ref is guaranteed non-null in this keyboard handler
               getComputedStyle(docsContainerRef.current!)
                 .gridTemplateColumns.split(" ")
                 .length.toString(),

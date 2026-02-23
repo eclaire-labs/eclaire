@@ -17,7 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Channel, useChannels } from "@/hooks/use-channels";
+import {
+  type Channel,
+  type TelegramConfig,
+  useChannels,
+} from "@/hooks/use-channels";
 import TelegramChannelForm from "./TelegramChannelForm";
 
 const platformInfo = {
@@ -61,7 +65,7 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
   const handleCreateChannel = async (data: {
     name: string;
     capability: Channel["capability"];
-    config: any;
+    config: TelegramConfig | Partial<TelegramConfig>;
   }) => {
     if (!selectedPlatform) return;
 

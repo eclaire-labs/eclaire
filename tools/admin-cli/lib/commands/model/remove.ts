@@ -36,9 +36,10 @@ export async function removeCommand(
 
     removeModel(id);
     console.log(colors.success(`${icons.success} Removed model: ${id}`));
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
-      colors.error(`${icons.error} Failed to remove model: ${error.message}`),
+      colors.error(`${icons.error} Failed to remove model: ${message}`),
     );
     process.exit(1);
   }

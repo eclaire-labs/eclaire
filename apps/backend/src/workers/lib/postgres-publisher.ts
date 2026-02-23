@@ -20,6 +20,7 @@ import { sql } from "drizzle-orm";
 
 // Use the exported db type from the backend
 type DbInstance = ReturnType<
+  // biome-ignore lint/suspicious/noExplicitAny: generic Drizzle instance type, actual schema varies
   typeof import("drizzle-orm/postgres-js").drizzle<any>
 >;
 

@@ -4,7 +4,7 @@ import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("task-processor");
 
-interface TaskJobData {
+export interface TaskJobData {
   taskId: string;
   title: string;
   description: string;
@@ -117,12 +117,19 @@ async function processTaskJob(ctx: JobContext<TaskJobData>) {
       { jobId: ctx.job.id, taskId },
       "Task job completed successfully",
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
-      { jobId: ctx.job.id, taskId, error: error.message },
+      {
+        jobId: ctx.job.id,
+        taskId,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "FAILED task processing job",
     );
-    await ctx.failStage(STAGE_NAME, error);
+    await ctx.failStage(
+      STAGE_NAME,
+      error instanceof Error ? error : new Error(String(error)),
+    );
     throw error;
   }
 }

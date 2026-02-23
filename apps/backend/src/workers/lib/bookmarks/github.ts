@@ -31,8 +31,10 @@ export async function processGitHubBookmark(
   const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with GITHUB handler");
 
+  // biome-ignore lint/suspicious/noExplicitAny: Patchright Browser instance, no exported type available
   let browser: any = null;
   let context: BrowserContext | null = null;
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic artifact accumulator populated across processing stages
   const allArtifacts: Record<string, any> = {};
 
   try {
@@ -75,8 +77,11 @@ export async function processGitHubBookmark(
         waitUntil: "networkidle",
         timeout: 90000, // Increased timeout to 90 seconds
       });
-    } catch (timeoutError: any) {
-      if (timeoutError.message.includes("Timeout")) {
+    } catch (timeoutError: unknown) {
+      if (
+        timeoutError instanceof Error &&
+        timeoutError.message.includes("Timeout")
+      ) {
         logger.warn(
           { bookmarkId, url: normalizedUrl, error: timeoutError.message },
           "Navigation failed with networkidle, attempting with reduced wait condition",
@@ -91,9 +96,16 @@ export async function processGitHubBookmark(
 
           // Wait a bit more for dynamic content to load
           await page.waitForTimeout(5000);
-        } catch (fallbackError: any) {
+        } catch (fallbackError: unknown) {
           logger.error(
-            { bookmarkId, url: normalizedUrl, error: fallbackError.message },
+            {
+              bookmarkId,
+              url: normalizedUrl,
+              error:
+                fallbackError instanceof Error
+                  ? fallbackError.message
+                  : String(fallbackError),
+            },
             "Both navigation attempts failed",
           );
           throw fallbackError;

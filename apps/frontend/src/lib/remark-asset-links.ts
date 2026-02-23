@@ -11,7 +11,7 @@ export interface AssetLinkData {
  * Instead of splitting the content, we mark asset links for later processing
  */
 export function remarkAssetLinks() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: unified/remark VFile type is loosely typed with dynamic data properties
   return function transformer(tree: Root, file: any) {
     const contentLinks: ContentLink[] = [];
 

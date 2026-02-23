@@ -32,8 +32,10 @@ export async function processRedditApiBookmark(
   const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with REDDIT-API handler");
 
+  // biome-ignore lint/suspicious/noExplicitAny: Patchright Browser instance, no exported type available
   let browser: any = null;
   let context: BrowserContext | null = null;
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic artifact accumulator populated across processing stages
   const allArtifacts: Record<string, any> = {};
 
   try {
@@ -305,9 +307,12 @@ export async function processRedditApiBookmark(
 
     // Complete the final stage with artifacts - job completion is implicit when handler returns
     await ctx.completeStage("ai_tagging", finalArtifacts);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
-      { bookmarkId, error: error.message },
+      {
+        bookmarkId,
+        error: error instanceof Error ? error.message : String(error),
+      },
       "Reddit API bookmark processing failed",
     );
     throw error;

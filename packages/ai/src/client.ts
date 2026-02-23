@@ -169,8 +169,7 @@ export async function callAI(
     const joinedReasoning = reasoningChunks.join("");
     return {
       content: contentChunks.join(""),
-      reasoning:
-        joinedReasoning && joinedReasoning.trim() ? joinedReasoning : undefined,
+      reasoning: joinedReasoning?.trim() ? joinedReasoning : undefined,
       usage: finalUsage,
       estimatedInputTokens: streamResponse.estimatedInputTokens,
       finishReason: finalFinishReason,
@@ -360,10 +359,7 @@ export async function callAI(
 
     return {
       content: parsed.content,
-      reasoning:
-        parsed.reasoning && parsed.reasoning.trim()
-          ? parsed.reasoning
-          : undefined,
+      reasoning: parsed.reasoning?.trim() ? parsed.reasoning : undefined,
       toolCalls: parsed.toolCalls,
       usage: parsed.usage,
       estimatedInputTokens,

@@ -80,7 +80,7 @@ export function MessageItem({
           <div className="mt-2">
             <img
               src={message.imageUrl}
-              alt="AI generated image"
+              alt="AI generated content"
               className="max-w-full h-auto rounded-md"
               onError={(e) => {
                 e.currentTarget.style.display = "none";

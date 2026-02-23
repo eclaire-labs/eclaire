@@ -17,6 +17,7 @@ import {
   BookmarksListResponseSchema,
   CreatedBookmarkResponseSchema,
 } from "./bookmarks-responses.js";
+import { requestBodyResolver } from "./common.js";
 
 // GET /api/bookmarks - Get all bookmarks
 export const getBookmarksRouteDescription = {
@@ -61,7 +62,7 @@ export const postBookmarksRouteDescription = {
     description: "Bookmark creation data",
     content: {
       "application/json": {
-        schema: resolver(CreateBookmarkSchema) as any,
+        schema: requestBodyResolver(CreateBookmarkSchema),
       },
     },
   },
@@ -152,7 +153,7 @@ export const putBookmarkRouteDescription = {
     description: "Complete bookmark data",
     content: {
       "application/json": {
-        schema: resolver(BookmarkSchema) as any,
+        schema: requestBodyResolver(BookmarkSchema),
       },
     },
   },
@@ -210,7 +211,7 @@ export const patchBookmarkRouteDescription = {
     description: "Partial bookmark data",
     content: {
       "application/json": {
-        schema: resolver(PartialBookmarkSchema) as any,
+        schema: requestBodyResolver(PartialBookmarkSchema),
       },
     },
   },

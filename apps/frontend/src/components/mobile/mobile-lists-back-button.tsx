@@ -32,6 +32,7 @@ export function MobileListsBackButton({
 
   return (
     <button
+      type="button"
       onClick={handleBackToLists}
       className={cn(
         "flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors",

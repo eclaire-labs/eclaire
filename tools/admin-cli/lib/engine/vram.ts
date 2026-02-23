@@ -37,7 +37,7 @@ async function getMetalRecommendedMemory(): Promise<number | null> {
     const match = output.match(
       /recommendedMaxWorkingSetSize\s*=\s*([\d.]+)\s*MB/,
     );
-    if (match && match[1]) {
+    if (match?.[1]) {
       const mb = parseFloat(match[1]);
       return mb * 1024 * 1024; // Convert MB to bytes
     }
@@ -127,7 +127,7 @@ export async function detectVRAM(): Promise<VRAMStatus> {
     };
 
     return cachedVRAMStatus;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Fallback: try to detect Apple Silicon via chip name
     const fallback = await detectAppleSiliconFallback();
     if (fallback) {
@@ -135,13 +135,15 @@ export async function detectVRAM(): Promise<VRAMStatus> {
       return fallback;
     }
 
-    throw new Error(`Failed to detect VRAM: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to detect VRAM: ${message}`);
   }
 }
 
 /**
  * Parse system_profiler SPDisplaysDataType JSON output
  */
+// biome-ignore lint/suspicious/noExplicitAny: system_profiler JSON output — untyped
 function parseSystemProfilerData(data: any): GPUInfo[] {
   const gpus: GPUInfo[] = [];
 

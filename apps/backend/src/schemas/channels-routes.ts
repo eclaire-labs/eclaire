@@ -14,6 +14,7 @@ import {
   ListChannelsResponseSchema,
   UpdateChannelResponseSchema,
 } from "./channels-responses.js";
+import { requestBodyResolver } from "./common.js";
 
 // GET /api/channels - List user's channels
 export const getChannelsRouteDescription = {
@@ -57,7 +58,7 @@ export const postChannelsRouteDescription = {
     description: "Channel creation data",
     content: {
       "application/json": {
-        schema: resolver(CreateChannelSchema) as any,
+        schema: requestBodyResolver(CreateChannelSchema),
       },
     },
   },
@@ -107,7 +108,7 @@ export const putChannelRouteDescription = {
     description: "Channel update data",
     content: {
       "application/json": {
-        schema: resolver(UpdateChannelSchema) as any,
+        schema: requestBodyResolver(UpdateChannelSchema),
       },
     },
   },

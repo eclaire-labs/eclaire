@@ -109,7 +109,20 @@ export function StorageUsageChart({ stats }: StorageUsageChartProps) {
     },
   ].filter((item) => item.value > 0);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: Array<{
+      payload: {
+        name: string;
+        color: string;
+        value: number;
+        formatted: string;
+      };
+    }>;
+  }) => {
     if (active && payload && payload.length) {
       const d = payload[0].payload;
       return (
@@ -186,7 +199,7 @@ export function StorageUsageChart({ stats }: StorageUsageChartProps) {
                   paddingAngle={2}
                   cornerRadius={3}
                 >
-                  {data.map((entry, idx) => (
+                  {data.map((entry, _idx) => (
                     <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>

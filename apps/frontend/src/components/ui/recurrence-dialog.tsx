@@ -158,13 +158,19 @@ export function RecurrenceDialog({
       const dayPart = parts[4];
       if (dayPart === "*") {
         // All days
-        WEEKDAYS.forEach((day) => (weekdays[day.key] = true));
+        WEEKDAYS.forEach((day) => {
+          weekdays[day.key] = true;
+        });
       } else if (dayPart === "1-5") {
         // Weekdays
-        ["1", "2", "3", "4", "5"].forEach((day) => (weekdays[day] = true));
+        ["1", "2", "3", "4", "5"].forEach((day) => {
+          weekdays[day] = true;
+        });
       } else if (dayPart.includes(",")) {
         // Specific days
-        dayPart.split(",").forEach((day) => (weekdays[day.trim()] = true));
+        dayPart.split(",").forEach((day) => {
+          weekdays[day.trim()] = true;
+        });
       } else {
         // Single day
         weekdays[dayPart] = true;
@@ -390,7 +396,9 @@ export function RecurrenceDialog({
                     <Select
                       value={customIntervalUnit}
                       onValueChange={(value) =>
-                        setCustomIntervalUnit(value as any)
+                        setCustomIntervalUnit(
+                          value as "days" | "weeks" | "months",
+                        )
                       }
                     >
                       <SelectTrigger>

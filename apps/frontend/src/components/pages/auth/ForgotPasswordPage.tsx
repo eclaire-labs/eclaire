@@ -98,6 +98,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center text-sm">
               Didn't receive the email?{" "}
               <button
+                type="button"
                 onClick={() => setIsSubmitted(false)}
                 className="text-primary hover:underline"
               >

@@ -1,5 +1,6 @@
 import { resolver } from "hono-openapi";
 import { UnauthorizedSchema } from "./all-responses.js";
+import { requestBodyResolver } from "./common.js";
 import { PromptRequestSchema } from "./prompt-params.js";
 import {
   AIAPIErrorSchema,
@@ -19,7 +20,7 @@ export const postPromptRouteDescription = {
     description: "AI prompt request with optional content and device context",
     content: {
       "application/json": {
-        schema: resolver(PromptRequestSchema) as any,
+        schema: requestBodyResolver(PromptRequestSchema),
       },
     },
     required: true,

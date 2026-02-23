@@ -100,7 +100,6 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
 
     it("should disable schedule when endDate is reached", async () => {
       scheduler = createTestScheduler();
-      const { queueSchedules } = testDb.schema;
 
       // Create schedule with endDate in the past
       const pastEndDate = new Date(Date.now() - 1000);

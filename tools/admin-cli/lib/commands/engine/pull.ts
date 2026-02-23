@@ -48,6 +48,7 @@ export async function pullCommand(
 
     // Update model config if --model-id was provided
     if (options.modelId) {
+      // biome-ignore lint/style/noNonNullAssertion: localPath is set when result.success is true
       await updateModelWithLocalPath(options.modelId, result.localPath!);
     } else {
       console.log("");
@@ -65,8 +66,9 @@ export async function pullCommand(
     }
 
     console.log("");
-  } catch (error: any) {
-    console.log(colors.error(`${icons.error} Pull failed: ${error.message}`));
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(colors.error(`${icons.error} Pull failed: ${message}`));
     process.exit(1);
   }
 }
@@ -111,11 +113,12 @@ async function updateModelWithLocalPath(
         `${icons.success} Updated model '${modelId}' with local path`,
       ),
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log("");
     console.log(
       colors.warning(
-        `${icons.warning} Failed to update model config: ${error.message}`,
+        `${icons.warning} Failed to update model config: ${message}`,
       ),
     );
     console.log(

@@ -15,6 +15,7 @@ export interface CreateMessageParams {
   content: string;
   thinkingContent?: string | null;
   toolCalls?: ToolCallSummary[];
+  // biome-ignore lint/suspicious/noExplicitAny: JSON metadata blob from database
   metadata?: any;
 }
 
@@ -26,6 +27,7 @@ export interface MessageEntry {
   thinkingContent?: string | null;
   toolCalls?: ToolCallSummary[];
   createdAt: Date;
+  // biome-ignore lint/suspicious/noExplicitAny: JSON metadata blob from database
   metadata?: any;
 }
 

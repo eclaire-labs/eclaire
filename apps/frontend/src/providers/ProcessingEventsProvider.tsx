@@ -159,21 +159,24 @@ export function ProcessingEventsProvider({
                 });
                 // Optimistically update the asset's processingStatus in the list
                 // This ensures the UI shows "processing" immediately without a list refetch
+                // biome-ignore lint/suspicious/noExplicitAny: query cache items have varying shapes per asset type
                 queryClient.setQueriesData<any[]>(
                   { queryKey: [assetType] },
                   (oldData) => {
                     if (!oldData || !Array.isArray(oldData)) return oldData;
-                    return oldData.map((item: any) =>
-                      item.id === assetId
-                        ? { ...item, processingStatus: "processing" }
-                        : item,
+                    return oldData.map(
+                      // biome-ignore lint/suspicious/noExplicitAny: list items have varying shapes per asset type
+                      (item: any) =>
+                        item.id === assetId
+                          ? { ...item, processingStatus: "processing" }
+                          : item,
                     );
                   },
                 );
                 // Optimistically update the asset's processingStatus in the detail view
-                queryClient.setQueriesData<any>(
+                queryClient.setQueriesData<Record<string, unknown>>(
                   { queryKey: [assetType, assetId] },
-                  (oldData: any) => {
+                  (oldData) => {
                     if (!oldData) return oldData;
                     return { ...oldData, processingStatus: "processing" };
                   },
@@ -192,7 +195,7 @@ export function ProcessingEventsProvider({
                 if (typeof progress === "number") {
                   queryClient.setQueryData(
                     ["processing-status", assetType, assetId],
-                    (old: any) =>
+                    (old: Record<string, unknown> | undefined) =>
                       old ? { ...old, overallProgress: progress } : old,
                   );
                 }

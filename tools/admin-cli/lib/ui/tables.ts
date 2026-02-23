@@ -104,7 +104,7 @@ export function createModelsTable(
 /**
  * Create a simple key-value table
  */
-export function createInfoTable(data: Record<string, any>): string {
+export function createInfoTable(data: Record<string, string>): string {
   const table = new Table({
     style: {
       head: [],
@@ -265,7 +265,7 @@ export function createProviderInfoTable(
     const value = config.auth.value;
     const maskedValue =
       value.length > 12
-        ? value.substring(0, 8) + "..." + value.slice(-4)
+        ? `${value.substring(0, 8)}...${value.slice(-4)}`
         : "***";
     table.push([colors.emphasis("Auth Value"), colors.dim(maskedValue)]);
   }

@@ -234,8 +234,8 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     onToolCall: (
       name: string,
       status: "starting" | "executing" | "completed" | "error",
-      args?: Record<string, any>,
-      result?: any,
+      args?: Record<string, unknown>,
+      result?: unknown,
       error?: string,
     ) => {
       console.log("🔧 Received tool call:", name, status, {
@@ -977,6 +977,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   // Make this function available globally
   if (typeof window !== "undefined") {
+    // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
     (window as any).openAssistantWithAssets = openAssistantWithAssets;
   }
 
@@ -1132,7 +1133,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
                   {item.separator && (
                     <div className="h-px bg-border my-2"></div>
                   )}
-                  {(item as any).isDialog ? (
+                  {(item as Record<string, unknown>).isDialog ? (
                     <FeedbackDialog
                       trigger={
                         <button

@@ -4,9 +4,9 @@
  * Provides utilities to spawn worker subprocesses and collect their results.
  */
 
-import { type ChildProcess, fork } from "child_process";
-import { join } from "path";
-import { createInterface } from "readline";
+import { type ChildProcess, fork } from "node:child_process";
+import { join } from "node:path";
+import { createInterface } from "node:readline";
 
 // Path to the worker subprocess script
 const WORKER_SCRIPT = join(

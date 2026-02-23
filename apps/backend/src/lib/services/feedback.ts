@@ -50,6 +50,7 @@ export async function createFeedback(
     // Record history AFTER transaction (not critical for atomicity)
     await recordHistory({
       action: "create",
+      // biome-ignore lint/suspicious/noExplicitAny: feedback not yet in ItemType union
       itemType: "feedback" as any, // Cast since feedback is not in the union yet
       itemId: feedbackId,
       itemName: "Feedback submission",

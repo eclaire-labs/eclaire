@@ -61,6 +61,7 @@ export interface ProcessingJobDetails {
   currentStage?: string;
   overallProgress: number;
   errorMessage?: string;
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic error shape from various processors
   errorDetails?: any;
   retryCount: number;
   maxRetries: number;
@@ -126,6 +127,7 @@ export async function createOrUpdateProcessingJob(
           updatedAt: new Date(),
           metadata,
         })
+        // biome-ignore lint/style/noNonNullAssertion: guarded by length check above
         .where(eq(queueJobs.id, existingJob[0]!.id))
         .returning();
 
@@ -298,6 +300,7 @@ export async function updateProcessingJobStatus(
   stage?: string,
   progress?: number,
   error?: string,
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic error shape from various processors
   errorDetails?: any,
   addStages?: string[],
   jobType?: string,
@@ -330,9 +333,11 @@ export async function updateProcessingJobStatus(
     const nowDate = new Date();
 
     // Get existing metadata to preserve and extend
+    // biome-ignore lint/suspicious/noExplicitAny: JSON column from database
     const existingMetadata = (job.metadata as Record<string, any>) || {};
 
     // Initialize updateData with a flexible type to handle SQL expressions
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic Drizzle update set with SQL expressions
     const updateData: Record<string, any> = {
       updatedAt: new Date(),
     };
@@ -430,6 +435,7 @@ export async function updateProcessingJobStatus(
     }
 
     // 7. Filter out undefined values to prevent SQL syntax errors
+    // biome-ignore lint/suspicious/noExplicitAny: filtered dynamic Drizzle update set
     const cleanUpdateData: Record<string, any> = {};
     for (const [key, value] of Object.entries(updateData)) {
       if (value !== undefined) {
@@ -456,6 +462,7 @@ export async function updateProcessingJobStatus(
     const formattedJob = formatJobDetails(updatedJob);
 
     // Get userId from metadata for SSE
+    // biome-ignore lint/suspicious/noExplicitAny: JSON metadata extraction from database
     const userId = (updatedJob.metadata as any)?.userId;
 
     // Publish SSE event for status update (simple format)
@@ -737,7 +744,7 @@ export async function getUserProcessingJobs(
 
     if (search) {
       conditions.push(
-        sql`${queueJobs.metadata}->>'assetId' LIKE ${"%" + search + "%"}`,
+        sql`${queueJobs.metadata}->>'assetId' LIKE ${`%${search}%`}`,
       );
     }
 
@@ -893,9 +900,11 @@ export async function updateProcessingStatusWithArtifacts(
     stage?: string;
     progress?: number;
     error?: string;
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic error shape from various processors
     errorDetails?: any;
     stages?: string[]; // For job initialization
     addStages?: string[];
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic artifacts from processors
     artifacts?: Record<string, any>;
     jobType?: string; // For tasks with multiple job types (tag_generation, execution)
   },
@@ -1638,6 +1647,7 @@ async function retryTaskProcessing(
  * Formats raw database job data into ProcessingJobDetails
  * Formats queueJobs data (metadata stored in jsonb)
  */
+// biome-ignore lint/suspicious/noExplicitAny: raw DB row from queueJobs table
 function formatJobDetails(job: any): ProcessingJobDetails {
   const rawStages = (job.stages as ProcessingStage[]) || [];
   const stages: ProcessingStage[] = rawStages.map((stage) => ({

@@ -52,6 +52,7 @@ export const PaginationSchema = z.object({
 // Main OpenAPI Configuration
 // =============================================================================
 
+// biome-ignore lint/suspicious/noExplicitAny: accepts Hono app with any env type
 export const getOpenAPIDocument = (app: Hono<any>) => {
   const documentation: GenerateSpecOptions["documentation"] = {
     info: {

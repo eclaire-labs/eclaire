@@ -33,7 +33,7 @@ async function simulateCrashedJobs(
       .update(queueJobs)
       .set({
         status: "processing",
-        lockedBy: "dead-worker-" + Math.random().toString(36).slice(2, 8),
+        lockedBy: `dead-worker-${Math.random().toString(36).slice(2, 8)}`,
         lockedAt: new Date(Date.now() - 60000),
         expiresAt: new Date(Date.now() - 10000), // Expired 10 seconds ago
         attempts: 1,

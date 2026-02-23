@@ -14,8 +14,7 @@ import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type { BaseRepository, TransactionManager, Tx } from "../../types.js";
 
-// For now, we'll use a minimal schema type. This will need to be updated
-// when we create the SQLite-specific schema
+// biome-ignore lint/suspicious/noExplicitAny: schema values are Drizzle table objects of varying types
 type SQLiteSchema = Record<string, any>;
 
 // Module-level mutex for SQLite transaction serialization
@@ -30,9 +29,9 @@ function wrapSqliteTx(
   db: BetterSQLite3Database<SQLiteSchema>,
   schema: SQLiteSchema,
 ): Tx {
-  // Helper to create a repository for a given table
   function createRepository<TTableName extends string>(
     tableName: TTableName,
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic table repository — types resolved at runtime
   ): BaseRepository<any, any, any> {
     const table = schema[tableName];
 
@@ -41,11 +40,13 @@ function wrapSqliteTx(
     }
 
     return {
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic insert values
       async insert(values: any): Promise<void> {
         if (!table) return;
         // Execute synchronously but return Promise for API consistency
         db.insert(table).values(values).run();
       },
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic update values
       async update(where: SQL | undefined, values: any): Promise<void> {
         if (!table || !where) return;
         db.update(table).set(values).where(where).run();
@@ -54,6 +55,7 @@ function wrapSqliteTx(
         if (!table || !where) return;
         db.delete(table).where(where).run();
       },
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic select return type
       async findFirst(where: SQL | undefined): Promise<any | undefined> {
         if (!table) return undefined;
         const baseQuery = db.select().from(table);
@@ -62,6 +64,7 @@ function wrapSqliteTx(
           ? baseQuery.where(where).limit(1).get()
           : baseQuery.limit(1).get();
       },
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic select return type
       async findMany(where: SQL | undefined): Promise<any[]> {
         if (!table) return [];
         const baseQuery = db.select().from(table);

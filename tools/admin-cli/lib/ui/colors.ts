@@ -118,7 +118,7 @@ export function truncateString(
 ): string {
   if (!str) return "";
   if (str.length <= maxLength) return str;
-  return str.substring(0, maxLength - 3) + "...";
+  return `${str.substring(0, maxLength - 3)}...`;
 }
 
 export function formatMLX(isMLX: boolean): string {

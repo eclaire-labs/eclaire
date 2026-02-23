@@ -92,7 +92,9 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
       dialect: "openai_compatible",
       baseUrl: "https://openrouter.ai/api/v1",
       headers: {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional config placeholder syntax
         "HTTP-Referer": "${ENV:OPENROUTER_HTTP_REFERER}",
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional config placeholder syntax
         "X-Title": "${ENV:OPENROUTER_X_TITLE}",
       },
       auth: {
@@ -184,6 +186,7 @@ export function getPresetsForSelection(): ProviderPreset[] {
   const customIdx = sorted.findIndex((p) => p.id === "custom");
   if (customIdx !== -1) {
     const [custom] = sorted.splice(customIdx, 1);
+    // biome-ignore lint/style/noNonNullAssertion: splice guarantees element exists at customIdx
     sorted.push(custom!);
   }
   return sorted;

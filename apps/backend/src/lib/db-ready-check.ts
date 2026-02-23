@@ -8,9 +8,9 @@
  * It uses native database libraries directly for synchronous checks.
  */
 
-import { getDatabaseType, getPGlitePath, getSqlitePath } from "@eclaire/db";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
+import { getDatabaseType, getPGlitePath, getSqlitePath } from "@eclaire/db";
 
 // Create require for CommonJS modules in ESM context
 const require = createRequire(import.meta.url);

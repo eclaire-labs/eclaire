@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/frontend-api";
 import type { Task, TaskStatus } from "@/types/task";
 
 // Transform backend task data to frontend format
+// biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 const transformTaskData = (backendTask: any): Task => {
   return {
     id: backendTask.id,

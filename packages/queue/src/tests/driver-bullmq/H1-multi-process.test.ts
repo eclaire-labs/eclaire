@@ -11,7 +11,7 @@
  * Run with: QUEUE_DRIVER=bullmq pnpm vitest run H1
  */
 
-import { Redis } from "ioredis";
+import type { Redis } from "ioredis";
 import {
   afterAll,
   afterEach,

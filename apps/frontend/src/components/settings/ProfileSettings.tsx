@@ -477,7 +477,10 @@ export default function ProfileSettings() {
               {/* Avatar Upload Section */}
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  <label
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    htmlFor="profile-picture"
+                  >
                     Profile Picture
                   </label>
                   <p className="text-sm text-muted-foreground">
@@ -486,16 +489,26 @@ export default function ProfileSettings() {
                 </div>
 
                 {/* Upload Area */}
+                {/* biome-ignore lint/a11y/useSemanticElements: drag-and-drop upload area not suited for button element */}
                 <div
+                  role="button"
+                  tabIndex={0}
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                   className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
                   onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
                 >
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    id="profile-picture"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleFileSelect(file);

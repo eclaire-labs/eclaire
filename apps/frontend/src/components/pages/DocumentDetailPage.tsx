@@ -439,8 +439,10 @@ export function DocumentDetailClient() {
     // Use the global function to open assistant with pre-attached assets
     if (
       typeof window !== "undefined" &&
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets
     ) {
+      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets([
         {
           type: "document",
@@ -1071,7 +1073,7 @@ export function DocumentDetailClient() {
 
 // Simple document icon component for the delete dialog
 function DocumentIcon({
-  document,
+  document: _document,
   className,
 }: {
   document: Document;

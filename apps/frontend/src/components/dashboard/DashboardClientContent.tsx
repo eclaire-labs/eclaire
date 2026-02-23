@@ -29,10 +29,15 @@ import {
 // Props passed from the Server Component
 interface DashboardClientContentProps {
   userName: string;
+  // biome-ignore lint/suspicious/noExplicitAny: untyped dashboard API response
   initialStats: any;
+  // biome-ignore lint/suspicious/noExplicitAny: untyped dashboard API response
   initialActivity: any[];
+  // biome-ignore lint/suspicious/noExplicitAny: untyped dashboard API response
   initialTimeline: any[];
+  // biome-ignore lint/suspicious/noExplicitAny: untyped dashboard API response
   initialDueItems: any;
+  // biome-ignore lint/suspicious/noExplicitAny: untyped dashboard API response
   initialQuickStats: any;
 }
 

@@ -5,8 +5,8 @@
  * Writes JSON lines to a file for easy debugging without polluting console.
  */
 
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 // Module-level state
 let _debugLogPath: string | null = null;
@@ -79,7 +79,7 @@ export function logDebugEntry(entry: DebugLogEntry): void {
     }
 
     // Append JSON line
-    const line = JSON.stringify(entry) + "\n";
+    const line = `${JSON.stringify(entry)}\n`;
     fs.appendFileSync(_debugLogPath, line, "utf-8");
   } catch (error) {
     // Silently fail - we don't want debug logging to break the app

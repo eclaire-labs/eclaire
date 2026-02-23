@@ -44,9 +44,10 @@ export async function listCommand(options: CommandOptions): Promise<void> {
     console.log(
       colors.dim("  eclaire provider remove <id>  - Remove a provider"),
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
-      colors.error(`${icons.error} Failed to list providers: ${error.message}`),
+      colors.error(`${icons.error} Failed to list providers: ${message}`),
     );
     process.exit(1);
   }

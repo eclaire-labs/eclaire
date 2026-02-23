@@ -33,46 +33,52 @@ export const ContentLinkPreview = ({ link }: ContentLinkPreviewProps) => {
   };
 
   const getDisplayContent = () => {
+    // Helper to safely access string metadata fields
+    const meta = (key: string): string | undefined => {
+      const v = link.metadata?.[key];
+      return typeof v === "string" ? v : undefined;
+    };
+
     switch (link.type) {
-      case "bookmark":
+      case "bookmark": {
+        const originalUrl = meta("originalUrl");
         return {
           title: link.title || "Untitled Bookmark",
-          subtitle: link.metadata?.originalUrl
-            ? new URL(link.metadata.originalUrl).hostname
-            : undefined,
-          showFavicon: !!link.metadata?.faviconStorageId,
-          faviconUrl: link.metadata?.faviconStorageId
-            ? `/api/storage/${link.metadata.faviconStorageId}`
+          subtitle: originalUrl ? new URL(originalUrl).hostname : undefined,
+          showFavicon: !!meta("faviconStorageId"),
+          faviconUrl: meta("faviconStorageId")
+            ? `/api/storage/${meta("faviconStorageId")}`
             : undefined,
         };
+      }
 
       case "document":
         return {
           title: link.title || "Untitled Document",
-          subtitle: link.metadata?.originalFilename || undefined,
+          subtitle: meta("originalFilename"),
         };
 
       case "photo":
         return {
           title: link.title || "Untitled Photo",
-          subtitle: link.metadata?.originalFilename || undefined,
+          subtitle: meta("originalFilename"),
         };
 
-      case "task":
+      case "task": {
+        const status = meta("status");
         return {
           title: link.title || "Untitled Task",
-          subtitle: link.metadata?.status
-            ? `Status: ${link.metadata.status.replace("-", " ")}`
-            : undefined,
+          subtitle: status ? `Status: ${status.replace("-", " ")}` : undefined,
         };
+      }
 
       case "note": {
         // For notes: show title if available, otherwise show content preview
         const title =
           link.title && link.title !== "Untitled Note" ? link.title : undefined;
-        const contentPreview = link.metadata?.content
-          ? link.metadata.content.substring(0, 60) +
-            (link.metadata.content.length > 60 ? "..." : "")
+        const content = meta("content");
+        const contentPreview = content
+          ? content.substring(0, 60) + (content.length > 60 ? "..." : "")
           : undefined;
 
         return {
