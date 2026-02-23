@@ -42,7 +42,7 @@
   "dependencies": {
     "@eclaire/ai": "workspace:*",
     "@eclaire/logger": "workspace:*",
-    "axios": "1.13.2",
+    "axios": "1.13.5",
     "boxen": "8.0.1",
     "chalk": "5.6.2",
     "cli-table3": "0.6.5",

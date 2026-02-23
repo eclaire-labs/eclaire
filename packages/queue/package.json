@@ -70,7 +70,7 @@
     "bullmq": "5.66.4",
     "cron-parser": "5.4.0",
     "ioredis": "5.8.2",
-    "axios": "1.13.2",
+    "axios": "1.13.5",
     "drizzle-orm": "0.45.1"
   },
   "devDependencies": {

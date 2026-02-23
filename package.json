@@ -24,7 +24,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
     "node-addon-api": "8.5.0",
-    "node-gyp": "12.1.0"
+    "node-gyp": "12.2.0"
   },
   "scripts": {
     "setup": "node scripts/setup.js",

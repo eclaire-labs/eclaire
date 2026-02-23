@@ -1,5 +1,15 @@
 # Eclaire Changelog
 
+## [0.6.2] - 2026-02-22
+
+### Security
+
+- **deps**: upgrade axios 1.13.2 → 1.13.5 for GHSA-43fc-jf86-j433 (DoS via \_\_proto\_\_ in mergeConfig)
+- **backend**: upgrade hono 4.11.4 → 4.12.1 for multiple CVEs (XSS, cache bypass, IP spoofing, timing attack)
+- **deps**: upgrade node-gyp 12.1.0 → 12.2.0 and refresh transitive deps (tar, minimatch, ajv, qs, brace-expansion)
+
+---
+
 ## [0.6.1] - 2026-01-13
 
 ### Security
