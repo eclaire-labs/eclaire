@@ -1,0 +1,24 @@
+# Dependabot configuration
+# npm: alerts-only (no auto-PRs) — remediation handled via Claude Code /fix-deps
+# github-actions: auto-PRs enabled (simple, safe updates)
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 0
+    labels:
+      - "dependencies"
+      - "security"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
