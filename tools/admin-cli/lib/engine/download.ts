@@ -5,10 +5,10 @@
  */
 
 import axios from "axios";
-import { exec, spawn } from "child_process";
-import * as fs from "fs";
-import * as path from "path";
-import { promisify } from "util";
+import { exec, spawn } from "node:child_process";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { promisify } from "node:util";
 import type { DownloadResult } from "../types/engines.js";
 import { ensureDirectories, getModelsDir } from "./paths.js";
 

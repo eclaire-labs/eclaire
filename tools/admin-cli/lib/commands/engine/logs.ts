@@ -4,7 +4,7 @@
  * View logs for the llama-cpp engine.
  */
 
-import * as fs from "fs";
+import * as fs from "node:fs";
 import { getLogFilePath, getLogTail } from "../../engine/paths.js";
 import { LLAMA_CPP_ENGINE_ID } from "../../engine/process.js";
 import type { CommandOptions } from "../../types/index.js";

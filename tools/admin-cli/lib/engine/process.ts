@@ -14,8 +14,8 @@ import {
   parsePort,
 } from "@eclaire/ai";
 import axios from "axios";
-import { type ChildProcess, spawn } from "child_process";
-import * as fs from "fs";
+import { type ChildProcess, spawn } from "node:child_process";
+import * as fs from "node:fs";
 import {
   ensureDirectories,
   getLogFilePath,

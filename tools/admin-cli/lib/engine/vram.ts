@@ -5,9 +5,9 @@
  * this reports unified memory which is shared between CPU and GPU.
  */
 
-import { exec } from "child_process";
-import * as os from "os";
-import { promisify } from "util";
+import { exec } from "node:child_process";
+import * as os from "node:os";
+import { promisify } from "node:util";
 
 const execAsync = promisify(exec);
 

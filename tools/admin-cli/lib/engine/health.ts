@@ -8,10 +8,10 @@ import {
   parsePort,
 } from "@eclaire/ai";
 import axios from "axios";
-import { exec } from "child_process";
-import * as fs from "fs";
-import * as os from "os";
-import { promisify } from "util";
+import { exec } from "node:child_process";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import { promisify } from "node:util";
 import type { DoctorCheck } from "../types/engines.js";
 import { estimateModelMemory } from "./memory.js";
 import { getServerStatus, resolveSelectionEngine } from "./process.js";

@@ -4,7 +4,7 @@ import { type AILogger, setConfigPath, setLoggerFactory } from "@eclaire/ai";
 import boxen from "boxen";
 import chalk from "chalk";
 import { Command } from "commander";
-import path from "path";
+import path from "node:path";
 import { registerConfigCommands } from "./lib/commands/config/index.js";
 import { registerEngineCommands } from "./lib/commands/engine/index.js";
 import { registerModelCommands } from "./lib/commands/model/index.js";

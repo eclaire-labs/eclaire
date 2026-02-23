@@ -36,7 +36,7 @@ import {
   setConfigPath,
   updateModel,
 } from "@eclaire/ai";
-import path from "path";
+import path from "node:path";
 
 // ============================================================================
 // CLI-specific config path initialization
