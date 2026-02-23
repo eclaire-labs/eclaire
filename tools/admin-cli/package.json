@@ -5,7 +5,7 @@
   "description": "Eclaire Admin CLI - Manage providers, models, and configuration",
   "main": "dist/main.js",
   "type": "module",
-  "packageManager": "pnpm@10.26.2",
+  "packageManager": "pnpm@10.30.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/eclaire-labs/eclaire.git",
@@ -46,9 +46,9 @@
     "boxen": "8.0.1",
     "chalk": "5.6.2",
     "cli-table3": "0.6.5",
-    "commander": "14.0.2",
-    "inquirer": "13.1.0",
-    "ora": "9.0.0"
+    "commander": "14.0.3",
+    "inquirer": "13.3.0",
+    "ora": "9.3.0"
   },
   "devDependencies": {
     "@types/inquirer": "9.0.9",

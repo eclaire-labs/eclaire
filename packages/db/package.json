@@ -73,8 +73,8 @@
     "@eclaire/logger": "workspace:*",
     "@electric-sql/pglite": "0.3.14",
     "async-mutex": "0.5.0",
-    "better-sqlite3": "12.5.0",
-    "dotenv": "17.2.3",
+    "better-sqlite3": "12.6.2",
+    "dotenv": "17.3.1",
     "drizzle-orm": "0.45.1",
     "postgres": "3.4.8"
   },

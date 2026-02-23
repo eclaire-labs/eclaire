@@ -1,5 +1,14 @@
 # Eclaire Changelog
 
+## [0.6.3] - 2026-02-22
+
+### Maintenance
+
+- **deps**: upgrade patch and minor dependencies across all workspaces
+- **deps**: notable upgrades include biome 2.4.4, bullmq 5.70.1, pg 8.18.0, pino 10.3.1, playwright 1.58.2, react 19.2.4, TanStack Router 1.162.4, tailwindcss 4.2.0, vite 7.3.1, vitest 4.0.18
+
+---
+
 ## [0.6.2] - 2026-02-22
 
 ### Security
