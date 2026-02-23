@@ -99,7 +99,7 @@ async function createBotInstance(
           await ctx.reply(
             "Sorry, I encountered an error processing your message. Please try again.",
           );
-        } catch (replyError) {
+        } catch (_replyError) {
           logger.error(
             { channelId, userId },
             "Failed to send error reply to Telegram",
@@ -114,7 +114,7 @@ async function createBotInstance(
         await ctx.reply(
           "Hello! I'm your Eclaire assistant. How can I help you today?",
         );
-      } catch (error) {
+      } catch (_error) {
         logger.error(
           { channelId, userId },
           "Failed to send start command reply",
@@ -127,7 +127,7 @@ async function createBotInstance(
         await ctx.reply(
           "I can help you with various tasks. Just send me a message and I'll do my best to assist you!",
         );
-      } catch (error) {
+      } catch (_error) {
         logger.error(
           { channelId, userId },
           "Failed to send help command reply",

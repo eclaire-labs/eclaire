@@ -268,7 +268,7 @@ bookmarksRoutes.delete(
 
       // Parse the optional deleteStorage query parameter (defaults to true)
       const deleteStorageParam = c.req.query("deleteStorage");
-      const deleteStorage = deleteStorageParam === "false" ? false : true;
+      const deleteStorage = deleteStorageParam !=="false";
 
       try {
         await deleteBookmark(id, userId, deleteStorage);
@@ -634,7 +634,7 @@ bookmarksRoutes.post(
       let bookmarkData: unknown;
       try {
         bookmarkData = JSON.parse(fileContent);
-      } catch (error) {
+      } catch (_error) {
         return c.json(
           {
             error:

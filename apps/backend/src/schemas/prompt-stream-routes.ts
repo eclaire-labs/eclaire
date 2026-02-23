@@ -1,15 +1,12 @@
 // schemas/prompt-stream-routes.ts
 import { resolver } from "hono-openapi";
 import {
-  ErrorResponseSchema,
   UnauthorizedSchema,
-  ValidationErrorSchema,
 } from "./all-responses.js";
 import {
   AIAPIErrorSchema,
   AIConfigErrorSchema,
   ContentSizeErrorSchema,
-  InvalidRequestErrorSchema,
   RequestValidationErrorSchema,
 } from "./prompt-responses.js";
 import { StreamPromptRequestSchema } from "./prompt-stream-params.js";

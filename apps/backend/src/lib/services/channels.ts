@@ -4,7 +4,6 @@ import { db, schema } from "../../db/index.js";
 const { channels } = schema;
 
 import {
-  type ChannelCapability,
   type ChannelPlatform,
   type CreateChannelRequest,
   TelegramConfigSchema,
@@ -17,8 +16,8 @@ import type {
   ListChannelsResponse,
   UpdateChannelResponse,
 } from "../../schemas/channels-responses.js";
-import { formatRequiredTimestamp, formatToISO8601 } from "../db-helpers.js";
-import { decrypt, encrypt } from "../encryption.js";
+import { formatRequiredTimestamp, } from "../db-helpers.js";
+import { encrypt } from "../encryption.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
 import { startTelegramBot, stopTelegramBot } from "./telegram.js";

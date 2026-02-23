@@ -34,7 +34,6 @@ import { MobileLayout } from "@/components/mobile/mobile-layout";
 import type { MobileTab } from "@/components/mobile/mobile-tab-bar";
 import { AssistantOverlay } from "@/components/ui/assistant-overlay";
 import {
-  type ToolCall,
   useToolExecutionTracker,
 } from "@/components/ui/tool-execution-tracker";
 import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
@@ -43,8 +42,6 @@ import {
   apiFetch,
   type BackendMessage,
   type ConversationSummary,
-  type ConversationWithMessages,
-  createConversation,
   deleteConversation,
   getConversations,
   getConversationWithMessages,
@@ -57,7 +54,6 @@ import {
   getRouteForMobileTab,
 } from "@/lib/mobile-navigation";
 import {
-  StreamingClient,
   type StreamingRequest,
   useStreamingClient,
 } from "@/lib/streaming-client";
@@ -127,7 +123,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   );
   const [assistantWidth, setAssistantWidth] = useState(384); // 96 * 4 = 384px (w-96 equivalent)
   const [isResizing, setIsResizing] = useState(false);
-  const resizeRef = useRef<HTMLDivElement>(null);
+  const _resizeRef = useRef<HTMLDivElement>(null);
 
   // Mobile state
   const [currentMobileTab, setCurrentMobileTab] = useState<MobileTab>("chat");
@@ -162,7 +158,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   } = useToolExecutionTracker();
 
   // Streaming optimization state
-  const [isPending, startTransition] = useTransition();
+  const [_isPending, startTransition] = useTransition();
   const pendingChunksRef = useRef<string>("");
   const batchTimeoutRef = useRef<number | null>(null);
   const lastChunkTimeRef = useRef<number>(0);
@@ -233,7 +229,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   // Initialize streaming client
   const streamingClient = useStreamingClient({
-    onThought: (content: string, timestamp?: string) => {
+    onThought: (content: string, _timestamp?: string) => {
       console.log("💭 Received thought:", content);
       setStreamingThought((prev) => prev + content);
     },
@@ -251,12 +247,12 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
       });
       addOrUpdateTool(name, status, args, result, error);
     },
-    onTextChunk: (content: string, timestamp?: string) => {
+    onTextChunk: (content: string, _timestamp?: string) => {
       console.log("📝 Received text chunk:", content);
       finalStreamingTextRef.current += content; // <-- UPDATE THE REF IMMEDIATELY
       processBatchedChunk(content);
     },
-    onError: (error: string, timestamp?: string) => {
+    onError: (error: string, _timestamp?: string) => {
       console.error("❌ Streaming error received:", error);
       setIsStreaming(false);
       // Add error message to conversation
@@ -405,12 +401,12 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [scrollToBottom]);
 
   useEffect(() => {
     return () => {
       messages.forEach((message) => {
-        if (message.imageUrl && message.imageUrl.startsWith("blob:")) {
+        if (message.imageUrl?.startsWith("blob:")) {
           URL.revokeObjectURL(message.imageUrl);
         }
       });
@@ -445,7 +441,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     // Chat tab doesn't need special state since it's handled by the content render
   };
 
-  const handleFoldersToggle = () => {
+  const _handleFoldersToggle = () => {
     setFoldersSheetOpen(!foldersSheetOpen);
   };
 
@@ -956,7 +952,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   const startNewConversation = () => {
     messages.forEach((message) => {
-      if (message.imageUrl && message.imageUrl.startsWith("blob:")) {
+      if (message.imageUrl?.startsWith("blob:")) {
         URL.revokeObjectURL(message.imageUrl);
       }
     });

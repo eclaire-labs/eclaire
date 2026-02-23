@@ -2,14 +2,12 @@ import { resolver } from "hono-openapi";
 import {
   ErrorResponseSchema,
   UnauthorizedSchema,
-  ValidationErrorSchema,
 } from "./all-responses.js";
 import { DeleteAllUserDataSchema, UpdateProfileSchema } from "./user-params.js";
 import {
   DeleteAllUserDataResponseSchema,
   ProfileUpdateResponseSchema,
   PublicUserProfileResponseSchema,
-  UserContextResponseSchema,
   UserNotFoundSchema,
   UserProfileResponseSchema,
   UserProfileValidationErrorSchema,

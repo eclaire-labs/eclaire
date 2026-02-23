@@ -319,7 +319,7 @@ export default function ProfileSettings() {
       });
       setShowColorConfirmDialog(false);
       setPendingColorChange("");
-    } catch (error) {
+    } catch (_error) {
       // Error handled by mutation's onError
       setShowColorConfirmDialog(false);
       setPendingColorChange("");

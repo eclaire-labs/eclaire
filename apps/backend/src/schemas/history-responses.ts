@@ -1,5 +1,4 @@
 import z from "zod/v4";
-import { HistoryRecordSchema } from "./history-params.js";
 
 // Single history record response
 export const HistoryRecordResponseSchema = z.object({

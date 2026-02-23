@@ -1,6 +1,6 @@
 import { type AIMessage, callAI } from "@eclaire/ai";
 import type { JobContext } from "@eclaire/queue/core";
-import { Buffer } from "buffer";
+import { Buffer } from "node:buffer";
 import heicConvert from "heic-convert";
 import sharp from "sharp";
 import { createChildLogger } from "../../lib/logger.js";
@@ -205,7 +205,7 @@ async function executeAIWorkflowStep(
   }
 
   if (stageName === STAGES.CONTENT_EXTRACTION) {
-    const extractionSchema = {
+    const _extractionSchema = {
       type: "object",
       properties: {
         extracted_text: {

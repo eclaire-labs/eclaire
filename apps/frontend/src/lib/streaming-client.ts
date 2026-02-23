@@ -136,7 +136,7 @@ export class StreamingClient {
           }
         }
 
-        throw new Error("Expected streaming response but got: " + contentType);
+        throw new Error(`Expected streaming response but got: ${contentType}`);
       }
 
       console.log("✅ Valid streaming response, starting to parse...");

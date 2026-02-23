@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  cleanDatabase,
   createTestUser,
   DB_TEST_CONFIGS,
   generateTestBookmarkId,
@@ -382,7 +381,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Transaction Tests", ({
     it("should return value from transaction callback", async () => {
       const { txManager } = testDb;
 
-      const result = await txManager.withTransaction(async (tx) => {
+      const result = await txManager.withTransaction(async (_tx) => {
         return { success: true, value: 42 };
       });
 
@@ -711,13 +710,13 @@ describe.each(DB_TEST_CONFIGS)("$label - Transaction Tests", ({
           // Link tag to bookmark
           await tx.bookmarksTags.insert({
             bookmarkId,
-            tagId: tags[0]!.id,
+            tagId: tags[0]?.id,
           });
 
           // Force failure
           throw new Error("Simulated failure");
         });
-      } catch (e) {
+      } catch (_e) {
         // Expected
       }
 
@@ -773,7 +772,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Transaction Tests", ({
           // Force failure (simulates history insert failure)
           throw new Error("Simulated history insert failure");
         });
-      } catch (e) {
+      } catch (_e) {
         // Expected
       }
 
@@ -826,7 +825,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Transaction Tests", ({
           // Simulate history insert failure
           throw new Error("Simulated history insert failure");
         });
-      } catch (e) {
+      } catch (_e) {
         // Expected
       }
 

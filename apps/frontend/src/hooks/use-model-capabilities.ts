@@ -55,7 +55,7 @@ export function useModelCapabilities(): UseModelCapabilitiesReturn {
 
   useEffect(() => {
     fetchModelCapabilities();
-  }, []);
+  }, [fetchModelCapabilities]);
 
   return {
     data,

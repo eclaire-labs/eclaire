@@ -17,7 +17,6 @@ import { config } from "../../config/index.js";
 import { db, dbType } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 import { getNotifyEmitter } from "./notify.js";
-import { getQueue, QueueNames } from "./queues.js";
 
 const logger = createChildLogger("queue-adapter");
 

@@ -58,7 +58,7 @@ const formatDate = (timestamp: number | string | Date) => {
   }
 
   // Check if the date is valid
-  if (isNaN(date.getTime())) {
+  if (Number.isNaN(date.getTime())) {
     return "Invalid Date";
   }
 
@@ -116,13 +116,13 @@ export function DashboardClientContent({
   initialDueItems,
   initialQuickStats,
 }: DashboardClientContentProps) {
-  const [stats, setStats] = useState(initialStats);
-  const [recentActivities, setRecentActivities] = useState(initialActivity);
+  const [stats, _setStats] = useState(initialStats);
+  const [recentActivities, _setRecentActivities] = useState(initialActivity);
   const [timeline, setTimeline] = useState(initialTimeline);
-  const [dueItems, setDueItems] = useState(initialDueItems);
-  const [quickStats, setQuickStats] = useState(initialQuickStats);
+  const [dueItems, _setDueItems] = useState(initialDueItems);
+  const [quickStats, _setQuickStats] = useState(initialQuickStats);
   const [timelinePeriod, setTimelinePeriod] = useState(30);
-  const [isLoadingTimeline, setIsLoadingTimeline] = useState(false);
+  const [_isLoadingTimeline, setIsLoadingTimeline] = useState(false);
 
   // Client-side function to fetch activity timeline
   const fetchActivityTimeline = useCallback(async (days: number) => {

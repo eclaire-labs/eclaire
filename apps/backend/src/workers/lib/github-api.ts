@@ -49,7 +49,7 @@ const octokit = new ThrottledOctokit({
     onRateLimit: (
       retryAfter: number,
       options: any,
-      octokitInstance: any,
+      _octokitInstance: any,
       retryCount: number,
     ) => {
       const authStatus = GITHUB_API_TOKEN ? "authenticated" : "unauthenticated";
@@ -62,7 +62,7 @@ const octokit = new ThrottledOctokit({
     onSecondaryRateLimit: (
       retryAfter: number,
       options: any,
-      octokitInstance: any,
+      _octokitInstance: any,
     ) => {
       const authStatus = GITHUB_API_TOKEN ? "authenticated" : "unauthenticated";
       logger.warn(
@@ -108,7 +108,7 @@ export function isGitHubUrl(url: string): boolean {
   try {
     const hostname = new URL(url).hostname.toLowerCase();
     return hostname === "github.com" || hostname === "www.github.com";
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }

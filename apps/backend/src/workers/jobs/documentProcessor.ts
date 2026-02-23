@@ -5,18 +5,18 @@ import { type AIMessage, callAI } from "@eclaire/ai";
 import type { JobContext } from "@eclaire/queue/core";
 import { Readability } from "@mozilla/readability";
 import axios from "axios";
-import { spawn } from "child_process";
+import { spawn } from "node:child_process";
 import { execa } from "execa";
 import FormData from "form-data";
-import { promises as fs } from "fs";
+import { promises as fs } from "node:fs";
 import { convert as htmlToText } from "html-to-text";
 import { JSDOM } from "jsdom";
 import { marked } from "marked";
-import { tmpdir } from "os";
+import { tmpdir } from "node:os";
 import { chromium } from "patchright";
-import path from "path";
+import path from "node:path";
 import sharp from "sharp";
-import { Readable } from "stream";
+import { Readable } from "node:stream";
 import { createChildLogger } from "../../lib/logger.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
 import { config } from "../config.js";
@@ -35,7 +35,7 @@ async function isPdftocairoAvailable(): Promise<boolean> {
   try {
     await execa("pdftocairo", ["-v"]);
     return true;
-  } catch (error) {
+  } catch (_error) {
     logger.debug("pdftocairo not available, will use pdfjs-dist fallback");
     return false;
   }
@@ -627,7 +627,7 @@ function getFileExtensionFromMimeType(mimeType: string): string {
 async function extractTextFromDocument(
   docBuffer: Buffer,
   mimeType: string,
-  filename: string,
+  _filename: string,
   tempDir: string,
 ): Promise<string> {
   // Handle simple text types that need processing
@@ -1047,7 +1047,7 @@ async function generateDocumentMetadata(
 async function generatePdf(
   docBuffer: Buffer,
   mimeType: string,
-  filename: string,
+  _filename: string,
   docPath: string,
   tempDir: string,
 ): Promise<Buffer> {
@@ -1366,7 +1366,7 @@ async function extractTextFromCsv(csvBuffer: Buffer): Promise<string> {
  * @returns A Promise that resolves to a single string of clean, searchable text.
  */
 async function extractTextFromJsonWithJq(jsonString: string): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     // The jq command and its arguments
     const jqCommand =
       '.. | strings? | select(test("^https?://|^-|@|/|\\\\.") | not)';

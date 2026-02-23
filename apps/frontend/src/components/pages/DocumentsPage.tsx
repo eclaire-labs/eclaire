@@ -131,7 +131,7 @@ const ALLOWED_UPLOAD_TYPES = {
   "application/vnd.apple.numbers": [".numbers"],
   "application/vnd.apple.keynote": [".keynote"],
 };
-const ALLOWED_UPLOAD_TYPES_STRING = Object.keys(ALLOWED_UPLOAD_TYPES).join(",");
+const _ALLOWED_UPLOAD_TYPES_STRING = Object.keys(ALLOWED_UPLOAD_TYPES).join(",");
 
 // --- Helper Functions ---
 
@@ -140,7 +140,7 @@ const formatDate = (dateInput: string | number | null | undefined): string => {
   if (!dateInput) return "Unknown date";
   try {
     const date = new Date(dateInput);
-    if (isNaN(date.getTime())) return "Invalid Date";
+    if (Number.isNaN(date.getTime())) return "Invalid Date";
     return date.toLocaleDateString(undefined, {
       year: "numeric",
       month: "long",
@@ -156,13 +156,13 @@ const formatDate = (dateInput: string | number | null | undefined): string => {
 
 // Reused formatFileSize
 const formatFileSize = (bytes: number | null | undefined): string => {
-  if (bytes === null || bytes === undefined || isNaN(bytes) || bytes < 0)
+  if (bytes === null || bytes === undefined || Number.isNaN(bytes) || bytes < 0)
     return "N/A";
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Number.parseFloat((bytes / k ** i).toFixed(1)) + " " + sizes[i];
+  return `${Number.parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
 };
 
 // Get simplified document type from MIME type
@@ -241,7 +241,7 @@ const getGroupDateLabel = (
   if (!dateInput) return "Unknown Date";
   try {
     const date = new Date(dateInput);
-    if (isNaN(date.getTime())) return "Unknown Date"; // Check if date is valid
+    if (Number.isNaN(date.getTime())) return "Unknown Date"; // Check if date is valid
 
     const today = new Date();
     const yesterday = new Date(today);
@@ -280,7 +280,7 @@ const getGroupDateLabel = (
 
 // --- Component ---
 export default function DocumentsPage() {
-  const isMobile = useIsMobile();
+  const _isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -318,7 +318,7 @@ export default function DocumentsPage() {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
 
   // Use view preferences hook instead of individual state variables
-  const [viewPreferences, updateViewPreference, isPreferencesLoaded] =
+  const [viewPreferences, updateViewPreference, _isPreferencesLoaded] =
     useViewPreferences("documents");
   const { viewMode, sortBy, sortDir } = viewPreferences;
   const [focusedIndex, setFocusedIndex] = useState<number>(-1); // For keyboard nav
@@ -353,8 +353,7 @@ export default function DocumentsPage() {
       const lowerSearch = searchQuery.toLowerCase();
       const matchesSearch =
         doc.title.toLowerCase().includes(lowerSearch) ||
-        (doc.description &&
-          doc.description.toLowerCase().includes(lowerSearch)) ||
+        (doc.description?.toLowerCase().includes(lowerSearch)) ||
         (doc.originalFilename || "").toLowerCase().includes(lowerSearch) ||
         (doc.extractedText || "").toLowerCase().includes(lowerSearch) || // ADD THIS LINE
         getDocumentTypeLabel(doc.mimeType)
@@ -388,13 +387,12 @@ export default function DocumentsPage() {
           }
           break;
         }
-        case "createdAt":
         default: {
           const dateA = new Date(a.createdAt || 0).getTime();
           const dateB = new Date(b.createdAt || 0).getTime();
           // Handle invalid dates gracefully
           compareResult =
-            (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
+            (Number.isNaN(dateA) ? 0 : dateA) - (Number.isNaN(dateB) ? 0 : dateB);
           // Secondary sort by title if dates are identical
           if (compareResult === 0) {
             compareResult = a.title
@@ -514,7 +512,7 @@ export default function DocumentsPage() {
     );
   };
 
-  const handleEditingDocTagsChange = (
+  const _handleEditingDocTagsChange = (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const tags = e.target.value
@@ -586,7 +584,7 @@ export default function DocumentsPage() {
     doc: Document,
     color: "red" | "yellow" | "orange" | "green" | "blue" | null,
   ) => {
-    const previousColor = doc.flagColor;
+    const _previousColor = doc.flagColor;
 
     try {
       const response = await setFlagColor("documents", doc.id, color);
@@ -786,7 +784,8 @@ export default function DocumentsPage() {
         }
       }
     },
-    [toast],
+    [toast, // Refresh the documents list to show the new upload
+          refresh],
   ); // Added toast dependency
 
   const {
@@ -846,7 +845,7 @@ export default function DocumentsPage() {
           ? Number.parseInt(
               getComputedStyle(docsContainerRef.current!)
                 .gridTemplateColumns.split(" ")
-                .length.toString(),
+                .length.toString(), 10
             ) || 3
           : 1;
 
@@ -993,7 +992,6 @@ export default function DocumentsPage() {
       <div
         ref={docsContainerRef}
         onKeyDown={handleKeyDown} // Attach keydown listener here
-        tabIndex={0} // Make the container focusable
         className="outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md" // Show focus outline on container when navigated to
       >
         {viewMode === "tile" && (
@@ -1026,7 +1024,7 @@ export default function DocumentsPage() {
   };
 
   // Helper function to count active filters for Documents
-  const getActiveFilterCount = () => {
+  const _getActiveFilterCount = () => {
     let count = 0;
     if (filterTag !== "all") count++;
     return count;

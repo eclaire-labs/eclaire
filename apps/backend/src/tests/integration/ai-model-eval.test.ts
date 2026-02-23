@@ -100,7 +100,7 @@ describe("Model Evaluation Integration Tests", () => {
     console.log(
       `\n🔬 Evaluating ${MODEL_CONFIGS.length} models with prompt: "${prompt}"`,
     );
-    console.log("=" + "=".repeat(60));
+    console.log(`=${"=".repeat(60)}`);
 
     for (const modelConfig of MODEL_CONFIGS) {
       console.log(`\n🧪 Testing: ${modelConfig.name}`);
@@ -185,7 +185,7 @@ describe("Model Evaluation Integration Tests", () => {
 
     // Display results in a nice table format
     console.log("\n📊 PERFORMANCE COMPARISON RESULTS");
-    console.log("=" + "=".repeat(80));
+    console.log(`=${"=".repeat(80)}`);
 
     // Prepare data for console.table with key metrics
     const tableData = results.map((result, index) => ({
@@ -245,7 +245,7 @@ describe("Model Evaluation Integration Tests", () => {
       console.log(`Length: ${result.finalResponse.length} chars`);
     });
 
-    console.log("\n" + "=".repeat(80));
+    console.log(`\n${"=".repeat(80)}`);
     console.log("Model evaluation completed!");
   }, 300000); // 5 minute timeout for the entire test
 });

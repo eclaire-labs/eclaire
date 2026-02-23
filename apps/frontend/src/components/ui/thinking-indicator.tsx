@@ -110,7 +110,7 @@ export function StreamingThinkingIndicator({
   const [timestamp, setTimestamp] = useState<string>();
 
   // Method to add new thinking content
-  const addThinkingContent = React.useCallback(
+  const _addThinkingContent = React.useCallback(
     (newContent: string, eventTimestamp?: string) => {
       setContent((prev) => prev + newContent);
       setIsActive(true);
@@ -123,12 +123,12 @@ export function StreamingThinkingIndicator({
   );
 
   // Method to mark thinking as complete
-  const completeThinking = React.useCallback(() => {
+  const _completeThinking = React.useCallback(() => {
     setIsActive(false);
   }, []);
 
   // Method to reset thinking state
-  const resetThinking = React.useCallback(() => {
+  const _resetThinking = React.useCallback(() => {
     setContent("");
     setIsActive(false);
     setTimestamp(undefined);

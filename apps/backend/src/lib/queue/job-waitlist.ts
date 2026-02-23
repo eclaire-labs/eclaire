@@ -1,7 +1,6 @@
 import {
   type AssetType,
   createJobWaitlist,
-  type JobWaitlistInterface,
 } from "@eclaire/queue/app";
 import { and, eq, gt, or, sql } from "drizzle-orm";
 import { db, queueJobs } from "../../db/index.js";
@@ -36,7 +35,7 @@ async function findNextScheduledJob(
     .limit(1);
 
   return result.length > 0 && result[0]?.scheduledFor
-    ? new Date(result[0]!.scheduledFor)
+    ? new Date(result[0]?.scheduledFor)
     : null;
 }
 

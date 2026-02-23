@@ -10,7 +10,6 @@
  * 3. Derived config (computed): connection strings, full paths
  */
 
-import * as path from "path";
 import { envLoadInfo } from "../lib/env-loader.js";
 
 export type EclaireRuntime = "local" | "container";
@@ -115,7 +114,7 @@ export interface EclaireConfig {
 /**
  * Get a required environment variable or throw
  */
-function required(key: string, value: string | undefined): string {
+function _required(key: string, value: string | undefined): string {
   if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);
   }
@@ -128,13 +127,13 @@ function required(key: string, value: string | undefined): string {
 function int(value: string | undefined, defaultValue: number): number {
   if (!value) return defaultValue;
   const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
+  return Number.isNaN(parsed) ? defaultValue : parsed;
 }
 
 /**
  * Parse a boolean
  */
-function bool(value: string | undefined, defaultValue: boolean): boolean {
+function _bool(value: string | undefined, defaultValue: boolean): boolean {
   if (!value) return defaultValue;
   return value.toLowerCase() === "true";
 }
@@ -142,7 +141,7 @@ function bool(value: string | undefined, defaultValue: boolean): boolean {
 /**
  * Generate a random hex string (for auto-generating dev secrets)
  */
-function generateHex(bytes: number): string {
+function _generateHex(bytes: number): string {
   const array = new Uint8Array(bytes);
   crypto.getRandomValues(array);
   return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
@@ -180,11 +179,11 @@ function deriveTestSecrets(): {
 
   return {
     // 32+ chars, contains DEVONLY marker
-    betterAuthSecret: `DEVONLY_${hash(authSeed)}${hash(authSeed + "2")}${hash(authSeed + "3")}`,
+    betterAuthSecret: `DEVONLY_${hash(authSeed)}${hash(`${authSeed}2`)}${hash(`${authSeed}3`)}`,
     // 64 hex chars exactly
-    masterEncryptionKey: `${hash(encSeed)}${hash(encSeed + "1")}${hash(encSeed + "2")}${hash(encSeed + "3")}${hash(encSeed + "4")}${hash(encSeed + "5")}${hash(encSeed + "6")}${hash(encSeed + "7")}`,
+    masterEncryptionKey: `${hash(encSeed)}${hash(`${encSeed}1`)}${hash(`${encSeed}2`)}${hash(`${encSeed}3`)}${hash(`${encSeed}4`)}${hash(`${encSeed}5`)}${hash(`${encSeed}6`)}${hash(`${encSeed}7`)}`,
     // 32+ chars, contains DEVONLY marker
-    apiKeyHmacKeyV1: `DEVONLY_${hash(hmacSeed)}${hash(hmacSeed + "2")}${hash(hmacSeed + "3")}`,
+    apiKeyHmacKeyV1: `DEVONLY_${hash(hmacSeed)}${hash(`${hmacSeed}2`)}${hash(`${hmacSeed}3`)}`,
   };
 }
 

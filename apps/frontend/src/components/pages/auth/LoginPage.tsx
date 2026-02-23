@@ -68,7 +68,7 @@ export default function LoginPage() {
           },
         },
       });
-    } catch (error) {
+    } catch (_error) {
       setError("An unexpected error occurred. Please try again.");
       toast({
         title: "Login failed",

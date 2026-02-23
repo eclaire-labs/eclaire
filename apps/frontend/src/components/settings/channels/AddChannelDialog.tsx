@@ -75,7 +75,7 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
 
       // Reset and close dialog on success
       handleOpenChange(false);
-    } catch (error) {
+    } catch (_error) {
       // Error handling is done in the hook
     }
   };

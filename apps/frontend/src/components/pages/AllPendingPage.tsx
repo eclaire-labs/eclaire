@@ -424,7 +424,7 @@ export default function PendingItemsPage() {
     }
   };
 
-  const getFlagColorClass = (flagColor: string | null | undefined) => {
+  const _getFlagColorClass = (flagColor: string | null | undefined) => {
     if (!flagColor) return "";
 
     switch (flagColor) {

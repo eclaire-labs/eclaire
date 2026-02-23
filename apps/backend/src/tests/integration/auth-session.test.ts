@@ -26,7 +26,7 @@ const cookieUtils = {
       const cookieValues = setCookieHeaders.map((cookie) => {
         const [nameValue] = cookie.split(";");
         expect(nameValue).toBeDefined();
-        return nameValue!.trim();
+        return nameValue?.trim();
       });
       sessionCookies = cookieValues.join("; ");
 
@@ -61,7 +61,7 @@ const loggedFetch = async (url: string, options: RequestInit = {}) => {
   // Add cookies if available
   const cookieHeader = cookieUtils.getCookieHeader();
   if (cookieHeader) {
-    headers["Cookie"] = cookieHeader;
+    headers.Cookie = cookieHeader;
   }
 
   logger.request(method, url, headers, options.body);
@@ -201,7 +201,7 @@ describe("Better Auth Session Integration Tests", () => {
       try {
         const errorData = await clonedResponse.json();
         console.log("Error response:", JSON.stringify(errorData, null, 2));
-      } catch (e) {
+      } catch (_e) {
         const errorText = await clonedResponse.text();
         console.log("Error response (text):", errorText);
       }
@@ -217,21 +217,21 @@ describe("Better Auth Session Integration Tests", () => {
       // Verify bookmark structure
       const firstBookmark = data[0];
       expect(firstBookmark).toBeDefined();
-      expect(firstBookmark!.id).toBeTypeOf("string");
-      expect(firstBookmark!.url).toBeTypeOf("string");
-      expect(firstBookmark!.title).toBeTypeOf("string");
+      expect(firstBookmark?.id).toBeTypeOf("string");
+      expect(firstBookmark?.url).toBeTypeOf("string");
+      expect(firstBookmark?.title).toBeTypeOf("string");
 
       // userId might not be present in the response, so make it optional
-      if (firstBookmark!.userId) {
-        expect(firstBookmark!.userId).toBeTypeOf("string");
+      if (firstBookmark?.userId) {
+        expect(firstBookmark?.userId).toBeTypeOf("string");
       }
 
       // createdAt and updatedAt might also be optional or have different formats
-      if (firstBookmark!.createdAt) {
-        expect(firstBookmark!.createdAt).toBeTypeOf("string");
+      if (firstBookmark?.createdAt) {
+        expect(firstBookmark?.createdAt).toBeTypeOf("string");
       }
-      if (firstBookmark!.updatedAt) {
-        expect(firstBookmark!.updatedAt).toBeTypeOf("string");
+      if (firstBookmark?.updatedAt) {
+        expect(firstBookmark?.updatedAt).toBeTypeOf("string");
       }
 
       console.log(

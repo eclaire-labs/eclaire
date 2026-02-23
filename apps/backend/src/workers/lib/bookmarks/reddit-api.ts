@@ -1,7 +1,6 @@
 import type { JobContext } from "@eclaire/queue/core";
 import { type BrowserContext, chromium } from "patchright";
 import sharp from "sharp";
-import { Readable } from "stream";
 import { createChildLogger } from "../../../lib/logger.js";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
 import { createRedditApiClient } from "../reddit-api-client.js";
@@ -146,6 +145,7 @@ export async function processRedditApiBookmark(
       args: ["--use-mock-keychain"],
     });
     context = await browser.newContext({ viewport: null });
+    // biome-ignore lint/style/noNonNullAssertion: context is assigned on the line above
     const page = await context!.newPage();
 
     // Create a data URL for the HTML content (no-comments version for screenshots)

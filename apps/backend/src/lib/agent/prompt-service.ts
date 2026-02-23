@@ -7,7 +7,6 @@
 
 import type { AIMessage, ToolCallSummaryOutput } from "@eclaire/ai";
 import {
-  type AgentResult,
   type AgentStreamEvent,
   anyOf,
   createAgentContext,

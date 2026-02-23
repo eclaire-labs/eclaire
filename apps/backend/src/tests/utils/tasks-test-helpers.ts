@@ -1,6 +1,6 @@
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
-import { afterAll, expect } from "vitest";
+import { expect } from "vitest";
 import {
   BASE_URL,
   createAuthenticatedFetch,
@@ -179,7 +179,7 @@ export const RecurrenceTestHelpers = {
             }
           }
         }
-      } catch (error: any) {
+      } catch (_error: any) {
         // Continue polling on error
       }
 
@@ -348,7 +348,7 @@ export const RecurrenceTestHelpers = {
             stableCount = 0;
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Continue polling on error
       }
 
@@ -389,7 +389,7 @@ export const RecurrenceTestHelpers = {
             return true;
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Continue polling on error
       }
 
@@ -472,7 +472,7 @@ export const RecurrenceTestHelpers = {
             return true;
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Continue polling on error
       }
 
@@ -531,7 +531,7 @@ export const RecurrenceTestHelpers = {
             nextRunAt: task.nextRunAt,
           });
         }
-      } catch (error) {
+      } catch (_error) {
         // Continue monitoring on error
       }
 
@@ -587,7 +587,7 @@ export const RecurrenceTestHelpers = {
         taskData,
         processingJobData,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         taskExists: false,
         processingJobExists: false,
@@ -664,7 +664,7 @@ export const RecurrenceTestHelpers = {
             return true;
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Continue polling on error
       }
 

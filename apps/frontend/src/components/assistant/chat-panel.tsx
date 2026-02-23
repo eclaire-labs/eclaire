@@ -54,7 +54,7 @@ export function ChatPanel({
   isClient,
   className,
 }: ChatPanelProps) {
-  const handleSubmit = (content: string) => {
+  const handleSubmit = (_content: string) => {
     // The actual sending logic is handled by the parent component
     // through the handleSend prop, so we just need to trigger it
     handleSend();

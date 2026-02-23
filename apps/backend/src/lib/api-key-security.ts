@@ -4,7 +4,7 @@ import { customAlphabet } from "nanoid";
 import { config } from "../config/index.js";
 import { createChildLogger } from "./logger.js";
 
-const logger = createChildLogger("api-key-security");
+const _logger = createChildLogger("api-key-security");
 
 const SECRET_ALPHABET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";

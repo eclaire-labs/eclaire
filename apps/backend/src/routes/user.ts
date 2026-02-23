@@ -398,7 +398,7 @@ userRoutes.get("/activity-timeline", async (c) => {
     const daysParam = c.req.query("days");
     const days = daysParam ? parseInt(daysParam, 10) : 30;
 
-    if (isNaN(days) || days < 1 || days > 365) {
+    if (Number.isNaN(days) || days < 1 || days > 365) {
       return c.json(
         { error: "Invalid days parameter. Must be between 1 and 365." },
         400,

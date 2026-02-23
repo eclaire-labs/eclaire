@@ -5,15 +5,7 @@ import {
   ValidationErrorSchema,
 } from "./all-responses.js";
 import {
-  HistoryActionSchema,
-  HistoryActorSchema,
-  HistoryItemTypeSchema,
-  HistorySearchParamsSchema,
-} from "./history-params.js";
-import {
   HistoryAccessDeniedSchema,
-  HistoryListResponseSchema,
-  HistoryNotFoundSchema,
   HistorySearchResponseSchema,
 } from "./history-responses.js";
 

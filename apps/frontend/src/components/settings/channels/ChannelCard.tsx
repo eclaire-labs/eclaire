@@ -110,7 +110,7 @@ export default function ChannelCard({ channel, onEdit }: ChannelCardProps) {
     setIsToggling(true);
     try {
       await updateChannel(channel.id, { isActive });
-    } catch (error) {
+    } catch (_error) {
       // Error is handled by the hook
     } finally {
       setIsToggling(false);
@@ -131,7 +131,7 @@ export default function ChannelCard({ channel, onEdit }: ChannelCardProps) {
     try {
       await deleteChannel(channel.id);
       setShowDeleteDialog(false);
-    } catch (error) {
+    } catch (_error) {
       // Error is handled by the hook
     }
   };

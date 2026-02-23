@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowDown,
   ArrowUp,
@@ -14,7 +14,6 @@ import {
   GalleryHorizontalEnd,
   Image as ImageIcon, // Placeholder icon for photos without thumbnails
   LayoutGrid,
-  Link as LinkIcon, // Lucide icons
   List,
   Loader2,
   MapPin,
@@ -101,7 +100,7 @@ const ALLOWED_UPLOAD_TYPES = {
   "image/tiff": [".tiff", ".tif"], // Added TIFF support
   "image/bmp": [".bmp"], // Added BMP support
 };
-const ALLOWED_UPLOAD_TYPES_STRING = Object.keys(ALLOWED_UPLOAD_TYPES).join(",");
+const _ALLOWED_UPLOAD_TYPES_STRING = Object.keys(ALLOWED_UPLOAD_TYPES).join(",");
 
 // --- Helper Functions ---
 // (Keep existing formatters: formatDate, formatFileSize, formatFNumber, formatExposureTime, formatDimensions, formatLocation)
@@ -109,7 +108,7 @@ const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return "Unknown date";
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString; // Return original if invalid
+    if (Number.isNaN(date.getTime())) return dateString; // Return original if invalid
     return date.toLocaleDateString(undefined, {
       year: "numeric",
       month: "long",
@@ -122,17 +121,17 @@ const formatDate = (dateString: string | null | undefined): string => {
 };
 
 const formatFileSize = (bytes: number | null | undefined): string => {
-  if (bytes === null || bytes === undefined || isNaN(bytes) || bytes < 0)
+  if (bytes === null || bytes === undefined || Number.isNaN(bytes) || bytes < 0)
     return "N/A";
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Number.parseFloat((bytes / k ** i).toFixed(1)) + " " + sizes[i];
+  return `${Number.parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
 };
 
 const formatFNumber = (fNumber: number | null | undefined): string => {
-  if (fNumber === null || fNumber === undefined || isNaN(fNumber)) return "N/A";
+  if (fNumber === null || fNumber === undefined || Number.isNaN(fNumber)) return "N/A";
   return `f/${fNumber.toFixed(1)}`;
 };
 
@@ -142,6 +141,7 @@ const formatExposureTime = (
   if (
     exposureTime === null ||
     exposureTime === undefined ||
+    Number.
     isNaN(exposureTime)
   )
     return "N/A";
@@ -178,7 +178,7 @@ const getGroupDateLabel = (dateString: string | null | undefined): string => {
   if (!dateString) return "Unknown Date";
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "Unknown Date"; // Check if date is valid
+    if (Number.isNaN(date.getTime())) return "Unknown Date"; // Check if date is valid
 
     const today = new Date();
     const yesterday = new Date(today);
@@ -217,7 +217,7 @@ const getGroupDateLabel = (dateString: string | null | undefined): string => {
 
 // --- Component ---
 export default function PhotosPage() {
-  const isMobile = useIsMobile();
+  const _isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -249,7 +249,7 @@ export default function PhotosPage() {
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
 
   // Use view preferences hook instead of individual state variables
-  const [viewPreferences, updateViewPreference, isPreferencesLoaded] =
+  const [viewPreferences, updateViewPreference, _isPreferencesLoaded] =
     useViewPreferences("photos");
   const { viewMode, sortBy, sortDir } = viewPreferences;
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
@@ -296,17 +296,12 @@ export default function PhotosPage() {
       const lowerSearch = searchQuery.toLowerCase();
       const matchesSearch =
         photo.title.toLowerCase().includes(lowerSearch) ||
-        (photo.description &&
-          photo.description.toLowerCase().includes(lowerSearch)) ||
+        (photo.description?.toLowerCase().includes(lowerSearch)) ||
         photo.originalFilename.toLowerCase().includes(lowerSearch) ||
-        (photo.cameraMake &&
-          photo.cameraMake.toLowerCase().includes(lowerSearch)) ||
-        (photo.cameraModel &&
-          photo.cameraModel.toLowerCase().includes(lowerSearch)) ||
-        (photo.locationCity &&
-          photo.locationCity.toLowerCase().includes(lowerSearch)) ||
-        (photo.locationCountryName &&
-          photo.locationCountryName.toLowerCase().includes(lowerSearch)) ||
+        (photo.cameraMake?.toLowerCase().includes(lowerSearch)) ||
+        (photo.cameraModel?.toLowerCase().includes(lowerSearch)) ||
+        (photo.locationCity?.toLowerCase().includes(lowerSearch)) ||
+        (photo.locationCountryName?.toLowerCase().includes(lowerSearch)) ||
         photo.tags.some((tag) => tag.toLowerCase().includes(lowerSearch));
       const matchesTag = filterTag === "all" || photo.tags.includes(filterTag);
       return matchesSearch && matchesTag;
@@ -323,8 +318,8 @@ export default function PhotosPage() {
       const dateB = b.dateTaken
         ? new Date(b.dateTaken).getTime()
         : new Date(b.createdAt).getTime();
-      const timeA = isNaN(dateA) ? 0 : dateA;
-      const timeB = isNaN(dateB) ? 0 : dateB;
+      const timeA = Number.isNaN(dateA) ? 0 : dateA;
+      const timeB = Number.isNaN(dateB) ? 0 : dateB;
 
       let compareResult = 0;
 
@@ -352,10 +347,9 @@ export default function PhotosPage() {
           const createdA = new Date(a.createdAt).getTime();
           const createdB = new Date(b.createdAt).getTime();
           compareResult =
-            (isNaN(createdA) ? 0 : createdA) - (isNaN(createdB) ? 0 : createdB);
+            (Number.isNaN(createdA) ? 0 : createdA) - (Number.isNaN(createdB) ? 0 : createdB);
           break;
         }
-        case "dateTaken":
         default:
           // Use the primary sort date determined above
           compareResult = timeA - timeB;
@@ -364,8 +358,8 @@ export default function PhotosPage() {
             const createdA = new Date(a.createdAt).getTime();
             const createdB = new Date(b.createdAt).getTime();
             compareResult =
-              (isNaN(createdA) ? 0 : createdA) -
-              (isNaN(createdB) ? 0 : createdB);
+              (Number.isNaN(createdA) ? 0 : createdA) -
+              (Number.isNaN(createdB) ? 0 : createdB);
           }
           break;
       }
@@ -499,7 +493,7 @@ export default function PhotosPage() {
     );
   };
 
-  const handleEditingPhotoTagsChange = (
+  const _handleEditingPhotoTagsChange = (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const tags = e.target.value
@@ -571,7 +565,7 @@ export default function PhotosPage() {
     photo: Photo,
     color: "red" | "yellow" | "orange" | "green" | "blue" | null,
   ) => {
-    const previousColor = photo.flagColor;
+    const _previousColor = photo.flagColor;
 
     try {
       const response = await setFlagColor("photos", photo.id, color);
@@ -774,7 +768,8 @@ export default function PhotosPage() {
         }
       }
     },
-    [toast],
+    [toast, // Refresh the photos list to show the new upload
+          refresh],
   ); // Added toast dependency
 
   const {
@@ -834,7 +829,7 @@ export default function PhotosPage() {
           ? Number.parseInt(
               getComputedStyle(photosContainerRef.current!)
                 .gridTemplateColumns.split(" ")
-                .length.toString(),
+                .length.toString(), 10
             ) || 4
           : 1; // Estimate items per row for tile view
 
@@ -1011,7 +1006,6 @@ export default function PhotosPage() {
       <div
         ref={photosContainerRef}
         onKeyDown={handleKeyDown} // Attach keydown listener here
-        tabIndex={0} // Make the container focusable
         className="outline-none" // Hide default focus outline
       >
         {/* Pass openViewDialog directly to the components */}

@@ -55,8 +55,8 @@ export function describeCronExpression(cron: string): RecurrenceDescription {
   const parts = parseCronExpression(cron);
 
   // Extract time
-  const hours = parts.hours === "*" ? 9 : parseInt(parts.hours);
-  const minutes = parts.minutes === "*" ? 0 : parseInt(parts.minutes);
+  const hours = parts.hours === "*" ? 9 : parseInt(parts.hours, 10);
+  const minutes = parts.minutes === "*" ? 0 : parseInt(parts.minutes, 10);
   const time = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 
   // Determine pattern
@@ -160,28 +160,28 @@ export function validateCronExpression(cron: string): boolean {
     // Basic validation
     if (
       parts.minutes !== "*" &&
-      (parseInt(parts.minutes) < 0 || parseInt(parts.minutes) > 59)
+      (parseInt(parts.minutes, 10) < 0 || parseInt(parts.minutes, 10) > 59)
     ) {
       return false;
     }
 
     if (
       parts.hours !== "*" &&
-      (parseInt(parts.hours) < 0 || parseInt(parts.hours) > 23)
+      (parseInt(parts.hours, 10) < 0 || parseInt(parts.hours, 10) > 23)
     ) {
       return false;
     }
 
     if (
       parts.dayOfMonth !== "*" &&
-      (parseInt(parts.dayOfMonth) < 1 || parseInt(parts.dayOfMonth) > 31)
+      (parseInt(parts.dayOfMonth, 10) < 1 || parseInt(parts.dayOfMonth, 10) > 31)
     ) {
       return false;
     }
 
     if (
       parts.month !== "*" &&
-      (parseInt(parts.month) < 1 || parseInt(parts.month) > 12)
+      (parseInt(parts.month, 10) < 1 || parseInt(parts.month, 10) > 12)
     ) {
       return false;
     }
@@ -189,7 +189,7 @@ export function validateCronExpression(cron: string): boolean {
     if (parts.dayOfWeek !== "*" && parts.dayOfWeek !== "1-5") {
       const weekdays = parts.dayOfWeek.split(",");
       for (const day of weekdays) {
-        const dayNum = parseInt(day);
+        const dayNum = parseInt(day, 10);
         if (dayNum < 0 || dayNum > 6) {
           return false;
         }
@@ -214,10 +214,10 @@ export function getNextExecutionTime(
 
   // Set time
   if (parts.hours !== "*") {
-    next.setHours(parseInt(parts.hours));
+    next.setHours(parseInt(parts.hours, 10));
   }
   if (parts.minutes !== "*") {
-    next.setMinutes(parseInt(parts.minutes));
+    next.setMinutes(parseInt(parts.minutes, 10));
   }
   next.setSeconds(0);
   next.setMilliseconds(0);
@@ -264,7 +264,7 @@ export function formatCronForDisplay(cron: string): string {
         if (description.weekdays) {
           const dayNames = description.weekdays.map((day) => {
             const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-            return days[parseInt(day)];
+            return days[parseInt(day, 10)];
           });
           return `${dayNames.join(", ")} at ${description.time}`;
         }

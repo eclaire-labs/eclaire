@@ -10,7 +10,6 @@ import ApiKeyManager from "@/components/settings/ApiKeyManager";
 import AssistantSettings from "@/components/settings/AssistantSettings";
 import NotificationSettings from "@/components/settings/NotificationSettings";
 import ProfileSettings from "@/components/settings/ProfileSettings";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,

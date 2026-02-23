@@ -60,7 +60,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Tooltip, TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNotes } from "@/hooks/use-notes";
 import { useProcessingEvents } from "@/hooks/use-processing-status";
@@ -309,7 +309,7 @@ const FilterSortDialog = React.memo(
 FilterSortDialog.displayName = "FilterSortDialog";
 
 export default function NotesPage() {
-  const isMobile = useIsMobile();
+  const _isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -359,7 +359,7 @@ export default function NotesPage() {
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
   // Use view preferences hook instead of individual state variables
-  const [viewPreferences, updateViewPreference, isPreferencesLoaded] =
+  const [viewPreferences, updateViewPreference, _isPreferencesLoaded] =
     useViewPreferences("notes");
   const { viewMode, sortBy, sortDir } = viewPreferences;
 
@@ -995,7 +995,6 @@ export default function NotesPage() {
       <div
         ref={notesContainerRef}
         onKeyDown={handleKeyDown}
-        tabIndex={0}
         role="region"
         aria-label="Notes navigation"
         className="outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
@@ -1044,7 +1043,7 @@ export default function NotesPage() {
   ]);
 
   // Memoize helper functions
-  const getActiveFilterCount = useCallback(() => {
+  const _getActiveFilterCount = useCallback(() => {
     let count = 0;
     if (filterTag !== "all") count++;
     return count;

@@ -22,7 +22,7 @@ import {
 
 const routeApi = getRouteApi("/_authenticated/photos/$id");
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { PhotoAnalysisCard } from "@/components/photo-analysis";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,7 @@ const formatDate = (dateString: string | null) => {
       hour: "2-digit",
       minute: "2-digit",
     });
-  } catch (error) {
+  } catch (_error) {
     return "Invalid Date";
   }
 };
@@ -110,7 +110,7 @@ const formatCoordinate = (
   const numCoord = typeof coord === "string" ? parseFloat(coord) : coord;
 
   // Check if it's a valid number
-  if (typeof numCoord === "number" && !isNaN(numCoord)) {
+  if (typeof numCoord === "number" && !Number.isNaN(numCoord)) {
     return numCoord.toFixed(6);
   }
 

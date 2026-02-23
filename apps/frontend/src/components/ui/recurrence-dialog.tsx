@@ -1,5 +1,5 @@
-import { Calendar, Clock, RefreshCw, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { Calendar, Clock, RefreshCw, } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -105,6 +105,7 @@ export function RecurrenceDialog({
     );
     setLimit(value.recurrenceLimit);
     setRunImmediately(value.runImmediately);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: helper functions defined after hook
   }, [value]);
 
   const formatDateForInput = (isoString: string): string => {
@@ -381,7 +382,7 @@ export function RecurrenceDialog({
                       value={customInterval}
                       onChange={(e) =>
                         setCustomInterval(
-                          Math.max(1, parseInt(e.target.value) || 1),
+                          Math.max(1, parseInt(e.target.value, 10) || 1),
                         )
                       }
                       className="w-20"
@@ -496,7 +497,7 @@ export function RecurrenceDialog({
                     max="1000"
                     value={limit || ""}
                     onChange={(e) =>
-                      setLimit(e.target.value ? parseInt(e.target.value) : null)
+                      setLimit(e.target.value ? parseInt(e.target.value, 10) : null)
                     }
                     placeholder="No limit"
                     className="w-40"

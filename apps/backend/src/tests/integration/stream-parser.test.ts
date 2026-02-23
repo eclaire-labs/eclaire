@@ -15,11 +15,11 @@ describe("LLMStreamParser Character Preservation", () => {
     // Should have exactly one content result
     expect(results).toHaveLength(1);
     expect(results[0]).toBeDefined();
-    expect(results[0]!.type).toBe("content");
-    expect(results[0]!.content).toBe(testContent);
+    expect(results[0]?.type).toBe("content");
+    expect(results[0]?.content).toBe(testContent);
 
     // Verify the first character is preserved
-    expect(results[0]!.content?.[0]).toBe("Y");
+    expect(results[0]?.content?.[0]).toBe("Y");
   });
 
   it("should preserve the first character when processing SSE delta content", () => {
@@ -83,8 +83,8 @@ describe("LLMStreamParser Character Preservation", () => {
     const contentResults = results.filter((r) => r.type === "content");
     expect(contentResults).toHaveLength(1);
     expect(contentResults[0]).toBeDefined();
-    expect(contentResults[0]!.content).toBe("You have tasks");
-    expect(contentResults[0]!.content?.[0]).toBe("Y");
+    expect(contentResults[0]?.content).toBe("You have tasks");
+    expect(contentResults[0]?.content?.[0]).toBe("Y");
   });
 
   it("should handle edge case of single character content", () => {
@@ -92,8 +92,8 @@ describe("LLMStreamParser Character Preservation", () => {
 
     expect(results).toHaveLength(1);
     expect(results[0]).toBeDefined();
-    expect(results[0]!.type).toBe("content");
-    expect(results[0]!.content).toBe("Y");
+    expect(results[0]?.type).toBe("content");
+    expect(results[0]?.content).toBe("Y");
   });
 
   it("should handle empty content gracefully", () => {

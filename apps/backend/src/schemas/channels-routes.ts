@@ -1,14 +1,12 @@
 // schemas/channels-routes.ts
 
 import { resolver } from "hono-openapi";
-import z from "zod/v4";
 import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
 } from "./all-responses.js";
 import {
-  ChannelIdParamSchema,
   CreateChannelSchema,
   UpdateChannelSchema,
 } from "./channels-params.js";

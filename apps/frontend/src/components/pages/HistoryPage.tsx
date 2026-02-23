@@ -169,10 +169,10 @@ export default function HistoryPage() {
       const date = new Date(dateString);
 
       // Check if date is valid
-      if (isNaN(date.getTime())) {
+      if (Number.isNaN(date.getTime())) {
         // Try parsing as ISO date string
         const isoDate = new Date(dateString);
-        if (!isNaN(isoDate.getTime())) {
+        if (!Number.isNaN(isoDate.getTime())) {
           return isoDate.toLocaleDateString();
         }
 

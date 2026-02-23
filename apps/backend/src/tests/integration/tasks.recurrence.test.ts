@@ -68,7 +68,7 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
 
         // Verify the scheduler's next run time is reasonable
         expect(schedulerInfo.nextRunAt).toBeDefined();
-        expect(schedulerInfo.nextRunAt!.getTime()).toBeGreaterThan(
+        expect(schedulerInfo.nextRunAt?.getTime()).toBeGreaterThan(
           now.getTime(),
         );
 
@@ -1083,7 +1083,7 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
         task.id,
       );
       expect(schedulerInfo).toBeDefined();
-      expect(schedulerInfo!.immediately).toBe(true);
+      expect(schedulerInfo?.immediately).toBe(true);
     });
 
     it("should execute immediately then follow schedule", async () => {
@@ -1182,7 +1182,7 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
         task.id,
       );
       expect(schedulerInfo).toBeDefined();
-      expect(schedulerInfo!.immediately).toBe(true);
+      expect(schedulerInfo?.immediately).toBe(true);
     });
 
     it("should create task without immediate execution (default)", async () => {
@@ -1239,8 +1239,8 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
         task.id,
       );
       expect(schedulerInfo).toBeDefined();
-      expect(schedulerInfo!.limit).toBe(3);
-      expect(schedulerInfo!.immediately).toBe(true);
+      expect(schedulerInfo?.limit).toBe(3);
+      expect(schedulerInfo?.immediately).toBe(true);
     });
 
     it.skip("should respect limit when using immediate execution", async () => {
@@ -1264,8 +1264,8 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
         task.id,
       );
       expect(schedulerInfo).toBeDefined();
-      expect(schedulerInfo!.limit).toBe(1);
-      expect(schedulerInfo!.immediately).toBe(true);
+      expect(schedulerInfo?.limit).toBe(1);
+      expect(schedulerInfo?.immediately).toBe(true);
     });
 
     it("should update both limit and immediate together", async () => {

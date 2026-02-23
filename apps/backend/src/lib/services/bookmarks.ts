@@ -21,7 +21,7 @@ const { bookmarks, bookmarksTags, tags } = schema;
 import isUrl from "is-url";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { createChildLogger } from "../logger.js";
-import { getQueue, getQueueAdapter, QueueNames } from "../queue/index.js";
+import { getQueueAdapter, } from "../queue/index.js";
 import { recordHistory } from "./history.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
@@ -1053,7 +1053,7 @@ async function getBookmarkTags(bookmarkId: string): Promise<string[]> {
   return result.map((t) => t.name);
 }
 
-async function addTagsToBookmark(
+async function _addTagsToBookmark(
   bookmarkId: string,
   tagNames: string[],
   userId: string,

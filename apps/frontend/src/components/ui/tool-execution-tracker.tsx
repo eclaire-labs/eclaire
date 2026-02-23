@@ -5,10 +5,9 @@ import {
   ChevronRight,
   Clock,
   Loader2,
-  Play,
   Settings,
 } from "lucide-react";
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -174,7 +173,7 @@ export function ToolExecutionTracker({
   const completedTools = toolCalls.filter(
     (t) => t.status === "completed" || t.status === "error",
   ).length;
-  const progressPercentage =
+  const _progressPercentage =
     totalTools > 0 ? (completedTools / totalTools) * 100 : 0;
 
   const hasActiveTools = toolCalls.some(

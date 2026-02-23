@@ -47,14 +47,14 @@ export const logger = {
     const clonedResponse = response.clone();
     try {
       const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
+      if (contentType?.includes("application/json")) {
         const json = await clonedResponse.json();
         console.log("Body:", JSON.stringify(json, null, 2));
       } else {
         const text = await clonedResponse.text();
         if (text) console.log("Body:", text);
       }
-    } catch (error) {
+    } catch (_error) {
       console.log("Could not parse response body");
     }
 

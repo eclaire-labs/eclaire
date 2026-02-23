@@ -95,7 +95,7 @@ const formatDate = (date: number | string | null | undefined) => {
       dateObj = new Date(date * 1000);
     }
 
-    if (isNaN(dateObj.getTime())) {
+    if (Number.isNaN(dateObj.getTime())) {
       return "Invalid Date";
     }
 
@@ -113,7 +113,7 @@ const formatDate = (date: number | string | null | undefined) => {
 const getDomainFromUrl = (url: string) => {
   try {
     return new URL(url).hostname.replace("www.", "");
-  } catch (e) {
+  } catch (_e) {
     return url;
   }
 };
@@ -130,7 +130,7 @@ const getGroupDateLabel = (date: number | string): string => {
       dateObj = new Date(date * 1000);
     }
 
-    if (isNaN(dateObj.getTime())) {
+    if (Number.isNaN(dateObj.getTime())) {
       return "Unknown Date";
     }
 
@@ -161,7 +161,7 @@ const getGroupDateLabel = (date: number | string): string => {
       year: "numeric",
       month: "long",
     });
-  } catch (error) {
+  } catch (_error) {
     return "Unknown Date";
   }
 };
@@ -180,7 +180,7 @@ const normalizeUrl = (url: string): string => {
 };
 
 export default function BookmarksPage() {
-  const isMobile = useIsMobile();
+  const _isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -212,10 +212,10 @@ export default function BookmarksPage() {
   const [newBookmarkUrl, setNewBookmarkUrl] = useState("");
   const [filterTag, setFilterTag] = useState("all");
   const [tagInput, setTagInput] = useState("");
-  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+  const [_focusedIndex, _setFocusedIndex] = useState<number>(-1);
 
   // Use view preferences hook instead of individual state variables
-  const [viewPreferences, updateViewPreference, isPreferencesLoaded] =
+  const [viewPreferences, updateViewPreference, _isPreferencesLoaded] =
     useViewPreferences("bookmarks");
   const { viewMode, sortBy, sortDir } = viewPreferences;
 
@@ -678,7 +678,7 @@ export default function BookmarksPage() {
   };
 
   // Helper function to count active filters for Bookmarks
-  const getActiveFilterCount = () => {
+  const _getActiveFilterCount = () => {
     let count = 0;
     if (filterTag !== "all") count++;
     return count;
@@ -1719,7 +1719,7 @@ function Favicon({
 
   useEffect(() => {
     setError(false); // Reset error state when bookmark changes
-  }, [bookmark.id]);
+  }, []);
 
   if (error || !faviconUrl) {
     return <LinkIcon className={className} />;

@@ -4,7 +4,6 @@ import axios from "axios";
 import { convert as convertHtmlToText } from "html-to-text";
 import { JSDOM } from "jsdom";
 import type { Page } from "patchright";
-import { Readable } from "stream";
 import TurndownService from "turndown";
 import { createChildLogger } from "../../../lib/logger.js";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";

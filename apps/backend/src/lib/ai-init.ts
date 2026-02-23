@@ -6,7 +6,7 @@
  */
 
 import { initAI } from "@eclaire/ai";
-import * as path from "path";
+import * as path from "node:path";
 import { config } from "../config/index.js";
 import { createChildLogger } from "./logger.js";
 

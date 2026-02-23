@@ -4,8 +4,8 @@
  * (container vs local dev, pnpm deploy vs monorepo)
  */
 
-import { existsSync, readFileSync } from "fs";
-import { resolve } from "path";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 /**
  * Get the app version from the best available source:

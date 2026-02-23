@@ -1,12 +1,9 @@
 import { resolver } from "hono-openapi";
 import {
-  ErrorResponseSchema,
   UnauthorizedSchema,
-  ValidationErrorSchema,
 } from "./all-responses.js";
 import {
   CreateConversationSchema,
-  ListConversationsSchema,
   UpdateConversationSchema,
 } from "./conversation-params.js";
 import {

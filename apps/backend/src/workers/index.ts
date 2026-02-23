@@ -16,7 +16,7 @@ import {
 } from "@eclaire/queue/driver-bullmq";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import fs from "fs";
+import fs from "node:fs";
 import { Hono } from "hono";
 import { config as appConfig } from "../config/index.js";
 import { initializeAI } from "../lib/ai-init.js";

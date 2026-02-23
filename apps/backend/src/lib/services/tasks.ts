@@ -5,7 +5,6 @@ import {
 } from "@eclaire/core";
 import {
   and,
-  Column,
   count,
   desc,
   eq,
@@ -27,7 +26,6 @@ import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
-  getCurrentTimestamp,
   getNextExecutionTime,
   getQueue,
   getQueueAdapter,
@@ -400,7 +398,7 @@ function validateRecurrenceParams(
 
   if (recurrenceEndDate) {
     const endDate = new Date(recurrenceEndDate);
-    if (isNaN(endDate.getTime())) {
+    if (Number.isNaN(endDate.getTime())) {
       return { isValid: false, error: "Invalid recurrence end date format" };
     }
 
@@ -1831,7 +1829,7 @@ function _buildTaskQueryConditions(
   // Explicitly type the array elements
   const definedConditions: (SQL | undefined)[] = [eq(tasks.userId, userId)];
 
-  if (text && text.trim()) {
+  if (text?.trim()) {
     const searchTerm = `%${text.trim()}%`;
     definedConditions.push(
       or(like(tasks.title, searchTerm), like(tasks.description, searchTerm)),

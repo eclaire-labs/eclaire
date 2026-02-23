@@ -7,7 +7,6 @@
 import type {
   AgentResult,
   AIMessage,
-  ToolCallSummaryOutput,
 } from "@eclaire/ai";
 import { createChildLogger } from "../logger.js";
 import {

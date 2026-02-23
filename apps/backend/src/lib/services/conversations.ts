@@ -295,8 +295,8 @@ export function generateConversationTitle(firstMessage: string): string {
   const truncated = cleanMessage.substring(0, 47);
   const lastSpace = truncated.lastIndexOf(" ");
   if (lastSpace > 20) {
-    return truncated.substring(0, lastSpace) + "...";
+    return `${truncated.substring(0, lastSpace)}...`;
   }
 
-  return truncated + "...";
+  return `${truncated}...`;
 }

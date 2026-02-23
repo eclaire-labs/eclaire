@@ -5,7 +5,6 @@ import {
   delay,
   TEST_API_KEY,
 } from "../utils/test-helpers.js";
-import { Note } from "../utils/types.js";
 
 // Create authenticated fetch function
 const loggedFetch = createAuthenticatedFetch(TEST_API_KEY);

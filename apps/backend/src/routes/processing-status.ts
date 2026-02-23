@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
-import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
@@ -91,8 +90,8 @@ processingStatusRoutes.get(
       const status = c.req.query("status");
       const assetType = c.req.query("assetType");
       const search = c.req.query("search");
-      const limit = parseInt(c.req.query("limit") || "100");
-      const offset = parseInt(c.req.query("offset") || "0");
+      const limit = parseInt(c.req.query("limit") || "100", 10);
+      const offset = parseInt(c.req.query("offset") || "0", 10);
 
       const jobs = await getUserProcessingJobs(userId, {
         status: status as any,

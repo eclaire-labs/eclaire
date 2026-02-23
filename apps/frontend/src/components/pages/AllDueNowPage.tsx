@@ -277,7 +277,7 @@ export default function DueNowItemsPage() {
     };
     try {
       return new Date(dateString).toLocaleDateString(undefined, options);
-    } catch (error) {
+    } catch (_error) {
       return "Invalid date";
     }
   };

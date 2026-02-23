@@ -97,7 +97,7 @@ export default function AllItemsPage() {
     };
 
     fetchItems();
-  }, [toast]);
+  }, []);
 
   // Get unique tags from all items - ensure items is always an array
   const allTags = Array.from(

@@ -2,15 +2,13 @@ import { afterAll, describe, expect, it } from "vitest";
 import {
   globalTestCleanup,
   loggedFetch,
-  type TaskDeleteResponse,
   type TaskEntry,
-  TaskSearchResponse,
 } from "../utils/tasks-test-helpers.js";
 import { BASE_URL, delay, TEST_API_KEY } from "../utils/test-helpers.js";
 
 describe("Task CRUD Operations", { timeout: 30000 }, () => {
   let createdTaskId: string | null = null;
-  const searchTaskId: string | null = null;
+  const _searchTaskId: string | null = null;
 
   const initialTaskData = {
     title: "Test Task",

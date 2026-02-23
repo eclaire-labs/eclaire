@@ -472,7 +472,7 @@ photosRoutes.delete(
 
       // Parse the optional deleteStorage query parameter (defaults to true)
       const deleteStorageParam = c.req.query("deleteStorage");
-      const deleteStorage = deleteStorageParam === "false" ? false : true;
+      const deleteStorage = deleteStorageParam !=="false";
 
       try {
         await deletePhoto(id, userId, deleteStorage);
@@ -619,7 +619,7 @@ photosRoutes.get(
       );
 
       const headers = new Headers();
-      headers.set("Content-Type", metadata.contentType + "; charset=utf-8");
+      headers.set("Content-Type", `${metadata.contentType}; charset=utf-8`);
       headers.set("Content-Length", String(metadata.size));
       // Disable caching since analysis can be updated when photos are reprocessed
       headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -770,7 +770,7 @@ photosRoutes.get(
       );
 
       const headers = new Headers();
-      headers.set("Content-Type", metadata.contentType + "; charset=utf-8");
+      headers.set("Content-Type", `${metadata.contentType}; charset=utf-8`);
       headers.set("Content-Length", String(metadata.size));
       headers.set("Cache-Control", "private, max-age=3600");
 

@@ -1,4 +1,4 @@
-import { Buffer } from "buffer"; // Import Buffer for creating file content
+import { Buffer } from "node:buffer"; // Import Buffer for creating file content
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   BASE_URL,
@@ -6,7 +6,6 @@ import {
   delay,
   TEST_API_KEY,
 } from "../utils/test-helpers.js";
-import { Document } from "../utils/types.js";
 
 // Create authenticated fetch function
 const loggedFetch = createAuthenticatedFetch(TEST_API_KEY);
@@ -246,9 +245,9 @@ describe("Documents API Integration Tests", () => {
       `Document with ID ${documentId} not found in the list`,
     ).toBeDefined();
     expect(found?.title).toBe(documentTitle); // Check title of found item
-    expect(isValidISO8601(found!.createdAt)).toBe(true);
-    expect(isValidISO8601(found!.updatedAt)).toBe(true);
-    expect(Array.isArray(found!.tags)).toBe(true);
+    expect(isValidISO8601(found?.createdAt)).toBe(true);
+    expect(isValidISO8601(found?.updatedAt)).toBe(true);
+    expect(Array.isArray(found?.tags)).toBe(true);
   }, 10000);
 
   it("PUT /api/documents/:id - should update the document entry metadata", async () => {

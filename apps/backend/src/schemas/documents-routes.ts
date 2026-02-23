@@ -7,11 +7,9 @@ import {
 } from "./all-responses.js";
 import {
   DocumentFlagUpdateSchema,
-  DocumentMetadataSchema,
   DocumentPinUpdateSchema,
   DocumentReviewUpdateSchema,
   DocumentSchema,
-  DocumentSearchParamsSchema,
   PartialDocumentSchema,
 } from "./documents-params.js";
 import {
@@ -19,7 +17,6 @@ import {
   DocumentNotFoundSchema,
   DocumentResponseSchema,
   DocumentSearchResponseSchema,
-  DocumentsListResponseSchema,
   FileNotFoundSchema,
 } from "./documents-responses.js";
 

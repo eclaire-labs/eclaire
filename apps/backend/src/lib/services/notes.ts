@@ -1,14 +1,12 @@
 import { generateHistoryId, generateNoteId } from "@eclaire/core";
 import {
   and,
-  Column,
   count,
   countDistinct,
   desc,
   eq,
   gte,
   inArray,
-  isNotNull,
   like,
   lte,
   or,
@@ -21,7 +19,7 @@ const { notes, notesTags, tags } = schema;
 
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { createChildLogger } from "../logger.js";
-import { getQueue, getQueueAdapter, QueueNames } from "../queue/index.js";
+import { getQueueAdapter, } from "../queue/index.js";
 import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:notes");
@@ -97,7 +95,7 @@ export function parseNoteUploadMetadata(metadataStr: string | undefined): {
   try {
     const metadata = JSON.parse(metadataStr);
     return { valid: true, metadata };
-  } catch (error) {
+  } catch (_error) {
     return { valid: false, error: "Invalid metadata JSON" };
   }
 }

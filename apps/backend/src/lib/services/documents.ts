@@ -1,6 +1,6 @@
 // lib/services/documents.ts
 
-import type { Buffer } from "buffer";
+import type { Buffer } from "node:buffer";
 import {
   and,
   asc,
@@ -16,7 +16,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
-import { Readable } from "stream";
+import { Readable } from "node:stream";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { documentsTags, documents: schemaDocuments, tags } = schema;
@@ -29,7 +29,7 @@ import {
   getOrCreateTags,
 } from "../db-helpers.js";
 import { createChildLogger } from "../logger.js";
-import { getQueue, getQueueAdapter, QueueNames } from "../queue/index.js";
+import { getQueueAdapter, } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
 import { recordHistory } from "./history.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
@@ -229,19 +229,19 @@ function _buildDocumentQueryConditions(
     );
   }
   if (startDate) {
-    if (!isNaN(startDate.getTime()))
+    if (!Number.isNaN(startDate.getTime()))
       conditions.push(gte(schemaDocuments.createdAt, startDate));
   }
   if (endDate) {
-    if (!isNaN(endDate.getTime()))
+    if (!Number.isNaN(endDate.getTime()))
       conditions.push(lte(schemaDocuments.createdAt, endDate));
   }
   if (dueDateStart) {
-    if (!isNaN(dueDateStart.getTime()))
+    if (!Number.isNaN(dueDateStart.getTime()))
       conditions.push(gte(schemaDocuments.dueDate, dueDateStart));
   }
   if (dueDateEnd) {
-    if (!isNaN(dueDateEnd.getTime()))
+    if (!Number.isNaN(dueDateEnd.getTime()))
       conditions.push(lte(schemaDocuments.dueDate, dueDateEnd));
   }
   return conditions;
@@ -613,7 +613,7 @@ export async function findDocuments(
   userId: string,
   text?: string,
   tagsList?: string[],
-  fileTypes?: string[],
+  _fileTypes?: string[],
   startDate?: Date,
   endDate?: Date,
   limit = 50,
@@ -768,7 +768,7 @@ export async function countDocuments(
   userId: string,
   text?: string,
   tagsList?: string[],
-  fileTypes?: string[],
+  _fileTypes?: string[],
   startDate?: Date,
   endDate?: Date,
   dueDateStart?: Date,

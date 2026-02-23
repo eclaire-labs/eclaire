@@ -1,7 +1,6 @@
 import type { JobContext } from "@eclaire/queue/core";
 import { type BrowserContext, chromium, type Page } from "patchright";
 import sharp from "sharp";
-import { Readable } from "stream";
 import { createChildLogger } from "../../lib/logger.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
 import { config } from "../config.js";
@@ -129,7 +128,7 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
     // Get the final URL after redirects and extract metadata
     allArtifacts.normalizedUrl = page.url();
     allArtifacts.contentType = response?.headers()["content-type"] || "";
-    allArtifacts.etag = response?.headers()["etag"] || "";
+    allArtifacts.etag = response?.headers().etag || "";
     allArtifacts.lastModified = response?.headers()["last-modified"] || "";
 
     // Screenshot generation with error boundaries
@@ -638,7 +637,7 @@ async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
     );
 
     // Only block domain for certain types of errors, not module resolution issues
-    if (availability && availability.domain) {
+    if (availability?.domain) {
       const errorMessage = error.message || "";
       const isModuleError =
         errorMessage.includes("ERR_MODULE_NOT_FOUND") ||

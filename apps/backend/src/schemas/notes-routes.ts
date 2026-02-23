@@ -7,16 +7,13 @@ import {
 } from "./all-responses.js";
 import {
   NoteFlagUpdateSchema,
-  NoteMetadataSchema,
   NotePinUpdateSchema,
   NoteReviewUpdateSchema,
   NoteSchema,
-  NoteSearchSchema,
   PartialNoteSchema,
 } from "./notes-params.js";
 import {
   CreatedNoteResponseSchema,
-  InvalidFileTypeSchema,
   NoteDeleteResponseSchema,
   NoteNotFoundSchema,
   NoteResponseSchema,

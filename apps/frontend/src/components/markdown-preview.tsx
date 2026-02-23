@@ -87,7 +87,7 @@ export function MarkdownPreview({
 
         // Apply length limit after processing
         if (plainText.length > maxLength) {
-          plainText = plainText.substring(0, maxLength).trim() + "...";
+          plainText = `${plainText.substring(0, maxLength).trim()}...`;
         }
 
         setProcessedContent(plainText);
@@ -96,7 +96,7 @@ export function MarkdownPreview({
         // Fallback to simple truncation
         const fallback =
           content.length > maxLength
-            ? content.substring(0, maxLength).trim() + "..."
+            ? `${content.substring(0, maxLength).trim()}...`
             : content;
         setProcessedContent(fallback);
       }

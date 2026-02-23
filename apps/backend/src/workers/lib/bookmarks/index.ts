@@ -149,7 +149,7 @@ export function getHandlerForUrl(url: string): BookmarkHandlerType {
     }
 
     return "regular";
-  } catch (error) {
+  } catch (_error) {
     // If URL parsing fails, fall back to regular handler
     return "regular";
   }

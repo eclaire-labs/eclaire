@@ -56,7 +56,7 @@ export function FileUpload() {
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Number.parseFloat((bytes / k ** i).toFixed(2)) + " " + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
   const generateFileId = () =>
@@ -71,7 +71,7 @@ export function FileUpload() {
     }));
 
     setFiles((prev) => [...prev, ...fileItems]);
-  }, []);
+  }, [generateFileId]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

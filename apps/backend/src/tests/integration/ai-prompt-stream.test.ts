@@ -114,8 +114,8 @@ function validateBasicStreamStructure(events: StreamEvent[]) {
   // Last event should be done
   const lastEvent = events[events.length - 1];
   expect(lastEvent).toBeDefined();
-  expect(lastEvent!.type).toBe("done");
-  expect(lastEvent!.requestId).toBeTypeOf("string");
+  expect(lastEvent?.type).toBe("done");
+  expect(lastEvent?.requestId).toBeTypeOf("string");
 }
 
 /**
@@ -247,7 +247,7 @@ function validateToolCallEventStructure(events: StreamEvent[]): void {
   for (const event of toolCallEvents) {
     // Must have a name
     expect(event.name).toBeTypeOf("string");
-    expect(event.name!.length).toBeGreaterThan(0);
+    expect(event.name?.length).toBeGreaterThan(0);
 
     // Must have a valid status
     expect(["starting", "executing", "completed", "error"]).toContain(
@@ -268,7 +268,7 @@ function validateToolCallEventStructure(events: StreamEvent[]): void {
     // Error should be present for error events
     if (event.status === "error") {
       expect(event.error).toBeTypeOf("string");
-      expect(event.error!.length).toBeGreaterThan(0);
+      expect(event.error?.length).toBeGreaterThan(0);
     }
 
     // Should have timestamp
@@ -795,7 +795,7 @@ describe("Streaming Prompt API Integration Tests", { timeout: 60000 }, () => {
     // Check that the done event includes the conversation ID
     const doneEvent = events.find((e) => e.type === "done");
     expect(doneEvent).toBeDefined();
-    expect(doneEvent!.conversationId).toBe(conversationId);
+    expect(doneEvent?.conversationId).toBe(conversationId);
 
     // Should have meaningful text content about streaming
     const textContent = getCombinedTextContent(events);

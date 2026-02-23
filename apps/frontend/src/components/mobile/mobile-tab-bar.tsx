@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Bell, FolderOpen, Home, MessageSquare, Settings } from "lucide-react";
+import { FolderOpen, MessageSquare, Settings } from "lucide-react";
 import { useDueNowCount } from "@/hooks/use-due-now-count";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +55,6 @@ export function MobileTabBar({
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border md:hidden"
-      role="tablist"
       aria-label="Main navigation"
     >
       <div className="flex items-center justify-around px-2 py-2 safe-area-pb">

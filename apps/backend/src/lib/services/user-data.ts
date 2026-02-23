@@ -2,7 +2,6 @@ import { verifyPassword } from "better-auth/crypto";
 import {
   and,
   count,
-  desc,
   eq,
   gte,
   inArray,
@@ -11,7 +10,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
-import path from "path";
+import path from "node:path";
 import sharp from "sharp";
 import { db, dbType, queueJobs, schema, txManager } from "../../db/index.js";
 import {
@@ -1216,7 +1215,7 @@ export async function deleteUserAvatar(userId: string) {
   try {
     const storage = getStorage();
     await storage.delete(user.avatarStorageId);
-  } catch (error) {
+  } catch (_error) {
     // Log but don't fail if file doesn't exist
     logger.warn(
       { userId, storageId: user.avatarStorageId },

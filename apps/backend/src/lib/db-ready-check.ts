@@ -9,8 +9,8 @@
  */
 
 import { getDatabaseType, getPGlitePath, getSqlitePath } from "@eclaire/db";
-import { existsSync } from "fs";
-import { createRequire } from "module";
+import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 
 // Create require for CommonJS modules in ESM context
 const require = createRequire(import.meta.url);

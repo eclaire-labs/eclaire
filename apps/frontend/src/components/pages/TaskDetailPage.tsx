@@ -18,7 +18,7 @@ import {
 
 const routeApi = getRouteApi("/_authenticated/tasks/$id");
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { MarkdownDisplayWithAssets } from "@/components/markdown-display-with-assets";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,7 +87,7 @@ export function TaskDetailClient() {
 
   // Comments state
   const [comments, setComments] = useState<TaskComment[]>([]);
-  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [_isLoadingComments, _setIsLoadingComments] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -133,6 +133,7 @@ export function TaskDetailClient() {
 
   useEffect(() => {
     fetchUsers();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: fetchUsers defined after hook
   }, []);
 
   const fetchUsers = async () => {
@@ -227,7 +228,7 @@ export function TaskDetailClient() {
     }
   };
 
-  const formatDateForInput = (isoString: string | null | undefined): string => {
+  const _formatDateForInput = (isoString: string | null | undefined): string => {
     if (!isoString) return "";
     try {
       const date = new Date(isoString);
@@ -346,7 +347,7 @@ export function TaskDetailClient() {
         throw new Error("Failed to update task");
       }
 
-      const updatedTask: Task = await response.json();
+      const _updatedTask: Task = await response.json();
       setIsEditing(false);
       setTagInput("");
 

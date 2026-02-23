@@ -3,7 +3,6 @@ import {
   BASE_URL,
   createAuthenticatedFetch,
   delay,
-  TEST_API_KEY,
 } from "../utils/test-helpers.js";
 import type { User } from "../utils/types.js";
 
@@ -461,7 +460,7 @@ describe("User API Integration Tests", () => {
     };
     expect(errorResponse.error).toBe("Invalid data");
     expect(errorResponse.details).toBeDefined();
-    expect(errorResponse.details!.length).toBeGreaterThan(0);
+    expect(errorResponse.details?.length).toBeGreaterThan(0);
   });
 
   it("PATCH /api/user/profile - should handle partial updates correctly", async () => {

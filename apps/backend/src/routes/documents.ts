@@ -1,11 +1,9 @@
 import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
-import { describeRoute, resolver, validator as zValidator } from "hono-openapi";
+import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
 import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
-// Import response schemas
-import { ErrorResponseSchema } from "../lib/openapi-config.js";
 import {
   countDocuments,
   createDocument,
@@ -547,7 +545,7 @@ documentsRoutes.delete(
 
       // Parse the optional deleteStorage query parameter (defaults to true)
       const deleteStorageParam = c.req.query("deleteStorage");
-      const deleteStorage = deleteStorageParam === "false" ? false : true;
+      const deleteStorage = deleteStorageParam !=="false";
 
       try {
         await deleteDocument(id, userId, deleteStorage);

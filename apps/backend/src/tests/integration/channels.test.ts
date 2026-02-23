@@ -9,7 +9,6 @@ import type {
 // Import types from actual schema files
 import type {
   ChannelErrorResponse,
-  ChannelResponse,
   CreateChannelResponse,
   DeleteChannelResponse,
   ListChannelsResponse,
@@ -54,8 +53,7 @@ const extractErrorInfo = (errorResponse: any) => {
 
   // Check for nested Zod validation error format: { error: { issues: [...] } }
   if (
-    errorResponse.error &&
-    errorResponse.error.issues &&
+    errorResponse.error?.issues &&
     Array.isArray(errorResponse.error.issues)
   ) {
     const messages = errorResponse.error.issues
@@ -225,9 +223,9 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
         foundChannel,
         `Channel with ID ${createdChannelId} not found in list`,
       ).toBeDefined();
-      expect(foundChannel!.name).toBe(validTelegramConfig.name);
-      expect(foundChannel!.platform).toBe(validTelegramConfig.platform);
-      expect(foundChannel!.capability).toBe(validTelegramConfig.capability);
+      expect(foundChannel?.name).toBe(validTelegramConfig.name);
+      expect(foundChannel?.platform).toBe(validTelegramConfig.platform);
+      expect(foundChannel?.capability).toBe(validTelegramConfig.capability);
 
       // Ensure config is not exposed in list response
       expect((foundChannel as any).config).toBeUndefined();
@@ -702,7 +700,7 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
 
       // Check if response is JSON before trying to parse
       const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
+      if (contentType?.includes("application/json")) {
         const data = await response.json();
         const errorInfo = extractErrorInfo(data);
         expect(errorInfo.hasError).toBe(true);

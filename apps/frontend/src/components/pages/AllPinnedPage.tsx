@@ -305,7 +305,7 @@ export default function PinnedItemsPage() {
     }
   };
 
-  const getFlagColorClass = (flagColor: string | null | undefined) => {
+  const _getFlagColorClass = (flagColor: string | null | undefined) => {
     if (!flagColor) return "";
 
     switch (flagColor) {

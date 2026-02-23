@@ -70,7 +70,7 @@ export const smartLogger = () => {
       query: url.search || undefined,
       userAgent: c.req.header("user-agent"),
       contentType,
-      contentLength: contentLength ? Number.parseInt(contentLength) : undefined,
+      contentLength: contentLength ? Number.parseInt(contentLength, 10) : undefined,
       ip:
         c.req.header("x-forwarded-for") ||
         c.req.header("x-real-ip") ||
@@ -78,8 +78,8 @@ export const smartLogger = () => {
     };
 
     // Smart content logging - avoid logging large/binary content
-    if (contentLength && Number.parseInt(contentLength) > 0) {
-      const size = Number.parseInt(contentLength);
+    if (contentLength && Number.parseInt(contentLength, 10) > 0) {
+      const size = Number.parseInt(contentLength, 10);
 
       if (size <= 1024 && !isLargeContentType(contentType)) {
         logData.bodyInfo = `${size} bytes (${contentType || "text"}) - small content`;

@@ -13,7 +13,6 @@ import {
   TaskCommentCreateSchema,
   TaskCommentUpdateSchema,
   TaskSchema,
-  TaskSearchParamsSchema,
 } from "./tasks-params.js";
 import {
   CommentDeleteSuccessSchema,
@@ -24,8 +23,6 @@ import {
   TaskNotFoundSchema,
   TaskResponseSchema,
   TasksGetResponseSchema,
-  TasksListResponseSchema,
-  TasksSearchResponseSchema,
 } from "./tasks-responses.js";
 
 // GET /api/tasks - Get all tasks or search tasks

@@ -65,7 +65,7 @@ export function AssistantOverlay({
         delay: index * 50, // Animation delay
       };
     });
-  }, [actions.length]);
+  }, [actions.length, actions.map]);
 
   const handleMouseEnter = () => {
     if (hideMenuTimer.current) {

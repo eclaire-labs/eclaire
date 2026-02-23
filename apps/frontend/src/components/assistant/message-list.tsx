@@ -23,7 +23,7 @@ function getCleanStreamingText(text: string): string {
       if (trimmed.includes('"type"') || trimmed.includes("text_response")) {
         return "";
       }
-    } catch (e) {
+    } catch (_e) {
       if (trimmed.includes('"type"') || trimmed.includes("text_response")) {
         return "";
       }
@@ -60,12 +60,6 @@ export function MessageList({
     // Scroll to the bottom when messages or streaming state changes
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [
-    messages,
-    isLoading,
-    isStreaming,
-    streamingText,
-    streamingThought,
-    streamingToolCalls,
   ]);
 
   // The ScrollArea component is removed. The parent now handles scrolling.

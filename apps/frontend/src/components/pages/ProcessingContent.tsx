@@ -164,7 +164,7 @@ function getFriendlyCurrentStage(stage?: string, status?: string): string {
 }
 
 function JobDetailsDialog({ job }: { job: ProcessingJob }) {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const [assetDetails, setAssetDetails] = useState<AssetDetails | null>(null);
   const [isLoadingAsset, setIsLoadingAsset] = useState(false);
 

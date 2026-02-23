@@ -20,7 +20,7 @@ const USE_PROMPT_AI = true;
 async function updateTaskStatus(
   taskId: string,
   status: "not-started" | "in-progress" | "completed",
-  userId: string,
+  _userId: string,
   assignedAssistantId?: string,
 ): Promise<void> {
   const assistantId = assignedAssistantId || "user-ai-assistant";
@@ -412,7 +412,7 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
           {
             taskId,
             responseLength: aiResponse.length,
-            responsePreview: aiResponse.substring(0, 100) + "...",
+            responsePreview: `${aiResponse.substring(0, 100)}...`,
           },
           "AI response generated successfully",
         );

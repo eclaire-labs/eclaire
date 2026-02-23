@@ -248,7 +248,7 @@ function extractCommentTexts(comments: RedditCommentData[]): string[] {
   const texts: string[] = [];
 
   for (const comment of comments) {
-    if (comment.body && comment.body.trim()) {
+    if (comment.body?.trim()) {
       texts.push(`${comment.author}: ${comment.body}`);
     }
 
@@ -362,7 +362,7 @@ export function extractRedditMetadata(
   if (
     postType === "link" &&
     postData.domain &&
-    postData.domain !== "self." + postData.subreddit
+    postData.domain !== `self.${postData.subreddit}`
   ) {
     externalDomain = postData.domain;
   }

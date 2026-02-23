@@ -2,7 +2,6 @@ import { pgSchema, sqliteSchema } from "@eclaire/db";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  cleanDatabase,
   createTestUser,
   DB_TEST_CONFIGS,
   generateTestBookmarkId,

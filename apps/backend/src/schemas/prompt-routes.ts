@@ -1,21 +1,14 @@
 import { resolver } from "hono-openapi";
 import {
-  ErrorResponseSchema,
   UnauthorizedSchema,
-  ValidationErrorSchema,
 } from "./all-responses.js";
 import {
-  ContentDataSchema,
-  DeviceInfoSchema,
   PromptRequestSchema,
 } from "./prompt-params.js";
 import {
   AIAPIErrorSchema,
   AIConfigErrorSchema,
   ContentSizeErrorSchema,
-  GeneralErrorResponseSchema,
-  ImagePromptResponseSchema,
-  InvalidRequestErrorSchema,
   RequestValidationErrorSchema,
   TextPromptResponseSchema,
 } from "./prompt-responses.js";

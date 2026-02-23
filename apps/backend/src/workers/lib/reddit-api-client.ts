@@ -1,4 +1,4 @@
-import https from "https";
+import https from "node:https";
 import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("reddit-api-client");
@@ -190,7 +190,7 @@ export class RedditApiClient {
       logger.info({ subreddit: subredditName }, "Fetching subreddit info");
       const response = await this.apiRequest(`/r/${subredditName}/about`);
 
-      if (response && response.data) {
+      if (response?.data) {
         return {
           display_name: response.data.display_name,
           display_name_prefixed: response.data.display_name_prefixed,
@@ -247,7 +247,7 @@ export class RedditApiClient {
         for (const item of postData.gallery_data.items) {
           const mediaId = item.media_id;
           const metadata = postData.media_metadata[mediaId];
-          if (metadata && metadata.s) {
+          if (metadata?.s) {
             media.items.push({
               url: metadata.s.u?.replace(/&amp;/g, "&"),
               width: metadata.s.x,
@@ -257,7 +257,7 @@ export class RedditApiClient {
           }
         }
       }
-    } else if (postData.media && postData.media.oembed) {
+    } else if (postData.media?.oembed) {
       // Embedded media (YouTube, etc.)
       media.type = "embed";
       media.provider = postData.media.oembed.provider_name;
@@ -273,8 +273,7 @@ export class RedditApiClient {
 
     // Add preview images if available
     if (
-      postData.preview &&
-      postData.preview.images &&
+      postData.preview?.images &&
       postData.preview.images.length > 0
     ) {
       const preview = postData.preview.images[0];
@@ -290,7 +289,7 @@ export class RedditApiClient {
 
   extractPostId(url: string): string | null {
     const match = url.match(/\/comments\/([a-zA-Z0-9]+)/);
-    return match && match[1] ? match[1] : null;
+    return match?.[1] ? match[1] : null;
   }
 
   private collectMoreObjects(
@@ -300,7 +299,7 @@ export class RedditApiClient {
   ): any[] {
     for (const comment of comments) {
       if (comment.kind === "t1") {
-        if (comment.data.replies && comment.data.replies.data) {
+        if (comment.data.replies?.data) {
           this.collectMoreObjects(
             comment.data.replies.data.children,
             depth + 1,
@@ -321,7 +320,7 @@ export class RedditApiClient {
   }
 
   private async batchFetchMoreComments(
-    subreddit: string,
+    _subreddit: string,
     postId: string,
     commentIds: string[],
   ): Promise<any[]> {
@@ -469,7 +468,7 @@ export class RedditApiClient {
     for (const comment of comments) {
       if (comment.kind === "t1") {
         const processedComment = { ...comment };
-        if (comment.data.replies && comment.data.replies.data) {
+        if (comment.data.replies?.data) {
           processedComment.data.replies.data.children = this.replaceMoreInTree(
             comment.data.replies.data.children,
             newCommentMap,
@@ -528,7 +527,7 @@ export class RedditApiClient {
           replies: [],
         };
 
-        if (comment.data.replies && comment.data.replies.data) {
+        if (comment.data.replies?.data) {
           processedComment.replies = this.processComments(
             comment.data.replies.data.children,
             depth + 1,

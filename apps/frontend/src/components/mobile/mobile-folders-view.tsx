@@ -8,7 +8,6 @@ import {
   FileText,
   Flag,
   History,
-  Home,
   ImageIcon,
   ListTodo,
   Notebook,
@@ -87,7 +86,7 @@ export function MobileFoldersView({ open, onClose }: MobileFoldersViewProps) {
       {/* Navigation content - Full height with proper scrolling */}
       <div className="flex-1 overflow-y-auto pb-20">
         <nav className="p-4">
-          {navigationGroups.map((group, groupIndex) => (
+          {navigationGroups.map((group, _groupIndex) => (
             <div key={group.title} className="mb-8">
               <h2 className="text-lg font-medium text-foreground mb-3 px-3">
                 {group.title}

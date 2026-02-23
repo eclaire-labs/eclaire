@@ -47,7 +47,7 @@ describe("API Key Authentication Integration Tests", () => {
         method: "POST",
         body: JSON.stringify({}),
       });
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors here, we just want to ensure clean state
       console.log("ℹ️ Sign out call completed (expected if no active session)");
     }
@@ -93,12 +93,12 @@ describe("API Key Authentication Integration Tests", () => {
       // Verify bookmark structure
       const firstBookmark = data[0];
       expect(firstBookmark).toBeDefined();
-      expect(firstBookmark!.id).toBeTypeOf("string");
-      expect(firstBookmark!.url).toBeTypeOf("string");
-      expect(firstBookmark!.title).toBeTypeOf("string");
-      expect(firstBookmark!.createdAt).toBeTypeOf("string");
-      if (firstBookmark!.updatedAt) {
-        expect(firstBookmark!.updatedAt).toBeTypeOf("string");
+      expect(firstBookmark?.id).toBeTypeOf("string");
+      expect(firstBookmark?.url).toBeTypeOf("string");
+      expect(firstBookmark?.title).toBeTypeOf("string");
+      expect(firstBookmark?.createdAt).toBeTypeOf("string");
+      if (firstBookmark?.updatedAt) {
+        expect(firstBookmark?.updatedAt).toBeTypeOf("string");
       }
 
       console.log(

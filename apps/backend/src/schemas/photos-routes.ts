@@ -7,9 +7,7 @@ import {
 } from "./all-responses.js";
 import {
   PartialPhotoSchema,
-  PhotoMetadataSchema,
   PhotoSchema,
-  PhotoSearchParamsSchema,
 } from "./photos-params.js";
 import {
   CreatedPhotoResponseSchema,
@@ -17,7 +15,6 @@ import {
   PhotoNotFoundSchema,
   PhotoResponseSchema,
   PhotoSearchResponseSchema,
-  PhotosListResponseSchema,
 } from "./photos-responses.js";
 
 // GET /api/photos - Get all photos or search photos

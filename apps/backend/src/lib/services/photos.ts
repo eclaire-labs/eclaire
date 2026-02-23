@@ -1,4 +1,4 @@
-import type { Buffer } from "buffer"; // Node.js Buffer
+import type { Buffer } from "node:buffer"; // Node.js Buffer
 import {
   and,
   count,
@@ -13,7 +13,7 @@ import {
 import exifr from "exifr"; // <-- Import exifr
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
-import { Readable } from "stream";
+import { Readable } from "node:stream";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 
@@ -21,7 +21,7 @@ const { photos, photosTags, tags, users } = schema;
 
 import { generateHistoryId, generatePhotoId } from "@eclaire/core";
 import { createChildLogger } from "../logger.js";
-import { getQueue, getQueueAdapter, QueueNames } from "../queue/index.js";
+import { getQueueAdapter, } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
 import { recordHistory } from "./history.js"; // Assuming this service exists and is configured
 import { createOrUpdateProcessingJob } from "./processing-status.js";
@@ -308,7 +308,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
     let dateTakenValue: Date | null = null;
     if (
       exif.DateTimeOriginal instanceof Date &&
-      !isNaN(exif.DateTimeOriginal.getTime())
+      !Number.isNaN(exif.DateTimeOriginal.getTime())
     ) {
       dateTakenValue = exif.DateTimeOriginal;
       logger.info(
@@ -317,7 +317,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
       );
     } else if (
       exif.CreateDate instanceof Date &&
-      !isNaN(exif.CreateDate.getTime())
+      !Number.isNaN(exif.CreateDate.getTime())
     ) {
       // Fallback to CreateDate if DateTimeOriginal is missing
       dateTakenValue = exif.CreateDate;
@@ -984,7 +984,7 @@ function _buildPhotoQueryConditions(
     dateField === "dateTaken" ? photos.dateTaken : photos.createdAt;
 
   if (startDate) {
-    if (!isNaN(startDate.getTime())) {
+    if (!Number.isNaN(startDate.getTime())) {
       // Ensure the date column is not null when filtering dateTaken
       if (dateField === "dateTaken") {
         definedConditions.push(
@@ -1002,7 +1002,7 @@ function _buildPhotoQueryConditions(
   }
 
   if (endDate) {
-    if (!isNaN(endDate.getTime())) {
+    if (!Number.isNaN(endDate.getTime())) {
       const endOfDay = new Date(endDate);
       endOfDay.setHours(23, 59, 59, 999);
       if (dateField === "dateTaken") {
@@ -1020,7 +1020,7 @@ function _buildPhotoQueryConditions(
     }
   }
 
-  if (locationCity && locationCity.trim()) {
+  if (locationCity?.trim()) {
     // Use case-insensitive comparison if needed (depends on DB collation)
     // Example for SQLite (case-insensitive LIKE):
     // definedConditions.push(like(photos.locationCity, `%${locationCity.trim()}%`));
@@ -1743,7 +1743,7 @@ export async function updatePhotoArtifacts(
  * @throws {Error} if essential storageId is missing.
  */
 // Internal helper - use getViewStream() for external access
-async function getPhotoStreamDetailsForViewing(
+async function _getPhotoStreamDetailsForViewing(
   photoId: string,
   userId: string,
 ): Promise<PhotoStreamDetails> {
@@ -1842,7 +1842,7 @@ async function getPhotoStreamDetailsForViewing(
  * @throws {NotFoundError} if photo/thumbnail not found or user not authorized.
  */
 // Internal helper - use getThumbnailStream() for external access
-async function getThumbnailStreamDetails(
+async function _getThumbnailStreamDetails(
   photoId: string,
   userId: string,
 ): Promise<PhotoStreamDetails> {

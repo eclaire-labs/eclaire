@@ -172,7 +172,7 @@ const formatDate = (dateString: string | null | undefined): string => {
   try {
     const date = new Date(dateString);
     // Check if the date is valid after parsing
-    if (isNaN(date.getTime())) {
+    if (Number.isNaN(date.getTime())) {
       // Try parsing as YYYY-MM-DD if ISO parsing failed
       const parts = dateString.split("-");
       if (parts.length === 3) {
@@ -180,7 +180,7 @@ const formatDate = (dateString: string | null | undefined): string => {
         const month = Number.parseInt(parts[1], 10) - 1; // Month is 0-indexed
         const day = Number.parseInt(parts[2], 10);
         const dateFromParts = new Date(Date.UTC(year, month, day)); // Use UTC to avoid timezone issues with YYYY-MM-DD
-        if (!isNaN(dateFromParts.getTime())) {
+        if (!Number.isNaN(dateFromParts.getTime())) {
           return dateFromParts.toLocaleDateString(undefined, {
             year: "numeric",
             month: "short",
@@ -225,7 +225,7 @@ const getGroupDateLabel = (dateString: string | null | undefined): string => {
     let date: Date;
     // Try parsing ISO string first
     date = new Date(dateString);
-    if (isNaN(date.getTime())) {
+    if (Number.isNaN(date.getTime())) {
       // Try parsing YYYY-MM-DD as UTC
       const parts = dateString.split("-");
       if (parts.length === 3) {
@@ -233,7 +233,7 @@ const getGroupDateLabel = (dateString: string | null | undefined): string => {
         const month = Number.parseInt(parts[1], 10) - 1;
         const day = Number.parseInt(parts[2], 10);
         const dateFromParts = new Date(Date.UTC(year, month, day));
-        if (!isNaN(dateFromParts.getTime())) {
+        if (!Number.isNaN(dateFromParts.getTime())) {
           date = dateFromParts;
         } else {
           return "Invalid Date";
@@ -307,7 +307,6 @@ const getStatusBadge = (status: string) => {
           In Progress
         </Badge>
       );
-    case "not-started":
     default: // Default to Not Started if status is unknown/invalid
       return (
         <Badge
@@ -346,7 +345,7 @@ export default function TasksPage() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null); // For view/edit dialog
+  const [_selectedTask, setSelectedTask] = useState<Task | null>(null); // For view/edit dialog
   const [editingTask, setEditingTask] = useState<Task | null>(null); // For edit dialog state
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false); // Combined View/Edit Dialog
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
@@ -416,6 +415,7 @@ export default function TasksPage() {
   // Fetch users for assignee dropdown
   useEffect(() => {
     fetchUsers();
+    // biome-ignore lint/correctness/useExhaustiveDependencies: fetchUsers defined after hook
   }, []);
 
   // Fetch users for assignee dropdown
@@ -505,8 +505,7 @@ export default function TasksPage() {
       const lowerSearch = searchQuery.toLowerCase();
       const matchesSearch =
         task.title.toLowerCase().includes(lowerSearch) ||
-        (task.description &&
-          task.description.toLowerCase().includes(lowerSearch)) ||
+        (task.description?.toLowerCase().includes(lowerSearch)) ||
         task.tags.some((tag) => tag.toLowerCase().includes(lowerSearch));
 
       const matchesStatus =
@@ -565,14 +564,12 @@ export default function TasksPage() {
           compareResult = String(assigneeA).localeCompare(String(assigneeB));
           return compareResult * (sortDir === "asc" ? 1 : -1);
         }
-
-        case "dueDate":
         default: {
           // Simplified dueDate sorting (like DocumentsPage)
           const timeA = a.dueDate ? new Date(a.dueDate).getTime() : null;
           const timeB = b.dueDate ? new Date(b.dueDate).getTime() : null;
-          const validTimeA = timeA !== null && !isNaN(timeA);
-          const validTimeB = timeB !== null && !isNaN(timeB);
+          const validTimeA = timeA !== null && !Number.isNaN(timeA);
+          const validTimeB = timeB !== null && !Number.isNaN(timeB);
 
           // Logic to consistently place null/invalid dates AFTER valid dates
           if (validTimeA && !validTimeB) {
@@ -594,7 +591,7 @@ export default function TasksPage() {
         }
       }
     });
-  }, [filteredTasks, sortBy, sortDir, currentUserId]);
+  }, [filteredTasks, sortBy, sortDir]);
 
   // --- Event Handlers ---
 
@@ -770,8 +767,7 @@ export default function TasksPage() {
         }),
         status: newTask.status || "not-started", // Ensure status is set
         // Only include assignedToId if it has a value (not null/empty) - backend will assign current user if omitted
-        ...(newTask.assignedToId &&
-          newTask.assignedToId.trim() && {
+        ...(newTask.assignedToId?.trim() && {
             assignedToId: newTask.assignedToId,
           }),
         // Only include description if it's not empty
@@ -1053,7 +1049,7 @@ export default function TasksPage() {
         {viewMode === "tile" ? (
           // Setup the grid layout here
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {sortedTasks.map((task, index) => {
+            {sortedTasks.map((task, _index) => {
               const currentGroupLabel = isGrouped
                 ? getGroupDateLabel(task.dueDate)
                 : "";
@@ -1120,7 +1116,7 @@ export default function TasksPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedTasks.map((task, index) => {
+                {sortedTasks.map((task, _index) => {
                   const currentGroupLabel = isGrouped
                     ? getGroupDateLabel(task.dueDate)
                     : "";
@@ -2224,7 +2220,7 @@ interface TileViewProps {
   currentUser?: User;
 }
 
-function TileView({
+function _TileView({
   tasks,
   onTaskClick,
   onStatusChange,
@@ -2386,7 +2382,7 @@ function TileView({
                         : task.assignedToId;
                       const truncated =
                         displayName.length > 10
-                          ? displayName.substring(0, 10) + "..."
+                          ? `${displayName.substring(0, 10)}...`
                           : displayName;
                       return (
                         <div className="flex items-center gap-1">
@@ -2433,7 +2429,7 @@ interface ListViewProps {
   currentUser?: User;
 }
 
-function ListView({
+function _ListView({
   tasks,
   onTaskClick,
   onStatusChange,
@@ -2894,7 +2890,7 @@ function TaskTileItem({
                     : task.assignedToId;
                   const truncated =
                     displayName.length > 10
-                      ? displayName.substring(0, 10) + "..."
+                      ? `${displayName.substring(0, 10)}...`
                       : displayName;
                   return (
                     <div className="flex items-center gap-1">

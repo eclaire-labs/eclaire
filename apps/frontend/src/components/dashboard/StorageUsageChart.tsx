@@ -6,7 +6,7 @@ import {
   HardDrive,
   StickyNote,
 } from "lucide-react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import {
   Card,
   CardContent,

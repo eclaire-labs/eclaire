@@ -14,7 +14,7 @@ import {
 import type { AssetReference, Message } from "@/types/message";
 
 // Helper function to convert backend messages to frontend format
-function convertBackendMessage(msg: BackendMessage): Message {
+function _convertBackendMessage(msg: BackendMessage): Message {
   return {
     id: msg.id,
     role: msg.role,

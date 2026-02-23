@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownDisplay } from "@/components/markdown-display";
 
 interface StreamingMessageProps {
@@ -89,7 +89,7 @@ export function StreamingMessage({
         clearTimeout(typewriterTimeoutRef.current);
       }
     };
-  }, [content, enableTypewriter, typewriterSpeed, onContentUpdate]);
+  }, [content, enableTypewriter, typewriterSpeed, onContentUpdate, displayedContent.length]);
 
   // Show cursor when not complete or when typing
   const shouldShowCursor = showCursor && (!isComplete || showTypingCursor);
@@ -242,25 +242,25 @@ export function RealTimeStreamingMessage({
   const [toolCalls, setToolCalls] = useState<any[]>([]);
 
   // Methods to be called from parent via ref
-  const addThinkingContent = useCallback((content: string) => {
+  const _addThinkingContent = useCallback((content: string) => {
     setThinkingContent((prev) => prev + content);
     setIsThinking(true);
   }, []);
 
-  const completeThinking = useCallback(() => {
+  const _completeThinking = useCallback(() => {
     setIsThinking(false);
   }, []);
 
-  const addTextContent = useCallback((content: string) => {
+  const _addTextContent = useCallback((content: string) => {
     setTextContent((prev) => prev + content);
   }, []);
 
-  const completeText = useCallback(() => {
+  const _completeText = useCallback(() => {
     setIsTextComplete(true);
     onFinalContent?.(textContent);
   }, [textContent, onFinalContent]);
 
-  const addToolCall = useCallback((name: string, status: string) => {
+  const _addToolCall = useCallback((name: string, status: string) => {
     setToolCalls((prev) => {
       const existing = prev.find((t) => t.name === name);
       if (existing) {
@@ -271,7 +271,7 @@ export function RealTimeStreamingMessage({
     });
   }, []);
 
-  const reset = useCallback(() => {
+  const _reset = useCallback(() => {
     setThinkingContent("");
     setIsThinking(false);
     setTextContent("");

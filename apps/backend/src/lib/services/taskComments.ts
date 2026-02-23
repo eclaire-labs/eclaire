@@ -219,7 +219,7 @@ export async function updateTaskComment(
       throw new Error("User or task not found");
     }
 
-    const [updatedComment] = await db
+    const [_updatedComment] = await db
       .update(taskComments)
       .set({
         content: commentData.content,

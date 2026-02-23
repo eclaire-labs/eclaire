@@ -1,6 +1,6 @@
 import { CheckCircle, Clock, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, } from "@/components/ui/card";
 import {
   useProcessingEvents,
   useProcessingSummary,

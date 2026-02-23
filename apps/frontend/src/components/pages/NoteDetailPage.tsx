@@ -15,11 +15,11 @@ import {
 
 const routeApi = getRouteApi("/_authenticated/notes/$id");
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -57,7 +57,7 @@ const formatDate = (dateString: string | null | undefined) => {
   }
 };
 
-const formatDateForInput = (isoString: string | null | undefined): string => {
+const _formatDateForInput = (isoString: string | null | undefined): string => {
   if (!isoString) return "";
   try {
     const date = new Date(isoString);

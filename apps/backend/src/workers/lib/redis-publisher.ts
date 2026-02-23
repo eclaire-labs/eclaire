@@ -10,7 +10,6 @@
 import type { Logger } from "@eclaire/logger";
 import {
   createRedisConnection,
-  type RedisConnectionOptions,
 } from "@eclaire/queue";
 import {
   createEventCallbacks,
@@ -88,7 +87,7 @@ export function createRedisPublisher(
  * Call this during graceful shutdown to clean up connections.
  */
 export async function closeRedisPublisher(
-  publisher: JobEventCallbacks,
+  _publisher: JobEventCallbacks,
 ): Promise<void> {
   // Note: The Redis connection is managed internally by createRedisConnection
   // and will be cleaned up when the process exits or when explicitly closed.

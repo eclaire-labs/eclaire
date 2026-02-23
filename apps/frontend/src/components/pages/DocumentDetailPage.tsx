@@ -17,7 +17,7 @@ import {
 
 const routeApi = getRouteApi("/_authenticated/documents/$id");
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,7 +64,7 @@ const formatDate = (dateString: string | null | undefined) => {
   }
 };
 
-const formatDateForInput = (isoString: string | null | undefined): string => {
+const _formatDateForInput = (isoString: string | null | undefined): string => {
   if (!isoString) return "";
   try {
     const date = new Date(isoString);

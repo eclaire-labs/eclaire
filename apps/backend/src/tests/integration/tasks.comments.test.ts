@@ -1,11 +1,9 @@
 import { afterAll, describe, expect, it } from "vitest";
 import {
   AI_ASSISTANT_USER_ID,
-  type CommentDeleteResponse,
   globalTestCleanup,
   loggedFetch,
   type TaskComment,
-  type TaskDeleteResponse,
   type TaskEntry,
 } from "../utils/tasks-test-helpers.js";
 import { delay } from "../utils/test-helpers.js";
@@ -99,9 +97,9 @@ describe("Task Comments", { timeout: 30000 }, () => {
       expect(comments).toHaveLength(1);
       const comment = comments[0];
       expect(comment).toBeDefined();
-      expect(comment!.id).toBe(createdCommentId);
-      expect(comment!.content).toBe("This is a test comment for the task.");
-      expect(comment!.user.userType).toBe("user");
+      expect(comment?.id).toBe(createdCommentId);
+      expect(comment?.content).toBe("This is a test comment for the task.");
+      expect(comment?.user.userType).toBe("user");
     });
 
     it("GET /api/tasks/:id - should include comments in task response", async () => {
@@ -115,9 +113,9 @@ describe("Task Comments", { timeout: 30000 }, () => {
       const task = (await response.json()) as TaskEntry;
 
       expect(task.comments).toHaveLength(1);
-      expect(task.comments![0]).toBeDefined();
-      expect(task.comments![0]!.id).toBe(createdCommentId);
-      expect(task.comments![0]!.content).toBe(
+      expect(task.comments?.[0]).toBeDefined();
+      expect(task.comments?.[0]?.id).toBe(createdCommentId);
+      expect(task.comments?.[0]?.content).toBe(
         "This is a test comment for the task.",
       );
     });

@@ -8,7 +8,7 @@ import { migrate as migrateSqlite } from "drizzle-orm/better-sqlite3/migrator";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { migrate as migratePg } from "drizzle-orm/pglite/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DB_TEST_CONFIGS, type TestDbType } from "./setup.js";
+import { DB_TEST_CONFIGS, } from "./setup.js";
 
 describe.each(DB_TEST_CONFIGS)("$label - Migration Tests", ({
   dbType,
@@ -419,7 +419,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Migration Tests", ({
             url: "https://example.com",
           });
         }
-      } catch (error) {
+      } catch (_error) {
         insertFailed = true;
       }
 

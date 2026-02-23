@@ -1,6 +1,5 @@
 // schemas/all-routes.ts
 import { resolver } from "hono-openapi";
-import { SearchQuerySchema } from "./all-params.js";
 import {
   CreatedItemSchema,
   ErrorResponseSchema,

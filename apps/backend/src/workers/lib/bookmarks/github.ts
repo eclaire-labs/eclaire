@@ -1,12 +1,10 @@
 import type { JobContext } from "@eclaire/queue/core";
 import { type BrowserContext, chromium } from "patchright";
 import sharp from "sharp";
-import { Readable } from "stream";
 import { createChildLogger } from "../../../lib/logger.js";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
 import {
   fetchGitHubRepoInfo,
-  type GitHubRepoInfo,
   generateGitHubTags,
   isGitHubUrl,
   parseGitHubUrl,
@@ -66,6 +64,7 @@ export async function processGitHubBookmark(
       args: ["--use-mock-keychain"],
     });
     context = await browser.newContext({ viewport: null });
+    // biome-ignore lint/style/noNonNullAssertion: context is assigned on the line above
     const page = await context!.newPage();
 
     // Navigate to the URL with fallback strategies for slow-loading pages
@@ -106,7 +105,7 @@ export async function processGitHubBookmark(
 
     // Extract standard metadata
     allArtifacts.contentType = response?.headers()["content-type"] || "";
-    allArtifacts.etag = response?.headers()["etag"] || "";
+    allArtifacts.etag = response?.headers().etag || "";
     allArtifacts.lastModified = response?.headers()["last-modified"] || "";
 
     // Take screenshots
@@ -249,7 +248,7 @@ export async function processGitHubBookmark(
 
         // Include README content in extracted text for better AI processing
         allArtifacts.extractedText =
-          (allArtifacts.extractedText || "") + "\n\n" + repoInfo.readmeContent;
+          `${allArtifacts.extractedText || ""}\n\n${repoInfo.readmeContent}`;
       }
     }
 

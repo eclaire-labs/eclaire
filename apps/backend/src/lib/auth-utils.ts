@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, } from "drizzle-orm";
 import type { Context } from "hono";
 import { db, schema } from "../db/index.js";
 import { parseApiKey, verifyApiKeyHash } from "./api-key-security.js";
@@ -49,7 +49,7 @@ export async function verifyApiKey(
       .where(eq(apiKeys.id, keyRecord.id));
 
     return { isValid: true, userId: keyRecord.userId };
-  } catch (error) {
+  } catch (_error) {
     return { isValid: false, userId: null };
   }
 }
@@ -86,7 +86,7 @@ export async function getAuthenticatedUserId(
       if (isValid && userId) {
         return userId;
       }
-    } catch (error) {}
+    } catch (_error) {}
   }
 
   return null;

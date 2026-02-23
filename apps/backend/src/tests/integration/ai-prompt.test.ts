@@ -62,7 +62,7 @@ interface BookmarkEntry {
 }
 
 describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
-  let testBookmarkId: string | null = null;
+  let _testBookmarkId: string | null = null;
   let currentModelConfig: ModelConfigResponse | null = null;
 
   // Helper function to check if current model supports thinking
@@ -118,7 +118,7 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
 
     if (bookmarkResponse.status === 201) {
       const bookmark = (await bookmarkResponse.json()) as BookmarkEntry;
-      testBookmarkId = bookmark.id;
+      _testBookmarkId = bookmark.id;
     }
 
     // Create a test note for findNotes testing
@@ -406,7 +406,7 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     // Should have tool calls for bookmark search
     expect(data.toolCalls).toBeDefined();
     expect(Array.isArray(data.toolCalls)).toBe(true);
-    expect(data.toolCalls!.length).toBeGreaterThan(0);
+    expect(data.toolCalls?.length).toBeGreaterThan(0);
 
     // Should not have thinking content by default
     expect(data.thinkingContent).toBeUndefined();
@@ -524,28 +524,28 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     // Tool calls should be present when tools are executed
     expect(data.toolCalls).toBeDefined();
     expect(Array.isArray(data.toolCalls)).toBe(true);
-    expect(data.toolCalls!.length).toBeGreaterThan(0);
+    expect(data.toolCalls?.length).toBeGreaterThan(0);
 
     // Check the structure of tool call information
-    const toolCall = data.toolCalls![0];
+    const toolCall = data.toolCalls?.[0];
     expect(toolCall).toBeDefined();
-    expect(toolCall!.functionName).toBeTypeOf("string");
-    expect(toolCall!.executionTimeMs).toBeTypeOf("number");
-    expect(toolCall!.success).toBeTypeOf("boolean");
-    expect(toolCall!.executionTimeMs).toBeGreaterThanOrEqual(0);
+    expect(toolCall?.functionName).toBeTypeOf("string");
+    expect(toolCall?.executionTimeMs).toBeTypeOf("number");
+    expect(toolCall?.success).toBeTypeOf("boolean");
+    expect(toolCall?.executionTimeMs).toBeGreaterThanOrEqual(0);
 
     // The tool call should likely be 'findBookmarks' for this test
-    expect(toolCall!.functionName).toMatch(/bookmark|find/i);
+    expect(toolCall?.functionName).toMatch(/bookmark|find/i);
 
     // Arguments should be present and be an object
-    if (toolCall!.arguments) {
-      expect(typeof toolCall!.arguments).toBe("object");
+    if (toolCall?.arguments) {
+      expect(typeof toolCall?.arguments).toBe("object");
     }
 
     // Result summary should be present for successful calls
-    if (toolCall!.success) {
-      expect(toolCall!.resultSummary).toBeTypeOf("string");
-      expect(toolCall!.resultSummary!.length).toBeGreaterThan(0);
+    if (toolCall?.success) {
+      expect(toolCall?.resultSummary).toBeTypeOf("string");
+      expect(toolCall?.resultSummary?.length).toBeGreaterThan(0);
     }
 
     // Trace should not be present when trace=false
@@ -584,14 +584,14 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     // Both tool calls and trace should be present
     expect(data.toolCalls).toBeDefined();
     expect(Array.isArray(data.toolCalls)).toBe(true);
-    expect(data.toolCalls!.length).toBeGreaterThan(0);
+    expect(data.toolCalls?.length).toBeGreaterThan(0);
 
     expect(data.trace).toBeDefined();
     expect(data.trace.enabled).toBe(true);
     expect(Array.isArray(data.trace.toolCalls)).toBe(true);
 
     // Tool calls in main response and trace should have same count
-    expect(data.toolCalls!.length).toBe(data.trace.toolCalls.length);
+    expect(data.toolCalls?.length).toBe(data.trace.toolCalls.length);
   });
 
   it(
@@ -639,7 +639,7 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
       // Thinking content should be present and separate from main response
       expect(data.thinkingContent).toBeDefined();
       expect(data.thinkingContent).toBeTypeOf("string");
-      expect(data.thinkingContent!.length).toBeGreaterThan(0);
+      expect(data.thinkingContent?.length).toBeGreaterThan(0);
 
       // Thinking content should not be included in the main response
       expect(data.response).not.toContain("<think>");
@@ -755,14 +755,14 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     // Tool calls should be present when finding notes
     expect(data.toolCalls).toBeDefined();
     expect(Array.isArray(data.toolCalls)).toBe(true);
-    expect(data.toolCalls!.length).toBeGreaterThan(0);
+    expect(data.toolCalls?.length).toBeGreaterThan(0);
 
     // Should have called findNotes tool
-    const notesTool = data.toolCalls!.find((call) =>
+    const notesTool = data.toolCalls?.find((call) =>
       call.functionName.toLowerCase().includes("note"),
     );
     expect(notesTool).toBeDefined();
-    expect(notesTool!.success).toBe(true);
+    expect(notesTool?.success).toBe(true);
 
     // Response should mention the test note
     const response_lower = data.response.toLowerCase();
@@ -807,16 +807,16 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     // Tool calls should be present for counting
     expect(data.toolCalls).toBeDefined();
     expect(Array.isArray(data.toolCalls)).toBe(true);
-    expect(data.toolCalls!.length).toBeGreaterThan(0);
+    expect(data.toolCalls?.length).toBeGreaterThan(0);
 
     // Should have called countBookmarks tool
-    const countTool = data.toolCalls!.find(
+    const countTool = data.toolCalls?.find(
       (call) =>
         call.functionName.toLowerCase().includes("count") &&
         call.functionName.toLowerCase().includes("bookmark"),
     );
     expect(countTool).toBeDefined();
-    expect(countTool!.success).toBe(true);
+    expect(countTool?.success).toBe(true);
 
     // Response should contain a number
     const hasNumber = /\d+/.test(data.response);
@@ -855,18 +855,18 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     // Should have tool calls
     expect(data.toolCalls).toBeDefined();
     expect(Array.isArray(data.toolCalls)).toBe(true);
-    expect(data.toolCalls!.length).toBeGreaterThan(0);
+    expect(data.toolCalls?.length).toBeGreaterThan(0);
 
     // Check that the tool was called with proper arguments
-    const findNotesTool = data.toolCalls!.find((call) =>
+    const findNotesTool = data.toolCalls?.find((call) =>
       call.functionName.toLowerCase().includes("note"),
     );
     expect(findNotesTool).toBeDefined();
-    expect(findNotesTool!.success).toBe(true);
+    expect(findNotesTool?.success).toBe(true);
 
     // The arguments should include tags parameter
-    if (findNotesTool!.arguments) {
-      expect(findNotesTool!.arguments.tags).toBeDefined();
+    if (findNotesTool?.arguments) {
+      expect(findNotesTool?.arguments.tags).toBeDefined();
     }
 
     // Response should contain proper internal note links (not [notes] format)
@@ -967,7 +967,7 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     // Should have tool calls
     expect(data.toolCalls).toBeDefined();
     expect(Array.isArray(data.toolCalls)).toBe(true);
-    expect(data.toolCalls!.length).toBeGreaterThan(0);
+    expect(data.toolCalls?.length).toBeGreaterThan(0);
 
     // Critical: main response should not contain raw JSON from tool calls
     expect(data.response).not.toMatch(/\{\s*".*":\s*.*\}/); // No JSON objects

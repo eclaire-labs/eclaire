@@ -1,8 +1,7 @@
-import { Calendar, CalendarDays, Clock, Plus } from "lucide-react";
+import { Calendar, CalendarDays, Clock, } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -76,7 +75,7 @@ export function DueDatePicker({
   const [customValue, setCustomValue] = useState("");
 
   const handleQuickSelect = (option: "today" | "tomorrow" | "nextWeek") => {
-    const now = new Date();
+    const _now = new Date();
     const date = new Date();
 
     switch (option) {

@@ -2,7 +2,6 @@ import { afterAll, describe, expect, it } from "vitest";
 import {
   globalTestCleanup,
   loggedFetch,
-  type TaskDeleteResponse,
   type TaskEntry,
   type TaskSearchResponse,
 } from "../utils/tasks-test-helpers.js";

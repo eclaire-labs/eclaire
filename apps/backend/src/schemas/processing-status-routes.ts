@@ -2,7 +2,6 @@ import { resolver } from "hono-openapi";
 import {
   ErrorResponseSchema,
   UnauthorizedSchema,
-  ValidationErrorSchema,
 } from "./all-responses.js";
 
 // GET /api/processing-status/summary - Get processing status summary

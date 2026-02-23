@@ -2,10 +2,10 @@
  * Core upgrade logic - can be called from CLI or during startup
  */
 
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
 import { eq } from "drizzle-orm";
-import { existsSync, readFileSync } from "fs";
-import { resolve } from "path";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import * as semver from "semver";
 import {
   findMigrationJournal,
@@ -136,7 +136,7 @@ export async function runUpgrade(
     await setInstalledVersion(db!, schema!, appVersion);
 
     if (closeDb) {
-      await closeDatabase!();
+      await closeDatabase?.();
     }
 
     return {

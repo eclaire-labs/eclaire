@@ -18,7 +18,7 @@ console.log("Eclaire Configuration");
 console.log("=====================");
 console.log("");
 
-const summary = getConfigSummary(config);
+const _summary = getConfigSummary(config);
 
 // Group and display config
 console.log("Runtime Context:");

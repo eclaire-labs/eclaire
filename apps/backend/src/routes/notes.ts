@@ -8,7 +8,6 @@ import {
   createNoteEntry,
   deleteNoteEntry,
   findNotes,
-  getAllNoteEntries,
   getNoteEntryById,
   parseNoteUploadMetadata,
   prepareNoteFromUpload,

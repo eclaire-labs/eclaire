@@ -36,7 +36,7 @@ import {
 
 const routeApi = getRouteApi("/_authenticated/bookmarks/$id");
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,7 +82,7 @@ const formatDate = (date: number | string | null | undefined) => {
       dateObj = new Date(date * 1000);
     }
 
-    if (isNaN(dateObj.getTime())) {
+    if (Number.isNaN(dateObj.getTime())) {
       return "Invalid Date";
     }
 
@@ -102,16 +102,16 @@ const formatDate = (date: number | string | null | undefined) => {
 const getDomainFromUrl = (url: string) => {
   try {
     return new URL(url).hostname.replace("www.", "");
-  } catch (e) {
+  } catch (_e) {
     return url;
   }
 };
 
 const formatCount = (count: number) => {
   if (count >= 1000000) {
-    return (count / 1000000).toFixed(1) + "M";
+    return `${(count / 1000000).toFixed(1)}M`;
   } else if (count >= 1000) {
-    return (count / 1000).toFixed(1) + "K";
+    return `${(count / 1000).toFixed(1)}K`;
   }
   return count.toString();
 };
@@ -1664,7 +1664,7 @@ function Favicon({
 
   useEffect(() => {
     setError(false); // Reset error state when bookmark changes
-  }, [bookmark.id]);
+  }, []);
 
   if (error || !faviconUrl) {
     return <Link className={className} />;
