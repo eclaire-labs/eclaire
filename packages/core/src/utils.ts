@@ -106,7 +106,7 @@ export function formatToISO8601(
   if (timestamp instanceof Date) {
     // Check for Invalid Date
     const time = timestamp.getTime();
-    if (isNaN(time)) {
+    if (Number.isNaN(time)) {
       console.error("formatToISO8601: Invalid Date object received", {
         timestamp,
       });
@@ -117,7 +117,7 @@ export function formatToISO8601(
 
   // Handle numeric timestamps (milliseconds since epoch)
   if (typeof timestamp === "number") {
-    if (isNaN(timestamp) || !isFinite(timestamp)) {
+    if (Number.isNaN(timestamp) || !Number.isFinite(timestamp)) {
       console.error("formatToISO8601: Invalid numeric timestamp", {
         timestamp,
       });
@@ -125,7 +125,7 @@ export function formatToISO8601(
     }
     const date = new Date(timestamp);
     const time = date.getTime();
-    if (isNaN(time)) {
+    if (Number.isNaN(time)) {
       console.error("formatToISO8601: Number creates invalid Date", {
         timestamp,
       });
@@ -138,7 +138,7 @@ export function formatToISO8601(
   if (typeof timestamp === "string") {
     const date = new Date(timestamp);
     const time = date.getTime();
-    if (isNaN(time)) {
+    if (Number.isNaN(time)) {
       console.error("formatToISO8601: String creates invalid Date", {
         timestamp,
       });

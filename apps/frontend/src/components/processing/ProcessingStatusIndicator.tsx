@@ -352,9 +352,9 @@ export function ProcessingStatusIndicator({
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Processing Stages</h4>
             <div className="space-y-2">
-              {status.stages.map((stage, index) => (
+              {status.stages.map((stage) => (
                 <div
-                  key={index}
+                  key={stage.name}
                   className="flex items-center justify-between p-2 rounded border"
                 >
                   <div className="flex items-center gap-2">

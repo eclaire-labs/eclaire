@@ -971,6 +971,7 @@ export default function NotesPage() {
       return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
             <Card key={index} className="animate-pulse">
               <CardHeader>
                 <div className="h-5 bg-muted rounded-full w-3/4 mb-2" />

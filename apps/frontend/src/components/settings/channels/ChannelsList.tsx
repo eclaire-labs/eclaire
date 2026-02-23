@@ -88,6 +88,7 @@ export default function ChannelsList() {
           // Loading state
           <div className="space-y-4">
             {Array.from({ length: 2 }).map((_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
               <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>

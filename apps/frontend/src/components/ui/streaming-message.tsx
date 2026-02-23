@@ -207,8 +207,8 @@ export function StreamingMessageContainer({
             </span>
           </div>
           <div className="space-y-1">
-            {toolCalls.map((tool, index) => (
-              <div key={index} className="text-sm text-blue-600">
+            {toolCalls.map((tool) => (
+              <div key={tool.name} className="text-sm text-blue-600">
                 {tool.name} - {tool.status}
               </div>
             ))}

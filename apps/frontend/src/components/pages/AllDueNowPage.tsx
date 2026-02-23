@@ -517,6 +517,7 @@ export default function DueNowItemsPage() {
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={clearSearch}
                   className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
                   title="Clear search"
@@ -578,9 +579,9 @@ export default function DueNowItemsPage() {
 
         <div className="grid gap-4">
           {isLoading ? (
-            Array.from({ length: 5 }).map((_, index) => (
+            [0, 1, 2, 3, 4].map((i) => (
               <div
-                key={index}
+                key={i}
                 className="flex items-center space-x-4 p-4 border rounded-lg"
               >
                 <Skeleton className="h-12 w-12 rounded-md" />

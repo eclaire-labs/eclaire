@@ -286,9 +286,9 @@ function JobDetailsDialog({ job }: { job: ProcessingJob }) {
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Processing Stages</h4>
             <div className="space-y-2">
-              {job.stages.map((stage, index) => (
+              {job.stages.map((stage) => (
                 <div
-                  key={index}
+                  key={stage.name}
                   className="flex items-center justify-between p-3 rounded border"
                 >
                   <div className="flex items-center gap-3">
@@ -489,9 +489,11 @@ export default function ProcessingContent() {
         <div className="space-y-4 py-4">
           {/* Status Filter */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Status</label>
+            <label className="text-sm font-medium" htmlFor="filter-status">
+              Status
+            </label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
+              <SelectTrigger id="filter-status">
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -507,9 +509,11 @@ export default function ProcessingContent() {
 
           {/* Asset Type Filter */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Asset Type</label>
+            <label className="text-sm font-medium" htmlFor="filter-asset-type">
+              Asset Type
+            </label>
             <Select value={assetTypeFilter} onValueChange={setAssetTypeFilter}>
-              <SelectTrigger>
+              <SelectTrigger id="filter-asset-type">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -585,6 +589,7 @@ export default function ProcessingContent() {
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={clearSearch}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
                 title="Clear search"

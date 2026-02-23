@@ -117,6 +117,7 @@ export function MarkdownPreview({
     return (
       <span
         className={cn("text-sm", className)}
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized markdown rendering
         dangerouslySetInnerHTML={{ __html: processedContent }}
       />
     );

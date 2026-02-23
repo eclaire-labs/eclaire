@@ -403,8 +403,7 @@ export class LLMStreamParser {
           }
 
           // Regular code block
-          processed +=
-            this.state.codeBlockStartLine + actualCodeContent + "```";
+          processed += `${this.state.codeBlockStartLine + actualCodeContent}\`\`\``;
           remaining = afterCodeBlock;
           this.state.inCodeBlock = false;
           this.state.codeBlockContent = "";
@@ -475,18 +474,18 @@ export class LLMStreamParser {
   private findJsonEnd(str: string): number {
     let depth = 0;
     let inString = false;
-    let escape = false;
+    let isEscaped = false;
 
     for (let i = 0; i < str.length; i++) {
       const char = str[i];
 
-      if (escape) {
-        escape = false;
+      if (isEscaped) {
+        isEscaped = false;
         continue;
       }
 
       if (char === "\\") {
-        escape = true;
+        isEscaped = true;
         continue;
       }
 

@@ -554,6 +554,7 @@ export default function PendingItemsPage() {
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={clearSearch}
                   className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
                   title="Clear search"
@@ -613,11 +614,9 @@ export default function PendingItemsPage() {
         <div className="space-y-4">
           {isLoading ? (
             // Loading skeleton
-            Array(5)
-              .fill(0)
-              .map((_, index) => (
+            [0, 1, 2, 3, 4].map((i) => (
                 <div
-                  key={index}
+                  key={i}
                   className="flex items-start gap-3 p-3 border rounded-lg"
                 >
                   <div className="p-2 rounded-md bg-muted">

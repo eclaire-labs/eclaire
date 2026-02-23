@@ -146,9 +146,9 @@ export function PhotoAnalysisCard({
                   </Label>
                   <div className="flex flex-wrap gap-2">
                     {analysisData.aiAnalysis.object_detection.objects.map(
-                      (object, index) => (
+                      (object) => (
                         <Badge
-                          key={index}
+                          key={object}
                           variant="outline"
                           className="capitalize"
                         >
@@ -177,9 +177,9 @@ export function PhotoAnalysisCard({
                         </Label>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {analysisData.aiAnalysis.visual_analysis.dominant_colors.map(
-                            (color, index) => (
+                            (color) => (
                               <Badge
-                                key={index}
+                                key={color}
                                 variant="secondary"
                                 className="capitalize"
                               >
@@ -210,9 +210,9 @@ export function PhotoAnalysisCard({
                         </Label>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {analysisData.aiAnalysis.visual_analysis.tags.map(
-                            (tag, index) => (
+                            (tag) => (
                               <Badge
-                                key={index}
+                                key={tag}
                                 variant="outline"
                                 className="capitalize"
                               >
@@ -292,9 +292,9 @@ export function PhotoAnalysisCard({
                         </Label>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {analysisData.aiAnalysis.document_analysis.tags.map(
-                            (tag, index) => (
+                            (tag) => (
                               <Badge
-                                key={index}
+                                key={tag}
                                 variant="outline"
                                 className="capitalize"
                               >
@@ -341,9 +341,9 @@ export function PhotoAnalysisCard({
                         </Label>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {analysisData.aiAnalysis.technical_analysis.main_concepts.map(
-                            (concept, index) => (
+                            (concept) => (
                               <Badge
-                                key={index}
+                                key={concept}
                                 variant="secondary"
                                 className="capitalize"
                               >
@@ -364,9 +364,9 @@ export function PhotoAnalysisCard({
                         </Label>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {analysisData.aiAnalysis.technical_analysis.components.map(
-                            (component, index) => (
+                            (component) => (
                               <Badge
-                                key={index}
+                                key={component}
                                 variant="outline"
                                 className="capitalize"
                               >

@@ -187,7 +187,7 @@ export function StorageUsageChart({ stats }: StorageUsageChartProps) {
                   cornerRadius={3}
                 >
                   {data.map((entry, idx) => (
-                    <Cell key={`slice-${idx}`} fill={entry.color} />
+                    <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />

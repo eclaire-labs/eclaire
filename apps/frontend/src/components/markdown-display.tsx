@@ -119,6 +119,7 @@ export function MarkdownDisplay({ content, className }: MarkdownDisplayProps) {
       {/* Render the markdown content normally */}
       <div
         className={proseClasses}
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized markdown rendering
         dangerouslySetInnerHTML={{ __html: processedContent.htmlContent }}
       />
 

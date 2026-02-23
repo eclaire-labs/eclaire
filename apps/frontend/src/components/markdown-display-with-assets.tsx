@@ -127,6 +127,7 @@ export function MarkdownDisplayWithAssets({
 
           className,
         )}
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized markdown rendering
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
 
