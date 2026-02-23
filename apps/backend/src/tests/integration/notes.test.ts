@@ -563,7 +563,7 @@ describe("Notes API Integration Tests", () => {
       const found = data.find((n) => n.id === dueDateNoteId);
       expect(found).toBeDefined();
       const timeDiff = Math.abs(
-        new Date(found?.dueDate!).getTime() - testDueDate.getTime(),
+        new Date(found?.dueDate as string).getTime() - testDueDate.getTime(),
       );
       expect(timeDiff).toBeLessThan(1000); // Within 1 second
     });

@@ -5,7 +5,7 @@
  * Replaces the monolithic prompt.ts with a clean, modular implementation.
  */
 
-import type { ToolCallSummaryOutput } from "@eclaire/ai";
+import type { AIMessage, ToolCallSummaryOutput } from "@eclaire/ai";
 import {
   type AgentResult,
   type AgentStreamEvent,
@@ -113,7 +113,7 @@ export async function processPromptRequest(
   if (typeof userIdOrOptions === "string") {
     // Positional arguments (legacy)
     userId = userIdOrOptions;
-    prompt = promptArg!;
+    prompt = promptArg as string;
     context = contextArg;
     requestId = requestIdArg;
     conversationId = conversationIdArg;
@@ -159,7 +159,7 @@ export async function processPromptRequest(
     });
 
     // Load conversation history if exists
-    let previousMessages;
+    let previousMessages: AIMessage[] | undefined;
     if (conversationId) {
       try {
         previousMessages = await loadConversationMessages(
@@ -354,7 +354,7 @@ export async function processPromptRequestStream(
   if (typeof userIdOrOptions === "string") {
     // Positional arguments (legacy)
     userId = userIdOrOptions;
-    prompt = promptArg!;
+    prompt = promptArg as string;
     context = contextArg;
     requestId = requestIdArg;
     conversationId = conversationIdArg;
@@ -399,7 +399,7 @@ export async function processPromptRequestStream(
   });
 
   // Load conversation history if exists
-  let previousMessages;
+  let previousMessages: AIMessage[] | undefined;
   if (conversationId) {
     try {
       previousMessages = await loadConversationMessages(conversationId, userId);

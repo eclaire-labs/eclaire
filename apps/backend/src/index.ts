@@ -182,7 +182,10 @@ async function recordAuthenticationEvent(
 
     // Get response data to extract user and session info
     const responseClone = result.clone();
-    const responseData = (await responseClone.json()) as any;
+    const responseData = (await responseClone.json()) as {
+      user?: { id: string };
+      token?: string;
+    };
 
     // Extract authentication metadata
     const metadata = {

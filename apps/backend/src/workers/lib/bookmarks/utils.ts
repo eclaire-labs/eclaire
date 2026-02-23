@@ -49,7 +49,9 @@ export async function extractContentFromHtml(
 
     // Remove all script tags to prevent any potential issues
     const scripts = document.querySelectorAll("script");
-    scripts.forEach((script) => script.remove());
+    scripts.forEach((script) => {
+      script.remove();
+    });
 
     article = new Readability(document).parse();
     readableHtml = article?.content || "";

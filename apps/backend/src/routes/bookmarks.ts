@@ -631,7 +631,7 @@ bookmarksRoutes.post(
 
       // Read and parse file content
       const fileContent = await file.text();
-      let bookmarkData;
+      let bookmarkData: unknown;
       try {
         bookmarkData = JSON.parse(fileContent);
       } catch (error) {

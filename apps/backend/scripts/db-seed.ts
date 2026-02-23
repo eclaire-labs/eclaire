@@ -58,7 +58,7 @@ function computeApiKeyHash(fullKey: string): {
   }
 
   const keyHash = hmacBase64(fullKey, pepperKey);
-  const hashVersion = parseInt(config.security.apiKeyHmacVersion);
+  const hashVersion = parseInt(config.security.apiKeyHmacVersion, 10);
   return { keyHash, hashVersion };
 }
 
@@ -190,6 +190,7 @@ async function main() {
       },
     ];
 
+    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
     await (db as any)
       .insert(schema.users)
       .values(demoUsersData)
@@ -226,6 +227,7 @@ async function main() {
       },
     ];
 
+    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
     await (db as any)
       .insert(schema.accounts)
       .values(demoAccountsData)
@@ -259,6 +261,7 @@ async function main() {
       },
     ];
 
+    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
     await (db as any)
       .insert(schema.apiKeys)
       .values(demoApiKeysData)

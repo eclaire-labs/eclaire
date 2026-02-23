@@ -689,6 +689,7 @@ export async function findNotes(
       dueDateEnd,
     );
 
+    // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from Drizzle query builder
     let query;
 
     if (tagsList && tagsList.length > 0) {
@@ -808,6 +809,7 @@ export async function countNotes(
       dueDateEnd,
     );
 
+    // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from Drizzle query builder
     let countQuery;
 
     if (tagsList && tagsList.length > 0) {

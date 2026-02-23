@@ -273,6 +273,7 @@ tasksRoutes.put(
           cronExpression: validatedData.cronExpression || undefined,
         };
 
+        // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from updateTask call
         let updatedTask;
         try {
           updatedTask = await updateTask(id, taskData, userId);

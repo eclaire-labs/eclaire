@@ -69,6 +69,7 @@ export async function processGitHubBookmark(
     const page = await context!.newPage();
 
     // Navigate to the URL with fallback strategies for slow-loading pages
+    // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from page.goto
     let response;
     try {
       response = await page.goto(normalizedUrl, {

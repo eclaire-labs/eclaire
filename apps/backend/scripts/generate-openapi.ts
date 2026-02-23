@@ -73,6 +73,7 @@ async function main() {
 
   // Execute the middleware once to populate `spec`.
   // We ignore the `next` function because the middleware ends the chain.
+  // biome-ignore lint/suspicious/noExplicitAny: middleware invocation requires dynamic call on stubbed context
   await (openApiMiddleware as any)(dummyContext, () => Promise.resolve());
 
   if (!spec) {

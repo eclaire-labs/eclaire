@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
 interface ToolSignature {
   name: string;
@@ -43,8 +43,8 @@ async function generateToolSignatures() {
     const functionPattern =
       /\/\*\*\s*\n\s*\*\s*(.+?)\s*\n\s*\*\/\s*\n\s*export\s+async\s+function\s+(\w+)\s*\(([^{]+)\)\s*:\s*([^{]+)/gs;
 
-    let match;
-    while ((match = functionPattern.exec(sourceCode)) !== null) {
+    let match: RegExpExecArray | null = functionPattern.exec(sourceCode);
+    while (match !== null) {
       const comment = match[1]?.trim();
       const functionName = match[2];
       const params = match[3]?.trim();
@@ -57,6 +57,7 @@ async function generateToolSignatures() {
           params,
           returnType,
         });
+        match = functionPattern.exec(sourceCode);
         continue;
       }
 
@@ -77,6 +78,7 @@ async function generateToolSignatures() {
       });
 
       console.log(`✅ Extracted signature for: ${functionName}`);
+      match = functionPattern.exec(sourceCode);
     }
 
     if (signatures.length === 0) {

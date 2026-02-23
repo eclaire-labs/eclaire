@@ -52,7 +52,7 @@ if (queueBackend === "redis") {
 // Uses factories from @eclaire/queue package with connection added
 
 export const defaultWorkerOptions: WorkerOptions = {
-  connection: redisConnection!,
+  connection: redisConnection as Redis,
   concurrency: config.worker.concurrency,
   stalledInterval: 30000,
   maxStalledCount: 1,
@@ -60,17 +60,17 @@ export const defaultWorkerOptions: WorkerOptions = {
 
 export const longTaskWorkerOptions: WorkerOptions = {
   ...getLongTaskWorkerOptions(config.worker.concurrency),
-  connection: redisConnection!,
+  connection: redisConnection as Redis,
 };
 
 export const mediumTaskWorkerOptions: WorkerOptions = {
   ...getMediumTaskWorkerOptions(config.worker.concurrency),
-  connection: redisConnection!,
+  connection: redisConnection as Redis,
 };
 
 export const shortTaskWorkerOptions: WorkerOptions = {
   ...getShortTaskWorkerOptions(config.worker.concurrency),
-  connection: redisConnection!,
+  connection: redisConnection as Redis,
 };
 
 // --- Queue Manager (for Bull Board) ---
@@ -98,7 +98,7 @@ export function getAllQueues(): Queue[] {
   if (!queueManager) return [];
 
   return Object.values(QueueNames)
-    .map((name) => queueManager!.getQueue(name as QueueName))
+    .map((name) => queueManager?.getQueue(name as QueueName))
     .filter((q): q is Queue => q !== null);
 }
 

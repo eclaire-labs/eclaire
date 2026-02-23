@@ -11,13 +11,9 @@
 
 import {
   closeDatabase,
-  type DbCapabilities,
-  type DbDialect,
-  getDatabaseType,
   pgSchema,
   initializeDatabase as pkgInitializeDatabase,
   sqliteSchema,
-  type TransactionManager,
 } from "@eclaire/db";
 
 export { closeDatabase };

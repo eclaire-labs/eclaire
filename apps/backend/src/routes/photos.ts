@@ -192,7 +192,7 @@ photosRoutes.post("/", describeRoute(postPhotosRouteDescription), async (c) => {
     }
 
     // Parse the raw metadata first (keep all fields for database storage)
-    let rawMetadata;
+    let rawMetadata: Record<string, unknown>;
     try {
       rawMetadata = JSON.parse((metadataPart as string) || "{}");
     } catch (error) {

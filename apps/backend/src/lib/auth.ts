@@ -19,6 +19,7 @@ logger.debug(
   "DB and schema loading status",
 );
 
+// biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from drizzleAdapter call
 let initializedAdapter;
 try {
   if (

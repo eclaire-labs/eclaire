@@ -760,7 +760,9 @@ async function extractTextFromHtml(
 
     // Remove all script tags to ensure no potential issues
     const scripts = document.querySelectorAll("script");
-    scripts.forEach((script) => script.remove());
+    scripts.forEach((script) => {
+      script.remove();
+    });
 
     const reader = new Readability(document);
     const article = reader.parse();
@@ -817,25 +819,25 @@ async function extractNumbersDocumentText(
   docPath: string,
   tempDir: string,
 ): Promise<string> {
-  return new Promise(async (resolve) => {
-    try {
-      const csvOutputDir = path.join(tempDir, "csv_output");
-      await fs.mkdir(csvOutputDir, { recursive: true });
-      const libreOfficeCmd = await findLibreOfficeExecutable();
-      const libreOfficeProcess = spawn(libreOfficeCmd, [
-        "--headless",
-        "--convert-to",
-        "csv",
-        "--outdir",
-        csvOutputDir,
-        docPath,
-      ]);
+  try {
+    const csvOutputDir = path.join(tempDir, "csv_output");
+    await fs.mkdir(csvOutputDir, { recursive: true });
+    const libreOfficeCmd = await findLibreOfficeExecutable();
+    const libreOfficeProcess = spawn(libreOfficeCmd, [
+      "--headless",
+      "--convert-to",
+      "csv",
+      "--outdir",
+      csvOutputDir,
+      docPath,
+    ]);
 
-      let stderr = "";
-      libreOfficeProcess.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
+    let stderr = "";
+    libreOfficeProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
 
+    return new Promise((resolve) => {
       libreOfficeProcess.on("close", async (code) => {
         if (code === 0) {
           const files = await fs.readdir(csvOutputDir);
@@ -869,39 +871,40 @@ async function extractNumbersDocumentText(
         );
         resolve("");
       });
-    } catch (error: any) {
-      logger.error(
-        { error: error.message, docPath },
-        "Exception during .numbers text extraction",
-      );
-      resolve("");
-    }
-  });
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(
+      { error: message, docPath },
+      "Exception during .numbers text extraction",
+    );
+    return "";
+  }
 }
 
 async function extractOfficeDocumentText(
   docPath: string,
   tempDir: string,
 ): Promise<string> {
-  return new Promise(async (resolve) => {
-    try {
-      const textOutputDir = path.join(tempDir, "text_output");
-      await fs.mkdir(textOutputDir, { recursive: true });
-      const libreOfficeCmd = await findLibreOfficeExecutable();
-      const libreOfficeProcess = spawn(libreOfficeCmd, [
-        "--headless",
-        "--convert-to",
-        "txt",
-        "--outdir",
-        textOutputDir,
-        docPath,
-      ]);
+  try {
+    const textOutputDir = path.join(tempDir, "text_output");
+    await fs.mkdir(textOutputDir, { recursive: true });
+    const libreOfficeCmd = await findLibreOfficeExecutable();
+    const libreOfficeProcess = spawn(libreOfficeCmd, [
+      "--headless",
+      "--convert-to",
+      "txt",
+      "--outdir",
+      textOutputDir,
+      docPath,
+    ]);
 
-      let stderr = "";
-      libreOfficeProcess.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
+    let stderr = "";
+    libreOfficeProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
 
+    return new Promise((resolve) => {
       libreOfficeProcess.on("close", async (code) => {
         if (code === 0) {
           const files = await fs.readdir(textOutputDir);
@@ -933,14 +936,15 @@ async function extractOfficeDocumentText(
         );
         resolve("");
       });
-    } catch (error: any) {
-      logger.error(
-        { error: error.message, docPath },
-        "Exception during office document text extraction",
-      );
-      resolve("");
-    }
-  });
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(
+      { error: message, docPath },
+      "Exception during office document text extraction",
+    );
+    return "";
+  }
 }
 
 async function processWithDoclingServer(
@@ -1112,44 +1116,40 @@ async function attemptLibreOfficeConversion(
   docPath: string,
   tempDir: string,
 ): Promise<Buffer> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const pdfOutputDir = path.join(tempDir, "pdf_output");
-      await fs.mkdir(pdfOutputDir, { recursive: true });
-      const libreOfficeCmd = await findLibreOfficeExecutable();
-      const libreOfficeProcess = spawn(libreOfficeCmd, [
-        "--headless",
-        "--convert-to",
-        "pdf",
-        "--outdir",
-        pdfOutputDir,
-        docPath,
-      ]);
-      let stderr = "";
-      libreOfficeProcess.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
-      libreOfficeProcess.on("close", async (code) => {
-        if (code === 0) {
-          const files = await fs.readdir(pdfOutputDir);
-          const pdfFile = files.find((f) => f.endsWith(".pdf"));
-          if (pdfFile) {
-            resolve(await fs.readFile(path.join(pdfOutputDir, pdfFile)));
-          } else {
-            reject(
-              new Error(
-                "LibreOffice conversion succeeded but no PDF file found",
-              ),
-            );
-          }
+  const pdfOutputDir = path.join(tempDir, "pdf_output");
+  await fs.mkdir(pdfOutputDir, { recursive: true });
+  const libreOfficeCmd = await findLibreOfficeExecutable();
+  const libreOfficeProcess = spawn(libreOfficeCmd, [
+    "--headless",
+    "--convert-to",
+    "pdf",
+    "--outdir",
+    pdfOutputDir,
+    docPath,
+  ]);
+  let stderr = "";
+  libreOfficeProcess.stderr.on("data", (data) => {
+    stderr += data.toString();
+  });
+  return new Promise((resolve, reject) => {
+    libreOfficeProcess.on("close", async (code) => {
+      if (code === 0) {
+        const files = await fs.readdir(pdfOutputDir);
+        const pdfFile = files.find((f) => f.endsWith(".pdf"));
+        if (pdfFile) {
+          resolve(await fs.readFile(path.join(pdfOutputDir, pdfFile)));
         } else {
-          reject(new Error(`LibreOffice failed with code ${code}: ${stderr}`));
+          reject(
+            new Error(
+              "LibreOffice conversion succeeded but no PDF file found",
+            ),
+          );
         }
-      });
-      libreOfficeProcess.on("error", reject);
-    } catch (error) {
-      reject(error);
-    }
+      } else {
+        reject(new Error(`LibreOffice failed with code ${code}: ${stderr}`));
+      }
+    });
+    libreOfficeProcess.on("error", reject);
   });
 }
 

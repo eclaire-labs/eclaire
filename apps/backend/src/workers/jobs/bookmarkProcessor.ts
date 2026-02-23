@@ -82,6 +82,7 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
     logger.debug({ bookmarkId }, "New page created successfully.");
 
     // Navigate to the URL and let the browser handle redirects with hard timeout
+    // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from page.goto
     let response;
     try {
       logger.debug(
