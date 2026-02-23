@@ -62,7 +62,7 @@ export function SimpleProcessingStatusIcon({
     return null;
   }
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.SyntheticEvent) => {
     e.preventDefault();
     e.stopPropagation();
     navigate({ to: "/processing" });
@@ -102,9 +102,18 @@ export function SimpleProcessingStatusIcon({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
+          {/* biome-ignore lint/a11y/useSemanticElements: icon wrapper not suited for button element */}
           <div
+            role="button"
+            tabIndex={0}
             className={`inline-flex items-center justify-center ${className}`}
             onClick={handleClick}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleClick(e);
+              }
+            }}
           >
             {icon}
           </div>

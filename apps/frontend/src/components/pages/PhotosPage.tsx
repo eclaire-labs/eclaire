@@ -4,9 +4,6 @@ import {
   ArrowUp,
   CalendarDays,
   Camera,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Download,
   Edit,
   FileText, // Lucide icons
@@ -23,6 +20,9 @@ import {
   Trash2,
   UploadCloud, // New Icons
   X,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
   XCircle,
 } from "lucide-react";
 import { nanoid } from "nanoid"; // For unique upload IDs
@@ -65,7 +65,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PinFlagControls } from "@/components/ui/pin-flag-controls";
-import { Progress } from "@/components/ui/progress"; // For upload progress
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -259,7 +259,7 @@ export default function PhotosPage() {
   // Mobile filter dialog state
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
 
-  const photosContainerRef = useRef<HTMLDivElement>(null); // Ref for keyboard nav container
+  const photosContainerRef = useRef<HTMLElement>(null); // Ref for keyboard nav container
 
   // Helper functions for mobile filter dialog
   const getActiveFilterCount = () => {
@@ -1008,8 +1008,9 @@ export default function PhotosPage() {
 
     // Conditionally render Tile or List view
     return (
-      <div
+      <section
         ref={photosContainerRef}
+        aria-label="Photos navigation"
         onKeyDown={handleKeyDown} // Attach keydown listener here
         className="outline-none" // Hide default focus outline
       >
@@ -1043,7 +1044,7 @@ export default function PhotosPage() {
             onChatClick={handleChatClick}
           />
         )}{" "}
-      </div>
+      </section>
     );
   };
 
@@ -1108,6 +1109,7 @@ export default function PhotosPage() {
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={clearSearch}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
                     title="Clear search"
@@ -1724,12 +1726,14 @@ export default function PhotosPage() {
                 </h4>
                 <div className="space-y-2">
                   <div>
-                    <label className="text-sm font-medium">Tag</label>
+                    <label className="text-sm font-medium" htmlFor="filter-tag">
+                      Tag
+                    </label>
                     <Select
                       value={filterTag}
                       onValueChange={handleTagFilterChange}
                     >
-                      <SelectTrigger className="w-full mt-1">
+                      <SelectTrigger className="w-full mt-1" id="filter-tag">
                         <SelectValue placeholder="Filter by Tag" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1752,9 +1756,11 @@ export default function PhotosPage() {
                 </h4>
                 <div className="space-y-2">
                   <div>
-                    <label className="text-sm font-medium">Sort by</label>
+                    <label className="text-sm font-medium" htmlFor="sort-by">
+                      Sort by
+                    </label>
                     <Select value={sortBy} onValueChange={handleSortByChange}>
-                      <SelectTrigger className="w-full mt-1">
+                      <SelectTrigger className="w-full mt-1" id="sort-by">
                         <SelectValue placeholder="Sort by" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1766,7 +1772,10 @@ export default function PhotosPage() {
                     </Select>
                   </div>
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">
+                    <label
+                      className="text-sm font-medium"
+                      htmlFor="sort-direction"
+                    >
                       Sort Direction
                     </label>
                     <Button
@@ -1774,6 +1783,7 @@ export default function PhotosPage() {
                       size="sm"
                       onClick={toggleSortDir}
                       className="h-8"
+                      id="sort-direction"
                     >
                       {sortDir === "asc" ? (
                         <>
@@ -1789,12 +1799,15 @@ export default function PhotosPage() {
                     </Button>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">View Mode</label>
+                    <label className="text-sm font-medium" htmlFor="view-mode">
+                      View Mode
+                    </label>
                     <ToggleGroup
                       type="single"
                       value={viewMode}
                       onValueChange={handleViewModeChange}
                       className="w-full mt-1 justify-start"
+                      id="view-mode"
                     >
                       <ToggleGroupItem
                         value="tile"
@@ -2176,13 +2189,21 @@ function ListView({
           const isFocused = index === focusedIndex;
 
           return (
+            // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
             <div
               key={photo.id}
+              role="button"
+              tabIndex={-1}
               data-index={index} // For keyboard navigation targeting
-              tabIndex={-1} // Make it programmatically focusable
               className={`flex items-center px-4 py-2 hover:bg-muted/50 cursor-pointer outline-none ${isFocused ? "ring-2 ring-ring ring-offset-2 ring-offset-background bg-muted/50" : ""}`}
               onClick={() => openViewDialog(photo)}
               onDoubleClick={() => onEditClick(photo)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  openViewDialog(photo);
+                }
+              }}
             >
               {/* Thumbnail */}
               <div className="w-16 h-12 flex-shrink-0 mr-4 bg-muted rounded overflow-hidden relative">
@@ -2323,14 +2344,15 @@ function ListView({
                       <Trash2 className="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
-                </DropdownMenu>
+  </DropdownMenu>
               </div>
             </div>
-          );
-        })}
+          )
+}
+)}
       </div>
     </div>
-  );
+  )
 }
 
 // --- 4. Gallery View ---
@@ -2418,7 +2440,9 @@ function GalleryView({
   const thumbIndices = getThumbIndices();
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-close overlay, keyboard navigation handled by parent
     <div
+      role="presentation"
       className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4"
       onClick={onClose}
       onTouchStart={handleTouchStart}
@@ -2467,7 +2491,9 @@ function GalleryView({
       </div>
 
       {/* Main Image Area */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler only stops propagation to backdrop */}
       <div
+        role="presentation"
         className="relative flex-1 flex items-center justify-center w-full max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-150px)]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -2516,7 +2542,9 @@ function GalleryView({
       </div>
 
       {/* Info Overlay & Thumbnail Strip */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler only stops propagation to backdrop */}
       <div
+        role="presentation"
         className="w-full max-w-4xl mt-2 md:mt-4 text-center text-white/80 px-2"
         onClick={(e) => e.stopPropagation()}
       >
@@ -2533,12 +2561,22 @@ function GalleryView({
             {thumbIndices.map((idx) => {
               const thumbPhoto = photos[idx];
               return (
+                // biome-ignore lint/a11y/useSemanticElements: thumbnail with image content not suited for button element
                 <div
                   key={thumbPhoto.id}
+                  role="button"
+                  tabIndex={0}
                   className={`w-12 h-12 md:w-16 md:h-16 rounded overflow-hidden cursor-pointer flex-shrink-0 bg-black/50 touch-manipulation ${idx === currentIndex ? "ring-2 ring-white" : "opacity-60 hover:opacity-100"}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onNavigateToIndex(idx); // Call the new prop
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onNavigateToIndex(idx);
+                    }
                   }}
                 >
                   {thumbPhoto.thumbnailUrl ? (

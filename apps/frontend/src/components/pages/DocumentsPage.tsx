@@ -3,7 +3,6 @@ import {
   ArrowDown,
   ArrowUp,
   CalendarDays,
-  CheckCircle2,
   Download,
   Edit,
   File as FileIconGeneric, // Renamed generic File icon
@@ -18,7 +17,8 @@ import {
   Trash2,
   UploadCloud, // UI Icons
   X,
-  XCircle, // Upload status icons
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import React, {
@@ -327,7 +327,7 @@ export default function DocumentsPage() {
   // Mobile filter dialog state
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
 
-  const docsContainerRef = useRef<HTMLDivElement>(null); // Ref for keyboard nav container
+  const docsContainerRef = useRef<HTMLElement>(null); // Ref for keyboard nav container
 
   // SSE is now connected for real-time query invalidation when processing completes
 
@@ -994,8 +994,9 @@ export default function DocumentsPage() {
 
     // Conditionally render Tile or List view
     return (
-      <div
+      <section
         ref={docsContainerRef}
+        aria-label="Documents navigation"
         onKeyDown={handleKeyDown} // Attach keydown listener here
         className="outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md" // Show focus outline on container when navigated to
       >
@@ -1024,7 +1025,7 @@ export default function DocumentsPage() {
             onChatClick={handleChatClick}
           />
         )}
-      </div>
+      </section>
     );
   };
 
@@ -1060,9 +1061,11 @@ export default function DocumentsPage() {
 
             {/* Tag Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tag</label>
+              <label className="text-sm font-medium" htmlFor="filter-tag">
+                Tag
+              </label>
               <Select value={filterTag} onValueChange={handleTagFilterChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="filter-tag">
                   <SelectValue placeholder="Filter by Tag" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1085,9 +1088,11 @@ export default function DocumentsPage() {
 
             {/* Sort By */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort By</label>
+              <label className="text-sm font-medium" htmlFor="sort-by">
+                Sort By
+              </label>
               <Select value={sortBy} onValueChange={handleSortByChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="sort-by">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1100,11 +1105,14 @@ export default function DocumentsPage() {
 
             {/* Sort Direction */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort Direction</label>
+              <label className="text-sm font-medium" htmlFor="sort-direction">
+                Sort Direction
+              </label>
               <Button
                 variant="outline"
                 onClick={toggleSortDir}
                 className="w-full justify-start"
+                id="sort-direction"
               >
                 {sortDir === "asc" ? (
                   <>
@@ -1122,12 +1130,15 @@ export default function DocumentsPage() {
 
             {/* View Mode */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">View Mode</label>
+              <label className="text-sm font-medium" htmlFor="view-mode">
+                View Mode
+              </label>
               <ToggleGroup
                 type="single"
                 value={viewMode}
                 onValueChange={handleViewModeChange}
                 className="w-full justify-start"
+                id="view-mode"
               >
                 <ToggleGroupItem
                   value="tile"
@@ -1232,6 +1243,7 @@ export default function DocumentsPage() {
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={clearSearch}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
                     title="Clear search"
@@ -2082,13 +2094,21 @@ function ListView({
           const isFocused = index === focusedIndex;
 
           return (
+            // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
             <div
               key={doc.id}
+              role="button"
+              tabIndex={-1}
               data-index={index} // For keyboard navigation targeting
-              tabIndex={-1} // Make it programmatically focusable
               className={`flex items-center px-4 py-2.5 hover:bg-muted/50 cursor-pointer outline-none ${isFocused ? "ring-2 ring-ring ring-offset-0 bg-muted/50" : ""}`} // Offset 0 for list view looks better
               onClick={() => onDocumentClick(doc)}
               onDoubleClick={() => onEditClick(doc)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onDocumentClick(doc);
+                }
+              }}
             >
               {/* Icon/Thumbnail */}
               <div className="w-10 flex-shrink-0 mr-3 flex items-center justify-center">
