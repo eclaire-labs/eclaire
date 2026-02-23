@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/frontend-api";
 
 export interface ModelCapabilities {
@@ -28,7 +28,7 @@ export function useModelCapabilities(): UseModelCapabilitiesReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchModelCapabilities = async () => {
+  const fetchModelCapabilities = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -51,7 +51,7 @@ export function useModelCapabilities(): UseModelCapabilitiesReturn {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchModelCapabilities();

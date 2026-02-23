@@ -808,6 +808,7 @@ export default function PhotosPage() {
   });
 
   // --- Keyboard Navigation ---
+  // biome-ignore lint/correctness/useExhaustiveDependencies: handler functions are not wrapped in useCallback
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       const items = sortedAndFilteredPhotos;
@@ -892,10 +893,11 @@ export default function PhotosPage() {
         itemElement?.focus();
       }
     },
-    [focusedIndex, sortedAndFilteredPhotos, viewMode, openGalleryView],
+    [focusedIndex, sortedAndFilteredPhotos, viewMode],
   );
 
   // Effect for gallery keyboard navigation
+  // biome-ignore lint/correctness/useExhaustiveDependencies: handler functions are not wrapped in useCallback
   useEffect(() => {
     const handleGalleryKeyDown = (event: KeyboardEvent) => {
       if (viewMode !== "gallery" || galleryIndex === null) return;
@@ -934,15 +936,7 @@ export default function PhotosPage() {
     return () => {
       window.removeEventListener("keydown", handleGalleryKeyDown);
     };
-  }, [
-    viewMode,
-    galleryIndex,
-    sortedAndFilteredPhotos,
-    navigateGallery,
-    closeGalleryView,
-    openEditDialog,
-    openConfirmDeleteDialog,
-  ]);
+  }, [viewMode, galleryIndex, sortedAndFilteredPhotos]);
 
   // --- Render Logic ---
 
@@ -2375,19 +2369,19 @@ function GalleryView({
   onDelete,
   onNavigateToIndex,
 }: GalleryViewProps) {
-  const currentPhoto = photos[currentIndex];
-  if (!currentPhoto) return null; // Should not happen if index is valid
-
-  // Prefer full image, fall back to thumbnail
-  const imgSrc = currentPhoto.imageUrl || currentPhoto.thumbnailUrl;
-
-  // Touch/swipe navigation state
+  // Touch/swipe navigation state (must be before early return per Rules of Hooks)
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(
     null,
   );
   const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(
     null,
   );
+
+  const currentPhoto = photos[currentIndex];
+  if (!currentPhoto) return null; // Should not happen if index is valid
+
+  // Prefer full image, fall back to thumbnail
+  const imgSrc = currentPhoto.imageUrl || currentPhoto.thumbnailUrl;
 
   // Handle touch events for swipe navigation
   const handleTouchStart = (e: React.TouchEvent) => {

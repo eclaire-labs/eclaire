@@ -59,11 +59,11 @@ export function FileUpload() {
     return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
-  const generateFileId = () =>
-    `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
   const addFiles = useCallback(
     (newFiles: File[], basePath = "") => {
+      const generateFileId = () =>
+        `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
       const fileItems: FileItem[] = newFiles.map((file) => ({
         file,
         status: "pending" as const,
@@ -73,7 +73,7 @@ export function FileUpload() {
 
       setFiles((prev) => [...prev, ...fileItems]);
     },
-    [generateFileId],
+    [],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -302,6 +302,7 @@ export function FileUpload() {
       {/* Upload Area */}
       <Card>
         <CardContent className="p-0">
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop target zone with button triggers inside */}
           <div
             ref={uploadAreaRef}
             onDragOver={handleDragOver}

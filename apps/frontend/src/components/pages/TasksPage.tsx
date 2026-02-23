@@ -413,9 +413,9 @@ export default function TasksPage() {
   }, [error, toast]);
 
   // Fetch users for assignee dropdown
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchUsers defined after hook
   useEffect(() => {
     fetchUsers();
-    // biome-ignore lint/correctness/useExhaustiveDependencies: fetchUsers defined after hook
   }, []);
 
   // Fetch users for assignee dropdown
@@ -1215,12 +1215,14 @@ export default function TasksPage() {
 
             {/* Status Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium" htmlFor="filter-status">
+                Status
+              </label>
               <Select
                 value={filterStatus}
                 onValueChange={(v) => setFilterStatus(v as TaskStatus | "all")}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="filter-status">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1234,9 +1236,11 @@ export default function TasksPage() {
 
             {/* Assignee Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Assignee</label>
+              <label className="text-sm font-medium" htmlFor="filter-assignee">
+                Assignee
+              </label>
               <Select value={filterAssignee} onValueChange={setFilterAssignee}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="filter-assignee">
                   <SelectValue placeholder="All Assignees" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1299,9 +1303,11 @@ export default function TasksPage() {
 
             {/* Tag Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tag</label>
+              <label className="text-sm font-medium" htmlFor="filter-tag">
+                Tag
+              </label>
               <Select value={filterTag} onValueChange={setFilterTag}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="filter-tag">
                   <SelectValue placeholder="All Tags" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1324,9 +1330,11 @@ export default function TasksPage() {
 
             {/* Sort By */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort By</label>
+              <label className="text-sm font-medium" htmlFor="sort-by">
+                Sort By
+              </label>
               <Select value={sortBy} onValueChange={handleSortByChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="sort-by">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1340,11 +1348,14 @@ export default function TasksPage() {
 
             {/* Sort Direction */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort Direction</label>
+              <label className="text-sm font-medium" htmlFor="sort-direction">
+                Sort Direction
+              </label>
               <Button
                 variant="outline"
                 onClick={toggleSortDir}
                 className="w-full justify-start"
+                id="sort-direction"
               >
                 {sortDir === "asc" ? (
                   <>
@@ -1362,12 +1373,15 @@ export default function TasksPage() {
 
             {/* View Mode */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">View Mode</label>
+              <label className="text-sm font-medium" htmlFor="view-mode">
+                View Mode
+              </label>
               <ToggleGroup
                 type="single"
                 value={viewMode}
                 onValueChange={handleViewModeChange}
                 className="w-full justify-start"
+                id="view-mode"
               >
                 <ToggleGroupItem
                   value="tile"
@@ -1480,6 +1494,7 @@ export default function TasksPage() {
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={clearSearch}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
                 title="Clear search"

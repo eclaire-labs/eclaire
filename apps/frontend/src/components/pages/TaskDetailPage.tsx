@@ -131,9 +131,9 @@ export function TaskDetailClient() {
     }
   }, [task, isEditing]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchUsers defined after hook
   useEffect(() => {
     fetchUsers();
-    // biome-ignore lint/correctness/useExhaustiveDependencies: fetchUsers defined after hook
   }, []);
 
   const fetchUsers = async () => {

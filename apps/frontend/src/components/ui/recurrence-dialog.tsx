@@ -81,6 +81,7 @@ export function RecurrenceDialog({
   const [runImmediately, setRunImmediately] = useState(false);
 
   // Initialize form state from value
+  // biome-ignore lint/correctness/useExhaustiveDependencies: helper functions defined after hook
   useEffect(() => {
     if (value.isRecurring && value.cronExpression) {
       // Parse existing cron expression to determine pattern
@@ -105,7 +106,6 @@ export function RecurrenceDialog({
     );
     setLimit(value.recurrenceLimit);
     setRunImmediately(value.runImmediately);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: helper functions defined after hook
   }, [value]);
 
   const formatDateForInput = (isoString: string): string => {

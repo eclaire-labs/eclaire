@@ -824,6 +824,7 @@ export default function DocumentsPage() {
   });
 
   // --- Keyboard Navigation ---
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dialog handlers are not wrapped in useCallback
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       const items = sortedAndFilteredDocuments;
@@ -932,14 +933,7 @@ export default function DocumentsPage() {
         (event.target as HTMLElement).blur();
       }
     },
-    [
-      focusedIndex,
-      sortedAndFilteredDocuments,
-      viewMode,
-      openViewDialog,
-      openEditDialog,
-      openConfirmDeleteDialog,
-    ],
+    [focusedIndex, sortedAndFilteredDocuments, viewMode],
   );
 
   // --- Render Logic ---

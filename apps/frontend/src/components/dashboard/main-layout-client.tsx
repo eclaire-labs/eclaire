@@ -393,9 +393,9 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     }
   }, [preAttachedAssets, assistantOpen, currentConversation]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -1135,7 +1135,10 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
                   {(item as any).isDialog ? (
                     <FeedbackDialog
                       trigger={
-                        <button className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-[hsl(var(--hover-bg))] w-full text-left">
+                        <button
+                          type="button"
+                          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-[hsl(var(--hover-bg))] w-full text-left"
+                        >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
                         </button>
@@ -1180,6 +1183,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
             style={{ width: assistantWidth }}
           >
             {/* Resize Handle - spans full height with higher z-index */}
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: resize handle uses mouse drag, not a clickable interactive element */}
             <div
               className={`absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/20 ${
                 isResizing ? "bg-primary/40" : ""

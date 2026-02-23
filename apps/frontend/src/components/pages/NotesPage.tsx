@@ -196,9 +196,11 @@ const FilterSortDialog = React.memo(
 
             {/* Tag Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tag</label>
+              <label className="text-sm font-medium" htmlFor="filter-tag">
+                Tag
+              </label>
               <Select value={filterTag} onValueChange={onTagFilterChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="filter-tag">
                   <SelectValue placeholder="Filter by Tag" />
                 </SelectTrigger>
                 <SelectContent>
@@ -221,9 +223,11 @@ const FilterSortDialog = React.memo(
 
             {/* Sort By */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort By</label>
+              <label className="text-sm font-medium" htmlFor="sort-by">
+                Sort By
+              </label>
               <Select value={sortBy} onValueChange={onSortByChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" id="sort-by">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -236,11 +240,14 @@ const FilterSortDialog = React.memo(
 
             {/* Sort Direction */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort Direction</label>
+              <label className="text-sm font-medium" htmlFor="sort-direction">
+                Sort Direction
+              </label>
               <Button
                 variant="outline"
                 onClick={onToggleSortDir}
                 className="w-full justify-start"
+                id="sort-direction"
               >
                 {sortDir === "asc" ? (
                   <>
@@ -258,12 +265,15 @@ const FilterSortDialog = React.memo(
 
             {/* View Mode */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">View Mode</label>
+              <label className="text-sm font-medium" htmlFor="view-mode">
+                View Mode
+              </label>
               <ToggleGroup
                 type="single"
                 value={viewMode}
                 onValueChange={onViewModeChange}
                 className="w-full justify-start"
+                id="view-mode"
               >
                 <ToggleGroupItem
                   value="tile"
@@ -374,7 +384,7 @@ export default function NotesPage() {
   // Mobile filter dialog state
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
 
-  const notesContainerRef = useRef<HTMLDivElement>(null);
+  const notesContainerRef = useRef<HTMLElement>(null);
 
   // Get unique tags from all entries
   const allTags = useMemo(
@@ -955,6 +965,7 @@ export default function NotesPage() {
       },
     });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: handlers are not wrapped in useCallback
   const renderContent = useMemo(() => {
     if (isLoading) {
       return (
@@ -992,10 +1003,9 @@ export default function NotesPage() {
     }
 
     return (
-      <div
+      <section
         ref={notesContainerRef}
         onKeyDown={handleKeyDown}
-        role="region"
         aria-label="Notes navigation"
         className="outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
       >
@@ -1024,7 +1034,7 @@ export default function NotesPage() {
             onChatClick={handleChatClick}
           />
         )}
-      </div>
+      </section>
     );
   }, [
     isLoading,
@@ -1037,9 +1047,6 @@ export default function NotesPage() {
     handleEntryClick,
     openEditDialog,
     openDeleteDialog,
-    handlePinToggle,
-    handleFlagColorChange,
-    handleChatClick,
   ]);
 
   // Memoize helper functions
@@ -1138,6 +1145,7 @@ export default function NotesPage() {
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={clearSearch}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
                     title="Clear search"
@@ -1885,10 +1893,12 @@ function ListView({
           const contentLength = `${(entry.content || "").length} chars`;
 
           return (
+            // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
             <div
               key={entry.id}
-              data-index={index}
+              role="button"
               tabIndex={-1}
+              data-index={index}
               className={`flex items-center px-4 py-2.5 hover:bg-muted/50 cursor-pointer outline-none ${isFocused ? "ring-2 ring-ring ring-offset-0 bg-muted/50" : ""}`}
               onClick={() => onEntryClick(entry)}
               onDoubleClick={() => onEditClick(entry)}
@@ -1958,7 +1968,9 @@ function ListView({
                 )}
               </div>
               {/* Pin/Flag Controls */}
+              {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler only stops propagation to parent row */}
               <div
+                role="presentation"
                 className="w-16 flex-shrink-0 mr-3 flex items-center justify-center"
                 onClick={(e) => e.stopPropagation()}
               >

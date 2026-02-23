@@ -93,11 +93,11 @@ const ConversationHistoryDialog = ({
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadConversations defined after hook
   useEffect(() => {
     if (open) {
       loadConversations();
     }
-    // biome-ignore lint/correctness/useExhaustiveDependencies: loadConversations defined after hook
   }, [open]);
 
   const loadConversations = async () => {
@@ -156,8 +156,11 @@ const ConversationHistoryDialog = ({
             <ScrollArea className="h-full">
               <div className="space-y-2 pr-4">
                 {conversations.map((conversation) => (
+                  // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
                   <div
                     key={conversation.id}
+                    role="button"
+                    tabIndex={0}
                     className={`p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors ${
                       conversation.id === currentConversationId
                         ? "bg-muted border-primary"
@@ -166,6 +169,13 @@ const ConversationHistoryDialog = ({
                     onClick={() => {
                       onSelectConversation(conversation);
                       onOpenChange(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onSelectConversation(conversation);
+                        onOpenChange(false);
+                      }
                     }}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -216,8 +226,8 @@ const ConversationHistoryDialog = ({
           </div>
         )}
       </DialogContent>
-    </Dialog>
-  );
+  </Dialog>
+  )
 };
 
 // --- Helper Component: AssistantContent ---
