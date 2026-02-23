@@ -15,7 +15,9 @@
       "!**/dist",
       "!**/.next",
       "!**/data",
-      "!**/build"
+      "!**/build",
+      "!apps/frontend/public/sw.js",
+      "!apps/frontend/public/workbox-*.js"
     ]
   },
   "formatter": {
