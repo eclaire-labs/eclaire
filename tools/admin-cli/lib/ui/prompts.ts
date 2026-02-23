@@ -6,12 +6,7 @@ import type {
   ProviderConfig,
   ProviderPreset,
 } from "../types/index.js";
-import {
-  colors,
-  formatEngine,
-  formatProvider,
-  truncateString,
-} from "./colors.js";
+import { colors, formatProvider, truncateString } from "./colors.js";
 
 interface ModelWithId {
   id: string;

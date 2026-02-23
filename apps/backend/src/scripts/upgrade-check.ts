@@ -90,11 +90,15 @@ async function main() {
     case "blocked-upgrade":
       if (!quiet) {
         console.log("");
-        console.log("═══════════════════════════════════════════════════════════");
+        console.log(
+          "═══════════════════════════════════════════════════════════",
+        );
         console.log("  Upgrade from prior versions is not supported.");
         console.log("");
         console.log(`  ${result.message.split("\n").join("\n  ")}`);
-        console.log("═══════════════════════════════════════════════════════════");
+        console.log(
+          "═══════════════════════════════════════════════════════════",
+        );
         console.log("");
       }
       process.exit(5);

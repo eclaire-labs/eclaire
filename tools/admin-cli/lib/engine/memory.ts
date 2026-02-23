@@ -77,7 +77,7 @@ export interface MemoryCheckResult {
 
 // Constants
 const COMPUTE_BUFFER_OVERHEAD = 500 * 1024 * 1024; // 500 MB
-const BASE_KV_CACHE_7B_32K = 3 * 1024 * 1024 * 1024; // ~3 GB for 7B model at 32K context
+const _BASE_KV_CACHE_7B_32K = 3 * 1024 * 1024 * 1024; // ~3 GB for 7B model at 32K context
 const VISION_BUFFER_MIN = 256 * 1024 * 1024; // 256 MB minimum vision runtime buffer
 const VISION_BUFFER_RATIO = 0.2; // 20% of mmproj size for runtime buffers
 

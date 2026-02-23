@@ -5,7 +5,7 @@
  * notifications to waiting workers.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { JobWaitlistInterface } from "../../app/types.js";
 import { createJobWaitlist } from "../../app/waitlist.js";
 import { createTestLogger, sleep } from "../testkit/index.js";
@@ -226,7 +226,7 @@ describe("G1-G3: Waitlist", () => {
     });
 
     it("should support scheduled wakeups", async () => {
-      const wakeupCalled = false;
+      const _wakeupCalled = false;
 
       const waitlistWithScheduler = createJobWaitlist({
         logger,

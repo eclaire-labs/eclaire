@@ -679,7 +679,7 @@ async function fetchHuggingFaceModel(url: string): Promise<ModelInfo> {
               modelInfo.modelArchitecture.maxPositionEmbeddings;
           }
         }
-      } catch (filesError) {
+      } catch (_filesError) {
         // If we can't fetch files, continue without quantization info
         console.warn(`Could not fetch file list for ${modelId}`);
       }

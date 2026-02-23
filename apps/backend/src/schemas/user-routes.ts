@@ -1,8 +1,5 @@
 import { resolver } from "hono-openapi";
-import {
-  ErrorResponseSchema,
-  UnauthorizedSchema,
-} from "./all-responses.js";
+import { ErrorResponseSchema, UnauthorizedSchema } from "./all-responses.js";
 import { DeleteAllUserDataSchema, UpdateProfileSchema } from "./user-params.js";
 import {
   DeleteAllUserDataResponseSchema,

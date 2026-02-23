@@ -4,7 +4,6 @@
  * Starts the llama-cpp engine with models from selection.json.
  */
 
-import { parsePort } from "@eclaire/ai";
 import ora from "ora";
 import {
   checkMemoryRequirements,
@@ -15,7 +14,6 @@ import {
 import {
   getEngineSettings,
   getServerStatus,
-  LLAMA_CPP_ENGINE_ID,
   resolveSelectionEngine,
   startLlamaServer,
 } from "../../engine/process.js";

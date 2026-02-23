@@ -1,8 +1,6 @@
 // schemas/prompt-stream-routes.ts
 import { resolver } from "hono-openapi";
-import {
-  UnauthorizedSchema,
-} from "./all-responses.js";
+import { UnauthorizedSchema } from "./all-responses.js";
 import {
   AIAPIErrorSchema,
   AIConfigErrorSchema,

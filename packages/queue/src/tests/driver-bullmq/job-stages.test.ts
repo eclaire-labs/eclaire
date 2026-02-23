@@ -13,7 +13,6 @@ import type { JobStage, QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   createDeferred,
-  eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
 
@@ -39,7 +38,7 @@ describe("BullMQ: Job Stages", () => {
     let capturedStages: JobStage[] | undefined;
     const done = createDeferred<void>();
 
-    const jobId = await client.enqueue("test-queue", { value: "test" });
+    const _jobId = await client.enqueue("test-queue", { value: "test" });
 
     worker = harness.createWorker("test-queue", async (ctx) => {
       await ctx.initStages(["validation", "processing", "finalize"]);
@@ -265,37 +264,34 @@ describe("BullMQ: Job Stages", () => {
 
     await client.enqueue("test-queue", { filename: "photo.jpg" });
 
-    worker = harness.createWorker(
-      "test-queue",
-      async (ctx) => {
-        await ctx.initStages(["classify"]);
-        await ctx.startStage("classify");
+    worker = harness.createWorker("test-queue", async (ctx) => {
+      await ctx.initStages(["classify"]);
+      await ctx.startStage("classify");
 
-        // Simulate classification based on data
-        const filename = (ctx.job.data as { filename: string }).filename;
-        let stages: string[];
+      // Simulate classification based on data
+      const filename = (ctx.job.data as { filename: string }).filename;
+      let stages: string[];
 
-        if (filename.endsWith(".jpg")) {
-          stages = ["resize", "optimize", "upload"];
-        } else if (filename.endsWith(".pdf")) {
-          stages = ["parse", "index"];
-        } else {
-          stages = ["transcode", "thumbnail", "upload"];
-        }
+      if (filename.endsWith(".jpg")) {
+        stages = ["resize", "optimize", "upload"];
+      } else if (filename.endsWith(".pdf")) {
+        stages = ["parse", "index"];
+      } else {
+        stages = ["transcode", "thumbnail", "upload"];
+      }
 
-        // Add dynamic stages based on classification
-        await ctx.addStages(stages);
-        await ctx.completeStage("classify", { type: "image" });
+      // Add dynamic stages based on classification
+      await ctx.addStages(stages);
+      await ctx.completeStage("classify", { type: "image" });
 
-        // Process all dynamic stages
-        for (const stageName of stages) {
-          await ctx.startStage(stageName);
-          processedStages.push(stageName);
-          await ctx.completeStage(stageName);
-        }
-        done.resolve();
-      },
-    );
+      // Process all dynamic stages
+      for (const stageName of stages) {
+        await ctx.startStage(stageName);
+        processedStages.push(stageName);
+        await ctx.completeStage(stageName);
+      }
+      done.resolve();
+    });
     await worker.start();
 
     await done.promise;

@@ -32,7 +32,7 @@ export function clearLoggerFactory(): void {
 /**
  * Console fallback logger for when no factory is configured
  */
-const consoleLogger: AILogger = {
+const _consoleLogger: AILogger = {
   debug: (obj, msg) => console.debug(`[AI] ${msg || ""}`, obj),
   info: (obj, msg) => console.info(`[AI] ${msg || ""}`, obj),
   warn: (obj, msg) => console.warn(`[AI] ${msg || ""}`, obj),

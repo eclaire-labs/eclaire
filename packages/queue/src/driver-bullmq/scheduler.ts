@@ -5,7 +5,7 @@
  */
 
 import { Queue } from "bullmq";
-import type { QueueLogger, ScheduleConfig, Scheduler } from "../core/types.js";
+import type { ScheduleConfig, Scheduler } from "../core/types.js";
 import { closeRedisConnection, createRedisConnection } from "./connection.js";
 import type { BullMQSchedulerConfig } from "./types.js";
 

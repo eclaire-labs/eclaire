@@ -17,11 +17,11 @@ import { Readable } from "node:stream";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 
-const { photos, photosTags, tags, users } = schema;
+const { photos, photosTags, tags } = schema;
 
 import { generateHistoryId, generatePhotoId } from "@eclaire/core";
 import { createChildLogger } from "../logger.js";
-import { getQueueAdapter, } from "../queue/index.js";
+import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
 import { recordHistory } from "./history.js"; // Assuming this service exists and is configured
 import { createOrUpdateProcessingJob } from "./processing-status.js";

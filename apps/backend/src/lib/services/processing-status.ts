@@ -1,7 +1,7 @@
 import { generateJobId } from "@eclaire/queue/core";
 import type { Queue } from "bullmq";
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
-import { db, queueJobs, schema, txManager } from "../../db/index.js";
+import { and, desc, eq, or, sql } from "drizzle-orm";
+import { db, queueJobs, schema } from "../../db/index.js";
 
 const { bookmarks, documents, notes, photos, tasks } = schema;
 
@@ -1205,7 +1205,7 @@ async function resetProcessingJobState(
 /**
  * Gets the appropriate queue for an asset type
  */
-function getQueueForAssetType(assetType: AssetType): Queue | null {
+function _getQueueForAssetType(assetType: AssetType): Queue | null {
   switch (assetType) {
     case "photos":
       return getQueue(QueueNames.IMAGE_PROCESSING);
@@ -1296,7 +1296,7 @@ async function retryPhotoProcessing(
 /**
  * Queues a retry job based on asset type
  */
-async function queueRetryJob(
+async function _queueRetryJob(
   assetType: AssetType,
   assetId: string,
   userId: string,

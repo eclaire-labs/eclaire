@@ -24,7 +24,7 @@ interface ValidationResult {
   issues: ValidationIssue[];
 }
 
-export async function validateCommand(options: CommandOptions): Promise<void> {
+export async function validateCommand(_options: CommandOptions): Promise<void> {
   try {
     console.log(colors.header(`${icons.gear} Validating AI Configuration\n`));
 

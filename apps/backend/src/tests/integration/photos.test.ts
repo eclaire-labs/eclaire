@@ -11,7 +11,6 @@ import {
   hasSameElements,
   TEST_API_KEY,
 } from "../utils/test-helpers.js";
-import { Photo } from "../utils/types.js";
 
 // Create authenticated fetch function with X-API-Key header
 const loggedFetch = async (url: string, options: RequestInit = {}) => {

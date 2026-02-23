@@ -3,11 +3,9 @@
  */
 
 import { type JobsOptions, Queue } from "bullmq";
-import type { Redis } from "ioredis";
 import { JobAlreadyActiveError } from "../core/errors.js";
 import { initializeStages } from "../core/progress.js";
 import type {
-  BackoffStrategy,
   Job,
   JobOptions,
   QueueClient,

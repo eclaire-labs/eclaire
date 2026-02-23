@@ -70,7 +70,9 @@ export const smartLogger = () => {
       query: url.search || undefined,
       userAgent: c.req.header("user-agent"),
       contentType,
-      contentLength: contentLength ? Number.parseInt(contentLength, 10) : undefined,
+      contentLength: contentLength
+        ? Number.parseInt(contentLength, 10)
+        : undefined,
       ip:
         c.req.header("x-forwarded-for") ||
         c.req.header("x-real-ip") ||

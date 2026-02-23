@@ -16,7 +16,7 @@ import type {
   ListChannelsResponse,
   UpdateChannelResponse,
 } from "../../schemas/channels-responses.js";
-import { formatRequiredTimestamp, } from "../db-helpers.js";
+import { formatRequiredTimestamp } from "../db-helpers.js";
 import { encrypt } from "../encryption.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";

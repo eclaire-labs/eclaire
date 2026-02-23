@@ -17,11 +17,7 @@ import {
   stepCountIs,
   ToolLoopAgent,
 } from "../../agent/index.js";
-import type {
-  AgentContext,
-  AgentToolDefinition,
-  AnyZodType,
-} from "../../agent/types.js";
+import type { AgentContext, AgentToolDefinition } from "../../agent/types.js";
 import type { ToolExecutionResult } from "../../tools/types.js";
 import {
   initIntegrationAI,

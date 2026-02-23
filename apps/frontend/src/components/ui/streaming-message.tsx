@@ -89,7 +89,13 @@ export function StreamingMessage({
         clearTimeout(typewriterTimeoutRef.current);
       }
     };
-  }, [content, enableTypewriter, typewriterSpeed, onContentUpdate, displayedContent.length]);
+  }, [
+    content,
+    enableTypewriter,
+    typewriterSpeed,
+    onContentUpdate,
+    displayedContent.length,
+  ]);
 
   // Show cursor when not complete or when typing
   const shouldShowCursor = showCursor && (!isComplete || showTypingCursor);

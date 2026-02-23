@@ -4,7 +4,7 @@
  * Tests for AI client initialization lifecycle and state management.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initAI, isAIInitialized, resetAI } from "../index.js";
 import { createMockLoggerFactory, getFixturesPath } from "./setup.js";
 

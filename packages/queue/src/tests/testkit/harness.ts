@@ -25,7 +25,7 @@ import {
   createDbWorker,
 } from "../../driver-db/index.js";
 import { TEST_TIMEOUTS } from "./config.js";
-import { createQueueTestDatabase, type QueueTestDatabase } from "./db-setup.js";
+import { createQueueTestDatabase } from "./db-setup.js";
 import type {
   HarnessCapabilities,
   QueueTestHarnessConfig,

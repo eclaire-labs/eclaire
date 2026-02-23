@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { toast } from "sonner";
-import { apiFetch, } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/frontend-api";
 import type { NoteEntry } from "@/types/note";
 
 // Transform backend note data to frontend format

@@ -122,7 +122,7 @@ describe.each(DB_TEST_CONFIGS)("A14: Job Context Methods ($label)", ({
   it("A14.2: ctx.log() and ctx.progress() don't throw", async () => {
     let logCalled = false;
     let progressCalled = false;
-    let jobCompleted = false;
+    let _jobCompleted = false;
 
     worker = createDbWorker(
       "test-queue",
@@ -137,7 +137,7 @@ describe.each(DB_TEST_CONFIGS)("A14: Job Context Methods ($label)", ({
         ctx.progress(100);
         progressCalled = true;
 
-        jobCompleted = true;
+        _jobCompleted = true;
       },
       {
         db: testDb.db,

@@ -222,7 +222,7 @@ describe("Tool Utilities", () => {
 
       const registry: ToolRegistry = {
         getExecutor:
-          (name: string) => async (args: Record<string, unknown>) => {
+          (name: string) => async (_args: Record<string, unknown>) => {
             executionOrder.push(name);
             await new Promise((resolve) => setTimeout(resolve, 10));
             return { success: true, content: `Result for ${name}` };

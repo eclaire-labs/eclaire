@@ -10,7 +10,6 @@ import type {
   ToolCallSummaryInput,
   ToolCallSummaryOutput,
   ToolExecutionResult,
-  ToolExecutor,
   ToolRegistry,
 } from "./types.js";
 

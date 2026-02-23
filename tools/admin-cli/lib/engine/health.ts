@@ -5,7 +5,6 @@
 import {
   getActiveModelIdForContext,
   getModelConfigById,
-  getProviderConfig,
   parsePort,
 } from "@eclaire/ai";
 import axios from "axios";
@@ -15,14 +14,8 @@ import * as os from "os";
 import { promisify } from "util";
 import type { DoctorCheck } from "../types/engines.js";
 import { estimateModelMemory } from "./memory.js";
-import { isEngineRunning, readPidFile } from "./paths.js";
-import {
-  getEngineSettings,
-  getServerStatus,
-  LLAMA_CPP_ENGINE_ID,
-  resolveSelectionEngine,
-} from "./process.js";
-import { detectVRAM, formatBytes } from "./vram.js";
+import { getServerStatus, resolveSelectionEngine } from "./process.js";
+import { detectVRAM } from "./vram.js";
 
 const execAsync = promisify(exec);
 

@@ -2,13 +2,9 @@
  * @eclaire/queue/transport-http - HTTP client for remote workers
  */
 
-import axios, { AxiosError, type AxiosInstance } from "axios";
-import type { QueueLogger, QueueStats } from "../core/types.js";
-import type {
-  HttpClientConfig,
-  HttpJobResponse,
-  HttpStatsResponse,
-} from "./types.js";
+import axios, { type AxiosInstance } from "axios";
+import type { QueueStats } from "../core/types.js";
+import type { HttpClientConfig, HttpJobResponse } from "./types.js";
 
 /**
  * Default configuration values

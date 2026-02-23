@@ -29,7 +29,7 @@ import {
   createWorkerId,
   sleep,
 } from "../core/utils.js";
-import { createHttpClient, type HttpQueueClient } from "./client.js";
+import { createHttpClient } from "./client.js";
 import type { HttpJobResponse, HttpPollerConfig } from "./types.js";
 
 /**

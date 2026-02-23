@@ -545,7 +545,7 @@ documentsRoutes.delete(
 
       // Parse the optional deleteStorage query parameter (defaults to true)
       const deleteStorageParam = c.req.query("deleteStorage");
-      const deleteStorage = deleteStorageParam !=="false";
+      const deleteStorage = deleteStorageParam !== "false";
 
       try {
         await deleteDocument(id, userId, deleteStorage);

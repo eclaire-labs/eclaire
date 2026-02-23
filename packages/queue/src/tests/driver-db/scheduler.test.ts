@@ -21,7 +21,6 @@ import {
   eventually,
   type QueueTestDatabase,
   sleep,
-  TEST_TIMEOUTS,
 } from "../testkit/index.js";
 
 describe.each(DB_TEST_CONFIGS)("D1, D2, D6: Scheduler ($label)", ({

@@ -415,7 +415,7 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
       const { queueSchedules, queueJobs } = testDb.schema;
 
       // Create schedule with immediately=true
-      const startTime = new Date();
+      const _startTime = new Date();
       await scheduler.upsert({
         key: "key-check",
         queue: "test-queue",

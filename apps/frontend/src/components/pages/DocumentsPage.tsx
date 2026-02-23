@@ -131,7 +131,8 @@ const ALLOWED_UPLOAD_TYPES = {
   "application/vnd.apple.numbers": [".numbers"],
   "application/vnd.apple.keynote": [".keynote"],
 };
-const _ALLOWED_UPLOAD_TYPES_STRING = Object.keys(ALLOWED_UPLOAD_TYPES).join(",");
+const _ALLOWED_UPLOAD_TYPES_STRING =
+  Object.keys(ALLOWED_UPLOAD_TYPES).join(",");
 
 // --- Helper Functions ---
 
@@ -353,7 +354,7 @@ export default function DocumentsPage() {
       const lowerSearch = searchQuery.toLowerCase();
       const matchesSearch =
         doc.title.toLowerCase().includes(lowerSearch) ||
-        (doc.description?.toLowerCase().includes(lowerSearch)) ||
+        doc.description?.toLowerCase().includes(lowerSearch) ||
         (doc.originalFilename || "").toLowerCase().includes(lowerSearch) ||
         (doc.extractedText || "").toLowerCase().includes(lowerSearch) || // ADD THIS LINE
         getDocumentTypeLabel(doc.mimeType)
@@ -392,7 +393,8 @@ export default function DocumentsPage() {
           const dateB = new Date(b.createdAt || 0).getTime();
           // Handle invalid dates gracefully
           compareResult =
-            (Number.isNaN(dateA) ? 0 : dateA) - (Number.isNaN(dateB) ? 0 : dateB);
+            (Number.isNaN(dateA) ? 0 : dateA) -
+            (Number.isNaN(dateB) ? 0 : dateB);
           // Secondary sort by title if dates are identical
           if (compareResult === 0) {
             compareResult = a.title
@@ -784,8 +786,10 @@ export default function DocumentsPage() {
         }
       }
     },
-    [toast, // Refresh the documents list to show the new upload
-          refresh],
+    [
+      toast, // Refresh the documents list to show the new upload
+      refresh,
+    ],
   ); // Added toast dependency
 
   const {
@@ -845,7 +849,8 @@ export default function DocumentsPage() {
           ? Number.parseInt(
               getComputedStyle(docsContainerRef.current!)
                 .gridTemplateColumns.split(" ")
-                .length.toString(), 10
+                .length.toString(),
+              10,
             ) || 3
           : 1;
 

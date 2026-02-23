@@ -163,7 +163,7 @@ describe.each(DB_TEST_CONFIGS)("A8-A10: Error Handling ($label)", ({
         },
       );
 
-      const beforeRetry = Date.now();
+      const _beforeRetry = Date.now();
       await worker.start();
 
       // Wait for first attempt to set retry_pending

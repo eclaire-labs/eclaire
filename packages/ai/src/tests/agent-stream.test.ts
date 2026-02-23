@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { createAgentContext } from "../agent/context.js";
-import { anyOf, noToolCalls, stepCountIs } from "../agent/stop-conditions.js";
+import { stepCountIs } from "../agent/stop-conditions.js";
 import { ToolLoopAgent } from "../agent/tool-loop-agent.js";
 import type {
   AgentContext,
@@ -26,7 +26,6 @@ import {
   sseFinishReason,
   sseReasoningDelta,
   sseToolCallDelta,
-  sseUsage,
 } from "./setup.js";
 
 describe("ToolLoopAgent Stream", () => {

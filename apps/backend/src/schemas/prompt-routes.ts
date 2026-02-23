@@ -1,10 +1,6 @@
 import { resolver } from "hono-openapi";
-import {
-  UnauthorizedSchema,
-} from "./all-responses.js";
-import {
-  PromptRequestSchema,
-} from "./prompt-params.js";
+import { UnauthorizedSchema } from "./all-responses.js";
+import { PromptRequestSchema } from "./prompt-params.js";
 import {
   AIAPIErrorSchema,
   AIConfigErrorSchema,

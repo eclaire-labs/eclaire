@@ -4,10 +4,7 @@
  * Handles loading and saving conversation messages for the agent.
  */
 
-import type {
-  AgentResult,
-  AIMessage,
-} from "@eclaire/ai";
+import type { AgentResult, AIMessage } from "@eclaire/ai";
 import { createChildLogger } from "../logger.js";
 import {
   type ConversationWithMessages,

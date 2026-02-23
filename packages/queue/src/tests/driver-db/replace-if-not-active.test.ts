@@ -14,14 +14,13 @@ import {
   isJobAlreadyActiveError,
   JobAlreadyActiveError,
 } from "../../core/errors.js";
-import type { Job, QueueClient, Worker } from "../../core/types.js";
+import type { QueueClient, Worker } from "../../core/types.js";
 import { createDbQueueClient, createDbWorker } from "../../driver-db/index.js";
 import {
   createDeferred,
   createQueueTestDatabase,
   createTestLogger,
   DB_TEST_CONFIGS,
-  type Deferred,
   eventually,
   type QueueTestDatabase,
   TEST_TIMEOUTS,

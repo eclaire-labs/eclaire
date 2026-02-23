@@ -3,9 +3,8 @@
  * Workers poll the backend API to fetch and process jobs
  */
 
-import type { Logger } from "@eclaire/logger";
 import axios from "axios";
-import type { AssetType, DatabaseJob, PollingConfig } from "./types.js";
+import type { DatabaseJob, PollingConfig } from "./types.js";
 
 const DEFAULT_WAIT_TIMEOUT = 30000; // 30 seconds - how long to wait for a job
 const DEFAULT_ERROR_RETRY_DELAY = 2000; // 2 seconds - delay after errors

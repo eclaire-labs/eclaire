@@ -59,8 +59,7 @@ export function MessageList({
   useEffect(() => {
     // Scroll to the bottom when messages or streaming state changes
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [
-  ]);
+  }, []);
 
   // The ScrollArea component is removed. The parent now handles scrolling.
   return (

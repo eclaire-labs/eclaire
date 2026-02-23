@@ -1,5 +1,4 @@
 import { getActiveModelsAsObjects, getModels } from "../../config/models.js";
-import { estimateModelMemory, formatMemorySize } from "../../engine/memory.js";
 import type { CommandOptions } from "../../types/index.js";
 import { colors, icons } from "../../ui/colors.js";
 import { createActiveModelsTable, createModelsTable } from "../../ui/tables.js";

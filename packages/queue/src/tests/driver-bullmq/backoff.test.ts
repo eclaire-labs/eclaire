@@ -47,7 +47,7 @@ describe("BullMQ: Backoff", () => {
         },
       );
 
-      worker = harness.createWorker("test-queue", async (ctx) => {
+      worker = harness.createWorker("test-queue", async (_ctx) => {
         attemptTimes.push(Date.now());
         if (attemptTimes.length < 3) {
           throw new RetryableError("Retry me");
@@ -96,7 +96,7 @@ describe("BullMQ: Backoff", () => {
         },
       );
 
-      worker = harness.createWorker("test-queue", async (ctx) => {
+      worker = harness.createWorker("test-queue", async (_ctx) => {
         attemptTimes.push(Date.now());
         if (attemptTimes.length < 3) {
           throw new RetryableError("Retry me");
@@ -144,7 +144,7 @@ describe("BullMQ: Backoff", () => {
         },
       );
 
-      worker = harness.createWorker("test-queue", async (ctx) => {
+      worker = harness.createWorker("test-queue", async (_ctx) => {
         attemptTimes.push(Date.now());
         if (attemptTimes.length < 3) {
           throw new RetryableError("Retry me");

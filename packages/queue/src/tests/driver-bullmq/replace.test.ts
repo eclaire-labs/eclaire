@@ -51,7 +51,7 @@ describe("BullMQ: Replace Semantics", () => {
 
     it("should replace pending (waiting) job with new data", async () => {
       // Create initial job
-      const jobId1 = await client.enqueue(
+      const _jobId1 = await client.enqueue(
         "test-queue",
         { value: 1 },
         { key: "replace-key" },

@@ -247,8 +247,7 @@ export async function processGitHubBookmark(
         allArtifacts.readmeStorageId = readmeKey;
 
         // Include README content in extracted text for better AI processing
-        allArtifacts.extractedText =
-          `${allArtifacts.extractedText || ""}\n\n${repoInfo.readmeContent}`;
+        allArtifacts.extractedText = `${allArtifacts.extractedText || ""}\n\n${repoInfo.readmeContent}`;
       }
     }
 

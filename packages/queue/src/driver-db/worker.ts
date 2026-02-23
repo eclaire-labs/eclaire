@@ -14,7 +14,6 @@ import {
 import type {
   Job,
   JobContext,
-  JobEventCallbacks,
   JobHandler,
   JobStage,
   Worker,

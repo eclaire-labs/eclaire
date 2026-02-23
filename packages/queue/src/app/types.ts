@@ -4,7 +4,6 @@
 
 import type { DbInstance, TransactionManager } from "@eclaire/db";
 import type { Logger } from "@eclaire/logger";
-import type { Redis } from "ioredis";
 
 // --- Job Data Types ---
 

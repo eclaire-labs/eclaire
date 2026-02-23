@@ -9,7 +9,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  createDeferred,
   eventually,
   type QueueTestHarness,
   sleep,
@@ -249,8 +248,8 @@ describe("BullMQ: Worker Concurrency Option", () => {
 
   describe("Error handling with concurrency", () => {
     it("should handle errors in concurrent jobs independently", async () => {
-      let successCount = 0;
-      let errorCount = 0;
+      let _successCount = 0;
+      let _errorCount = 0;
 
       // Create jobs - some will fail
       for (let i = 0; i < 10; i++) {
@@ -267,10 +266,10 @@ describe("BullMQ: Worker Concurrency Option", () => {
           const data = ctx.job.data as { id: number; shouldFail: boolean };
           await sleep(30);
           if (data.shouldFail) {
-            errorCount++;
+            _errorCount++;
             throw new Error("Intentional failure");
           }
-          successCount++;
+          _successCount++;
         },
         { concurrency: 3 },
       );

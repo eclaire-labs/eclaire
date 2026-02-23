@@ -8,7 +8,6 @@
 import {
   getModelConfigById,
   getProviderConfig,
-  isManaged,
   loadSelectionConfiguration,
   type ModelConfig,
   type ProviderConfig,
@@ -20,8 +19,6 @@ import * as fs from "fs";
 import {
   ensureDirectories,
   getLogFilePath,
-  getModelsDir,
-  getPidFilePath,
   isProcessRunning,
   readPidFile,
   removePidFile,

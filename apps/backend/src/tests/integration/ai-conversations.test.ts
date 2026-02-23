@@ -34,15 +34,6 @@ interface ModelConfigResponse {
   tags: string[];
 }
 
-interface ToolCallSummary {
-  functionName: string;
-  executionTimeMs: number;
-  success: boolean;
-  error?: string;
-  arguments?: Record<string, any>;
-  resultSummary?: string;
-}
-
 // Timeout for tests that involve AI assistant interactions
 const AI_TEST_TIMEOUT = 120000;
 
@@ -947,7 +938,7 @@ describe("AI Conversations Integration Tests", () => {
         });
 
         expect(promptResponse.status).toBe(200);
-        const promptResponseData = (await promptResponse.json()) as any;
+        const _promptResponseData = (await promptResponse.json()) as any;
 
         // Retrieve conversation
         const getResponse = await authenticatedFetch(

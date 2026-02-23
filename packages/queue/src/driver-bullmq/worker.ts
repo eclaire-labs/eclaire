@@ -26,13 +26,11 @@ import {
 import type {
   Job,
   JobContext,
-  JobEventCallbacks,
   JobHandler,
   JobStage,
   Worker,
   WorkerOptions,
 } from "../core/types.js";
-import { DEFAULT_BACKOFF } from "../core/utils.js";
 import { closeRedisConnection, createRedisConnection } from "./connection.js";
 import type { BullMQWorkerConfig } from "./types.js";
 

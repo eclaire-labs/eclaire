@@ -4,7 +4,7 @@
  * Tests for configuration loading, caching, and CRUD operations.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   clearConfigCaches,
   getActiveModelIdForContext,
@@ -18,12 +18,7 @@ import {
   loadSelectionConfiguration,
   resetAI,
 } from "../index.js";
-import {
-  createMockLoggerFactory,
-  createTempDir,
-  getFixturesPath,
-  writeTempJson,
-} from "./setup.js";
+import { createMockLoggerFactory, getFixturesPath } from "./setup.js";
 
 describe("Configuration", () => {
   const mockLoggerFactory = createMockLoggerFactory();

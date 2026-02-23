@@ -1,7 +1,5 @@
 import { resolver } from "hono-openapi";
-import {
-  UnauthorizedSchema,
-} from "./all-responses.js";
+import { UnauthorizedSchema } from "./all-responses.js";
 import {
   CreateConversationSchema,
   UpdateConversationSchema,

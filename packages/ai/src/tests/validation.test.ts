@@ -4,7 +4,7 @@
  * Tests for request requirements derivation and capability checking.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AICallOptions, AIMessage, ModelCapabilities } from "../types.js";
 import {
   CapabilityError,

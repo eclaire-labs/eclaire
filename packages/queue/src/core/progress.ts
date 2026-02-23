@@ -5,7 +5,7 @@
  * These are pure functions with no external dependencies.
  */
 
-import type { JobStage, JobStageStatus } from "./types.js";
+import type { JobStage } from "./types.js";
 
 /**
  * Create initial stages array from stage names

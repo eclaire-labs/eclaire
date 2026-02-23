@@ -8,21 +8,12 @@
  *   OPENROUTER_API_KEY=xxx pnpm --filter @eclaire/ai test:integration:openrouter
  */
 
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { callAI } from "../../index.js";
 import {
   createCalculatorTool,
   createMinimalPrompt,
   createToolTriggerPrompt,
-  getIntegrationConfig,
   initIntegrationAI,
   resetIntegrationAI,
   skipIfNoIntegration,

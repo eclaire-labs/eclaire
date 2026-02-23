@@ -20,7 +20,6 @@ import {
   markJobCompleted,
   markJobFailed,
 } from "../../driver-db/index.js";
-import type { ClaimedJob } from "../../driver-db/types.js";
 import {
   createQueueTestDatabase,
   createTestLogger,

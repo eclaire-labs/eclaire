@@ -4,7 +4,6 @@
 
 import type { Logger } from "@eclaire/logger";
 import { Queue } from "bullmq";
-import type { Redis } from "ioredis";
 import {
   closeRedisConnection,
   createRedisConnection,

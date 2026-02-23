@@ -8,9 +8,7 @@
  */
 
 import type { Logger } from "@eclaire/logger";
-import {
-  createRedisConnection,
-} from "@eclaire/queue";
+import { createRedisConnection } from "@eclaire/queue";
 import {
   createEventCallbacks,
   type ProcessingSSEEvent,

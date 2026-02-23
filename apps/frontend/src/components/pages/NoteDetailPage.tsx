@@ -19,7 +19,7 @@ import { useEffect, useState } from "react";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,

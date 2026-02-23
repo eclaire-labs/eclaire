@@ -103,7 +103,10 @@ export interface MockFetchInstance {
   queueResponse: (response: MockFetchResponse) => void;
   queueJsonResponse: (data: unknown, status?: number) => void;
   queueErrorResponse: (status: number, message: string) => void;
-  queueStreamResponse: (stream: ReadableStream<Uint8Array>, status?: number) => void;
+  queueStreamResponse: (
+    stream: ReadableStream<Uint8Array>,
+    status?: number,
+  ) => void;
   reset: () => void;
 }
 

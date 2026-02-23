@@ -7,7 +7,6 @@ import {
   isPermanentError,
   isRateLimitError,
   JobAlreadyActiveError,
-  PermanentError,
   type RateLimitError,
 } from "../core/errors.js";
 import {
@@ -27,7 +26,7 @@ import {
   DEFAULT_BACKOFF,
   generateJobId,
 } from "../core/utils.js";
-import type { ClaimedJob, DbQueueClientConfig } from "./types.js";
+import type { DbQueueClientConfig } from "./types.js";
 
 /**
  * Default configuration values

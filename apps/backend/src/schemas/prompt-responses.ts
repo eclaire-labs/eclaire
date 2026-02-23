@@ -1,6 +1,6 @@
 // schemas/prompt-responses.ts
 import z from "zod/v4";
-import { jsonValueSchema, } from "./common.js";
+import { jsonValueSchema } from "./common.js";
 
 // Tool call summary schema for user visibility
 export const ToolCallSummarySchema = z.object({

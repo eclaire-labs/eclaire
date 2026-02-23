@@ -20,11 +20,8 @@ import type {
 } from "../tools/types.js";
 import type { AIMessage, ToolCallResult } from "../types.js";
 import {
-  anyOf,
   defaultStopConditions,
   evaluateStopConditions,
-  noToolCalls,
-  stepCountIs,
 } from "./stop-conditions.js";
 import { executeAgentTool, toOpenAITools } from "./tool.js";
 import type {

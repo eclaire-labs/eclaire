@@ -76,11 +76,8 @@ export {
 export * from "./types.js";
 // Re-export waitlist (now local)
 export { createJobWaitlist, type WaitlistConfig } from "./waitlist.js";
-
 // --- Factory Functions ---
 
-import type { DbInstance } from "@eclaire/db";
-import type { Logger } from "@eclaire/logger";
 import { createBullMQAdapter as _createBullMQAdapter } from "./adapters/bullmq.js";
 import { createDatabaseAdapter as _createDatabaseAdapter } from "./adapters/database.js";
 // Import functions needed for factory (re-exports don't make them available locally)

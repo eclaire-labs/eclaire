@@ -13,7 +13,7 @@ import {
 
 describe.each(DB_TEST_CONFIGS)("$label - Schema Parity Tests", ({
   dbType,
-  label,
+  label: _label,
 }) => {
   let testDb: TestDatabase;
   let testUserId: string;

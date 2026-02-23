@@ -117,7 +117,7 @@ describe.each(DB_TEST_CONFIGS)("A16: Job Stages ($label)", ({ dbType }) => {
     expect(stageAfterStart?.progress).toBe(0);
 
     // Verify currentStage is set
-    const job = await client.getJob(jobId);
+    const _job = await client.getJob(jobId);
     // Note: currentStage is cleared after job completes, so we verify from captured state
     expect(stageAfterStart).toBeDefined();
   });

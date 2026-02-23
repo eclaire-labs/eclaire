@@ -228,7 +228,9 @@ export function TaskDetailClient() {
     }
   };
 
-  const _formatDateForInput = (isoString: string | null | undefined): string => {
+  const _formatDateForInput = (
+    isoString: string | null | undefined,
+  ): string => {
     if (!isoString) return "";
     try {
       const date = new Date(isoString);

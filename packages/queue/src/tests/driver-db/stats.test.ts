@@ -199,13 +199,13 @@ describe.each(DB_TEST_CONFIGS)("A13: Stats ($label)", ({ dbType }) => {
 
     // Enqueue 4 jobs BEFORE starting worker
     const jobId1 = await client.enqueue("test-queue", { value: 1 });
-    const jobId2 = await client.enqueue("test-queue", { value: 2 });
+    const _jobId2 = await client.enqueue("test-queue", { value: 2 });
     await client.enqueue("test-queue", { value: 3 });
     await client.enqueue("test-queue", { value: 4 });
 
     worker = createDbWorker(
       "test-queue",
-      async (ctx) => {
+      async (_ctx) => {
         jobCounter++;
         if (jobCounter === 1) {
           // First job: complete immediately

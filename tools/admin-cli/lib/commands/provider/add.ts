@@ -7,7 +7,6 @@ import {
 import { addProvider, isProviderIdAvailable } from "../../config/providers.js";
 import type {
   CommandOptions,
-  EngineConfig,
   ProviderConfig,
   ProviderPreset,
 } from "../../types/index.js";

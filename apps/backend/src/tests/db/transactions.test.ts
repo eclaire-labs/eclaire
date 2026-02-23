@@ -12,7 +12,7 @@ import {
 
 describe.each(DB_TEST_CONFIGS)("$label - Transaction Tests", ({
   dbType,
-  label,
+  label: _label,
 }) => {
   let testDb: TestDatabase;
   let testUserId: string;

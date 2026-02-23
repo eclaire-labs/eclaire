@@ -6,10 +6,7 @@ import {
   UnauthorizedSchema,
   ValidationErrorSchema,
 } from "./all-responses.js";
-import {
-  CreateChannelSchema,
-  UpdateChannelSchema,
-} from "./channels-params.js";
+import { CreateChannelSchema, UpdateChannelSchema } from "./channels-params.js";
 import {
   ChannelNotFoundSchema,
   CreateChannelResponseSchema,

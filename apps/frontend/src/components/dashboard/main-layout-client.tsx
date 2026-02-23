@@ -33,9 +33,7 @@ import { MobileFoldersView } from "@/components/mobile/mobile-folders-view";
 import { MobileLayout } from "@/components/mobile/mobile-layout";
 import type { MobileTab } from "@/components/mobile/mobile-tab-bar";
 import { AssistantOverlay } from "@/components/ui/assistant-overlay";
-import {
-  useToolExecutionTracker,
-} from "@/components/ui/tool-execution-tracker";
+import { useToolExecutionTracker } from "@/components/ui/tool-execution-tracker";
 import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {

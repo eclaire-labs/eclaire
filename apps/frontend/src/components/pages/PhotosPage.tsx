@@ -100,7 +100,8 @@ const ALLOWED_UPLOAD_TYPES = {
   "image/tiff": [".tiff", ".tif"], // Added TIFF support
   "image/bmp": [".bmp"], // Added BMP support
 };
-const _ALLOWED_UPLOAD_TYPES_STRING = Object.keys(ALLOWED_UPLOAD_TYPES).join(",");
+const _ALLOWED_UPLOAD_TYPES_STRING =
+  Object.keys(ALLOWED_UPLOAD_TYPES).join(",");
 
 // --- Helper Functions ---
 // (Keep existing formatters: formatDate, formatFileSize, formatFNumber, formatExposureTime, formatDimensions, formatLocation)
@@ -131,7 +132,8 @@ const formatFileSize = (bytes: number | null | undefined): string => {
 };
 
 const formatFNumber = (fNumber: number | null | undefined): string => {
-  if (fNumber === null || fNumber === undefined || Number.isNaN(fNumber)) return "N/A";
+  if (fNumber === null || fNumber === undefined || Number.isNaN(fNumber))
+    return "N/A";
   return `f/${fNumber.toFixed(1)}`;
 };
 
@@ -141,8 +143,7 @@ const formatExposureTime = (
   if (
     exposureTime === null ||
     exposureTime === undefined ||
-    Number.
-    isNaN(exposureTime)
+    Number.isNaN(exposureTime)
   )
     return "N/A";
   if (exposureTime >= 0.3 || exposureTime === 0) {
@@ -296,12 +297,12 @@ export default function PhotosPage() {
       const lowerSearch = searchQuery.toLowerCase();
       const matchesSearch =
         photo.title.toLowerCase().includes(lowerSearch) ||
-        (photo.description?.toLowerCase().includes(lowerSearch)) ||
+        photo.description?.toLowerCase().includes(lowerSearch) ||
         photo.originalFilename.toLowerCase().includes(lowerSearch) ||
-        (photo.cameraMake?.toLowerCase().includes(lowerSearch)) ||
-        (photo.cameraModel?.toLowerCase().includes(lowerSearch)) ||
-        (photo.locationCity?.toLowerCase().includes(lowerSearch)) ||
-        (photo.locationCountryName?.toLowerCase().includes(lowerSearch)) ||
+        photo.cameraMake?.toLowerCase().includes(lowerSearch) ||
+        photo.cameraModel?.toLowerCase().includes(lowerSearch) ||
+        photo.locationCity?.toLowerCase().includes(lowerSearch) ||
+        photo.locationCountryName?.toLowerCase().includes(lowerSearch) ||
         photo.tags.some((tag) => tag.toLowerCase().includes(lowerSearch));
       const matchesTag = filterTag === "all" || photo.tags.includes(filterTag);
       return matchesSearch && matchesTag;
@@ -347,7 +348,8 @@ export default function PhotosPage() {
           const createdA = new Date(a.createdAt).getTime();
           const createdB = new Date(b.createdAt).getTime();
           compareResult =
-            (Number.isNaN(createdA) ? 0 : createdA) - (Number.isNaN(createdB) ? 0 : createdB);
+            (Number.isNaN(createdA) ? 0 : createdA) -
+            (Number.isNaN(createdB) ? 0 : createdB);
           break;
         }
         default:
@@ -768,8 +770,10 @@ export default function PhotosPage() {
         }
       }
     },
-    [toast, // Refresh the photos list to show the new upload
-          refresh],
+    [
+      toast, // Refresh the photos list to show the new upload
+      refresh,
+    ],
   ); // Added toast dependency
 
   const {
@@ -829,7 +833,8 @@ export default function PhotosPage() {
           ? Number.parseInt(
               getComputedStyle(photosContainerRef.current!)
                 .gridTemplateColumns.split(" ")
-                .length.toString(), 10
+                .length.toString(),
+              10,
             ) || 4
           : 1; // Estimate items per row for tile view
 

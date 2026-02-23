@@ -155,7 +155,7 @@ export function formatDialect(dialect: string): string {
 
 export function printProviderReminder(
   provider: string,
-  contexts: string[],
+  _contexts: string[],
 ): void {
   // Only show reminder for local providers (not openrouter or proxy)
   if (provider === "openrouter" || provider === "proxy") {

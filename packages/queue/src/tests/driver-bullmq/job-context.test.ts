@@ -8,7 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { JobContext, QueueClient, Worker } from "../../core/types.js";
+import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
   createDeferred,
@@ -109,7 +109,7 @@ describe("BullMQ: Job Context", () => {
 
   describe("log()", () => {
     it("should record log messages", async () => {
-      const logMessages: string[] = [];
+      const _logMessages: string[] = [];
 
       await client.enqueue("test-queue", { value: 1 });
 
@@ -256,9 +256,10 @@ describe("BullMQ: Job Context", () => {
     });
 
     it("should provide job metadata in context", async () => {
-      let jobInfo: { id: string; queue: string; attempts: number } | null = null;
+      let jobInfo: { id: string; queue: string; attempts: number } | null =
+        null;
 
-      const jobId = await client.enqueue(
+      const _jobId = await client.enqueue(
         "test-queue",
         { value: 1 },
         { key: "context-test", attempts: 5 },

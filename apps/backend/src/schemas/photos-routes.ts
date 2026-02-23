@@ -5,10 +5,7 @@ import {
   UnauthorizedSchema,
   ValidationErrorSchema,
 } from "./all-responses.js";
-import {
-  PartialPhotoSchema,
-  PhotoSchema,
-} from "./photos-params.js";
+import { PartialPhotoSchema, PhotoSchema } from "./photos-params.js";
 import {
   CreatedPhotoResponseSchema,
   PhotoFileNotFoundSchema,

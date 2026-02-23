@@ -19,7 +19,7 @@ const { notes, notesTags, tags } = schema;
 
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { createChildLogger } from "../logger.js";
-import { getQueueAdapter, } from "../queue/index.js";
+import { getQueueAdapter } from "../queue/index.js";
 import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:notes");

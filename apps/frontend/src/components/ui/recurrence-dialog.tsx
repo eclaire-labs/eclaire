@@ -1,4 +1,4 @@
-import { Calendar, Clock, RefreshCw, } from "lucide-react";
+import { Calendar, Clock, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -497,7 +497,9 @@ export function RecurrenceDialog({
                     max="1000"
                     value={limit || ""}
                     onChange={(e) =>
-                      setLimit(e.target.value ? parseInt(e.target.value, 10) : null)
+                      setLimit(
+                        e.target.value ? parseInt(e.target.value, 10) : null,
+                      )
                     }
                     placeholder="No limit"
                     className="w-40"

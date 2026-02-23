@@ -1,4 +1,4 @@
-import { and, eq, } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { db, schema } from "../db/index.js";
 import { parseApiKey, verifyApiKeyHash } from "./api-key-security.js";

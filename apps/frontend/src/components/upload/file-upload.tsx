@@ -62,16 +62,19 @@ export function FileUpload() {
   const generateFileId = () =>
     `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-  const addFiles = useCallback((newFiles: File[], basePath = "") => {
-    const fileItems: FileItem[] = newFiles.map((file) => ({
-      file,
-      status: "pending" as const,
-      id: generateFileId(),
-      relativePath: basePath ? `${basePath}/${file.name}` : file.name,
-    }));
+  const addFiles = useCallback(
+    (newFiles: File[], basePath = "") => {
+      const fileItems: FileItem[] = newFiles.map((file) => ({
+        file,
+        status: "pending" as const,
+        id: generateFileId(),
+        relativePath: basePath ? `${basePath}/${file.name}` : file.name,
+      }));
 
-    setFiles((prev) => [...prev, ...fileItems]);
-  }, [generateFileId]);
+      setFiles((prev) => [...prev, ...fileItems]);
+    },
+    [generateFileId],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

@@ -174,7 +174,8 @@ export function validateCronExpression(cron: string): boolean {
 
     if (
       parts.dayOfMonth !== "*" &&
-      (parseInt(parts.dayOfMonth, 10) < 1 || parseInt(parts.dayOfMonth, 10) > 31)
+      (parseInt(parts.dayOfMonth, 10) < 1 ||
+        parseInt(parts.dayOfMonth, 10) > 31)
     ) {
       return false;
     }

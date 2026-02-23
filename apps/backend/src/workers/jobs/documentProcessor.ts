@@ -1140,9 +1140,7 @@ async function attemptLibreOfficeConversion(
           resolve(await fs.readFile(path.join(pdfOutputDir, pdfFile)));
         } else {
           reject(
-            new Error(
-              "LibreOffice conversion succeeded but no PDF file found",
-            ),
+            new Error("LibreOffice conversion succeeded but no PDF file found"),
           );
         }
       } else {

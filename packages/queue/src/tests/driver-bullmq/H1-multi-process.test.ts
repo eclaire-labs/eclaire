@@ -127,7 +127,7 @@ describeIfBullMQ("H1: Multi-process workers (BullMQ)", () => {
 
       // Verify each job was processed exactly once
       expect(results.size).toBe(jobCount);
-      for (const [jobId, workerIds] of results) {
+      for (const [_jobId, workerIds] of results) {
         expect(workerIds.length).toBe(1);
       }
 

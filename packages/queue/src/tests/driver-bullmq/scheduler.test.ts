@@ -18,13 +18,13 @@ import {
 
 describe("BullMQ: Scheduler", () => {
   let harness: QueueTestHarness;
-  let client: QueueClient;
+  let _client: QueueClient;
   let scheduler: Scheduler | null = null;
   let worker: Worker | null = null;
 
   beforeEach(async () => {
     harness = await createBullMQTestHarness();
-    client = harness.createClient();
+    _client = harness.createClient();
   });
 
   afterEach(async () => {

@@ -1,8 +1,5 @@
 import { resolver } from "hono-openapi";
-import {
-  ErrorResponseSchema,
-  UnauthorizedSchema,
-} from "./all-responses.js";
+import { ErrorResponseSchema, UnauthorizedSchema } from "./all-responses.js";
 
 // GET /api/processing-status/summary - Get processing status summary
 export const getProcessingStatusSummaryRouteDescription = {

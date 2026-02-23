@@ -38,7 +38,6 @@ import type {
 } from "../../core/types.js";
 import {
   deleteMetadata,
-  getMetadataPath,
   isMetadataFile,
   readMetadataOrInfer,
   writeMetadata,

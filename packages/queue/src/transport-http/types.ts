@@ -2,7 +2,7 @@
  * @eclaire/queue/transport-http - Types for the HTTP transport layer
  */
 
-import type { Job, JobContext, QueueLogger } from "../core/types.js";
+import type { QueueLogger } from "../core/types.js";
 
 /**
  * Configuration for the HTTP server

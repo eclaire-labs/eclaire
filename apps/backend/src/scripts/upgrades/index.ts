@@ -45,7 +45,8 @@ export interface UpgradeStep {
 export const upgradeSteps: UpgradeStep[] = [
   {
     version: "0.6.0",
-    description: "Breaking release - no automated migration from prior versions",
+    description:
+      "Breaking release - no automated migration from prior versions",
     blocksUpgradePath: true,
     blockedUpgradeMessage: `There is no automated upgrade path from prior versions to 0.6.0.
 See CHANGELOG.md for migration instructions.`,

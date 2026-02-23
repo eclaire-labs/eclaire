@@ -6,7 +6,7 @@
  * callbacks for the same queue should continue to receive notifications.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   createInMemoryNotify,
   createPgNotifyListener,

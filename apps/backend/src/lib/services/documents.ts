@@ -29,7 +29,7 @@ import {
   getOrCreateTags,
 } from "../db-helpers.js";
 import { createChildLogger } from "../logger.js";
-import { getQueueAdapter, } from "../queue/index.js";
+import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
 import { recordHistory } from "./history.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";

@@ -82,7 +82,7 @@ function extractToolCallsFromContent(content: string): {
         // Mark this code block for removal
         blocksToRemove.push(match[0]);
       }
-    } catch (e) {
+    } catch (_e) {
       logger.warn(
         { blockContent },
         "Could not parse JSON code block for tool calls",
@@ -115,7 +115,7 @@ function extractToolCallsFromContent(content: string): {
       }
       // Remove the matched JSON from remaining content
       remainingContent = remainingContent.replace(match[0], "");
-    } catch (e) {
+    } catch (_e) {
       logger.warn(
         { toolCall: match[0] },
         "Could not parse potential tool call",

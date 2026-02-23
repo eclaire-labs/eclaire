@@ -105,7 +105,7 @@ async function followLogs(logFile: string): Promise<void> {
           console.log(colors.dim("--- Log file was truncated ---"));
           lastSize = 0;
         }
-      } catch (error) {
+      } catch (_error) {
         // File might have been deleted or rotated
       }
     }

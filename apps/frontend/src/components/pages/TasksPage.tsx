@@ -505,7 +505,7 @@ export default function TasksPage() {
       const lowerSearch = searchQuery.toLowerCase();
       const matchesSearch =
         task.title.toLowerCase().includes(lowerSearch) ||
-        (task.description?.toLowerCase().includes(lowerSearch)) ||
+        task.description?.toLowerCase().includes(lowerSearch) ||
         task.tags.some((tag) => tag.toLowerCase().includes(lowerSearch));
 
       const matchesStatus =
@@ -768,8 +768,8 @@ export default function TasksPage() {
         status: newTask.status || "not-started", // Ensure status is set
         // Only include assignedToId if it has a value (not null/empty) - backend will assign current user if omitted
         ...(newTask.assignedToId?.trim() && {
-            assignedToId: newTask.assignedToId,
-          }),
+          assignedToId: newTask.assignedToId,
+        }),
         // Only include description if it's not empty
         ...(newTask.description && { description: newTask.description }),
         // Recurrence fields

@@ -25,7 +25,6 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import type { JobContext } from "../../core/types.js";
 import {
-  createBullMQClient,
   createBullMQWorker,
   createRedisConnection,
 } from "../../driver-bullmq/index.js";
@@ -95,7 +94,7 @@ async function runPostgresWorker() {
   const db = drizzle(sql);
   const schema = getQueueSchema("postgres");
 
-  const client = createDbQueueClient({
+  const _client = createDbQueueClient({
     db,
     schema,
     capabilities: {
@@ -164,7 +163,10 @@ async function runPostgresWorker() {
 }
 
 async function runRedisWorker() {
-  const connection = createRedisConnection({ url: config.redisUrl! }, noopLogger);
+  const connection = createRedisConnection(
+    { url: config.redisUrl! },
+    noopLogger,
+  );
 
   const worker = createBullMQWorker<{ value: number }>(
     config.queueName!,

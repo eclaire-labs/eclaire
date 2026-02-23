@@ -3,7 +3,7 @@ import { type Context, session, Telegraf } from "telegraf";
 import { db, schema } from "../../db/index.js";
 import { decrypt } from "../encryption.js";
 
-const { channels, users } = schema;
+const { channels } = schema;
 
 import { processPromptRequest } from "../agent/index.js";
 import { createChildLogger } from "../logger.js";

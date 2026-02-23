@@ -272,10 +272,7 @@ export class RedditApiClient {
     }
 
     // Add preview images if available
-    if (
-      postData.preview?.images &&
-      postData.preview.images.length > 0
-    ) {
+    if (postData.preview?.images && postData.preview.images.length > 0) {
       const preview = postData.preview.images[0];
       media.preview = {
         url: preview.source.url.replace(/&amp;/g, "&"),
