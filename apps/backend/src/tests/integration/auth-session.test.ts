@@ -55,7 +55,7 @@ const loggedFetch = async (url: string, options: RequestInit = {}) => {
     "Content-Type": "application/json",
     "User-Agent": "better-auth-cli/1.0.0",
     Origin: "http://localhost:3000",
-    ...((options.headers as Record<string, string>) || {}),
+    ...(options.headers as Record<string, string>),
   };
 
   // Add cookies if available

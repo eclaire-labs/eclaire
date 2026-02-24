@@ -43,6 +43,7 @@ const POSTGRES_MIGRATIONS = resolve(
 );
 
 async function main() {
+  // oxlint-disable-next-line unicorn/prefer-set-has
   const args = process.argv.slice(2);
   const forceFlag = args.includes("--force");
   const statusFlag = args.includes("--status");

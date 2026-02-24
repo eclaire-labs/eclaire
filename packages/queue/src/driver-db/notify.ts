@@ -248,6 +248,7 @@ export function createPgNotifyListener(
           .query(`LISTEN ${channel}`)
           .then(() => {
             logger.info({ channel }, "Listening for job notifications");
+            return undefined;
           })
           .catch((err) => {
             logger.error(

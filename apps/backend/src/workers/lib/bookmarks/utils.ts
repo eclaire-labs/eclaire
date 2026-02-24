@@ -315,6 +315,7 @@ export async function generateOptimizedPdf(
         .map((img: any) =>
           Promise.race([
             new Promise((resolve) => {
+              // oxlint-disable-next-line unicorn/prefer-add-event-listener -- compact pattern inside Promise wrapper
               img.onload = img.onerror = resolve;
             }),
             new Promise((resolve) => setTimeout(resolve, 5000)),

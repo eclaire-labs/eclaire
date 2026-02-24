@@ -48,12 +48,12 @@ export function updateProvider(
 
   // Deep merge for overrides
   const newOverrides = updates.overrides
-    ? { ...(current.overrides || {}), ...updates.overrides }
+    ? { ...current.overrides, ...updates.overrides }
     : current.overrides;
 
   // Deep merge for headers
   const newHeaders = updates.headers
-    ? { ...(current.headers || {}), ...updates.headers }
+    ? { ...current.headers, ...updates.headers }
     : current.headers;
 
   providers.providers[id] = {

@@ -15,7 +15,7 @@ import {
 // Create authenticated fetch function with X-API-Key header
 const loggedFetch = async (url: string, options: RequestInit = {}) => {
   const headers = {
-    ...((options.headers as Record<string, string>) || {}),
+    ...(options.headers as Record<string, string>),
     "X-API-Key": TEST_API_KEY,
   };
 

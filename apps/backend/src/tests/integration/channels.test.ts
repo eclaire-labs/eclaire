@@ -652,7 +652,7 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
           ...options,
           headers: {
             "Content-Type": "application/json",
-            ...(options.headers || {}),
+            ...options.headers,
           },
         });
       };

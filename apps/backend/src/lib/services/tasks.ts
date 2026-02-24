@@ -1960,9 +1960,9 @@ export async function findTasks(
         .groupBy(tasksTags.taskId)
         .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
 
-      const filteredEntryIds = entriesWithAllTags.map((e) => e.taskId);
+      const filteredEntryIds = new Set(entriesWithAllTags.map((e) => e.taskId));
       entriesList = entriesList.filter((entry) =>
-        filteredEntryIds.includes(entry.task.id),
+        filteredEntryIds.has(entry.task.id),
       );
     }
 

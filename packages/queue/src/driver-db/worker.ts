@@ -498,6 +498,7 @@ export function createDbWorker<T = unknown>(
           resolved = true;
           clearTimeout(timer);
           unsubscribe?.();
+          // oxlint-disable-next-line promise/no-multiple-resolved -- guarded by `resolved` flag
           resolve();
         }
       };

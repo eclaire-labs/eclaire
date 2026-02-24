@@ -953,9 +953,9 @@ export async function findBookmarks(
         .groupBy(bookmarksTags.bookmarkId)
         .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
 
-      const filteredEntryIds = entriesWithAllTags.map((e) => e.bookmarkId);
+      const filteredEntryIds = new Set(entriesWithAllTags.map((e) => e.bookmarkId));
       entriesList = entriesList.filter((entry) =>
-        filteredEntryIds.includes(entry.id),
+        filteredEntryIds.has(entry.id),
       );
     }
 

@@ -26,7 +26,7 @@ const logger = createChildLogger("services:notes");
 
 // --- FILE UPLOAD HELPERS ---
 
-const NOTE_ALLOWED_TYPES = ["text/plain", "text/markdown", "application/json"];
+const NOTE_ALLOWED_TYPES = new Set(["text/plain", "text/markdown", "application/json"]);
 const NOTE_MAX_FILE_SIZE = 1024 * 1024; // 1MB
 
 /**
@@ -63,7 +63,7 @@ export function validateNoteFileUpload(file: File | undefined): {
     return { valid: false, error: "No file provided" };
   }
 
-  if (!NOTE_ALLOWED_TYPES.includes(file.type)) {
+  if (!NOTE_ALLOWED_TYPES.has(file.type)) {
     return {
       valid: false,
       error: "Invalid file type. Supported types: TXT, MD, JSON",

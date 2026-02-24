@@ -41,7 +41,7 @@ export const logger = {
     console.log(`Status: ${response.status} (${response.statusText})`);
     console.log(
       "Headers:",
-      JSON.stringify(Object.fromEntries([...response.headers]), null, 2),
+      JSON.stringify(Object.fromEntries(response.headers), null, 2),
     );
 
     const clonedResponse = response.clone();
@@ -68,7 +68,7 @@ export const createAuthenticatedFetch = (apiKey: string = TEST_API_KEY) => {
     const headers: Record<string, string> = {
       "User-Agent": "integration-test/1.0.0",
       Authorization: `Bearer ${apiKey}`,
-      ...((options.headers as Record<string, string>) || {}),
+      ...(options.headers as Record<string, string>),
     };
 
     // Only set default Content-Type to application/json if body is not FormData

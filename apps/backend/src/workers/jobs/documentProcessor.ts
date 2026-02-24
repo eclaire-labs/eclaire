@@ -750,6 +750,7 @@ async function extractRTFText(
     );
     const html = await new Promise<string>((resolve, reject) =>
       rtfToHTML.fromString(rtfString, (err: Error | null, res: string) =>
+        // oxlint-disable-next-line promise/no-multiple-resolved -- ternary ensures exactly one branch
         err ? reject(err) : resolve(res || ""),
       ),
     );

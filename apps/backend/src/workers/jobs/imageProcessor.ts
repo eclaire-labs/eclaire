@@ -18,13 +18,13 @@ export interface ImageJobData {
 }
 
 // Define which MIME types are unsupported by the AI and require conversion.
-const CONVERSION_REQUIRED_MIME_TYPES = [
+const CONVERSION_REQUIRED_MIME_TYPES = new Set([
   "image/heic",
   "image/heif",
   "image/avif",
   "image/webp",
   "image/svg+xml",
-];
+]);
 
 const STAGES = {
   PREPARATION: "image_preparation",
@@ -438,7 +438,7 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
   }
 
   // Check if the mimeType is in our list of formats that need conversion.
-  const needsConversion = CONVERSION_REQUIRED_MIME_TYPES.includes(mimeType);
+  const needsConversion = CONVERSION_REQUIRED_MIME_TYPES.has(mimeType);
 
   const initialStages = [
     STAGES.PREPARATION,

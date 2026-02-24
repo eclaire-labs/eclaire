@@ -288,6 +288,7 @@ export function cancellableSleep(
       "abort",
       () => {
         clearTimeout(timer);
+        // oxlint-disable-next-line promise/no-multiple-resolved -- abort clears timeout; at most one fires
         resolve(); // Resolve (not reject) for graceful shutdown
       },
       { once: true },

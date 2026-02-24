@@ -126,6 +126,7 @@ describe("G1-G3: Waitlist", () => {
         .addWaiter("bookmarks", "worker-1", 5000)
         .then(() => {
           order.push(1);
+          return undefined;
         });
       await sleep(5);
 
@@ -133,6 +134,7 @@ describe("G1-G3: Waitlist", () => {
         .addWaiter("bookmarks", "worker-2", 5000)
         .then(() => {
           order.push(2);
+          return undefined;
         });
       await sleep(5);
 
@@ -140,6 +142,7 @@ describe("G1-G3: Waitlist", () => {
         .addWaiter("bookmarks", "worker-3", 5000)
         .then(() => {
           order.push(3);
+          return undefined;
         });
 
       await sleep(10);
