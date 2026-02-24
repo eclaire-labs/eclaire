@@ -285,3 +285,10 @@ There should be no telemetry in the Eclaire code although 3rd party dependencies
 
 ## Community & Support
 Issues: [GitHub Issues](https://github.com/eclaire-labs/eclaire/issues)
+
+
+## Usage
+
+```python
+# Usage examples
+```
