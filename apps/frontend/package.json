@@ -28,7 +28,7 @@
     "fix": "biome check --write ./",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --project tsconfig.json --noEmit"
+    "typecheck": "tsr generate && tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "5.2.2",
@@ -93,6 +93,7 @@
     "@biomejs/biome": "2.4.4",
     "@tailwindcss/postcss": "4.2.0",
     "@tailwindcss/typography": "0.5.19",
+    "@tanstack/router-cli": "1.162.6",
     "@tanstack/router-devtools": "1.162.4",
     "@tanstack/router-plugin": "1.162.4",
     "@testing-library/jest-dom": "6.9.1",
