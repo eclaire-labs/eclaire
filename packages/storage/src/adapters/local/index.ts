@@ -137,7 +137,9 @@ export class LocalStorage implements Storage {
     // Convert web stream to node stream if needed
     let nodeStream: NodeJS.ReadableStream;
     if ("getReader" in stream) {
-      nodeStream = Readable.fromWeb(stream as ReadableStream<Uint8Array>);
+      nodeStream = Readable.fromWeb(
+        stream as unknown as import("stream/web").ReadableStream,
+      );
     } else {
       nodeStream = stream;
     }

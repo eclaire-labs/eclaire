@@ -61,9 +61,9 @@ export function parseKey(key: string): ParsedKey | null {
   if (parts.length < 4) return null;
 
   return {
-    userId: parts[0],
-    category: parts[1],
-    assetId: parts[2],
+    userId: parts[0]!,
+    category: parts[1]!,
+    assetId: parts[2]!,
     // fileName can include nested paths (e.g., 'images/img1.jpg')
     fileName: parts.slice(3).join("/"),
   };
@@ -158,7 +158,7 @@ export function isValidKey(key: string): boolean {
 
   // Check first 3 components (userId, category, assetId)
   for (let i = 0; i < 3; i++) {
-    if (!isValidKeyComponent(parts[i])) {
+    if (!isValidKeyComponent(parts[i]!)) {
       return false;
     }
   }
