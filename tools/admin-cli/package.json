@@ -5,7 +5,7 @@
   "description": "Eclaire Admin CLI - Manage providers, models, and configuration",
   "main": "dist/main.js",
   "type": "module",
-  "packageManager": "pnpm@10.30.1",
+  "packageManager": "pnpm@10.30.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/eclaire-labs/eclaire.git",

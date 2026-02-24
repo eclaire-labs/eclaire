@@ -1,5 +1,14 @@
 # Eclaire Changelog
 
+## [0.6.4] - 2026-02-24
+
+### Maintenance
+
+- **deps**: upgrade patch dependencies across all workspaces
+- **deps**: notable upgrades include better-auth 1.4.19, hono 4.12.2, TanStack Router 1.162.8, tailwindcss 4.2.1, pnpm 10.30.2
+
+---
+
 ## [0.6.3] - 2026-02-22
 
 ### Maintenance
