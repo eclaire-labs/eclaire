@@ -472,13 +472,14 @@ export default function DocumentsPage() {
 
   // --- Dialog Open/Close Handlers ---
 
-  const openViewDialog = (doc: Document) => {
-    // Navigate to the dedicated document page instead of opening modal
-    navigate({ to: `/documents/${doc.id}` });
-  };
+  const openViewDialog = useCallback(
+    (doc: Document) => {
+      navigate({ to: `/documents/${doc.id}` });
+    },
+    [navigate],
+  );
 
-  const openEditDialog = (doc: Document) => {
-    // Pre-fill editing state
+  const openEditDialog = useCallback((doc: Document) => {
     setEditingDocument({
       id: doc.id,
       title: doc.title,
@@ -486,14 +487,14 @@ export default function DocumentsPage() {
       dueDate: doc.dueDate,
       tags: doc.tags,
     });
-    setSelectedDocument(doc); // Keep selectedDoc for context if needed
+    setSelectedDocument(doc);
     setIsEditDocumentDialogOpen(true);
-  };
+  }, []);
 
-  const openConfirmDeleteDialog = (doc: Document) => {
+  const openConfirmDeleteDialog = useCallback((doc: Document) => {
     setDocumentToDelete(doc);
     setIsConfirmDeleteDialogOpen(true);
-  };
+  }, []);
 
   // --- Form Input Handlers (Only for Edit Dialog) ---
 
@@ -826,7 +827,6 @@ export default function DocumentsPage() {
   });
 
   // --- Keyboard Navigation ---
-  // biome-ignore lint/correctness/useExhaustiveDependencies: dialog handlers are not wrapped in useCallback
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       const items = sortedAndFilteredDocuments;
@@ -936,7 +936,7 @@ export default function DocumentsPage() {
         (event.target as HTMLElement).blur();
       }
     },
-    [focusedIndex, sortedAndFilteredDocuments, viewMode],
+    [focusedIndex, sortedAndFilteredDocuments, viewMode, openViewDialog, openEditDialog, openConfirmDeleteDialog],
   );
 
   // --- Render Logic ---

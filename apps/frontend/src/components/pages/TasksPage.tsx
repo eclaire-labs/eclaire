@@ -415,22 +415,18 @@ export default function TasksPage() {
   }, [error, toast]);
 
   // Fetch users for assignee dropdown
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchUsers defined after hook
   useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const usersData = await getUsers();
+        const transformedUsers = usersData.map(transformBackendUser);
+        setUsers(transformedUsers);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
     fetchUsers();
   }, []);
-
-  // Fetch users for assignee dropdown
-  const fetchUsers = async () => {
-    try {
-      const usersData = await getUsers();
-      const transformedUsers = usersData.map(transformBackendUser);
-      setUsers(transformedUsers);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      // Don't show toast for users fetch failure, it's not critical
-    }
-  };
 
   // --- Computed Values (Filtering, Sorting, Grouping) ---
   const allTags = useMemo(

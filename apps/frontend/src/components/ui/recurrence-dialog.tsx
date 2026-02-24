@@ -60,6 +60,73 @@ const WEEKDAYS = [
   { key: "0", label: "Sunday", short: "Sun" },
 ];
 
+function formatDateForInput(isoString: string): string {
+  try {
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  } catch {
+    return "";
+  }
+}
+
+function parseCronToPattern(cron: string): RecurrencePattern {
+  if (cron.includes("* * *")) return "daily";
+  if (cron.includes("* * 1-5")) return "weekdays";
+  if (
+    cron.includes("* * 1") ||
+    cron.includes("* * 2") ||
+    cron.includes("* * 3") ||
+    cron.includes("* * 4") ||
+    cron.includes("* * 5") ||
+    cron.includes("* * 6") ||
+    cron.includes("* * 0")
+  )
+    return "weekly";
+  if (cron.includes("1 * *")) return "monthly";
+  return "custom";
+}
+
+function parseCronToTime(cron: string): string {
+  const parts = cron.split(" ");
+  if (parts.length >= 2) {
+    const minutes = parts[0] === "*" ? "00" : parts[0].padStart(2, "0");
+    const hours = parts[1] === "*" ? "09" : parts[1].padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+  return "09:00";
+}
+
+function parseCronToWeekdays(cron: string): WeekdaySelection {
+  const parts = cron.split(" ");
+  const weekdays: WeekdaySelection = {};
+
+  if (parts.length >= 5) {
+    const dayPart = parts[4];
+    if (dayPart === "*") {
+      WEEKDAYS.forEach((day) => {
+        weekdays[day.key] = true;
+      });
+    } else if (dayPart === "1-5") {
+      ["1", "2", "3", "4", "5"].forEach((day) => {
+        weekdays[day] = true;
+      });
+    } else if (dayPart.includes(",")) {
+      dayPart.split(",").forEach((day) => {
+        weekdays[day.trim()] = true;
+      });
+    } else {
+      weekdays[dayPart] = true;
+    }
+  }
+
+  return weekdays;
+}
+
 export function RecurrenceDialog({
   open,
   onOpenChange,
@@ -81,7 +148,6 @@ export function RecurrenceDialog({
   const [runImmediately, setRunImmediately] = useState(false);
 
   // Initialize form state from value
-  // biome-ignore lint/correctness/useExhaustiveDependencies: helper functions defined after hook
   useEffect(() => {
     if (value.isRecurring && value.cronExpression) {
       // Parse existing cron expression to determine pattern
@@ -107,78 +173,6 @@ export function RecurrenceDialog({
     setLimit(value.recurrenceLimit);
     setRunImmediately(value.runImmediately);
   }, [value]);
-
-  const formatDateForInput = (isoString: string): string => {
-    try {
-      const date = new Date(isoString);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      const hours = String(date.getHours()).padStart(2, "0");
-      const minutes = String(date.getMinutes()).padStart(2, "0");
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
-    } catch {
-      return "";
-    }
-  };
-
-  const parseCronToPattern = (cron: string): RecurrencePattern => {
-    // Simple pattern detection - you can enhance this
-    if (cron.includes("* * *")) return "daily";
-    if (cron.includes("* * 1-5")) return "weekdays";
-    if (
-      cron.includes("* * 1") ||
-      cron.includes("* * 2") ||
-      cron.includes("* * 3") ||
-      cron.includes("* * 4") ||
-      cron.includes("* * 5") ||
-      cron.includes("* * 6") ||
-      cron.includes("* * 0")
-    )
-      return "weekly";
-    if (cron.includes("1 * *")) return "monthly";
-    return "custom";
-  };
-
-  const parseCronToTime = (cron: string): string => {
-    const parts = cron.split(" ");
-    if (parts.length >= 2) {
-      const minutes = parts[0] === "*" ? "00" : parts[0].padStart(2, "0");
-      const hours = parts[1] === "*" ? "09" : parts[1].padStart(2, "0");
-      return `${hours}:${minutes}`;
-    }
-    return "09:00";
-  };
-
-  const parseCronToWeekdays = (cron: string): WeekdaySelection => {
-    const parts = cron.split(" ");
-    const weekdays: WeekdaySelection = {};
-
-    if (parts.length >= 5) {
-      const dayPart = parts[4];
-      if (dayPart === "*") {
-        // All days
-        WEEKDAYS.forEach((day) => {
-          weekdays[day.key] = true;
-        });
-      } else if (dayPart === "1-5") {
-        // Weekdays
-        ["1", "2", "3", "4", "5"].forEach((day) => {
-          weekdays[day] = true;
-        });
-      } else if (dayPart.includes(",")) {
-        // Specific days
-        dayPart.split(",").forEach((day) => {
-          weekdays[day.trim()] = true;
-        });
-      } else {
-        // Single day
-        weekdays[dayPart] = true;
-      }
-    }
-
-    return weekdays;
-  };
 
   const generateCronExpression = (): string | null => {
     if (pattern === "none") return null;

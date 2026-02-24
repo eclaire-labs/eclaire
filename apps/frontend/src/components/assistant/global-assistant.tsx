@@ -94,24 +94,22 @@ const ConversationHistoryDialog = ({
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: loadConversations defined after hook
   useEffect(() => {
     if (open) {
+      const loadConversations = async () => {
+        setIsLoading(true);
+        try {
+          const response = await getConversations(50, 0);
+          setConversations(response.conversations);
+        } catch (error) {
+          console.error("Failed to load conversations:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
       loadConversations();
     }
   }, [open]);
-
-  const loadConversations = async () => {
-    setIsLoading(true);
-    try {
-      const response = await getConversations(50, 0);
-      setConversations(response.conversations);
-    } catch (error) {
-      console.error("Failed to load conversations:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleDeleteConversation = async (id: string) => {
     try {

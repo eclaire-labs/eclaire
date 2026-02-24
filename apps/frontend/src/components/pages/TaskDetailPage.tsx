@@ -131,19 +131,17 @@ export function TaskDetailClient() {
     }
   }, [task, isEditing]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchUsers defined after hook
   useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const usersData = await getUsers();
+        setUsers(usersData);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
     fetchUsers();
   }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const usersData = await getUsers();
-      setUsers(usersData);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-    }
-  };
 
   // Initialize comments from task data
   useEffect(() => {

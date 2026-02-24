@@ -774,71 +774,72 @@ export default function NotesPage() {
   };
 
   // Handle pin toggle for notes
-  const handlePinToggle = async (note: NoteEntry) => {
-    const newPinned = !note.isPinned;
+  const handlePinToggle = useCallback(
+    async (note: NoteEntry) => {
+      const newPinned = !note.isPinned;
 
-    try {
-      const response = await togglePin("notes", note.id, newPinned);
+      try {
+        const response = await togglePin("notes", note.id, newPinned);
 
-      if (!response.ok) {
-        throw new Error(`Failed to ${newPinned ? "pin" : "unpin"} note`);
+        if (!response.ok) {
+          throw new Error(`Failed to ${newPinned ? "pin" : "unpin"} note`);
+        }
+
+        refresh();
+
+        toast({
+          title: newPinned ? "Note pinned" : "Note unpinned",
+          description: `"${note.title}" has been ${newPinned ? "pinned" : "unpinned"}.`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Failed to update pin status",
+          variant: "destructive",
+        });
       }
+    },
+    [refresh, toast],
+  );
 
-      // Refresh data to reflect changes
-      refresh();
+  const handleFlagColorChange = useCallback(
+    async (
+      note: NoteEntry,
+      color: "red" | "yellow" | "orange" | "green" | "blue" | null,
+    ) => {
+      try {
+        const response = await setFlagColor("notes", note.id, color);
 
-      toast({
-        title: newPinned ? "Note pinned" : "Note unpinned",
-        description: `"${note.title}" has been ${newPinned ? "pinned" : "unpinned"}.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to update pin status",
-        variant: "destructive",
-      });
-    }
-  };
+        if (!response.ok) {
+          throw new Error("Failed to update flag color");
+        }
 
-  // Handle flag color change for notes
-  const handleFlagColorChange = async (
-    note: NoteEntry,
-    color: "red" | "yellow" | "orange" | "green" | "blue" | null,
-  ) => {
-    try {
-      const response = await setFlagColor("notes", note.id, color);
+        refresh();
 
-      if (!response.ok) {
-        throw new Error("Failed to update flag color");
+        toast({
+          title: color ? "Note flagged" : "Flag removed",
+          description: color
+            ? `"${note.title}" has been flagged as ${color}.`
+            : `Flag removed from "${note.title}".`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Failed to update flag color",
+          variant: "destructive",
+        });
       }
+    },
+    [refresh, toast],
+  );
 
-      // Refresh data to reflect changes
-      refresh();
-
-      toast({
-        title: color ? "Note flagged" : "Flag removed",
-        description: color
-          ? `"${note.title}" has been flagged as ${color}.`
-          : `Flag removed from "${note.title}".`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to update flag color",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle chat button click
-  const handleChatClick = (note: NoteEntry) => {
-    // Use the global function to open assistant with pre-attached assets
+  const handleChatClick = useCallback((note: NoteEntry) => {
     if (
       typeof window !== "undefined" &&
       // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
@@ -853,7 +854,7 @@ export default function NotesPage() {
         },
       ]);
     }
-  };
+  }, []);
 
   // Handle file upload
   const handleFileUpload = useCallback(
@@ -967,7 +968,6 @@ export default function NotesPage() {
       },
     });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: handlers are not wrapped in useCallback
   const renderContent = useMemo(() => {
     if (isLoading) {
       return (
@@ -1050,6 +1050,9 @@ export default function NotesPage() {
     handleEntryClick,
     openEditDialog,
     openDeleteDialog,
+    handlePinToggle,
+    handleFlagColorChange,
+    handleChatClick,
   ]);
 
   // Memoize helper functions

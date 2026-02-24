@@ -442,7 +442,7 @@ export default function PhotosPage() {
     navigate({ to: `/photos/${photo.id}` });
   };
 
-  const openEditDialog = (photo: Photo) => {
+  const openEditDialog = useCallback((photo: Photo) => {
     setEditingPhoto({
       id: photo.id,
       title: photo.title,
@@ -451,38 +451,42 @@ export default function PhotosPage() {
       deviceId: photo.deviceId,
     });
     setIsEditPhotoDialogOpen(true);
-  };
+  }, []);
 
-  // Removed openNewDialog
-
-  const openConfirmDeleteDialog = (photo: Photo) => {
+  const openConfirmDeleteDialog = useCallback((photo: Photo) => {
     setPhotoToDelete(photo);
     setIsConfirmDeleteDialogOpen(true);
-  };
+  }, []);
 
-  const openGalleryView = (index: number) => {
-    if (index >= 0 && index < sortedAndFilteredPhotos.length) {
-      setGalleryIndex(index);
-      updateViewPreference("viewMode", "gallery"); // Switch view mode
-    }
-  };
+  const openGalleryView = useCallback(
+    (index: number) => {
+      if (index >= 0 && index < sortedAndFilteredPhotos.length) {
+        setGalleryIndex(index);
+        updateViewPreference("viewMode", "gallery");
+      }
+    },
+    [sortedAndFilteredPhotos.length, updateViewPreference],
+  );
 
-  const closeGalleryView = () => {
+  const closeGalleryView = useCallback(() => {
     setGalleryIndex(null);
-    updateViewPreference("viewMode", "tile"); // Revert to tile or previous view? Tile is safer.
-  };
+    updateViewPreference("viewMode", "tile");
+  }, [updateViewPreference]);
 
-  const navigateGallery = (direction: "next" | "prev") => {
-    if (galleryIndex === null) return;
-    const total = sortedAndFilteredPhotos.length;
-    let nextIndex: number;
-    if (direction === "next") {
-      nextIndex = (galleryIndex + 1) % total;
-    } else {
-      nextIndex = (galleryIndex - 1 + total) % total;
-    }
-    setGalleryIndex(nextIndex);
-  };
+  const navigateGallery = useCallback(
+    (direction: "next" | "prev") => {
+      if (galleryIndex === null) return;
+      const total = sortedAndFilteredPhotos.length;
+      let nextIndex: number;
+      if (direction === "next") {
+        nextIndex = (galleryIndex + 1) % total;
+      } else {
+        nextIndex = (galleryIndex - 1 + total) % total;
+      }
+      setGalleryIndex(nextIndex);
+    },
+    [galleryIndex, sortedAndFilteredPhotos.length],
+  );
 
   // --- Form Input Handlers (Only for Edit Dialog) ---
 
@@ -810,7 +814,6 @@ export default function PhotosPage() {
   });
 
   // --- Keyboard Navigation ---
-  // biome-ignore lint/correctness/useExhaustiveDependencies: handler functions are not wrapped in useCallback
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       const items = sortedAndFilteredPhotos;
@@ -896,11 +899,10 @@ export default function PhotosPage() {
         itemElement?.focus();
       }
     },
-    [focusedIndex, sortedAndFilteredPhotos, viewMode],
+    [focusedIndex, sortedAndFilteredPhotos, viewMode, openGalleryView],
   );
 
   // Effect for gallery keyboard navigation
-  // biome-ignore lint/correctness/useExhaustiveDependencies: handler functions are not wrapped in useCallback
   useEffect(() => {
     const handleGalleryKeyDown = (event: KeyboardEvent) => {
       if (viewMode !== "gallery" || galleryIndex === null) return;
@@ -939,7 +941,7 @@ export default function PhotosPage() {
     return () => {
       window.removeEventListener("keydown", handleGalleryKeyDown);
     };
-  }, [viewMode, galleryIndex, sortedAndFilteredPhotos]);
+  }, [viewMode, galleryIndex, sortedAndFilteredPhotos, navigateGallery, closeGalleryView, openEditDialog, openConfirmDeleteDialog]);
 
   // --- Render Logic ---
 

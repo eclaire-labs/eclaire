@@ -3,6 +3,40 @@ import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  const elements: React.ReactNode[] = [];
+  // Match **bold**, __bold__, `code`, *italic*, _italic_ — bold before italic for priority
+  const pattern = /\*\*(.*?)\*\*|__(.*?)__|`([^`]+)`|\*(.*?)\*|_(.*?)_/g;
+  let lastIndex = 0;
+  let key = 0;
+
+  for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
+    if (match.index > lastIndex) {
+      elements.push(text.slice(lastIndex, match.index));
+    }
+
+    if (match[1] != null) {
+      elements.push(<strong key={key++}>{match[1]}</strong>);
+    } else if (match[2] != null) {
+      elements.push(<strong key={key++}>{match[2]}</strong>);
+    } else if (match[3] != null) {
+      elements.push(<code key={key++}>{match[3]}</code>);
+    } else if (match[4] != null) {
+      elements.push(<em key={key++}>{match[4]}</em>);
+    } else if (match[5] != null) {
+      elements.push(<em key={key++}>{match[5]}</em>);
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    elements.push(text.slice(lastIndex));
+  }
+
+  return elements;
+}
+
 interface MarkdownPreviewProps {
   content: string | null;
   maxLength?: number;
@@ -33,25 +67,16 @@ export function MarkdownPreview({
         let plainText = String(result);
 
         if (preserveFormatting) {
-          // Keep basic formatting but convert to simple HTML
+          // Strip block-level syntax but keep inline formatting markers
+          // (bold/italic/code rendered as React elements at render time)
           plainText = plainText
-            // Bold text
-            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-            .replace(/__(.*?)__/g, "<strong>$1</strong>")
-            // Italic text
-            .replace(/\*(.*?)\*/g, "<em>$1</em>")
-            .replace(/_(.*?)_/g, "<em>$1</em>")
-            // Inline code
-            .replace(/`([^`]+)`/g, "<code>$1</code>")
-            // Remove other markdown syntax
             .replace(/#{1,6}\s+/g, "") // Headers
             .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Links
             .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1") // Images
             .replace(/^[\s]*[-*+]\s+/gm, "") // List bullets
             .replace(/^[\s]*\d+\.\s+/gm, "") // Numbered lists
             .replace(/^>/gm, "") // Blockquotes
-            .replace(/```[\s\S]*?```/g, "") // Code blocks
-            .replace(/`([^`]+)`/g, "<code>$1</code>"); // Inline code (again after code blocks)
+            .replace(/```[\s\S]*?```/g, ""); // Code blocks
         } else {
           // Strip all markdown syntax for pure text
           plainText = plainText
@@ -115,11 +140,9 @@ export function MarkdownPreview({
 
   if (preserveFormatting) {
     return (
-      <span
-        className={cn("text-sm", className)}
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized markdown rendering
-        dangerouslySetInnerHTML={{ __html: processedContent }}
-      />
+      <span className={cn("text-sm", className)}>
+        {renderInlineMarkdown(processedContent)}
+      </span>
     );
   }
 
