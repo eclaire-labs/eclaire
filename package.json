@@ -24,7 +24,8 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.4",
     "node-addon-api": "8.5.0",
-    "node-gyp": "12.2.0"
+    "node-gyp": "12.2.0",
+    "oxlint": "^1.50.0"
   },
   "scripts": {
     "setup": "node scripts/setup.js",
@@ -44,7 +45,9 @@
     "test:integration:ai:local": "pnpm --filter @eclaire/ai test:integration:local",
     "test:integration:ai:openrouter": "pnpm --filter @eclaire/ai test:integration:openrouter",
     "test:integration:bullmq": "pnpm --filter @eclaire/queue test:bullmq",
-    "lint": "biome lint ./",
+    "lint": "pnpm lint:biome && pnpm lint:oxlint",
+    "lint:biome": "biome lint ./",
+    "lint:oxlint": "oxlint --tsconfig tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives apps packages tools",
     "format": "biome format --write ./",
     "check": "biome check ./",
     "fix": "biome check --write ./",

@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./apps/backend" },
+    { "path": "./apps/frontend" },
+    { "path": "./packages/ai" },
+    { "path": "./packages/core" },
+    { "path": "./packages/db" },
+    { "path": "./packages/logger" },
+    { "path": "./packages/queue" },
+    { "path": "./packages/storage" },
+    { "path": "./tools/admin-cli" }
+  ]
+}

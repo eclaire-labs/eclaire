@@ -30,8 +30,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Biome lint
-        run: pnpm lint
+      - name: Biome
+        run: pnpm lint:biome
 
-      - name: Oxlint (strict)
-        run: pnpm lint:oxlint:ci
+      - name: Oxlint
+        run: pnpm lint:oxlint

@@ -1,0 +1,143 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicolo-ribaudo/oxc/json-schema-for-oxlintrc/npm/oxlint/configuration_file_schema.json",
+  "plugins": [
+    "react",
+    "jsx-a11y",
+    "import",
+    "unicorn",
+    "typescript",
+    "oxc",
+    "vitest",
+    "react-perf",
+    "promise",
+    "node"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn",
+    "pedantic": "off",
+    "style": "off",
+    "restriction": "off",
+    "nursery": "off"
+  },
+  "rules": {
+    // ── Disable rules that overlap with Biome ──────────────────────
+    "no-unused-vars": "off",
+    "no-this-alias": "off",
+    "no-redeclare": "off",
+    "no-nonoctal-decimal-escape": "off",
+    "no-debugger": "off",
+    "no-empty-pattern": "off",
+    "no-duplicate-case": "off",
+    "no-self-compare": "off",
+    "no-shadow-restricted-names": "off",
+    "no-unsafe-negation": "off",
+    "no-unsafe-optional-chaining": "off",
+    "no-constant-binary-expression": "off",
+    "no-unused-labels": "off",
+
+    // ── Disable TypeScript rules that overlap with Biome / tsc ─────
+    "typescript/no-non-null-asserted-optional-chain": "off",
+    "typescript/no-unnecessary-type-constraint": "off",
+    "typescript/no-unsafe-declaration-merging": "off",
+    "typescript/no-this-alias": "off",
+
+    // ── Disable React rules that overlap with Biome ────────────────
+    "react/jsx-no-duplicate-props": "off",
+    "react/jsx-no-undef": "off",
+    "react/no-children-prop": "off",
+    "react/no-danger-with-children": "off",
+    "react/no-direct-mutation-state": "off",
+    "react/no-find-dom-node": "off",
+    "react/no-render-return-value": "off",
+    "react/no-string-refs": "off",
+    "react/no-unescaped-entities": "off",
+    "react/void-dom-elements-no-children": "off",
+    // Not needed with React 17+ JSX transform
+    "react/react-in-jsx-scope": "off",
+
+    "react/no-array-index-key": "off",
+
+    // ── React: useful non-overlapping rules ────────────────────────
+    "react/rules-of-hooks": "warn",
+    "react/exhaustive-deps": "warn",
+    "react/no-unstable-default-props": "warn",
+    "react/no-set-state-in-component-did-mount": "warn",
+    "react/no-set-state-in-component-did-update": "warn",
+
+    // ── React perf: too noisy for inline callbacks/objects ──────────
+    "react-perf/jsx-no-new-object-as-prop": "off",
+    "react-perf/jsx-no-new-array-as-prop": "off",
+    "react-perf/jsx-no-new-function-as-prop": "off",
+    "react-perf/jsx-no-jsx-as-prop": "off",
+
+    // ── Unicorn ────────────────────────────────────────────────────
+    "unicorn/no-useless-spread": "warn",
+    "unicorn/no-useless-fallback-in-spread": "warn",
+    "unicorn/prefer-array-flat-map": "warn",
+    "unicorn/prefer-array-flat": "warn",
+    "unicorn/prefer-array-some": "warn",
+    "unicorn/no-single-promise-in-promise-methods": "warn",
+    "unicorn/prefer-add-event-listener": "off",
+    // Noisy — intentional patterns in this codebase
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-map-spread": "off",
+
+    // ── Promise ────────────────────────────────────────────────────
+    "promise/no-new-statics": "warn",
+    "promise/valid-params": "warn",
+    "promise/no-multiple-resolved": "warn",
+    "promise/always-return": "off",
+
+    // ── Import ─────────────────────────────────────────────────────
+    "import/no-self-import": "warn",
+    "import/no-named-as-default-member": "off",
+    "import/no-cycle": "off",
+    "import/default": "off",
+    "import/named": "off",
+    "import/namespace": "off",
+    "import/no-unassigned-import": "off",
+
+    // ── Suspicious: disable noisy / false-positive-heavy rules ─────
+    "no-await-in-loop": "off",
+    "no-shadow": "off",
+    "no-new": "off",
+    "oxc/no-map-spread": "off",
+
+    // ── Oxc: noisy for intentional error-wrapping patterns ─────────
+    "preserve-caught-error": "off",
+    "no-unmodified-loop-condition": "off",
+
+    // ── Vitest: disable rules that fire on test helpers ────────────
+    "vitest/no-conditional-expect": "off",
+    "vitest/valid-expect": "off",
+    "vitest/no-standalone-expect": "off",
+    "vitest/expect-expect": "off",
+    "vitest/valid-describe-callback": "off",
+    "vitest/no-disabled-tests": "off",
+    "vitest/require-to-throw-message": "off",
+
+    // ── JSX a11y ───────────────────────────────────────────────────
+    "jsx-a11y/prefer-tag-over-role": "warn",
+    "jsx-a11y/no-autofocus": "off",
+    "jsx-a11y/no-static-element-interactions": "off",
+    "jsx-a11y/click-events-have-key-events": "off",
+
+    // ── Node ───────────────────────────────────────────────────────
+    "node/no-unmodified-loop-condition": "off"
+  },
+  "ignorePatterns": [
+    "**/node_modules",
+    "**/dist",
+    "**/.next",
+    "**/data",
+    "**/build",
+    "apps/frontend/public/sw.js",
+    "apps/frontend/public/workbox-*.js",
+    "apps/frontend/src/routeTree.gen.ts",
+    "scripts/**",
+    "snippets/**"
+  ]
+}
