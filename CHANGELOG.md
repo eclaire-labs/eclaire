@@ -1,30 +1,46 @@
 # Eclaire Changelog
 
-## [0.6.4] - 2026-02-24
-
-### Maintenance
-
-- **deps**: upgrade patch dependencies across all workspaces
-- **deps**: notable upgrades include better-auth 1.4.19, hono 4.12.2, TanStack Router 1.162.8, tailwindcss 4.2.1, pnpm 10.30.2
-
----
-
-## [0.6.3] - 2026-02-22
-
-### Maintenance
-
-- **deps**: upgrade patch and minor dependencies across all workspaces
-- **deps**: notable upgrades include biome 2.4.4, bullmq 5.70.1, pg 8.18.0, pino 10.3.1, playwright 1.58.2, react 19.2.4, TanStack Router 1.162.4, tailwindcss 4.2.0, vite 7.3.1, vitest 4.0.18
-
----
-
-## [0.6.2] - 2026-02-22
+## [0.6.2] - 2026-02-24
 
 ### Security
 
-- **deps**: upgrade axios 1.13.2 → 1.13.5 for GHSA-43fc-jf86-j433 (DoS via \_\_proto\_\_ in mergeConfig)
-- **backend**: upgrade hono 4.11.4 → 4.12.1 for multiple CVEs (XSS, cache bypass, IP spoofing, timing attack)
+- **deps**: upgrade hono 4.11.4 → 4.12.2 for multiple CVEs (XSS, cache bypass, IP spoofing, timing attack)
+- **deps**: upgrade axios 1.13.2 → 1.13.5 for GHSA-43fc-jf86-j433 (DoS via `__proto__` in mergeConfig)
 - **deps**: upgrade node-gyp 12.1.0 → 12.2.0 and refresh transitive deps (tar, minimatch, ajv, qs, brace-expansion)
+- **deps**: resolve seroval and diff vulnerabilities via clean reinstall
+- **frontend**: fix XSS vulnerability from unsanitized `dangerouslySetInnerHTML` uncovered during lint audit
+
+### CI/CD
+
+- **ci**: expand lint workflow into full CI with parallel lint, typecheck, build, and test jobs
+- **ci**: add PR lint workflow enforcing Biome and oxlint with zero warnings
+- **ci**: add Dependabot config for npm security alerts and GitHub Actions auto-updates
+
+### Bug Fixes
+
+- **frontend**: generate route tree before typecheck to fix CI build order
+- **packages**: resolve types from source for workspace packages so typecheck works without a prior build step
+- **packages**: fix 12 strict null check errors across core/encryption, queue, and storage packages
+- **lint**: resolve stale closure risks from missing `useCallback` dependencies in React hooks
+- **lint**: fix accessibility errors across frontend components
+
+### Refactoring
+
+- **lint**: adopt Biome and oxlint as dual linters with unified `pnpm lint` script
+- **lint**: resolve all Biome and oxlint errors and warnings across the monorepo (~340 files touched)
+- **lint**: replace non-null assertions with runtime guards to satisfy `noNonNullAssertion`
+- **lint**: use stable keys instead of array indices in React list components
+- **storage**: replace `as unknown as` casts with proper `NodeWebReadableStream` types
+- **backend**: use `Number.isFinite` over global `isFinite`, fix shadowed variables
+
+### Maintenance
+
+- **deps**: upgrade patch and minor dependencies across all workspaces (biome 2.4.4, bullmq 5.70.1, pg 8.18.0, pino 10.3.1, playwright 1.58.2, react 19.2.4, vite 7.3.1, vitest 4.0.18)
+- **deps**: upgrade better-auth 1.4.19, hono 4.12.2, TanStack Router 1.162.8, tailwindcss 4.2.1, pnpm 10.30.2
+- **cleanup**: remove unused imports, variables, and function parameters across backend and frontend
+- **cleanup**: adopt `node:` protocol for all Node.js builtin imports
+- **config**: exclude generated service worker files from Biome linting
+- **config**: expand root lint and format scripts to cover entire monorepo
 
 ---
 
