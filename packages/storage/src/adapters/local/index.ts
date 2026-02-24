@@ -19,6 +19,7 @@ import {
 import { dirname, join, normalize, relative } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
 import {
   StorageError,
   StorageInvalidKeyError,
@@ -137,9 +138,7 @@ export class LocalStorage implements Storage {
     // Convert web stream to node stream if needed
     let nodeStream: NodeJS.ReadableStream;
     if ("getReader" in stream) {
-      nodeStream = Readable.fromWeb(
-        stream as unknown as import("stream/web").ReadableStream,
-      );
+      nodeStream = Readable.fromWeb(stream as NodeWebReadableStream);
     } else {
       nodeStream = stream;
     }
@@ -185,7 +184,7 @@ export class LocalStorage implements Storage {
     options: WriteOptions,
   ): Promise<void> {
     const stream = Readable.from(buffer);
-    await this.write(key, stream as unknown as NodeJS.ReadableStream, options);
+    await this.write(key, stream as NodeJS.ReadableStream, options);
   }
 
   // ---- Read Operations ----
