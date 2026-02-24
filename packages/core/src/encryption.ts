@@ -88,10 +88,13 @@ export function createEncryption(
       }
 
       const [, ivHex, authTagHex, encryptedHex] = parts;
+      if (!ivHex || !authTagHex || !encryptedHex) {
+        throw new Error("Invalid encrypted text format.");
+      }
 
-      const iv = Buffer.from(ivHex!, "hex");
-      const authTag = Buffer.from(authTagHex!, "hex");
-      const encrypted = Buffer.from(encryptedHex!, "hex");
+      const iv = Buffer.from(ivHex, "hex");
+      const authTag = Buffer.from(authTagHex, "hex");
+      const encrypted = Buffer.from(encryptedHex, "hex");
 
       const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
       decipher.setAuthTag(authTag); // Check for message integrity

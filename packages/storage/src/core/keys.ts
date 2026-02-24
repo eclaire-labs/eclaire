@@ -58,14 +58,15 @@ export function buildKey(
  */
 export function parseKey(key: string): ParsedKey | null {
   const parts = key.split("/");
-  if (parts.length < 4) return null;
+  const [userId, category, assetId, ...rest] = parts;
+  if (!userId || !category || !assetId || rest.length === 0) return null;
 
   return {
-    userId: parts[0]!,
-    category: parts[1]!,
-    assetId: parts[2]!,
+    userId,
+    category,
+    assetId,
     // fileName can include nested paths (e.g., 'images/img1.jpg')
-    fileName: parts.slice(3).join("/"),
+    fileName: rest.join("/"),
   };
 }
 
@@ -158,7 +159,8 @@ export function isValidKey(key: string): boolean {
 
   // Check first 3 components (userId, category, assetId)
   for (let i = 0; i < 3; i++) {
-    if (!isValidKeyComponent(parts[i]!)) {
+    const part = parts[i];
+    if (!part || !isValidKeyComponent(part)) {
       return false;
     }
   }
