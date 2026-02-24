@@ -71,7 +71,7 @@ async function apiFetchWithRetry(
       // Merge headers
       const headers = {
         ...defaultHeaders,
-        ...(options.headers || {}),
+        ...options.headers,
       };
 
       // Make the request with the full URL and include credentials for Better Auth

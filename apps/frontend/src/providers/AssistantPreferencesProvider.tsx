@@ -1,8 +1,10 @@
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -80,29 +82,27 @@ export function AssistantPreferencesProvider({
     }
   }, []);
 
-  const updatePreference = (
-    key: keyof AssistantPreferences,
-    value: boolean,
-  ) => {
-    const newPreferences = { ...preferences, [key]: value };
-    setPreferences(newPreferences);
-
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
-
-        // Dispatch a custom event to notify other components in the same window
-        // (storage event only fires for other tabs, not the current one)
-        window.dispatchEvent(
-          new CustomEvent("assistant-preferences-changed", {
-            detail: newPreferences,
-          }),
-        );
-      } catch (error) {
-        console.error("Failed to save assistant preferences:", error);
-      }
-    }
-  };
+  const updatePreference = useCallback(
+    (key: keyof AssistantPreferences, value: boolean) => {
+      setPreferences((prev) => {
+        const newPreferences = { ...prev, [key]: value };
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
+            window.dispatchEvent(
+              new CustomEvent("assistant-preferences-changed", {
+                detail: newPreferences,
+              }),
+            );
+          } catch (error) {
+            console.error("Failed to save assistant preferences:", error);
+          }
+        }
+        return newPreferences;
+      });
+    },
+    [],
+  );
 
   // Listen for custom events from the same window
   useEffect(() => {
@@ -125,11 +125,14 @@ export function AssistantPreferencesProvider({
     }
   }, []);
 
-  const value: AssistantPreferencesContextType = {
-    preferences,
-    updatePreference,
-    isLoaded,
-  };
+  const value = useMemo<AssistantPreferencesContextType>(
+    () => ({
+      preferences,
+      updatePreference,
+      isLoaded,
+    }),
+    [preferences, updatePreference, isLoaded],
+  );
 
   return (
     <AssistantPreferencesContext.Provider value={value}>

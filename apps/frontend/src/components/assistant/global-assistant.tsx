@@ -158,6 +158,7 @@ const ConversationHistoryDialog = ({
                   // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
                   <div
                     key={conversation.id}
+                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
                     role="button"
                     tabIndex={0}
                     className={`p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors ${

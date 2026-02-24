@@ -43,6 +43,7 @@ const PaginationLink = ({
   size = "icon",
   ...props
 }: PaginationLinkProps) => (
+  // oxlint-disable-next-line jsx-a11y/anchor-has-content -- content via spread props
   <a
     aria-current={isActive ? "page" : undefined}
     className={cn(

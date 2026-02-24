@@ -52,6 +52,7 @@ export function Combobox({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          // oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- Radix Popover manages aria-controls
           role="combobox"
           aria-expanded={open}
           className={cn("w-full justify-between", className)}

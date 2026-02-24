@@ -2094,6 +2094,7 @@ function ListView({
             // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
             <div
               key={doc.id}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
               role="button"
               tabIndex={-1}
               data-index={index} // For keyboard navigation targeting

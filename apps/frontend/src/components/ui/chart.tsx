@@ -118,7 +118,10 @@ function ChartContainer({
   }, []);
 
   return (
-    <ChartContext.Provider value={{ config }}>
+    <ChartContext.Provider
+      // oxlint-disable-next-line react/jsx-no-constructed-context-values -- shadcn/ui pattern
+      value={{ config }}
+    >
       <div
         ref={containerRef}
         data-chart={chartId}

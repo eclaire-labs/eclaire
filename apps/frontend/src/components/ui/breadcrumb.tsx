@@ -64,6 +64,7 @@ const BreadcrumbPage = React.forwardRef<
   // biome-ignore lint/a11y/useSemanticElements: breadcrumb current page uses role="link" with aria-disabled intentionally
   <span
     ref={ref}
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- intentional disabled link pattern
     role="link"
     tabIndex={0}
     aria-disabled="true"

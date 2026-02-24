@@ -104,6 +104,7 @@ export function SimpleProcessingStatusIcon({
         <TooltipTrigger asChild>
           {/* biome-ignore lint/a11y/useSemanticElements: icon wrapper not suited for button element */}
           <div
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
             role="button"
             tabIndex={0}
             className={`inline-flex items-center justify-center ${className}`}

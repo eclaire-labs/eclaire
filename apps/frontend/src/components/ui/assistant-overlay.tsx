@@ -46,6 +46,7 @@ export function AssistantOverlay({
   ];
 
   // Calculate positions dynamically using trigonometry (same as original prototype)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: geometry only depends on count, not action content
   const actionPositions = useMemo(() => {
     const radius = 75;
     const startAngle = 90; // degrees
@@ -65,7 +66,8 @@ export function AssistantOverlay({
         delay: index * 50, // Animation delay
       };
     });
-  }, [actions.length, actions.map]);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- geometry only depends on count, not action content
+  }, [actions.length]);
 
   const handleMouseEnter = () => {
     if (hideMenuTimer.current) {
@@ -212,6 +214,7 @@ export function AssistantOverlay({
             // biome-ignore lint/a11y/useSemanticElements: positioned action item not suited for button element
             <div
               key={action.name}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
               role="button"
               tabIndex={0}
               className={cn(

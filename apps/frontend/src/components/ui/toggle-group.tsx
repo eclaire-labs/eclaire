@@ -21,7 +21,10 @@ const ToggleGroup = React.forwardRef<
     className={cn("flex items-center justify-center gap-1", className)}
     {...props}
   >
-    <ToggleGroupContext.Provider value={{ variant, size }}>
+    <ToggleGroupContext.Provider
+      // oxlint-disable-next-line react/jsx-no-constructed-context-values -- shadcn/ui pattern
+      value={{ variant, size }}
+    >
       {children}
     </ToggleGroupContext.Provider>
   </ToggleGroupPrimitive.Root>

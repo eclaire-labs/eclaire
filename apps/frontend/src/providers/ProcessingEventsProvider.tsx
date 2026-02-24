@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -321,12 +322,15 @@ export function ProcessingEventsProvider({
     [],
   );
 
-  const value: ProcessingEventsContextType = {
-    events,
-    isConnected,
-    clearEvents,
-    registerRefreshCallback,
-  };
+  const value = useMemo<ProcessingEventsContextType>(
+    () => ({
+      events,
+      isConnected,
+      clearEvents,
+      registerRefreshCallback,
+    }),
+    [events, isConnected, clearEvents, registerRefreshCallback],
+  );
 
   return (
     <ProcessingEventsContext.Provider value={value}>

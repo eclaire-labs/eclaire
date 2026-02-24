@@ -1609,6 +1609,7 @@ function BookmarkListItem({
   return (
     // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="button"
       tabIndex={0}
       className="flex items-center px-4 py-2.5 hover:bg-muted/50 cursor-pointer"

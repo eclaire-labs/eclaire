@@ -2191,6 +2191,7 @@ function ListView({
             // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
             <div
               key={photo.id}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
               role="button"
               tabIndex={-1}
               data-index={index} // For keyboard navigation targeting
@@ -2562,6 +2563,7 @@ function GalleryView({
                 // biome-ignore lint/a11y/useSemanticElements: thumbnail with image content not suited for button element
                 <div
                   key={thumbPhoto.id}
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
                   role="button"
                   tabIndex={0}
                   className={`w-12 h-12 md:w-16 md:h-16 rounded overflow-hidden cursor-pointer flex-shrink-0 bg-black/50 touch-manipulation ${idx === currentIndex ? "ring-2 ring-white" : "opacity-60 hover:opacity-100"}`}

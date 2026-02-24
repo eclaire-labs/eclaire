@@ -491,6 +491,7 @@ export default function ProfileSettings() {
                 {/* Upload Area */}
                 {/* biome-ignore lint/a11y/useSemanticElements: drag-and-drop upload area not suited for button element */}
                 <div
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
                   role="button"
                   tabIndex={0}
                   onDrop={handleDrop}

@@ -236,8 +236,8 @@ export function getNextExecutionTime(
     }
   } else if (parts.dayOfWeek !== "*") {
     // Specific day(s) of week
-    const targetDays = parts.dayOfWeek.split(",").map(Number);
-    while (!targetDays.includes(next.getDay())) {
+    const targetDays = new Set(parts.dayOfWeek.split(",").map(Number));
+    while (!targetDays.has(next.getDay())) {
       next.setDate(next.getDate() + 1);
     }
   }

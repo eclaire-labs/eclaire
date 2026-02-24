@@ -1023,8 +1023,7 @@ export function TaskDetailClient() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
-                        {users.filter((u) => u.userType === "assistant")
-                          .length > 0 && (
+                        {users.some((u) => u.userType === "assistant") && (
                           <>
                             <SelectItem
                               value="__section_ai__"
@@ -1042,8 +1041,7 @@ export function TaskDetailClient() {
                               ))}
                           </>
                         )}
-                        {users.filter((u) => u.userType !== "assistant")
-                          .length > 0 && (
+                        {users.some((u) => u.userType !== "assistant") && (
                           <>
                             <SelectItem
                               value="__section_team__"

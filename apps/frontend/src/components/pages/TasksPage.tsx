@@ -162,11 +162,11 @@ interface TaskListItemProps {
 
 // Define allowed statuses explicitly
 type TaskStatus = SharedTaskStatus;
-const ALLOWED_STATUSES: TaskStatus[] = [
+const ALLOWED_STATUSES = new Set<TaskStatus>([
   "not-started",
   "in-progress",
   "completed",
-];
+]);
 
 // --- Helper Functions ---
 const formatDate = (dateString: string | null | undefined): string => {
@@ -859,7 +859,7 @@ export default function TasksPage() {
           dueDate: new Date(editingTask.dueDate).toISOString(),
         }),
         // Ensure status is one of the allowed ones
-        status: ALLOWED_STATUSES.includes(editingTask.status as TaskStatus)
+        status: ALLOWED_STATUSES.has(editingTask.status as TaskStatus)
           ? editingTask.status
           : "not-started",
         // Only include assignedToId if it has a value (not null)
@@ -1249,8 +1249,7 @@ export default function TasksPage() {
                 <SelectContent>
                   <SelectItem value="all">All Assignees</SelectItem>
                   {/* Group by user type */}
-                  {allAssignees.filter((a) => a.userType === "assistant")
-                    .length > 0 && (
+                  {allAssignees.some((a) => a.userType === "assistant") && (
                     <>
                       <SelectItem
                         value="__section_ai__"
@@ -1271,8 +1270,7 @@ export default function TasksPage() {
                         ))}
                     </>
                   )}
-                  {allAssignees.filter((a) => a.userType !== "assistant")
-                    .length > 0 && (
+                  {allAssignees.some((a) => a.userType !== "assistant") && (
                     <>
                       <SelectItem
                         value="__section_team__"
@@ -1550,8 +1548,7 @@ export default function TasksPage() {
             <SelectContent>
               <SelectItem value="all">All Assignees</SelectItem>
               {/* Group by user type */}
-              {allAssignees.filter((a) => a.userType === "assistant").length >
-                0 && (
+              {allAssignees.some((a) => a.userType === "assistant") && (
                 <>
                   <SelectItem
                     value="__section_ai__"
@@ -1572,8 +1569,7 @@ export default function TasksPage() {
                     ))}
                 </>
               )}
-              {allAssignees.filter((a) => a.userType !== "assistant").length >
-                0 && (
+              {allAssignees.some((a) => a.userType !== "assistant") && (
                 <>
                   <SelectItem
                     value="__section_team__"
@@ -1782,8 +1778,7 @@ export default function TasksPage() {
                     <SelectContent>
                       <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
                       {/* Group by user type */}
-                      {allAssignees.filter((a) => a.userType === "assistant")
-                        .length > 0 && (
+                      {allAssignees.some((a) => a.userType === "assistant") && (
                         <>
                           <SelectItem
                             value="__section_ai__"
@@ -1804,8 +1799,7 @@ export default function TasksPage() {
                             ))}
                         </>
                       )}
-                      {allAssignees.filter((a) => a.userType !== "assistant")
-                        .length > 0 && (
+                      {allAssignees.some((a) => a.userType !== "assistant") && (
                         <>
                           <SelectItem
                             value="__section_team__"
@@ -2046,8 +2040,7 @@ export default function TasksPage() {
                     <SelectContent>
                       <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
                       {/* Group by user type */}
-                      {allAssignees.filter((a) => a.userType === "assistant")
-                        .length > 0 && (
+                      {allAssignees.some((a) => a.userType === "assistant") && (
                         <>
                           <SelectItem
                             value="__section_ai__"
@@ -2068,8 +2061,7 @@ export default function TasksPage() {
                             ))}
                         </>
                       )}
-                      {allAssignees.filter((a) => a.userType !== "assistant")
-                        .length > 0 && (
+                      {allAssignees.some((a) => a.userType !== "assistant") && (
                         <>
                           <SelectItem
                             value="__section_team__"
