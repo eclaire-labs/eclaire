@@ -412,10 +412,10 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
             "delayed",
           );
 
-          stats.pending += counts.waiting + counts.delayed;
-          stats.processing += counts.active;
-          stats.completed += counts.completed;
-          stats.failed += counts.failed;
+          stats.pending += (counts.waiting ?? 0) + (counts.delayed ?? 0);
+          stats.processing += (counts.active ?? 0);
+          stats.completed += (counts.completed ?? 0);
+          stats.failed += (counts.failed ?? 0);
           // Note: BullMQ doesn't distinguish 'retry_pending' from 'delayed'.
           // Jobs waiting for retry after failure are in 'delayed' state, same as
           // jobs scheduled for the future. Unlike the DB driver which tracks
