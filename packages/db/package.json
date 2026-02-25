@@ -13,47 +13,47 @@
   "exports": {
     ".": {
       "development": "./src/index.ts",
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./types": {
       "development": "./src/types.ts",
-      "types": "./dist/types.d.ts",
+      "types": "./src/types.ts",
       "default": "./dist/types.js"
     },
     "./config": {
       "development": "./src/config.ts",
-      "types": "./dist/config.d.ts",
+      "types": "./src/config.ts",
       "default": "./dist/config.js"
     },
     "./utils": {
       "development": "./src/utils.ts",
-      "types": "./dist/utils.d.ts",
+      "types": "./src/utils.ts",
       "default": "./dist/utils.js"
     },
     "./schema/postgres": {
       "development": "./src/schema/postgres.ts",
-      "types": "./dist/schema/postgres.d.ts",
+      "types": "./src/schema/postgres.ts",
       "default": "./dist/schema/postgres.js"
     },
     "./schema/sqlite": {
       "development": "./src/schema/sqlite.ts",
-      "types": "./dist/schema/sqlite.d.ts",
+      "types": "./src/schema/sqlite.ts",
       "default": "./dist/schema/sqlite.js"
     },
     "./adapters/postgres/tx": {
       "development": "./src/adapters/postgres/tx.ts",
-      "types": "./dist/adapters/postgres/tx.d.ts",
+      "types": "./src/adapters/postgres/tx.ts",
       "default": "./dist/adapters/postgres/tx.js"
     },
     "./adapters/sqlite/tx": {
       "development": "./src/adapters/sqlite/tx.ts",
-      "types": "./dist/adapters/sqlite/tx.d.ts",
+      "types": "./src/adapters/sqlite/tx.ts",
       "default": "./dist/adapters/sqlite/tx.js"
     },
     "./scripts/migrate": {
       "development": "./src/scripts/migrate.ts",
-      "types": "./dist/scripts/migrate.d.ts",
+      "types": "./src/scripts/migrate.ts",
       "default": "./dist/scripts/migrate.js"
     }
   },

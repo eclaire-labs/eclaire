@@ -13,32 +13,32 @@
   "exports": {
     ".": {
       "development": "./src/index.ts",
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./id": {
       "development": "./src/id-generator.ts",
-      "types": "./dist/id-generator.d.ts",
+      "types": "./src/id-generator.ts",
       "default": "./dist/id-generator.js"
     },
     "./encryption": {
       "development": "./src/encryption.ts",
-      "types": "./dist/encryption.d.ts",
+      "types": "./src/encryption.ts",
       "default": "./dist/encryption.js"
     },
     "./types": {
       "development": "./src/types.ts",
-      "types": "./dist/types.d.ts",
+      "types": "./src/types.ts",
       "default": "./dist/types.js"
     },
     "./utils": {
       "development": "./src/utils.ts",
-      "types": "./dist/utils.d.ts",
+      "types": "./src/utils.ts",
       "default": "./dist/utils.js"
     },
     "./env-loader": {
       "development": "./src/env-loader.ts",
-      "types": "./dist/env-loader.d.ts",
+      "types": "./src/env-loader.ts",
       "default": "./dist/env-loader.js"
     }
   },
