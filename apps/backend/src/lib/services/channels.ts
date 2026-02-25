@@ -18,6 +18,7 @@ import type {
 } from "../../schemas/channels-responses.js";
 import { formatRequiredTimestamp } from "../db-helpers.js";
 import { encrypt } from "../encryption.js";
+import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
 import { startTelegramBot, stopTelegramBot } from "./telegram.js";
@@ -229,7 +230,7 @@ export async function updateChannel(
     });
 
     if (!existingChannel) {
-      throw new Error("Channel not found");
+      throw new NotFoundError("Channel");
     }
 
     // Prepare update object
@@ -270,7 +271,7 @@ export async function updateChannel(
       .returning();
 
     if (!updatedChannel) {
-      throw new Error("Channel not found");
+      throw new NotFoundError("Channel");
     }
 
     // Record history
@@ -356,7 +357,7 @@ export async function deleteChannel(
     });
 
     if (!existingChannel) {
-      throw new Error("Channel not found");
+      throw new NotFoundError("Channel");
     }
 
     // Stop Telegram bot if it exists
@@ -371,7 +372,7 @@ export async function deleteChannel(
       .returning();
 
     if (!deletedRows.length) {
-      throw new Error("Channel not found");
+      throw new NotFoundError("Channel");
     }
 
     // Record history

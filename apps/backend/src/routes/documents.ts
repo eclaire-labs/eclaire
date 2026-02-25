@@ -1,9 +1,8 @@
 import { fileTypeFromBuffer } from "file-type";
-import type { Context } from "hono";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
   countDocuments,
@@ -13,10 +12,10 @@ import {
   getAllDocuments,
   getDocumentAsset,
   getDocumentById,
-  NotFoundError,
   reprocessDocument,
   updateDocument,
 } from "../lib/services/documents.js";
+import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
   DocumentMetadataSchema,
@@ -43,6 +42,7 @@ import {
   putDocumentRouteDescription,
 } from "../schemas/documents-routes.js";
 import { DOCUMENT_MIMES } from "../types/mime-types.js";
+import type { Context } from "hono";
 import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("documents");
@@ -53,246 +53,163 @@ export const documentsRoutes = new Hono<{ Variables: RouteVariables }>();
 documentsRoutes.get(
   "/",
   describeRoute(getDocumentsRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const queryParams = c.req.query();
 
-      const queryParams = c.req.query();
-
-      // If no search parameters, return all documents
-      if (Object.keys(queryParams).length === 0) {
-        const documents = await getAllDocuments(userId);
-        return c.json({ documents, totalCount: documents.length, limit: 50 });
-      }
-
-      // Parse and validate search parameters
-      try {
-        const params = DocumentSearchParamsSchema.parse({
-          text: queryParams.text || undefined,
-          tags: queryParams.tags || undefined,
-          startDate: queryParams.startDate || undefined,
-          endDate: queryParams.endDate || undefined,
-          limit: queryParams.limit || 50,
-          sortBy: queryParams.sortBy || "createdAt",
-          sortDir: queryParams.sortDir || "desc",
-          dueDateStart: queryParams.dueDateStart || undefined,
-          dueDateEnd: queryParams.dueDateEnd || undefined,
-        });
-
-        // Process tags if provided (convert from comma-separated string to array)
-        const tagsList = params.tags
-          ? params.tags.split(",").map((tag: string) => tag.trim())
-          : undefined;
-
-        // Parse dates if provided
-        const startDate = params.startDate
-          ? new Date(params.startDate)
-          : undefined;
-        const endDate = params.endDate ? new Date(params.endDate) : undefined;
-
-        // Search documents with provided criteria
-        const documents = await findDocuments(
-          userId,
-          params.text,
-          tagsList,
-          undefined, // fileTypes parameter
-          startDate,
-          endDate,
-          params.limit,
-          params.sortBy,
-          params.sortDir,
-          params.dueDateStart ? new Date(params.dueDateStart) : undefined,
-          params.dueDateEnd ? new Date(params.dueDateEnd) : undefined,
-        );
-
-        // Get total count for pagination
-        const totalCount = await countDocuments(
-          userId,
-          params.text,
-          tagsList,
-          undefined, // fileTypes parameter
-          startDate,
-          endDate,
-        );
-
-        return c.json({
-          documents,
-          totalCount,
-          limit: params.limit,
-        });
-      } catch (error: unknown) {
-        if (error instanceof z.ZodError) {
-          return c.json(
-            { error: "Invalid search parameters", details: error.issues },
-            400,
-          );
-        }
-        throw error;
-      }
-    } catch (error: unknown) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error getting documents:",
-      );
-      return c.json({ error: "Failed to fetch documents" }, 500);
+    // If no search parameters, return all documents
+    if (Object.keys(queryParams).length === 0) {
+      const documents = await getAllDocuments(userId);
+      return c.json({ documents, totalCount: documents.length, limit: 50 });
     }
-  },
+
+    // Parse and validate search parameters
+    const params = DocumentSearchParamsSchema.parse({
+      text: queryParams.text || undefined,
+      tags: queryParams.tags || undefined,
+      startDate: queryParams.startDate || undefined,
+      endDate: queryParams.endDate || undefined,
+      limit: queryParams.limit || 50,
+      sortBy: queryParams.sortBy || "createdAt",
+      sortDir: queryParams.sortDir || "desc",
+      dueDateStart: queryParams.dueDateStart || undefined,
+      dueDateEnd: queryParams.dueDateEnd || undefined,
+    });
+
+    // Process tags if provided (convert from comma-separated string to array)
+    const tagsList = params.tags
+      ? params.tags.split(",").map((tag: string) => tag.trim())
+      : undefined;
+
+    // Parse dates if provided
+    const startDate = params.startDate
+      ? new Date(params.startDate)
+      : undefined;
+    const endDate = params.endDate ? new Date(params.endDate) : undefined;
+
+    // Search documents with provided criteria
+    const documents = await findDocuments(
+      userId,
+      params.text,
+      tagsList,
+      undefined, // fileTypes parameter
+      startDate,
+      endDate,
+      params.limit,
+      params.sortBy,
+      params.sortDir,
+      params.dueDateStart ? new Date(params.dueDateStart) : undefined,
+      params.dueDateEnd ? new Date(params.dueDateEnd) : undefined,
+    );
+
+    // Get total count for pagination
+    const totalCount = await countDocuments(
+      userId,
+      params.text,
+      tagsList,
+      undefined, // fileTypes parameter
+      startDate,
+      endDate,
+    );
+
+    return c.json({
+      documents,
+      totalCount,
+      limit: params.limit,
+    });
+  }, logger),
 );
 
 // POST /api/documents - Create a new document (file upload)
 documentsRoutes.post(
   "/",
   describeRoute(postDocumentsRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const formData = await c.req.formData();
+    const metadataPart = formData.get("metadata");
+    const contentPart = formData.get("content") as File;
 
-      const formData = await c.req.formData();
-      const metadataPart = formData.get("metadata");
-      const contentPart = formData.get("content") as File;
-
-      if (!contentPart) {
-        return c.json({ error: "The 'content' part is required." }, 400);
-      }
-
-      const contentBuffer = Buffer.from(await contentPart.arrayBuffer());
-      const fileTypeResult = await fileTypeFromBuffer(contentBuffer);
-      const verifiedMimeType = fileTypeResult?.mime || contentPart.type;
-
-      // Special handling for Apple iWork files that might be detected as ZIP
-      let finalMimeType = verifiedMimeType;
-      if (verifiedMimeType === "application/zip" && contentPart.name) {
-        const filename = contentPart.name.toLowerCase();
-        if (filename.endsWith(".numbers")) {
-          finalMimeType = "application/vnd.apple.numbers";
-        } else if (filename.endsWith(".pages")) {
-          finalMimeType = "application/vnd.apple.pages";
-        } else if (filename.endsWith(".keynote")) {
-          finalMimeType = "application/vnd.apple.keynote";
-        }
-      }
-
-      // Validate content type for this specific endpoint
-      const isValidDocumentType =
-        DOCUMENT_MIMES.SET.has(finalMimeType) ||
-        finalMimeType.startsWith(DOCUMENT_MIMES.OPENXML_PREFIX);
-
-      if (!isValidDocumentType) {
-        return c.json(
-          {
-            error: `Invalid content type for a document. Received ${finalMimeType}.`,
-          },
-          400,
-        );
-      }
-
-      // Parse the raw metadata first (keep all fields for database storage)
-      let rawMetadata: Record<string, unknown>;
-      try {
-        rawMetadata = JSON.parse((metadataPart as string) || "{}");
-      } catch (error) {
-        if (error instanceof SyntaxError) {
-          return c.json({ error: "Invalid metadata JSON format" }, 400);
-        }
-        throw error;
-      }
-
-      // Then validate only the fields we need for our internal logic
-      const validatedMetadata = DocumentMetadataSchema.parse(rawMetadata);
-
-      // Merge: use the raw metadata as base, but overlay our validated fields
-      const metadata = { ...rawMetadata, ...validatedMetadata };
-
-      const servicePayload = {
-        content: contentBuffer,
-        metadata: {
-          ...metadata,
-          title: metadata.title || contentPart.name || "Untitled Document",
-          originalFilename: metadata.originalFilename || contentPart.name,
-        },
-        originalMimeType: finalMimeType, // Use the corrected MIME type
-        userAgent: c.req.header("User-Agent") || "",
-      };
-
-      const newDocument = await createDocument(servicePayload, userId);
-      return c.json(newDocument, 201);
-    } catch (error) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error creating document:",
-      );
-
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid metadata format", details: error.issues },
-          400,
-        );
-      }
-
-      return c.json({ error: "Failed to create document" }, 500);
+    if (!contentPart) {
+      return c.json({ error: "The 'content' part is required." }, 400);
     }
-  },
+
+    const contentBuffer = Buffer.from(await contentPart.arrayBuffer());
+    const fileTypeResult = await fileTypeFromBuffer(contentBuffer);
+    const verifiedMimeType = fileTypeResult?.mime || contentPart.type;
+
+    // Special handling for Apple iWork files that might be detected as ZIP
+    let finalMimeType = verifiedMimeType;
+    if (verifiedMimeType === "application/zip" && contentPart.name) {
+      const filename = contentPart.name.toLowerCase();
+      if (filename.endsWith(".numbers")) {
+        finalMimeType = "application/vnd.apple.numbers";
+      } else if (filename.endsWith(".pages")) {
+        finalMimeType = "application/vnd.apple.pages";
+      } else if (filename.endsWith(".keynote")) {
+        finalMimeType = "application/vnd.apple.keynote";
+      }
+    }
+
+    // Validate content type for this specific endpoint
+    const isValidDocumentType =
+      DOCUMENT_MIMES.SET.has(finalMimeType) ||
+      finalMimeType.startsWith(DOCUMENT_MIMES.OPENXML_PREFIX);
+
+    if (!isValidDocumentType) {
+      return c.json(
+        {
+          error: `Invalid content type for a document. Received ${finalMimeType}.`,
+        },
+        400,
+      );
+    }
+
+    // Parse the raw metadata first (keep all fields for database storage)
+    let rawMetadata: Record<string, unknown>;
+    try {
+      rawMetadata = JSON.parse((metadataPart as string) || "{}");
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return c.json({ error: "Invalid metadata JSON format" }, 400);
+      }
+      throw error;
+    }
+
+    // Then validate only the fields we need for our internal logic
+    const validatedMetadata = DocumentMetadataSchema.parse(rawMetadata);
+
+    // Merge: use the raw metadata as base, but overlay our validated fields
+    const metadata = { ...rawMetadata, ...validatedMetadata };
+
+    const servicePayload = {
+      content: contentBuffer,
+      metadata: {
+        ...metadata,
+        title: metadata.title || contentPart.name || "Untitled Document",
+        originalFilename: metadata.originalFilename || contentPart.name,
+      },
+      originalMimeType: finalMimeType, // Use the corrected MIME type
+      userAgent: c.req.header("User-Agent") || "",
+    };
+
+    const newDocument = await createDocument(servicePayload, userId);
+    return c.json(newDocument, 201);
+  }, logger),
 );
 
 // GET /api/documents/:id - Get a specific document by ID
 documentsRoutes.get(
   "/:id",
   describeRoute(getDocumentByIdRouteDescription),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const document = await getDocumentById(id, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      try {
-        const document = await getDocumentById(id, userId);
-
-        if (!document) {
-          return c.json({ error: "Document not found" }, 404);
-        }
-
-        return c.json(document);
-      } catch (error) {
-        if ((error as Error).message === "Document not found") {
-          return c.json({ error: "Document not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error fetching document:",
-      );
-      return c.json({ error: "Failed to fetch document" }, 500);
+    if (!document) {
+      throw new NotFoundError("Document");
     }
-  },
+
+    return c.json(document);
+  }, logger),
 );
 
 // PUT /api/documents/:id - Update a document (full update)
@@ -300,53 +217,17 @@ documentsRoutes.put(
   "/:id",
   describeRoute(putDocumentRouteDescription),
   zValidator("json", PartialDocumentSchema), // Note: using PartialDocumentSchema as the original code uses it
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const validatedData = c.req.valid("json");
+    const updatedDocument = await updateDocument(id, validatedData, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const validatedData = c.req.valid("json");
-
-      try {
-        const updatedDocument = await updateDocument(id, validatedData, userId);
-
-        if (!updatedDocument) {
-          return c.json({ error: "Document not found" }, 404);
-        }
-
-        return c.json(updatedDocument);
-      } catch (error) {
-        if ((error as Error).message === "Document not found") {
-          return c.json({ error: "Document not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error updating document:",
-      );
-
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid request data", details: error.issues },
-          400,
-        );
-      }
-
-      return c.json({ error: "Failed to update document" }, 500);
+    if (!updatedDocument) {
+      throw new NotFoundError("Document");
     }
-  },
+
+    return c.json(updatedDocument);
+  }, logger),
 );
 
 // PATCH /api/documents/:id - Update a document (partial update)
@@ -354,160 +235,87 @@ documentsRoutes.patch(
   "/:id",
   describeRoute(patchDocumentRouteDescription),
   zValidator("json", PartialDocumentSchema),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const validatedData = c.req.valid("json");
+    const updatedDocument = await updateDocument(id, validatedData, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const validatedData = c.req.valid("json");
-
-      try {
-        const updatedDocument = await updateDocument(id, validatedData, userId);
-
-        if (!updatedDocument) {
-          return c.json({ error: "Document not found" }, 404);
-        }
-
-        return c.json(updatedDocument);
-      } catch (error) {
-        if ((error as Error).message === "Document not found") {
-          return c.json({ error: "Document not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error updating document:",
-      );
-
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid request data", details: error.issues },
-          400,
-        );
-      }
-
-      return c.json({ error: "Failed to update document" }, 500);
+    if (!updatedDocument) {
+      throw new NotFoundError("Document");
     }
-  },
+
+    return c.json(updatedDocument);
+  }, logger),
 );
 
 // GET /api/documents/:id/file
 documentsRoutes.get(
   "/:id/file",
   describeRoute(getDocumentFileRouteDescription),
-  async (c) => {
-    try {
-      const documentId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
-
-      const asset = await getDocumentAsset(documentId, userId, "original");
-      return createAssetResponse(c, asset, "private, max-age=3600");
-    } catch (error: unknown) {
-      return handleAssetError(c, error);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const documentId = c.req.param("id");
+    const asset = await getDocumentAsset(documentId, userId, "original");
+    return createAssetResponse(c, asset, "private, max-age=3600");
+  }, logger),
 );
 
 // GET /api/documents/:id/thumbnail
 documentsRoutes.get(
   "/:id/thumbnail",
   describeRoute(getDocumentThumbnailRouteDescription),
-  async (c) => {
-    try {
-      const documentId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
-
-      const asset = await getDocumentAsset(documentId, userId, "thumbnail");
-      return createAssetResponse(c, asset, "public, max-age=86400");
-    } catch (error: unknown) {
-      return handleAssetError(c, error);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const documentId = c.req.param("id");
+    const asset = await getDocumentAsset(documentId, userId, "thumbnail");
+    return createAssetResponse(c, asset, "public, max-age=86400");
+  }, logger),
 );
 
 // GET /api/documents/:id/screenshot
 documentsRoutes.get(
   "/:id/screenshot",
   describeRoute(getDocumentScreenshotRouteDescription),
-  async (c) => {
-    try {
-      const documentId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
-
-      const asset = await getDocumentAsset(documentId, userId, "screenshot");
-      return createAssetResponse(c, asset, "public, max-age=86400");
-    } catch (error: unknown) {
-      return handleAssetError(c, error);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const documentId = c.req.param("id");
+    const asset = await getDocumentAsset(documentId, userId, "screenshot");
+    return createAssetResponse(c, asset, "public, max-age=86400");
+  }, logger),
 );
 
 // GET /api/documents/:id/pdf - Serve the generated PDF version
 documentsRoutes.get(
   "/:id/pdf",
   describeRoute(getDocumentPdfRouteDescription),
-  async (c) => {
-    try {
-      const documentId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+  withAuth(async (c, userId) => {
+    const documentId = c.req.param("id");
 
-      // Use the generic service function for the 'pdf' asset type
-      const asset = await getDocumentAsset(documentId, userId, "pdf");
+    // Use the generic service function for the 'pdf' asset type
+    const asset = await getDocumentAsset(documentId, userId, "pdf");
 
-      // Use the generic response helper
-      return createAssetResponse(c, asset, "private, max-age=3600");
-    } catch (error: unknown) {
-      return handleAssetError(c, error);
-    }
-  },
+    // Use the generic response helper
+    return createAssetResponse(c, asset, "private, max-age=3600");
+  }, logger),
 );
 
 // GET /api/documents/:id/content - Serve the extracted content markdown
 documentsRoutes.get(
   "/:id/content",
   describeRoute(getDocumentContentRouteDescription),
-  async (c) => {
-    try {
-      const documentId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+  withAuth(async (c, userId) => {
+    const documentId = c.req.param("id");
 
-      // Use the generic service function for the 'content' asset type
-      const asset = await getDocumentAsset(documentId, userId, "content");
+    // Use the generic service function for the 'content' asset type
+    const asset = await getDocumentAsset(documentId, userId, "content");
 
-      // Use the generic response helper
-      return createAssetResponse(c, asset, "private, max-age=3600");
-    } catch (error: unknown) {
-      return handleAssetError(c, error);
-    }
-  },
+    // Use the generic response helper
+    return createAssetResponse(c, asset, "private, max-age=3600");
+  }, logger),
 );
 
 // POST /api/documents/:id/reprocess - Re-process an existing document
-documentsRoutes.post("/:id/reprocess", async (c) => {
-  try {
+documentsRoutes.post(
+  "/:id/reprocess",
+  withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    const userId = await getAuthenticatedUserId(c);
-
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
 
     // Parse body for optional force parameter
     const body = await c.req.json().catch(() => ({}));
@@ -523,55 +331,25 @@ documentsRoutes.post("/:id/reprocess", async (c) => {
         },
         202,
       ); // 202 Accepted: The request has been accepted for processing
-    } else {
-      return c.json({ error: result.error }, 400);
     }
-  } catch (error) {
-    logger.error({ err: error }, "Error reprocessing document");
-    return c.json({ error: "Failed to reprocess document" }, 500);
-  }
-});
+    return c.json({ error: result.error }, 400);
+  }, logger),
+);
 
 // DELETE /api/documents/:id - Delete a document
 documentsRoutes.delete(
   "/:id",
   describeRoute(deleteDocumentRouteDescription),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+    // Parse the optional deleteStorage query parameter (defaults to true)
+    const deleteStorageParam = c.req.query("deleteStorage");
+    const deleteStorage = deleteStorageParam !== "false";
 
-      // Parse the optional deleteStorage query parameter (defaults to true)
-      const deleteStorageParam = c.req.query("deleteStorage");
-      const deleteStorage = deleteStorageParam !== "false";
-
-      try {
-        await deleteDocument(id, userId, deleteStorage);
-        return new Response(null, { status: 204 });
-      } catch (error) {
-        if ((error as Error).message === "Document not found") {
-          return c.json({ error: "Document not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error deleting document:",
-      );
-      return c.json({ error: "Failed to delete document" }, 500);
-    }
-  },
+    await deleteDocument(id, userId, deleteStorage);
+    return new Response(null, { status: 204 });
+  }, logger),
 );
 
 // PATCH /api/documents/:id/review - Update review status
@@ -587,40 +365,21 @@ documentsRoutes.patch(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { reviewStatus } = c.req.valid("json");
+    const updatedDocument = await updateDocument(
+      id,
+      { reviewStatus },
+      userId,
+    );
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const { reviewStatus } = c.req.valid("json");
-
-      try {
-        const updatedDocument = await updateDocument(
-          id,
-          { reviewStatus },
-          userId,
-        );
-
-        if (!updatedDocument) {
-          return c.json({ error: "Document not found" }, 404);
-        }
-
-        return c.json(updatedDocument);
-      } catch (error: unknown) {
-        if (error instanceof NotFoundError) {
-          return c.json({ error: "Document not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating document review status");
-      return c.json({ error: "Failed to update document review status" }, 500);
+    if (!updatedDocument) {
+      throw new NotFoundError("Document");
     }
-  },
+
+    return c.json(updatedDocument);
+  }, logger),
 );
 
 // PATCH /api/documents/:id/flag - Update flag color
@@ -639,36 +398,17 @@ documentsRoutes.patch(
         }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { flagColor } = c.req.valid("json");
+    const updatedDocument = await updateDocument(id, { flagColor }, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const { flagColor } = c.req.valid("json");
-
-      try {
-        const updatedDocument = await updateDocument(id, { flagColor }, userId);
-
-        if (!updatedDocument) {
-          return c.json({ error: "Document not found" }, 404);
-        }
-
-        return c.json(updatedDocument);
-      } catch (error: unknown) {
-        if (error instanceof NotFoundError) {
-          return c.json({ error: "Document not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating document flag");
-      return c.json({ error: "Failed to update document flag" }, 500);
+    if (!updatedDocument) {
+      throw new NotFoundError("Document");
     }
-  },
+
+    return c.json(updatedDocument);
+  }, logger),
 );
 
 // PATCH /api/documents/:id/pin - Toggle pin status
@@ -684,36 +424,17 @@ documentsRoutes.patch(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { isPinned } = c.req.valid("json");
+    const updatedDocument = await updateDocument(id, { isPinned }, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const { isPinned } = c.req.valid("json");
-
-      try {
-        const updatedDocument = await updateDocument(id, { isPinned }, userId);
-
-        if (!updatedDocument) {
-          return c.json({ error: "Document not found" }, 404);
-        }
-
-        return c.json(updatedDocument);
-      } catch (error: unknown) {
-        if (error instanceof NotFoundError) {
-          return c.json({ error: "Document not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating document pin status");
-      return c.json({ error: "Failed to update document pin status" }, 500);
+    if (!updatedDocument) {
+      throw new NotFoundError("Document");
     }
-  },
+
+    return c.json(updatedDocument);
+  }, logger),
 );
 
 /**
@@ -750,69 +471,26 @@ const createAssetResponse = (
   return new Response(asset.stream, { status: 200, headers });
 };
 
-/**
- * Handles errors from asset fetching consistently.
- * @param c Hono context
- * @param error The caught error
- */
-const handleAssetError = async (c: Context, error: unknown) => {
-  const requestId = c.get("requestId");
-  logger.error(
-    {
-      requestId,
-      documentId: c.req.param("id"),
-      userId: await getAuthenticatedUserId(c),
-      error: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined,
-      errorCode:
-        error instanceof Error && "code" in error
-          ? (error as { code: string }).code
-          : undefined,
-    },
-    "Error serving document asset",
-  );
-
-  if (error instanceof Error && error.name === "NotFoundError") {
-    return c.json({ error: error.message }, 404);
-  }
-
-  return c.json({ error: "Internal Server Error" }, 500);
-};
-
 // GET /api/documents/:id/extracted-md
 documentsRoutes.get(
   "/:id/extracted-md",
   describeRoute(getDocumentExtractedMdRouteDescription),
-  async (c) => {
-    try {
-      const documentId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
-
-      const asset = await getDocumentAsset(documentId, userId, "extracted-md");
-      return createAssetResponse(c, asset, "private, max-age=3600");
-    } catch (error: unknown) {
-      return handleAssetError(c, error);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const documentId = c.req.param("id");
+    const asset = await getDocumentAsset(documentId, userId, "extracted-md");
+    return createAssetResponse(c, asset, "private, max-age=3600");
+  }, logger),
 );
 
 // GET /api/documents/:id/extracted-txt
 documentsRoutes.get(
   "/:id/extracted-txt",
   describeRoute(getDocumentExtractedTxtRouteDescription),
-  async (c) => {
-    try {
-      const documentId = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
-
-      const asset = await getDocumentAsset(documentId, userId, "extracted-txt");
-      return createAssetResponse(c, asset, "private, max-age=3600");
-    } catch (error: unknown) {
-      return handleAssetError(c, error);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const documentId = c.req.param("id");
+    const asset = await getDocumentAsset(documentId, userId, "extracted-txt");
+    return createAssetResponse(c, asset, "private, max-age=3600");
+  }, logger),
 );
 
 export default documentsRoutes;

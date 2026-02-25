@@ -2,6 +2,7 @@ import { getCurrentModelConfig } from "@eclaire/ai";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { createChildLogger } from "../lib/logger.js";
+import { withAuth } from "../middleware/with-auth.js";
 import { getCurrentModelRouteDescription } from "../schemas/model-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
@@ -13,54 +14,35 @@ export const modelRoutes = new Hono<{ Variables: RouteVariables }>();
 modelRoutes.get(
   "/",
   describeRoute(getCurrentModelRouteDescription),
-  async (c) => {
+  withAuth(async (c, _userId) => {
     const requestId = c.get("requestId");
     logger.info({ requestId }, "Current model config request received");
 
-    try {
-      const modelConfig = getCurrentModelConfig("backend");
+    const modelConfig = getCurrentModelConfig("backend");
 
-      if (!modelConfig) {
-        logger.warn(
-          { requestId },
-          "Failed to retrieve current model configuration",
-        );
-        return c.json(
-          {
-            error: "Configuration error",
-            message: "Unable to retrieve current model configuration",
-          },
-          500,
-        );
-      }
-
-      logger.info(
-        {
-          requestId,
-          provider: modelConfig.provider,
-          providerModel: modelConfig.providerModel,
-        },
-        "Returning current model configuration",
+    if (!modelConfig) {
+      logger.warn(
+        { requestId },
+        "Failed to retrieve current model configuration",
       );
-
-      return c.json(modelConfig);
-    } catch (error) {
-      logger.error(
-        {
-          requestId,
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error retrieving current model configuration",
-      );
-
       return c.json(
         {
-          error: "Internal server error",
-          message: "An error occurred while retrieving the model configuration",
+          error: "Configuration error",
+          message: "Unable to retrieve current model configuration",
         },
         500,
       );
     }
-  },
+
+    logger.info(
+      {
+        requestId,
+        provider: modelConfig.provider,
+        providerModel: modelConfig.providerModel,
+      },
+      "Returning current model configuration",
+    );
+
+    return c.json(modelConfig);
+  }, logger),
 );

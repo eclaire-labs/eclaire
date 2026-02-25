@@ -1,7 +1,5 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import z from "zod/v4";
-import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
   countHistory,
@@ -11,6 +9,7 @@ import {
   type HistoryActor,
   type HistoryItemType,
 } from "../lib/services/history.js";
+import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import { HistorySearchParamsSchema } from "../schemas/history-params.js";
 // Import route descriptions
@@ -22,13 +21,10 @@ const logger = createChildLogger("history");
 export const historyRoutes = new Hono<{ Variables: RouteVariables }>();
 
 // GET /api/history - Get history records for the authenticated user
-historyRoutes.get("/", describeRoute(getHistoryRouteDescription), async (c) => {
-  try {
-    const userId = await getAuthenticatedUserId(c);
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
+historyRoutes.get(
+  "/",
+  describeRoute(getHistoryRouteDescription),
+  withAuth(async (c, userId) => {
     const queryParams = c.req.query();
 
     // If no query parameters, return basic history
@@ -44,75 +40,51 @@ historyRoutes.get("/", describeRoute(getHistoryRouteDescription), async (c) => {
     }
 
     // Parse and validate query parameters for filtering
-    try {
-      const params = HistorySearchParamsSchema.parse({
-        action: queryParams.action || undefined,
-        itemType: queryParams.itemType || undefined,
-        actor: queryParams.actor || undefined,
-        startDate: queryParams.startDate || undefined,
-        endDate: queryParams.endDate || undefined,
-        limit: queryParams.limit || 50,
-        offset: queryParams.offset || 0,
-      });
+    const params = HistorySearchParamsSchema.parse({
+      action: queryParams.action || undefined,
+      itemType: queryParams.itemType || undefined,
+      actor: queryParams.actor || undefined,
+      startDate: queryParams.startDate || undefined,
+      endDate: queryParams.endDate || undefined,
+      limit: queryParams.limit || 50,
+      offset: queryParams.offset || 0,
+    });
 
-      // Parse dates if provided
-      const startDate = params.startDate
-        ? new Date(params.startDate)
-        : undefined;
-      const endDate = params.endDate ? new Date(params.endDate) : undefined;
+    // Parse dates if provided
+    const startDate = params.startDate ? new Date(params.startDate) : undefined;
+    const endDate = params.endDate ? new Date(params.endDate) : undefined;
 
-      // Search history with filters
-      const historyRecords = await findHistory({
-        userId,
-        action: params.action as HistoryAction,
-        itemType: params.itemType as HistoryItemType,
-        actor: params.actor as HistoryActor,
-        startDate,
-        endDate,
-        limit: params.limit,
-        offset: params.offset,
-      });
+    // Search history with filters
+    const historyRecords = await findHistory({
+      userId,
+      action: params.action as HistoryAction,
+      itemType: params.itemType as HistoryItemType,
+      actor: params.actor as HistoryActor,
+      startDate,
+      endDate,
+      limit: params.limit,
+      offset: params.offset,
+    });
 
-      // Get total count for pagination
-      const totalCount = await countHistory({
-        userId,
-        action: params.action as HistoryAction,
-        itemType: params.itemType as HistoryItemType,
-        actor: params.actor as HistoryActor,
-        startDate,
-        endDate,
-      });
+    // Get total count for pagination
+    const totalCount = await countHistory({
+      userId,
+      action: params.action as HistoryAction,
+      itemType: params.itemType as HistoryItemType,
+      actor: params.actor as HistoryActor,
+      startDate,
+      endDate,
+    });
 
-      const limit = params.limit || 50;
-      const offset = params.offset || 0;
+    const limit = params.limit || 50;
+    const offset = params.offset || 0;
 
-      return c.json({
-        records: historyRecords,
-        totalCount,
-        limit,
-        offset,
-        hasMore: offset + limit < totalCount,
-      });
-    } catch (error: unknown) {
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid filter parameters", details: error.issues },
-          400,
-        );
-      }
-      throw error;
-    }
-  } catch (error: unknown) {
-    const requestId = c.get("requestId");
-    logger.error(
-      {
-        requestId,
-        userId: await getAuthenticatedUserId(c),
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Error getting history records:",
-    );
-    return c.json({ error: "Failed to fetch history records" }, 500);
-  }
-});
+    return c.json({
+      records: historyRecords,
+      totalCount,
+      limit,
+      offset,
+      hasMore: offset + limit < totalCount,
+    });
+  }, logger),
+);

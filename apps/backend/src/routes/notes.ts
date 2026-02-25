@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
   countNotes,
@@ -15,6 +15,7 @@ import {
   updateNoteEntry,
   validateNoteFileUpload,
 } from "../lib/services/notes.js";
+import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
   NoteMetadataSchema,
@@ -40,13 +41,10 @@ const logger = createChildLogger("notes");
 export const notesRoutes = new Hono<{ Variables: RouteVariables }>();
 
 // GET /api/notes - Get all note entries or search note entries
-notesRoutes.get("/", describeRoute(getNotesRouteDescription), async (c) => {
-  try {
-    const userId = await getAuthenticatedUserId(c);
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
+notesRoutes.get(
+  "/",
+  describeRoute(getNotesRouteDescription),
+  withAuth(async (c, userId) => {
     const query = c.req.query();
     const {
       text,
@@ -135,88 +133,41 @@ notesRoutes.get("/", describeRoute(getNotesRouteDescription), async (c) => {
         offset: offset,
       },
     });
-  } catch (error) {
-    const requestId = c.get("requestId");
-    logger.error(
-      {
-        requestId,
-        userId: await getAuthenticatedUserId(c),
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Error getting note entries",
-    );
-
-    if (error instanceof z.ZodError) {
-      return c.json(
-        { error: "Invalid query parameters", details: error.issues },
-        400,
-      );
-    }
-
-    return c.json({ error: "Failed to fetch note entries" }, 500);
-  }
-});
+  }, logger),
+);
 
 // POST /api/notes - Create a new note entry
 notesRoutes.post(
   "/",
   describeRoute(postNotesRouteDescription),
   zValidator("json", NoteSchema),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const validatedData = c.req.valid("json");
 
-      const validatedData = c.req.valid("json");
-
-      if (!validatedData.title) {
-        return c.json({ error: "A title is required to create a note." }, 400);
-      }
-
-      const servicePayload = {
-        content: validatedData.content || "",
-        metadata: {
-          title: validatedData.title || "Untitled Note",
-          tags: validatedData.tags || [],
-          deviceName: validatedData.deviceName,
-          deviceModel: validatedData.deviceModel,
-          enabled: validatedData.enabled, // Include enabled flag
-          dueDate: validatedData.dueDate || undefined,
-          reviewStatus: validatedData.reviewStatus,
-          flagColor: validatedData.flagColor,
-          isPinned: validatedData.isPinned,
-        },
-        originalMimeType: "text/plain", // Default MIME type for JSON-created notes
-        userAgent: c.req.header("User-Agent") || "",
-      };
-
-      const newEntry = await createNoteEntry(servicePayload, userId);
-      return c.json(newEntry, 201);
-    } catch (error) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error creating note entry",
-      );
-
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid input data", details: error.issues },
-          400,
-        );
-      }
-
-      return c.json({ error: "Failed to create note entry" }, 500);
+    if (!validatedData.title) {
+      return c.json({ error: "A title is required to create a note." }, 400);
     }
-  },
+
+    const servicePayload = {
+      content: validatedData.content || "",
+      metadata: {
+        title: validatedData.title || "Untitled Note",
+        tags: validatedData.tags || [],
+        deviceName: validatedData.deviceName,
+        deviceModel: validatedData.deviceModel,
+        enabled: validatedData.enabled, // Include enabled flag
+        dueDate: validatedData.dueDate || undefined,
+        reviewStatus: validatedData.reviewStatus,
+        flagColor: validatedData.flagColor,
+        isPinned: validatedData.isPinned,
+      },
+      originalMimeType: "text/plain", // Default MIME type for JSON-created notes
+      userAgent: c.req.header("User-Agent") || "",
+    };
+
+    const newEntry = await createNoteEntry(servicePayload, userId);
+    return c.json(newEntry, 201);
+  }, logger),
 );
 
 // POST /api/notes/upload - Create a new note entry from file upload
@@ -262,112 +213,59 @@ notesRoutes.post(
       },
     },
   }),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const body = await c.req.parseBody();
+    const file = body.content as File;
+    const metadataStr = body.metadata as string;
 
-      const body = await c.req.parseBody();
-      const file = body.content as File;
-      const metadataStr = body.metadata as string;
-
-      // Validate file
-      const fileValidation = validateNoteFileUpload(file);
-      if (!fileValidation.valid) {
-        return c.json({ error: fileValidation.error }, 400);
-      }
-
-      // Parse metadata
-      const metadataResult = parseNoteUploadMetadata(metadataStr);
-      if (!metadataResult.valid) {
-        return c.json({ error: metadataResult.error }, 400);
-      }
-
-      // Validate metadata schema
-      const validatedMetadata = NoteMetadataSchema.parse(
-        metadataResult.metadata,
-      );
-
-      // Prepare note from upload
-      const prepared = await prepareNoteFromUpload(file, validatedMetadata);
-
-      // Create service payload
-      const servicePayload = {
-        content: prepared.content,
-        metadata: prepared.metadata,
-        originalMimeType: prepared.originalMimeType,
-        userAgent: c.req.header("User-Agent") || "",
-      };
-
-      // Reuse existing createNoteEntry function
-      const newEntry = await createNoteEntry(servicePayload, userId);
-      return c.json(newEntry, 201);
-    } catch (error) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error uploading note file",
-      );
-
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid file metadata", details: error.issues },
-          400,
-        );
-      }
-
-      return c.json({ error: "Failed to upload file" }, 500);
+    // Validate file
+    const fileValidation = validateNoteFileUpload(file);
+    if (!fileValidation.valid) {
+      return c.json({ error: fileValidation.error }, 400);
     }
-  },
+
+    // Parse metadata
+    const metadataResult = parseNoteUploadMetadata(metadataStr);
+    if (!metadataResult.valid) {
+      return c.json({ error: metadataResult.error }, 400);
+    }
+
+    // Validate metadata schema
+    const validatedMetadata = NoteMetadataSchema.parse(
+      metadataResult.metadata,
+    );
+
+    // Prepare note from upload
+    const prepared = await prepareNoteFromUpload(file, validatedMetadata);
+
+    // Create service payload
+    const servicePayload = {
+      content: prepared.content,
+      metadata: prepared.metadata,
+      originalMimeType: prepared.originalMimeType,
+      userAgent: c.req.header("User-Agent") || "",
+    };
+
+    // Reuse existing createNoteEntry function
+    const newEntry = await createNoteEntry(servicePayload, userId);
+    return c.json(newEntry, 201);
+  }, logger),
 );
 
 // GET /api/notes/:id - Get a specific note entry by ID
 notesRoutes.get(
   "/:id",
   describeRoute(getNoteByIdRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const entry = await getNoteEntryById(id, userId);
 
-      const id = c.req.param("id");
-
-      const entry = await getNoteEntryById(id, userId);
-
-      if (!entry) {
-        return c.json({ error: "Note entry not found" }, 404);
-      }
-
-      return c.json(entry);
-    } catch (error) {
-      if ((error as Error).message === "Note entry not found") {
-        return c.json({ error: "Note entry not found" }, 404);
-      }
-
-      // Handle any other errors
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          noteId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error fetching note entry",
-      );
-      return c.json({ error: "Failed to fetch note entry" }, 500);
+    if (!entry) {
+      throw new NotFoundError("Note");
     }
-  },
+
+    return c.json(entry);
+  }, logger),
 );
 
 // PUT /api/notes/:id - Update a note entry (full update)
@@ -375,53 +273,24 @@ notesRoutes.put(
   "/:id",
   describeRoute(putNoteRouteDescription),
   zValidator("json", NoteSchema),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const validatedData = c.req.valid("json");
 
-      const id = c.req.param("id");
-      const validatedData = c.req.valid("json");
+    // Convert null dates to undefined for service compatibility
+    const serviceData = {
+      ...validatedData,
+      dueDate:
+        validatedData.dueDate === null ? undefined : validatedData.dueDate,
+    };
+    const updatedEntry = await updateNoteEntry(id, serviceData, userId);
 
-      try {
-        // Convert null dates to undefined for service compatibility
-        const serviceData = {
-          ...validatedData,
-          dueDate:
-            validatedData.dueDate === null ? undefined : validatedData.dueDate,
-        };
-        const updatedEntry = await updateNoteEntry(id, serviceData, userId);
-
-        if (!updatedEntry) {
-          return c.json({ error: "Note entry not found" }, 404);
-        }
-
-        return c.json(updatedEntry);
-      } catch (error) {
-        if ((error as Error).message === "Note entry not found") {
-          return c.json({ error: "Note entry not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error(
-        { requestId: c.get("requestId") },
-        "Error updating note entry:",
-        error,
-      );
-
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid input data", details: error.issues },
-          400,
-        );
-      }
-
-      return c.json({ error: "Failed to update note entry" }, 500);
+    if (!updatedEntry) {
+      throw new NotFoundError("Note");
     }
-  },
+
+    return c.json(updatedEntry);
+  }, logger),
 );
 
 // PATCH /api/notes/:id - Update a note entry (partial update)
@@ -429,64 +298,31 @@ notesRoutes.patch(
   "/:id",
   describeRoute(patchNoteRouteDescription),
   zValidator("json", PartialNoteSchema),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const validatedData = c.req.valid("json");
 
-      const id = c.req.param("id");
-      const validatedData = c.req.valid("json");
+    // Convert null dates to undefined for service compatibility
+    const serviceData = {
+      ...validatedData,
+      dueDate:
+        validatedData.dueDate === null ? undefined : validatedData.dueDate,
+    };
+    const updatedEntry = await updateNoteEntry(id, serviceData, userId);
 
-      try {
-        // Convert null dates to undefined for service compatibility
-        const serviceData = {
-          ...validatedData,
-          dueDate:
-            validatedData.dueDate === null ? undefined : validatedData.dueDate,
-        };
-        const updatedEntry = await updateNoteEntry(id, serviceData, userId);
-
-        if (!updatedEntry) {
-          return c.json({ error: "Note entry not found" }, 404);
-        }
-
-        return c.json(updatedEntry);
-      } catch (error) {
-        if ((error as Error).message === "Note entry not found") {
-          return c.json({ error: "Note entry not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error(
-        { requestId: c.get("requestId") },
-        "Error updating note entry:",
-        error,
-      );
-
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid input data", details: error.issues },
-          400,
-        );
-      }
-
-      return c.json({ error: "Failed to update note entry" }, 500);
+    if (!updatedEntry) {
+      throw new NotFoundError("Note");
     }
-  },
+
+    return c.json(updatedEntry);
+  }, logger),
 );
 
 // POST /api/notes/:id/reprocess - Re-process an existing note
-notesRoutes.post("/:id/reprocess", async (c) => {
-  try {
+notesRoutes.post(
+  "/:id/reprocess",
+  withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    const userId = await getAuthenticatedUserId(c);
-
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
 
     // Parse body for optional force parameter
     const body = await c.req.json().catch(() => ({}));
@@ -505,42 +341,18 @@ notesRoutes.post("/:id/reprocess", async (c) => {
     } else {
       return c.json({ error: result.error }, 400);
     }
-  } catch (error) {
-    logger.error({ err: error }, "Error reprocessing note");
-    return c.json({ error: "Failed to reprocess note" }, 500);
-  }
-});
+  }, logger),
+);
 
 // DELETE /api/notes/:id - Delete a note entry
 notesRoutes.delete(
   "/:id",
   describeRoute(deleteNoteRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const id = c.req.param("id");
-
-      try {
-        await deleteNoteEntry(id, userId);
-        return new Response(null, { status: 204 });
-      } catch (error) {
-        if ((error as Error).message === "Note entry not found") {
-          return c.json({ error: "Note entry not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error(
-        { err: error, requestId: c.get("requestId") },
-        "Error deleting note entry",
-      );
-      return c.json({ error: "Failed to delete note entry" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    await deleteNoteEntry(id, userId);
+    return new Response(null, { status: 204 });
+  }, logger),
 );
 
 // PATCH /api/notes/:id/review - Update review status
@@ -556,39 +368,18 @@ notesRoutes.patch(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { reviewStatus } = c.req.valid("json");
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+    const updatedNote = await updateNoteEntry(id, { reviewStatus }, userId);
 
-      const { reviewStatus } = c.req.valid("json");
-
-      try {
-        const updatedNote = await updateNoteEntry(id, { reviewStatus }, userId);
-
-        if (!updatedNote) {
-          return c.json({ error: "Note not found" }, 404);
-        }
-
-        return c.json(updatedNote);
-      } catch (error) {
-        if ((error as Error).message === "Note entry not found") {
-          return c.json({ error: "Note not found" }, 404);
-        }
-        if ((error as Error).message === "Failed to update note entry") {
-          return c.json({ error: "Note not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating note review status");
-      return c.json({ error: "Failed to update note review status" }, 500);
+    if (!updatedNote) {
+      throw new NotFoundError("Note");
     }
-  },
+
+    return c.json(updatedNote);
+  }, logger),
 );
 
 // PATCH /api/notes/:id/flag - Update flag color
@@ -607,39 +398,18 @@ notesRoutes.patch(
         }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { flagColor } = c.req.valid("json");
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+    const updatedNote = await updateNoteEntry(id, { flagColor }, userId);
 
-      const { flagColor } = c.req.valid("json");
-
-      try {
-        const updatedNote = await updateNoteEntry(id, { flagColor }, userId);
-
-        if (!updatedNote) {
-          return c.json({ error: "Note not found" }, 404);
-        }
-
-        return c.json(updatedNote);
-      } catch (error) {
-        if ((error as Error).message === "Note entry not found") {
-          return c.json({ error: "Note not found" }, 404);
-        }
-        if ((error as Error).message === "Failed to update note entry") {
-          return c.json({ error: "Note not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating note flag");
-      return c.json({ error: "Failed to update note flag" }, 500);
+    if (!updatedNote) {
+      throw new NotFoundError("Note");
     }
-  },
+
+    return c.json(updatedNote);
+  }, logger),
 );
 
 // PATCH /api/notes/:id/pin - Toggle pin status
@@ -655,37 +425,16 @@ notesRoutes.patch(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { isPinned } = c.req.valid("json");
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+    const updatedNote = await updateNoteEntry(id, { isPinned }, userId);
 
-      const { isPinned } = c.req.valid("json");
-
-      try {
-        const updatedNote = await updateNoteEntry(id, { isPinned }, userId);
-
-        if (!updatedNote) {
-          return c.json({ error: "Note not found" }, 404);
-        }
-
-        return c.json(updatedNote);
-      } catch (error) {
-        if ((error as Error).message === "Note entry not found") {
-          return c.json({ error: "Note not found" }, 404);
-        }
-        if ((error as Error).message === "Failed to update note entry") {
-          return c.json({ error: "Note not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating note pin status");
-      return c.json({ error: "Failed to update note pin status" }, 500);
+    if (!updatedNote) {
+      throw new NotFoundError("Note");
     }
-  },
+
+    return c.json(updatedNote);
+  }, logger),
 );

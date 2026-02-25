@@ -18,6 +18,7 @@ import { db, queueJobs, schema, txManager } from "../../db/index.js";
 const { notes, notesTags, tags } = schema;
 
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { recordHistory } from "./history.js";
@@ -298,7 +299,7 @@ export async function updateNoteEntry(
     const existingEntry = await getNoteEntryById(id, userId);
 
     if (!existingEntry) {
-      throw new Error("Note entry not found");
+      throw new NotFoundError("Note");
     }
 
     // Prepare update data
@@ -394,7 +395,7 @@ export async function deleteNoteEntry(id: string, userId: string) {
     const existingEntry = await getNoteEntryById(id, userId);
 
     if (!existingEntry) {
-      throw new Error("Note entry not found");
+      throw new NotFoundError("Note");
     }
 
     // Pre-generate history ID for transaction
@@ -588,7 +589,7 @@ async function getNoteEntryWithTags(entryId: string) {
     .limit(1);
 
   if (!result) {
-    throw new Error("Note entry not found");
+    throw new NotFoundError("Note");
   }
 
   const entry = result.note;

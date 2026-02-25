@@ -1,8 +1,7 @@
-import type { Context } from "hono";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
   type BookmarkAssetType,
@@ -16,6 +15,7 @@ import {
   validateAndNormalizeBookmarkUrl,
 } from "../lib/services/bookmarks.js";
 import { getStorage } from "../lib/storage/index.js";
+import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
   BookmarkSchema,
@@ -45,29 +45,10 @@ export const bookmarksRoutes = new Hono<{ Variables: RouteVariables }>();
 bookmarksRoutes.get(
   "/",
   describeRoute(getBookmarksRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const bookmarks = await getAllBookmarks(userId);
-      return c.json(bookmarks);
-    } catch (error) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error fetching bookmarks",
-      );
-      return c.json({ error: "Failed to fetch bookmarks" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const bookmarks = await getAllBookmarks(userId);
+    return c.json(bookmarks);
+  }, logger),
 );
 
 // POST /api/bookmarks - Create a new bookmark and queue it for processing
@@ -75,94 +56,60 @@ bookmarksRoutes.post(
   "/",
   describeRoute(postBookmarksRouteDescription),
   zValidator("json", CreateBookmarkSchema),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const body = c.req.valid("json");
+    const { url, title, description, tags, metadata, enabled } = body;
 
-      const body = c.req.valid("json");
-      const { url, title, description, tags, metadata, enabled } = body;
-
-      // 1. Basic URL validation and normalization
-      const urlValidation = validateAndNormalizeBookmarkUrl(url);
-      if (!urlValidation.valid) {
-        return c.json({ error: urlValidation.error }, 400);
-      }
-
-      // 2. Prepare metadata with core fields and additional metadata
-      const enrichedMetadata = {
-        title,
-        description,
-        tags,
-        enabled,
-        ...metadata, // Additional metadata if provided
-      };
-
-      // 3. Call the service to create the DB entries and queue the job
-      const result = await createBookmarkAndQueueJob({
-        // biome-ignore lint/style/noNonNullAssertion: guarded by validation check above
-        url: urlValidation.normalizedUrl!,
-        userId: userId,
-        rawMetadata: enrichedMetadata,
-        userAgent: c.req.header("User-Agent") || "",
-      });
-
-      if (!result.success) {
-        return c.json(
-          { error: result.error || "Failed to create bookmark" },
-          500,
-        );
-      }
-
-      // 4. Return the initial bookmark data immediately
-      return c.json(result.bookmark, 202); // 202 Accepted: The request has been accepted for processing
-    } catch (error) {
-      logger.error({ err: error }, "Error creating bookmark");
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid request data", details: error.issues },
-          400,
-        );
-      }
-      return c.json({ error: "Failed to create bookmark" }, 500);
+    // 1. Basic URL validation and normalization
+    const urlValidation = validateAndNormalizeBookmarkUrl(url);
+    if (!urlValidation.valid) {
+      return c.json({ error: urlValidation.error }, 400);
     }
-  },
+
+    // 2. Prepare metadata with core fields and additional metadata
+    const enrichedMetadata = {
+      title,
+      description,
+      tags,
+      enabled,
+      ...metadata, // Additional metadata if provided
+    };
+
+    // 3. Call the service to create the DB entries and queue the job
+    const result = await createBookmarkAndQueueJob({
+      // biome-ignore lint/style/noNonNullAssertion: guarded by validation check above
+      url: urlValidation.normalizedUrl!,
+      userId: userId,
+      rawMetadata: enrichedMetadata,
+      userAgent: c.req.header("User-Agent") || "",
+    });
+
+    if (!result.success) {
+      return c.json(
+        { error: result.error || "Failed to create bookmark" },
+        500,
+      );
+    }
+
+    // 4. Return the initial bookmark data immediately
+    return c.json(result.bookmark, 202); // 202 Accepted: The request has been accepted for processing
+  }, logger),
 );
 
 // GET /api/bookmarks/:id - Get a specific bookmark by ID
 bookmarksRoutes.get(
   "/:id",
   describeRoute(getBookmarkByIdRouteDescription),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const bookmark = await getBookmarkById(id, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      try {
-        const bookmark = await getBookmarkById(id, userId);
-
-        if (!bookmark) {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-
-        return c.json(bookmark);
-      } catch (error) {
-        if ((error as Error).message === "Bookmark not found") {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error fetching bookmark");
-      return c.json({ error: "Failed to fetch bookmark" }, 500);
+    if (!bookmark) {
+      throw new NotFoundError("Bookmark");
     }
-  },
+
+    return c.json(bookmark);
+  }, logger),
 );
 
 // PUT /api/bookmarks/:id - Update a bookmark (full update)
@@ -170,44 +117,17 @@ bookmarksRoutes.put(
   "/:id",
   describeRoute(putBookmarkRouteDescription),
   zValidator("json", BookmarkSchema),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const validatedData = c.req.valid("json");
+    const updatedBookmark = await updateBookmark(id, validatedData, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const validatedData = c.req.valid("json");
-
-      try {
-        const updatedBookmark = await updateBookmark(id, validatedData, userId);
-
-        if (!updatedBookmark) {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-
-        return c.json(updatedBookmark);
-      } catch (error) {
-        if ((error as Error).message === "Bookmark not found") {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating bookmark");
-
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid request data", details: error.issues },
-          400,
-        );
-      }
-
-      return c.json({ error: "Failed to update bookmark" }, 500);
+    if (!updatedBookmark) {
+      throw new NotFoundError("Bookmark");
     }
-  },
+
+    return c.json(updatedBookmark);
+  }, logger),
 );
 
 // PATCH /api/bookmarks/:id - Update a bookmark (partial update)
@@ -215,88 +135,39 @@ bookmarksRoutes.patch(
   "/:id",
   describeRoute(patchBookmarkRouteDescription),
   zValidator("json", PartialBookmarkSchema),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const validatedData = c.req.valid("json");
+    const updatedBookmark = await updateBookmark(id, validatedData, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const validatedData = c.req.valid("json");
-
-      try {
-        const updatedBookmark = await updateBookmark(id, validatedData, userId);
-
-        if (!updatedBookmark) {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-
-        return c.json(updatedBookmark);
-      } catch (error) {
-        if ((error as Error).message === "Bookmark not found") {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating bookmark");
-
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid request data", details: error.issues },
-          400,
-        );
-      }
-
-      return c.json({ error: "Failed to update bookmark" }, 500);
+    if (!updatedBookmark) {
+      throw new NotFoundError("Bookmark");
     }
-  },
+
+    return c.json(updatedBookmark);
+  }, logger),
 );
 
 // DELETE /api/bookmarks/:id - Delete a bookmark
 bookmarksRoutes.delete(
   "/:id",
   describeRoute(deleteBookmarkRouteDescription),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+    // Parse the optional deleteStorage query parameter (defaults to true)
+    const deleteStorageParam = c.req.query("deleteStorage");
+    const deleteStorage = deleteStorageParam !== "false";
 
-      // Parse the optional deleteStorage query parameter (defaults to true)
-      const deleteStorageParam = c.req.query("deleteStorage");
-      const deleteStorage = deleteStorageParam !== "false";
-
-      try {
-        await deleteBookmark(id, userId, deleteStorage);
-        return new Response(null, { status: 204 });
-      } catch (error) {
-        if ((error as Error).message === "Bookmark not found") {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error deleting bookmark");
-      return c.json({ error: "Failed to delete bookmark" }, 500);
-    }
-  },
+    await deleteBookmark(id, userId, deleteStorage);
+    return new Response(null, { status: 204 });
+  }, logger),
 );
 
 // Helper function to serve a bookmark asset
-const serveBookmarkAsset = async (c: Context, assetType: BookmarkAssetType) => {
-  try {
+const serveBookmarkAsset = (assetType: BookmarkAssetType) =>
+  withAuth(async (c, userId) => {
     const bookmarkId = c.req.param("id");
-    const userId = await getAuthenticatedUserId(c);
-
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
 
     const { storageId, mimeType } = await getBookmarkAssetDetails(
       bookmarkId,
@@ -324,22 +195,7 @@ const serveBookmarkAsset = async (c: Context, assetType: BookmarkAssetType) => {
     }
 
     return new Response(stream, { status: 200, headers });
-  } catch (error: unknown) {
-    logger.error(
-      { err: error instanceof Error ? error : String(error) },
-      `Error serving bookmark asset (${assetType})`,
-    );
-    if (
-      error instanceof Error &&
-      ((error as Error & { code?: string }).code === "ENOENT" ||
-        error.name === "NotFoundError" ||
-        error.name === "FileNotFoundError")
-    ) {
-      return c.json({ error: error.message }, 404);
-    }
-    return c.json({ error: "Internal Server Error" }, 500);
-  }
-};
+  }, logger);
 
 // Asset endpoints with OpenAPI documentation
 const createAssetEndpoint = (
@@ -353,7 +209,7 @@ const createAssetEndpoint = (
     describeRoute(
       createAssetRouteDescription(assetType, description, mimeType),
     ),
-    (c) => serveBookmarkAsset(c, assetType),
+    serveBookmarkAsset(assetType),
   );
 };
 
@@ -446,40 +302,17 @@ bookmarksRoutes.patch(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { reviewStatus } = c.req.valid("json");
+    const updatedBookmark = await updateBookmark(id, { reviewStatus }, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const { reviewStatus } = c.req.valid("json");
-
-      try {
-        const updatedBookmark = await updateBookmark(
-          id,
-          { reviewStatus },
-          userId,
-        );
-
-        if (!updatedBookmark) {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-
-        return c.json(updatedBookmark);
-      } catch (error) {
-        if ((error as Error).message === "Bookmark not found") {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating bookmark review status");
-      return c.json({ error: "Failed to update bookmark review status" }, 500);
+    if (!updatedBookmark) {
+      throw new NotFoundError("Bookmark");
     }
-  },
+
+    return c.json(updatedBookmark);
+  }, logger),
 );
 
 // PATCH /api/bookmarks/:id/flag - Update flag color
@@ -498,36 +331,17 @@ bookmarksRoutes.patch(
         }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { flagColor } = c.req.valid("json");
+    const updatedBookmark = await updateBookmark(id, { flagColor }, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const { flagColor } = c.req.valid("json");
-
-      try {
-        const updatedBookmark = await updateBookmark(id, { flagColor }, userId);
-
-        if (!updatedBookmark) {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-
-        return c.json(updatedBookmark);
-      } catch (error) {
-        if ((error as Error).message === "Bookmark not found") {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating bookmark flag");
-      return c.json({ error: "Failed to update bookmark flag" }, 500);
+    if (!updatedBookmark) {
+      throw new NotFoundError("Bookmark");
     }
-  },
+
+    return c.json(updatedBookmark);
+  }, logger),
 );
 
 // PATCH /api/bookmarks/:id/pin - Toggle pin status
@@ -543,47 +357,24 @@ bookmarksRoutes.patch(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { isPinned } = c.req.valid("json");
+    const updatedBookmark = await updateBookmark(id, { isPinned }, userId);
 
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const { isPinned } = c.req.valid("json");
-
-      try {
-        const updatedBookmark = await updateBookmark(id, { isPinned }, userId);
-
-        if (!updatedBookmark) {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-
-        return c.json(updatedBookmark);
-      } catch (error) {
-        if ((error as Error).message === "Bookmark not found") {
-          return c.json({ error: "Bookmark not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating bookmark pin status");
-      return c.json({ error: "Failed to update bookmark pin status" }, 500);
+    if (!updatedBookmark) {
+      throw new NotFoundError("Bookmark");
     }
-  },
+
+    return c.json(updatedBookmark);
+  }, logger),
 );
 
 // POST /api/bookmarks/:id/reprocess - Re-process an existing bookmark
-bookmarksRoutes.post("/:id/reprocess", async (c) => {
-  try {
+bookmarksRoutes.post(
+  "/:id/reprocess",
+  withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    const userId = await getAuthenticatedUserId(c);
-
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
 
     // Parse body for optional force parameter
     const body = await c.req.json().catch(() => ({}));
@@ -599,72 +390,58 @@ bookmarksRoutes.post("/:id/reprocess", async (c) => {
         },
         202,
       ); // 202 Accepted: The request has been accepted for processing
-    } else {
-      return c.json({ error: result.error }, 400);
     }
-  } catch (error) {
-    logger.error({ err: error }, "Error reprocessing bookmark");
-    return c.json({ error: "Failed to reprocess bookmark" }, 500);
-  }
-});
+    return c.json({ error: result.error }, 400);
+  }, logger),
+);
 
 // POST /api/bookmarks/import - Import bookmarks from file
 bookmarksRoutes.post(
   "/import",
   describeRoute(postBookmarksImportRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const body = await c.req.parseBody();
+    const file = body.file as File;
 
-      const body = await c.req.parseBody();
-      const file = body.file as File;
-
-      if (!file) {
-        return c.json({ error: "No file uploaded" }, 400);
-      }
-
-      // Chrome/Brave bookmark files are typically named "Bookmarks" without extension
-      // We'll validate the JSON format after parsing
-
-      // Validate file size (5MB limit)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
-        return c.json({ error: "File too large. Maximum size is 5MB." }, 400);
-      }
-
-      // Read and parse file content
-      const fileContent = await file.text();
-      let bookmarkData: unknown;
-      try {
-        bookmarkData = JSON.parse(fileContent);
-      } catch (_error) {
-        return c.json(
-          {
-            error:
-              "Invalid file format. Please upload a Chrome or Brave bookmark file.",
-          },
-          400,
-        );
-      }
-
-      // Import bookmarks using the service
-      const { importBookmarkFile } = await import(
-        "../lib/services/bookmarks.js"
-      );
-      const result = await importBookmarkFile(userId, bookmarkData);
-
-      return c.json({
-        message: "Bookmarks imported successfully",
-        imported: result.imported,
-        queued: result.queued,
-        errors: result.errors,
-      });
-    } catch (error) {
-      logger.error({ err: error }, "Error importing bookmarks");
-      return c.json({ error: "Failed to import bookmarks" }, 500);
+    if (!file) {
+      return c.json({ error: "No file uploaded" }, 400);
     }
-  },
+
+    // Chrome/Brave bookmark files are typically named "Bookmarks" without extension
+    // We'll validate the JSON format after parsing
+
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return c.json({ error: "File too large. Maximum size is 5MB." }, 400);
+    }
+
+    // Read and parse file content
+    const fileContent = await file.text();
+    let bookmarkData: unknown;
+    try {
+      bookmarkData = JSON.parse(fileContent);
+    } catch (_error) {
+      return c.json(
+        {
+          error:
+            "Invalid file format. Please upload a Chrome or Brave bookmark file.",
+        },
+        400,
+      );
+    }
+
+    // Import bookmarks using the service
+    const { importBookmarkFile } = await import(
+      "../lib/services/bookmarks.js"
+    );
+    const result = await importBookmarkFile(userId, bookmarkData);
+
+    return c.json({
+      message: "Bookmarks imported successfully",
+      imported: result.imported,
+      queued: result.queued,
+      errors: result.errors,
+    });
+  }, logger),
 );

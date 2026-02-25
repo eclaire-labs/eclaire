@@ -20,26 +20,13 @@ const { bookmarks, bookmarksTags, tags } = schema;
 
 import isUrl from "is-url";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { recordHistory } from "./history.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:bookmarks");
-
-class BookmarkNotFoundError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "NotFoundError";
-  }
-}
-
-class BookmarkFileNotFoundError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "FileNotFoundError";
-  }
-}
 
 // --- URL VALIDATION AND NORMALIZATION ---
 
@@ -180,13 +167,11 @@ export async function getBookmarkAssetDetails(
     .where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)));
 
   if (!result) {
-    throw new BookmarkNotFoundError("Bookmark not found");
+    throw new NotFoundError("Bookmark");
   }
 
   if (!result.storageId) {
-    throw new BookmarkFileNotFoundError(
-      `${assetType} not found for this bookmark`,
-    );
+    throw new NotFoundError("Bookmark file");
   }
 
   // Use dynamic MIME type detection for favicons, static for others
@@ -355,7 +340,7 @@ export async function updateBookmark(
 ) {
   try {
     const existingBookmark = await getBookmarkById(id, userId);
-    if (!existingBookmark) throw new Error("Bookmark not found");
+    if (!existingBookmark) throw new NotFoundError("Bookmark");
 
     const { tags: tagNames, dueDate, ...apiUpdateData } = bookmarkData;
 
@@ -438,7 +423,7 @@ export async function deleteBookmark(
 ) {
   try {
     const existingBookmark = await getBookmarkById(id, userId);
-    if (!existingBookmark) throw new Error("Bookmark not found");
+    if (!existingBookmark) throw new NotFoundError("Bookmark");
 
     // Pre-generate history ID for transaction
     const historyId = generateHistoryId();

@@ -8,6 +8,7 @@ import {
   formatApiKeyForDisplay,
   generateFullApiKey,
 } from "../api-key-security.js";
+import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getUserProfile } from "../user.js";
 
@@ -30,41 +31,8 @@ const {
 
 import { categoryPrefix, getStorage, userPrefix } from "../storage/index.js";
 
-// ============================================================================
-// Error Classes
-// ============================================================================
-
-export class UserNotFoundError extends Error {
-  code = 404 as const;
-  constructor(message = "User not found") {
-    super(message);
-    this.name = "UserNotFoundError";
-  }
-}
-
-export class ApiKeyNotFoundError extends Error {
-  code = 404 as const;
-  constructor(message = "API key not found") {
-    super(message);
-    this.name = "ApiKeyNotFoundError";
-  }
-}
-
-export class AvatarNotFoundError extends Error {
-  code = 404 as const;
-  constructor(message = "Avatar not found") {
-    super(message);
-    this.name = "AvatarNotFoundError";
-  }
-}
-
-export class InvalidImageError extends Error {
-  code = 400 as const;
-  constructor(message = "Invalid image") {
-    super(message);
-    this.name = "InvalidImageError";
-  }
-}
+// Backward-compatible re-exports for route files
+export { NotFoundError as UserNotFoundError, NotFoundError as ApiKeyNotFoundError, NotFoundError as AvatarNotFoundError, ValidationError as InvalidImageError };
 
 // Individual delete services are no longer needed for bulk deletion
 // We use bulk transactions instead for better performance and SQLite safety
@@ -109,7 +77,7 @@ export async function deleteAllUserData(
     });
 
     if (!user) {
-      throw new Error("User not found");
+      throw new NotFoundError("User");
     }
 
     // Get the password hash from accounts table (Better Auth stores it there)
@@ -910,7 +878,7 @@ export async function getUserWithAssignees(userId: string) {
   const user = await getUserProfile(userId);
 
   if (!user) {
-    throw new UserNotFoundError();
+    throw new NotFoundError("User");
   }
 
   // Fetch all assistant users from database
@@ -962,7 +930,7 @@ export async function updateUserProfile(
     .returning();
 
   if (!updatedUser) {
-    throw new UserNotFoundError("User not found or update failed");
+    throw new NotFoundError("User");
   }
 
   return updatedUser;
@@ -985,7 +953,7 @@ export async function getPublicUserProfile(userId: string) {
   });
 
   if (!user) {
-    throw new UserNotFoundError();
+    throw new NotFoundError("User");
   }
 
   return {
@@ -1084,7 +1052,7 @@ export async function deleteApiKey(userId: string, keyId: string) {
     .returning({ id: apiKeys.id });
 
   if (result.length === 0) {
-    throw new ApiKeyNotFoundError();
+    throw new NotFoundError("API key");
   }
 }
 
@@ -1114,7 +1082,7 @@ export async function updateApiKeyName(
     });
 
   if (!updatedKey) {
-    throw new ApiKeyNotFoundError();
+    throw new NotFoundError("API key");
   }
 
   return {
@@ -1147,7 +1115,7 @@ export async function uploadUserAvatar(
   const verifiedMimeType = fileTypeResult?.mime || declaredMimeType;
 
   if (!verifiedMimeType.startsWith("image/")) {
-    throw new InvalidImageError("File must be an image");
+    throw new ValidationError("File must be an image");
   }
 
   // Process image - resize to standard avatar sizes
@@ -1177,7 +1145,7 @@ export async function uploadUserAvatar(
     .returning();
 
   if (!updatedUser) {
-    throw new UserNotFoundError("Failed to update user avatar");
+    throw new NotFoundError("User");
   }
 
   return {
@@ -1200,7 +1168,7 @@ export async function deleteUserAvatar(userId: string) {
   });
 
   if (!user?.avatarStorageId) {
-    throw new AvatarNotFoundError("No avatar to remove");
+    throw new NotFoundError("Avatar");
   }
 
   // Delete avatar file from storage
@@ -1226,7 +1194,7 @@ export async function deleteUserAvatar(userId: string) {
     .returning();
 
   if (!updatedUser) {
-    throw new UserNotFoundError("Failed to update user record");
+    throw new NotFoundError("User");
   }
 
   logger.info({ userId }, "Avatar removed successfully");
@@ -1249,7 +1217,7 @@ export async function getUserAvatar(userId: string) {
   });
 
   if (!user?.avatarStorageId) {
-    throw new AvatarNotFoundError();
+    throw new NotFoundError("Avatar");
   }
 
   // Get avatar from storage

@@ -23,7 +23,7 @@ const { tags, taskComments, tasks, tasksTags, users } = schema;
 
 import { config } from "../../config/index.js";
 import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
-import { ValidationError } from "../errors.js";
+import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
   getNextExecutionTime,
@@ -751,7 +751,7 @@ export async function updateTask(
     });
 
     if (!existingTask) {
-      throw new Error("Task not found");
+      throw new NotFoundError("Task");
     }
 
     // Validate recurrence parameters if they're being updated
@@ -1197,7 +1197,7 @@ export async function updateTask(
       error instanceof Error &&
       error.message.includes("Task update failed or task not found")
     ) {
-      throw new Error("Task not found"); // Re-throw specific error
+      throw new NotFoundError("Task"); // Re-throw specific error
     }
 
     // Differentiate between not found and other errors if possible
@@ -1251,7 +1251,7 @@ export async function updateTaskStatusAsAssistant(
     });
 
     if (!task) {
-      throw new Error("Task not found");
+      throw new NotFoundError("Task");
     }
 
     // Verify the assistant is actually assigned to this task
@@ -1334,25 +1334,8 @@ export async function updateTaskStatusAsAssistant(
   }
 }
 
-/**
- * Error thrown when a task is not found
- */
-export class TaskNotFoundError extends Error {
-  constructor(taskId: string) {
-    super(`Task not found: ${taskId}`);
-    this.name = "TaskNotFoundError";
-  }
-}
-
-/**
- * Error thrown when user is not authorized to perform an action on a task
- */
-export class TaskUnauthorizedError extends Error {
-  constructor(taskId: string, userId: string) {
-    super(`User ${userId} is not authorized to update task ${taskId}`);
-    this.name = "TaskUnauthorizedError";
-  }
-}
+// Backward-compatible re-exports for route files
+export { NotFoundError as TaskNotFoundError, ForbiddenError as TaskUnauthorizedError };
 
 /**
  * Updates task execution tracking with permission checks.
@@ -1381,13 +1364,13 @@ export async function updateTaskExecutionTrackingWithPermissions(
   });
 
   if (!task) {
-    throw new TaskNotFoundError(taskId);
+    throw new NotFoundError("Task", taskId);
   }
 
   // Check if user has permission to update execution tracking
   const canUpdate = task.userId === userId || task.assignedToId === userId;
   if (!canUpdate) {
-    throw new TaskUnauthorizedError(taskId, userId);
+    throw new ForbiddenError("Unauthorized to update this task");
   }
 
   // Log execution tracking update for security/auditing
@@ -1549,7 +1532,7 @@ export async function deleteTask(id: string, userId: string) {
 
     if (!existingTask) {
       logger.warn({ taskId: id, userId }, "Task not found for deletion");
-      throw new Error("Task not found");
+      throw new NotFoundError("Task");
     }
 
     // Fetch schedule data to check if task has recurring schedule

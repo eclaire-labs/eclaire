@@ -20,6 +20,7 @@ import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 const { photos, photosTags, tags } = schema;
 
 import { generateHistoryId, generatePhotoId } from "@eclaire/core";
+import { ForbiddenError, NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
@@ -36,30 +37,8 @@ function isStorageNotFound(error: unknown): boolean {
   );
 }
 
-// ============================================================================
-// Error Classes
-// ============================================================================
-
-export class PhotoNotFoundError extends Error {
-  constructor(message = "Photo not found") {
-    super(message);
-    this.name = "PhotoNotFoundError";
-  }
-}
-
-export class PhotoForbiddenError extends Error {
-  constructor(message = "Access denied") {
-    super(message);
-    this.name = "PhotoForbiddenError";
-  }
-}
-
-export class PhotoFileNotFoundError extends Error {
-  constructor(message = "File not found in storage") {
-    super(message);
-    this.name = "PhotoFileNotFoundError";
-  }
-}
+// Backward-compatible re-exports for route files
+export { NotFoundError as PhotoNotFoundError, NotFoundError as PhotoFileNotFoundError, ForbiddenError as PhotoForbiddenError };
 
 // ============================================================================
 // Interfaces
@@ -567,7 +546,7 @@ export async function updatePhotoMetadata(
     const existingPhoto = await db.query.photos.findFirst({
       where: and(eq(photos.id, id), eq(photos.userId, userId)),
     });
-    if (!existingPhoto) throw new PhotoNotFoundError();
+    if (!existingPhoto) throw new NotFoundError("Photo");
 
     const currentPhotoTags = await getPhotoTags(id); // For history
 
@@ -678,7 +657,7 @@ export async function deletePhoto(
       },
       where: and(eq(photos.id, id), eq(photos.userId, userId)),
     });
-    if (!existingPhoto) throw new PhotoNotFoundError();
+    if (!existingPhoto) throw new NotFoundError("Photo");
 
     const photoTags = await getPhotoTags(id); // For history
 
@@ -771,7 +750,7 @@ async function getPhotoWithDetails(photoId: string, userId: string) {
     .where(and(eq(photos.id, photoId), eq(photos.userId, userId)));
 
   if (!result) {
-    throw new PhotoNotFoundError("Photo not found or access denied");
+    throw new NotFoundError("Photo");
   }
 
   const photo = result.photo;
@@ -1381,9 +1360,8 @@ async function addTagsToPhoto(
 /** Standardizes error handling for service functions */
 function handleServiceError(error: unknown, defaultMessage: string): never {
   if (
-    error instanceof PhotoNotFoundError ||
-    error instanceof PhotoForbiddenError ||
-    error instanceof PhotoFileNotFoundError
+    error instanceof NotFoundError ||
+    error instanceof ForbiddenError
   ) {
     throw error;
   }
@@ -1797,7 +1775,7 @@ async function _getPhotoStreamDetailsForViewing(
     .limit(1);
 
   if (!result || !result.photo) {
-    throw new PhotoNotFoundError("Photo not found or access denied");
+    throw new NotFoundError("Photo");
   }
 
   const photoMeta = result.photo;
@@ -1805,14 +1783,12 @@ async function _getPhotoStreamDetailsForViewing(
 
   if (photoMeta.userId !== userId) {
     // Double check, though query should handle
-    throw new PhotoForbiddenError("Access denied");
+    throw new ForbiddenError("Access denied");
   }
 
   // If the photo has failed processing and has no storageId, return a specific error
   if (processingStatus === "failed" && !photoMeta.storageId) {
-    throw new PhotoFileNotFoundError(
-      "Photo processing failed and file is not available",
-    );
+    throw new NotFoundError("Photo file");
   }
 
   const originalMimeType = photoMeta.mimeType || "application/octet-stream";
@@ -1885,13 +1861,13 @@ async function _getThumbnailStreamDetails(
   });
 
   if (!photoMeta) {
-    throw new PhotoNotFoundError("Photo not found or access denied");
+    throw new NotFoundError("Photo");
   }
   if (photoMeta.userId !== userId) {
-    throw new PhotoForbiddenError("Access denied");
+    throw new ForbiddenError("Access denied");
   }
   if (!photoMeta.thumbnailStorageId) {
-    throw new PhotoFileNotFoundError("Thumbnail not available for this photo");
+    throw new NotFoundError("Photo thumbnail");
   }
 
   // Assuming thumbnails are JPEGs. If not, you might need to store thumbnailMimeType
@@ -1984,11 +1960,11 @@ export async function getOriginalStream(
   });
 
   if (!photo) {
-    throw new PhotoNotFoundError("Photo not found or access denied");
+    throw new NotFoundError("Photo");
   }
 
   if (!photo.storageId) {
-    throw new PhotoFileNotFoundError("Original file not found");
+    throw new NotFoundError("Photo original file");
   }
 
   try {
@@ -2005,7 +1981,7 @@ export async function getOriginalStream(
     };
   } catch (error: unknown) {
     if (isStorageNotFound(error)) {
-      throw new PhotoFileNotFoundError("Original file not found in storage");
+      throw new NotFoundError("Photo original file");
     }
     throw error;
   }
@@ -2034,11 +2010,11 @@ export async function getConvertedStream(
   });
 
   if (!photo) {
-    throw new PhotoNotFoundError("Photo not found or access denied");
+    throw new NotFoundError("Photo");
   }
 
   if (!photo.convertedJpgStorageId) {
-    throw new PhotoFileNotFoundError("Converted JPG file not available");
+    throw new NotFoundError("Photo converted file");
   }
 
   try {
@@ -2060,7 +2036,7 @@ export async function getConvertedStream(
     };
   } catch (error: unknown) {
     if (isStorageNotFound(error)) {
-      throw new PhotoFileNotFoundError("Converted file not found in storage");
+      throw new NotFoundError("Photo converted file");
     }
     throw error;
   }
@@ -2084,7 +2060,7 @@ export async function getAnalysisStream(
   });
 
   if (!photo) {
-    throw new PhotoNotFoundError("Photo not found or access denied");
+    throw new NotFoundError("Photo");
   }
 
   try {
@@ -2102,9 +2078,7 @@ export async function getAnalysisStream(
     };
   } catch (error: unknown) {
     if (isStorageNotFound(error)) {
-      throw new PhotoFileNotFoundError(
-        "AI analysis not found or not yet generated",
-      );
+      throw new NotFoundError("Photo AI analysis");
     }
     throw error;
   }
@@ -2128,7 +2102,7 @@ export async function getContentStream(
   });
 
   if (!photo) {
-    throw new PhotoNotFoundError("Photo not found or access denied");
+    throw new NotFoundError("Photo");
   }
 
   try {
@@ -2147,9 +2121,7 @@ export async function getContentStream(
     };
   } catch (error: unknown) {
     if (isStorageNotFound(error)) {
-      throw new PhotoFileNotFoundError(
-        "Content not found or not yet generated",
-      );
+      throw new NotFoundError("Photo content");
     }
     throw error;
   }
@@ -2187,21 +2159,19 @@ export async function getViewStream(
     .limit(1);
 
   if (!result || !result.photo) {
-    throw new PhotoNotFoundError("Photo not found or access denied");
+    throw new NotFoundError("Photo");
   }
 
   const photoMeta = result.photo;
   const processingStatus = result.status;
 
   if (photoMeta.userId !== userId) {
-    throw new PhotoForbiddenError("Access denied");
+    throw new ForbiddenError("Access denied");
   }
 
   // If the photo has failed processing and has no storageId, return a specific error
   if (processingStatus === "failed" && !photoMeta.storageId) {
-    throw new PhotoFileNotFoundError(
-      "Photo processing failed and file is not available",
-    );
+    throw new NotFoundError("Photo file");
   }
 
   const originalMimeType = photoMeta.mimeType || "application/octet-stream";
@@ -2217,7 +2187,7 @@ export async function getViewStream(
     mimeType = "image/jpeg";
   } else if (!photoMeta.storageId) {
     logger.error({ photoId }, "Photo is missing its primary storageId");
-    throw new PhotoFileNotFoundError("File reference missing for photo");
+    throw new NotFoundError("Photo file");
   } else {
     storageId = photoMeta.storageId;
     mimeType = originalMimeType;
@@ -2237,7 +2207,7 @@ export async function getViewStream(
     };
   } catch (error: unknown) {
     if (isStorageNotFound(error)) {
-      throw new PhotoFileNotFoundError("Photo file not found in storage");
+      throw new NotFoundError("Photo file");
     }
     throw error;
   }
@@ -2262,15 +2232,15 @@ export async function getThumbnailStream(
   });
 
   if (!photoMeta) {
-    throw new PhotoNotFoundError("Photo not found or access denied");
+    throw new NotFoundError("Photo");
   }
 
   if (photoMeta.userId !== userId) {
-    throw new PhotoForbiddenError("Access denied");
+    throw new ForbiddenError("Access denied");
   }
 
   if (!photoMeta.thumbnailStorageId) {
-    throw new PhotoFileNotFoundError("Thumbnail not available for this photo");
+    throw new NotFoundError("Photo thumbnail");
   }
 
   try {
@@ -2292,7 +2262,7 @@ export async function getThumbnailStream(
     };
   } catch (error: unknown) {
     if (isStorageNotFound(error)) {
-      throw new PhotoFileNotFoundError("Thumbnail file not found in storage");
+      throw new NotFoundError("Photo thumbnail");
     }
     throw error;
   }

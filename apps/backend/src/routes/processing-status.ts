@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
-import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
   getProcessingJob,
@@ -9,6 +8,7 @@ import {
   retryAssetProcessing,
   updateProcessingStatusWithArtifacts,
 } from "../lib/services/processing-status.js";
+import { withAuth } from "../middleware/with-auth.js";
 import { ASSET_TYPES, assetTypeSchema } from "../schemas/asset-types.js";
 import {
   AssetRetryBodySchema,
@@ -31,49 +31,23 @@ export const processingStatusRoutes = new Hono<{ Variables: RouteVariables }>();
 
 /**
  * GET /api/processing-status/summary
- * (No changes to this route)
  */
 processingStatusRoutes.get(
   "/summary",
   describeRoute(getProcessingStatusSummaryRouteDescription),
-  async (c) => {
-    // ... (code is unchanged)
-    const requestId = c.get("requestId");
-
-    // logger.info(
-    //   { requestId, path: "/summary", method: "GET" },
-    //   "Processing summary route called",
-    // );
-
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-      const summary = await getUserProcessingSummary(userId);
-      return c.json(summary);
-    } catch (error) {
-      logger.error(
-        {
-          requestId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error getting user processing summary",
-      );
-      return c.json({ error: "Internal server error" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const summary = await getUserProcessingSummary(userId);
+    return c.json(summary);
+  }, logger),
 );
 
 /**
  * GET /api/processing-status/jobs
- * (No changes to this route)
  */
 processingStatusRoutes.get(
   "/jobs",
   describeRoute(getProcessingJobsRouteDescription),
-  async (c) => {
-    // ... (code is unchanged)
+  withAuth(async (c, userId) => {
     const requestId = c.get("requestId");
 
     logger.info(
@@ -81,198 +55,126 @@ processingStatusRoutes.get(
       "Processing jobs route called",
     );
 
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+    const status = c.req.query("status");
+    const assetType = c.req.query("assetType");
+    const search = c.req.query("search");
+    const limit = parseInt(c.req.query("limit") || "100", 10);
+    const offset = parseInt(c.req.query("offset") || "0", 10);
 
-      const status = c.req.query("status");
-      const assetType = c.req.query("assetType");
-      const search = c.req.query("search");
-      const limit = parseInt(c.req.query("limit") || "100", 10);
-      const offset = parseInt(c.req.query("offset") || "0", 10);
+    const jobs = await getUserProcessingJobs(userId, {
+      // biome-ignore lint/suspicious/noExplicitAny: query param string to enum type
+      status: status as any,
+      // biome-ignore lint/suspicious/noExplicitAny: query param string to enum type
+      assetType: assetType as any,
+      search,
+      limit,
+      offset,
+    });
 
-      const jobs = await getUserProcessingJobs(userId, {
-        // biome-ignore lint/suspicious/noExplicitAny: query param string to enum type
-        status: status as any,
-        // biome-ignore lint/suspicious/noExplicitAny: query param string to enum type
-        assetType: assetType as any,
-        search,
-        limit,
-        offset,
-      });
-
-      return c.json(jobs);
-    } catch (error) {
-      logger.error(
-        {
-          requestId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error getting user processing jobs",
-      );
-      return c.json({ error: "Internal server error" }, 500);
-    }
-  },
+    return c.json(jobs);
+  }, logger),
 );
 
 /**
  * GET /api/processing-status/:assetType/:assetId
- * (No changes to this route)
  */
 processingStatusRoutes.get(
   "/:assetType/:assetId",
   describeRoute(getAssetProcessingStatusRouteDescription),
-  async (c) => {
-    // ... (code is unchanged)
-    const requestId = c.get("requestId");
+  withAuth(async (c, userId) => {
+    const rawAssetType = c.req.param("assetType");
+    const assetId = c.req.param("assetId");
 
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const rawAssetType = c.req.param("assetType");
-      const assetId = c.req.param("assetId");
-
-      const validationResult = assetTypeSchema.safeParse(rawAssetType);
-      if (!validationResult.success) {
-        return c.json(
-          { error: "Invalid asset type", validTypes: ASSET_TYPES },
-          400,
-        );
-      }
-      const assetType = validationResult.data;
-
-      const job = await getProcessingJob(assetType, assetId, userId);
-
-      if (!job) {
-        return c.json({
-          status: "unknown",
-          stages: [],
-          error: null,
-          errorDetails: null,
-          retryCount: 0,
-          canRetry: false,
-        });
-      }
-
-      // ... rest of the logic is unchanged
-      return c.json({
-        status: job.status,
-        stages: job.stages,
-        currentStage: job.currentStage,
-        overallProgress: job.overallProgress,
-        error: job.errorMessage || null,
-        errorDetails: job.errorDetails || null,
-        retryCount: job.retryCount,
-        canRetry: job.canRetry,
-        estimatedCompletion:
-          job.status === "processing" ? estimateCompletion(job) : null,
-      });
-    } catch (error) {
-      logger.error(
-        {
-          requestId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error getting processing status",
+    const validationResult = assetTypeSchema.safeParse(rawAssetType);
+    if (!validationResult.success) {
+      return c.json(
+        { error: "Invalid asset type", validTypes: ASSET_TYPES },
+        400,
       );
-      return c.json({ error: "Internal server error" }, 500);
     }
-  },
+    const assetType = validationResult.data;
+
+    const job = await getProcessingJob(assetType, assetId, userId);
+
+    if (!job) {
+      return c.json({
+        status: "unknown",
+        stages: [],
+        error: null,
+        errorDetails: null,
+        retryCount: 0,
+        canRetry: false,
+      });
+    }
+
+    return c.json({
+      status: job.status,
+      stages: job.stages,
+      currentStage: job.currentStage,
+      overallProgress: job.overallProgress,
+      error: job.errorMessage || null,
+      errorDetails: job.errorDetails || null,
+      retryCount: job.retryCount,
+      canRetry: job.canRetry,
+      estimatedCompletion:
+        job.status === "processing" ? estimateCompletion(job) : null,
+    });
+  }, logger),
 );
 
 /**
  * POST /api/processing-status/retry
- * (No changes to this route)
  */
 processingStatusRoutes.post(
   "/retry",
   describeRoute(postProcessingRetryRouteDescription),
   zValidator("json", RetryBodySchema),
-  async (c) => {
-    const requestId = c.get("requestId");
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const { assetType, assetId } = c.req.valid("json");
 
-      const { assetType, assetId } = c.req.valid("json");
-
-      const result = await retryAssetProcessing(assetType, assetId, userId);
-      if (result.success) {
-        return c.json({ success: true, message: "Processing retry queued" });
-      } else {
-        return c.json({ error: result.error }, 400);
-      }
-    } catch (error) {
-      logger.error(
-        {
-          requestId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error retrying processing via JSON body",
-      );
-      return c.json({ error: "Internal server error" }, 500);
+    const result = await retryAssetProcessing(assetType, assetId, userId);
+    if (result.success) {
+      return c.json({ success: true, message: "Processing retry queued" });
+    } else {
+      return c.json({ error: result.error }, 400);
     }
-  },
+  }, logger),
 );
 
 /**
  * POST /api/processing-status/:assetType/:assetId/retry
- * (No changes to this route)
  */
 processingStatusRoutes.post(
   "/:assetType/:assetId/retry",
   describeRoute(postAssetProcessingRetryRouteDescription),
   zValidator("json", AssetRetryBodySchema),
-  async (c) => {
-    const requestId = c.get("requestId");
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-      const rawAssetType = c.req.param("assetType");
-      const assetId = c.req.param("assetId");
+  withAuth(async (c, userId) => {
+    const rawAssetType = c.req.param("assetType");
+    const assetId = c.req.param("assetId");
 
-      const { force } = c.req.valid("json");
+    const { force } = c.req.valid("json");
 
-      const validationResult = assetTypeSchema.safeParse(rawAssetType);
-      if (!validationResult.success) {
-        return c.json(
-          { error: "Invalid asset type", validTypes: ASSET_TYPES },
-          400,
-        );
-      }
-      const assetType = validationResult.data;
-
-      const result = await retryAssetProcessing(
-        assetType,
-        assetId,
-        userId,
-        force,
+    const validationResult = assetTypeSchema.safeParse(rawAssetType);
+    if (!validationResult.success) {
+      return c.json(
+        { error: "Invalid asset type", validTypes: ASSET_TYPES },
+        400,
       );
-      if (result.success) {
-        return c.json({ success: true, message: "Processing retry queued" });
-      } else {
-        return c.json({ error: result.error }, 400);
-      }
-    } catch (error) {
-      logger.error(
-        {
-          requestId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error retrying processing",
-      );
-      return c.json({ error: "Internal server error" }, 500);
     }
-  },
+    const assetType = validationResult.data;
+
+    const result = await retryAssetProcessing(
+      assetType,
+      assetId,
+      userId,
+      force,
+    );
+    if (result.success) {
+      return c.json({ success: true, message: "Processing retry queued" });
+    } else {
+      return c.json({ error: result.error }, 400);
+    }
+  }, logger),
 );
 
 // ================================================================= //

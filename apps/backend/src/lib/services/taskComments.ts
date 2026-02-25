@@ -4,6 +4,7 @@ import { formatToISO8601 } from "../db-helpers.js";
 
 const { taskComments, tasks, users } = schema;
 
+import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
 
@@ -41,7 +42,7 @@ export async function createTaskComment(
     });
 
     if (!task) {
-      throw new Error("Task not found");
+      throw new NotFoundError("Task");
     }
 
     // Get user info to determine actor type (optional if actorOverride provided)
@@ -56,7 +57,7 @@ export async function createTaskComment(
 
     // User lookup is required unless actorOverride is provided
     if (!user && !actorOverride) {
-      throw new Error("User not found");
+      throw new NotFoundError("User");
     }
 
     const [newComment] = await db
@@ -148,7 +149,7 @@ export async function getTaskComments(taskId: string, userId: string) {
     });
 
     if (!task) {
-      throw new Error("Task not found or access denied");
+      throw new NotFoundError("Task");
     }
 
     const comments = await db.query.taskComments.findMany({
@@ -194,7 +195,7 @@ export async function updateTaskComment(
     });
 
     if (!existingComment) {
-      throw new Error("Comment not found or access denied");
+      throw new NotFoundError("Comment");
     }
 
     // Get user and task info for history recording
@@ -217,7 +218,7 @@ export async function updateTaskComment(
     });
 
     if (!user || !task) {
-      throw new Error("User or task not found");
+      throw new NotFoundError("Task");
     }
 
     const [_updatedComment] = await db
@@ -309,7 +310,7 @@ export async function deleteTaskComment(commentId: string, userId: string) {
     });
 
     if (!existingComment) {
-      throw new Error("Comment not found or access denied");
+      throw new NotFoundError("Comment");
     }
 
     // Get user and task info for history recording
@@ -332,7 +333,7 @@ export async function deleteTaskComment(commentId: string, userId: string) {
     });
 
     if (!user || !task) {
-      throw new Error("User or task not found");
+      throw new NotFoundError("Task");
     }
 
     await db.delete(taskComments).where(eq(taskComments.id, commentId));

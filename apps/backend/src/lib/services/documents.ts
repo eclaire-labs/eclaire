@@ -28,6 +28,7 @@ import {
   formatToISO8601,
   getOrCreateTags,
 } from "../db-helpers.js";
+import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
@@ -91,13 +92,7 @@ interface DocumentDetails {
   enabled: boolean;
 }
 
-export class NotFoundError extends Error {
-  public code = "NOT_FOUND";
-  constructor(message: string) {
-    super(message);
-    this.name = "NotFoundError";
-  }
-}
+export { NotFoundError };
 
 // --- Helper Functions ---
 
@@ -160,7 +155,7 @@ async function getDocumentWithDetails(
     );
 
   if (!result) {
-    throw new NotFoundError("Document not found");
+    throw new NotFoundError("Document");
   }
 
   const document = result.document;
@@ -400,7 +395,7 @@ export async function updateDocument(
       ),
     });
     if (!existingDocument) {
-      throw new NotFoundError("Document not found");
+      throw new NotFoundError("Document");
     }
 
     const { tags: tagNames, dueDate, ...docUpdateData } = documentData;
@@ -950,7 +945,7 @@ export async function getDocumentAsset(
   });
 
   if (!document) {
-    throw new NotFoundError("Document not found or access denied");
+    throw new NotFoundError("Document");
   }
 
   let storageId: string | null = null;
@@ -991,9 +986,7 @@ export async function getDocumentAsset(
   }
 
   if (!storageId) {
-    throw new NotFoundError(
-      `Asset of type '${assetType}' not found for this document.`,
-    );
+    throw new NotFoundError(`Document asset (${assetType})`);
   }
 
   try {
@@ -1011,7 +1004,7 @@ export async function getDocumentAsset(
       logger.warn(
         `Storage file not found for document ${documentId}, asset ${assetType}, storageId ${storageId}`,
       );
-      throw new NotFoundError(`Asset file not found in storage.`);
+      throw new NotFoundError("Document asset file");
     }
     // Re-throw other, unexpected storage errors
     throw error;

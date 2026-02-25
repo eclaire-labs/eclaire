@@ -1,10 +1,8 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
-import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import { ValidationError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
-  ApiKeyNotFoundError,
-  AvatarNotFoundError,
   createApiKey,
   // Dashboard & data functions (already delegated)
   deleteAllUserData,
@@ -19,13 +17,11 @@ import {
   getUserAvatar,
   // New service functions
   getUserWithAssignees,
-  InvalidImageError,
-  // Error classes
-  UserNotFoundError,
   updateApiKeyName,
   updateUserProfile,
   uploadUserAvatar,
 } from "../lib/services/user-data.js";
+import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
   DeleteAllUserDataSchema,
@@ -49,76 +45,33 @@ export const userRoutes = new Hono<{ Variables: RouteVariables }>();
 userRoutes.get(
   "/",
   describeRoute(getUserProfileRouteDescription),
-  async (c) => {
-    const userId = await getAuthenticatedUserId(c);
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    try {
-      const result = await getUserWithAssignees(userId);
-      return c.json(result);
-    } catch (error) {
-      if (error instanceof UserNotFoundError) {
-        return c.json({ error: "User not found" }, 404);
-      }
-      logger.error(
-        {
-          requestId: c.get("requestId"),
-          userId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error fetching user profile",
-      );
-      return c.json({ error: "Failed to fetch user profile" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const result = await getUserWithAssignees(userId);
+    return c.json(result);
+  }, logger),
 );
 
 // PATCH /api/user/profile - Update the user's profile
 userRoutes.patch(
   "/profile",
   describeRoute(updateUserProfileRouteDescription),
-  async (c) => {
-    const userId = await getAuthenticatedUserId(c);
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+  withAuth(async (c, userId) => {
+    const body = await c.req.json();
+    const validationResult = UpdateProfileSchema.safeParse(body);
 
-    try {
-      const body = await c.req.json();
-      const validationResult = UpdateProfileSchema.safeParse(body);
-
-      if (!validationResult.success) {
-        return c.json(
-          {
-            error: "Invalid data",
-            details: validationResult.error.issues,
-          },
-          400,
-        );
-      }
-
-      const updatedUser = await updateUserProfile(
-        userId,
-        validationResult.data,
-      );
-      return c.json(updatedUser);
-    } catch (error) {
-      if (error instanceof UserNotFoundError) {
-        return c.json({ error: "User not found or update failed" }, 404);
-      }
-      logger.error(
+    if (!validationResult.success) {
+      return c.json(
         {
-          requestId: c.get("requestId"),
-          userId,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: "Invalid data",
+          details: validationResult.error.issues,
         },
-        "Error updating profile",
+        400,
       );
-      return c.json({ error: "Failed to update profile" }, 500);
     }
-  },
+
+    const updatedUser = await updateUserProfile(userId, validationResult.data);
+    return c.json(updatedUser);
+  }, logger),
 );
 
 // POST /api/user/delete-all-data - Delete all user data while keeping account
@@ -126,282 +79,140 @@ userRoutes.post(
   "/delete-all-data",
   describeRoute(deleteAllUserDataRouteDescription),
   zValidator("json", DeleteAllUserDataSchema),
-  async (c) => {
-    const userId = await getAuthenticatedUserId(c);
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
+  withAuth(async (c, userId) => {
     const { password } = c.req.valid("json");
     if (!password) {
-      return c.json({ error: "Password is required for confirmation" }, 400);
+      throw new ValidationError("Password is required for confirmation");
     }
 
     try {
       await deleteAllUserData(userId, password);
-
-      logger.info(
-        { requestId: c.get("requestId"), userId },
-        "All user data deleted successfully",
-      );
-
-      return c.json({
-        message:
-          "All user data deleted successfully. Your account remains active.",
-        accountKept: true,
-      });
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        if (error.message === "User not found") {
-          return c.json({ error: "User not found" }, 404);
-        }
-        if (error.message === "Invalid password") {
-          return c.json({ error: "Invalid password provided" }, 400);
-        }
+      if (error instanceof Error && error.message === "Invalid password") {
+        throw new ValidationError("Invalid password provided");
       }
-      logger.error(
-        {
-          requestId: c.get("requestId"),
-          userId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error deleting all user data",
-      );
-      return c.json({ error: "Failed to delete user data" }, 500);
+      throw error;
     }
-  },
+
+    logger.info(
+      { requestId: c.get("requestId"), userId },
+      "All user data deleted successfully",
+    );
+
+    return c.json({
+      message:
+        "All user data deleted successfully. Your account remains active.",
+      accountKept: true,
+    });
+  }, logger),
 );
 
 // GET /api/user/api-keys - Get all user's API keys
-userRoutes.get("/api-keys", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-  if (!userId) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
+userRoutes.get(
+  "/api-keys",
+  withAuth(async (c, userId) => {
     const apiKeys = await getUserApiKeys(userId);
     return c.json({ apiKeys });
-  } catch (error) {
-    logger.error(
-      {
-        requestId: c.get("requestId"),
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Error fetching API keys",
-    );
-    return c.json({ error: "Failed to fetch API keys" }, 500);
-  }
-});
+  }, logger),
+);
 
 // POST /api/user/api-keys - Create a new API key
-userRoutes.post("/api-keys", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-  if (!userId) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
+userRoutes.post(
+  "/api-keys",
+  withAuth(async (c, userId) => {
     const body = await c.req.json();
     const apiKey = await createApiKey(userId, body.name);
     return c.json({ apiKey });
-  } catch (error) {
-    logger.error(
-      {
-        requestId: c.get("requestId"),
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Error creating API key",
-    );
-    return c.json({ error: "Failed to create API key" }, 500);
-  }
-});
+  }, logger),
+);
 
 // DELETE /api/user/api-keys/:id - Delete a specific API key
-userRoutes.delete("/api-keys/:id", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-  if (!userId) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
+userRoutes.delete(
+  "/api-keys/:id",
+  withAuth(async (c, userId) => {
     const keyId = c.req.param("id");
     await deleteApiKey(userId, keyId);
     return c.json({ success: true });
-  } catch (error) {
-    if (error instanceof ApiKeyNotFoundError) {
-      return c.json({ error: "API key not found" }, 404);
-    }
-    logger.error(
-      {
-        requestId: c.get("requestId"),
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Error deleting API key",
-    );
-    return c.json({ error: "Failed to delete API key" }, 500);
-  }
-});
+  }, logger),
+);
 
 // PATCH /api/user/api-keys/:id - Update API key name
-userRoutes.patch("/api-keys/:id", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-  if (!userId) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
+userRoutes.patch(
+  "/api-keys/:id",
+  withAuth(async (c, userId) => {
     const keyId = c.req.param("id");
     const body = await c.req.json();
 
     if (!body.name || typeof body.name !== "string") {
-      return c.json({ error: "Name is required" }, 400);
+      throw new ValidationError("Name is required");
     }
 
     const apiKey = await updateApiKeyName(userId, keyId, body.name);
     return c.json({ apiKey });
-  } catch (error) {
-    if (error instanceof ApiKeyNotFoundError) {
-      return c.json({ error: "API key not found" }, 404);
-    }
-    logger.error(
-      {
-        requestId: c.get("requestId"),
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Error updating API key",
-    );
-    return c.json({ error: "Failed to update API key" }, 500);
-  }
-});
+  }, logger),
+);
 
 // GET /api/user/dashboard-stats - Get dashboard statistics
 userRoutes.get(
   "/dashboard-stats",
   describeRoute(getUserDashboardStatsRouteDescription),
-  async (c) => {
-    const userId = await getAuthenticatedUserId(c);
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+  withAuth(async (c, userId) => {
+    const stats = await getDashboardStatistics(userId);
 
-    try {
-      const stats = await getDashboardStatistics(userId);
+    logger.info(
+      {
+        requestId: c.get("requestId"),
+        userId,
+        totalAssets: stats.assets.total.count,
+        totalStorage: stats.assets.total.storageSizeFormatted,
+      },
+      "Dashboard statistics retrieved",
+    );
 
-      logger.info(
-        {
-          requestId: c.get("requestId"),
-          userId,
-          totalAssets: stats.assets.total.count,
-          totalStorage: stats.assets.total.storageSizeFormatted,
-        },
-        "Dashboard statistics retrieved",
-      );
-
-      return c.json(stats);
-    } catch (error) {
-      logger.error(
-        {
-          requestId: c.get("requestId"),
-          userId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error getting dashboard statistics",
-      );
-      return c.json({ error: "Failed to get dashboard statistics" }, 500);
-    }
-  },
+    return c.json(stats);
+  }, logger),
 );
 
 // POST /api/user/avatar - Upload user avatar
-userRoutes.post("/avatar", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-  if (!userId) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
+userRoutes.post(
+  "/avatar",
+  withAuth(async (c, userId) => {
     const formData = await c.req.formData();
     const avatarFile = formData.get("avatar") as File;
 
     if (!avatarFile) {
-      return c.json({ error: "Avatar file is required" }, 400);
+      throw new ValidationError("Avatar file is required");
     }
 
     const buffer = Buffer.from(await avatarFile.arrayBuffer());
     const result = await uploadUserAvatar(userId, buffer, avatarFile.type);
     return c.json(result);
-  } catch (error) {
-    if (error instanceof InvalidImageError) {
-      return c.json({ error: error.message }, 400);
-    }
-    if (error instanceof UserNotFoundError) {
-      return c.json({ error: error.message }, 500);
-    }
-    logger.error(
-      {
-        requestId: c.get("requestId"),
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Error uploading avatar",
-    );
-    return c.json({ error: "Failed to upload avatar" }, 500);
-  }
-});
+  }, logger),
+);
 
 // DELETE /api/user/avatar - Remove user avatar
-userRoutes.delete("/avatar", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-  if (!userId) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
+userRoutes.delete(
+  "/avatar",
+  withAuth(async (c, userId) => {
     const result = await deleteUserAvatar(userId);
     logger.info(
       { requestId: c.get("requestId"), userId },
       "Avatar removed successfully",
     );
     return c.json(result);
-  } catch (error) {
-    if (error instanceof AvatarNotFoundError) {
-      return c.json({ error: error.message }, 404);
-    }
-    if (error instanceof UserNotFoundError) {
-      return c.json({ error: error.message }, 500);
-    }
-    logger.error(
-      {
-        requestId: c.get("requestId"),
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Error removing avatar",
-    );
-    return c.json({ error: "Failed to remove avatar" }, 500);
-  }
-});
+  }, logger),
+);
 
 // GET /api/user/activity-timeline - Get activity timeline for dashboard
-userRoutes.get("/activity-timeline", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-  if (!userId) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
+userRoutes.get(
+  "/activity-timeline",
+  withAuth(async (c, userId) => {
     const daysParam = c.req.query("days");
     const days = daysParam ? parseInt(daysParam, 10) : 30;
 
     if (Number.isNaN(days) || days < 1 || days > 365) {
-      return c.json(
-        { error: "Invalid days parameter. Must be between 1 and 365." },
-        400,
+      throw new ValidationError(
+        "Invalid days parameter. Must be between 1 and 365.",
       );
     }
 
@@ -418,27 +229,13 @@ userRoutes.get("/activity-timeline", async (c) => {
     );
 
     return c.json(timeline);
-  } catch (error) {
-    logger.error(
-      {
-        requestId: c.get("requestId"),
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Error getting activity timeline",
-    );
-    return c.json({ error: "Failed to get activity timeline" }, 500);
-  }
-});
+  }, logger),
+);
 
 // GET /api/user/due-items - Get items due soon for dashboard
-userRoutes.get("/due-items", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-  if (!userId) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
+userRoutes.get(
+  "/due-items",
+  withAuth(async (c, userId) => {
     const dueItems = await getDueItems(userId);
 
     logger.info(
@@ -453,27 +250,13 @@ userRoutes.get("/due-items", async (c) => {
     );
 
     return c.json(dueItems);
-  } catch (error) {
-    logger.error(
-      {
-        requestId: c.get("requestId"),
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Error getting due items",
-    );
-    return c.json({ error: "Failed to get due items" }, 500);
-  }
-});
+  }, logger),
+);
 
 // GET /api/user/quick-stats - Get quick stats for dashboard widgets
-userRoutes.get("/quick-stats", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-  if (!userId) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
+userRoutes.get(
+  "/quick-stats",
+  withAuth(async (c, userId) => {
     const stats = await getQuickStats(userId);
 
     logger.info(
@@ -489,48 +272,18 @@ userRoutes.get("/quick-stats", async (c) => {
     );
 
     return c.json(stats);
-  } catch (error) {
-    logger.error(
-      {
-        requestId: c.get("requestId"),
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Error getting quick stats",
-    );
-    return c.json({ error: "Failed to get quick stats" }, 500);
-  }
-});
+  }, logger),
+);
 
 // GET /api/user/:userId - Get user information by ID (for workers/AI assistants)
 userRoutes.get(
   "/:userId",
   describeRoute(getPublicUserProfileRouteDescription),
-  async (c) => {
-    const requestingUserId = await getAuthenticatedUserId(c);
-    if (!requestingUserId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    try {
-      const userId = c.req.param("userId");
-      const user = await getPublicUserProfile(userId);
-      return c.json(user);
-    } catch (error) {
-      if (error instanceof UserNotFoundError) {
-        return c.json({ error: "User not found" }, 404);
-      }
-      logger.error(
-        {
-          requestId: c.get("requestId"),
-          userId: c.req.param("userId"),
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error fetching user by ID",
-      );
-      return c.json({ error: "Failed to fetch user" }, 500);
-    }
-  },
+  withAuth(async (c, _userId) => {
+    const userId = c.req.param("userId");
+    const user = await getPublicUserProfile(userId);
+    return c.json(user);
+  }, logger),
 );
 
 // GET /api/user/:userId/avatar - Serve user avatar
@@ -550,7 +303,7 @@ userRoutes.get("/:userId/avatar", async (c) => {
 
     return new Response(stream, { status: 200, headers });
   } catch (error) {
-    if (error instanceof AvatarNotFoundError) {
+    if (error instanceof Error && error.name === "NotFoundError") {
       return c.json({ error: "Avatar not found" }, 404);
     }
     return c.json({ error: "Failed to serve avatar" }, 500);

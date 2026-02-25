@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "../lib/auth-utils.js";
-import { ValidationError } from "../lib/errors.js";
+import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
   createTaskComment,
@@ -18,9 +17,7 @@ import {
   getAllTasks,
   getTaskById,
   reprocessTask,
-  TaskNotFoundError,
   type TaskStatus,
-  TaskUnauthorizedError,
   updateTask,
   updateTaskExecutionTrackingWithPermissions,
   updateTaskStatusAsAssistant,
@@ -50,19 +47,15 @@ import {
   putTaskRouteDescription,
 } from "../schemas/tasks-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
+import { withAuth } from "../middleware/with-auth.js";
 
 const logger = createChildLogger("tasks");
 
 export const tasksRoutes = new Hono<{ Variables: RouteVariables }>();
 
 // GET /api/tasks - Get all tasks or search tasks
-tasksRoutes.get("/", describeRoute(getTasksRouteDescription), async (c) => {
-  try {
-    const userId = await getAuthenticatedUserId(c);
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
+tasksRoutes.get("/", describeRoute(getTasksRouteDescription),
+  withAuth(async (c, userId) => {
     const queryParams = c.req.query();
 
     // If no search parameters, return all tasks
@@ -71,183 +64,98 @@ tasksRoutes.get("/", describeRoute(getTasksRouteDescription), async (c) => {
       return c.json(tasks);
     }
 
-    // Parse and validate search parameters
-    try {
-      const params = TaskSearchParamsSchema.parse({
-        text: queryParams.text || undefined,
-        tags: queryParams.tags || undefined,
-        status: (queryParams.status as TaskStatus) || undefined,
-        startDate: queryParams.startDate || undefined,
-        endDate: queryParams.endDate || undefined,
-        dueDateStart: queryParams.dueDateStart || undefined,
-        dueDateEnd: queryParams.dueDateEnd || undefined,
-        limit: queryParams.limit || 50,
-      });
+    // Parse and validate search parameters (ZodError caught by withAuth)
+    const params = TaskSearchParamsSchema.parse({
+      text: queryParams.text || undefined,
+      tags: queryParams.tags || undefined,
+      status: (queryParams.status as TaskStatus) || undefined,
+      startDate: queryParams.startDate || undefined,
+      endDate: queryParams.endDate || undefined,
+      dueDateStart: queryParams.dueDateStart || undefined,
+      dueDateEnd: queryParams.dueDateEnd || undefined,
+      limit: queryParams.limit || 50,
+    });
 
-      // Process tags if provided (convert from comma-separated string to array)
-      const tagsList = params.tags
-        ? params.tags.split(",").map((tag: string) => tag.trim())
-        : undefined;
+    // Process tags if provided (convert from comma-separated string to array)
+    const tagsList = params.tags
+      ? params.tags.split(",").map((tag: string) => tag.trim())
+      : undefined;
 
-      // Parse dates if provided
-      const startDate = params.startDate
-        ? new Date(params.startDate)
-        : undefined;
-      const endDate = params.endDate ? new Date(params.endDate) : undefined;
-      const dueDateStart = params.dueDateStart
-        ? new Date(params.dueDateStart)
-        : undefined;
-      const dueDateEnd = params.dueDateEnd
-        ? new Date(params.dueDateEnd)
-        : undefined;
+    // Parse dates if provided
+    const startDate = params.startDate
+      ? new Date(params.startDate)
+      : undefined;
+    const endDate = params.endDate ? new Date(params.endDate) : undefined;
+    const dueDateStart = params.dueDateStart
+      ? new Date(params.dueDateStart)
+      : undefined;
+    const dueDateEnd = params.dueDateEnd
+      ? new Date(params.dueDateEnd)
+      : undefined;
 
-      // Search tasks with provided criteria
-      const tasks = await findTasks(
-        userId,
-        params.text,
-        tagsList,
-        params.status,
-        startDate,
-        endDate,
-        params.limit,
-        dueDateStart,
-        dueDateEnd,
-      );
-
-      // Get total count for pagination
-      const totalCount = await countTasks(
-        userId,
-        params.text,
-        tagsList,
-        params.status,
-        startDate,
-        endDate,
-        dueDateStart,
-        dueDateEnd,
-      );
-
-      return c.json({
-        tasks,
-        totalCount,
-        limit: params.limit,
-      });
-    } catch (error: unknown) {
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid search parameters", details: error.issues },
-          400,
-        );
-      }
-      throw error;
-    }
-  } catch (error: unknown) {
-    const requestId = c.get("requestId");
-    logger.error(
-      {
-        requestId,
-        userId: await getAuthenticatedUserId(c),
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Error getting tasks",
+    // Search tasks with provided criteria
+    const tasks = await findTasks(
+      userId,
+      params.text,
+      tagsList,
+      params.status,
+      startDate,
+      endDate,
+      params.limit,
+      dueDateStart,
+      dueDateEnd,
     );
-    return c.json({ error: "Failed to fetch tasks" }, 500);
-  }
-});
+
+    // Get total count for pagination
+    const totalCount = await countTasks(
+      userId,
+      params.text,
+      tagsList,
+      params.status,
+      startDate,
+      endDate,
+      dueDateStart,
+      dueDateEnd,
+    );
+
+    return c.json({
+      tasks,
+      totalCount,
+      limit: params.limit,
+    });
+  }, logger),
+);
 
 // POST /api/tasks - Create a new task
 tasksRoutes.post(
   "/",
   describeRoute(postTasksRouteDescription),
   zValidator("json", TaskSchema),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const validatedData = c.req.valid("json");
+    // Convert null dueDate to undefined for CreateTaskParams compatibility
+    const taskData = {
+      ...validatedData,
+      dueDate: validatedData.dueDate || undefined,
+      description: validatedData.description || undefined,
+      cronExpression: validatedData.cronExpression || undefined,
+      recurrenceEndDate: validatedData.recurrenceEndDate || undefined,
+    };
+    const newTask = await createTask(taskData, userId);
 
-      const validatedData = c.req.valid("json");
-      // Convert null dueDate to undefined for CreateTaskParams compatibility
-      const taskData = {
-        ...validatedData,
-        dueDate: validatedData.dueDate || undefined,
-        description: validatedData.description || undefined,
-        cronExpression: validatedData.cronExpression || undefined,
-        recurrenceEndDate: validatedData.recurrenceEndDate || undefined,
-      };
-      const newTask = await createTask(taskData, userId);
-
-      return c.json(newTask, 201);
-    } catch (error: unknown) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error creating task",
-      );
-
-      if (error instanceof ValidationError) {
-        return c.json({ error: error.message }, 400);
-      }
-
-      if (error instanceof z.ZodError) {
-        return c.json(
-          { error: "Invalid request data", details: error.issues },
-          400,
-        );
-      }
-
-      return c.json({ error: "Failed to create task" }, 500);
-    }
-  },
+    return c.json(newTask, 201);
+  }, logger),
 );
 
 // GET /api/tasks/:id - Get a specific task
 tasksRoutes.get(
   "/:id",
   describeRoute(getTaskByIdRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const id = c.req.param("id");
-      try {
-        const task = await getTaskById(id, userId);
-
-        if (!task) {
-          return c.json({ error: "Task not found" }, 404);
-        }
-
-        return c.json(task);
-      } catch (error) {
-        if ((error as Error).message === "Task not found") {
-          return c.json({ error: "Task not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error: unknown) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          taskId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error getting task",
-      );
-      return c.json({ error: "Failed to fetch task" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const task = await getTaskById(c.req.param("id"), userId);
+    if (!task) throw new NotFoundError("Task");
+    return c.json(task);
+  }, logger),
 );
 
 // PUT /api/tasks/:id - Update a task (full update)
@@ -255,174 +163,84 @@ tasksRoutes.put(
   "/:id",
   describeRoute(putTaskRouteDescription),
   zValidator("json", PartialTaskSchema),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const validatedData = c.req.valid("json");
 
-      const id = c.req.param("id");
-      const validatedData = c.req.valid("json");
+    const taskData = {
+      ...validatedData,
+      description: validatedData.description || undefined,
+      dueDate: validatedData.dueDate || undefined,
+      cronExpression: validatedData.cronExpression || undefined,
+    };
 
-      try {
-        const taskData = {
-          ...validatedData,
-          description: validatedData.description || undefined,
-          dueDate: validatedData.dueDate || undefined,
-          cronExpression: validatedData.cronExpression || undefined,
-        };
-
-        // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from updateTask call
-        let updatedTask;
-        try {
-          updatedTask = await updateTask(id, taskData, userId);
-        } catch (serviceError) {
-          if (serviceError instanceof ValidationError) {
-            return c.json({ error: serviceError.message }, 400);
-          }
-
-          // Re-throw other errors to be handled by outer catch
-          throw serviceError;
-        }
-
-        if (!updatedTask) {
-          return c.json({ error: "Task not found" }, 404);
-        }
-
-        return c.json(updatedTask);
-      } catch (error) {
-        if ((error as Error).message === "Task not found") {
-          return c.json({ error: "Task not found" }, 404);
-        }
-        if ((error as Error).message.includes("Invalid user ID")) {
-          return c.json({ error: (error as Error).message }, 400);
-        }
-        if (error instanceof ValidationError) {
-          return c.json({ error: error.message }, 400);
-        }
-        throw error;
-      }
-    } catch (error: unknown) {
-      const requestId = c.get("requestId");
-
-      if (error instanceof ValidationError) {
-        return c.json({ error: error.message }, 400);
-      }
-
-      logger.error(
-        {
-          requestId,
-          taskId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error updating task",
-      );
-      return c.json({ error: "Failed to update task" }, 500);
-    }
-  },
+    const updatedTask = await updateTask(id, taskData, userId);
+    if (!updatedTask) throw new NotFoundError("Task");
+    return c.json(updatedTask);
+  }, logger),
 );
 
 // PATCH /api/tasks/:id - Update a task (partial update)
 tasksRoutes.patch(
   "/:id",
   describeRoute(patchTaskRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
 
-      const id = c.req.param("id");
+    // Manual validation to get better error handling
+    const body = await c.req.json();
+    const requestId = c.get("requestId");
 
-      // Manual validation to get better error handling
-      const body = await c.req.json();
-      const requestId = c.get("requestId");
+    logger.debug(
+      {
+        requestId,
+        taskId: id,
+        userId,
+        body,
+      },
+      "PATCH task request received",
+    );
 
-      logger.debug(
+    const validationResult = PartialTaskSchema.safeParse(body);
+
+    if (!validationResult.success) {
+      logger.warn(
         {
           requestId,
           taskId: id,
           userId,
           body,
+          validationErrors: validationResult.error.issues,
         },
-        "PATCH task request received",
+        "Task PATCH validation failed",
       );
-
-      const validationResult = PartialTaskSchema.safeParse(body);
-
-      if (!validationResult.success) {
-        logger.warn(
-          {
-            requestId,
-            taskId: id,
-            userId,
-            body,
-            validationErrors: validationResult.error.issues,
-          },
-          "Task PATCH validation failed",
-        );
-        return c.json(
-          {
-            error: "Invalid request data",
-            details: validationResult.error.issues,
-          },
-          400,
-        );
-      }
-
-      const validatedData = validationResult.data;
-
-      try {
-        const taskData = {
-          ...validatedData,
-          description: validatedData.description || undefined,
-          dueDate: validatedData.dueDate || undefined,
-          cronExpression: validatedData.cronExpression || undefined,
-        };
-        const updatedTask = await updateTask(id, taskData, userId);
-
-        if (!updatedTask) {
-          return c.json({ error: "Task not found" }, 404);
-        }
-
-        return c.json(updatedTask);
-      } catch (error) {
-        if ((error as Error).message === "Task not found") {
-          return c.json({ error: "Task not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error: unknown) {
-      const requestId = c.get("requestId");
-      logger.error(
+      return c.json(
         {
-          requestId,
-          taskId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
+          error: "Invalid request data",
+          details: validationResult.error.issues,
         },
-        "Error updating task",
+        400,
       );
-
-      return c.json({ error: "Failed to update task" }, 500);
     }
-  },
+
+    const validatedData = validationResult.data;
+
+    const taskData = {
+      ...validatedData,
+      description: validatedData.description || undefined,
+      dueDate: validatedData.dueDate || undefined,
+      cronExpression: validatedData.cronExpression || undefined,
+    };
+    const updatedTask = await updateTask(id, taskData, userId);
+    if (!updatedTask) throw new NotFoundError("Task");
+    return c.json(updatedTask);
+  }, logger),
 );
 
 // POST /api/tasks/:id/reprocess - Re-process an existing task
-tasksRoutes.post("/:id/reprocess", async (c) => {
-  try {
+tasksRoutes.post("/:id/reprocess",
+  withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    const userId = await getAuthenticatedUserId(c);
-
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
 
     // Parse body for optional force parameter
     const body = await c.req.json().catch(() => ({}));
@@ -441,54 +259,19 @@ tasksRoutes.post("/:id/reprocess", async (c) => {
     } else {
       return c.json({ error: result.error }, 400);
     }
-  } catch (error) {
-    logger.error({ err: error }, "Error reprocessing task");
-    return c.json({ error: "Failed to reprocess task" }, 500);
-  }
-});
+  }, logger),
+);
 
 // DELETE /api/tasks/:id - Delete a task
 tasksRoutes.delete(
   "/:id",
   describeRoute(deleteTaskRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const id = c.req.param("id");
-
-      try {
-        const success = await deleteTask(id, userId);
-
-        if (!success) {
-          return c.json({ error: "Task not found" }, 404);
-        }
-
-        return new Response(null, { status: 204 });
-      } catch (error) {
-        if ((error as Error).message === "Task not found") {
-          return c.json({ error: "Task not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error: unknown) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          taskId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error deleting task",
-      );
-      return c.json({ error: "Failed to delete task" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const success = await deleteTask(id, userId);
+    if (!success) throw new NotFoundError("Task");
+    return new Response(null, { status: 204 });
+  }, logger),
 );
 
 // PATCH /api/tasks/:id/review - Update review status
@@ -504,36 +287,13 @@ tasksRoutes.patch(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
-
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const { reviewStatus } = c.req.valid("json");
-
-      try {
-        const updatedTask = await updateTask(id, { reviewStatus }, userId);
-
-        if (!updatedTask) {
-          return c.json({ error: "Task not found" }, 404);
-        }
-
-        return c.json(updatedTask);
-      } catch (error) {
-        if ((error as Error).message === "Task not found") {
-          return c.json({ error: "Task not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating task review status");
-      return c.json({ error: "Failed to update task review status" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { reviewStatus } = c.req.valid("json");
+    const updatedTask = await updateTask(id, { reviewStatus }, userId);
+    if (!updatedTask) throw new NotFoundError("Task");
+    return c.json(updatedTask);
+  }, logger),
 );
 
 // PATCH /api/tasks/:id/flag - Update flag color
@@ -552,36 +312,13 @@ tasksRoutes.patch(
         }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
-
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const { flagColor } = c.req.valid("json");
-
-      try {
-        const updatedTask = await updateTask(id, { flagColor }, userId);
-
-        if (!updatedTask) {
-          return c.json({ error: "Task not found" }, 404);
-        }
-
-        return c.json(updatedTask);
-      } catch (error) {
-        if ((error as Error).message === "Task not found") {
-          return c.json({ error: "Task not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating task flag");
-      return c.json({ error: "Failed to update task flag" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { flagColor } = c.req.valid("json");
+    const updatedTask = await updateTask(id, { flagColor }, userId);
+    if (!updatedTask) throw new NotFoundError("Task");
+    return c.json(updatedTask);
+  }, logger),
 );
 
 // PATCH /api/tasks/:id/pin - Toggle pin status
@@ -597,36 +334,13 @@ tasksRoutes.patch(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const id = c.req.param("id");
-      const userId = await getAuthenticatedUserId(c);
-
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const { isPinned } = c.req.valid("json");
-
-      try {
-        const updatedTask = await updateTask(id, { isPinned }, userId);
-
-        if (!updatedTask) {
-          return c.json({ error: "Task not found" }, 404);
-        }
-
-        return c.json(updatedTask);
-      } catch (error) {
-        if ((error as Error).message === "Task not found") {
-          return c.json({ error: "Task not found" }, 404);
-        }
-        throw error;
-      }
-    } catch (error) {
-      logger.error({ err: error }, "Error updating task pin status");
-      return c.json({ error: "Failed to update task pin status" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const id = c.req.param("id");
+    const { isPinned } = c.req.valid("json");
+    const updatedTask = await updateTask(id, { isPinned }, userId);
+    if (!updatedTask) throw new NotFoundError("Task");
+    return c.json(updatedTask);
+  }, logger),
 );
 
 // PUT /api/tasks/:id/execution-tracking - Update task execution tracking
@@ -642,46 +356,18 @@ tasksRoutes.put(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, userId) => {
+    const taskId = c.req.param("id");
+    const { lastExecutedAt } = c.req.valid("json");
 
-      const taskId = c.req.param("id");
-      const { lastExecutedAt } = c.req.valid("json");
+    const result = await updateTaskExecutionTrackingWithPermissions(
+      taskId,
+      userId,
+      lastExecutedAt,
+    );
 
-      const result = await updateTaskExecutionTrackingWithPermissions(
-        taskId,
-        userId,
-        lastExecutedAt,
-      );
-
-      return c.json(result);
-    } catch (error: unknown) {
-      if (error instanceof TaskNotFoundError) {
-        return c.json({ error: "Task not found" }, 404);
-      }
-      if (error instanceof TaskUnauthorizedError) {
-        return c.json({ error: "Unauthorized to update this task" }, 403);
-      }
-
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          taskId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error updating task execution tracking",
-      );
-
-      return c.json({ error: "Failed to update task execution tracking" }, 500);
-    }
-  },
+    return c.json(result);
+  }, logger),
 );
 
 // PUT /api/tasks/:id/assistant-status - Update task status as assigned assistant
@@ -703,90 +389,33 @@ tasksRoutes.put(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+  withAuth(async (c, _userId) => {
+    const taskId = c.req.param("id");
+    const { status, assignedAssistantId, completedAt } = c.req.valid("json");
 
-      const taskId = c.req.param("id");
-      const { status, assignedAssistantId, completedAt } = c.req.valid("json");
+    await updateTaskStatusAsAssistant(
+      taskId,
+      status,
+      assignedAssistantId,
+      completedAt || null,
+    );
 
-      await updateTaskStatusAsAssistant(
-        taskId,
-        status,
-        assignedAssistantId,
-        completedAt || null,
-      );
-
-      return c.json({
-        success: true,
-        message: `Task status updated to ${status}`,
-      });
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      logger.error(
-        {
-          taskId: c.req.param("id"),
-          error: errorMessage,
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error updating task status as assistant",
-      );
-
-      // Return appropriate error status
-      if (
-        errorMessage.includes("not assigned") ||
-        errorMessage.includes("Task not found")
-      ) {
-        return c.json({ error: errorMessage }, 404);
-      }
-
-      return c.json({ error: "Failed to update task status" }, 500);
-    }
-  },
+    return c.json({
+      success: true,
+      message: `Task status updated to ${status}`,
+    });
+  }, logger),
 );
 
 // GET /api/tasks/:id/comments - Get comments for a task
 tasksRoutes.get(
   "/:id/comments",
   describeRoute(getTaskCommentsRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const taskId = c.req.param("id");
-      const comments = await getTaskComments(taskId, userId);
-
-      return c.json(comments);
-    } catch (error: unknown) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          taskId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error getting task comments",
-      );
-
-      if (
-        error instanceof Error &&
-        error.message === "Task not found or access denied"
-      ) {
-        return c.json({ error: "Task not found" }, 404);
-      }
-
-      return c.json({ error: "Failed to fetch task comments" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const taskId = c.req.param("id");
+    const comments = await getTaskComments(taskId, userId);
+    return c.json(comments);
+  }, logger),
 );
 
 // POST /api/tasks/:id/comments - Create a comment for a task
@@ -802,39 +431,12 @@ tasksRoutes.post(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const taskId = c.req.param("id");
-      const { content } = c.req.valid("json");
-
-      const newComment = await createTaskComment({ taskId, content }, userId);
-
-      return c.json(newComment, 201);
-    } catch (error: unknown) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          taskId: c.req.param("id"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error creating task comment",
-      );
-
-      if (error instanceof Error && error.message === "Task not found") {
-        return c.json({ error: "Task not found" }, 404);
-      }
-
-      return c.json({ error: "Failed to create task comment" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const taskId = c.req.param("id");
+    const { content } = c.req.valid("json");
+    const newComment = await createTaskComment({ taskId, content }, userId);
+    return c.json(newComment, 201);
+  }, logger),
 );
 
 // PUT /api/tasks/:taskId/comments/:commentId - Update a comment
@@ -850,84 +452,25 @@ tasksRoutes.put(
       }),
     }),
   ),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const commentId = c.req.param("commentId");
-      const { content } = c.req.valid("json");
-
-      const updatedComment = await updateTaskComment(
-        commentId,
-        { content },
-        userId,
-      );
-
-      return c.json(updatedComment);
-    } catch (error: unknown) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          commentId: c.req.param("commentId"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error updating task comment",
-      );
-
-      if (
-        error instanceof Error &&
-        error.message === "Comment not found or access denied"
-      ) {
-        return c.json({ error: "Comment not found" }, 404);
-      }
-
-      return c.json({ error: "Failed to update task comment" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const commentId = c.req.param("commentId");
+    const { content } = c.req.valid("json");
+    const updatedComment = await updateTaskComment(
+      commentId,
+      { content },
+      userId,
+    );
+    return c.json(updatedComment);
+  }, logger),
 );
 
 // DELETE /api/tasks/:taskId/comments/:commentId - Delete a comment
 tasksRoutes.delete(
   "/:taskId/comments/:commentId",
   describeRoute(deleteTaskCommentRouteDescription),
-  async (c) => {
-    try {
-      const userId = await getAuthenticatedUserId(c);
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const commentId = c.req.param("commentId");
-      await deleteTaskComment(commentId, userId);
-
-      return new Response(null, { status: 204 });
-    } catch (error: unknown) {
-      const requestId = c.get("requestId");
-      logger.error(
-        {
-          requestId,
-          commentId: c.req.param("commentId"),
-          userId: await getAuthenticatedUserId(c),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error deleting task comment",
-      );
-
-      if (
-        error instanceof Error &&
-        error.message === "Comment not found or access denied"
-      ) {
-        return c.json({ error: "Comment not found" }, 404);
-      }
-
-      return c.json({ error: "Failed to delete task comment" }, 500);
-    }
-  },
+  withAuth(async (c, userId) => {
+    const commentId = c.req.param("commentId");
+    await deleteTaskComment(commentId, userId);
+    return new Response(null, { status: 204 });
+  }, logger),
 );

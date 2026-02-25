@@ -5,6 +5,7 @@
  */
 
 import type { AgentResult, AIMessage } from "@eclaire/ai";
+import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
   type ConversationWithMessages,
@@ -17,12 +18,8 @@ import { buildAIMessageArray, createMessage } from "../services/messages.js";
 
 const logger = createChildLogger("conversation-adapter");
 
-export class ConversationNotFoundError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ConversationNotFoundError";
-  }
-}
+// Backward-compatible re-export for route files
+export { NotFoundError as ConversationNotFoundError };
 
 /**
  * Load conversation with messages
@@ -37,7 +34,7 @@ export async function loadConversation(
   );
 
   if (!conversation) {
-    throw new ConversationNotFoundError("Conversation not found");
+    throw new NotFoundError("Conversation");
   }
 
   return conversation;
@@ -57,7 +54,7 @@ export async function loadConversationMessages(
   );
 
   if (!conversation) {
-    throw new ConversationNotFoundError("Conversation not found");
+    throw new NotFoundError("Conversation");
   }
 
   return buildAIMessageArray(conversation.id, !!systemPrompt, systemPrompt);

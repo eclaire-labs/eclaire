@@ -9,8 +9,8 @@ import { stream } from "hono/streaming";
 import type { Redis } from "ioredis";
 import type postgres from "postgres";
 import { config } from "../config/index.js";
-import { getAuthenticatedUserId } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
+import { withAuth } from "../middleware/with-auth.js";
 import type { RouteVariables } from "../types/route-variables.js";
 import { sanitizeChannelName } from "../workers/lib/postgres-publisher.js";
 
@@ -77,13 +77,9 @@ const activeStreams = new Map<
  * @description Subscribe to real-time processing status updates via Server-Sent Events
  * @returns {EventStream} Server-sent events stream
  */
-processingEventsRoutes.get("/stream", async (c) => {
-  try {
-    const userId = await getAuthenticatedUserId(c);
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
+processingEventsRoutes.get(
+  "/stream",
+  withAuth(async (c, userId) => {
     return stream(c, async (stream) => {
       // Set up SSE headers
       c.header("Content-Type", "text/event-stream");
@@ -331,17 +327,8 @@ processingEventsRoutes.get("/stream", async (c) => {
         );
       }
     });
-  } catch (error) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Error setting up processing events stream",
-    );
-    return c.json({ error: "Internal server error" }, 500);
-  }
-});
+  }, logger),
+);
 
 /**
  * Utility function to publish processing events
