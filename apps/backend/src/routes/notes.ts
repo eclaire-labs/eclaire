@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
-import z from "zod/v4";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
+import { registerCommonEndpoints } from "./shared-endpoints.js";
 import {
   countNotes,
   createNoteEntry,
@@ -318,32 +318,6 @@ notesRoutes.patch(
   }, logger),
 );
 
-// POST /api/notes/:id/reprocess - Re-process an existing note
-notesRoutes.post(
-  "/:id/reprocess",
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-
-    // Parse body for optional force parameter
-    const body = await c.req.json().catch(() => ({}));
-    const force = body.force === true;
-
-    const result = await reprocessNote(id, userId, force);
-
-    if (result.success) {
-      return c.json(
-        {
-          message: "Note queued for reprocessing successfully",
-          noteId: id,
-        },
-        202,
-      ); // 202 Accepted: The request has been accepted for processing
-    } else {
-      return c.json({ error: result.error }, 400);
-    }
-  }, logger),
-);
-
 // DELETE /api/notes/:id - Delete a note entry
 notesRoutes.delete(
   "/:id",
@@ -355,86 +329,16 @@ notesRoutes.delete(
   }, logger),
 );
 
-// PATCH /api/notes/:id/review - Update review status
-notesRoutes.patch(
-  "/:id/review",
-  describeRoute(patchNoteReviewRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
-        description: "New review status for the note",
-        examples: ["accepted", "rejected"],
-      }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { reviewStatus } = c.req.valid("json");
-
-    const updatedNote = await updateNoteEntry(id, { reviewStatus }, userId);
-
-    if (!updatedNote) {
-      throw new NotFoundError("Note");
-    }
-
-    return c.json(updatedNote);
-  }, logger),
-);
-
-// PATCH /api/notes/:id/flag - Update flag color
-notesRoutes.patch(
-  "/:id/flag",
-  describeRoute(patchNoteFlagRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      flagColor: z
-        .enum(["red", "yellow", "orange", "green", "blue"])
-        .nullable()
-        .meta({
-          description: "Flag color for the note (null to remove flag)",
-          examples: ["red", "green", null],
-        }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { flagColor } = c.req.valid("json");
-
-    const updatedNote = await updateNoteEntry(id, { flagColor }, userId);
-
-    if (!updatedNote) {
-      throw new NotFoundError("Note");
-    }
-
-    return c.json(updatedNote);
-  }, logger),
-);
-
-// PATCH /api/notes/:id/pin - Toggle pin status
-notesRoutes.patch(
-  "/:id/pin",
-  describeRoute(patchNotePinRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      isPinned: z.boolean().meta({
-        description: "Whether to pin or unpin the note",
-        examples: [true, false],
-      }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { isPinned } = c.req.valid("json");
-
-    const updatedNote = await updateNoteEntry(id, { isPinned }, userId);
-
-    if (!updatedNote) {
-      throw new NotFoundError("Note");
-    }
-
-    return c.json(updatedNote);
-  }, logger),
-);
+// Common endpoints: PATCH review/flag/pin + POST reprocess
+registerCommonEndpoints(notesRoutes, {
+  resourceName: "Note",
+  idKeyName: "noteId",
+  updateFn: updateNoteEntry,
+  reprocessFn: reprocessNote,
+  routeDescriptions: {
+    review: patchNoteReviewRouteDescription,
+    flag: patchNoteFlagRouteDescription,
+    pin: patchNotePinRouteDescription,
+  },
+  logger,
+});

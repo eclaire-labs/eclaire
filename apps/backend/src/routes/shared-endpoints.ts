@@ -1,0 +1,171 @@
+import type { Hono } from "hono";
+import { describeRoute, validator as zValidator } from "hono-openapi";
+import type { Logger } from "pino";
+import { NotFoundError } from "../lib/errors.js";
+import { withAuth } from "../middleware/with-auth.js";
+import {
+  flagColorUpdateSchema,
+  isPinnedUpdateSchema,
+  reviewStatusUpdateSchema,
+} from "../schemas/common.js";
+import type { RouteVariables } from "../types/route-variables.js";
+
+type AppRouter = Hono<{ Variables: RouteVariables }>;
+
+// biome-ignore lint/suspicious/noExplicitAny: update functions have varying return types per resource
+type UpdateFn = (id: string, data: Record<string, any>, userId: string) => Promise<any>;
+type ReprocessFn = (
+  id: string,
+  userId: string,
+  force: boolean,
+) => Promise<{ success: boolean; error?: string }>;
+
+// biome-ignore lint/suspicious/noExplicitAny: route description objects are untyped OpenAPI specs
+type RouteDescription = any;
+
+export function registerReviewEndpoint(
+  router: AppRouter,
+  resourceName: string,
+  routeDescription: RouteDescription,
+  updateFn: UpdateFn,
+  logger: Logger,
+): void {
+  router.patch(
+    "/:id/review",
+    describeRoute(routeDescription),
+    zValidator("json", reviewStatusUpdateSchema(resourceName)),
+    withAuth(async (c, userId) => {
+      const id = c.req.param("id");
+      const { reviewStatus } = c.req.valid("json");
+      const updated = await updateFn(id, { reviewStatus }, userId);
+      if (!updated) throw new NotFoundError(resourceName);
+      return c.json(updated);
+    }, logger),
+  );
+}
+
+export function registerFlagEndpoint(
+  router: AppRouter,
+  resourceName: string,
+  routeDescription: RouteDescription,
+  updateFn: UpdateFn,
+  logger: Logger,
+): void {
+  router.patch(
+    "/:id/flag",
+    describeRoute(routeDescription),
+    zValidator("json", flagColorUpdateSchema(resourceName)),
+    withAuth(async (c, userId) => {
+      const id = c.req.param("id");
+      const { flagColor } = c.req.valid("json");
+      const updated = await updateFn(id, { flagColor }, userId);
+      if (!updated) throw new NotFoundError(resourceName);
+      return c.json(updated);
+    }, logger),
+  );
+}
+
+export function registerPinEndpoint(
+  router: AppRouter,
+  resourceName: string,
+  routeDescription: RouteDescription,
+  updateFn: UpdateFn,
+  logger: Logger,
+): void {
+  router.patch(
+    "/:id/pin",
+    describeRoute(routeDescription),
+    zValidator("json", isPinnedUpdateSchema(resourceName)),
+    withAuth(async (c, userId) => {
+      const id = c.req.param("id");
+      const { isPinned } = c.req.valid("json");
+      const updated = await updateFn(id, { isPinned }, userId);
+      if (!updated) throw new NotFoundError(resourceName);
+      return c.json(updated);
+    }, logger),
+  );
+}
+
+export function registerReprocessEndpoint(
+  router: AppRouter,
+  resourceName: string,
+  idKeyName: string,
+  reprocessFn: ReprocessFn,
+  logger: Logger,
+): void {
+  router.post(
+    "/:id/reprocess",
+    withAuth(async (c, userId) => {
+      const id = c.req.param("id");
+      const body = await c.req.json().catch(() => ({}));
+      const force = body.force === true;
+
+      const result = await reprocessFn(id, userId, force);
+
+      if (result.success) {
+        return c.json(
+          {
+            message: `${resourceName} queued for reprocessing successfully`,
+            [idKeyName]: id,
+          },
+          202,
+        );
+      }
+      return c.json({ error: result.error }, 400);
+    }, logger),
+  );
+}
+
+export function registerCommonEndpoints(
+  router: AppRouter,
+  config: {
+    resourceName: string;
+    idKeyName: string;
+    updateFn: UpdateFn;
+    reprocessFn: ReprocessFn;
+    routeDescriptions: {
+      review: RouteDescription;
+      flag: RouteDescription;
+      pin: RouteDescription;
+    };
+    logger: Logger;
+  },
+): void {
+  const {
+    resourceName,
+    idKeyName,
+    updateFn,
+    reprocessFn,
+    routeDescriptions,
+    logger,
+  } = config;
+
+  registerReviewEndpoint(
+    router,
+    resourceName,
+    routeDescriptions.review,
+    updateFn,
+    logger,
+  );
+  registerFlagEndpoint(
+    router,
+    resourceName,
+    routeDescriptions.flag,
+    updateFn,
+    logger,
+  );
+  registerPinEndpoint(
+    router,
+    resourceName,
+    routeDescriptions.pin,
+    updateFn,
+    logger,
+  );
+  registerReprocessEndpoint(
+    router,
+    resourceName,
+    idKeyName,
+    reprocessFn,
+    logger,
+  );
+}

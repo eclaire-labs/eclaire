@@ -25,6 +25,51 @@ export const reviewStatusFieldSchema = reviewStatusSchema.meta({
 });
 
 // =============================================================================
+// FLAG COLORS
+// =============================================================================
+
+export const FLAG_COLORS = [
+  "red",
+  "yellow",
+  "orange",
+  "green",
+  "blue",
+] as const;
+export const flagColorSchema = z.enum(FLAG_COLORS);
+export type FlagColor = z.infer<typeof flagColorSchema>;
+
+// =============================================================================
+// SHARED FIELD UPDATE SCHEMAS (for review/flag/pin endpoints)
+// =============================================================================
+
+export function reviewStatusUpdateSchema(resourceName: string) {
+  return z.object({
+    reviewStatus: z.enum(REVIEW_STATUSES).meta({
+      description: `New review status for the ${resourceName}`,
+      examples: ["accepted", "rejected"],
+    }),
+  });
+}
+
+export function flagColorUpdateSchema(resourceName: string) {
+  return z.object({
+    flagColor: flagColorSchema.nullable().meta({
+      description: `Flag color for the ${resourceName} (null to remove flag)`,
+      examples: ["red", "green", null],
+    }),
+  });
+}
+
+export function isPinnedUpdateSchema(resourceName: string) {
+  return z.object({
+    isPinned: z.boolean().meta({
+      description: `Whether to pin or unpin the ${resourceName}`,
+      examples: [true, false],
+    }),
+  });
+}
+
+// =============================================================================
 // TASK STATUS
 // =============================================================================
 

@@ -1,9 +1,9 @@
 import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
-import z from "zod/v4";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
+import { registerCommonEndpoints } from "./shared-endpoints.js";
 import {
   countDocuments,
   createDocument,
@@ -311,31 +311,6 @@ documentsRoutes.get(
   }, logger),
 );
 
-// POST /api/documents/:id/reprocess - Re-process an existing document
-documentsRoutes.post(
-  "/:id/reprocess",
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-
-    // Parse body for optional force parameter
-    const body = await c.req.json().catch(() => ({}));
-    const force = body.force === true;
-
-    const result = await reprocessDocument(id, userId, force);
-
-    if (result.success) {
-      return c.json(
-        {
-          message: "Document queued for reprocessing successfully",
-          documentId: id,
-        },
-        202,
-      ); // 202 Accepted: The request has been accepted for processing
-    }
-    return c.json({ error: result.error }, 400);
-  }, logger),
-);
-
 // DELETE /api/documents/:id - Delete a document
 documentsRoutes.delete(
   "/:id",
@@ -352,90 +327,19 @@ documentsRoutes.delete(
   }, logger),
 );
 
-// PATCH /api/documents/:id/review - Update review status
-documentsRoutes.patch(
-  "/:id/review",
-  describeRoute(patchDocumentReviewRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
-        description: "New review status for the document",
-        examples: ["accepted", "rejected"],
-      }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { reviewStatus } = c.req.valid("json");
-    const updatedDocument = await updateDocument(
-      id,
-      { reviewStatus },
-      userId,
-    );
-
-    if (!updatedDocument) {
-      throw new NotFoundError("Document");
-    }
-
-    return c.json(updatedDocument);
-  }, logger),
-);
-
-// PATCH /api/documents/:id/flag - Update flag color
-documentsRoutes.patch(
-  "/:id/flag",
-  describeRoute(patchDocumentFlagRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      flagColor: z
-        .enum(["red", "yellow", "orange", "green", "blue"])
-        .nullable()
-        .meta({
-          description: "Flag color for the document (null to remove flag)",
-          examples: ["red", "green", null],
-        }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { flagColor } = c.req.valid("json");
-    const updatedDocument = await updateDocument(id, { flagColor }, userId);
-
-    if (!updatedDocument) {
-      throw new NotFoundError("Document");
-    }
-
-    return c.json(updatedDocument);
-  }, logger),
-);
-
-// PATCH /api/documents/:id/pin - Toggle pin status
-documentsRoutes.patch(
-  "/:id/pin",
-  describeRoute(patchDocumentPinRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      isPinned: z.boolean().meta({
-        description: "Whether to pin or unpin the document",
-        examples: [true, false],
-      }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { isPinned } = c.req.valid("json");
-    const updatedDocument = await updateDocument(id, { isPinned }, userId);
-
-    if (!updatedDocument) {
-      throw new NotFoundError("Document");
-    }
-
-    return c.json(updatedDocument);
-  }, logger),
-);
+// Common endpoints: PATCH review/flag/pin + POST reprocess
+registerCommonEndpoints(documentsRoutes, {
+  resourceName: "Document",
+  idKeyName: "documentId",
+  updateFn: updateDocument,
+  reprocessFn: reprocessDocument,
+  routeDescriptions: {
+    review: patchDocumentReviewRouteDescription,
+    flag: patchDocumentFlagRouteDescription,
+    pin: patchDocumentPinRouteDescription,
+  },
+  logger,
+});
 
 /**
  * Creates a streaming asset response with appropriate headers.

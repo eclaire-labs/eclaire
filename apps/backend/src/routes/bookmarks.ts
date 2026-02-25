@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
-import z from "zod/v4";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
+import { registerCommonEndpoints } from "./shared-endpoints.js";
 import {
   type BookmarkAssetType,
   createBookmarkAndQueueJob,
@@ -289,111 +289,19 @@ createAssetEndpoint(
   "text/markdown",
 );
 
-// PATCH /api/bookmarks/:id/review - Update review status
-bookmarksRoutes.patch(
-  "/:id/review",
-  describeRoute(patchBookmarkReviewRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
-        description: "New review status for the bookmark",
-        examples: ["accepted", "rejected"],
-      }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { reviewStatus } = c.req.valid("json");
-    const updatedBookmark = await updateBookmark(id, { reviewStatus }, userId);
-
-    if (!updatedBookmark) {
-      throw new NotFoundError("Bookmark");
-    }
-
-    return c.json(updatedBookmark);
-  }, logger),
-);
-
-// PATCH /api/bookmarks/:id/flag - Update flag color
-bookmarksRoutes.patch(
-  "/:id/flag",
-  describeRoute(patchBookmarkFlagRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      flagColor: z
-        .enum(["red", "yellow", "orange", "green", "blue"])
-        .nullable()
-        .meta({
-          description: "Flag color for the bookmark (null to remove flag)",
-          examples: ["red", "green", null],
-        }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { flagColor } = c.req.valid("json");
-    const updatedBookmark = await updateBookmark(id, { flagColor }, userId);
-
-    if (!updatedBookmark) {
-      throw new NotFoundError("Bookmark");
-    }
-
-    return c.json(updatedBookmark);
-  }, logger),
-);
-
-// PATCH /api/bookmarks/:id/pin - Toggle pin status
-bookmarksRoutes.patch(
-  "/:id/pin",
-  describeRoute(patchBookmarkPinRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      isPinned: z.boolean().meta({
-        description: "Whether to pin or unpin the bookmark",
-        examples: [true, false],
-      }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { isPinned } = c.req.valid("json");
-    const updatedBookmark = await updateBookmark(id, { isPinned }, userId);
-
-    if (!updatedBookmark) {
-      throw new NotFoundError("Bookmark");
-    }
-
-    return c.json(updatedBookmark);
-  }, logger),
-);
-
-// POST /api/bookmarks/:id/reprocess - Re-process an existing bookmark
-bookmarksRoutes.post(
-  "/:id/reprocess",
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-
-    // Parse body for optional force parameter
-    const body = await c.req.json().catch(() => ({}));
-    const force = body.force === true;
-
-    const result = await reprocessBookmark(id, userId, force);
-
-    if (result.success) {
-      return c.json(
-        {
-          message: "Bookmark queued for reprocessing successfully",
-          bookmarkId: id,
-        },
-        202,
-      ); // 202 Accepted: The request has been accepted for processing
-    }
-    return c.json({ error: result.error }, 400);
-  }, logger),
-);
+// Common endpoints: PATCH review/flag/pin + POST reprocess
+registerCommonEndpoints(bookmarksRoutes, {
+  resourceName: "Bookmark",
+  idKeyName: "bookmarkId",
+  updateFn: updateBookmark,
+  reprocessFn: reprocessBookmark,
+  routeDescriptions: {
+    review: patchBookmarkReviewRouteDescription,
+    flag: patchBookmarkFlagRouteDescription,
+    pin: patchBookmarkPinRouteDescription,
+  },
+  logger,
+});
 
 // POST /api/bookmarks/import - Import bookmarks from file
 bookmarksRoutes.post(

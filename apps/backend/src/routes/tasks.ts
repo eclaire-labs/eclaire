@@ -3,6 +3,7 @@ import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
+import { registerCommonEndpoints } from "./shared-endpoints.js";
 import {
   createTaskComment,
   deleteTaskComment,
@@ -237,31 +238,6 @@ tasksRoutes.patch(
   }, logger),
 );
 
-// POST /api/tasks/:id/reprocess - Re-process an existing task
-tasksRoutes.post("/:id/reprocess",
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-
-    // Parse body for optional force parameter
-    const body = await c.req.json().catch(() => ({}));
-    const force = body.force === true;
-
-    const result = await reprocessTask(id, userId, force);
-
-    if (result.success) {
-      return c.json(
-        {
-          message: "Task queued for reprocessing successfully",
-          taskId: id,
-        },
-        202,
-      ); // 202 Accepted: The request has been accepted for processing
-    } else {
-      return c.json({ error: result.error }, 400);
-    }
-  }, logger),
-);
-
 // DELETE /api/tasks/:id - Delete a task
 tasksRoutes.delete(
   "/:id",
@@ -274,74 +250,19 @@ tasksRoutes.delete(
   }, logger),
 );
 
-// PATCH /api/tasks/:id/review - Update review status
-tasksRoutes.patch(
-  "/:id/review",
-  describeRoute(patchTaskReviewRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      reviewStatus: z.enum(["pending", "accepted", "rejected"]).meta({
-        description: "New review status for the task",
-        examples: ["accepted", "rejected"],
-      }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { reviewStatus } = c.req.valid("json");
-    const updatedTask = await updateTask(id, { reviewStatus }, userId);
-    if (!updatedTask) throw new NotFoundError("Task");
-    return c.json(updatedTask);
-  }, logger),
-);
-
-// PATCH /api/tasks/:id/flag - Update flag color
-tasksRoutes.patch(
-  "/:id/flag",
-  describeRoute(patchTaskFlagRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      flagColor: z
-        .enum(["red", "yellow", "orange", "green", "blue"])
-        .nullable()
-        .meta({
-          description: "Flag color for the task (null to remove flag)",
-          examples: ["red", "green", null],
-        }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { flagColor } = c.req.valid("json");
-    const updatedTask = await updateTask(id, { flagColor }, userId);
-    if (!updatedTask) throw new NotFoundError("Task");
-    return c.json(updatedTask);
-  }, logger),
-);
-
-// PATCH /api/tasks/:id/pin - Toggle pin status
-tasksRoutes.patch(
-  "/:id/pin",
-  describeRoute(patchTaskPinRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      isPinned: z.boolean().meta({
-        description: "Whether to pin or unpin the task",
-        examples: [true, false],
-      }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const id = c.req.param("id");
-    const { isPinned } = c.req.valid("json");
-    const updatedTask = await updateTask(id, { isPinned }, userId);
-    if (!updatedTask) throw new NotFoundError("Task");
-    return c.json(updatedTask);
-  }, logger),
-);
+// Common endpoints: PATCH review/flag/pin + POST reprocess
+registerCommonEndpoints(tasksRoutes, {
+  resourceName: "Task",
+  idKeyName: "taskId",
+  updateFn: updateTask,
+  reprocessFn: reprocessTask,
+  routeDescriptions: {
+    review: patchTaskReviewRouteDescription,
+    flag: patchTaskFlagRouteDescription,
+    pin: patchTaskPinRouteDescription,
+  },
+  logger,
+});
 
 // PUT /api/tasks/:id/execution-tracking - Update task execution tracking
 // Note: nextRunAt is now managed by the queue scheduler, not stored on the task
