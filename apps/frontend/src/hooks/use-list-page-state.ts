@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
   type PageType,
+  type ViewPreferences,
   useViewPreferences,
 } from "@/hooks/use-view-preferences";
 import { setFlagColor, togglePin } from "@/lib/frontend-api";
@@ -243,7 +244,7 @@ export function useListPageState<TItem extends ListableItem>(
 
   const handleSortByChange = useCallback(
     (value: string) => {
-      updateViewPreference("sortBy", value);
+      updateViewPreference("sortBy", value as ViewPreferences[keyof ViewPreferences]);
       setFocusedIndex(-1);
     },
     [updateViewPreference],
@@ -257,7 +258,7 @@ export function useListPageState<TItem extends ListableItem>(
   const handleViewModeChange = useCallback(
     (value: string) => {
       if (value) {
-        updateViewPreference("viewMode", value);
+        updateViewPreference("viewMode", value as ViewPreferences[keyof ViewPreferences]);
         setFocusedIndex(-1);
       }
     },
