@@ -50,7 +50,7 @@ jobs:
           echo "✅ Validated ref '$REF' exists"
 
       - name: Checkout ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
