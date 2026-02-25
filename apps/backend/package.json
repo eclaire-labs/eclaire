@@ -30,7 +30,7 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "start": "NODE_ENV=production node dist/src/index.js",
     "config:show": "ECLAIRE_RUNTIME=local tsx src/scripts/config-show.ts",
-    "lint": "biome lint ./",
+    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
     "format": "biome format --write ./",
     "check": "biome check ./",
     "fix": "biome check --write ./",
@@ -133,7 +133,8 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.4",
+    "@biomejs/biome": "catalog:",
+    "oxlint": "catalog:",
     "@types/bcrypt": "6.0.0",
     "@types/better-sqlite3": "7.6.13",
     "@types/heic-convert": "2.1.0",

@@ -21,6 +21,10 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
+    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "biome format --write ./",
+    "check": "biome check ./",
+    "fix": "biome check --write ./",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -37,7 +41,9 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "catalog:",
     "@types/node": "24.10.4",
+    "oxlint": "catalog:",
     "typescript": "5.9.3",
     "vitest": "4.0.18",
     "zod": "4.3.6"

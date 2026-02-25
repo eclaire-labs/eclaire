@@ -61,6 +61,10 @@
     "build": "tsc && cp -r src/migrations dist/",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
+    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "biome format --write ./",
+    "check": "biome check ./",
+    "fix": "biome check --write ./",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:migrate:status": "tsx src/scripts/migrate.ts --status",
     "db:generate": "drizzle-kit generate",
@@ -79,9 +83,11 @@
     "postgres": "3.4.8"
   },
   "devDependencies": {
+    "@biomejs/biome": "catalog:",
     "@types/better-sqlite3": "7.6.13",
     "@types/node": "22.10.2",
     "drizzle-kit": "0.31.8",
+    "oxlint": "catalog:",
     "tsx": "4.21.0",
     "typescript": "5.9.3"
   }

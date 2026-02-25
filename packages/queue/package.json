@@ -56,6 +56,10 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
+    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "biome format --write ./",
+    "check": "biome check ./",
+    "fix": "biome check --write ./",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:sqlite": "DB_TYPE=sqlite vitest run",
@@ -74,11 +78,13 @@
     "drizzle-orm": "0.45.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "catalog:",
     "@electric-sql/pglite": "0.3.14",
     "@types/better-sqlite3": "7.6.13",
     "@types/node": "24.10.4",
     "better-sqlite3": "12.6.2",
     "drizzle-kit": "0.31.8",
+    "oxlint": "catalog:",
     "postgres": "3.4.8",
     "typescript": "5.9.3",
     "vitest": "4.0.18"

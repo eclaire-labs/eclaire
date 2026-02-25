@@ -22,10 +22,10 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.4",
+    "@biomejs/biome": "catalog:",
     "node-addon-api": "8.5.0",
     "node-gyp": "12.2.0",
-    "oxlint": "^1.50.0"
+    "oxlint": "catalog:"
   },
   "scripts": {
     "setup": "node scripts/setup.js",
