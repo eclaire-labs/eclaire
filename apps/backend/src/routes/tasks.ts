@@ -62,7 +62,7 @@ tasksRoutes.get("/", describeRoute(getTasksRouteDescription),
     // If no search parameters, return all tasks
     if (Object.keys(queryParams).length === 0) {
       const tasks = await getAllTasks(userId);
-      return c.json(tasks);
+      return c.json({ items: tasks, totalCount: tasks.length, limit: tasks.length, offset: 0 });
     }
 
     // Parse and validate search parameters (ZodError caught by withAuth)
@@ -120,9 +120,10 @@ tasksRoutes.get("/", describeRoute(getTasksRouteDescription),
     );
 
     return c.json({
-      tasks,
+      items: tasks,
       totalCount,
       limit: params.limit,
+      offset: 0,
     });
   }, logger),
 );

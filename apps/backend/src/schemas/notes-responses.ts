@@ -1,6 +1,6 @@
 // schemas/notes-responses.ts
 import z from "zod/v4";
-import { reviewStatusSchema } from "./common.js";
+import { paginatedResponseSchema, reviewStatusSchema } from "./common.js";
 
 // Full note response schema
 export const NoteResponseSchema = z
@@ -75,35 +75,12 @@ export const NoteResponseSchema = z
   })
   .meta({ ref: "NoteResponse" });
 
-// Array of notes response
-export const NotesListResponseSchema = z
-  .object({
-    entries: z.array(NoteResponseSchema).meta({
-      description: "Array of note objects",
-    }),
-
-    pagination: z
-      .object({
-        total: z.number().meta({
-          description: "Total number of notes matching the query",
-        }),
-
-        limit: z.number().meta({
-          description: "Maximum number of results returned",
-        }),
-
-        offset: z.number().meta({
-          description: "Number of results skipped",
-        }),
-      })
-      .meta({
-        description: "Pagination information",
-      }),
-  })
-  .meta({
-    ref: "NotesListResponse",
-    description: "Response containing an array of notes with pagination info",
-  });
+// Paginated list response
+export const NotesListResponseSchema = paginatedResponseSchema(
+  NoteResponseSchema,
+  "NotesListResponse",
+  "notes",
+);
 
 // Created note response (for POST requests) — omits fields not available at creation time
 export const CreatedNoteResponseSchema = NoteResponseSchema.omit({

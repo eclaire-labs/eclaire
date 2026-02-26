@@ -1,4 +1,5 @@
 import z from "zod/v4";
+import { paginatedResponseSchema } from "./common.js";
 
 // Single history record response
 export const HistoryRecordResponseSchema = z.object({
@@ -14,19 +15,12 @@ export const HistoryRecordResponseSchema = z.object({
   userId: z.string().nullable(),
 });
 
-// History list response (simple)
-export const HistoryListResponseSchema = z.object({
-  records: z.array(HistoryRecordResponseSchema),
-});
-
-// History search/filter response with pagination
-export const HistorySearchResponseSchema = z.object({
-  records: z.array(HistoryRecordResponseSchema),
-  totalCount: z.number(),
-  limit: z.number(),
-  offset: z.number(),
-  hasMore: z.boolean(),
-});
+// Paginated list response (used for both full listing and search results)
+export const HistoryListResponseSchema = paginatedResponseSchema(
+  HistoryRecordResponseSchema,
+  "HistoryListResponse",
+  "history records",
+);
 
 // Error responses specific to history
 export const HistoryNotFoundSchema = z.object({
@@ -40,6 +34,5 @@ export const HistoryAccessDeniedSchema = z.object({
 // TypeScript types
 export type HistoryRecordResponse = z.infer<typeof HistoryRecordResponseSchema>;
 export type HistoryListResponse = z.infer<typeof HistoryListResponseSchema>;
-export type HistorySearchResponse = z.infer<typeof HistorySearchResponseSchema>;
 export type HistoryNotFound = z.infer<typeof HistoryNotFoundSchema>;
 export type HistoryAccessDenied = z.infer<typeof HistoryAccessDeniedSchema>;

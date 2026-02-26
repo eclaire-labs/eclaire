@@ -171,6 +171,29 @@ export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 export const toolArgumentsSchema = z.record(z.string(), jsonValueSchema);
 
 // =============================================================================
+// PAGINATED LIST RESPONSE
+// =============================================================================
+
+/**
+ * Creates a standard paginated list response schema: { items, totalCount, limit, offset }.
+ * Use this for all GET list endpoints to ensure a consistent response shape.
+ */
+export function paginatedResponseSchema(
+  itemSchema: z.ZodType,
+  ref: string,
+  itemDescription: string,
+) {
+  return z
+    .object({
+      items: z.array(itemSchema).meta({ description: `Array of ${itemDescription}` }),
+      totalCount: z.number().meta({ description: "Total number of items matching the query" }),
+      limit: z.number().meta({ description: "Maximum number of results returned" }),
+      offset: z.number().meta({ description: "Number of results skipped" }),
+    })
+    .meta({ ref });
+}
+
+// =============================================================================
 // REQUEST BODY RESOLVER
 // =============================================================================
 

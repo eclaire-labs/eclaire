@@ -42,7 +42,7 @@ channelsRoutes.get(
       {
         requestId,
         userId,
-        channelCount: result.total,
+        channelCount: result.totalCount,
       },
       "Retrieved user channels",
     );

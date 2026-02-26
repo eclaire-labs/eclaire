@@ -59,7 +59,7 @@ documentsRoutes.get(
     // If no search parameters, return all documents
     if (Object.keys(queryParams).length === 0) {
       const documents = await getAllDocuments(userId);
-      return c.json({ documents, totalCount: documents.length, limit: 50 });
+      return c.json({ items: documents, totalCount: documents.length, limit: documents.length, offset: 0 });
     }
 
     // Parse and validate search parameters
@@ -112,9 +112,10 @@ documentsRoutes.get(
     );
 
     return c.json({
-      documents,
+      items: documents,
       totalCount,
       limit: params.limit,
+      offset: 0,
     });
   }, logger),
 );

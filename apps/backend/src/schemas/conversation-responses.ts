@@ -1,5 +1,6 @@
 // schemas/conversation-responses.ts
 import z from "zod/v4";
+import { paginatedResponseSchema } from "./common.js";
 
 // Base response schema
 export const BaseConversationResponseSchema = z.object({
@@ -32,12 +33,6 @@ export const ConversationWithMessagesSchema = ConversationSummarySchema.extend({
   messages: z.array(MessageSchema),
 });
 
-// Pagination schema
-export const PaginationSchema = z.object({
-  limit: z.number(),
-  offset: z.number(),
-  count: z.number(),
-});
 
 // Create conversation response
 export const CreateConversationResponseSchema =
@@ -52,11 +47,11 @@ export const GetConversationResponseSchema =
   });
 
 // List conversations response
-export const ListConversationsResponseSchema =
-  BaseConversationResponseSchema.extend({
-    conversations: z.array(ConversationSummarySchema),
-    pagination: PaginationSchema,
-  });
+export const ListConversationsResponseSchema = paginatedResponseSchema(
+  ConversationSummarySchema,
+  "ListConversationsResponse",
+  "conversations",
+);
 
 // Update conversation response
 export const UpdateConversationResponseSchema =
@@ -107,7 +102,6 @@ export type ConversationSummary = z.infer<typeof ConversationSummarySchema>;
 export type ConversationWithMessages = z.infer<
   typeof ConversationWithMessagesSchema
 >;
-export type Pagination = z.infer<typeof PaginationSchema>;
 export type CreateConversationResponse = z.infer<
   typeof CreateConversationResponseSchema
 >;

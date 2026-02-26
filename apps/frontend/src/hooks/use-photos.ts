@@ -95,13 +95,8 @@ export function usePhotos() {
 
       const data = await response.json();
 
-      // Handle different response structures - ensure we always get an array
-      const photosArray = Array.isArray(data)
-        ? data
-        : data.photos || data.entries || [];
-
       // Transform backend data to frontend format
-      return photosArray.map(transformPhotoData);
+      return data.items.map(transformPhotoData);
     },
     staleTime: 30000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes

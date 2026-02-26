@@ -1,6 +1,6 @@
 // schemas/tasks-responses.ts
 import z from "zod/v4";
-import { reviewStatusSchema } from "./common.js";
+import { paginatedResponseSchema, reviewStatusSchema } from "./common.js";
 
 // Task comment user schema
 export const CommentUserSchema = z
@@ -155,32 +155,12 @@ export const TaskResponseSchema = z
   })
   .meta({ ref: "TaskResponse" });
 
-// Array of tasks response
-export const TasksListResponseSchema = z.array(TaskResponseSchema).meta({
-  ref: "TasksListResponse",
-  description: "Array of task objects",
-});
-
-// Search results response (includes pagination info)
-export const TasksSearchResponseSchema = z
-  .object({
-    tasks: z.array(TaskResponseSchema).meta({
-      description: "Array of tasks matching the search criteria",
-    }),
-
-    totalCount: z.number().meta({
-      description:
-        "Total number of tasks matching the search criteria (before limit is applied)",
-    }),
-
-    limit: z.number().meta({
-      description: "Maximum number of tasks returned in this response",
-    }),
-  })
-  .meta({
-    ref: "TasksSearchResponse",
-    description: "Search results with pagination information",
-  });
+// Paginated list response (used for both full listing and search results)
+export const TasksListResponseSchema = paginatedResponseSchema(
+  TaskResponseSchema,
+  "TasksListResponse",
+  "tasks",
+);
 
 // Created task response (for POST requests) — same fields as TaskResponseSchema
 export const CreatedTaskResponseSchema = TaskResponseSchema.meta({
@@ -196,14 +176,6 @@ export const TaskNotFoundSchema = z
   })
   .meta({ ref: "TaskNotFound" });
 
-// Combined response schema for GET /tasks endpoint
-export const TasksGetResponseSchema = z
-  .union([TasksListResponseSchema, TasksSearchResponseSchema])
-  .meta({
-    ref: "TasksGetResponse",
-    description:
-      "Response for GET /tasks - either a simple array of tasks or search results with pagination",
-  });
 
 // Comment not found error
 export const CommentNotFoundSchema = z

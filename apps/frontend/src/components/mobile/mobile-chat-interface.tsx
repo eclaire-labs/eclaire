@@ -86,7 +86,7 @@ export function MobileChatInterface({
       setIsLoadingConversations(true);
       getConversations(50, 0)
         .then((response) => {
-          setConversations(response.conversations);
+          setConversations(response.items);
         })
         .catch((error) => {
           console.error("Failed to load conversations:", error);

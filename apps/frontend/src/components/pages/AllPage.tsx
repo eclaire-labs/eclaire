@@ -72,11 +72,7 @@ export default function AllItemsPage() {
         const response = await apiFetch("/api/all?limit=9999");
         if (response.ok) {
           const data = await response.json();
-          // Handle different response structures - ensure we always get an array
-          const itemsArray = Array.isArray(data)
-            ? data
-            : data.items || data.entries || [];
-          setItems(itemsArray);
+          setItems(data.items);
         } else {
           toast({
             title: "Error",

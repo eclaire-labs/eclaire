@@ -65,9 +65,10 @@ photosRoutes.get(
     if (Object.keys(queryParams).length === 0) {
       const photos = await getAllPhotos(userId);
       return c.json({
-        photos,
+        items: photos,
         totalCount: photos.length,
         limit: photos.length,
+        offset: 0,
       });
     }
 
@@ -111,9 +112,10 @@ photosRoutes.get(
     );
 
     return c.json({
-      photos,
+      items: photos,
       totalCount,
       limit: params.limit,
+      offset: 0,
     });
   }, logger),
 );

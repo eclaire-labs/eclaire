@@ -91,13 +91,8 @@ export function useBookmarks() {
 
       const data = await response.json();
 
-      // Handle different response structures - ensure we always get an array
-      const bookmarksArray = Array.isArray(data)
-        ? data
-        : data.bookmarks || data.entries || [];
-
       // Transform backend data to frontend format
-      return bookmarksArray.map(transformBookmarkData);
+      return data.items.map(transformBookmarkData);
     },
     staleTime: 30000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes

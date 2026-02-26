@@ -180,13 +180,8 @@ export default function PinnedItemsPage() {
         const response = await apiFetch("/api/all?limit=9999");
         if (response.ok) {
           const data = await response.json();
-          // Handle different response structures - ensure we always get an array
-          const itemsArray = Array.isArray(data)
-            ? data
-            : data.items || data.entries || [];
-
           // Filter for pinned items only
-          const pinnedItems = itemsArray.filter(
+          const pinnedItems = data.items.filter(
             (item: Item) => item.isPinned === true,
           );
           setItems(pinnedItems);

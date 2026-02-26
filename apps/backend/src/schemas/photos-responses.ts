@@ -1,6 +1,6 @@
 // schemas/photos-responses.ts
 import z from "zod/v4";
-import { reviewStatusSchema } from "./common.js";
+import { paginatedResponseSchema, reviewStatusSchema } from "./common.js";
 
 // Full photo response schema
 export const PhotoResponseSchema = z
@@ -231,31 +231,12 @@ export const PhotoResponseSchema = z
   })
   .meta({ ref: "PhotoResponse" });
 
-// Array of photos response
-export const PhotosListResponseSchema = z.array(PhotoResponseSchema).meta({
-  ref: "PhotosListResponse",
-  description: "Array of photo objects",
-});
-
-// Search results response with pagination
-export const PhotoSearchResponseSchema = z
-  .object({
-    photos: z.array(PhotoResponseSchema).meta({
-      description: "Array of photos matching the search criteria",
-    }),
-
-    totalCount: z.number().meta({
-      description: "Total number of photos matching the search criteria",
-    }),
-
-    limit: z.number().meta({
-      description: "Maximum number of photos returned in this response",
-    }),
-  })
-  .meta({
-    ref: "PhotoSearchResponse",
-    description: "Search results with pagination information",
-  });
+// Paginated list response (used for both full listing and search results)
+export const PhotosListResponseSchema = paginatedResponseSchema(
+  PhotoResponseSchema,
+  "PhotosListResponse",
+  "photos",
+);
 
 // Created photo response (for POST requests) — minimal subset of PhotoResponseSchema
 export const CreatedPhotoResponseSchema = PhotoResponseSchema.pick({

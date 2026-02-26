@@ -3,6 +3,7 @@ import {
   ChannelCapabilitySchema,
   ChannelPlatformSchema,
 } from "./channels-params.js";
+import { paginatedResponseSchema } from "./common.js";
 
 // Channel response schema (config is not included for security)
 export const ChannelResponseSchema = z.object({
@@ -18,10 +19,11 @@ export const ChannelResponseSchema = z.object({
 });
 
 // List channels response
-export const ListChannelsResponseSchema = z.object({
-  channels: z.array(ChannelResponseSchema),
-  total: z.number(),
-});
+export const ListChannelsResponseSchema = paginatedResponseSchema(
+  ChannelResponseSchema,
+  "ListChannelsResponse",
+  "channels",
+);
 
 // Create channel response
 export const CreateChannelResponseSchema = z.object({

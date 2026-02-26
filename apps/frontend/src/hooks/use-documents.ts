@@ -71,13 +71,8 @@ export function useDocuments() {
 
       const data = await response.json();
 
-      // Handle different response structures - ensure we always get an array
-      const documentsArray = Array.isArray(data)
-        ? data
-        : data.documents || data.entries || [];
-
       // Transform backend data to frontend format
-      return documentsArray.map(transformDocumentData);
+      return data.items.map(transformDocumentData);
     },
     staleTime: 30000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes

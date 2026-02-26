@@ -65,13 +65,8 @@ export function useTasks() {
 
       const data = await response.json();
 
-      // Handle different response structures - ensure we always get an array
-      const tasksArray = Array.isArray(data)
-        ? data
-        : data.tasks || data.entries || [];
-
       // Transform backend data to frontend format
-      return tasksArray.map(transformTaskData);
+      return data.items.map(transformTaskData);
     },
     staleTime: 30000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes

@@ -36,13 +36,10 @@ export interface ConversationWithFrontendMessages extends ConversationSummary {
 }
 
 export interface ConversationListResponse {
-  status: "OK";
-  conversations: ConversationSummary[];
-  pagination: {
-    limit: number;
-    offset: number;
-    count: number;
-  };
+  items: ConversationSummary[];
+  totalCount: number;
+  limit: number;
+  offset: number;
 }
 
 export interface ConversationResponse {

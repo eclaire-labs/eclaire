@@ -35,8 +35,10 @@ export interface UpdateChannelData {
 }
 
 interface ListChannelsResponse {
-  channels: Channel[];
-  total: number;
+  items: Channel[];
+  totalCount: number;
+  limit: number;
+  offset: number;
 }
 
 interface CreateChannelResponse {
@@ -84,8 +86,8 @@ export function useChannels() {
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const channels = channelsResponse?.channels || [];
-  const total = channelsResponse?.total || 0;
+  const channels = channelsResponse?.items || [];
+  const total = channelsResponse?.totalCount || 0;
 
   // Create channel mutation
   const createChannelMutation = useMutation({

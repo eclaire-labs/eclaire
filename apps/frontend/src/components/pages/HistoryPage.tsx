@@ -87,11 +87,7 @@ export default function HistoryPage() {
         const response = await apiFetch("/api/history?limit=9999");
         if (response.ok) {
           const data = await response.json();
-          // Handle different response structures - ensure we always get an array
-          const historyArray = Array.isArray(data)
-            ? data
-            : data.records || data.history || data.entries || [];
-          setHistory(historyArray);
+          setHistory(data.items);
         } else {
           toast({
             title: "Error",

@@ -31,11 +31,10 @@ historyRoutes.get(
     if (Object.keys(queryParams).length === 0) {
       const historyRecords = await getHistory(userId);
       return c.json({
-        records: historyRecords,
+        items: historyRecords,
         totalCount: historyRecords.length,
         limit: historyRecords.length,
         offset: 0,
-        hasMore: false,
       });
     }
 
@@ -80,11 +79,10 @@ historyRoutes.get(
     const offset = params.offset || 0;
 
     return c.json({
-      records: historyRecords,
+      items: historyRecords,
       totalCount,
       limit,
       offset,
-      hasMore: offset + limit < totalCount,
     });
   }, logger),
 );

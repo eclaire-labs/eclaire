@@ -181,13 +181,8 @@ export default function FlaggedItemsPage() {
         const response = await apiFetch("/api/all?limit=9999");
         if (response.ok) {
           const data = await response.json();
-          // Handle different response structures - ensure we always get an array
-          const itemsArray = Array.isArray(data)
-            ? data
-            : data.items || data.entries || [];
-
           // Filter for flagged items only (items with any flag color set)
-          const flaggedItems = itemsArray.filter(
+          const flaggedItems = data.items.filter(
             (item: Item) =>
               item.flagColor !== null && item.flagColor !== undefined,
           );

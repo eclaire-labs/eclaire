@@ -17,7 +17,7 @@ import {
   CreatedDocumentResponseSchema,
   DocumentNotFoundSchema,
   DocumentResponseSchema,
-  DocumentSearchResponseSchema,
+  DocumentsListResponseSchema,
   FileNotFoundSchema,
 } from "./documents-responses.js";
 
@@ -125,7 +125,7 @@ export const getDocumentsRouteDescription = {
       description: "List of documents or search results",
       content: {
         "application/json": {
-          schema: resolver(DocumentSearchResponseSchema),
+          schema: resolver(DocumentsListResponseSchema),
         },
       },
     },

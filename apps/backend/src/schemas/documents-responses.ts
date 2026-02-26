@@ -1,6 +1,6 @@
 // schemas/documents-responses.ts
 import z from "zod/v4";
-import { reviewStatusSchema } from "./common.js";
+import { paginatedResponseSchema, reviewStatusSchema } from "./common.js";
 
 // Full document response schema
 export const DocumentResponseSchema = z
@@ -108,33 +108,12 @@ export const DocumentResponseSchema = z
   })
   .meta({ ref: "DocumentResponse" });
 
-// Array of documents response
-export const DocumentsListResponseSchema = z
-  .array(DocumentResponseSchema)
-  .meta({
-    ref: "DocumentsListResponse",
-    description: "Array of document objects",
-  });
-
-// Search results response (with pagination info)
-export const DocumentSearchResponseSchema = z
-  .object({
-    documents: z.array(DocumentResponseSchema).meta({
-      description: "Array of documents matching the search criteria",
-    }),
-
-    totalCount: z.number().meta({
-      description: "Total number of documents matching the search criteria",
-    }),
-
-    limit: z.number().meta({
-      description: "Maximum number of documents returned in this response",
-    }),
-  })
-  .meta({
-    ref: "DocumentSearchResponse",
-    description: "Search results with pagination metadata",
-  });
+// Paginated list response (used for both full listing and search results)
+export const DocumentsListResponseSchema = paginatedResponseSchema(
+  DocumentResponseSchema,
+  "DocumentsListResponse",
+  "documents",
+);
 
 // Created document response (for POST requests) — omits fields not available at creation time,
 // restricts processingStatus to initial states

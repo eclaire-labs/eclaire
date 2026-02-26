@@ -26,7 +26,7 @@ import {
   TaskCommentsListSchema,
   TaskNotFoundSchema,
   TaskResponseSchema,
-  TasksGetResponseSchema,
+  TasksListResponseSchema,
 } from "./tasks-responses.js";
 
 // GET /api/tasks - Get all tasks or search tasks
@@ -110,7 +110,7 @@ export const getTasksRouteDescription = {
       description: "List of tasks or search results",
       content: {
         "application/json": {
-          schema: resolver(TasksGetResponseSchema),
+          schema: resolver(TasksListResponseSchema),
         },
       },
     },

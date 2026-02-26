@@ -12,10 +12,7 @@ export function useDueNowCount() {
         const response = await apiFetch("/api/all?dueStatus=due_now&limit=100");
         if (response.ok) {
           const data = await response.json();
-          const itemsArray = Array.isArray(data)
-            ? data
-            : data.items || data.entries || [];
-          setCount(itemsArray.length);
+          setCount(data.items.length);
         }
       } catch (error) {
         console.error("Error fetching due now count:", error);

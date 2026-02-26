@@ -1,5 +1,6 @@
 // schemas/all-responses.ts
 import z from "zod/v4";
+import { paginatedResponseSchema } from "./common.js";
 
 // Base item schema - represents any content type in search results
 const BaseItemSchema = z
@@ -87,20 +88,11 @@ const BaseItemSchema = z
   .meta({ ref: "BaseItem" });
 
 // Search results response
-export const SearchResponseSchema = z
-  .object({
-    items: z
-      .array(BaseItemSchema)
-      .meta({ description: "Array of found items" }),
-    totalCount: z.number().meta({
-      description: "Total number of items matching the search criteria",
-    }),
-    limit: z
-      .number()
-      .meta({ description: "Maximum number of results requested" }),
-    offset: z.number().meta({ description: "Number of results skipped" }),
-  })
-  .meta({ ref: "SearchResponse" });
+export const SearchResponseSchema = paginatedResponseSchema(
+  BaseItemSchema,
+  "SearchResponse",
+  "items",
+);
 
 // Created item response (generic - actual response varies by type)
 export const CreatedItemSchema = z

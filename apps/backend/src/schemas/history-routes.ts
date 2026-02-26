@@ -3,7 +3,7 @@ import { ValidationErrorSchema } from "./all-responses.js";
 import { commonErrors } from "./common.js";
 import {
   HistoryAccessDeniedSchema,
-  HistorySearchResponseSchema,
+  HistoryListResponseSchema,
 } from "./history-responses.js";
 
 // GET /api/history - Get history records (with optional filtering)
@@ -102,7 +102,7 @@ export const getHistoryRouteDescription = {
       description: "History records retrieved successfully",
       content: {
         "application/json": {
-          schema: resolver(HistorySearchResponseSchema),
+          schema: resolver(HistoryListResponseSchema),
         },
       },
     },

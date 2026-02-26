@@ -20,7 +20,7 @@ import {
   PhotoFileNotFoundSchema,
   PhotoNotFoundSchema,
   PhotoResponseSchema,
-  PhotoSearchResponseSchema,
+  PhotosListResponseSchema,
 } from "./photos-responses.js";
 
 // GET /api/photos - Get all photos or search photos
@@ -115,7 +115,7 @@ export const getPhotosRouteDescription = {
       description: "List of photos or search results",
       content: {
         "application/json": {
-          schema: resolver(PhotoSearchResponseSchema),
+          schema: resolver(PhotosListResponseSchema),
         },
       },
     },

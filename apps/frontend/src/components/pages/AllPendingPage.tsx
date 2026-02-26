@@ -299,13 +299,8 @@ export default function PendingItemsPage() {
         const response = await apiFetch("/api/all?limit=9999");
         if (response.ok) {
           const data = await response.json();
-          // Handle different response structures - ensure we always get an array
-          const itemsArray = Array.isArray(data)
-            ? data
-            : data.items || data.entries || [];
-
           // Filter for pending items only
-          const pendingItems = itemsArray.filter(
+          const pendingItems = data.items.filter(
             (item: Item) => item.reviewStatus === "pending",
           );
           setItems(pendingItems);

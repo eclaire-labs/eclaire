@@ -55,13 +55,8 @@ export function useNotes() {
 
       const data = await response.json();
 
-      // Handle different response structures - ensure we always get an array
-      const notesArray = Array.isArray(data)
-        ? data
-        : data.notes || data.entries || [];
-
       // Transform backend data to frontend format
-      return notesArray.map(transformNoteData);
+      return data.items.map(transformNoteData);
     },
     staleTime: 5 * 60 * 1000, // 5 minutes (match global default)
     gcTime: 5 * 60 * 1000, // 5 minutes

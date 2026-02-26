@@ -100,7 +100,7 @@ const ConversationHistoryDialog = ({
         setIsLoading(true);
         try {
           const response = await getConversations(50, 0);
-          setConversations(response.conversations);
+          setConversations(response.items);
         } catch (error) {
           console.error("Failed to load conversations:", error);
         } finally {

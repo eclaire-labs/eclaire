@@ -549,7 +549,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     try {
       const response = await getConversations(1000, 0);
       await Promise.all(
-        response.conversations.map((c) => deleteConversation(c.id)),
+        response.items.map((c) => deleteConversation(c.id)),
       );
       startNewConversation();
     } catch (error) {

@@ -106,8 +106,10 @@ export async function getUserChannels(
     const formattedChannels = userChannels.map(formatChannelForResponse);
 
     return {
-      channels: formattedChannels,
-      total: formattedChannels.length,
+      items: formattedChannels,
+      totalCount: formattedChannels.length,
+      limit: formattedChannels.length,
+      offset: 0,
     };
   } catch (error) {
     logger.error(

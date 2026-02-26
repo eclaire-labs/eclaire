@@ -83,12 +83,10 @@ notesRoutes.get(
       const totalCount = await countNotes(userId);
 
       return c.json({
-        entries,
-        pagination: {
-          total: totalCount,
-          limit: limit,
-          offset: offset,
-        },
+        items: entries,
+        totalCount,
+        limit,
+        offset,
       });
     }
 
@@ -126,12 +124,10 @@ notesRoutes.get(
     );
 
     return c.json({
-      entries,
-      pagination: {
-        total: totalCount,
-        limit: limit,
-        offset: offset,
-      },
+      items: entries,
+      totalCount,
+      limit,
+      offset,
     });
   }, logger),
 );

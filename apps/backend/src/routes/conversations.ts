@@ -88,13 +88,10 @@ conversationsRoutes.get(
     );
 
     return c.json({
-      status: "OK",
-      conversations,
-      pagination: {
-        limit,
-        offset,
-        count: conversations.length,
-      },
+      items: conversations,
+      totalCount: conversations.length,
+      limit,
+      offset,
     });
   }, logger),
 );

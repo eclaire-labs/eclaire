@@ -47,7 +47,7 @@ bookmarksRoutes.get(
   describeRoute(getBookmarksRouteDescription),
   withAuth(async (c, userId) => {
     const bookmarks = await getAllBookmarks(userId);
-    return c.json(bookmarks);
+    return c.json({ items: bookmarks, totalCount: bookmarks.length, limit: bookmarks.length, offset: 0 });
   }, logger),
 );
 
