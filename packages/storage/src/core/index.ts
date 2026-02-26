@@ -16,9 +16,13 @@ export {
 // Key utilities
 export type { ParsedKey } from "./keys.js";
 export {
+  assertSafeKey,
+  assertSafePrefix,
   assetPrefix,
   buildKey,
   categoryPrefix,
+  isSafeKey,
+  isSafePrefix,
   isValidKey,
   isValidKeyComponent,
   parseKey,
@@ -37,4 +41,4 @@ export type {
   StorageStats,
   WriteOptions,
 } from "./types.js";
-export { noopLogger } from "./types.js";
+export { buildObjectMetadata, noopLogger } from "./types.js";

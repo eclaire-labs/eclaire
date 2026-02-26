@@ -25,10 +25,11 @@ import {
   StorageInvalidKeyError,
   StorageNotFoundError,
 } from "../../core/errors.js";
-import { isValidKey } from "../../core/keys.js";
+import { assertSafeKey, isSafePrefix } from "../../core/keys.js";
 import {
   type ListOptions,
   type ListResult,
+  buildObjectMetadata,
   noopLogger,
   type ObjectMetadata,
   type Storage,
@@ -81,12 +82,7 @@ export class LocalStorage implements Storage {
    * Get the full filesystem path for a storage key
    */
   private getFullPath(key: string): string {
-    if (!isValidKey(key)) {
-      throw new StorageInvalidKeyError(
-        key,
-        "Invalid storage key format or path traversal attempt",
-      );
-    }
+    assertSafeKey(key);
 
     const fullPath = join(this.baseDir, key);
     const normalizedPath = normalize(fullPath);
@@ -95,6 +91,29 @@ export class LocalStorage implements Storage {
     const relativePath = relative(this.baseDir, normalizedPath);
     if (relativePath.startsWith("..") || relativePath.startsWith("/")) {
       throw new StorageInvalidKeyError(key, "Path traversal attempt detected");
+    }
+
+    return normalizedPath;
+  }
+
+  /**
+   * Get the full filesystem path for a prefix, with safety validation
+   */
+  private getFullPrefixPath(prefix: string): string {
+    if (!isSafePrefix(prefix)) {
+      throw new StorageInvalidKeyError(prefix, "Invalid prefix");
+    }
+
+    const dirPath = join(this.baseDir, prefix);
+    const normalizedPath = normalize(dirPath);
+
+    // Defense in depth: ensure the path stays within baseDir
+    const rel = relative(this.baseDir, normalizedPath);
+    if (rel.startsWith("..")) {
+      throw new StorageInvalidKeyError(
+        prefix,
+        "Path traversal attempt detected",
+      );
     }
 
     return normalizedPath;
@@ -148,21 +167,13 @@ export class LocalStorage implements Storage {
       }
       throw new StorageError(
         `Failed to write ${key}: ${(error as Error).message}`,
-        error as Error,
+        { cause: error },
       );
     }
 
     // Get file size and write metadata
     const stats = await stat(filePath);
-    const now = new Date();
-
-    const metadata: ObjectMetadata = {
-      contentType: options.contentType,
-      size: stats.size,
-      createdAt: now,
-      updatedAt: now,
-      custom: options.custom,
-    };
+    const metadata = buildObjectMetadata(stats.size, options);
 
     await writeMetadata(filePath, metadata);
 
@@ -260,22 +271,7 @@ export class LocalStorage implements Storage {
   }
 
   async deletePrefix(prefix: string): Promise<number> {
-    // Validate prefix (similar to key validation but allow trailing slash)
-    if (prefix.includes("..") || prefix.startsWith("/")) {
-      throw new StorageInvalidKeyError(prefix, "Invalid prefix");
-    }
-
-    const dirPath = join(this.baseDir, prefix);
-    const normalizedPath = normalize(dirPath);
-
-    // Ensure the path is within baseDir
-    const relativePath = relative(this.baseDir, normalizedPath);
-    if (relativePath.startsWith("..")) {
-      throw new StorageInvalidKeyError(
-        prefix,
-        "Path traversal attempt detected",
-      );
-    }
+    const normalizedPath = this.getFullPrefixPath(prefix);
 
     let count = 0;
 
@@ -328,22 +324,9 @@ export class LocalStorage implements Storage {
     const limit = options?.limit ?? 1000;
     const offset = options?.cursor ? parseInt(options.cursor, 10) : 0;
 
-    // Validate prefix
-    if (prefix.includes("..")) {
-      throw new StorageInvalidKeyError(prefix, "Invalid prefix");
-    }
-
-    const searchDir = prefix ? join(this.baseDir, prefix) : this.baseDir;
-    const normalizedSearch = normalize(searchDir);
-
-    // Ensure within baseDir
-    const relativePath = relative(this.baseDir, normalizedSearch);
-    if (relativePath.startsWith("..")) {
-      throw new StorageInvalidKeyError(
-        prefix,
-        "Path traversal attempt detected",
-      );
-    }
+    const normalizedSearch = prefix
+      ? this.getFullPrefixPath(prefix)
+      : this.baseDir;
 
     const keys: string[] = [];
     await this.collectKeys(normalizedSearch, "", keys);
@@ -389,22 +372,9 @@ export class LocalStorage implements Storage {
   // ---- Statistics ----
 
   async stats(prefix: string): Promise<StorageStats> {
-    // Validate prefix
-    if (prefix.includes("..")) {
-      throw new StorageInvalidKeyError(prefix, "Invalid prefix");
-    }
-
-    const searchDir = prefix ? join(this.baseDir, prefix) : this.baseDir;
-    const normalizedSearch = normalize(searchDir);
-
-    // Ensure within baseDir
-    const relativePath = relative(this.baseDir, normalizedSearch);
-    if (relativePath.startsWith("..") && relativePath !== "") {
-      throw new StorageInvalidKeyError(
-        prefix,
-        "Path traversal attempt detected",
-      );
-    }
+    const normalizedSearch = prefix
+      ? this.getFullPrefixPath(prefix)
+      : this.baseDir;
 
     return await this.calculateStats(normalizedSearch);
   }

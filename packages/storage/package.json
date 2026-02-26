@@ -48,9 +48,7 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "dependencies": {
-    "@eclaire/logger": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",

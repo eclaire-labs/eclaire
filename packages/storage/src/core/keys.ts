@@ -1,3 +1,5 @@
+import { StorageInvalidKeyError } from "./errors.js";
+
 /**
  * Key utilities for building and parsing storage keys
  *
@@ -119,6 +121,71 @@ export function userPrefix(userId: string): string {
   return `${userId}/`;
 }
 
+// ============================================================================
+// Generic safety validators (used by adapters — no opinion on key structure)
+// ============================================================================
+
+/**
+ * Check if a key is safe for storage operations.
+ *
+ * This is a **generic safety check** — it prevents path traversal and
+ * other dangerous patterns but does NOT enforce any particular key structure.
+ * Adapters should use this for key validation.
+ *
+ * @param key - Storage key to validate
+ * @returns true if safe, false if dangerous
+ */
+export function isSafeKey(key: string): boolean {
+  if (!key || key.startsWith("/") || key.startsWith("\\")) return false;
+  if (key.includes("..")) return false;
+
+  // Every segment must be non-empty (no "a//b")
+  const parts = key.split("/");
+  return parts.every((p) => p.length > 0 && p !== "." && p !== "..");
+}
+
+/**
+ * Check if a prefix is safe for storage operations.
+ *
+ * Similar to {@link isSafeKey} but allows trailing slash and empty string
+ * (which means "list everything").
+ */
+export function isSafePrefix(prefix: string): boolean {
+  if (!prefix) return true; // empty prefix = list all
+  if (prefix.startsWith("/") || prefix.startsWith("\\")) return false;
+  if (prefix.includes("..")) return false;
+  return true;
+}
+
+/**
+ * Assert a key is safe, throwing {@link StorageInvalidKeyError} if not.
+ *
+ * Convenience wrapper used by adapters to validate keys before operations.
+ */
+export function assertSafeKey(key: string): void {
+  if (!isSafeKey(key)) {
+    throw new StorageInvalidKeyError(
+      key,
+      "Invalid storage key format or path traversal attempt",
+    );
+  }
+}
+
+/**
+ * Assert a prefix is safe, throwing {@link StorageInvalidKeyError} if not.
+ *
+ * Convenience wrapper used by adapters to validate prefixes before operations.
+ */
+export function assertSafePrefix(prefix: string): void {
+  if (!isSafePrefix(prefix)) {
+    throw new StorageInvalidKeyError(prefix, "Invalid prefix");
+  }
+}
+
+// ============================================================================
+// Domain-specific validators (optional — for apps using the userId/category/assetId/fileName convention)
+// ============================================================================
+
 /**
  * Validate a key component (prevent path traversal)
  *
@@ -142,15 +209,18 @@ export function isValidKeyComponent(component: string): boolean {
 }
 
 /**
- * Validate a full storage key
+ * Validate a full storage key against the domain convention:
+ * `{userId}/{category}/{assetId}/{fileName}`
+ *
+ * This is stricter than {@link isSafeKey} — it requires at least 4 path segments.
+ * Use this in application code when you want to enforce the key structure.
+ * Adapters use {@link isSafeKey} instead so the package stays generic.
  *
  * @param key - Storage key to validate
  * @returns true if valid, false otherwise
  */
 export function isValidKey(key: string): boolean {
-  if (!key || key.startsWith("/") || key.includes("..")) {
-    return false;
-  }
+  if (!isSafeKey(key)) return false;
 
   const parts = key.split("/");
   if (parts.length < 4) {

@@ -6,14 +6,12 @@
  */
 
 import { Readable } from "node:stream";
-import {
-  StorageInvalidKeyError,
-  StorageNotFoundError,
-} from "../../core/errors.js";
-import { isValidKey } from "../../core/keys.js";
+import { StorageNotFoundError } from "../../core/errors.js";
+import { assertSafeKey, assertSafePrefix } from "../../core/keys.js";
 import {
   type ListOptions,
   type ListResult,
+  buildObjectMetadata,
   noopLogger,
   type ObjectMetadata,
   type Storage,
@@ -44,24 +42,6 @@ export class MemoryStorage implements Storage {
     this.logger.debug({}, "MemoryStorage initialized");
   }
 
-  /**
-   * Validate a key and throw if invalid
-   */
-  private validateKey(key: string): void {
-    if (!isValidKey(key)) {
-      throw new StorageInvalidKeyError(key, "Invalid storage key format");
-    }
-  }
-
-  /**
-   * Validate a prefix
-   */
-  private validatePrefix(prefix: string): void {
-    if (prefix.includes("..") || prefix.startsWith("/")) {
-      throw new StorageInvalidKeyError(prefix, "Invalid prefix");
-    }
-  }
-
   // ---- Write Operations ----
 
   async write(
@@ -69,7 +49,7 @@ export class MemoryStorage implements Storage {
     stream: ReadableStream<Uint8Array> | NodeJS.ReadableStream,
     options: WriteOptions,
   ): Promise<void> {
-    this.validateKey(key);
+    assertSafeKey(key);
 
     // Collect stream into buffer
     const chunks: Uint8Array[] = [];
@@ -90,15 +70,7 @@ export class MemoryStorage implements Storage {
     }
 
     const buffer = Buffer.concat(chunks);
-    const now = new Date();
-
-    const metadata: ObjectMetadata = {
-      contentType: options.contentType,
-      size: buffer.length,
-      createdAt: now,
-      updatedAt: now,
-      custom: options.custom,
-    };
+    const metadata = buildObjectMetadata(buffer.length, options);
 
     this.store.set(key, { buffer, metadata });
     this.logger.debug({ key, size: buffer.length }, "Object stored");
@@ -109,17 +81,9 @@ export class MemoryStorage implements Storage {
     buffer: Buffer,
     options: WriteOptions,
   ): Promise<void> {
-    this.validateKey(key);
+    assertSafeKey(key);
 
-    const now = new Date();
-
-    const metadata: ObjectMetadata = {
-      contentType: options.contentType,
-      size: buffer.length,
-      createdAt: now,
-      updatedAt: now,
-      custom: options.custom,
-    };
+    const metadata = buildObjectMetadata(buffer.length, options);
 
     this.store.set(key, { buffer: Buffer.from(buffer), metadata });
     this.logger.debug({ key, size: buffer.length }, "Object stored");
@@ -128,7 +92,7 @@ export class MemoryStorage implements Storage {
   // ---- Read Operations ----
 
   async read(key: string): Promise<StorageObject> {
-    this.validateKey(key);
+    assertSafeKey(key);
 
     const stored = this.store.get(key);
     if (!stored) {
@@ -148,7 +112,7 @@ export class MemoryStorage implements Storage {
   async readBuffer(
     key: string,
   ): Promise<{ buffer: Buffer; metadata: ObjectMetadata }> {
-    this.validateKey(key);
+    assertSafeKey(key);
 
     const stored = this.store.get(key);
     if (!stored) {
@@ -162,7 +126,7 @@ export class MemoryStorage implements Storage {
   }
 
   async head(key: string): Promise<ObjectMetadata | null> {
-    this.validateKey(key);
+    assertSafeKey(key);
 
     const stored = this.store.get(key);
     if (!stored) {
@@ -173,20 +137,20 @@ export class MemoryStorage implements Storage {
   }
 
   async exists(key: string): Promise<boolean> {
-    this.validateKey(key);
+    assertSafeKey(key);
     return this.store.has(key);
   }
 
   // ---- Delete Operations ----
 
   async delete(key: string): Promise<void> {
-    this.validateKey(key);
+    assertSafeKey(key);
     this.store.delete(key);
     this.logger.debug({ key }, "Object deleted");
   }
 
   async deletePrefix(prefix: string): Promise<number> {
-    this.validatePrefix(prefix);
+    assertSafePrefix(prefix);
 
     let count = 0;
     const keysToDelete: string[] = [];
@@ -214,7 +178,7 @@ export class MemoryStorage implements Storage {
     const offset = options?.cursor ? parseInt(options.cursor, 10) : 0;
 
     if (prefix) {
-      this.validatePrefix(prefix);
+      assertSafePrefix(prefix);
     }
 
     const matchingKeys: string[] = [];
@@ -241,7 +205,7 @@ export class MemoryStorage implements Storage {
   // ---- Statistics ----
 
   async stats(prefix: string): Promise<StorageStats> {
-    this.validatePrefix(prefix);
+    assertSafePrefix(prefix);
 
     let count = 0;
     let size = 0;
@@ -259,7 +223,6 @@ export class MemoryStorage implements Storage {
   // ---- Lifecycle ----
 
   async close(): Promise<void> {
-    this.store.clear();
     this.logger.debug({}, "MemoryStorage closed");
   }
 

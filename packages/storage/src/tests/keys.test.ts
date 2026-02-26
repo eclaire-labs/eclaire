@@ -3,6 +3,8 @@ import {
   assetPrefix,
   buildKey,
   categoryPrefix,
+  isSafeKey,
+  isSafePrefix,
   isValidKey,
   isValidKeyComponent,
   parseKey,
@@ -65,6 +67,53 @@ describe("prefix builders", () => {
 
   it("builds user prefix", () => {
     expect(userPrefix("user-123")).toBe("user-123/");
+  });
+});
+
+describe("isSafeKey", () => {
+  it("accepts any key structure without path traversal", () => {
+    expect(isSafeKey("a")).toBe(true);
+    expect(isSafeKey("a/b")).toBe(true);
+    expect(isSafeKey("a/b/c")).toBe(true);
+    expect(isSafeKey("user-123/documents/doc-456/original.pdf")).toBe(true);
+    expect(isSafeKey("some-file.txt")).toBe(true);
+  });
+
+  it("rejects empty keys", () => {
+    expect(isSafeKey("")).toBe(false);
+  });
+
+  it("rejects absolute paths", () => {
+    expect(isSafeKey("/absolute/path")).toBe(false);
+    expect(isSafeKey("\\backslash")).toBe(false);
+  });
+
+  it("rejects path traversal", () => {
+    expect(isSafeKey("a/../b")).toBe(false);
+    expect(isSafeKey("..")).toBe(false);
+    expect(isSafeKey("a/..")).toBe(false);
+  });
+
+  it("rejects empty segments", () => {
+    expect(isSafeKey("a//b")).toBe(false);
+    expect(isSafeKey("a/./b")).toBe(false);
+  });
+});
+
+describe("isSafePrefix", () => {
+  it("accepts valid prefixes", () => {
+    expect(isSafePrefix("")).toBe(true); // empty = list all
+    expect(isSafePrefix("user-123/")).toBe(true);
+    expect(isSafePrefix("user-123/documents/")).toBe(true);
+  });
+
+  it("rejects path traversal", () => {
+    expect(isSafePrefix("../")).toBe(false);
+    expect(isSafePrefix("a/../b/")).toBe(false);
+  });
+
+  it("rejects absolute paths", () => {
+    expect(isSafePrefix("/absolute/")).toBe(false);
   });
 });
 

@@ -261,7 +261,7 @@ describe("MemoryStorage", () => {
   });
 
   describe("close", () => {
-    it("clears all data", async () => {
+    it("does not destroy data (use clear() for that)", async () => {
       await storage.writeBuffer(
         "user-1/docs/doc-1/a.txt",
         Buffer.from("test"),
@@ -271,6 +271,21 @@ describe("MemoryStorage", () => {
       );
 
       await storage.close();
+
+      // close() releases resources but preserves data
+      expect(storage.size).toBe(1);
+    });
+
+    it("clear() removes all data", async () => {
+      await storage.writeBuffer(
+        "user-1/docs/doc-1/a.txt",
+        Buffer.from("test"),
+        {
+          contentType: "text/plain",
+        },
+      );
+
+      storage.clear();
 
       expect(storage.size).toBe(0);
     });

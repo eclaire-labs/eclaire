@@ -6,26 +6,17 @@
  * Base error class for all storage errors
  */
 export class StorageError extends Error {
-  constructor(
-    message: string,
-    public readonly cause?: Error,
-  ) {
-    super(message);
-    this.name = "StorageError";
-    // Maintain proper stack trace for V8 engines
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
-    }
-  }
+  override readonly name: string = "StorageError";
 }
 
 /**
  * Thrown when an object is not found
  */
 export class StorageNotFoundError extends StorageError {
+  override readonly name = "StorageNotFoundError";
+
   constructor(public readonly key: string) {
     super(`Object not found: ${key}`);
-    this.name = "StorageNotFoundError";
   }
 }
 
@@ -33,12 +24,13 @@ export class StorageNotFoundError extends StorageError {
  * Thrown when access to a key is denied
  */
 export class StorageAccessDeniedError extends StorageError {
+  override readonly name = "StorageAccessDeniedError";
+
   constructor(
     public readonly key: string,
     message?: string,
   ) {
     super(message || `Access denied: ${key}`);
-    this.name = "StorageAccessDeniedError";
   }
 }
 
@@ -46,9 +38,10 @@ export class StorageAccessDeniedError extends StorageError {
  * Thrown when storage quota is exceeded
  */
 export class StorageQuotaExceededError extends StorageError {
+  override readonly name = "StorageQuotaExceededError";
+
   constructor(message?: string) {
     super(message || "Storage quota exceeded");
-    this.name = "StorageQuotaExceededError";
   }
 }
 
@@ -56,11 +49,12 @@ export class StorageQuotaExceededError extends StorageError {
  * Thrown when a key is invalid (e.g., path traversal attempt)
  */
 export class StorageInvalidKeyError extends StorageError {
+  override readonly name = "StorageInvalidKeyError";
+
   constructor(
     public readonly key: string,
     message?: string,
   ) {
     super(message || `Invalid storage key: ${key}`);
-    this.name = "StorageInvalidKeyError";
   }
 }

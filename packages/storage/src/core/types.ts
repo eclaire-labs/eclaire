@@ -65,7 +65,8 @@ export interface ListOptions {
   /** Maximum number of results */
   limit?: number;
 
-  /** Pagination cursor from previous response */
+  /** Opaque pagination cursor from a previous response's `nextCursor`.
+   *  Cursor format is adapter-specific — do not parse or construct cursors manually. */
   cursor?: string;
 }
 
@@ -89,6 +90,29 @@ export interface StorageStats {
 
   /** Total size in bytes */
   size: number;
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Build an {@link ObjectMetadata} from a write operation.
+ *
+ * Shared by adapters to avoid duplicating metadata construction.
+ */
+export function buildObjectMetadata(
+  size: number,
+  options: WriteOptions,
+): ObjectMetadata {
+  const now = new Date();
+  return {
+    contentType: options.contentType,
+    size,
+    createdAt: now,
+    updatedAt: now,
+    custom: options.custom,
+  };
 }
 
 // ============================================================================
