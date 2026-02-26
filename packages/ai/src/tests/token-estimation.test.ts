@@ -12,6 +12,9 @@ import { createMockLoggerFactory } from "./setup.js";
 // Mock the logger module
 vi.mock("../logger.js", () => ({
   createAILogger: () => createMockLoggerFactory().factory("ai-tokens"),
+  createLazyLogger: () => () => createMockLoggerFactory().factory("ai-tokens"),
+  getErrorMessage: (error: unknown) =>
+    error instanceof Error ? error.message : String(error ?? "Unknown error"),
 }));
 
 describe("Token Estimation", () => {

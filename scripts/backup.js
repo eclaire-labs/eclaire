@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-const readline = require('readline');
-const { execSync, spawn } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const readline = require('node:readline');
+const { execSync } = require('node:child_process');
 
 // Colors for console output
 const colors = {
@@ -39,7 +39,7 @@ function askQuestion(question) {
 
 // Generate ISO timestamp with seconds
 function getTimestamp() {
-  return new Date().toISOString().replace(/:/g, '-').split('.')[0] + 'Z';
+  return `${new Date().toISOString().replace(/:/g, '-').split('.')[0]}Z`;
 }
 
 // Create directory if it doesn't exist
@@ -128,7 +128,7 @@ function backupDatabase(backupDir) {
       // Try to resolve the hostname, if it fails, we're likely on the host machine
       try {
         execSync(`nslookup ${host}`, { stdio: 'pipe' });
-      } catch (error) {
+      } catch (_error) {
         // Hostname doesn't resolve, use localhost instead
         host = 'localhost';
         console.log(`${colors.cyan}ℹ️${colors.reset}  Resolved Docker hostname ${url.hostname} to localhost`);
@@ -344,7 +344,7 @@ async function createBackup() {
     const result = execSync(`du -sh "${backupDir}"`, { encoding: 'utf-8' });
     const size = result.split('\t')[0];
     console.log(`Backup Size: ${colors.cyan}${size}${colors.reset}`);
-  } catch (error) {
+  } catch (_error) {
     // Ignore size calculation errors
   }
 
@@ -377,10 +377,10 @@ function getDirectoryStats(dirPath) {
 
   try {
     const sizeResult = execSync(`du -sk "${dirPath}" | awk '{print $1 * 1024}'`, { encoding: 'utf-8' });
-    const size = parseInt(sizeResult.trim());
+    const size = parseInt(sizeResult.trim(), 10);
 
     const countResult = execSync(`find "${dirPath}" -type f | wc -l`, { encoding: 'utf-8' });
-    const fileCount = parseInt(countResult.trim());
+    const fileCount = parseInt(countResult.trim(), 10);
 
     return { size, fileCount };
   } catch (error) {
@@ -408,7 +408,7 @@ function validateDatabase(backupPath, dbConfig) {
         env,
         stdio: ['pipe', 'pipe', 'pipe']
       });
-    } catch (error) {
+    } catch (_error) {
       // Ignore if database doesn't exist
     }
 
@@ -430,7 +430,7 @@ function validateDatabase(backupPath, dbConfig) {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
     });
-    const tableCount = parseInt(tableCountResult.trim());
+    const tableCount = parseInt(tableCountResult.trim(), 10);
 
     // Get total row count from major tables
     const rowCountResult = execSync(`psql -h ${host} -p ${port} -U ${username} -d ${tempDbName} -t -c "SELECT SUM(n_tup_ins + n_tup_upd) FROM pg_stat_user_tables;"`, {
@@ -438,7 +438,7 @@ function validateDatabase(backupPath, dbConfig) {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
     });
-    const totalRows = parseInt(rowCountResult.trim()) || 0;
+    const totalRows = parseInt(rowCountResult.trim(), 10) || 0;
 
     // Drop temp database
     execSync(`psql -h ${host} -p ${port} -U ${username} -c "DROP DATABASE ${tempDbName};"`, {
@@ -456,7 +456,7 @@ function validateDatabase(backupPath, dbConfig) {
         env,
         stdio: ['pipe', 'pipe', 'pipe']
       });
-    } catch (cleanupError) {
+    } catch (_cleanupError) {
       // Ignore cleanup errors
     }
 
@@ -509,7 +509,7 @@ function validateBackup(backupDir) {
       // Try to resolve the hostname, if it fails, we're likely on the host machine
       try {
         execSync(`nslookup ${host}`, { stdio: 'pipe' });
-      } catch (error) {
+      } catch (_error) {
         // Hostname doesn't resolve, use localhost instead
         host = 'localhost';
         console.log(`${colors.cyan}ℹ️${colors.reset}  Resolved Docker hostname ${url.hostname} to localhost`);

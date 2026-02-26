@@ -11,6 +11,7 @@
       "apps/**",
       "packages/**",
       "tools/**",
+      "scripts/**",
       "!**/node_modules",
       "!**/dist",
       "!**/.next",

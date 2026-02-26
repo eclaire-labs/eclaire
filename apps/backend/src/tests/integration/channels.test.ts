@@ -9,6 +9,7 @@ import type {
 // Import types from actual schema files
 import type {
   ChannelErrorResponse,
+  ChannelResponse,
   CreateChannelResponse,
   DeleteChannelResponse,
   ListChannelsResponse,
@@ -116,7 +117,7 @@ const globalTestCleanup = async () => {
     const response = await apiCall("/channels");
     if (response.status === 200) {
       const data = (await response.json()) as ListChannelsResponse;
-      for (const channel of data.channels) {
+      for (const channel of data.items as ChannelResponse[]) {
         await apiCall(`/channels/${channel.id}`, { method: "DELETE" });
       }
     }
@@ -160,9 +161,9 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       expect(response.status).toBe(200);
       const data = (await response.json()) as ListChannelsResponse;
 
-      expect(data.channels).toBeDefined();
-      expect(Array.isArray(data.channels)).toBe(true);
-      expect(data.total).toBe(data.channels.length);
+      expect(data.items).toBeDefined();
+      expect(Array.isArray(data.items)).toBe(true);
+      expect(data.totalCount).toBe(data.items.length);
     });
 
     it("POST /api/channels - should create a new Telegram channel", async () => {
@@ -213,12 +214,13 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       expect(response.status).toBe(200);
       const data = (await response.json()) as ListChannelsResponse;
 
-      expect(data.channels).toBeDefined();
-      expect(Array.isArray(data.channels)).toBe(true);
-      expect(data.total).toBe(data.channels.length);
-      expect(data.channels.length).toBeGreaterThan(0);
+      expect(data.items).toBeDefined();
+      expect(Array.isArray(data.items)).toBe(true);
+      expect(data.totalCount).toBe(data.items.length);
+      expect(data.items.length).toBeGreaterThan(0);
 
-      const foundChannel = data.channels.find((c) => c.id === createdChannelId);
+      const items = data.items as ChannelResponse[];
+      const foundChannel = items.find((c) => c.id === createdChannelId);
       expect(
         foundChannel,
         `Channel with ID ${createdChannelId} not found in list`,
@@ -792,7 +794,8 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       expect(response.status).toBe(200);
       const data = (await response.json()) as ListChannelsResponse;
 
-      const foundChannel = data.channels.find((c) => c.id === createdChannelId);
+      const items = data.items as ChannelResponse[];
+      const foundChannel = items.find((c) => c.id === createdChannelId);
       expect(
         foundChannel,
         `Deleted channel with ID ${createdChannelId} still found in list`,
@@ -841,15 +844,16 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       const listResponse = await apiCall("/channels");
       expect(listResponse.status).toBe(200);
       const listData = (await listResponse.json()) as ListChannelsResponse;
-      const channel = listData.channels.find(
+      const listItems = listData.items as ChannelResponse[];
+      const channel = listItems.find(
         (c) => c.id === createData.channel.id,
       );
       expect((channel as any)?.config).toBeUndefined();
 
       // Validate list response structure
-      expect(listData.channels).toBeInstanceOf(Array);
-      expect(listData.total).toBe(listData.channels.length);
-      expect(listData.total).toBeTypeOf("number");
+      expect(listData.items).toBeInstanceOf(Array);
+      expect(listData.totalCount).toBe(listData.items.length);
+      expect(listData.totalCount).toBeTypeOf("number");
 
       // Clean up
       await apiCall(`/channels/${createData.channel.id}`, { method: "DELETE" });
@@ -866,7 +870,7 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       const data = (await response.json()) as ListChannelsResponse;
       // All channels should belong to the same user in this test context
       // In a real scenario, we'd verify user isolation
-      expect(Array.isArray(data.channels)).toBe(true);
+      expect(Array.isArray(data.items)).toBe(true);
     });
 
     it("Should handle unsupported HTTP methods gracefully", async () => {

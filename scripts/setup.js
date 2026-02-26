@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const readline = require('readline');
+const readline = require('node:readline');
 const {
   checkDependencies,
   copyEnvFiles,
@@ -16,14 +16,14 @@ const {
 } = require('./setup-utils');
 
 // Parse command line arguments
-const args = process.argv.slice(2);
+const args = new Set(process.argv.slice(2));
 
 // Check for flags
 const flags = {
-  force: args.includes('--force') || args.includes('-f'),
-  skipDeps: args.includes('--skip-deps'),
-  skipModels: args.includes('--skip-models'),
-  skipDb: args.includes('--skip-db')
+  force: args.has('--force') || args.has('-f'),
+  skipDeps: args.has('--skip-deps'),
+  skipModels: args.has('--skip-models'),
+  skipDb: args.has('--skip-db')
 };
 
 // Create readline interface for prompts

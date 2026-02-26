@@ -137,7 +137,6 @@
     "apps/frontend/public/sw.js",
     "apps/frontend/public/workbox-*.js",
     "apps/frontend/src/routeTree.gen.ts",
-    "scripts/**",
     "snippets/**"
   ]
 }

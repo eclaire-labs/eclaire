@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
-const { execSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const readline = require('node:readline');
+const { execSync } = require('node:child_process');
 
 // Colors for console output
 const colors = {
@@ -75,13 +75,13 @@ function getDirectoryStats(dirPath) {
 
   try {
     const sizeResult = execSync(`du -sk "${dirPath}" | awk '{print $1 * 1024}'`, { encoding: 'utf-8' });
-    const size = parseInt(sizeResult.trim());
+    const size = parseInt(sizeResult.trim(), 10);
 
     const countResult = execSync(`find "${dirPath}" -type f | wc -l`, { encoding: 'utf-8' });
-    const fileCount = parseInt(countResult.trim());
+    const fileCount = parseInt(countResult.trim(), 10);
 
     return { size, fileCount };
-  } catch (error) {
+  } catch (_error) {
     return { fileCount: 0, size: 0 };
   }
 }
@@ -134,7 +134,7 @@ async function restoreDatabase(backupDir, dryRun = false) {
       // Try to resolve the hostname, if it fails, we're likely on the host machine
       try {
         execSync(`nslookup ${host}`, { stdio: 'pipe' });
-      } catch (error) {
+      } catch (_error) {
         // Hostname doesn't resolve, use localhost instead
         host = 'localhost';
         console.log(`${colors.cyan}ℹ️${colors.reset}  Resolved Docker hostname ${url.hostname} to localhost`);
@@ -155,7 +155,7 @@ async function restoreDatabase(backupDir, dryRun = false) {
         env,
         stdio: ['pipe', 'pipe', 'pipe']
       });
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors if there are no active connections or database doesn't exist
     }
 
@@ -306,7 +306,7 @@ function showRestorePreview(backupDir) {
 
   if (isTimestamp) {
     // Parse timestamp
-    const timestamp = backupName.replace(/T/, ' ').replace(/-/g, ':').replace('Z', '');
+    const _timestamp = backupName.replace(/T/, ' ').replace(/-/g, ':').replace('Z', '');
     const backupDate = new Date(backupName.replace(/-/g, ':').replace('T', 'T').replace('Z', 'Z'));
     console.log(`${colors.cyan}Backup:${colors.reset} ${backupName} (${backupDate.toLocaleString()})`);
   } else {

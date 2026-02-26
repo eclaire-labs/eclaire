@@ -1,8 +1,8 @@
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
-const { execSync } = require('child_process');
-const crypto = require('crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const readline = require('node:readline');
+const { execSync } = require('node:child_process');
+const crypto = require('node:crypto');
 
 // ANSI color codes
 const colors = {
@@ -50,7 +50,7 @@ async function selectFromList(prompt, options, defaultIndex = 0) {
       process.stdin.setRawMode(true);
     }
 
-    const onKeypress = (str, key) => {
+    const onKeypress = (_str, key) => {
       if (key.name === 'up') {
         selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : options.length - 1;
         renderMenu();

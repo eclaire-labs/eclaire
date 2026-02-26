@@ -26,6 +26,9 @@ import { createMockLoggerFactory } from "./setup.js";
 // Mock the logger module
 vi.mock("../logger.js", () => ({
   createAILogger: () => createMockLoggerFactory().factory("ai-tools"),
+  createLazyLogger: () => () => createMockLoggerFactory().factory("ai-tools"),
+  getErrorMessage: (error: unknown) =>
+    error instanceof Error ? error.message : String(error ?? "Unknown error"),
 }));
 
 describe("Tool Utilities", () => {

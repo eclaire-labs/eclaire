@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
-const { execSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const readline = require('node:readline');
+const { execSync } = require('node:child_process');
 
 // Colors for console output
 const colors = {
@@ -44,13 +44,13 @@ function getDirectoryStats(dirPath) {
 
   try {
     const sizeResult = execSync(`du -sk "${dirPath}" | awk '{print $1 * 1024}'`, { encoding: 'utf-8' });
-    const size = parseInt(sizeResult.trim());
+    const size = parseInt(sizeResult.trim(), 10);
 
     const countResult = execSync(`find "${dirPath}" -type f | wc -l`, { encoding: 'utf-8' });
-    const fileCount = parseInt(countResult.trim());
+    const fileCount = parseInt(countResult.trim(), 10);
 
     return { size, fileCount };
-  } catch (error) {
+  } catch (_error) {
     return { fileCount: 0, size: 0 };
   }
 }
@@ -161,7 +161,7 @@ async function dropDatabase(dryRun = false) {
       // Try to resolve the hostname, if it fails, we're likely on the host machine
       try {
         execSync(`nslookup ${host}`, { stdio: 'pipe' });
-      } catch (error) {
+      } catch (_error) {
         // Hostname doesn't resolve, use localhost instead
         host = 'localhost';
         console.log(`${colors.cyan}ℹ️${colors.reset}  Resolved Docker hostname ${url.hostname} to localhost`);
@@ -182,7 +182,7 @@ async function dropDatabase(dryRun = false) {
         env,
         stdio: ['pipe', 'pipe', 'pipe']
       });
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors if there are no active connections or database doesn't exist
     }
 
@@ -357,7 +357,7 @@ async function performCleanup(options = {}) {
   console.log(`\n${colors.bright}${colors.cyan}🚀 Starting cleanup process...${colors.reset}\n`);
 
   let successCount = 0;
-  let totalOperations = 4;
+  const totalOperations = 4;
 
   // 1. Drop database
   if (await dropDatabase(dryRun)) {
@@ -403,9 +403,9 @@ async function performCleanup(options = {}) {
 }
 
 // Parse command line arguments
-const args = process.argv.slice(2);
-const showHelp = args.includes('--help') || args.includes('-h');
-const dryRun = args.includes('--dry-run');
+const args = new Set(process.argv.slice(2));
+const showHelp = args.has('--help') || args.has('-h');
+const dryRun = args.has('--dry-run');
 
 if (showHelp) {
   console.log(`${colors.bright}Eclaire Cleanup Script${colors.reset}`);
