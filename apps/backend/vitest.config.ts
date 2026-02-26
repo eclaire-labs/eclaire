@@ -1,5 +1,5 @@
 import path from "node:path";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -12,14 +12,9 @@ export default defineConfig({
       NODE_ENV: "test",
     },
     setupFiles: ["./src/lib/env-loader.ts"],
-    // Default: exclude integration tests (they require a running server)
     exclude: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/dist-typecheck/**",
-      "**/.{idea,git,cache,output,temp}/**",
-      "**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*",
-      "src/tests/integration/**", // Integration tests require running server
+      ...configDefaults.exclude,
+      "src/tests/integration/**",
     ],
   },
 });

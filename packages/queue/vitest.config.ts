@@ -4,7 +4,6 @@ export default defineConfig({
   test: {
     include: ["src/tests/**/*.test.ts"],
     exclude: [
-      "**/node_modules/**",
       "**/dist/**",
       "src/tests/driver-bullmq/**", // BullMQ tests require Redis
     ],
