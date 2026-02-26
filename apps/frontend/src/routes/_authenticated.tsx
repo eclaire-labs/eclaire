@@ -6,32 +6,9 @@ import {
 } from "@tanstack/react-router";
 import { AlertCircle, Home, RefreshCw } from "lucide-react";
 import { Suspense } from "react";
+import { AuthLoadingSkeleton } from "@/components/auth/AuthLoadingSkeleton";
 import { MainLayoutClient } from "@/components/dashboard/main-layout-client";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-
-function AuthLoadingSkeleton() {
-  return (
-    <div className="flex flex-col h-screen">
-      <div className="h-14 border-b bg-background flex items-center px-4">
-        <Skeleton className="h-8 w-32" />
-        <div className="flex-1" />
-        <Skeleton className="h-8 w-8 rounded-full" />
-      </div>
-      <div className="flex flex-1">
-        <div className="w-48 border-r bg-background p-3 space-y-2">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
-        <div className="flex-1 p-6 space-y-4">
-          <Skeleton className="h-9 w-64" />
-          <Skeleton className="h-40 w-full" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function RouteErrorComponent({ error }: { error: Error }) {
   const router = useRouter();

@@ -13,9 +13,13 @@ function PageLoading() {
 }
 
 export const Route = createFileRoute("/auth/login")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    callbackUrl: (search.callbackUrl as string) || "/dashboard",
-  }),
+  validateSearch: (search: Record<string, unknown>) => {
+    const raw = (search.callbackUrl as string) || "/dashboard";
+    // Prevent open redirect: only allow relative paths
+    const callbackUrl =
+      raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";
+    return { callbackUrl };
+  },
   component: () => (
     <Suspense fallback={<PageLoading />}>
       <LoginPage />

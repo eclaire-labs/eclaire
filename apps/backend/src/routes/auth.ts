@@ -100,11 +100,6 @@ authRoutes.all("/*", async (c) => {
       "Auth handler failed",
     );
 
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    return c.json(
-      { error: "Authentication failed", details: errorMessage },
-      500,
-    );
+    return c.json({ error: "Authentication failed" }, 500);
   }
 });

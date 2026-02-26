@@ -100,8 +100,16 @@ app.use(
   }),
 );
 
-// Session middleware - this runs on every request to inject user/session into context
+// Session middleware - runs on every request to inject user/session into context
+// Skips public endpoints that never need session data
 app.use("*", async (c, next) => {
+  const path = c.req.path;
+  if (path === "/health" || path === "/api/health") {
+    c.set("user", null);
+    c.set("session", null);
+    return next();
+  }
+
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
   if (!session) {

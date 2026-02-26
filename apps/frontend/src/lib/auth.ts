@@ -11,22 +11,3 @@ export const { signIn, signOut, signUp, useSession } = authClient;
 
 // Types for Better Auth
 export type Session = typeof authClient.$Infer.Session;
-
-/**
- * Client-side function to get the current session using Better Auth React client.
- * This is a simple wrapper around the imported useSession.
- */
-export function useAuthSession() {
-  return useSession();
-}
-
-/**
- * Utility function for client-side authentication actions
- * This properly uses the Better Auth client SDK
- */
-export const auth = {
-  signIn: authClient.signIn.email,
-  signOut: authClient.signOut,
-  signUp: authClient.signUp.email,
-  // Add other auth methods as needed
-} as const;

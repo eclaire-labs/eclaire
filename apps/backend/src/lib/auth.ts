@@ -10,71 +10,33 @@ import { deleteQueueJobsByUserId } from "./services/user-data.js";
 
 const logger = createChildLogger("auth");
 
-logger.info({}, "Initializing Better Auth configuration");
-logger.debug(
-  {
-    dbLoaded: !!db,
-    schemaLoaded: !!schema,
-  },
-  "DB and schema loading status",
-);
-
-// biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from drizzleAdapter call
-let initializedAdapter;
-try {
-  if (
-    !db ||
-    !schema ||
-    !schema.users ||
-    !schema.sessions ||
-    !schema.accounts ||
-    !schema.verifications
-  ) {
-    logger.error(
-      {
-        dbLoaded: !!db,
-        schemaLoaded: !!schema,
-        usersLoaded: !!schema?.users,
-        sessionsLoaded: !!schema?.sessions,
-        accountsLoaded: !!schema?.accounts,
-        verificationsLoaded: !!schema?.verifications,
-      },
-      "Critical: DB or schema parts are undefined. Adapter initialization will likely fail",
-    );
-    throw new Error("DB or schema not properly loaded for Drizzle adapter.");
-  }
-  // Determine the correct provider based on database type
-  const provider = dbType === "sqlite" ? "sqlite" : "pg";
-
-  logger.info(
-    { dbType, provider },
-    "Configuring Drizzle adapter with provider",
-  );
-
-  initializedAdapter = drizzleAdapter(db, {
-    provider: provider, // Dynamically set based on DATABASE_TYPE
-    schema: {
-      user: schema.users,
-      session: schema.sessions,
-      account: schema.accounts,
-      verification: schema.verifications,
-    },
-  });
-  logger.info({}, "Drizzle adapter initialized successfully");
-} catch (error) {
-  logger.error(
-    {
-      error: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined,
-    },
-    "ERROR initializing Drizzle adapter",
-  );
-  // Consider how to handle this error; perhaps throw it to stop the app
-  // or set initializedAdapter to a state that 'betterAuth' can handle or will clearly show an error.
+if (
+  !db ||
+  !schema ||
+  !schema.users ||
+  !schema.sessions ||
+  !schema.accounts ||
+  !schema.verifications
+) {
+  throw new Error("DB or schema not properly loaded for Drizzle adapter.");
 }
 
+const provider = dbType === "sqlite" ? "sqlite" : "pg";
+
+logger.info({ dbType, provider }, "Configuring Drizzle adapter");
+
+const initializedAdapter = drizzleAdapter(db, {
+  provider,
+  schema: {
+    user: schema.users,
+    session: schema.sessions,
+    account: schema.accounts,
+    verification: schema.verifications,
+  },
+});
+
 export const auth = betterAuth({
-  database: initializedAdapter, // Use the potentially try-catched adapter
+  database: initializedAdapter,
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
@@ -122,7 +84,6 @@ export const auth = betterAuth({
   },
   // Secret is provided by config system (auto-generated in dev, required in production)
   secret: config.security.betterAuthSecret,
-  //basePath: "/api/auth", // Keep this commented out as per previous advice
   trustedOrigins: [
     "http://localhost:3000",
     "http://127.0.0.1:3000",

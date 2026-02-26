@@ -8,7 +8,7 @@
  * Falls back to localhost:3001 if not set
  */
 function getBackendUrl(): string {
-  return ""; // Use relative URLs - requests go through Next.js proxy
+  return ""; // Use relative URLs - requests go through Vite proxy (dev) or same-origin (prod)
 }
 
 /**
