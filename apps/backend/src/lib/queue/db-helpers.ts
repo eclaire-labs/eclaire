@@ -2,7 +2,6 @@
 export {
   type ClaimedJob,
   formatJobResult,
-  getCurrentTimestamp,
   getScheduledTime,
   isJobExpired,
   isJobReady,

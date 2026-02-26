@@ -5,7 +5,7 @@
  * Used by: MLX vision language models running locally on Apple Silicon.
  */
 
-import { createAILogger } from "../logger.js";
+import { createLazyLogger, getErrorMessage } from "../logger.js";
 import type {
   AdapterRequest,
   AdapterRequestParams,
@@ -14,14 +14,7 @@ import type {
 } from "../types.js";
 import type { DialectAdapter } from "./types.js";
 
-// Lazy-initialized logger
-let _logger: ReturnType<typeof createAILogger> | null = null;
-function getLogger() {
-  if (!_logger) {
-    _logger = createAILogger("mlx-native-adapter");
-  }
-  return _logger;
-}
+const getLogger = createLazyLogger("mlx-native");
 
 // =============================================================================
 // MLX NATIVE ADAPTER
@@ -240,7 +233,7 @@ export class MLXNativeAdapter implements DialectAdapter {
           }
         } catch (error) {
           logger.error(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: getErrorMessage(error) },
             "Error transforming MLX stream",
           );
           controller.error(error);

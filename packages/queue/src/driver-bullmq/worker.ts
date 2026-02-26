@@ -2,6 +2,7 @@
  * @eclaire/queue/driver-bullmq - BullMQ Worker implementation
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import {
   type Job as BullMQJob,
   Worker as BullMQWorker,
@@ -286,9 +287,7 @@ export function createBullMQWorker<T = unknown>(
 
         // Handle permanent errors: fail immediately, no retries
         if (isPermanentError(error)) {
-          throw new UnrecoverableError(
-            error instanceof Error ? error.message : String(error),
-          );
+          throw new UnrecoverableError(getErrorMessage(error));
         }
 
         // RetryableError and generic errors: let BullMQ handle retry with backoff
@@ -377,7 +376,7 @@ export function createBullMQWorker<T = unknown>(
         worker = null;
       } catch (error) {
         logger.error(
-          { error: error instanceof Error ? error.message : "Unknown" },
+          { error: getErrorMessage(error) },
           "Error stopping worker",
         );
       }

@@ -4,7 +4,7 @@
  * Helpers for working with native tool calling (function calling) APIs.
  */
 
-import { createAILogger } from "../logger.js";
+import { createLazyLogger, getErrorMessage } from "../logger.js";
 import type { AIMessage, ToolCallResult, ToolDefinition } from "../types.js";
 import type {
   ToolCallSummaryInput,
@@ -13,14 +13,7 @@ import type {
   ToolRegistry,
 } from "./types.js";
 
-// Lazy-initialized logger
-let _logger: ReturnType<typeof createAILogger> | null = null;
-function getLogger() {
-  if (!_logger) {
-    _logger = createAILogger("ai-tools");
-  }
-  return _logger;
-}
+const getLogger = createLazyLogger("native-tools");
 
 // =============================================================================
 // TOOL CALL PARSING
@@ -37,7 +30,7 @@ export function parseToolCallArguments(
   } catch (error) {
     const logger = getLogger();
     logger.warn(
-      { args, error: error instanceof Error ? error.message : "Unknown" },
+      { args, error: getErrorMessage(error) },
       "Failed to parse tool call arguments",
     );
     return null;
@@ -109,14 +102,14 @@ export async function executeToolCall(
     logger.error(
       {
         toolName: name,
-        error: error instanceof Error ? error.message : "Unknown",
+        error: getErrorMessage(error),
       },
       "Tool execution failed",
     );
     return {
       success: false,
       content: "",
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: getErrorMessage(error),
     };
   }
 }

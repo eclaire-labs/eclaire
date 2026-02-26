@@ -108,6 +108,16 @@ export interface StorageLogger {
   error(obj: object, msg?: string): void;
 }
 
+/**
+ * No-op logger for when none is provided
+ */
+export const noopLogger: StorageLogger = {
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+};
+
 // ============================================================================
 // Configuration Types
 // ============================================================================

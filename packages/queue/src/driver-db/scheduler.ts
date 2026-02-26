@@ -8,6 +8,7 @@
 
 // We'll use a simple cron parser - users can provide their own
 // For now, this is a minimal implementation
+import { getErrorMessage } from "@eclaire/core";
 import { CronExpressionParser } from "cron-parser";
 import { and, eq, lte, sql } from "drizzle-orm";
 import type {
@@ -88,7 +89,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
       return interval.next().toDate();
     } catch (error) {
       logger.error(
-        { cron, error: error instanceof Error ? error.message : "Unknown" },
+        { cron, error: getErrorMessage(error) },
         "Invalid cron expression",
       );
       // Fall back to 1 hour from now
@@ -185,7 +186,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
           logger.error(
             {
               scheduleKey: schedule.key,
-              error: error instanceof Error ? error.message : "Unknown",
+              error: getErrorMessage(error),
             },
             "Failed to process schedule",
           );
@@ -193,7 +194,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
       }
     } catch (error) {
       logger.error(
-        { error: error instanceof Error ? error.message : "Unknown" },
+        { error: getErrorMessage(error) },
         "Failed to process schedules",
       );
     }
@@ -272,7 +273,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
         return key;
       } catch (error) {
         logger.error(
-          { key, error: error instanceof Error ? error.message : "Unknown" },
+          { key, error: getErrorMessage(error) },
           "Failed to upsert schedule",
         );
         throw error;
@@ -296,7 +297,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
         return removed;
       } catch (error) {
         logger.error(
-          { key, error: error instanceof Error ? error.message : "Unknown" },
+          { key, error: getErrorMessage(error) },
           "Failed to remove schedule",
         );
         throw error;
@@ -317,7 +318,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
         logger.info({ key, enabled }, "Schedule enabled state changed");
       } catch (error) {
         logger.error(
-          { key, error: error instanceof Error ? error.message : "Unknown" },
+          { key, error: getErrorMessage(error) },
           "Failed to set schedule enabled state",
         );
         throw error;
@@ -349,7 +350,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
         };
       } catch (error) {
         logger.error(
-          { key, error: error instanceof Error ? error.message : "Unknown" },
+          { key, error: getErrorMessage(error) },
           "Failed to get schedule",
         );
         throw error;
@@ -378,7 +379,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
         }));
       } catch (error) {
         logger.error(
-          { queue, error: error instanceof Error ? error.message : "Unknown" },
+          { queue, error: getErrorMessage(error) },
           "Failed to list schedules",
         );
         throw error;

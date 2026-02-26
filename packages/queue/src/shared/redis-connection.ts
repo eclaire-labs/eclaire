@@ -2,6 +2,7 @@
  * Shared Redis connection setup for BullMQ
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import { Redis } from "ioredis";
 import type { QueueLogger } from "../core/types.js";
 
@@ -53,7 +54,7 @@ export function createRedisConnection(
     error: (err: Error) =>
       logger.error(
         {
-          error: err instanceof Error ? err.message : "Unknown error",
+          error: getErrorMessage(err),
           stack: err instanceof Error ? err.stack : undefined,
         },
         `${serviceName} Redis Connection Error`,
@@ -102,7 +103,7 @@ export async function closeRedisConnection(
     logger.debug({}, "Redis connection closed gracefully");
   } catch (error) {
     logger.error(
-      { error: error instanceof Error ? error.message : "Unknown" },
+      { error: getErrorMessage(error) },
       "Error closing Redis connection",
     );
     // Force disconnect if quit fails

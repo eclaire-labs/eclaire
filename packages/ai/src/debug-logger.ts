@@ -7,6 +7,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { getErrorMessage } from "./logger.js";
 
 // Module-level state
 let _debugLogPath: string | null = null;
@@ -85,7 +86,7 @@ export function logDebugEntry(entry: DebugLogEntry): void {
     // Silently fail - we don't want debug logging to break the app
     console.error(
       "[ai-debug] Failed to write debug log:",
-      error instanceof Error ? error.message : error,
+      getErrorMessage(error),
     );
   }
 }

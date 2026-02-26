@@ -2,6 +2,7 @@
  * @eclaire/queue/driver-bullmq - Redis connection management
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import { Redis, type RedisOptions } from "ioredis";
 import type { QueueLogger } from "../core/types.js";
 import type { RedisConfig } from "./types.js";
@@ -120,7 +121,7 @@ export async function closeRedisConnection(
     logger.debug({}, "Redis connection closed gracefully");
   } catch (error) {
     logger.error(
-      { error: error instanceof Error ? error.message : "Unknown" },
+      { error: getErrorMessage(error) },
       "Error closing Redis connection",
     );
     // Force disconnect if quit fails

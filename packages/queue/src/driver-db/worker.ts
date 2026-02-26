@@ -2,6 +2,7 @@
  * @eclaire/queue/driver-db - Database Worker implementation
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import {
   addStagesToList,
   calculateOverallProgress,
@@ -136,7 +137,7 @@ export function createDbWorker<T = unknown>(
             logger.error(
               {
                 jobId: claimed.id,
-                error: err instanceof Error ? err.message : "Unknown",
+                error: getErrorMessage(err),
               },
               "Heartbeat failed",
             );
@@ -361,8 +362,7 @@ export function createDbWorker<T = unknown>(
           );
         }
 
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        const errorMessage = getErrorMessage(error);
         logger.error(
           {
             jobId: claimed.id,
@@ -423,7 +423,7 @@ export function createDbWorker<T = unknown>(
             logger.error(
               {
                 jobId: claimed.id,
-                error: err instanceof Error ? err.message : "Unknown",
+                error: getErrorMessage(err),
               },
               "Unexpected error processing job",
             );
@@ -447,7 +447,7 @@ export function createDbWorker<T = unknown>(
           {
             queue,
             workerId,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: getErrorMessage(error),
           },
           "Error in worker loop",
         );

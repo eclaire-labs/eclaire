@@ -4,6 +4,7 @@
  * Uses BullMQ's native job scheduler (upsertJobScheduler) for recurring jobs.
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import { Queue } from "bullmq";
 import type { ScheduleConfig, Scheduler } from "../core/types.js";
 import { closeRedisConnection, createRedisConnection } from "./connection.js";
@@ -114,7 +115,7 @@ export function createBullMQScheduler(
         return key;
       } catch (error) {
         logger.error(
-          { key, error: error instanceof Error ? error.message : "Unknown" },
+          { key, error: getErrorMessage(error) },
           "Failed to upsert schedule",
         );
         throw error;
@@ -138,7 +139,7 @@ export function createBullMQScheduler(
         return true;
       } catch (error) {
         logger.error(
-          { key, error: error instanceof Error ? error.message : "Unknown" },
+          { key, error: getErrorMessage(error) },
           "Failed to remove schedule",
         );
         throw error;
@@ -197,7 +198,7 @@ export function createBullMQScheduler(
           logger.error(
             {
               queue: queueName,
-              error: error instanceof Error ? error.message : "Unknown",
+              error: getErrorMessage(error),
             },
             "Error closing queue",
           );

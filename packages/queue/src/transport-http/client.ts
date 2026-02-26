@@ -2,6 +2,7 @@
  * @eclaire/queue/transport-http - HTTP client for remote workers
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import axios, { type AxiosInstance } from "axios";
 import type { QueueStats } from "../core/types.js";
 import type { HttpClientConfig, HttpJobResponse } from "./types.js";
@@ -127,7 +128,7 @@ export function createHttpClient(config: HttpClientConfig): HttpQueueClient {
             {
               name,
               workerId,
-              error: error instanceof Error ? error.message : "Unknown",
+              error: getErrorMessage(error),
             },
             "Wait error",
           );
@@ -154,7 +155,7 @@ export function createHttpClient(config: HttpClientConfig): HttpQueueClient {
           {
             name,
             workerId,
-            error: error instanceof Error ? error.message : "Unknown",
+            error: getErrorMessage(error),
           },
           "Claim error",
         );
@@ -176,7 +177,7 @@ export function createHttpClient(config: HttpClientConfig): HttpQueueClient {
           {
             jobId,
             workerId,
-            error: error instanceof Error ? error.message : "Unknown",
+            error: getErrorMessage(error),
           },
           "Heartbeat error",
         );
@@ -193,7 +194,7 @@ export function createHttpClient(config: HttpClientConfig): HttpQueueClient {
           {
             jobId,
             workerId,
-            error: error instanceof Error ? error.message : "Unknown",
+            error: getErrorMessage(error),
           },
           "Complete error",
         );
@@ -219,7 +220,7 @@ export function createHttpClient(config: HttpClientConfig): HttpQueueClient {
           {
             jobId,
             workerId,
-            error: error instanceof Error ? error.message : "Unknown",
+            error: getErrorMessage(error),
           },
           "Fail error",
         );
@@ -249,7 +250,7 @@ export function createHttpClient(config: HttpClientConfig): HttpQueueClient {
             jobId,
             workerId,
             delay,
-            error: error instanceof Error ? error.message : "Unknown",
+            error: getErrorMessage(error),
           },
           "Reschedule error",
         );
@@ -299,7 +300,7 @@ export function createHttpClient(config: HttpClientConfig): HttpQueueClient {
         logger.error(
           {
             name,
-            error: error instanceof Error ? error.message : "Unknown",
+            error: getErrorMessage(error),
           },
           "Stats error",
         );

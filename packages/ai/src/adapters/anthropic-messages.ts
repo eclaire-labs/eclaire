@@ -11,7 +11,7 @@
  * - Streaming uses a different SSE event format
  */
 
-import { createAILogger } from "../logger.js";
+import { createLazyLogger, getErrorMessage } from "../logger.js";
 import type {
   AdapterRequest,
   AdapterRequestParams,
@@ -25,14 +25,7 @@ import type {
 } from "../types.js";
 import type { DialectAdapter } from "./types.js";
 
-// Lazy-initialized logger
-let _logger: ReturnType<typeof createAILogger> | null = null;
-function getLogger() {
-  if (!_logger) {
-    _logger = createAILogger("anthropic-messages-adapter");
-  }
-  return _logger;
-}
+const getLogger = createLazyLogger("anthropic");
 
 // =============================================================================
 // ANTHROPIC MESSAGES ADAPTER
@@ -510,7 +503,7 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
           }
         } catch (error) {
           logger.error(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: getErrorMessage(error) },
             "Error transforming Anthropic stream",
           );
           controller.error(error);

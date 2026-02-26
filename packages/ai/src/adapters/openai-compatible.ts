@@ -5,7 +5,7 @@
  * Used by: OpenAI, OpenRouter, llama.cpp, LM Studio, Ollama, and other compatible providers.
  */
 
-import { createAILogger } from "../logger.js";
+import { createLazyLogger } from "../logger.js";
 import type {
   AdapterRequest,
   AdapterRequestParams,
@@ -17,14 +17,7 @@ import type {
 } from "../types.js";
 import type { DialectAdapter } from "./types.js";
 
-// Lazy-initialized logger
-let _logger: ReturnType<typeof createAILogger> | null = null;
-function getLogger() {
-  if (!_logger) {
-    _logger = createAILogger("openai-compatible-adapter");
-  }
-  return _logger;
-}
+const getLogger = createLazyLogger("openai-compatible");
 
 // =============================================================================
 // OPENAI-COMPATIBLE ADAPTER

@@ -26,16 +26,17 @@ import {
   StorageNotFoundError,
 } from "../../core/errors.js";
 import { isValidKey } from "../../core/keys.js";
-import type {
-  ListOptions,
-  ListResult,
-  ObjectMetadata,
-  Storage,
-  StorageConfig,
-  StorageLogger,
-  StorageObject,
-  StorageStats,
-  WriteOptions,
+import {
+  type ListOptions,
+  type ListResult,
+  noopLogger,
+  type ObjectMetadata,
+  type Storage,
+  type StorageConfig,
+  type StorageLogger,
+  type StorageObject,
+  type StorageStats,
+  type WriteOptions,
 } from "../../core/types.js";
 import {
   deleteMetadata,
@@ -57,16 +58,6 @@ export interface LocalStorageConfig extends StorageConfig {
   /** Directory permissions (default: 0o755) */
   dirMode?: number;
 }
-
-/**
- * No-op logger for when none is provided
- */
-const noopLogger: StorageLogger = {
-  debug: () => {},
-  info: () => {},
-  warn: () => {},
-  error: () => {},
-};
 
 /**
  * Local filesystem storage implementation

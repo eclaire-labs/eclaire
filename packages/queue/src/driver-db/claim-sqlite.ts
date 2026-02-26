@@ -8,6 +8,7 @@
  * Requires SQLite 3.35+ (March 2021) for RETURNING support.
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import { sql } from "drizzle-orm";
 import type { JobStage, QueueLogger } from "../core/types.js";
 import { generateJobId } from "../core/utils.js";
@@ -90,8 +91,7 @@ export async function claimJobSqlite(
     return formatClaimedJob(job);
   } catch (error) {
     // Extract the actual database error from DrizzleQueryError.cause
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = getErrorMessage(error);
     const errorCause =
       error instanceof Error && error.cause
         ? error.cause instanceof Error

@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { getErrorMessage } from "../logger.js";
 import type { ToolExecutionResult } from "../tools/types.js";
 import type { AgentContext, AgentToolDefinition, AnyZodType } from "./types.js";
 
@@ -118,7 +119,7 @@ export async function executeAgentTool<
     return {
       success: false,
       content: "",
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: getErrorMessage(error),
     };
   }
 }

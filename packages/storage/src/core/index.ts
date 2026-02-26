@@ -37,3 +37,4 @@ export type {
   StorageStats,
   WriteOptions,
 } from "./types.js";
+export { noopLogger } from "./types.js";

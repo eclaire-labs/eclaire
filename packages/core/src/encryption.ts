@@ -1,5 +1,7 @@
 import * as crypto from "node:crypto";
 
+import { getErrorMessage } from "./utils.js";
+
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16; // For AES, this is always 16
 
@@ -67,10 +69,7 @@ export function createEncryption(
       // Format: v1:iv:authTag:encryptedData (version prefix for future key rotation)
       return `v1:${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted.toString("hex")}`;
     } catch (error) {
-      logger?.error(
-        { error: error instanceof Error ? error.message : "Unknown error" },
-        "Encryption failed",
-      );
+      logger?.error({ error: getErrorMessage(error) }, "Encryption failed");
       throw new Error("Encryption failed");
     }
   }
@@ -107,7 +106,7 @@ export function createEncryption(
     } catch (error) {
       logger?.error(
         {
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: getErrorMessage(error),
           encryptedTextLength: encryptedText?.length || 0,
         },
         "Decryption failed. The data may be corrupt or the key is wrong.",
@@ -134,7 +133,7 @@ export function createEncryption(
       return true;
     } catch (error) {
       logger?.error(
-        { error: error instanceof Error ? error.message : "Unknown error" },
+        { error: getErrorMessage(error) },
         "Encryption service validation failed",
       );
       throw new Error("Encryption service validation failed");

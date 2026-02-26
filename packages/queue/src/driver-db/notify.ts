@@ -11,6 +11,7 @@
  * - Listener: Used by workers to wait for job availability
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import type { QueueLogger } from "../core/types.js";
 import type { NotifyEmitter, NotifyListener } from "./types.js";
 
@@ -117,7 +118,7 @@ export function createPgNotifyEmitter(
           {
             channel,
             name,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: getErrorMessage(error),
           },
           "Failed to send job notification",
         );
@@ -195,7 +196,7 @@ export function createPgNotifyListener(
             callback();
           } catch (err) {
             logger.error(
-              { error: err instanceof Error ? err.message : "Unknown" },
+              { error: getErrorMessage(err) },
               "Error in notification callback",
             );
           }
@@ -214,7 +215,7 @@ export function createPgNotifyListener(
           logger.error(
             {
               queueName,
-              error: err instanceof Error ? err.message : "Unknown",
+              error: getErrorMessage(err),
             },
             "Error in notification callback",
           );
@@ -254,7 +255,7 @@ export function createPgNotifyListener(
             logger.error(
               {
                 channel,
-                error: err instanceof Error ? err.message : "Unknown",
+                error: getErrorMessage(err),
               },
               "Failed to start listening",
             );
@@ -289,7 +290,7 @@ export function createPgNotifyListener(
           await client.query(`UNLISTEN ${channel}`);
         } catch (err) {
           logger.error(
-            { channel, error: err instanceof Error ? err.message : "Unknown" },
+            { channel, error: getErrorMessage(err) },
             "Failed to unlisten",
           );
         }
@@ -340,7 +341,7 @@ export function createInMemoryNotify(config: { logger: QueueLogger }): {
               callback();
             } catch (err) {
               logger.error(
-                { name, error: err instanceof Error ? err.message : "Unknown" },
+                { name, error: getErrorMessage(err) },
                 "Error in notification callback",
               );
             }
@@ -446,7 +447,7 @@ export function createPollingNotifyListener(
           callback();
         } catch (err) {
           logger.error(
-            { error: err instanceof Error ? err.message : "Unknown" },
+            { error: getErrorMessage(err) },
             "Error in polling notification callback",
           );
         }

@@ -1,6 +1,6 @@
 import path from "node:path";
 
-const mimeMap: { [key: string]: string } = {
+const mimeMap: Record<string, string> = {
   // Images
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
@@ -42,6 +42,15 @@ const mimeMap: { [key: string]: string } = {
   // Other
   ".zip": "application/zip",
 };
+
+/**
+ * Extract a human-readable error message from an unknown error value.
+ */
+export function getErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : String(error ?? "Unknown error");
+}
 
 /**
  * Guesses the MIME type based on the file extension of a filename or path.
@@ -97,62 +106,17 @@ export function isValidUrl(str: string): boolean {
 export function formatToISO8601(
   timestamp: Date | number | string | null | undefined,
 ): string | null {
-  // Return null for missing values
-  if (timestamp === null || timestamp === undefined) {
+  if (timestamp == null) return null;
+
+  const date =
+    timestamp instanceof Date
+      ? timestamp
+      : new Date(timestamp as string | number);
+  if (Number.isNaN(date.getTime())) {
+    console.error("formatToISO8601: Invalid timestamp", { timestamp });
     return null;
   }
-
-  // If it's already a Date object, validate and return its ISO string
-  if (timestamp instanceof Date) {
-    // Check for Invalid Date
-    const time = timestamp.getTime();
-    if (Number.isNaN(time)) {
-      console.error("formatToISO8601: Invalid Date object received", {
-        timestamp,
-      });
-      return null;
-    }
-    return timestamp.toISOString();
-  }
-
-  // Handle numeric timestamps (milliseconds since epoch)
-  if (typeof timestamp === "number") {
-    if (Number.isNaN(timestamp) || !Number.isFinite(timestamp)) {
-      console.error("formatToISO8601: Invalid numeric timestamp", {
-        timestamp,
-      });
-      return null;
-    }
-    const date = new Date(timestamp);
-    const time = date.getTime();
-    if (Number.isNaN(time)) {
-      console.error("formatToISO8601: Number creates invalid Date", {
-        timestamp,
-      });
-      return null;
-    }
-    return date.toISOString();
-  }
-
-  // Handle string timestamps (ISO 8601 strings or numeric strings)
-  if (typeof timestamp === "string") {
-    const date = new Date(timestamp);
-    const time = date.getTime();
-    if (Number.isNaN(time)) {
-      console.error("formatToISO8601: String creates invalid Date", {
-        timestamp,
-      });
-      return null;
-    }
-    return date.toISOString();
-  }
-
-  // Unknown type, return null
-  console.error("formatToISO8601: Unknown timestamp type", {
-    timestamp,
-    type: typeof timestamp,
-  });
-  return null;
+  return date.toISOString();
 }
 
 /**
@@ -171,12 +135,4 @@ export function formatRequiredTimestamp(
     throw new Error(`Invalid required timestamp: ${timestamp}`);
   }
   return result;
-}
-
-/**
- * Get current timestamp as a Date object
- * @returns Date object representing the current time
- */
-export function getCurrentTimestamp(): Date {
-  return new Date();
 }

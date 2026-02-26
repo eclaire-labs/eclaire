@@ -49,32 +49,24 @@ export const generateStorageId = (extension?: string) => {
 /**
  * Type guards for ID validation
  */
-export const isValidUserId = (id: string): boolean =>
-  /^user-[A-Za-z0-9]{15}$/.test(id);
-export const isValidTaskId = (id: string): boolean =>
-  /^task-[A-Za-z0-9]{15}$/.test(id);
-export const isValidBookmarkId = (id: string): boolean =>
-  /^bm-[A-Za-z0-9]{15}$/.test(id);
-export const isValidDocumentId = (id: string): boolean =>
-  /^doc-[A-Za-z0-9]{15}$/.test(id);
-export const isValidPhotoId = (id: string): boolean =>
-  /^photo-[A-Za-z0-9]{15}$/.test(id);
-export const isValidNoteId = (id: string): boolean =>
-  /^note-[A-Za-z0-9]{15}$/.test(id);
-export const isValidTagId = (id: string): boolean =>
-  /^tag-[A-Za-z0-9]{15}$/.test(id);
-export const isValidHistoryId = (id: string): boolean =>
-  /^hist-[A-Za-z0-9]{15}$/.test(id);
-export const isValidApiKeyId = (id: string): boolean =>
-  /^key-[A-Za-z0-9]{15}$/.test(id);
-export const isValidConversationId = (id: string): boolean =>
-  /^conv-[A-Za-z0-9]{15}$/.test(id);
-export const isValidMessageId = (id: string): boolean =>
-  /^msg-[A-Za-z0-9]{15}$/.test(id);
-export const isValidTaskCommentId = (id: string): boolean =>
-  /^tc-[A-Za-z0-9]{15}$/.test(id);
-export const isValidChannelId = (id: string): boolean =>
-  /^ch-[A-Za-z0-9]{15}$/.test(id);
+function createIdValidator(prefix: string): (id: string) => boolean {
+  const regex = new RegExp(`^${prefix}-[A-Za-z0-9]{${STANDARD_LENGTH}}$`);
+  return (id: string) => regex.test(id);
+}
+
+export const isValidUserId = createIdValidator("user");
+export const isValidTaskId = createIdValidator("task");
+export const isValidBookmarkId = createIdValidator("bm");
+export const isValidDocumentId = createIdValidator("doc");
+export const isValidPhotoId = createIdValidator("photo");
+export const isValidNoteId = createIdValidator("note");
+export const isValidTagId = createIdValidator("tag");
+export const isValidHistoryId = createIdValidator("hist");
+export const isValidApiKeyId = createIdValidator("key");
+export const isValidConversationId = createIdValidator("conv");
+export const isValidMessageId = createIdValidator("msg");
+export const isValidTaskCommentId = createIdValidator("tc");
+export const isValidChannelId = createIdValidator("ch");
 
 /**
  * Utility to extract entity type from ID

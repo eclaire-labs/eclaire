@@ -9,7 +9,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { createAILogger } from "./logger.js";
+import { createLazyLogger, getErrorMessage } from "./logger.js";
 import type {
   AIContext,
   Dialect,
@@ -117,14 +117,7 @@ export function getDialectEndpoint(
   return overridePath ?? DIALECT_ENDPOINTS[dialect];
 }
 
-// Lazy-initialized logger
-let _logger: ReturnType<typeof createAILogger> | null = null;
-function getLogger() {
-  if (!_logger) {
-    _logger = createAILogger("ai-config");
-  }
-  return _logger;
-}
+const getLogger = createLazyLogger("ai-config");
 
 // =============================================================================
 // CONFIG PATH (set via initAI)
@@ -176,7 +169,6 @@ export function clearConfigCaches(): void {
   providersConfigCache = null;
   modelsConfigCache = null;
   selectionConfigCache = null;
-  _logger = null; // Also clear logger cache
   getLogger().debug({}, "Configuration caches cleared");
 }
 
@@ -224,8 +216,7 @@ export function loadProvidersConfiguration(): ProvidersConfiguration {
 
     return providersConfigCache;
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = getErrorMessage(error);
     const isFileNotFound = errorMessage.includes("ENOENT");
     logger.error(
       { error: errorMessage },
@@ -274,8 +265,7 @@ export function loadModelsConfiguration(): ModelsConfiguration {
 
     return modelsConfigCache;
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = getErrorMessage(error);
     const isFileNotFound = errorMessage.includes("ENOENT");
     logger.error(
       { error: errorMessage },
@@ -323,8 +313,7 @@ export function loadSelectionConfiguration(): SelectionConfiguration {
 
     return selectionConfigCache;
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = getErrorMessage(error);
     const isFileNotFound = errorMessage.includes("ENOENT");
     logger.error(
       { error: errorMessage },
@@ -352,7 +341,7 @@ export function getActiveModelIdForContext(context: AIContext): string | null {
     logger.warn(
       {
         context,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: getErrorMessage(error),
       },
       "Failed to get active model ID for context",
     );
@@ -390,7 +379,7 @@ export function getActiveModelForContext(
     logger.warn(
       {
         context,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: getErrorMessage(error),
       },
       "Failed to get active model for context",
     );
@@ -410,7 +399,7 @@ export function getModelConfigById(modelId: string): ModelConfig | null {
     logger.warn(
       {
         modelId,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: getErrorMessage(error),
       },
       "Failed to get model config by ID",
     );
@@ -430,7 +419,7 @@ export function getProviderConfig(providerId: string): ProviderConfig | null {
     logger.warn(
       {
         providerId,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: getErrorMessage(error),
       },
       "Failed to get provider config",
     );
@@ -603,7 +592,7 @@ export function getCurrentModelConfig(context: AIContext = "backend"): {
     logger.error(
       {
         context,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: getErrorMessage(error),
       },
       "Failed to get current model configuration",
     );
@@ -762,7 +751,7 @@ export function validateAIConfigOnStartup(): void {
             {
               context,
               modelId,
-              error: error instanceof Error ? error.message : "Unknown",
+              error: getErrorMessage(error),
             },
             `AI config warning for ${context} context`,
           );
@@ -773,7 +762,7 @@ export function validateAIConfigOnStartup(): void {
     logger.info({}, "AI configuration validated on startup");
   } catch (error) {
     logger.error(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      { error: getErrorMessage(error) },
       "AI configuration validation failed on startup",
     );
     throw error;
@@ -793,76 +782,65 @@ function getConfigFilePath(filename: string): string {
 }
 
 /**
- * Save providers configuration to config/ai/providers.json
+ * Generic helper to save a JSON config file with logging and caching.
  */
+function saveConfigFile<T>(
+  filename: string,
+  config: T,
+  setCache: (c: T) => void,
+  label: string,
+): void {
+  const logger = getLogger();
+  try {
+    const configPath = getConfigFilePath(filename);
+    const configDir = path.dirname(configPath);
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    setCache(config);
+    logger.info({ configPath }, `${label} saved`);
+  } catch (error) {
+    logger.error({ error: getErrorMessage(error) }, `Failed to save ${label}`);
+    throw error;
+  }
+}
+
 export function saveProvidersConfiguration(
   config: ProvidersConfiguration,
 ): void {
-  const logger = getLogger();
-  try {
-    const configPath = getConfigFilePath("providers.json");
-    const configDir = path.dirname(configPath);
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
-    }
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-    providersConfigCache = config;
-    logger.info({ configPath }, "Providers configuration saved");
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to save providers configuration",
-    );
-    throw error;
-  }
+  saveConfigFile(
+    "providers.json",
+    config,
+    (c) => {
+      providersConfigCache = c;
+    },
+    "Providers configuration",
+  );
 }
 
-/**
- * Save models configuration to config/ai/models.json
- */
 export function saveModelsConfiguration(config: ModelsConfiguration): void {
-  const logger = getLogger();
-  try {
-    const configPath = getConfigFilePath("models.json");
-    const configDir = path.dirname(configPath);
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
-    }
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-    modelsConfigCache = config;
-    logger.info({ configPath }, "Models configuration saved");
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to save models configuration",
-    );
-    throw error;
-  }
+  saveConfigFile(
+    "models.json",
+    config,
+    (c) => {
+      modelsConfigCache = c;
+    },
+    "Models configuration",
+  );
 }
 
-/**
- * Save selection configuration to config/ai/selection.json
- */
 export function saveSelectionConfiguration(
   config: SelectionConfiguration,
 ): void {
-  const logger = getLogger();
-  try {
-    const configPath = getConfigFilePath("selection.json");
-    const configDir = path.dirname(configPath);
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
-    }
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-    selectionConfigCache = config;
-    logger.info({ configPath }, "Selection configuration saved");
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to save selection configuration",
-    );
-    throw error;
-  }
+  saveConfigFile(
+    "selection.json",
+    config,
+    (c) => {
+      selectionConfigCache = c;
+    },
+    "Selection configuration",
+  );
 }
 
 // =============================================================================

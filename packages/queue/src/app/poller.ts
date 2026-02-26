@@ -3,6 +3,7 @@
  * Workers poll the backend API to fetch and process jobs
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import axios from "axios";
 import type { DatabaseJob, PollingConfig } from "./types.js";
 
@@ -83,7 +84,7 @@ export async function startPolling(config: PollingConfig): Promise<void> {
             logger.error(
               {
                 jobId: job.id,
-                error: err instanceof Error ? err.message : "Unknown error",
+                error: getErrorMessage(err),
               },
               "Failed to send heartbeat",
             );
@@ -104,7 +105,7 @@ export async function startPolling(config: PollingConfig): Promise<void> {
               jobId: job.id,
               assetType,
               assetId: job.asset_id,
-              error: error instanceof Error ? error.message : "Unknown error",
+              error: getErrorMessage(error),
               stack: error instanceof Error ? error.stack : undefined,
             },
             "Job processing failed",
@@ -156,7 +157,7 @@ export async function startPolling(config: PollingConfig): Promise<void> {
         logger.error(
           {
             assetType,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: getErrorMessage(error),
           },
           "Polling error",
         );

@@ -2,6 +2,7 @@
  * @eclaire/queue/driver-bullmq - BullMQ QueueClient implementation
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import { type JobsOptions, Queue } from "bullmq";
 import { JobAlreadyActiveError } from "../core/errors.js";
 import { initializeStages } from "../core/progress.js";
@@ -243,7 +244,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           {
             queue,
             key: options.key,
-            error: error instanceof Error ? error.message : "Unknown",
+            error: getErrorMessage(error),
           },
           "Failed to enqueue job",
         );
@@ -277,7 +278,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
             {
               queue: queueName,
               jobIdOrKey,
-              error: error instanceof Error ? error.message : "Unknown",
+              error: getErrorMessage(error),
             },
             "Queue lookup error during cancel",
           );
@@ -311,7 +312,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
             {
               queue: queueName,
               jobIdOrKey,
-              error: error instanceof Error ? error.message : "Unknown",
+              error: getErrorMessage(error),
             },
             "Queue lookup error during retry",
           );
@@ -374,7 +375,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
             {
               queue: queueName,
               jobIdOrKey,
-              error: error instanceof Error ? error.message : "Unknown",
+              error: getErrorMessage(error),
             },
             "Queue lookup error during getJob",
           );
@@ -413,9 +414,9 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           );
 
           stats.pending += (counts.waiting ?? 0) + (counts.delayed ?? 0);
-          stats.processing += (counts.active ?? 0);
-          stats.completed += (counts.completed ?? 0);
-          stats.failed += (counts.failed ?? 0);
+          stats.processing += counts.active ?? 0;
+          stats.completed += counts.completed ?? 0;
+          stats.failed += counts.failed ?? 0;
           // Note: BullMQ doesn't distinguish 'retry_pending' from 'delayed'.
           // Jobs waiting for retry after failure are in 'delayed' state, same as
           // jobs scheduled for the future. Unlike the DB driver which tracks
@@ -425,7 +426,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           logger.error(
             {
               queue: bullmqQueue.name,
-              error: error instanceof Error ? error.message : "Unknown",
+              error: getErrorMessage(error),
             },
             "Failed to get queue stats",
           );
@@ -448,7 +449,7 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           logger.error(
             {
               queue: queueName,
-              error: error instanceof Error ? error.message : "Unknown",
+              error: getErrorMessage(error),
             },
             "Error closing queue",
           );

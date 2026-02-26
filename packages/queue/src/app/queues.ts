@@ -2,6 +2,7 @@
  * BullMQ queue management
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import type { Logger } from "@eclaire/logger";
 import { Queue } from "bullmq";
 import {
@@ -100,7 +101,7 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
             logger.error(
               {
                 queueName: name,
-                error: error instanceof Error ? error.message : "Unknown error",
+                error: getErrorMessage(error),
                 stack: error instanceof Error ? error.stack : undefined,
               },
               "BullMQ Queue Error",
@@ -112,7 +113,7 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
           logger.error(
             {
               queueName: name,
-              error: error instanceof Error ? error.message : "Unknown error",
+              error: getErrorMessage(error),
               stack: error instanceof Error ? error.stack : undefined,
             },
             "Failed to initialize queue",
@@ -150,7 +151,7 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
           logger.error(
             {
               queueName: name,
-              error: error instanceof Error ? error.message : "Unknown error",
+              error: getErrorMessage(error),
               stack: error instanceof Error ? error.stack : undefined,
             },
             "Error closing queue",
@@ -177,7 +178,7 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
       } catch (error) {
         logger.error(
           {
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: getErrorMessage(error),
             stack: error instanceof Error ? error.stack : undefined,
           },
           "Error quitting Redis connection",

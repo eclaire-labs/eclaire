@@ -5,6 +5,7 @@
  * Uses the queue_jobs table (via driver-db) for job storage.
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import type { DbInstance } from "@eclaire/db";
 import { getRequestId, type Logger } from "@eclaire/logger";
 import type { QueueClient } from "../../core/types.js";
@@ -152,7 +153,7 @@ export function createDatabaseAdapter(
           assetId,
           userId,
           key,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: getErrorMessage(error),
         },
         "Failed to enqueue job",
       );

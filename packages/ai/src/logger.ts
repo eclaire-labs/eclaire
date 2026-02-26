@@ -70,3 +70,29 @@ export function createAILogger(name: string): AILogger {
   _loggerCache.set(name, logger);
   return logger;
 }
+
+/**
+ * Create a lazily-initialized logger for an AI module.
+ *
+ * Replaces the common boilerplate:
+ *   let _logger = null;
+ *   function getLogger() { if (!_logger) _logger = createAILogger("name"); return _logger; }
+ *
+ * Usage: const getLogger = createLazyLogger("ai-client");
+ */
+export function createLazyLogger(name: string): () => AILogger {
+  let logger: AILogger | null = null;
+  return () => {
+    if (!logger) logger = createAILogger(name);
+    return logger;
+  };
+}
+
+/**
+ * Extract a human-readable error message from an unknown error value.
+ */
+export function getErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : String(error ?? "Unknown error");
+}

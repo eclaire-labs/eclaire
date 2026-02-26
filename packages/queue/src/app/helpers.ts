@@ -7,9 +7,6 @@
 
 import type { ClaimedJob } from "./types.js";
 
-// Re-export from @eclaire/core for backwards compatibility
-export { getCurrentTimestamp } from "@eclaire/core";
-
 /**
  * Get scheduled time
  * @param delay - Delay from now (milliseconds)

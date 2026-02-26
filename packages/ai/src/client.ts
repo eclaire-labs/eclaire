@@ -13,7 +13,7 @@
 import { getAdapter } from "./adapters/index.js";
 import { getThinkingPromptPrefix, validateAIConfig } from "./config.js";
 import { isDebugLoggingEnabled, logDebugEntry } from "./debug-logger.js";
-import { createAILogger } from "./logger.js";
+import { createLazyLogger, getErrorMessage } from "./logger.js";
 import { LLMStreamParser } from "./stream-parser.js";
 import { estimateTokenCount } from "./token-estimation.js";
 import type {
@@ -31,14 +31,7 @@ import {
   validateRequestAgainstCapabilities,
 } from "./validation.js";
 
-// Lazy-initialized logger
-let _logger: ReturnType<typeof createAILogger> | null = null;
-function getLogger() {
-  if (!_logger) {
-    _logger = createAILogger("ai-client");
-  }
-  return _logger;
-}
+const getLogger = createLazyLogger("ai-client");
 
 // =============================================================================
 // HELPERS
@@ -53,7 +46,7 @@ function deepCopyForTrace(obj: unknown): Record<string, unknown> {
     return JSON.parse(JSON.stringify(obj)) as Record<string, unknown>;
   } catch (error) {
     logger.warn(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      { error: getErrorMessage(error) },
       "Failed to deep copy object for trace, using shallow copy",
     );
     return { ...(obj as Record<string, unknown>) };
@@ -374,7 +367,7 @@ export async function callAI(
         context,
         provider: provider.name,
         durationMs,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: getErrorMessage(error),
         stack: error instanceof Error ? error.stack : undefined,
       },
       "AI API call failed",
@@ -397,7 +390,7 @@ export async function callAI(
           body: deepCopyForTrace(request.body),
         },
         responseBody: {
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: getErrorMessage(error),
         },
         durationMs,
         usage: undefined,
@@ -424,7 +417,7 @@ export async function callAI(
             maxTokens: options.maxTokens,
           },
         },
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: getErrorMessage(error),
       });
     }
 
@@ -629,7 +622,7 @@ export async function callAIStream(
       {
         context,
         provider: provider.name,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: getErrorMessage(error),
         stack: error instanceof Error ? error.stack : undefined,
       },
       "Streaming AI API call failed",
@@ -653,7 +646,7 @@ export async function callAIStream(
             maxTokens: options.maxTokens,
           },
         },
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: getErrorMessage(error),
       });
     }
 

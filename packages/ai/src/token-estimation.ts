@@ -5,17 +5,10 @@
  */
 
 import { encoding_for_model, get_encoding } from "tiktoken";
-import { createAILogger } from "./logger.js";
+import { createLazyLogger, getErrorMessage } from "./logger.js";
 import type { AIMessage } from "./types.js";
 
-// Lazy-initialized logger
-let _logger: ReturnType<typeof createAILogger> | null = null;
-function getLogger() {
-  if (!_logger) {
-    _logger = createAILogger("token-estimation");
-  }
-  return _logger;
-}
+const getLogger = createLazyLogger("token-estimation");
 
 // =============================================================================
 // TOKEN ESTIMATION
@@ -80,7 +73,7 @@ export function estimateTokenCount(
   } catch (error) {
     logger.warn(
       {
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: getErrorMessage(error),
         model,
       },
       "Failed to estimate tokens with tiktoken, using fallback estimation",

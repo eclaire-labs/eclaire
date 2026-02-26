@@ -5,6 +5,7 @@
  * This eliminates continuous polling by notifying workers immediately when new jobs are enqueued.
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import type { QueueLogger } from "../core/types.js";
 import type { AssetType, JobWaitlistInterface } from "./types.js";
 
@@ -184,7 +185,7 @@ export function createJobWaitlist(
         logger.error(
           {
             assetType,
-            error: error instanceof Error ? error.message : "Unknown",
+            error: getErrorMessage(error),
           },
           "Failed to schedule next wakeup",
         );

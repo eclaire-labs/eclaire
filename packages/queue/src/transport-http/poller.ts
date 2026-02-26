@@ -5,6 +5,7 @@
  * long-polling to process jobs from a remote backend.
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import { isRateLimitError, type RateLimitError } from "../core/errors.js";
 import {
   addStagesToList,
@@ -243,8 +244,7 @@ export function createHttpWorker<T = unknown>(
         );
       } else {
         // Report failure via HTTP
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        const errorMessage = getErrorMessage(error);
         await httpClient.fail(job.id, workerId, errorMessage);
         logger.error(
           { jobId: job.id, queue, attempts: job.attempts, error: errorMessage },
@@ -286,7 +286,7 @@ export function createHttpWorker<T = unknown>(
             logger.error(
               {
                 jobId: jobResponse.id,
-                error: err instanceof Error ? err.message : "Unknown",
+                error: getErrorMessage(err),
               },
               "Unexpected error processing job",
             );

@@ -6,6 +6,7 @@
  * transform queue events to the SSE event format.
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import type { JobEventCallbacks } from "../core/types.js";
 
 /**
@@ -223,7 +224,7 @@ export function createEventCallbacks(
         {
           jobId,
           eventType: event.type,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: getErrorMessage(error),
         },
         "Failed to publish SSE event",
       );
@@ -281,7 +282,7 @@ export function createEventCallbacks(
                 stage,
                 assetType: assetMetadata.assetType,
                 assetId: assetMetadata.assetId,
-                error: error instanceof Error ? error.message : "Unknown error",
+                error: getErrorMessage(error),
               },
               "Failed to process artifacts",
             );

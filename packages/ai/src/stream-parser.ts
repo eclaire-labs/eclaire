@@ -8,16 +8,9 @@
  * - Proper state management for partial content
  */
 
-import { createAILogger } from "./logger.js";
+import { createLazyLogger, getErrorMessage } from "./logger.js";
 
-// Lazy-initialized logger
-let _logger: ReturnType<typeof createAILogger> | null = null;
-function getLogger() {
-  if (!_logger) {
-    _logger = createAILogger("stream-parser");
-  }
-  return _logger;
-}
+const getLogger = createLazyLogger("stream-parser");
 
 // Type definitions
 export interface StreamParseResult {
@@ -671,7 +664,7 @@ export class LLMStreamParser {
           }
         } catch (error) {
           logger.error(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: getErrorMessage(error) },
             "Error processing SSE stream",
           );
           controller.error(error);

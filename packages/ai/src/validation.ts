@@ -5,7 +5,7 @@
  * clear error messages before making API calls.
  */
 
-import { createAILogger } from "./logger.js";
+import { createLazyLogger } from "./logger.js";
 import type {
   AICallOptions,
   AIMessage,
@@ -13,14 +13,7 @@ import type {
   ModelCapabilities,
 } from "./types.js";
 
-// Lazy-initialized logger
-let _logger: ReturnType<typeof createAILogger> | null = null;
-function getLogger() {
-  if (!_logger) {
-    _logger = createAILogger("ai-validation");
-  }
-  return _logger;
-}
+const getLogger = createLazyLogger("validation");
 
 // =============================================================================
 // REQUEST REQUIREMENTS

@@ -6,7 +6,7 @@
  */
 
 import { callAI, callAIStream } from "../client.js";
-import { createAILogger } from "../logger.js";
+import { createLazyLogger, getErrorMessage } from "../logger.js";
 import { LLMStreamParser } from "../stream-parser.js";
 import {
   extractFinalResponse,
@@ -36,14 +36,7 @@ import type {
   ToolLoopAgentConfig,
 } from "./types.js";
 
-// Lazy-initialized logger
-let _logger: ReturnType<typeof createAILogger> | null = null;
-function getLogger() {
-  if (!_logger) {
-    _logger = createAILogger("tool-loop-agent");
-  }
-  return _logger;
-}
+const getLogger = createLazyLogger("tool-loop-agent");
 
 /**
  * ToolLoopAgent orchestrates multi-step AI conversations with tool calling.
@@ -848,8 +841,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
             "Streaming agent execution completed",
           );
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
+          const errorMessage = getErrorMessage(error);
           controller.enqueue({
             type: "error",
             error: errorMessage,

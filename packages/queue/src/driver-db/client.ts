@@ -2,6 +2,7 @@
  * @eclaire/queue/driver-db - Database QueueClient implementation
  */
 
+import { getErrorMessage } from "@eclaire/core";
 import { and, count, eq, or, sql } from "drizzle-orm";
 import {
   isPermanentError,
@@ -179,7 +180,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
           {
             queue,
             key,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: getErrorMessage(error),
           },
           "Failed to enqueue job",
         );
@@ -230,7 +231,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
         logger.error(
           {
             jobIdOrKey,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: getErrorMessage(error),
           },
           "Failed to cancel job",
         );
@@ -295,7 +296,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
         logger.error(
           {
             jobIdOrKey,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: getErrorMessage(error),
           },
           "Failed to retry job",
         );
@@ -326,7 +327,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
         logger.error(
           {
             jobIdOrKey,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: getErrorMessage(error),
           },
           "Failed to get job",
         );
@@ -384,7 +385,7 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
         logger.error(
           {
             queue,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: getErrorMessage(error),
           },
           "Failed to get stats",
         );
