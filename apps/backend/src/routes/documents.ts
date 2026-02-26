@@ -1,20 +1,23 @@
-import { fileTypeFromBuffer } from "file-type";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
-import { registerCommonEndpoints } from "./shared-endpoints.js";
+import { parseSearchFields } from "../lib/search-params.js";
 import {
   countDocuments,
   createDocument,
   deleteDocument,
   findDocuments,
-  getAllDocuments,
   getDocumentAsset,
   getDocumentById,
   reprocessDocument,
   updateDocument,
 } from "../lib/services/documents.js";
+import {
+  detectAndVerifyMimeType,
+  parseUploadMetadata,
+} from "../lib/upload-helpers.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
@@ -42,9 +45,9 @@ import {
   putDocumentRouteDescription,
 } from "../schemas/documents-routes.js";
 import { DOCUMENT_MIMES } from "../types/mime-types.js";
-import type { Context } from "hono";
-import { parseSearchFields } from "../lib/search-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
+import { createAssetResponse } from "./asset-response.js";
+import { registerCommonEndpoints } from "./shared-endpoints.js";
 
 const logger = createChildLogger("documents");
 
@@ -55,28 +58,9 @@ documentsRoutes.get(
   "/",
   describeRoute(getDocumentsRouteDescription),
   withAuth(async (c, userId) => {
-    const queryParams = c.req.query();
-
-    // If no search parameters, return all documents
-    if (Object.keys(queryParams).length === 0) {
-      const documents = await getAllDocuments(userId);
-      return c.json({ items: documents, totalCount: documents.length, limit: documents.length, offset: 0 });
-    }
-
-    // Parse and validate search parameters
-    const params = DocumentSearchParamsSchema.parse({
-      text: queryParams.text || undefined,
-      tags: queryParams.tags || undefined,
-      startDate: queryParams.startDate || undefined,
-      endDate: queryParams.endDate || undefined,
-      limit: queryParams.limit || 50,
-      sortBy: queryParams.sortBy || "createdAt",
-      sortDir: queryParams.sortDir || "desc",
-      dueDateStart: queryParams.dueDateStart || undefined,
-      dueDateEnd: queryParams.dueDateEnd || undefined,
-    });
-
-    const { tags, startDate, endDate, dueDateStart, dueDateEnd } = parseSearchFields(params);
+    const params = DocumentSearchParamsSchema.parse(c.req.query());
+    const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
+      parseSearchFields(params);
 
     const documents = await findDocuments({
       userId,
@@ -114,7 +98,6 @@ documentsRoutes.post(
   describeRoute(postDocumentsRouteDescription),
   withAuth(async (c, userId) => {
     const formData = await c.req.formData();
-    const metadataPart = formData.get("metadata");
     const contentPart = formData.get("content") as File;
 
     if (!contentPart) {
@@ -122,21 +105,11 @@ documentsRoutes.post(
     }
 
     const contentBuffer = Buffer.from(await contentPart.arrayBuffer());
-    const fileTypeResult = await fileTypeFromBuffer(contentBuffer);
-    const verifiedMimeType = fileTypeResult?.mime || contentPart.type;
-
-    // Special handling for Apple iWork files that might be detected as ZIP
-    let finalMimeType = verifiedMimeType;
-    if (verifiedMimeType === "application/zip" && contentPart.name) {
-      const filename = contentPart.name.toLowerCase();
-      if (filename.endsWith(".numbers")) {
-        finalMimeType = "application/vnd.apple.numbers";
-      } else if (filename.endsWith(".pages")) {
-        finalMimeType = "application/vnd.apple.pages";
-      } else if (filename.endsWith(".keynote")) {
-        finalMimeType = "application/vnd.apple.keynote";
-      }
-    }
+    const finalMimeType = await detectAndVerifyMimeType(
+      contentBuffer,
+      contentPart.type,
+      contentPart.name,
+    );
 
     // Validate content type for this specific endpoint
     const isValidDocumentType =
@@ -152,35 +125,23 @@ documentsRoutes.post(
       );
     }
 
-    // Parse the raw metadata first (keep all fields for database storage)
-    let rawMetadata: Record<string, unknown>;
-    try {
-      rawMetadata = JSON.parse((metadataPart as string) || "{}");
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        return c.json({ error: "Invalid metadata JSON format" }, 400);
-      }
-      throw error;
-    }
-
-    // Then validate only the fields we need for our internal logic
+    const rawMetadata = parseUploadMetadata(formData.get("metadata"));
     const validatedMetadata = DocumentMetadataSchema.parse(rawMetadata);
-
-    // Merge: use the raw metadata as base, but overlay our validated fields
     const metadata = { ...rawMetadata, ...validatedMetadata };
 
-    const servicePayload = {
-      content: contentBuffer,
-      metadata: {
-        ...metadata,
-        title: metadata.title || contentPart.name || "Untitled Document",
-        originalFilename: metadata.originalFilename || contentPart.name,
+    const newDocument = await createDocument(
+      {
+        content: contentBuffer,
+        metadata: {
+          ...metadata,
+          title: metadata.title || contentPart.name || "Untitled Document",
+          originalFilename: metadata.originalFilename || contentPart.name,
+        },
+        originalMimeType: finalMimeType,
+        userAgent: c.req.header("User-Agent") || "",
       },
-      originalMimeType: finalMimeType, // Use the corrected MIME type
-      userAgent: c.req.header("User-Agent") || "",
-    };
-
-    const newDocument = await createDocument(servicePayload, userId);
+      userId,
+    );
     return c.json(newDocument, 201);
   }, logger),
 );
@@ -237,14 +198,33 @@ documentsRoutes.patch(
   }, logger),
 );
 
+// Helper to adapt getDocumentAsset results to createAssetResponse options
+function serveDocumentAsset(cacheControl: string) {
+  return (
+    c: Context,
+    asset: {
+      stream: ReadableStream<Uint8Array>;
+      contentLength?: number;
+      mimeType: string;
+      filename: string;
+    },
+  ) =>
+    createAssetResponse(c, {
+      stream: asset.stream,
+      contentType: asset.mimeType,
+      contentLength: asset.contentLength,
+      cacheControl,
+      disposition: { type: "auto", filename: asset.filename },
+    });
+}
+
 // GET /api/documents/:id/file
 documentsRoutes.get(
   "/:id/file",
   describeRoute(getDocumentFileRouteDescription),
   withAuth(async (c, userId) => {
-    const documentId = c.req.param("id");
-    const asset = await getDocumentAsset(documentId, userId, "original");
-    return createAssetResponse(c, asset, "private, max-age=3600");
+    const asset = await getDocumentAsset(c.req.param("id"), userId, "original");
+    return serveDocumentAsset("private, max-age=3600")(c, asset);
   }, logger),
 );
 
@@ -253,9 +233,12 @@ documentsRoutes.get(
   "/:id/thumbnail",
   describeRoute(getDocumentThumbnailRouteDescription),
   withAuth(async (c, userId) => {
-    const documentId = c.req.param("id");
-    const asset = await getDocumentAsset(documentId, userId, "thumbnail");
-    return createAssetResponse(c, asset, "public, max-age=86400");
+    const asset = await getDocumentAsset(
+      c.req.param("id"),
+      userId,
+      "thumbnail",
+    );
+    return serveDocumentAsset("public, max-age=86400")(c, asset);
   }, logger),
 );
 
@@ -264,39 +247,32 @@ documentsRoutes.get(
   "/:id/screenshot",
   describeRoute(getDocumentScreenshotRouteDescription),
   withAuth(async (c, userId) => {
-    const documentId = c.req.param("id");
-    const asset = await getDocumentAsset(documentId, userId, "screenshot");
-    return createAssetResponse(c, asset, "public, max-age=86400");
+    const asset = await getDocumentAsset(
+      c.req.param("id"),
+      userId,
+      "screenshot",
+    );
+    return serveDocumentAsset("public, max-age=86400")(c, asset);
   }, logger),
 );
 
-// GET /api/documents/:id/pdf - Serve the generated PDF version
+// GET /api/documents/:id/pdf
 documentsRoutes.get(
   "/:id/pdf",
   describeRoute(getDocumentPdfRouteDescription),
   withAuth(async (c, userId) => {
-    const documentId = c.req.param("id");
-
-    // Use the generic service function for the 'pdf' asset type
-    const asset = await getDocumentAsset(documentId, userId, "pdf");
-
-    // Use the generic response helper
-    return createAssetResponse(c, asset, "private, max-age=3600");
+    const asset = await getDocumentAsset(c.req.param("id"), userId, "pdf");
+    return serveDocumentAsset("private, max-age=3600")(c, asset);
   }, logger),
 );
 
-// GET /api/documents/:id/content - Serve the extracted content markdown
+// GET /api/documents/:id/content
 documentsRoutes.get(
   "/:id/content",
   describeRoute(getDocumentContentRouteDescription),
   withAuth(async (c, userId) => {
-    const documentId = c.req.param("id");
-
-    // Use the generic service function for the 'content' asset type
-    const asset = await getDocumentAsset(documentId, userId, "content");
-
-    // Use the generic response helper
-    return createAssetResponse(c, asset, "private, max-age=3600");
+    const asset = await getDocumentAsset(c.req.param("id"), userId, "content");
+    return serveDocumentAsset("private, max-age=3600")(c, asset);
   }, logger),
 );
 
@@ -330,48 +306,17 @@ registerCommonEndpoints(documentsRoutes, {
   logger,
 });
 
-/**
- * Creates a streaming asset response with appropriate headers.
- * @param c Hono context
- * @param asset The asset object from the service layer
- * @param cacheControl The Cache-Control header value
- */
-const createAssetResponse = (
-  c: Context,
-  asset: {
-    stream: ReadableStream<Uint8Array>;
-    contentLength?: number;
-    mimeType: string;
-    filename: string;
-  },
-  cacheControl: string,
-) => {
-  const headers = new Headers();
-  headers.set("Content-Type", asset.mimeType);
-  if (asset.contentLength !== undefined) {
-    headers.set("Content-Length", String(asset.contentLength));
-  }
-  headers.set("Cache-Control", cacheControl);
-
-  const viewParam = c.req.query("view");
-  const isInlineView = viewParam === "inline";
-  const disposition = isInlineView ? "inline" : "attachment";
-  headers.set(
-    "Content-Disposition",
-    `${disposition}; filename="${asset.filename}"`,
-  );
-
-  return new Response(asset.stream, { status: 200, headers });
-};
-
 // GET /api/documents/:id/extracted-md
 documentsRoutes.get(
   "/:id/extracted-md",
   describeRoute(getDocumentExtractedMdRouteDescription),
   withAuth(async (c, userId) => {
-    const documentId = c.req.param("id");
-    const asset = await getDocumentAsset(documentId, userId, "extracted-md");
-    return createAssetResponse(c, asset, "private, max-age=3600");
+    const asset = await getDocumentAsset(
+      c.req.param("id"),
+      userId,
+      "extracted-md",
+    );
+    return serveDocumentAsset("private, max-age=3600")(c, asset);
   }, logger),
 );
 
@@ -380,9 +325,12 @@ documentsRoutes.get(
   "/:id/extracted-txt",
   describeRoute(getDocumentExtractedTxtRouteDescription),
   withAuth(async (c, userId) => {
-    const documentId = c.req.param("id");
-    const asset = await getDocumentAsset(documentId, userId, "extracted-txt");
-    return createAssetResponse(c, asset, "private, max-age=3600");
+    const asset = await getDocumentAsset(
+      c.req.param("id"),
+      userId,
+      "extracted-txt",
+    );
+    return serveDocumentAsset("private, max-age=3600")(c, asset);
   }, logger),
 );
 

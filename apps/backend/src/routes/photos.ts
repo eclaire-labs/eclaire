@@ -1,28 +1,28 @@
-import { fileTypeFromBuffer } from "file-type";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
-import { registerCommonEndpoints } from "./shared-endpoints.js";
+import { parseSearchFields } from "../lib/search-params.js";
 import {
-  // CRUD functions
   countPhotos,
   createPhoto,
   deletePhoto,
   extractAndGeocode,
   findPhotos,
-  getAllPhotos,
   getAnalysisStream,
   getContentStream,
   getConvertedStream,
   getOriginalStream,
   getPhotoById,
   getThumbnailStream,
-  // Stream functions (return streams directly)
   getViewStream,
   reprocessPhoto,
   updatePhotoMetadata,
 } from "../lib/services/photos.js";
+import {
+  detectAndVerifyMimeType,
+  parseUploadMetadata,
+} from "../lib/upload-helpers.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
@@ -48,8 +48,9 @@ import {
   putPhotoRouteDescription,
 } from "../schemas/photos-routes.js";
 import { PHOTO_MIMES } from "../types/mime-types.js";
-import { parseSearchFields } from "../lib/search-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
+import { createAssetResponse } from "./asset-response.js";
+import { registerCommonEndpoints } from "./shared-endpoints.js";
 
 const logger = createChildLogger("photos");
 
@@ -60,28 +61,7 @@ photosRoutes.get(
   "/",
   describeRoute(getPhotosRouteDescription),
   withAuth(async (c, userId) => {
-    const queryParams = c.req.query();
-
-    // If no search parameters, return all photos
-    if (Object.keys(queryParams).length === 0) {
-      const photos = await getAllPhotos(userId);
-      return c.json({
-        items: photos,
-        totalCount: photos.length,
-        limit: photos.length,
-        offset: 0,
-      });
-    }
-
-    // Parse and validate search parameters
-    const params = PhotoSearchParamsSchema.parse({
-      text: queryParams.text || undefined,
-      tags: queryParams.tags || undefined,
-      startDate: queryParams.startDate || undefined,
-      endDate: queryParams.endDate || undefined,
-      limit: queryParams.limit || 50,
-    });
-
+    const params = PhotoSearchParamsSchema.parse(c.req.query());
     const { tags, startDate, endDate } = parseSearchFields(params);
 
     const photos = await findPhotos({
@@ -114,7 +94,6 @@ photosRoutes.post(
   describeRoute(postPhotosRouteDescription),
   withAuth(async (c, userId) => {
     const formData = await c.req.formData();
-    const metadataPart = formData.get("metadata");
     const contentPart = formData.get("content") as File;
 
     if (!contentPart) {
@@ -122,21 +101,11 @@ photosRoutes.post(
     }
 
     const contentBuffer = Buffer.from(await contentPart.arrayBuffer());
-    const fileTypeResult = await fileTypeFromBuffer(contentBuffer);
-    const verifiedMimeType = fileTypeResult?.mime || contentPart.type;
-
-    // Special handling for SVG files that might be detected as application/xml
-    let finalMimeType = verifiedMimeType;
-    if (
-      (verifiedMimeType === "application/xml" ||
-        verifiedMimeType === "text/xml") &&
-      contentPart.name
-    ) {
-      const filename = contentPart.name.toLowerCase();
-      if (filename.endsWith(".svg")) {
-        finalMimeType = "image/svg+xml";
-      }
-    }
+    const finalMimeType = await detectAndVerifyMimeType(
+      contentBuffer,
+      contentPart.type,
+      contentPart.name,
+    );
 
     // Validate content type for this specific endpoint
     if (!PHOTO_MIMES.includes(finalMimeType)) {
@@ -148,38 +117,26 @@ photosRoutes.post(
       );
     }
 
-    // Parse the raw metadata first (keep all fields for database storage)
-    let rawMetadata: Record<string, unknown>;
-    try {
-      rawMetadata = JSON.parse((metadataPart as string) || "{}");
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        return c.json({ error: "Invalid metadata JSON format" }, 400);
-      }
-      throw error;
-    }
-
-    // Then validate only the fields we need for our internal logic
+    const rawMetadata = parseUploadMetadata(formData.get("metadata"));
     const validatedMetadata = PhotoMetadataSchema.parse(rawMetadata);
-
-    // Merge: use the raw metadata as base, but overlay our validated fields
     const metadata = { ...rawMetadata, ...validatedMetadata };
 
     const extractedMetadata = await extractAndGeocode(contentBuffer);
 
-    const servicePayload = {
-      content: contentBuffer,
-      metadata: {
-        ...metadata,
-        title: metadata.title || contentPart.name || "Untitled Photo",
-        originalFilename: metadata.originalFilename || contentPart.name,
+    const newPhoto = await createPhoto(
+      {
+        content: contentBuffer,
+        metadata: {
+          ...metadata,
+          title: metadata.title || contentPart.name || "Untitled Photo",
+          originalFilename: metadata.originalFilename || contentPart.name,
+        },
+        originalMimeType: finalMimeType,
+        userAgent: c.req.header("User-Agent") || "",
+        extractedMetadata,
       },
-      originalMimeType: finalMimeType, // Use the corrected MIME type
-      userAgent: c.req.header("User-Agent") || "",
-      extractedMetadata,
-    };
-
-    const newPhoto = await createPhoto(servicePayload, userId);
+      userId,
+    );
     return c.json(newPhoto, 201);
   }, logger),
 );
@@ -259,15 +216,13 @@ photosRoutes.get(
   "/:id/view",
   describeRoute(getPhotoViewRouteDescription),
   withAuth(async (c, userId) => {
-    const photoId = c.req.param("id");
-    const { stream, metadata } = await getViewStream(photoId, userId);
-
-    const headers = new Headers();
-    headers.set("Content-Type", metadata.contentType);
-    headers.set("Content-Length", String(metadata.size));
-    headers.set("Cache-Control", "private, max-age=3600");
-
-    return new Response(stream, { status: 200, headers });
+    const { stream, metadata } = await getViewStream(c.req.param("id"), userId);
+    return createAssetResponse(c, {
+      stream,
+      contentType: metadata.contentType,
+      contentLength: metadata.size,
+      cacheControl: "private, max-age=3600",
+    });
   }, logger),
 );
 
@@ -276,15 +231,16 @@ photosRoutes.get(
   "/:id/thumbnail",
   describeRoute(getPhotoThumbnailRouteDescription),
   withAuth(async (c, userId) => {
-    const photoId = c.req.param("id");
-    const { stream, metadata } = await getThumbnailStream(photoId, userId);
-
-    const headers = new Headers();
-    headers.set("Content-Type", metadata.contentType);
-    headers.set("Content-Length", String(metadata.size));
-    headers.set("Cache-Control", "public, max-age=86400");
-
-    return new Response(stream, { status: 200, headers });
+    const { stream, metadata } = await getThumbnailStream(
+      c.req.param("id"),
+      userId,
+    );
+    return createAssetResponse(c, {
+      stream,
+      contentType: metadata.contentType,
+      contentLength: metadata.size,
+      cacheControl: "public, max-age=86400",
+    });
   }, logger),
 );
 
@@ -293,34 +249,18 @@ photosRoutes.get(
   "/:id/analysis",
   describeRoute(getPhotoAnalysisRouteDescription),
   withAuth(async (c, userId) => {
-    const photoId = c.req.param("id");
     const { stream, metadata, filename } = await getAnalysisStream(
-      photoId,
+      c.req.param("id"),
       userId,
     );
-
-    const headers = new Headers();
-    headers.set("Content-Type", `${metadata.contentType}; charset=utf-8`);
-    headers.set("Content-Length", String(metadata.size));
-    // Disable caching since analysis can be updated when photos are reprocessed
-    headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
-    headers.set("Pragma", "no-cache");
-    headers.set("Expires", "0");
-
-    // Check if inline viewing is requested
-    const viewParam = c.req.query("view");
-    const isInlineView = viewParam === "inline";
-
-    if (isInlineView) {
-      headers.set("Content-Disposition", `inline; filename="${filename}"`);
-    } else {
-      headers.set(
-        "Content-Disposition",
-        `attachment; filename="${filename}"`,
-      );
-    }
-
-    return new Response(stream, { status: 200, headers });
+    return createAssetResponse(c, {
+      stream,
+      contentType: `${metadata.contentType}; charset=utf-8`,
+      contentLength: metadata.size,
+      cacheControl: "no-cache, no-store, must-revalidate",
+      disposition: { type: "auto", filename },
+      extraHeaders: { Pragma: "no-cache", Expires: "0" },
+    });
   }, logger),
 );
 
@@ -328,19 +268,17 @@ photosRoutes.get(
 photosRoutes.get(
   "/:id/original",
   withAuth(async (c, userId) => {
-    const photoId = c.req.param("id");
     const { stream, metadata, filename } = await getOriginalStream(
-      photoId,
+      c.req.param("id"),
       userId,
     );
-
-    const headers = new Headers();
-    headers.set("Content-Type", metadata.contentType);
-    headers.set("Content-Length", String(metadata.size));
-    headers.set("Cache-Control", "private, max-age=3600");
-    headers.set("Content-Disposition", `inline; filename="${filename}"`);
-
-    return new Response(stream, { status: 200, headers });
+    return createAssetResponse(c, {
+      stream,
+      contentType: metadata.contentType,
+      contentLength: metadata.size,
+      cacheControl: "private, max-age=3600",
+      disposition: { type: "inline", filename },
+    });
   }, logger),
 );
 
@@ -348,19 +286,17 @@ photosRoutes.get(
 photosRoutes.get(
   "/:id/converted",
   withAuth(async (c, userId) => {
-    const photoId = c.req.param("id");
     const { stream, metadata, filename } = await getConvertedStream(
-      photoId,
+      c.req.param("id"),
       userId,
     );
-
-    const headers = new Headers();
-    headers.set("Content-Type", metadata.contentType);
-    headers.set("Content-Length", String(metadata.size));
-    headers.set("Cache-Control", "private, max-age=3600");
-    headers.set("Content-Disposition", `inline; filename="${filename}"`);
-
-    return new Response(stream, { status: 200, headers });
+    return createAssetResponse(c, {
+      stream,
+      contentType: metadata.contentType,
+      contentLength: metadata.size,
+      cacheControl: "private, max-age=3600",
+      disposition: { type: "inline", filename },
+    });
   }, logger),
 );
 
@@ -369,31 +305,17 @@ photosRoutes.get(
   "/:id/content",
   describeRoute(getPhotoContentRouteDescription),
   withAuth(async (c, userId) => {
-    const photoId = c.req.param("id");
     const { stream, metadata, filename } = await getContentStream(
-      photoId,
+      c.req.param("id"),
       userId,
     );
-
-    const headers = new Headers();
-    headers.set("Content-Type", `${metadata.contentType}; charset=utf-8`);
-    headers.set("Content-Length", String(metadata.size));
-    headers.set("Cache-Control", "private, max-age=3600");
-
-    // Check if inline viewing is requested
-    const viewParam = c.req.query("view");
-    const isInlineView = viewParam === "inline";
-
-    if (isInlineView) {
-      headers.set("Content-Disposition", `inline; filename="${filename}"`);
-    } else {
-      headers.set(
-        "Content-Disposition",
-        `attachment; filename="${filename}"`,
-      );
-    }
-
-    return new Response(stream, { status: 200, headers });
+    return createAssetResponse(c, {
+      stream,
+      contentType: `${metadata.contentType}; charset=utf-8`,
+      contentLength: metadata.size,
+      cacheControl: "private, max-age=3600",
+      disposition: { type: "auto", filename },
+    });
   }, logger),
 );
 

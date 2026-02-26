@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { createChildLogger } from "../lib/logger.js";
+import { parseSearchFields } from "../lib/search-params.js";
 import {
   countHistory,
   findHistory,
-  getHistory,
   type HistoryAction,
   type HistoryActor,
   type HistoryItemType,
@@ -25,35 +25,9 @@ historyRoutes.get(
   "/",
   describeRoute(getHistoryRouteDescription),
   withAuth(async (c, userId) => {
-    const queryParams = c.req.query();
+    const params = HistorySearchParamsSchema.parse(c.req.query());
+    const { startDate, endDate } = parseSearchFields(params);
 
-    // If no query parameters, return basic history
-    if (Object.keys(queryParams).length === 0) {
-      const historyRecords = await getHistory(userId);
-      return c.json({
-        items: historyRecords,
-        totalCount: historyRecords.length,
-        limit: historyRecords.length,
-        offset: 0,
-      });
-    }
-
-    // Parse and validate query parameters for filtering
-    const params = HistorySearchParamsSchema.parse({
-      action: queryParams.action || undefined,
-      itemType: queryParams.itemType || undefined,
-      actor: queryParams.actor || undefined,
-      startDate: queryParams.startDate || undefined,
-      endDate: queryParams.endDate || undefined,
-      limit: queryParams.limit || 50,
-      offset: queryParams.offset || 0,
-    });
-
-    // Parse dates if provided
-    const startDate = params.startDate ? new Date(params.startDate) : undefined;
-    const endDate = params.endDate ? new Date(params.endDate) : undefined;
-
-    // Search history with filters
     const historyRecords = await findHistory({
       userId,
       action: params.action as HistoryAction,
@@ -65,7 +39,6 @@ historyRoutes.get(
       offset: params.offset,
     });
 
-    // Get total count for pagination
     const totalCount = await countHistory({
       userId,
       action: params.action as HistoryAction,
@@ -75,14 +48,11 @@ historyRoutes.get(
       endDate,
     });
 
-    const limit = params.limit || 50;
-    const offset = params.offset || 0;
-
     return c.json({
       items: historyRecords,
       totalCount,
-      limit,
-      offset,
+      limit: params.limit,
+      offset: params.offset,
     });
   }, logger),
 );

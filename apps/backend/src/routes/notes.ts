@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
-import { registerCommonEndpoints } from "./shared-endpoints.js";
+import { parseSearchFields } from "../lib/search-params.js";
 import {
   countNotes,
   createNoteEntry,
@@ -34,8 +34,8 @@ import {
   postNotesRouteDescription,
   putNoteRouteDescription,
 } from "../schemas/notes-routes.js";
-import { parseSearchFields } from "../lib/search-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
+import { registerCommonEndpoints } from "./shared-endpoints.js";
 
 const logger = createChildLogger("notes");
 
@@ -46,62 +46,28 @@ notesRoutes.get(
   "/",
   describeRoute(getNotesRouteDescription),
   withAuth(async (c, userId) => {
-    const query = c.req.query();
-    const {
-      text,
-      tags,
-      startDate,
-      endDate,
-      dueDateStart,
-      dueDateEnd,
-      limit,
-      offset,
-    } = NoteSearchSchema.parse(query);
-
-    // If no search parameters, return all note entries with pagination
-    if (
-      !text &&
-      !tags &&
-      !startDate &&
-      !endDate &&
-      !dueDateStart &&
-      !dueDateEnd
-    ) {
-      // Use findNotes with no filters to get paginated results
-      const entries = await findNotes({ userId, limit, offset });
-
-      // Get total count for pagination
-      const totalCount = await countNotes({ userId });
-
-      return c.json({
-        items: entries,
-        totalCount,
-        limit,
-        offset,
-      });
-    }
-
-    const parsed = parseSearchFields({ tags, startDate, endDate, dueDateStart, dueDateEnd });
+    const params = NoteSearchSchema.parse(c.req.query());
+    const parsed = parseSearchFields(params);
 
     const entries = await findNotes({
       userId,
-      text,
+      text: params.text,
       ...parsed,
-      limit,
-      offset,
+      limit: params.limit,
+      offset: params.offset,
     });
 
     const totalCount = await countNotes({
       userId,
-      text,
+      text: params.text,
       ...parsed,
     });
 
     return c.json({
       items: entries,
       totalCount,
-      limit,
-      offset,
+      limit: params.limit,
+      offset: params.offset,
     });
   }, logger),
 );
@@ -201,9 +167,7 @@ notesRoutes.post(
     }
 
     // Validate metadata schema
-    const validatedMetadata = NoteMetadataSchema.parse(
-      metadataResult.metadata,
-    );
+    const validatedMetadata = NoteMetadataSchema.parse(metadataResult.metadata);
 
     // Prepare note from upload
     const prepared = await prepareNoteFromUpload(file, validatedMetadata);

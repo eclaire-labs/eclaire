@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
-import { registerCommonEndpoints } from "./shared-endpoints.js";
 import {
   type BookmarkAssetType,
   createBookmarkAndQueueJob,
@@ -36,6 +35,8 @@ import {
   putBookmarkRouteDescription,
 } from "../schemas/bookmarks-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
+import { createAssetResponse } from "./asset-response.js";
+import { registerCommonEndpoints } from "./shared-endpoints.js";
 
 const logger = createChildLogger("bookmarks");
 
@@ -47,7 +48,12 @@ bookmarksRoutes.get(
   describeRoute(getBookmarksRouteDescription),
   withAuth(async (c, userId) => {
     const bookmarks = await getAllBookmarks(userId);
-    return c.json({ items: bookmarks, totalCount: bookmarks.length, limit: bookmarks.length, offset: 0 });
+    return c.json({
+      items: bookmarks,
+      totalCount: bookmarks.length,
+      limit: bookmarks.length,
+      offset: 0,
+    });
   }, logger),
 );
 
@@ -167,10 +173,8 @@ bookmarksRoutes.delete(
 // Helper function to serve a bookmark asset
 const serveBookmarkAsset = (assetType: BookmarkAssetType) =>
   withAuth(async (c, userId) => {
-    const bookmarkId = c.req.param("id");
-
     const { storageId, mimeType } = await getBookmarkAssetDetails(
-      bookmarkId,
+      c.req.param("id"),
       userId,
       assetType,
     );
@@ -178,23 +182,19 @@ const serveBookmarkAsset = (assetType: BookmarkAssetType) =>
     const storage = getStorage();
     const { stream, metadata } = await storage.read(storageId);
 
-    const headers = new Headers();
     // Add charset for text-based content types
     const textTypes = ["text/", "application/json", "application/xml"];
     const needsCharset = textTypes.some((type) => mimeType.startsWith(type));
-    headers.set(
-      "Content-Type",
-      needsCharset ? `${mimeType}; charset=utf-8` : mimeType,
-    );
-    headers.set("Content-Length", String(metadata.size));
-    // Set aggressive caching for favicons and screenshots
-    if (assetType === "favicon" || assetType === "screenshot") {
-      headers.set("Cache-Control", "public, max-age=604800, immutable"); // Cache for 1 week
-    } else {
-      headers.set("Cache-Control", "private, max-age=3600");
-    }
 
-    return new Response(stream, { status: 200, headers });
+    return createAssetResponse(c, {
+      stream,
+      contentType: needsCharset ? `${mimeType}; charset=utf-8` : mimeType,
+      contentLength: metadata.size,
+      cacheControl:
+        assetType === "favicon" || assetType === "screenshot"
+          ? "public, max-age=604800, immutable"
+          : "private, max-age=3600",
+    });
   }, logger);
 
 // Asset endpoints with OpenAPI documentation
@@ -340,9 +340,7 @@ bookmarksRoutes.post(
     }
 
     // Import bookmarks using the service
-    const { importBookmarkFile } = await import(
-      "../lib/services/bookmarks.js"
-    );
+    const { importBookmarkFile } = await import("../lib/services/bookmarks.js");
     const result = await importBookmarkFile(userId, bookmarkData);
 
     return c.json({

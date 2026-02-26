@@ -3,7 +3,7 @@ import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
-import { registerCommonEndpoints } from "./shared-endpoints.js";
+import { parseSearchFields } from "../lib/search-params.js";
 import {
   createTaskComment,
   deleteTaskComment,
@@ -15,14 +15,13 @@ import {
   createTask,
   deleteTask,
   findTasks,
-  getAllTasks,
   getTaskById,
   reprocessTask,
-  type TaskStatus,
   updateTask,
   updateTaskExecutionTrackingWithPermissions,
   updateTaskStatusAsAssistant,
 } from "../lib/services/tasks.js";
+import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
   PartialTaskSchema,
@@ -48,37 +47,20 @@ import {
   putTaskRouteDescription,
 } from "../schemas/tasks-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
-import { parseSearchFields } from "../lib/search-params.js";
-import { withAuth } from "../middleware/with-auth.js";
+import { registerCommonEndpoints } from "./shared-endpoints.js";
 
 const logger = createChildLogger("tasks");
 
 export const tasksRoutes = new Hono<{ Variables: RouteVariables }>();
 
 // GET /api/tasks - Get all tasks or search tasks
-tasksRoutes.get("/", describeRoute(getTasksRouteDescription),
+tasksRoutes.get(
+  "/",
+  describeRoute(getTasksRouteDescription),
   withAuth(async (c, userId) => {
-    const queryParams = c.req.query();
-
-    // If no search parameters, return all tasks
-    if (Object.keys(queryParams).length === 0) {
-      const tasks = await getAllTasks(userId);
-      return c.json({ items: tasks, totalCount: tasks.length, limit: tasks.length, offset: 0 });
-    }
-
-    // Parse and validate search parameters (ZodError caught by withAuth)
-    const params = TaskSearchParamsSchema.parse({
-      text: queryParams.text || undefined,
-      tags: queryParams.tags || undefined,
-      status: (queryParams.status as TaskStatus) || undefined,
-      startDate: queryParams.startDate || undefined,
-      endDate: queryParams.endDate || undefined,
-      dueDateStart: queryParams.dueDateStart || undefined,
-      dueDateEnd: queryParams.dueDateEnd || undefined,
-      limit: queryParams.limit || 50,
-    });
-
-    const { tags, startDate, endDate, dueDateStart, dueDateEnd } = parseSearchFields(params);
+    const params = TaskSearchParamsSchema.parse(c.req.query());
+    const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
+      parseSearchFields(params);
 
     const tasks = await findTasks({
       userId,
