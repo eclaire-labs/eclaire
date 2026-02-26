@@ -105,57 +105,13 @@ export const NotesListResponseSchema = z
     description: "Response containing an array of notes with pagination info",
   });
 
-// Created note response (for POST requests)
-export const CreatedNoteResponseSchema = z
-  .object({
-    id: z.string().meta({
-      description: "Unique identifier for the created note",
-    }),
-
-    title: z.string().meta({
-      description: "Title of the note",
-    }),
-
-    content: z.string().meta({
-      description: "Main content of the note",
-    }),
-
-    description: z.string().meta({
-      description: "Short description or excerpt from the note content",
-    }),
-
-    tags: z.array(z.string()).meta({
-      description: "Tags associated with the note",
-    }),
-
-    createdAt: z.string().meta({
-      description: "ISO 8601 timestamp when note was created",
-    }),
-
-    dueDate: z.string().nullable().meta({
-      description: "Due date for the note in ISO 8601 format (null if not set)",
-    }),
-
-    reviewStatus: reviewStatusSchema.meta({
-      description: "Review status of the note",
-    }),
-
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .nullable()
-      .meta({
-        description: "Flag color for the note (null if not set)",
-      }),
-
-    isPinned: z.boolean().meta({
-      description: "Whether the note is pinned",
-    }),
-
-    originalMimeType: z.string().nullable().optional().meta({
-      description: "Original MIME type if note was created from file upload",
-    }),
-  })
-  .meta({ ref: "CreatedNoteResponse" });
+// Created note response (for POST requests) — omits fields not available at creation time
+export const CreatedNoteResponseSchema = NoteResponseSchema.omit({
+  updatedAt: true,
+  processingStatus: true,
+  fileSize: true,
+  metadata: true,
+}).meta({ ref: "CreatedNoteResponse" });
 
 // Delete success response
 export const NoteDeleteResponseSchema = z

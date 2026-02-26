@@ -1,5 +1,4 @@
-import { resolver } from "hono-openapi";
-import { ErrorResponseSchema, UnauthorizedSchema } from "./all-responses.js";
+import { commonErrors } from "./common.js";
 
 // GET /api/processing-events/stream - Stream processing events
 export const getProcessingEventsStreamRouteDescription = {
@@ -19,21 +18,6 @@ export const getProcessingEventsStreamRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
   },
 };

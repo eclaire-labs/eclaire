@@ -1,12 +1,7 @@
 // schemas/all-routes.ts
 import { resolver } from "hono-openapi";
-import {
-  CreatedItemSchema,
-  ErrorResponseSchema,
-  SearchResponseSchema,
-  UnauthorizedSchema,
-  ValidationErrorSchema,
-} from "./all-responses.js";
+import { CreatedItemSchema, SearchResponseSchema } from "./all-responses.js";
+import { commonErrorsWithValidation } from "./common.js";
 
 export const getAllRouteDescription = {
   tags: ["All Content"],
@@ -22,30 +17,7 @@ export const getAllRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid search parameters",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };
 
@@ -91,29 +63,6 @@ export const postAllRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data or unsupported content type",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };

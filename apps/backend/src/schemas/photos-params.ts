@@ -1,5 +1,6 @@
 // schemas/photos-params.ts
 import z from "zod/v4";
+import { makePartial } from "./common.js";
 
 // Full photo metadata schema for updates
 export const PhotoSchema = z
@@ -93,89 +94,11 @@ export const PhotoSchema = z
     description: "Complete photo metadata for creation or full update",
   });
 
-// Partial photo update schema
-export const PartialPhotoSchema = z
-  .object({
-    title: z
-      .string()
-      .min(1, "Title is required")
-      .optional()
-      .meta({
-        description: "Title of the photo",
-        examples: ["Updated Photo Title"],
-      }),
-
-    description: z
-      .string()
-      .nullable()
-      .optional()
-      .meta({
-        description: "Optional description or notes about the photo",
-        examples: ["Updated description", null],
-      }),
-
-    tags: z
-      .array(z.string())
-      .optional()
-      .meta({
-        description: "Array of tags to categorize the photo",
-        examples: [["updated", "tags"]],
-      }),
-
-    reviewStatus: z
-      .enum(["pending", "accepted", "rejected"])
-      .optional()
-      .meta({
-        description: "Review status of the photo",
-        examples: ["pending", "accepted", "rejected"],
-      }),
-
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .optional()
-      .meta({
-        description: "Flag color for the photo (optional)",
-        examples: ["red", "green", "blue"],
-      }),
-
-    isPinned: z
-      .boolean()
-      .optional()
-      .meta({
-        description: "Whether the photo is pinned",
-        examples: [true, false],
-      }),
-
-    dueDate: z
-      .string()
-      .optional()
-      .nullable()
-      .meta({
-        description: "Due date for the photo in ISO 8601 format",
-        examples: ["2025-07-01T10:00:00Z", null],
-      }),
-
-    deviceId: z
-      .string()
-      .nullable()
-      .optional()
-      .meta({
-        description: "Device ID associated with the photo",
-        examples: ["iphone-12-pro", "camera-001", null],
-      }),
-
-    enabled: z
-      .boolean()
-      .optional()
-      .meta({
-        description: "Whether background processing is enabled for this photo",
-        examples: [true, false],
-      }),
-  })
-  .meta({
-    ref: "PartialPhotoRequest",
-    description: "Partial photo metadata for updates",
-  });
+// Partial photo update schema — all fields optional, defaults stripped
+export const PartialPhotoSchema = makePartial(PhotoSchema).meta({
+  ref: "PartialPhotoRequest",
+  description: "Partial photo metadata for updates",
+});
 
 // Metadata schema for multipart form uploads
 export const PhotoMetadataSchema = z

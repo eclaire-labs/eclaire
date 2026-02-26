@@ -136,85 +136,18 @@ export const DocumentSearchResponseSchema = z
     description: "Search results with pagination metadata",
   });
 
-// Created document response (for POST requests)
-export const CreatedDocumentResponseSchema = z
-  .object({
-    id: z.string().meta({
-      description: "Unique identifier for the created document",
-    }),
-
-    title: z.string().meta({
-      description: "Title of the document",
-    }),
-
-    description: z.string().nullable().meta({
-      description: "Description of the document",
-    }),
-
-    tags: z.array(z.string()).meta({
-      description: "Tags associated with the document",
-    }),
-
-    createdAt: z.string().meta({
-      description: "ISO 8601 timestamp when document was created",
-    }),
-
-    dueDate: z.string().nullable().meta({
-      description:
-        "Due date for the document in ISO 8601 format (null if not set)",
-    }),
-
-    originalFilename: z.string().nullable().meta({
-      description: "Original filename of the uploaded document",
-    }),
-
-    mimeType: z.string().meta({
-      description: "MIME type of the document",
-    }),
-
-    fileSize: z.number().nullable().meta({
-      description: "Size of the document in bytes",
-    }),
-
+// Created document response (for POST requests) — omits fields not available at creation time,
+// restricts processingStatus to initial states
+export const CreatedDocumentResponseSchema = DocumentResponseSchema.omit({
+  updatedAt: true,
+  extractedText: true,
+  pageCount: true,
+  processingStatus: true,
+})
+  .extend({
     processingStatus: z.enum(["pending", "processing"]).meta({
       description:
         "Initial processing status - background jobs will extract text and perform OCR",
-    }),
-
-    reviewStatus: reviewStatusSchema.meta({
-      description: "Review status of the document",
-    }),
-
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .nullable()
-      .meta({
-        description: "Flag color for the document (null if not flagged)",
-      }),
-
-    isPinned: z.boolean().meta({
-      description: "Whether the document is pinned",
-    }),
-
-    fileUrl: z.string().nullable().meta({
-      description: "URL to access the original document file",
-    }),
-
-    thumbnailUrl: z.string().nullable().meta({
-      description: "URL to access the document thumbnail image (800x600 JPG)",
-    }),
-
-    screenshotUrl: z.string().nullable().meta({
-      description:
-        "URL to access the document high-resolution screenshot (1920x1440 JPG)",
-    }),
-
-    pdfUrl: z.string().nullable().meta({
-      description: "URL to access the generated PDF version",
-    }),
-
-    contentUrl: z.string().nullable().meta({
-      description: "URL to access the extracted content (markdown)",
     }),
   })
   .meta({ ref: "CreatedDocumentResponse" });

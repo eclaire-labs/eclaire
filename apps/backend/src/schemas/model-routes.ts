@@ -1,5 +1,5 @@
 import { resolver } from "hono-openapi";
-import { ErrorResponseSchema } from "./all-responses.js";
+import { error500Response } from "./common.js";
 import { CurrentModelResponseSchema } from "./model-responses.js";
 
 export const getCurrentModelRouteDescription = {
@@ -16,13 +16,6 @@ export const getCurrentModelRouteDescription = {
         },
       },
     },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    500: error500Response,
   },
 };

@@ -1,11 +1,11 @@
 // schemas/documents-routes.ts
 import { resolver } from "hono-openapi";
 import {
-  ErrorResponseSchema,
-  UnauthorizedSchema,
-  ValidationErrorSchema,
-} from "./all-responses.js";
-import { requestBodyResolver } from "./common.js";
+  commonErrors,
+  commonErrorsWithValidation,
+  notFoundError,
+  requestBodyResolver,
+} from "./common.js";
 import {
   DocumentFlagUpdateSchema,
   DocumentPinUpdateSchema,
@@ -129,30 +129,7 @@ export const getDocumentsRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid search parameters",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };
 
@@ -198,30 +175,7 @@ export const postDocumentsRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data or unsupported file type",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };
 
@@ -239,30 +193,8 @@ export const getDocumentByIdRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Document not found",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Document", DocumentNotFoundSchema),
   },
 };
 
@@ -289,38 +221,8 @@ export const putDocumentRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Document not found",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Document", DocumentNotFoundSchema),
   },
 };
 
@@ -347,38 +249,8 @@ export const patchDocumentRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Document not found",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Document", DocumentNotFoundSchema),
   },
 };
 
@@ -399,30 +271,8 @@ export const getDocumentFileRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Document or file not found",
-      content: {
-        "application/json": {
-          schema: resolver(FileNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Document or file", FileNotFoundSchema),
   },
 };
 
@@ -449,30 +299,8 @@ export const deleteDocumentRouteDescription = {
     204: {
       description: "Document deleted successfully",
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Document not found",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Document", DocumentNotFoundSchema),
   },
 };
 
@@ -493,30 +321,8 @@ export const getDocumentThumbnailRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Thumbnail not found",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Thumbnail", DocumentNotFoundSchema),
   },
 };
 
@@ -537,30 +343,8 @@ export const getDocumentScreenshotRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Screenshot not found",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Screenshot", DocumentNotFoundSchema),
   },
 };
 
@@ -581,30 +365,8 @@ export const getDocumentPdfRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "PDF not found",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("PDF", DocumentNotFoundSchema),
   },
 };
 
@@ -625,30 +387,8 @@ export const getDocumentContentRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Content not found or not yet extracted",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Content", DocumentNotFoundSchema),
   },
 };
 
@@ -669,30 +409,8 @@ export const getDocumentExtractedMdRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "File not found",
-      content: {
-        "application/json": {
-          schema: resolver(FileNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("File", FileNotFoundSchema),
   },
 };
 
@@ -714,30 +432,8 @@ export const getDocumentExtractedTxtRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "File not found",
-      content: {
-        "application/json": {
-          schema: resolver(FileNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("File", FileNotFoundSchema),
   },
 };
 
@@ -763,38 +459,8 @@ export const patchDocumentReviewRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Document not found",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Document", DocumentNotFoundSchema),
   },
 };
 
@@ -820,38 +486,8 @@ export const patchDocumentFlagRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Document not found",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Document", DocumentNotFoundSchema),
   },
 };
 
@@ -877,37 +513,7 @@ export const patchDocumentPinRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Document not found",
-      content: {
-        "application/json": {
-          schema: resolver(DocumentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Document", DocumentNotFoundSchema),
   },
 };

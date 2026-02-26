@@ -1,6 +1,5 @@
 import { resolver } from "hono-openapi";
-import { UnauthorizedSchema } from "./all-responses.js";
-import { requestBodyResolver } from "./common.js";
+import { error401Response, requestBodyResolver } from "./common.js";
 import { PromptRequestSchema } from "./prompt-params.js";
 import {
   AIAPIErrorSchema,
@@ -42,14 +41,7 @@ export const postPromptRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
+    401: error401Response,
     413: {
       description: "Content too large (max 10MB)",
       content: {

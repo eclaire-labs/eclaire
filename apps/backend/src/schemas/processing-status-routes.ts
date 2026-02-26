@@ -1,5 +1,5 @@
-import { resolver } from "hono-openapi";
-import { ErrorResponseSchema, UnauthorizedSchema } from "./all-responses.js";
+import { ErrorResponseSchema } from "./all-responses.js";
+import { commonErrors, notFoundError } from "./common.js";
 
 // GET /api/processing-status/summary - Get processing status summary
 export const getProcessingStatusSummaryRouteDescription = {
@@ -24,22 +24,7 @@ export const getProcessingStatusSummaryRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
   },
 };
 
@@ -88,22 +73,7 @@ export const getProcessingJobsRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
   },
 };
 
@@ -130,30 +100,8 @@ export const getAssetProcessingStatusRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Asset not found",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Asset", ErrorResponseSchema),
   },
 };
 
@@ -179,22 +127,7 @@ export const postProcessingRetryRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
   },
 };
 
@@ -220,30 +153,8 @@ export const postAssetProcessingRetryRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Asset not found",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Asset", ErrorResponseSchema),
   },
 };
 
@@ -270,29 +181,7 @@ export const putAssetProcessingStatusUpdateRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Asset not found",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Asset", ErrorResponseSchema),
   },
 };

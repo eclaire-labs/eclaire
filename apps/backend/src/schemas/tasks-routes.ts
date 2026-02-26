@@ -2,12 +2,16 @@
 
 import { resolver } from "hono-openapi";
 import z from "zod/v4";
+import { ErrorResponseSchema } from "./all-responses.js";
 import {
-  ErrorResponseSchema,
-  UnauthorizedSchema,
-  ValidationErrorSchema,
-} from "./all-responses.js";
-import { requestBodyResolver, reviewStatusSchema } from "./common.js";
+  commonErrors,
+  commonErrorsWithValidation,
+  flagColorUpdateSchema,
+  isPinnedUpdateSchema,
+  notFoundError,
+  requestBodyResolver,
+  reviewStatusUpdateSchema,
+} from "./common.js";
 import {
   PartialTaskSchema,
   TaskCommentCreateSchema,
@@ -110,30 +114,7 @@ export const getTasksRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid search parameters",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };
 
@@ -159,30 +140,7 @@ export const postTasksRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };
 
@@ -200,30 +158,8 @@ export const getTaskByIdRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Task not found",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };
 
@@ -250,38 +186,8 @@ export const putTaskRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Task not found",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };
 
@@ -308,38 +214,8 @@ export const patchTaskRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Task not found",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };
 
@@ -352,38 +228,10 @@ export const TaskDeleteSuccessSchema = z
   })
   .meta({ ref: "TaskDeleteSuccess" });
 
-// Request schema for review status update
-export const TaskReviewUpdateSchema = z
-  .object({
-    reviewStatus: reviewStatusSchema.meta({
-      description: "New review status for the task",
-      examples: ["accepted", "rejected"],
-    }),
-  })
-  .meta({ ref: "TaskReviewUpdate" });
-
-// Request schema for flag color update
-export const TaskFlagUpdateSchema = z
-  .object({
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .nullable()
-      .meta({
-        description: "Flag color for the task (null to remove flag)",
-        examples: ["red", "green", null],
-      }),
-  })
-  .meta({ ref: "TaskFlagUpdate" });
-
-// Request schema for pin status update
-export const TaskPinUpdateSchema = z
-  .object({
-    isPinned: z.boolean().meta({
-      description: "Whether to pin or unpin the task",
-      examples: [true, false],
-    }),
-  })
-  .meta({ ref: "TaskPinUpdate" });
+// Request schemas for review/flag/pin status updates
+export const TaskReviewUpdateSchema = reviewStatusUpdateSchema("task", "TaskReviewUpdate");
+export const TaskFlagUpdateSchema = flagColorUpdateSchema("task", "TaskFlagUpdate");
+export const TaskPinUpdateSchema = isPinnedUpdateSchema("task", "TaskPinUpdate");
 
 // DELETE /api/tasks/:id - Delete a task
 export const deleteTaskRouteDescription = {
@@ -399,30 +247,8 @@ export const deleteTaskRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Task not found",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };
 
@@ -448,38 +274,8 @@ export const patchTaskReviewRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Task not found",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };
 
@@ -505,38 +301,8 @@ export const patchTaskFlagRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Task not found",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };
 
@@ -562,38 +328,8 @@ export const patchTaskPinRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Task not found",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };
 
@@ -611,30 +347,8 @@ export const getTaskCommentsRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Task not found",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };
 
@@ -660,38 +374,8 @@ export const postTaskCommentRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Task not found",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };
 
@@ -717,38 +401,8 @@ export const putTaskCommentRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Comment not found",
-      content: {
-        "application/json": {
-          schema: resolver(CommentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Comment", CommentNotFoundSchema),
   },
 };
 
@@ -766,30 +420,8 @@ export const deleteTaskCommentRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Comment not found",
-      content: {
-        "application/json": {
-          schema: resolver(CommentNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Comment", CommentNotFoundSchema),
   },
 };
 
@@ -845,14 +477,7 @@ export const putTaskExecutionTrackingRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
+    ...commonErrors,
     403: {
       description: "Unauthorized to update this task",
       content: {
@@ -861,22 +486,7 @@ export const putTaskExecutionTrackingRouteDescription = {
         },
       },
     },
-    404: {
-      description: "Task not found",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };
 
@@ -935,29 +545,7 @@ export const putTaskAssistantStatusRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Task not found or not assigned to assistant",
-      content: {
-        "application/json": {
-          schema: resolver(TaskNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Task", TaskNotFoundSchema),
   },
 };

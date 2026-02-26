@@ -1,6 +1,11 @@
 // schemas/documents-params.ts
 import z from "zod/v4";
-import { reviewStatusSchema } from "./common.js";
+import {
+  flagColorUpdateSchema,
+  isPinnedUpdateSchema,
+  makePartial,
+  reviewStatusUpdateSchema,
+} from "./common.js";
 
 // Full document update schema
 export const DocumentSchema = z
@@ -88,81 +93,11 @@ export const DocumentSchema = z
     description: "Complete document metadata for full update",
   });
 
-// Partial document update schema
-export const PartialDocumentSchema = z
-  .object({
-    title: z
-      .string()
-      .min(1, "Title is required")
-      .optional()
-      .meta({
-        description: "Title of the document",
-        examples: ["Updated Document Title"],
-      }),
-
-    description: z
-      .string()
-      .nullable()
-      .optional()
-      .meta({
-        description: "Optional description or notes about the document",
-        examples: ["Updated description with new information"],
-      }),
-
-    tags: z
-      .array(z.string())
-      .optional()
-      .meta({
-        description: "Array of tags to categorize the document",
-        examples: [["updated", "reviewed"]],
-      }),
-
-    reviewStatus: z
-      .enum(["pending", "accepted", "rejected"])
-      .optional()
-      .meta({
-        description: "Review status of the document",
-        examples: ["pending", "accepted", "rejected"],
-      }),
-
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .optional()
-      .meta({
-        description: "Flag color for the document (optional)",
-        examples: ["red", "green", "blue"],
-      }),
-
-    isPinned: z
-      .boolean()
-      .optional()
-      .meta({
-        description: "Whether the document is pinned",
-        examples: [true, false],
-      }),
-
-    dueDate: z
-      .string()
-      .optional()
-      .nullable()
-      .meta({
-        description: "Due date for the document in ISO 8601 format",
-        examples: ["2025-07-01T10:00:00Z", null],
-      }),
-
-    enabled: z
-      .boolean()
-      .optional()
-      .meta({
-        description:
-          "Whether background processing is enabled for this document",
-        examples: [true, false],
-      }),
-  })
-  .meta({
-    ref: "PartialDocumentRequest",
-    description: "Partial document metadata for updates",
-  });
+// Partial document update schema — all fields optional, defaults stripped
+export const PartialDocumentSchema = makePartial(DocumentSchema).meta({
+  ref: "PartialDocumentRequest",
+  description: "Partial document metadata for updates",
+});
 
 // Document creation metadata schema (for multipart form)
 export const DocumentMetadataSchema = z
@@ -334,45 +269,10 @@ export const DocumentSearchParamsSchema = z
     description: "Search and filter parameters for documents",
   });
 
-// Specialized update schemas
-export const DocumentReviewUpdateSchema = z
-  .object({
-    reviewStatus: reviewStatusSchema.meta({
-      description: "New review status for the document",
-      examples: ["accepted", "rejected"],
-    }),
-  })
-  .meta({
-    ref: "DocumentReviewUpdate",
-    description: "Schema for updating document review status",
-  });
-
-export const DocumentFlagUpdateSchema = z
-  .object({
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .nullable()
-      .meta({
-        description: "Flag color for the document (null to remove flag)",
-        examples: ["red", "green", null],
-      }),
-  })
-  .meta({
-    ref: "DocumentFlagUpdate",
-    description: "Schema for updating document flag color",
-  });
-
-export const DocumentPinUpdateSchema = z
-  .object({
-    isPinned: z.boolean().meta({
-      description: "Whether to pin or unpin the document",
-      examples: [true, false],
-    }),
-  })
-  .meta({
-    ref: "DocumentPinUpdate",
-    description: "Schema for updating document pin status",
-  });
+// Request schemas for review/flag/pin status updates
+export const DocumentReviewUpdateSchema = reviewStatusUpdateSchema("document", "DocumentReviewUpdate");
+export const DocumentFlagUpdateSchema = flagColorUpdateSchema("document", "DocumentFlagUpdate");
+export const DocumentPinUpdateSchema = isPinnedUpdateSchema("document", "DocumentPinUpdate");
 
 // Path parameters
 export const DocumentIdParam = z

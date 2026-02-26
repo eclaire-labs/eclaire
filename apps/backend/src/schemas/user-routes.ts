@@ -1,6 +1,12 @@
 import { resolver } from "hono-openapi";
-import { ErrorResponseSchema, UnauthorizedSchema } from "./all-responses.js";
-import { requestBodyResolver } from "./common.js";
+import { ErrorResponseSchema } from "./all-responses.js";
+import {
+  commonErrors,
+  error401Response,
+  error500Response,
+  notFoundError,
+  requestBodyResolver,
+} from "./common.js";
 import { DeleteAllUserDataSchema, UpdateProfileSchema } from "./user-params.js";
 import {
   DeleteAllUserDataResponseSchema,
@@ -27,30 +33,8 @@ export const getUserProfileRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "User not found",
-      content: {
-        "application/json": {
-          schema: resolver(UserNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("User", UserNotFoundSchema),
   },
 };
 
@@ -86,14 +70,7 @@ export const updateUserProfileRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
+    401: error401Response,
     404: {
       description: "User not found or update failed",
       content: {
@@ -102,14 +79,7 @@ export const updateUserProfileRouteDescription = {
         },
       },
     },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    500: error500Response,
   },
 };
 
@@ -145,30 +115,9 @@ export const deleteAllUserDataRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "User not found",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    401: error401Response,
+    404: notFoundError("User", ErrorResponseSchema),
+    500: error500Response,
   },
 };
 
@@ -194,22 +143,7 @@ export const getUserApiKeyRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
   },
 };
 
@@ -236,22 +170,7 @@ export const postUserApiKeyRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
   },
 };
 
@@ -294,22 +213,7 @@ export const getUserDashboardStatsRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
   },
 };
 
@@ -327,21 +231,7 @@ export const getPublicUserProfileRouteDescription = {
         },
       },
     },
-    404: {
-      description: "User not found",
-      content: {
-        "application/json": {
-          schema: resolver(UserNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    404: notFoundError("User", UserNotFoundSchema),
+    500: error500Response,
   },
 };

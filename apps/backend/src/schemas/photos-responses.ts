@@ -257,44 +257,20 @@ export const PhotoSearchResponseSchema = z
     description: "Search results with pagination information",
   });
 
-// Created photo response (for POST requests)
-export const CreatedPhotoResponseSchema = z
-  .object({
-    id: z.string().meta({
-      description: "Unique identifier for the created photo",
-    }),
-
-    title: z.string().meta({
-      description: "Title of the photo",
-    }),
-
-    description: z.string().nullable().meta({
-      description: "Description of the photo",
-    }),
-
-    tags: z.array(z.string()).meta({
-      description: "Tags associated with the photo",
-    }),
-
-    createdAt: z.string().meta({
-      description: "ISO 8601 timestamp when photo was created",
-    }),
-
-    dueDate: z.string().nullable().meta({
-      description:
-        "Due date for the photo in ISO 8601 format (null if not set)",
-    }),
-
+// Created photo response (for POST requests) — minimal subset of PhotoResponseSchema
+export const CreatedPhotoResponseSchema = PhotoResponseSchema.pick({
+  id: true,
+  title: true,
+  description: true,
+  tags: true,
+  createdAt: true,
+  dueDate: true,
+  mimeType: true,
+  fileSize: true,
+})
+  .extend({
     originalFilename: z.string().nullable().meta({
       description: "Original filename of the uploaded photo",
-    }),
-
-    mimeType: z.string().meta({
-      description: "MIME type of the photo file",
-    }),
-
-    fileSize: z.number().meta({
-      description: "Size of the photo file in bytes",
     }),
   })
   .meta({ ref: "CreatedPhotoResponse" });

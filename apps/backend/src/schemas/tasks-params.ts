@@ -1,5 +1,6 @@
 // schemas/tasks-params.ts
 import z from "zod/v4";
+import { makePartial } from "./common.js";
 
 // Full task creation/update schema
 export const TaskSchema = z
@@ -148,151 +149,11 @@ export const TaskSchema = z
     description: "Complete task data for creation or full update",
   });
 
-// Partial task update schema
-export const PartialTaskSchema = z
-  .object({
-    title: z
-      .string()
-      .min(1, "Title is required")
-      .optional()
-      .meta({
-        description: "Title of the task",
-        examples: ["Updated task title"],
-      }),
-
-    description: z
-      .string()
-      .optional()
-      .nullable()
-      .meta({
-        description: "Optional detailed description of the task",
-        examples: ["Updated task description"],
-      }),
-
-    status: z
-      .enum(["not-started", "in-progress", "completed"])
-      .optional()
-      .meta({
-        description: "Current status of the task",
-        examples: ["completed", "in-progress"],
-      }),
-
-    dueDate: z
-      .string()
-      .optional()
-      .nullable()
-      .meta({
-        description: "Due date for the task in ISO 8601 format",
-        examples: ["2025-07-01T10:00:00Z", null],
-      }),
-
-    assignedToId: z
-      .string()
-      .optional()
-      .meta({
-        description: "User ID of the person assigned to this task",
-        examples: ["user456"],
-      }),
-
-    enabled: z
-      .boolean()
-      .optional()
-      .meta({
-        description: "Whether background processing is enabled for this task",
-        examples: [true, false],
-      }),
-
-    tags: z
-      .array(z.string())
-      .optional()
-      .meta({
-        description: "Array of tags to categorize the task",
-        examples: [["updated", "priority"]],
-      }),
-
-    reviewStatus: z
-      .enum(["pending", "accepted", "rejected"])
-      .optional()
-      .meta({
-        description: "Review status of the task",
-        examples: ["pending", "accepted", "rejected"],
-      }),
-
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .optional()
-      .meta({
-        description: "Flag color for the task (optional)",
-        examples: ["red", "green", "blue"],
-      }),
-
-    isPinned: z
-      .boolean()
-      .optional()
-      .meta({
-        description: "Whether the task is pinned",
-        examples: [true, false],
-      }),
-
-    isRecurring: z
-      .boolean()
-      .optional()
-      .meta({
-        description: "Whether the task should recur based on a schedule",
-        examples: [true, false],
-      }),
-
-    cronExpression: z
-      .string()
-      .optional()
-      .nullable()
-      .meta({
-        description:
-          "Cron expression for task recurrence (required when isRecurring is true)",
-        examples: ["0 9 * * 1", "0 0 1 * *", "0 18 * * 5"],
-      }),
-
-    recurrenceEndDate: z
-      .string()
-      .optional()
-      .nullable()
-      .meta({
-        description: "Optional end date for task recurrence in ISO 8601 format",
-        examples: ["2025-12-31T23:59:59Z", null],
-      }),
-
-    recurrenceLimit: z
-      .number()
-      .int()
-      .positive()
-      .optional()
-      .nullable()
-      .meta({
-        description: "Maximum number of executions for recurring tasks",
-        examples: [5, 10, 100, null],
-      }),
-
-    runImmediately: z
-      .boolean()
-      .optional()
-      .meta({
-        description: "Whether to execute the first recurring job immediately",
-        examples: [true, false],
-      }),
-
-    completedAt: z
-      .string()
-      .optional()
-      .nullable()
-      .meta({
-        description: "Completion time for the task in ISO 8601 format",
-        examples: ["2025-06-15T14:30:00Z", null],
-      }),
-  })
-  .meta({
-    ref: "PartialTaskRequest",
-    description: "Partial task data for updates",
-  });
+// Partial task update schema — all fields optional, defaults stripped
+export const PartialTaskSchema = makePartial(TaskSchema).meta({
+  ref: "PartialTaskRequest",
+  description: "Partial task data for updates",
+});
 
 // Task search/filter parameters schema
 export const TaskSearchParamsSchema = z

@@ -1,11 +1,11 @@
 // schemas/notes-routes.ts
 import { resolver } from "hono-openapi";
 import {
-  ErrorResponseSchema,
-  UnauthorizedSchema,
-  ValidationErrorSchema,
-} from "./all-responses.js";
-import { requestBodyResolver } from "./common.js";
+  commonErrors,
+  commonErrorsWithValidation,
+  notFoundError,
+  requestBodyResolver,
+} from "./common.js";
 import {
   NoteFlagUpdateSchema,
   NotePinUpdateSchema,
@@ -98,22 +98,7 @@ export const getNotesRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
   },
 };
 
@@ -140,30 +125,7 @@ export const postNotesRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data or file type",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };
 
@@ -181,30 +143,8 @@ export const getNoteByIdRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Note not found",
-      content: {
-        "application/json": {
-          schema: resolver(NoteNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Note", NoteNotFoundSchema),
   },
 };
 
@@ -231,38 +171,8 @@ export const putNoteRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Note not found",
-      content: {
-        "application/json": {
-          schema: resolver(NoteNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Note", NoteNotFoundSchema),
   },
 };
 
@@ -288,38 +198,8 @@ export const patchNoteRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Note not found",
-      content: {
-        "application/json": {
-          schema: resolver(NoteNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Note", NoteNotFoundSchema),
   },
 };
 
@@ -337,30 +217,8 @@ export const deleteNoteRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Note not found",
-      content: {
-        "application/json": {
-          schema: resolver(NoteNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Note", NoteNotFoundSchema),
   },
 };
 
@@ -386,30 +244,8 @@ export const patchNoteReviewRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Note not found",
-      content: {
-        "application/json": {
-          schema: resolver(NoteNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Note", NoteNotFoundSchema),
   },
 };
 
@@ -435,30 +271,8 @@ export const patchNoteFlagRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Note not found",
-      content: {
-        "application/json": {
-          schema: resolver(NoteNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Note", NoteNotFoundSchema),
   },
 };
 
@@ -484,29 +298,7 @@ export const patchNotePinRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Note not found",
-      content: {
-        "application/json": {
-          schema: resolver(NoteNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Note", NoteNotFoundSchema),
   },
 };

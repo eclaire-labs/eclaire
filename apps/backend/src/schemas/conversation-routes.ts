@@ -1,6 +1,9 @@
 import { resolver } from "hono-openapi";
-import { UnauthorizedSchema } from "./all-responses.js";
-import { requestBodyResolver } from "./common.js";
+import {
+  error401Response,
+  notFoundError,
+  requestBodyResolver,
+} from "./common.js";
 import {
   CreateConversationSchema,
   UpdateConversationSchema,
@@ -16,6 +19,33 @@ import {
   ListConversationsResponseSchema,
   UpdateConversationResponseSchema,
 } from "./conversation-responses.js";
+
+const conversationServerError = {
+  description: "Internal server error",
+  content: {
+    "application/json": {
+      schema: resolver(ConversationServerErrorSchema),
+    },
+  },
+} as const;
+
+const conversationValidationError = {
+  description: "Invalid request data",
+  content: {
+    "application/json": {
+      schema: resolver(ConversationValidationErrorSchema),
+    },
+  },
+} as const;
+
+const invalidConversationIdError = {
+  description: "Invalid conversation ID",
+  content: {
+    "application/json": {
+      schema: resolver(InvalidConversationIdErrorSchema),
+    },
+  },
+} as const;
 
 // POST /api/conversations - Create new conversation
 export const postConversationRouteDescription = {
@@ -41,30 +71,9 @@ export const postConversationRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ConversationValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ConversationServerErrorSchema),
-        },
-      },
-    },
+    400: conversationValidationError,
+    401: error401Response,
+    500: conversationServerError,
   },
 };
 
@@ -105,22 +114,8 @@ export const getConversationsRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ConversationServerErrorSchema),
-        },
-      },
-    },
+    401: error401Response,
+    500: conversationServerError,
   },
 };
 
@@ -150,38 +145,10 @@ export const getConversationRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid conversation ID",
-      content: {
-        "application/json": {
-          schema: resolver(InvalidConversationIdErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Conversation not found",
-      content: {
-        "application/json": {
-          schema: resolver(ConversationNotFoundErrorSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ConversationServerErrorSchema),
-        },
-      },
-    },
+    400: invalidConversationIdError,
+    401: error401Response,
+    404: notFoundError("Conversation", ConversationNotFoundErrorSchema),
+    500: conversationServerError,
   },
 };
 
@@ -221,37 +188,12 @@ export const putConversationRouteDescription = {
       },
     },
     400: {
+      ...conversationValidationError,
       description: "Invalid request data or conversation ID",
-      content: {
-        "application/json": {
-          schema: resolver(ConversationValidationErrorSchema),
-        },
-      },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Conversation not found",
-      content: {
-        "application/json": {
-          schema: resolver(ConversationNotFoundErrorSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ConversationServerErrorSchema),
-        },
-      },
-    },
+    401: error401Response,
+    404: notFoundError("Conversation", ConversationNotFoundErrorSchema),
+    500: conversationServerError,
   },
 };
 
@@ -281,37 +223,9 @@ export const deleteConversationRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid conversation ID",
-      content: {
-        "application/json": {
-          schema: resolver(InvalidConversationIdErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Conversation not found",
-      content: {
-        "application/json": {
-          schema: resolver(ConversationNotFoundErrorSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ConversationServerErrorSchema),
-        },
-      },
-    },
+    400: invalidConversationIdError,
+    401: error401Response,
+    404: notFoundError("Conversation", ConversationNotFoundErrorSchema),
+    500: conversationServerError,
   },
 };

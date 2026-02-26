@@ -1,11 +1,6 @@
 // schemas/bookmarks-routes.ts
 import { resolver } from "hono-openapi";
 import {
-  ErrorResponseSchema,
-  UnauthorizedSchema,
-  ValidationErrorSchema,
-} from "./all-responses.js";
-import {
   BookmarkSchema,
   CreateBookmarkSchema,
   PartialBookmarkSchema,
@@ -17,7 +12,20 @@ import {
   BookmarksListResponseSchema,
   CreatedBookmarkResponseSchema,
 } from "./bookmarks-responses.js";
-import { requestBodyResolver } from "./common.js";
+import {
+  commonErrors,
+  commonErrorsWithValidation,
+  flagColorUpdateSchema,
+  isPinnedUpdateSchema,
+  notFoundError,
+  requestBodyResolver,
+  reviewStatusUpdateSchema,
+} from "./common.js";
+
+// Request schemas for review/flag/pin status updates
+export const BookmarkReviewUpdateSchema = reviewStatusUpdateSchema("bookmark", "BookmarkReviewUpdate");
+export const BookmarkFlagUpdateSchema = flagColorUpdateSchema("bookmark", "BookmarkFlagUpdate");
+export const BookmarkPinUpdateSchema = isPinnedUpdateSchema("bookmark", "BookmarkPinUpdate");
 
 // GET /api/bookmarks - Get all bookmarks
 export const getBookmarksRouteDescription = {
@@ -33,22 +41,7 @@ export const getBookmarksRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
   },
 };
 
@@ -75,30 +68,7 @@ export const postBookmarksRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };
 
@@ -116,30 +86,8 @@ export const getBookmarkByIdRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Bookmark not found",
-      content: {
-        "application/json": {
-          schema: resolver(BookmarkNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Bookmark", BookmarkNotFoundSchema),
   },
 };
 
@@ -166,38 +114,8 @@ export const putBookmarkRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Bookmark not found",
-      content: {
-        "application/json": {
-          schema: resolver(BookmarkNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Bookmark", BookmarkNotFoundSchema),
   },
 };
 
@@ -224,38 +142,8 @@ export const patchBookmarkRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Bookmark not found",
-      content: {
-        "application/json": {
-          schema: resolver(BookmarkNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Bookmark", BookmarkNotFoundSchema),
   },
 };
 
@@ -282,30 +170,8 @@ export const deleteBookmarkRouteDescription = {
     204: {
       description: "Bookmark deleted successfully",
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Bookmark not found",
-      content: {
-        "application/json": {
-          schema: resolver(BookmarkNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Bookmark", BookmarkNotFoundSchema),
   },
 };
 
@@ -330,30 +196,8 @@ export const createAssetRouteDescription = (
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Asset not found",
-      content: {
-        "application/json": {
-          schema: resolver(AssetNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Asset", AssetNotFoundSchema),
   },
 });
 
@@ -401,30 +245,7 @@ export const postBookmarksImportRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid file or format",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };
 
@@ -437,17 +258,7 @@ export const patchBookmarkReviewRouteDescription = {
     description: "Review status update data",
     content: {
       "application/json": {
-        schema: {
-          type: "object" as const,
-          properties: {
-            reviewStatus: {
-              type: "string" as const,
-              enum: ["pending", "accepted", "rejected"],
-              description: "New review status for the bookmark",
-            },
-          },
-          required: ["reviewStatus"],
-        },
+        schema: requestBodyResolver(BookmarkReviewUpdateSchema),
       },
     },
   },
@@ -456,48 +267,12 @@ export const patchBookmarkReviewRouteDescription = {
       description: "Bookmark review status updated successfully",
       content: {
         "application/json": {
-          schema: {
-            type: "object" as const,
-            properties: {
-              id: { type: "string" as const },
-              reviewStatus: { type: "string" as const },
-            },
-          },
+          schema: resolver(BookmarkResponseSchema),
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Bookmark not found",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Bookmark", BookmarkNotFoundSchema),
   },
 };
 
@@ -510,18 +285,7 @@ export const patchBookmarkFlagRouteDescription = {
     description: "Flag color update data",
     content: {
       "application/json": {
-        schema: {
-          type: "object" as const,
-          properties: {
-            flagColor: {
-              type: "string" as const,
-              enum: ["red", "yellow", "orange", "green", "blue"],
-              nullable: true,
-              description: "Flag color for the bookmark (null to remove flag)",
-            },
-          },
-          required: ["flagColor"],
-        },
+        schema: requestBodyResolver(BookmarkFlagUpdateSchema),
       },
     },
   },
@@ -530,51 +294,12 @@ export const patchBookmarkFlagRouteDescription = {
       description: "Bookmark flag color updated successfully",
       content: {
         "application/json": {
-          schema: {
-            type: "object" as const,
-            properties: {
-              id: { type: "string" as const },
-              flagColor: {
-                type: "string" as const,
-                nullable: true,
-              },
-            },
-          },
+          schema: resolver(BookmarkResponseSchema),
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Bookmark not found",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Bookmark", BookmarkNotFoundSchema),
   },
 };
 
@@ -587,16 +312,7 @@ export const patchBookmarkPinRouteDescription = {
     description: "Pin status update data",
     content: {
       "application/json": {
-        schema: {
-          type: "object" as const,
-          properties: {
-            isPinned: {
-              type: "boolean" as const,
-              description: "Whether to pin or unpin the bookmark",
-            },
-          },
-          required: ["isPinned"],
-        },
+        schema: requestBodyResolver(BookmarkPinUpdateSchema),
       },
     },
   },
@@ -605,47 +321,11 @@ export const patchBookmarkPinRouteDescription = {
       description: "Bookmark pin status updated successfully",
       content: {
         "application/json": {
-          schema: {
-            type: "object" as const,
-            properties: {
-              id: { type: "string" as const },
-              isPinned: { type: "boolean" as const },
-            },
-          },
+          schema: resolver(BookmarkResponseSchema),
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Bookmark not found",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Bookmark", BookmarkNotFoundSchema),
   },
 };

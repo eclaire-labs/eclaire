@@ -1,9 +1,6 @@
 import { resolver } from "hono-openapi";
-import {
-  ErrorResponseSchema,
-  UnauthorizedSchema,
-  ValidationErrorSchema,
-} from "./all-responses.js";
+import { ValidationErrorSchema } from "./all-responses.js";
+import { commonErrors } from "./common.js";
 import {
   HistoryAccessDeniedSchema,
   HistorySearchResponseSchema,
@@ -117,27 +114,12 @@ export const getHistoryRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
+    ...commonErrors,
     403: {
       description: "Access denied to history records",
       content: {
         "application/json": {
           schema: resolver(HistoryAccessDeniedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
         },
       },
     },

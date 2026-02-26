@@ -1,6 +1,11 @@
 // schemas/notes-params.ts
 import z from "zod/v4";
-import { reviewStatusSchema } from "./common.js";
+import {
+  flagColorUpdateSchema,
+  isPinnedUpdateSchema,
+  makePartial,
+  reviewStatusUpdateSchema,
+} from "./common.js";
 
 // Full note creation/update schema
 export const NoteSchema = z
@@ -104,96 +109,11 @@ export const NoteSchema = z
     description: "Complete note data for creation or full update",
   });
 
-// Partial note update schema
-export const PartialNoteSchema = z
-  .object({
-    title: z
-      .string()
-      .min(1, "Title is required")
-      .optional()
-      .meta({
-        description: "Title of the note",
-        examples: ["Updated Meeting Notes"],
-      }),
-
-    content: z
-      .string()
-      .optional()
-      .meta({
-        description: "Main content of the note (optional)",
-        examples: ["Updated content with new information...", ""],
-      }),
-
-    tags: z
-      .array(z.string())
-      .optional()
-      .meta({
-        description: "Array of tags to categorize the note",
-        examples: [["updated", "tags"]],
-      }),
-
-    deviceName: z
-      .string()
-      .optional()
-      .meta({
-        description: "Name of the device that created this note",
-        examples: ["iPhone", "MacBook Pro", "Android Phone"],
-      }),
-
-    deviceModel: z
-      .string()
-      .optional()
-      .meta({
-        description: "Model of the device that created this note",
-        examples: ["iPhone 15 Pro", "MacBook Pro M2", "Samsung Galaxy S24"],
-      }),
-
-    enabled: z
-      .boolean()
-      .optional()
-      .default(true)
-      .meta({
-        description: "Whether background processing is enabled for this note",
-        examples: [true, false],
-      }),
-
-    reviewStatus: z
-      .enum(["pending", "accepted", "rejected"])
-      .optional()
-      .meta({
-        description: "Review status of the note",
-        examples: ["pending", "accepted", "rejected"],
-      }),
-
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .optional()
-      .meta({
-        description: "Flag color for the note (optional)",
-        examples: ["red", "green", "blue"],
-      }),
-
-    isPinned: z
-      .boolean()
-      .optional()
-      .meta({
-        description: "Whether the note is pinned",
-        examples: [true, false],
-      }),
-
-    dueDate: z
-      .string()
-      .optional()
-      .nullable()
-      .meta({
-        description: "Due date for the note in ISO 8601 format",
-        examples: ["2025-07-01T10:00:00Z", null],
-      }),
-  })
-  .meta({
-    ref: "PartialNoteRequest",
-    description: "Partial note data for updates",
-  });
+// Partial note update schema — all fields optional, defaults stripped
+export const PartialNoteSchema = makePartial(NoteSchema).meta({
+  ref: "PartialNoteRequest",
+  description: "Partial note data for updates",
+});
 
 // Multipart form metadata schema (for file uploads)
 export const NoteMetadataSchema = z
@@ -338,35 +258,7 @@ export const NoteIdParam = z
     description: "Path parameter for note ID",
   });
 
-// Request schema for review status update
-export const NoteReviewUpdateSchema = z
-  .object({
-    reviewStatus: reviewStatusSchema.meta({
-      description: "New review status for the note",
-      examples: ["accepted", "rejected"],
-    }),
-  })
-  .meta({ ref: "NoteReviewUpdate" });
-
-// Request schema for flag color update
-export const NoteFlagUpdateSchema = z
-  .object({
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .nullable()
-      .meta({
-        description: "Flag color for the note (null to remove flag)",
-        examples: ["red", "green", null],
-      }),
-  })
-  .meta({ ref: "NoteFlagUpdate" });
-
-// Request schema for pin status update
-export const NotePinUpdateSchema = z
-  .object({
-    isPinned: z.boolean().meta({
-      description: "Whether to pin or unpin the note",
-      examples: [true, false],
-    }),
-  })
-  .meta({ ref: "NotePinUpdate" });
+// Request schemas for review/flag/pin status updates
+export const NoteReviewUpdateSchema = reviewStatusUpdateSchema("note", "NoteReviewUpdate");
+export const NoteFlagUpdateSchema = flagColorUpdateSchema("note", "NoteFlagUpdate");
+export const NotePinUpdateSchema = isPinnedUpdateSchema("note", "NotePinUpdate");

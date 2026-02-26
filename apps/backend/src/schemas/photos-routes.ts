@@ -1,11 +1,19 @@
 // schemas/photos-routes.ts
 import { resolver } from "hono-openapi";
 import {
-  ErrorResponseSchema,
-  UnauthorizedSchema,
-  ValidationErrorSchema,
-} from "./all-responses.js";
-import { requestBodyResolver } from "./common.js";
+  commonErrors,
+  commonErrorsWithValidation,
+  flagColorUpdateSchema,
+  isPinnedUpdateSchema,
+  notFoundError,
+  requestBodyResolver,
+  reviewStatusUpdateSchema,
+} from "./common.js";
+
+// Request schemas for review/flag/pin status updates
+export const PhotoReviewUpdateSchema = reviewStatusUpdateSchema("photo", "PhotoReviewUpdate");
+export const PhotoFlagUpdateSchema = flagColorUpdateSchema("photo", "PhotoFlagUpdate");
+export const PhotoPinUpdateSchema = isPinnedUpdateSchema("photo", "PhotoPinUpdate");
 import { PartialPhotoSchema, PhotoSchema } from "./photos-params.js";
 import {
   CreatedPhotoResponseSchema,
@@ -111,30 +119,7 @@ export const getPhotosRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    400: {
-      description: "Invalid search parameters",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };
 
@@ -177,30 +162,7 @@ export const postPhotosRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data or file type",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
   },
 };
 
@@ -218,30 +180,8 @@ export const getPhotoByIdRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Photo not found",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Photo", PhotoNotFoundSchema),
   },
 };
 
@@ -268,38 +208,8 @@ export const putPhotoRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Photo not found",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Photo", PhotoNotFoundSchema),
   },
 };
 
@@ -326,38 +236,8 @@ export const patchPhotoRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Photo not found",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Photo", PhotoNotFoundSchema),
   },
 };
 
@@ -384,30 +264,8 @@ export const deletePhotoRouteDescription = {
     204: {
       description: "Photo deleted successfully",
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Photo not found",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Photo", PhotoNotFoundSchema),
   },
 };
 
@@ -428,30 +286,8 @@ export const getPhotoViewRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Photo file not found",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoFileNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Photo file", PhotoFileNotFoundSchema),
   },
 };
 
@@ -472,30 +308,8 @@ export const getPhotoThumbnailRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Thumbnail not found",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoFileNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Thumbnail", PhotoFileNotFoundSchema),
   },
 };
 
@@ -516,30 +330,8 @@ export const getPhotoAnalysisRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "AI analysis not found or not yet generated",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoFileNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("AI analysis", PhotoFileNotFoundSchema),
   },
 };
 
@@ -560,30 +352,8 @@ export const getPhotoContentRouteDescription = {
         },
       },
     },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Content not found or not yet generated",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoFileNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrors,
+    404: notFoundError("Content", PhotoFileNotFoundSchema),
   },
 };
 
@@ -596,17 +366,7 @@ export const patchPhotoReviewRouteDescription = {
     description: "Review status update data",
     content: {
       "application/json": {
-        schema: {
-          type: "object" as const,
-          properties: {
-            reviewStatus: {
-              type: "string" as const,
-              enum: ["pending", "accepted", "rejected"],
-              description: "New review status for the photo",
-            },
-          },
-          required: ["reviewStatus"],
-        },
+        schema: requestBodyResolver(PhotoReviewUpdateSchema),
       },
     },
   },
@@ -619,38 +379,8 @@ export const patchPhotoReviewRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Photo not found",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Photo", PhotoNotFoundSchema),
   },
 };
 
@@ -663,18 +393,7 @@ export const patchPhotoFlagRouteDescription = {
     description: "Flag color update data",
     content: {
       "application/json": {
-        schema: {
-          type: "object" as const,
-          properties: {
-            flagColor: {
-              type: "string" as const,
-              enum: ["red", "yellow", "orange", "green", "blue"],
-              nullable: true,
-              description: "Flag color for the photo (null to remove flag)",
-            },
-          },
-          required: ["flagColor"],
-        },
+        schema: requestBodyResolver(PhotoFlagUpdateSchema),
       },
     },
   },
@@ -687,38 +406,8 @@ export const patchPhotoFlagRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Photo not found",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Photo", PhotoNotFoundSchema),
   },
 };
 
@@ -731,16 +420,7 @@ export const patchPhotoPinRouteDescription = {
     description: "Pin status update data",
     content: {
       "application/json": {
-        schema: {
-          type: "object" as const,
-          properties: {
-            isPinned: {
-              type: "boolean" as const,
-              description: "Whether to pin or unpin the photo",
-            },
-          },
-          required: ["isPinned"],
-        },
+        schema: requestBodyResolver(PhotoPinUpdateSchema),
       },
     },
   },
@@ -753,37 +433,7 @@ export const patchPhotoPinRouteDescription = {
         },
       },
     },
-    400: {
-      description: "Invalid request data",
-      content: {
-        "application/json": {
-          schema: resolver(ValidationErrorSchema),
-        },
-      },
-    },
-    401: {
-      description: "Authentication required",
-      content: {
-        "application/json": {
-          schema: resolver(UnauthorizedSchema),
-        },
-      },
-    },
-    404: {
-      description: "Photo not found",
-      content: {
-        "application/json": {
-          schema: resolver(PhotoNotFoundSchema),
-        },
-      },
-    },
-    500: {
-      description: "Internal server error",
-      content: {
-        "application/json": {
-          schema: resolver(ErrorResponseSchema),
-        },
-      },
-    },
+    ...commonErrorsWithValidation,
+    404: notFoundError("Photo", PhotoNotFoundSchema),
   },
 };
