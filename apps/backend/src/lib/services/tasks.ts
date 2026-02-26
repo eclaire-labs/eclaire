@@ -148,7 +148,7 @@ function calculateAIAssistantJobDelay(dueDate: Date | null): number {
 interface CreateTaskParams {
   title: string;
   description?: string;
-  status?: string;
+  status?: TaskStatus;
   dueDate?: string;
   assignedToId?: string;
   tags?: string[];
@@ -630,13 +630,8 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
         reviewStatus: taskData.reviewStatus || "pending",
         flagColor: taskData.flagColor || null,
         isPinned: taskData.isPinned || false,
-        // Recurrence fields
-        isRecurring: taskData.isRecurring || false,
-        cronExpression: taskData.cronExpression || null,
-        recurrenceEndDate: recurrenceEndDateValue,
-        recurrenceLimit: taskData.recurrenceLimit || null,
-        runImmediately: taskData.runImmediately || false,
-        nextRunAt: nextRunAtValue,
+        // Note: Recurrence fields (isRecurring, cronExpression, etc.)
+        // are stored in queue_schedules, not in the tasks table.
         // createdAt and updatedAt are handled by schema defaults
       });
 
@@ -1347,7 +1342,10 @@ export async function updateTaskStatusAsAssistant(
 }
 
 // Backward-compatible re-exports for route files
-export { NotFoundError as TaskNotFoundError, ForbiddenError as TaskUnauthorizedError };
+export {
+  NotFoundError as TaskNotFoundError,
+  ForbiddenError as TaskUnauthorizedError,
+};
 
 /**
  * Updates task execution tracking with permission checks.

@@ -92,21 +92,21 @@ function getDatabaseCapabilities(dbType: DbDialect): DbCapabilities {
     case "postgres":
       return {
         jsonIndexing: true, // JSONB with GIN indexes
-        fts: "builtin", // Built-in tsvector full-text search
+        fts: "none", // tsvector available but no FTS columns/indexes in schema yet
         notify: true, // LISTEN/NOTIFY support
         skipLocked: true, // FOR UPDATE SKIP LOCKED support
       };
     case "pglite":
       return {
         jsonIndexing: true, // JSONB with GIN indexes
-        fts: "builtin", // tsvector support
+        fts: "none", // tsvector available but no FTS columns/indexes in schema yet
         notify: false, // No LISTEN/NOTIFY (embedded)
         skipLocked: true, // FOR UPDATE SKIP LOCKED support
       };
     case "sqlite":
       return {
         jsonIndexing: false, // No native JSONB indexing
-        fts: "builtin", // FTS5 available
+        fts: "none", // FTS5 available but no FTS tables in schema yet
         notify: false, // No LISTEN/NOTIFY
         skipLocked: false, // No SKIP LOCKED support
       };
@@ -261,15 +261,21 @@ export function initializeDatabase(
   }
 }
 
-/**
- * Reset singleton instances. Useful for testing.
- */
-export function resetDatabaseInstance(): void {
+/** Clear all singleton references (without closing connections). */
+function clearSingletons(): void {
   dbInstance = null;
   txManagerInstance = null;
   capabilitiesInstance = null;
   rawClient = null;
   currentDbType = null;
+}
+
+/**
+ * Reset singleton instances. Closes any open connection first.
+ * Useful for testing.
+ */
+export async function resetDatabaseInstance(): Promise<void> {
+  await closeDatabase();
 }
 
 /**
@@ -291,5 +297,5 @@ export async function closeDatabase(options?: {
     await (rawClient as PGlite).close();
   }
 
-  resetDatabaseInstance();
+  clearSingletons();
 }

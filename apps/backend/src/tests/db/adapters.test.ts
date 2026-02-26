@@ -305,7 +305,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Adapter Integration Tests", ({
           await tx.bookmarks.insert({
             id: generateTestBookmarkId(),
             userId: testUserId,
-            url: null as any, // Violates NOT NULL
+            originalUrl: null as any, // Violates NOT NULL
           });
         }),
       ).rejects.toThrow();

@@ -1,5 +1,5 @@
 import { pgSchema, sqliteSchema } from "@eclaire/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, getTableColumns } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createTestUser,
@@ -10,6 +10,68 @@ import {
   initTestDatabase,
   type TestDatabase,
 } from "./setup.js";
+
+/**
+ * Structural drift detection — compare PG and SQLite schemas at the object level.
+ * Catches cases where a column is added to one dialect but not the other.
+ */
+describe("Schema Structural Parity", () => {
+  // Extract table objects (filter out relations and non-table exports)
+  const pgTables = Object.entries(pgSchema).filter(
+    ([key, val]) =>
+      !key.endsWith("Relations") &&
+      !key.endsWith("Enum") &&
+      val &&
+      typeof val === "object" &&
+      "getSQL" in val,
+  );
+  const sqliteTables = Object.entries(sqliteSchema).filter(
+    ([key, val]) =>
+      !key.endsWith("Relations") &&
+      !key.endsWith("Enum") &&
+      val &&
+      typeof val === "object" &&
+      "getSQL" in val,
+  );
+
+  it("should have the same set of table exports", () => {
+    const pgNames = pgTables.map(([key]) => key).sort();
+    const sqliteNames = sqliteTables.map(([key]) => key).sort();
+    expect(pgNames).toEqual(sqliteNames);
+  });
+
+  // For each table that exists in both schemas, compare column names
+  const pgTableMap = new Map(pgTables);
+  const sqliteTableMap = new Map(sqliteTables);
+  const commonNames = pgTables
+    .map(([key]) => key)
+    .filter((key) => sqliteTableMap.has(key));
+
+  for (const tableName of commonNames) {
+    it(`table "${tableName}" should have the same columns in both dialects`, () => {
+      const pgTable = pgTableMap.get(tableName);
+      const sqliteTable = sqliteTableMap.get(tableName);
+      if (!pgTable || !sqliteTable) return;
+
+      const pgCols = Object.keys(getTableColumns(pgTable as any)).sort();
+      const sqliteCols = Object.keys(
+        getTableColumns(sqliteTable as any),
+      ).sort();
+      expect(pgCols).toEqual(sqliteCols);
+    });
+  }
+
+  // Also verify relation exports match
+  it("should have the same set of relation exports", () => {
+    const pgRelations = Object.keys(pgSchema)
+      .filter((k) => k.endsWith("Relations"))
+      .sort();
+    const sqliteRelations = Object.keys(sqliteSchema)
+      .filter((k) => k.endsWith("Relations"))
+      .sort();
+    expect(pgRelations).toEqual(sqliteRelations);
+  });
+});
 
 describe.each(DB_TEST_CONFIGS)("$label - Schema Parity Tests", ({
   dbType,
@@ -558,13 +620,13 @@ describe.each(DB_TEST_CONFIGS)("$label - Schema Parity Tests", ({
           await db.insert(sqliteSchema.bookmarks).values({
             id: bookmarkId,
             userId: testUserId,
-            url: null as any, // Violates NOT NULL
+            originalUrl: null as any, // Violates NOT NULL
           });
         } else {
           await db.insert(pgSchema.bookmarks).values({
             id: bookmarkId,
             userId: testUserId,
-            url: null as any, // Violates NOT NULL
+            originalUrl: null as any, // Violates NOT NULL
           });
         }
       } catch (error) {

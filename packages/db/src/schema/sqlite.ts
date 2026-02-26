@@ -36,33 +36,40 @@ type HistoryBeforeData = Record<string, unknown>;
 type HistoryAfterData = Record<string, unknown>;
 type HistoryMetadata = Record<string, unknown>;
 
-export const users = sqliteTable("users", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => generateUserId()),
-  userType: text("user_type", {
-    enum: ["user", "assistant", "worker"],
-  }).notNull(),
-  displayName: text("display_name"),
-  fullName: text("full_name"),
-  email: text("email").notNull().unique(),
-  emailVerified: integer("email_verified", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  avatarStorageId: text("avatar_storage_id"),
-  avatarColor: text("avatar_color"),
-  bio: text("bio"),
-  timezone: text("time_zone"),
-  city: text("city"),
-  country: text("country"),
+export const users = sqliteTable(
+  "users",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateUserId()),
+    userType: text("user_type", {
+      enum: ["user", "assistant", "worker"],
+    }).notNull(),
+    displayName: text("display_name"),
+    fullName: text("full_name"),
+    email: text("email").notNull(),
+    emailVerified: integer("email_verified", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    avatarStorageId: text("avatar_storage_id"),
+    avatarColor: text("avatar_color"),
+    bio: text("bio"),
+    timezone: text("time_zone"),
+    city: text("city"),
+    country: text("country"),
 
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .notNull()
-    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .notNull()
-    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
-});
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  },
+  (table) => ({
+    // Case-insensitive email uniqueness to match PostgreSQL's lower(email) index
+    emailIdx: uniqueIndex("users_email_idx").on(table.email),
+  }),
+);
 
 export const sessions = sqliteTable(
   "sessions",
@@ -844,7 +851,7 @@ export const feedbackRelations = relations(feedback, ({ one }) => ({
 export const appMeta = sqliteTable("_app_meta", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
 });

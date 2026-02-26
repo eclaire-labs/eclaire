@@ -67,7 +67,14 @@ export function createPostgresClient(
     connect_timeout: 30, // Seconds before connection timeout
     connection: {
       client_encoding: "UTF8",
+      application_name: process.env.DATABASE_APP_NAME || "eclaire",
+      statement_timeout: Number(
+        process.env.DATABASE_STATEMENT_TIMEOUT || "30000",
+      ),
     },
+    // Enable SSL unless explicitly disabled. Managed PostgreSQL services
+    // (Supabase, Neon, RDS, etc.) require SSL for connections.
+    ssl: process.env.DATABASE_SSL === "false" ? false : undefined,
   };
 
   return postgres(url, { ...defaultOptions, ...options });

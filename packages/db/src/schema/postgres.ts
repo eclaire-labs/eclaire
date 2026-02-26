@@ -215,6 +215,10 @@ export const tasks = pgTable(
     dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
     isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
     completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
+    // Partial index: most queries filter for enabled records
+    userEnabledIdx: index("tasks_user_id_enabled_idx")
+      .on(table.userId)
+      .where(sql`enabled = true`),
   }),
 );
 
@@ -312,6 +316,10 @@ export const bookmarks = pgTable(
       table.userId,
       table.normalizedUrl,
     ),
+    // Partial index: most queries filter for enabled records
+    userEnabledIdx: index("bookmarks_user_id_enabled_idx")
+      .on(table.userId)
+      .where(sql`enabled = true`),
   }),
 );
 
@@ -361,6 +369,10 @@ export const documents = pgTable(
   (table) => ({
     userIdx: index("documents_user_id_idx").on(table.userId),
     isPinnedIdx: index("documents_is_pinned_idx").on(table.isPinned),
+    // Partial index: most queries filter for enabled records
+    userEnabledIdx: index("documents_user_id_enabled_idx")
+      .on(table.userId)
+      .where(sql`enabled = true`),
   }),
 );
 
@@ -432,6 +444,10 @@ export const photos = pgTable(
     userIdx: index("photos_user_id_idx").on(table.userId),
     isPinnedIdx: index("photos_is_pinned_idx").on(table.isPinned),
     dateTakenIdx: index("photos_date_taken_idx").on(table.dateTaken),
+    // Partial index: most queries filter for enabled records
+    userEnabledIdx: index("photos_user_id_enabled_idx")
+      .on(table.userId)
+      .where(sql`enabled = true`),
   }),
 );
 
@@ -471,6 +487,10 @@ export const notes = pgTable(
   (table) => ({
     userIdx: index("notes_user_id_idx").on(table.userId),
     isPinnedIdx: index("notes_is_pinned_idx").on(table.isPinned),
+    // Partial index: most queries filter for enabled records
+    userEnabledIdx: index("notes_user_id_enabled_idx")
+      .on(table.userId)
+      .where(sql`enabled = true`),
   }),
 );
 

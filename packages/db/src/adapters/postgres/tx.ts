@@ -13,7 +13,13 @@ import { and, eq, inArray, type SQL } from "drizzle-orm";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schemaModule from "../../schema/postgres.js";
-import type { BaseRepository, TransactionManager, Tx } from "../../types.js";
+import {
+  type BaseRepository,
+  type TransactionManager,
+  TX_TABLE_NAMES,
+  type Tx,
+  type TxTableName,
+} from "../../types.js";
 
 // Plain object copy for safe dynamic property access (avoids namespace import indexing)
 const schema = { ...schemaModule };
@@ -32,8 +38,8 @@ type DrizzlePgTx = Parameters<Parameters<PgDatabase["transaction"]>[0]>[0];
  */
 function wrapPgTx(drizzleTx: DrizzlePgTx): Tx {
   // Helper to create a repository for a given table
-  function createRepository<TTable extends keyof typeof schemaModule>(
-    tableName: TTable,
+  function createRepository(
+    tableName: TxTableName,
     // biome-ignore lint/suspicious/noExplicitAny: dynamic table repository — types resolved at runtime
   ): BaseRepository<any, any, any> {
     // biome-ignore lint/suspicious/noExplicitAny: dynamic table lookup from schema
@@ -69,24 +75,13 @@ function wrapPgTx(drizzleTx: DrizzlePgTx): Tx {
     };
   }
 
+  // Build repository map from centralized table list
+  const repos = Object.fromEntries(
+    TX_TABLE_NAMES.map((name) => [name, createRepository(name)]),
+  );
+
   return {
-    users: createRepository("users"),
-    bookmarks: createRepository("bookmarks"),
-    bookmarksTags: createRepository("bookmarksTags"),
-    tasks: createRepository("tasks"),
-    tasksTags: createRepository("tasksTags"),
-    documents: createRepository("documents"),
-    documentsTags: createRepository("documentsTags"),
-    photos: createRepository("photos"),
-    photosTags: createRepository("photosTags"),
-    notes: createRepository("notes"),
-    notesTags: createRepository("notesTags"),
-    tags: createRepository("tags"),
-    history: createRepository("history"),
-    conversations: createRepository("conversations"),
-    messages: createRepository("messages"),
-    channels: createRepository("channels"),
-    feedback: createRepository("feedback"),
+    ...repos,
 
     async getOrCreateTags(
       tagNames: string[],
@@ -124,7 +119,8 @@ function wrapPgTx(drizzleTx: DrizzlePgTx): Tx {
           ),
         );
     },
-  };
+    // Cast is safe: repos is built from TX_TABLE_NAMES which defines the Tx interface
+  } as Tx;
 }
 
 /**

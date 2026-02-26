@@ -708,9 +708,11 @@ describe.each(DB_TEST_CONFIGS)("$label - Transaction Tests", ({
           expect(tags).toHaveLength(1);
 
           // Link tag to bookmark
+          const tagId = tags[0]?.id;
+          expect(tagId).toBeDefined();
           await tx.bookmarksTags.insert({
             bookmarkId,
-            tagId: tags[0]?.id,
+            tagId: tagId!,
           });
 
           // Force failure

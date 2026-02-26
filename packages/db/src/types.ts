@@ -13,10 +13,16 @@
  * PostgreSQL uses native async transactions directly.
  */
 
-import type { SQL } from "drizzle-orm";
+import type {
+  InferInsertModel,
+  InferSelectModel,
+  SQL,
+  Table,
+} from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import type * as pgSchema from "./schema/postgres.js";
 
 // Re-export domain types from @eclaire/core for convenience
 export type {
@@ -93,60 +99,81 @@ export interface BaseRepository<TInsert, TUpdate, TSelect> {
   findMany(where: SQL | undefined): Promise<TSelect[]>;
 }
 
+// ---------------------------------------------------------------------------
+// Typed repository helper — derives Insert/Update/Select from a Drizzle table
+// Uses the PostgreSQL schema as the canonical type source.
+// ---------------------------------------------------------------------------
+
+/** Typed repository for a Drizzle table (insert, partial-update, select). */
+type Repo<T extends Table> = BaseRepository<
+  InferInsertModel<T>,
+  Partial<InferInsertModel<T>>,
+  InferSelectModel<T>
+>;
+
 /**
- * Transaction context - provides access to repositories for database operations.
+ * Table names that are available inside a transaction.
+ * Single source of truth — used by both adapters to build the repository map.
+ */
+export const TX_TABLE_NAMES = [
+  "users",
+  "bookmarks",
+  "bookmarksTags",
+  "tasks",
+  "tasksTags",
+  "documents",
+  "documentsTags",
+  "photos",
+  "photosTags",
+  "notes",
+  "notesTags",
+  "tags",
+  "history",
+  "conversations",
+  "messages",
+  "channels",
+  "feedback",
+] as const;
+
+export type TxTableName = (typeof TX_TABLE_NAMES)[number];
+
+/**
+ * Transaction context — provides typed repositories for database operations.
  * All methods are async for consistent Read-Modify-Write support.
  *
- * Repository type params are `any` because the actual Insert/Update/Select types
- * differ between PostgreSQL and SQLite schemas. The Tx interface is the shared
- * contract between adapters and service layer.
+ * Types are derived from the PostgreSQL schema (the canonical type source).
+ * SQLite adapters implement the same interface — Drizzle's insert/select shapes
+ * are structurally compatible between dialects at the TypeScript level.
  */
 export interface Tx {
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  users: BaseRepository<any, any, any>;
+  users: Repo<typeof pgSchema.users>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  bookmarks: BaseRepository<any, any, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  bookmarksTags: BaseRepository<any, any, any>;
+  bookmarks: Repo<typeof pgSchema.bookmarks>;
+  bookmarksTags: Repo<typeof pgSchema.bookmarksTags>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  tasks: BaseRepository<any, any, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  tasksTags: BaseRepository<any, any, any>;
+  tasks: Repo<typeof pgSchema.tasks>;
+  tasksTags: Repo<typeof pgSchema.tasksTags>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  documents: BaseRepository<any, any, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  documentsTags: BaseRepository<any, any, any>;
+  documents: Repo<typeof pgSchema.documents>;
+  documentsTags: Repo<typeof pgSchema.documentsTags>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  photos: BaseRepository<any, any, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  photosTags: BaseRepository<any, any, any>;
+  photos: Repo<typeof pgSchema.photos>;
+  photosTags: Repo<typeof pgSchema.photosTags>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  notes: BaseRepository<any, any, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  notesTags: BaseRepository<any, any, any>;
+  notes: Repo<typeof pgSchema.notes>;
+  notesTags: Repo<typeof pgSchema.notesTags>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  tags: BaseRepository<any, any, any>;
+  tags: Repo<typeof pgSchema.tags>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  history: BaseRepository<any, any, any>;
+  history: Repo<typeof pgSchema.history>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  conversations: BaseRepository<any, any, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  messages: BaseRepository<any, any, any>;
+  conversations: Repo<typeof pgSchema.conversations>;
+  messages: Repo<typeof pgSchema.messages>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  channels: BaseRepository<any, any, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
-  feedback: BaseRepository<any, any, any>;
+  channels: Repo<typeof pgSchema.channels>;
+  feedback: Repo<typeof pgSchema.feedback>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: generic repo — types vary by dialect
+  // biome-ignore lint/suspicious/noExplicitAny: outbox table provided by queue package, optional
   outbox?: BaseRepository<any, any, any>;
 
   /**

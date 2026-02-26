@@ -12,7 +12,13 @@ import { generateTagId } from "@eclaire/core/id";
 import { Mutex } from "async-mutex";
 import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type { BaseRepository, TransactionManager, Tx } from "../../types.js";
+import {
+  type BaseRepository,
+  type TransactionManager,
+  TX_TABLE_NAMES,
+  type Tx,
+  type TxTableName,
+} from "../../types.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: schema values are Drizzle table objects of varying types
 type SQLiteSchema = Record<string, any>;
@@ -29,8 +35,8 @@ function wrapSqliteTx(
   db: BetterSQLite3Database<SQLiteSchema>,
   schema: SQLiteSchema,
 ): Tx {
-  function createRepository<TTableName extends string>(
-    tableName: TTableName,
+  function createRepository(
+    tableName: TxTableName,
     // biome-ignore lint/suspicious/noExplicitAny: dynamic table repository — types resolved at runtime
   ): BaseRepository<any, any, any> {
     const table = schema[tableName];
@@ -73,24 +79,13 @@ function wrapSqliteTx(
     };
   }
 
+  // Build repository map from centralized table list
+  const repos = Object.fromEntries(
+    TX_TABLE_NAMES.map((name) => [name, createRepository(name)]),
+  );
+
   return {
-    users: createRepository("users"),
-    bookmarks: createRepository("bookmarks"),
-    bookmarksTags: createRepository("bookmarksTags"),
-    tasks: createRepository("tasks"),
-    tasksTags: createRepository("tasksTags"),
-    documents: createRepository("documents"),
-    documentsTags: createRepository("documentsTags"),
-    photos: createRepository("photos"),
-    photosTags: createRepository("photosTags"),
-    notes: createRepository("notes"),
-    notesTags: createRepository("notesTags"),
-    tags: createRepository("tags"),
-    history: createRepository("history"),
-    conversations: createRepository("conversations"),
-    messages: createRepository("messages"),
-    channels: createRepository("channels"),
-    feedback: createRepository("feedback"),
+    ...repos,
 
     async getOrCreateTags(
       tagNames: string[],
@@ -132,7 +127,8 @@ function wrapSqliteTx(
         )
         .all();
     },
-  };
+    // Cast is safe: repos is built from TX_TABLE_NAMES which defines the Tx interface
+  } as Tx;
 }
 
 /**
