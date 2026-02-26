@@ -14,13 +14,11 @@ import { ThinkingAccordion } from "./thinking-accordion";
 
 interface MessageItemProps {
   message: Message;
-  isClient?: boolean;
   showThinkingTokens?: boolean;
 }
 
 export function MessageItem({
   message,
-  isClient = true,
   showThinkingTokens = true,
 }: MessageItemProps) {
   const isUser = message.role === "user";
@@ -89,15 +87,13 @@ export function MessageItem({
           </div>
         )}
 
-        {/* Timestamp - only on client to prevent hydration mismatch */}
-        {isClient && (
-          <p className="text-xs mt-1 opacity-70">
-            {message.timestamp.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
-        )}
+        {/* Timestamp */}
+        <p className="text-xs mt-1 opacity-70">
+          {message.timestamp.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
       </div>
 
       {isUser &&

@@ -55,7 +55,6 @@ import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useBookmark } from "@/hooks/use-bookmarks";
-import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useToast } from "@/hooks/use-toast";
 import {
   apiFetch,
@@ -167,9 +166,6 @@ export function BookmarkDetailClient() {
 
   // Use React Query hook for data fetching
   const { bookmark, isLoading, error, refresh } = useBookmark(bookmarkId);
-
-  // Initialize SSE for real-time updates
-  useProcessingEvents();
 
   // Initialize local bookmark state for editing
   useEffect(() => {

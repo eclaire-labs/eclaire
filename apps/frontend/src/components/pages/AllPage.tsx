@@ -182,8 +182,8 @@ export default function AllItemsPage() {
       );
       if (response.ok) {
         const updatedItem = await response.json();
-        setItems(
-          items.map((i) =>
+        setItems((prev) =>
+          prev.map((i) =>
             i.id === item.id ? { ...i, isPinned: updatedItem.isPinned } : i,
           ),
         );
@@ -212,8 +212,8 @@ export default function AllItemsPage() {
       );
       if (response.ok) {
         const updatedItem = await response.json();
-        setItems(
-          items.map((i) =>
+        setItems((prev) =>
+          prev.map((i) =>
             i.id === item.id ? { ...i, flagColor: updatedItem.flagColor } : i,
           ),
         );
@@ -244,8 +244,8 @@ export default function AllItemsPage() {
       );
       if (response.ok) {
         const updatedItem = await response.json();
-        setItems(
-          items.map((i) =>
+        setItems((prev) =>
+          prev.map((i) =>
             i.id === item.id ? { ...i, flagColor: updatedItem.flagColor } : i,
           ),
         );

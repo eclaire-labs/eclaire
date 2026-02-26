@@ -82,12 +82,6 @@ export class StreamingClient {
     // Close any existing connection
     this.disconnect();
 
-    console.log("🚀 Starting stream request:", {
-      url: "/api/prompt/stream",
-      method: "POST",
-      request: request,
-    });
-
     try {
       // Make the initial request to get the streaming response
       const response = await fetch("/api/prompt/stream", {
@@ -98,56 +92,35 @@ export class StreamingClient {
         body: JSON.stringify(request),
       });
 
-      console.log("📡 Stream response received:", {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        url: response.url,
-      });
-
       if (!response.ok) {
-        console.error(
-          "❌ Stream response not OK:",
-          response.status,
-          response.statusText,
-        );
         const errorData = await response.json();
-        console.error("❌ Error data:", errorData);
         throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
       // Check if response is actually a stream
       const contentType = response.headers.get("content-type");
-      console.log("📋 Response content-type:", contentType);
 
       if (!contentType?.includes("text/event-stream")) {
-        console.error("❌ Expected streaming response but got:", contentType);
-        // Let's see what we actually got
-        const responseText = await response.text();
-        console.error("❌ Response body:", responseText);
-
         // If we got JSON, try to parse it and show as an error
         if (contentType?.includes("application/json")) {
+          const responseText = await response.text();
           try {
             const jsonResponse = JSON.parse(responseText);
-            console.error("❌ Received JSON instead of stream:", jsonResponse);
             this.handlers.onError?.(
               `Expected streaming but got JSON: ${JSON.stringify(jsonResponse)}`,
             );
             return;
-          } catch (e) {
-            console.error("❌ Failed to parse JSON response:", e);
+          } catch {
+            // Fall through
           }
         }
 
         throw new Error(`Expected streaming response but got: ${contentType}`);
       }
 
-      console.log("✅ Valid streaming response, starting to parse...");
       // Parse the streaming response manually since EventSource doesn't work with POST
       await this.parseStreamingResponse(response);
     } catch (error) {
-      console.error("❌ Failed to start streaming:", error);
       this.handlers.onError?.(
         error instanceof Error ? error.message : "Failed to start streaming",
       );
@@ -162,78 +135,48 @@ export class StreamingClient {
       throw new Error("No response body available for streaming");
     }
 
-    console.log("📖 Starting to parse streaming response...");
     this.isConnected = true;
     this.handlers.onConnect?.();
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
-    let eventCount = 0;
 
     try {
       while (true) {
         const { done, value } = await reader.read();
 
         if (done) {
-          console.log(
-            "📡 Stream completed, total events processed:",
-            eventCount,
-          );
           break;
         }
 
         const chunk = decoder.decode(value, { stream: true });
-        console.log("📦 Received chunk:", chunk.length, "bytes");
-        console.log("🔍 Raw chunk data:", JSON.stringify(chunk));
-        console.log("📝 Chunk preview:", chunk.substring(0, 200));
-
         buffer += chunk;
         const lines = buffer.split("\n");
         buffer = lines.pop() || ""; // Keep incomplete line in buffer
 
-        console.log("📝 Processing", lines.length, "lines from buffer");
-        console.log(
-          "📋 Lines array:",
-          lines.map((line, i) => `${i}: ${JSON.stringify(line)}`),
-        );
-
         for (const line of lines) {
           if (line.trim() === "") {
-            console.log("⬜ Skipping empty line");
             continue;
           }
-          console.log("📄 Processing line:", JSON.stringify(line));
 
           if (line.startsWith("data: ")) {
             const data = line.slice(6);
             if (data.trim() === "") {
-              console.log("⬜ Skipping empty data line");
               continue;
             }
 
-            console.log("🎯 Parsing SSE event data:", JSON.stringify(data));
             try {
               const event = JSON.parse(data) as StreamEvent;
-              console.log("✅ Successfully parsed event:", event.type, event);
               this.handleEvent(event);
-              eventCount++;
 
               // Stop reading when we get a done event
               if (event.type === "done") {
-                console.log("🏁 Received done event, stopping stream");
                 return;
               }
-            } catch (parseError) {
-              console.warn(
-                "❌ Failed to parse SSE event:",
-                JSON.stringify(data),
-                parseError,
-              );
-              console.warn("❌ Parse error details:", parseError);
+            } catch {
+              console.warn("Failed to parse SSE event:", data);
             }
-          } else {
-            console.log("⚠️ Non-data line:", JSON.stringify(line));
           }
         }
       }
@@ -241,10 +184,6 @@ export class StreamingClient {
       reader.releaseLock();
       this.isConnected = false;
       this.handlers.onDisconnect?.();
-      console.log(
-        "🔌 Stream disconnected, total events processed:",
-        eventCount,
-      );
     }
   }
 
@@ -252,8 +191,6 @@ export class StreamingClient {
    * Handle individual stream events
    */
   private handleEvent(event: StreamEvent): void {
-    console.log("📡 Received stream event:", event.type, event);
-
     switch (event.type) {
       case "thought":
         if (event.content) {

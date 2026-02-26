@@ -1,80 +1,69 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { DashboardClientContent } from "@/components/dashboard/DashboardClientContent";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/frontend-api";
 
-// Note: metadata export not supported in client components
-// Title will be set via document.title or a head component
+interface DashboardData {
+  // biome-ignore lint/suspicious/noExplicitAny: untyped API response
+  stats: any;
+  // biome-ignore lint/suspicious/noExplicitAny: untyped API response
+  recentActivities: any[];
+  // biome-ignore lint/suspicious/noExplicitAny: untyped API response
+  activityTimeline: any[];
+  // biome-ignore lint/suspicious/noExplicitAny: untyped API response
+  dueItems: any;
+  // biome-ignore lint/suspicious/noExplicitAny: untyped API response
+  quickStats: any;
+}
+
+async function fetchDashboardData(): Promise<DashboardData> {
+  const [statsRes, activityRes, timelineRes, dueItemsRes, quickStatsRes] =
+    await Promise.all([
+      apiFetch("/api/user/dashboard-stats"),
+      apiFetch("/api/history?limit=5"),
+      apiFetch("/api/user/activity-timeline?days=30"),
+      apiFetch("/api/user/due-items"),
+      apiFetch("/api/user/quick-stats"),
+    ]);
+
+  const [stats, activityData, timeline, dueItems, quickStats] =
+    await Promise.all([
+      statsRes.ok ? statsRes.json() : null,
+      activityRes.ok ? activityRes.json() : { records: [] },
+      timelineRes.ok ? timelineRes.json() : [],
+      dueItemsRes.ok
+        ? dueItemsRes.json()
+        : { overdue: [], dueToday: [], dueThisWeek: [] },
+      quickStatsRes.ok ? quickStatsRes.json() : null,
+    ]);
+
+  return {
+    stats,
+    recentActivities: Array.isArray(activityData.records)
+      ? activityData.records
+      : [],
+    activityTimeline: Array.isArray(timeline) ? timeline : [],
+    dueItems,
+    quickStats,
+  };
+}
 
 export default function DashboardPage() {
   const { data: session, isPending: isSessionPending } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState<{
-    // biome-ignore lint/suspicious/noExplicitAny: untyped API response
-    stats: any;
-    // biome-ignore lint/suspicious/noExplicitAny: untyped API response
-    recentActivities: any[];
-    // biome-ignore lint/suspicious/noExplicitAny: untyped API response
-    activityTimeline: any[];
-    // biome-ignore lint/suspicious/noExplicitAny: untyped API response
-    dueItems: any;
-    // biome-ignore lint/suspicious/noExplicitAny: untyped API response
-    quickStats: any;
-  } | null>(null);
 
   // Set document title
   useEffect(() => {
     document.title = "Dashboard — Eclaire";
   }, []);
 
-  // Fetch dashboard data client-side
-  useEffect(() => {
-    if (!session?.user?.id) {
-      setIsLoading(false);
-      return;
-    }
-
-    async function fetchDashboardData() {
-      try {
-        const [statsRes, activityRes, timelineRes, dueItemsRes, quickStatsRes] =
-          await Promise.all([
-            apiFetch("/api/user/dashboard-stats"),
-            apiFetch("/api/history?limit=5"),
-            apiFetch("/api/user/activity-timeline?days=30"),
-            apiFetch("/api/user/due-items"),
-            apiFetch("/api/user/quick-stats"),
-          ]);
-
-        const [stats, activityData, timeline, dueItems, quickStats] =
-          await Promise.all([
-            statsRes.ok ? statsRes.json() : null,
-            activityRes.ok ? activityRes.json() : { records: [] },
-            timelineRes.ok ? timelineRes.json() : [],
-            dueItemsRes.ok
-              ? dueItemsRes.json()
-              : { overdue: [], dueToday: [], dueThisWeek: [] },
-            quickStatsRes.ok ? quickStatsRes.json() : null,
-          ]);
-
-        setDashboardData({
-          stats,
-          recentActivities: Array.isArray(activityData.records)
-            ? activityData.records
-            : [],
-          activityTimeline: Array.isArray(timeline) ? timeline : [],
-          dueItems,
-          quickStats,
-        });
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchDashboardData();
-  }, [session?.user?.id]);
+  const { data: dashboardData, isLoading } = useQuery<DashboardData>({
+    queryKey: ["dashboard", session?.user?.id],
+    queryFn: fetchDashboardData,
+    enabled: !!session?.user?.id,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
 
   // Show skeleton while loading session or data
   if (isSessionPending || isLoading) {

@@ -50,7 +50,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePhotoAnalysis } from "@/hooks/use-photo-analysis";
 import { usePhoto } from "@/hooks/use-photos";
-import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useToast } from "@/hooks/use-toast";
 import {
   apiFetch,
@@ -136,8 +135,6 @@ export function PhotoDetailClient() {
     enabled: !!photo && photo.processingStatus === "completed",
   });
 
-  // Initialize SSE for real-time updates
-  useProcessingEvents();
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editTitle, setEditTitle] = useState("");

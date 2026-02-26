@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 
+
 interface AssistantPreferences {
   streamingEnabled: boolean;
   showThinkingTokens: boolean;
@@ -36,31 +37,29 @@ interface AssistantPreferencesProviderProps {
   children: ReactNode;
 }
 
+// Read initial preferences from localStorage synchronously to avoid double-render
+function readStoredAssistantPreferences(): AssistantPreferences {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        return { ...DEFAULT_PREFERENCES, ...JSON.parse(stored) };
+      }
+    } catch {
+      // Fall through to defaults
+    }
+  }
+  return DEFAULT_PREFERENCES;
+}
+
 export function AssistantPreferencesProvider({
   children,
 }: AssistantPreferencesProviderProps) {
-  const [preferences, setPreferences] =
-    useState<AssistantPreferences>(DEFAULT_PREFERENCES);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [preferences, setPreferences] = useState<AssistantPreferences>(
+    readStoredAssistantPreferences,
+  );
 
-  // Load preferences from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setPreferences({ ...DEFAULT_PREFERENCES, ...parsed });
-        }
-      } catch (error) {
-        console.warn("Failed to load assistant preferences:", error);
-      }
-    }
-    // Always mark as loaded regardless of whether we're on server or client
-    setIsLoaded(true);
-  }, []);
-
-  // Listen for localStorage changes from other tabs/components
+  // Listen for localStorage changes from other tabs
   useEffect(() => {
     if (typeof window !== "undefined") {
       const handleStorageChange = (e: StorageEvent) => {
@@ -68,11 +67,8 @@ export function AssistantPreferencesProvider({
           try {
             const parsed = JSON.parse(e.newValue);
             setPreferences({ ...DEFAULT_PREFERENCES, ...parsed });
-          } catch (error) {
-            console.warn(
-              "Failed to parse preferences from storage event:",
-              error,
-            );
+          } catch {
+            // Ignore malformed data
           }
         }
       };
@@ -89,13 +85,8 @@ export function AssistantPreferencesProvider({
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
-            window.dispatchEvent(
-              new CustomEvent("assistant-preferences-changed", {
-                detail: newPreferences,
-              }),
-            );
-          } catch (error) {
-            console.error("Failed to save assistant preferences:", error);
+          } catch {
+            // Ignore storage errors
           }
         }
         return newPreferences;
@@ -104,34 +95,13 @@ export function AssistantPreferencesProvider({
     [],
   );
 
-  // Listen for custom events from the same window
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const handlePreferencesChanged = (
-        e: CustomEvent<AssistantPreferences>,
-      ) => {
-        setPreferences(e.detail);
-      };
-
-      window.addEventListener(
-        "assistant-preferences-changed",
-        handlePreferencesChanged as EventListener,
-      );
-      return () =>
-        window.removeEventListener(
-          "assistant-preferences-changed",
-          handlePreferencesChanged as EventListener,
-        );
-    }
-  }, []);
-
   const value = useMemo<AssistantPreferencesContextType>(
     () => ({
       preferences,
       updatePreference,
-      isLoaded,
+      isLoaded: true,
     }),
-    [preferences, updatePreference, isLoaded],
+    [preferences, updatePreference],
   );
 
   return (

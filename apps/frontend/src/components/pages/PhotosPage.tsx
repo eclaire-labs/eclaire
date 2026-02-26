@@ -34,7 +34,6 @@ import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation"
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePhotos } from "@/hooks/use-photos";
-import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/frontend-api";
 import { formatDate } from "@/lib/list-page-utils";
@@ -100,8 +99,6 @@ export default function PhotosPage() {
     isUpdating,
     isDeleting,
   } = usePhotos();
-
-  useProcessingEvents();
 
   // Shared list page state
   const state = useListPageState(photos, photosConfig, {

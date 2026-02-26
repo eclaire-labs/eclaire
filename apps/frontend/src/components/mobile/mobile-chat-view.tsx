@@ -16,7 +16,6 @@ interface MobileChatViewProps {
   handleKeyDown: (e: React.KeyboardEvent) => void;
   handleSend: () => void;
   startNewConversation: () => void;
-  isClient: boolean;
   currentConversation: ConversationSummary | null;
   onEditConversationTitle: (title: string) => void;
   onSelectConversation: (conversation: ConversationSummary) => void;

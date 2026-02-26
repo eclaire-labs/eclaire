@@ -44,7 +44,6 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
-import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useTasks } from "@/hooks/use-tasks";
 import { useToast } from "@/hooks/use-toast";
 import { getUsers } from "@/lib/frontend-api";
@@ -127,8 +126,6 @@ export default function TasksPage() {
     isUpdating,
     isDeleting,
   } = useTasks();
-
-  useProcessingEvents();
 
   // Users for assignee dropdown
   const [users, setUsers] = useState<User[]>([]);

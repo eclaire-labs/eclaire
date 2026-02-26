@@ -37,7 +37,6 @@ interface MobileChatInterfaceProps {
   handleKeyDown: (e: React.KeyboardEvent) => void;
   handleSend: () => void;
   startNewConversation: () => void;
-  isClient: boolean;
   currentConversation: ConversationSummary | null;
   onEditConversationTitle: (title: string) => void;
   onSelectConversation?: (conversation: ConversationSummary) => void;
@@ -62,7 +61,6 @@ export function MobileChatInterface({
   handleKeyDown,
   handleSend,
   startNewConversation,
-  isClient,
   currentConversation,
   onEditConversationTitle,
   onSelectConversation,
@@ -82,7 +80,7 @@ export function MobileChatInterface({
 
   // Load conversations when history is opened
   useEffect(() => {
-    if (showHistory && isClient) {
+    if (showHistory) {
       setIsLoadingConversations(true);
       getConversations(50, 0)
         .then((response) => {
@@ -95,7 +93,7 @@ export function MobileChatInterface({
           setIsLoadingConversations(false);
         });
     }
-  }, [showHistory, isClient]);
+  }, [showHistory]);
 
   const handleSelectConversation = async (
     conversation: ConversationSummary,
@@ -251,7 +249,6 @@ export function MobileChatInterface({
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
           showThinkingTokens={showThinkingTokens}
-          isClient={true}
         />
       </div>
     </div>

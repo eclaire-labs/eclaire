@@ -30,7 +30,6 @@ import { useBookmarks } from "@/hooks/use-bookmarks";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/list-page-utils";
 import { getAbsoluteApiUrl } from "@/lib/frontend-api";
@@ -77,8 +76,6 @@ export default function BookmarksPage() {
     isDeleting,
     isImporting,
   } = useBookmarks();
-
-  useProcessingEvents();
 
   // Shared list page state
   const state = useListPageState(bookmarks, bookmarksConfig, {

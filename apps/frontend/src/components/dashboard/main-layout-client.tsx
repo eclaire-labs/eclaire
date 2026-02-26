@@ -62,18 +62,7 @@ import { convertToToolCallSummary } from "@/types/message";
 import packageJson from "../../../package.json";
 
 function convertBackendMessage(msg: BackendMessage): Message {
-  console.log("🔄 Converting backend message:", {
-    id: msg.id,
-    role: msg.role,
-    content: msg.content,
-    contentLength: msg.content?.length || 0,
-    thinkingContent: msg.thinkingContent,
-    hasThinkingContent: !!msg.thinkingContent,
-    toolCalls: msg.toolCalls,
-    hasToolCalls: !!msg.toolCalls?.length,
-  });
-
-  const converted = {
+  return {
     id: msg.id,
     role: msg.role,
     content: msg.content,
@@ -81,9 +70,6 @@ function convertBackendMessage(msg: BackendMessage): Message {
     thinkingContent: msg.thinkingContent,
     toolCalls: msg.toolCalls,
   };
-
-  console.log("✅ Converted message:", converted);
-  return converted;
 }
 
 // Define navigation items outside the component for better structure
@@ -132,7 +118,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const [assistantPreferences, , preferencesLoaded] = useAssistantPreferences();
 
   // Assistant conversation state
-  const [isClient, setIsClient] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -161,10 +146,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const batchTimeoutRef = useRef<number | null>(null);
   const lastChunkTimeRef = useRef<number>(0);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   // Cleanup batching timeout on unmount
   useEffect(() => {
     return () => {
@@ -183,12 +164,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
       startTransition(() => {
         setStreamingText((prev) => {
-          const newText = prev + chunksToFlush;
-          console.log(
-            `🔄 Batched update: "${prev}" + "${chunksToFlush}" = "${newText}"`,
-          );
-          console.log(`📊 streamingText length: ${newText.length} chars`);
-          return newText;
+          return prev + chunksToFlush;
         });
       });
     }
@@ -228,7 +204,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   // Initialize streaming client
   const streamingClient = useStreamingClient({
     onThought: (content: string, _timestamp?: string) => {
-      console.log("💭 Received thought:", content);
       setStreamingThought((prev) => prev + content);
     },
     onToolCall: (
@@ -238,16 +213,10 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
       result?: unknown,
       error?: string,
     ) => {
-      console.log("🔧 Received tool call:", name, status, {
-        args,
-        result,
-        error,
-      });
       addOrUpdateTool(name, status, args, result, error);
     },
     onTextChunk: (content: string, _timestamp?: string) => {
-      console.log("📝 Received text chunk:", content);
-      finalStreamingTextRef.current += content; // <-- UPDATE THE REF IMMEDIATELY
+      finalStreamingTextRef.current += content;
       processBatchedChunk(content);
     },
     onError: (error: string, _timestamp?: string) => {
@@ -266,16 +235,9 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     onDone: (
       requestId?: string,
       conversationId?: string,
-      totalTokens?: number,
-      executionTimeMs?: number,
+      _totalTokens?: number,
+      _executionTimeMs?: number,
     ) => {
-      console.log("🏁 Streaming completed:", {
-        requestId,
-        conversationId,
-        totalTokens,
-        executionTimeMs,
-      });
-
       // It's good practice to flush any remaining batched chunks to ensure the UI is
       // fully up-to-date before we finalize the message.
       flushPendingChunks();
@@ -360,11 +322,8 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
       resetBatchingState();
       clearTools();
     },
-    onConnect: () => {
-      console.log("🔌 Streaming connected");
-    },
+    onConnect: () => {},
     onDisconnect: () => {
-      console.log("🔌 Streaming disconnected");
       // Don't set isStreaming=false here - let onDone or onError handle it
       // This prevents premature clearing of loading state
     },
@@ -486,26 +445,16 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   // Conversation management functions
   const loadConversation = async (conversation: ConversationSummary) => {
-    console.log("🔄 Loading conversation:", conversation.id);
     setIsLoadingConversation(true);
     try {
       const conversationWithMessages = await getConversationWithMessages(
         conversation.id,
-      );
-      console.log(
-        "📨 API response messages:",
-        conversationWithMessages.messages,
-      );
-      console.log(
-        "📊 Message count:",
-        conversationWithMessages.messages.length,
       );
 
       setCurrentConversation(conversation);
       const convertedMessages = conversationWithMessages.messages.map(
         convertBackendMessage,
       );
-      console.log("🔄 All converted messages:", convertedMessages);
 
       setMessages(convertedMessages);
       setAttachedAssets([]);
@@ -748,11 +697,8 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
     // Wait for preferences to be loaded to ensure correct enableThinking value
     if (!preferencesLoaded) {
-      console.log("⏳ Waiting for preferences to load before sending message");
       return;
     }
-
-    console.log("💬 Starting message send:", input);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -766,14 +712,10 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
     // Check if streaming is enabled in preferences
     const useStreaming = assistantPreferences.streamingEnabled;
-    console.log(
-      `🔄 Using ${useStreaming ? "streaming" : "non-streaming"} mode`,
-    );
 
     // Set loading state immediately for instant user feedback
     // Use flushSync to ensure immediate re-render
     if (useStreaming) {
-      console.log("🔄 Setting isStreaming=true for immediate feedback");
       flushSync(() => {
         setIsStreaming(true);
         setStreamingThought("");
@@ -782,17 +724,10 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
         resetBatchingState();
       });
       clearTools();
-      console.log(
-        "✅ Streaming state set with flushSync, should show loading indicator",
-      );
     } else {
-      console.log("🔄 Setting isLoading=true for immediate feedback");
       flushSync(() => {
         setIsLoading(true);
       });
-      console.log(
-        "✅ Loading state set with flushSync, should show loading indicator",
-      );
     }
 
     if (useStreaming) {
@@ -807,10 +742,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
         if (currentConversation) {
           streamingRequest.conversationId = currentConversation.id;
-          console.log(
-            "📝 Using existing conversation:",
-            currentConversation.id,
-          );
         }
 
         if (attachedAssets.length > 0) {
@@ -821,12 +752,9 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               id: asset.id,
             })),
           };
-          console.log("📎 Attached assets:", attachedAssets.length);
         }
 
-        console.log("🚀 Starting streaming request:", streamingRequest);
         await streamingClient.startStream?.(streamingRequest);
-        console.log("✅ Streaming request initiated");
       } catch (error) {
         console.error("❌ Streaming error:", error);
         setIsStreaming(false);
@@ -852,10 +780,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
         if (currentConversation) {
           promptRequest.conversationId = currentConversation.id;
-          console.log(
-            "📝 Using existing conversation:",
-            currentConversation.id,
-          );
         }
 
         if (attachedAssets.length > 0) {
@@ -866,15 +790,9 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               id: asset.id,
             })),
           };
-          console.log("📎 Attached assets:", attachedAssets.length);
         }
 
-        console.log(
-          "🚀 Starting non-streaming request to /api/prompt:",
-          promptRequest,
-        );
         const response = await sendPrompt(promptRequest);
-        console.log("✅ Non-streaming response received:", response);
 
         // Create assistant message with thinking content
         const assistantMessage: Message = {
@@ -1049,7 +967,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               handleKeyDown={handleKeyDown}
               handleSend={handleSend}
               startNewConversation={startNewConversation}
-              isClient={isClient}
+
               currentConversation={currentConversation}
               onEditConversationTitle={handleEditConversationTitle}
               onSelectConversation={handleSelectConversation}
@@ -1218,7 +1136,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               handleKeyDown={handleKeyDown}
               handleSend={handleSend}
               startNewConversation={startNewConversation}
-              isClient={isClient}
+
               currentConversation={currentConversation}
               onEditConversationTitle={handleEditConversationTitle}
               onShowHistory={() => setShowHistory(true)}
@@ -1257,7 +1175,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
           handleKeyDown={handleKeyDown}
           handleSend={handleSend}
           startNewConversation={startNewConversation}
-          isClient={isClient}
           currentConversation={currentConversation}
           onEditConversationTitle={handleEditConversationTitle}
           onShowHistory={() => setShowHistory(true)}

@@ -51,7 +51,6 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useTask } from "@/hooks/use-tasks";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -73,8 +72,6 @@ export function TaskDetailClient() {
   // Use React Query hook for data fetching
   const { task, isLoading, error, refresh } = useTask(taskId);
 
-  // Initialize SSE for real-time updates
-  useProcessingEvents();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [tagInput, setTagInput] = useState("");

@@ -30,9 +30,6 @@ interface ChatPanelProps {
   streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
 
-  // Client state
-  isClient: boolean;
-
   // Layout control
   className?: string;
 }
@@ -52,7 +49,6 @@ export function ChatPanel({
   streamingText,
   streamingToolCalls = [],
   showThinkingTokens = true,
-  isClient,
   className,
 }: ChatPanelProps) {
   const handleSubmit = (_content: string) => {
@@ -75,7 +71,6 @@ export function ChatPanel({
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
           showThinkingTokens={showThinkingTokens}
-          isClient={isClient}
         />
       </div>
 

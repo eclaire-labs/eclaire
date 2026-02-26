@@ -35,7 +35,6 @@ import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useNote } from "@/hooks/use-notes";
-import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch, setFlagColor, togglePin } from "@/lib/frontend-api";
 import type { Note } from "@/types/note";
@@ -88,9 +87,6 @@ export function NoteDetailClient() {
 
   // Use React Query hook for data fetching
   const { note, isLoading, error, refresh } = useNote(noteId);
-
-  // Initialize SSE for real-time updates
-  useProcessingEvents();
 
   // Initialize local note state for editing
   useEffect(() => {

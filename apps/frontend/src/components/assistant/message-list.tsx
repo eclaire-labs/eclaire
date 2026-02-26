@@ -44,7 +44,6 @@ interface MessageListProps {
   streamingText?: string;
   streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
-  isClient?: boolean;
 }
 
 export function MessageList({
@@ -55,7 +54,6 @@ export function MessageList({
   streamingText,
   streamingToolCalls = [],
   showThinkingTokens = true,
-  isClient = true,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -71,7 +69,6 @@ export function MessageList({
         <MessageItem
           key={msg.id}
           message={msg}
-          isClient={isClient}
           showThinkingTokens={showThinkingTokens}
         />
       ))}

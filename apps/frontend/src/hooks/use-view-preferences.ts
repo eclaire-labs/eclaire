@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // Define page types that can have view preferences
 export type PageType = "bookmarks" | "tasks" | "notes" | "documents" | "photos";
@@ -77,6 +77,24 @@ const DEFAULT_PREFERENCES: Record<PageType, ViewPreferences> = {
 const getStorageKey = (pageType: PageType): string =>
   `view-preferences-${pageType}`;
 
+// Read initial preferences from localStorage synchronously to avoid double-render
+function readStoredPreferences(
+  storageKey: string,
+  pageType: PageType,
+): ViewPreferences {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        return { ...DEFAULT_PREFERENCES[pageType], ...JSON.parse(stored) };
+      }
+    } catch {
+      // Fall through to defaults
+    }
+  }
+  return DEFAULT_PREFERENCES[pageType];
+}
+
 // Hook implementation with union return type
 export function useViewPreferences(
   pageType: PageType,
@@ -86,29 +104,11 @@ export function useViewPreferences(
     key: keyof ViewPreferences,
     value: ViewPreferences[keyof ViewPreferences],
   ) => void,
-  boolean,
 ] {
-  const [preferences, setPreferences] = useState<ViewPreferences>(
-    DEFAULT_PREFERENCES[pageType],
-  );
-  const [isLoaded, setIsLoaded] = useState(false);
   const storageKey = getStorageKey(pageType);
-
-  // Load preferences from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setPreferences({ ...DEFAULT_PREFERENCES[pageType], ...parsed });
-        }
-      } catch (error) {
-        console.warn(`Failed to load view preferences for ${pageType}:`, error);
-      }
-    }
-    setIsLoaded(true);
-  }, [pageType, storageKey]);
+  const [preferences, setPreferences] = useState<ViewPreferences>(() =>
+    readStoredPreferences(storageKey, pageType),
+  );
 
   // Listen for localStorage changes from other tabs
   useEffect(() => {
@@ -118,11 +118,8 @@ export function useViewPreferences(
           try {
             const parsed = JSON.parse(e.newValue);
             setPreferences({ ...DEFAULT_PREFERENCES[pageType], ...parsed });
-          } catch (error) {
-            console.warn(
-              `Failed to parse view preferences for ${pageType} from storage event:`,
-              error,
-            );
+          } catch {
+            // Ignore malformed data
           }
         }
       };
@@ -153,33 +150,36 @@ export function useViewPreferences(
     }
   }, [pageType]);
 
-  // Update preference function
-  const updatePreference = (
-    key: keyof ViewPreferences,
-    value: ViewPreferences[keyof ViewPreferences],
-  ) => {
-    const newPreferences = { ...preferences, [key]: value };
-    setPreferences(newPreferences);
+  // Memoized update function using functional setState to avoid stale closure
+  const updatePreference = useCallback(
+    (
+      key: keyof ViewPreferences,
+      value: ViewPreferences[keyof ViewPreferences],
+    ) => {
+      setPreferences((prev) => {
+        const newPreferences = { ...prev, [key]: value };
 
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(newPreferences));
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(newPreferences));
 
-        // Dispatch a custom event to notify other components in the same window
-        const customEventName = `view-preferences-changed-${pageType}`;
-        window.dispatchEvent(
-          new CustomEvent(customEventName, {
-            detail: newPreferences,
-          }),
-        );
-      } catch (error) {
-        console.error(
-          `Failed to save view preferences for ${pageType}:`,
-          error,
-        );
-      }
-    }
-  };
+            // Dispatch a custom event to notify other components in the same window
+            const customEventName = `view-preferences-changed-${pageType}`;
+            window.dispatchEvent(
+              new CustomEvent(customEventName, {
+                detail: newPreferences,
+              }),
+            );
+          } catch {
+            // Ignore storage errors
+          }
+        }
 
-  return [preferences, updatePreference, isLoaded] as const;
+        return newPreferences;
+      });
+    },
+    [storageKey, pageType],
+  );
+
+  return [preferences, updatePreference] as const;
 }

@@ -1,5 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { Calendar, Clock, Filter, Search, User, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { AIAvatar } from "@/components/ui/ai-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,6 @@ import {
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/frontend-api";
 
 // Types for history items (matching the API response structure)
@@ -69,46 +69,26 @@ interface HistoryItem {
 
 export default function HistoryPage() {
   const isMobile = useIsMobile();
-  const { toast } = useToast();
   const { data: auth } = useAuth();
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAction, setFilterAction] = useState("all");
   const [filterItemType, setFilterItemType] = useState("all");
   const [filterActor, setFilterActor] = useState("all");
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
 
-  // Fetch history from API
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        setIsLoading(true);
-        const response = await apiFetch("/api/history?limit=9999");
-        if (response.ok) {
-          const data = await response.json();
-          setHistory(data.items);
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to load history",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching history:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load history",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+  // Fetch history from API using React Query
+  const { data: history = [], isLoading } = useQuery<HistoryItem[]>({
+    queryKey: ["history"],
+    queryFn: async () => {
+      const response = await apiFetch("/api/history?limit=9999");
+      if (!response.ok) {
+        throw new Error("Failed to load history");
       }
-    };
-
-    fetchHistory();
-  }, [toast]);
+      const data = await response.json();
+      return data.items;
+    },
+    staleTime: 2 * 60 * 1000,
+  });
 
   // Ensure history is always an array before filtering
   const filteredHistory = (history || []).filter((item) => {

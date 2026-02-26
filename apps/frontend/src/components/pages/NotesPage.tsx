@@ -27,7 +27,6 @@ import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation"
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNotes } from "@/hooks/use-notes";
-import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/list-page-utils";
 import type { NoteEntry } from "@/types/note";
@@ -78,8 +77,6 @@ export default function NotesPage() {
     isDeleting,
     isUploading,
   } = useNotes();
-
-  useProcessingEvents();
 
   // Shared list page state
   const state = useListPageState(entries, notesConfig, {

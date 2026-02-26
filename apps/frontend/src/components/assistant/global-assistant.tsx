@@ -56,7 +56,6 @@ interface GlobalAssistantProps {
   handleKeyDown: (e: React.KeyboardEvent) => void;
   handleSend: () => void;
   startNewConversation: () => void;
-  isClient: boolean;
   currentConversation: ConversationSummary | null;
   onEditConversationTitle: (newTitle: string) => void;
   onShowHistory: () => void;
@@ -246,7 +245,6 @@ interface AssistantContentProps {
   onFullScreenToggle?: () => void;
   fullScreen: boolean;
   onOpenChange: (open: boolean) => void;
-  isClient: boolean;
   currentConversation: ConversationSummary | null;
   onEditConversationTitle: (newTitle: string) => void;
   onShowHistory: () => void;
@@ -273,7 +271,6 @@ const AssistantContent = ({
   onFullScreenToggle,
   fullScreen,
   onOpenChange,
-  isClient,
   currentConversation,
   onEditConversationTitle,
   onShowHistory,
@@ -419,7 +416,6 @@ const AssistantContent = ({
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
           showThinkingTokens={showThinkingTokens}
-          isClient={isClient}
           className="border-0 h-full"
         />
       </div>
@@ -445,7 +441,6 @@ export function GlobalAssistant({
   handleKeyDown,
   handleSend,
   startNewConversation,
-  isClient,
   currentConversation,
   onEditConversationTitle,
   onShowHistory,
@@ -478,7 +473,6 @@ export function GlobalAssistant({
     onFullScreenToggle,
     fullScreen,
     onOpenChange,
-    isClient,
     currentConversation,
     onEditConversationTitle,
     onShowHistory,
