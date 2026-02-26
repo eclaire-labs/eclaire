@@ -39,14 +39,14 @@ export const countTasksTool = tool<typeof inputSchema, BackendAgentContext>({
       validStatus = input.status as TaskStatus;
     }
 
-    const count = await countTasksService(
-      context.userId,
-      input.text,
-      input.tags,
-      validStatus,
-      input.startDate ? new Date(input.startDate) : undefined,
-      input.endDate ? new Date(input.endDate) : undefined,
-    );
+    const count = await countTasksService({
+      userId: context.userId,
+      text: input.text,
+      tags: input.tags,
+      status: validStatus,
+      startDate: input.startDate ? new Date(input.startDate) : undefined,
+      endDate: input.endDate ? new Date(input.endDate) : undefined,
+    });
     return {
       success: true,
       content: JSON.stringify({ count }),

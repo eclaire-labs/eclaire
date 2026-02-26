@@ -48,6 +48,7 @@ import {
   putTaskRouteDescription,
 } from "../schemas/tasks-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
+import { parseSearchFields } from "../lib/search-params.js";
 import { withAuth } from "../middleware/with-auth.js";
 
 const logger = createChildLogger("tasks");
@@ -77,47 +78,30 @@ tasksRoutes.get("/", describeRoute(getTasksRouteDescription),
       limit: queryParams.limit || 50,
     });
 
-    // Process tags if provided (convert from comma-separated string to array)
-    const tagsList = params.tags
-      ? params.tags.split(",").map((tag: string) => tag.trim())
-      : undefined;
+    const { tags, startDate, endDate, dueDateStart, dueDateEnd } = parseSearchFields(params);
 
-    // Parse dates if provided
-    const startDate = params.startDate
-      ? new Date(params.startDate)
-      : undefined;
-    const endDate = params.endDate ? new Date(params.endDate) : undefined;
-    const dueDateStart = params.dueDateStart
-      ? new Date(params.dueDateStart)
-      : undefined;
-    const dueDateEnd = params.dueDateEnd
-      ? new Date(params.dueDateEnd)
-      : undefined;
-
-    // Search tasks with provided criteria
-    const tasks = await findTasks(
+    const tasks = await findTasks({
       userId,
-      params.text,
-      tagsList,
-      params.status,
+      text: params.text,
+      tags,
+      status: params.status,
       startDate,
       endDate,
-      params.limit,
+      limit: params.limit,
       dueDateStart,
       dueDateEnd,
-    );
+    });
 
-    // Get total count for pagination
-    const totalCount = await countTasks(
+    const totalCount = await countTasks({
       userId,
-      params.text,
-      tagsList,
-      params.status,
+      text: params.text,
+      tags,
+      status: params.status,
       startDate,
       endDate,
       dueDateStart,
       dueDateEnd,
-    );
+    });
 
     return c.json({
       items: tasks,

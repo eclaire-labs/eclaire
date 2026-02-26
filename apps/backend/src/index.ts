@@ -37,15 +37,12 @@ import {
   stopScheduler,
 } from "./lib/queue/index.js";
 import {
-  recordLoginHistory,
-  recordLogoutHistory,
-} from "./lib/services/history.js";
-import {
   startAllTelegramBots,
   stopAllTelegramBots,
 } from "./lib/services/telegram.js";
 
 import { allRoutes } from "./routes/all.js";
+import { authRoutes } from "./routes/auth.js";
 import { bookmarksRoutes } from "./routes/bookmarks.js";
 import { channelsRoutes } from "./routes/channels.js";
 import { conversationsRoutes } from "./routes/conversations.js";
@@ -103,57 +100,6 @@ app.use(
   }),
 );
 
-// Add manual CORS logging for debugging
-app.use("*", async (c, next) => {
-  if (c.req.method === "OPTIONS") {
-    const origin = c.req.header("origin");
-    const allowedOrigins = getAllowedOrigins();
-
-    logger.info(
-      {
-        method: "OPTIONS",
-        origin,
-        allowedOrigins,
-        path: c.req.path,
-        headers: {
-          "access-control-request-method": c.req.header(
-            "access-control-request-method",
-          ),
-          "access-control-request-headers": c.req.header(
-            "access-control-request-headers",
-          ),
-        },
-      },
-      "🔍 CORS preflight request",
-    );
-  }
-
-  await next();
-
-  // Log response headers for OPTIONS
-  if (c.req.method === "OPTIONS") {
-    logger.info(
-      {
-        responseHeaders: {
-          "access-control-allow-origin": c.res.headers.get(
-            "access-control-allow-origin",
-          ),
-          "access-control-allow-credentials": c.res.headers.get(
-            "access-control-allow-credentials",
-          ),
-          "access-control-allow-methods": c.res.headers.get(
-            "access-control-allow-methods",
-          ),
-          "access-control-allow-headers": c.res.headers.get(
-            "access-control-allow-headers",
-          ),
-        },
-      },
-      "📤 CORS preflight response",
-    );
-  }
-});
-
 // Session middleware - this runs on every request to inject user/session into context
 app.use("*", async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -169,138 +115,8 @@ app.use("*", async (c, next) => {
   return next();
 });
 
-// Helper function to record authentication events
-async function recordAuthenticationEvent(
-  c: Context,
-  path: string,
-  result: Response,
-) {
-  try {
-    const ipAddress =
-      c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "unknown";
-    const userAgent = c.req.header("user-agent") || "unknown";
-
-    // Get response data to extract user and session info
-    const responseClone = result.clone();
-    const responseData = (await responseClone.json()) as {
-      user?: { id: string };
-      token?: string;
-    };
-
-    // Extract authentication metadata
-    const metadata = {
-      ipAddress,
-      userAgent,
-      authMethod: "email_password", // Default for Better Auth email/password
-    };
-
-    // Handle different authentication endpoints
-    if (path.includes("/sign-in/email") && responseData.user) {
-      // Login successful
-      await recordLoginHistory({
-        userId: responseData.user.id,
-        sessionId: responseData.token || "session", // Use token as session identifier
-        metadata,
-        success: true,
-      });
-    } else if (path.includes("/sign-out")) {
-      // Logout - try to get user from context since response might not have user info
-      const user = c.get("user");
-      const session = c.get("session");
-
-      if (user && session) {
-        await recordLogoutHistory({
-          userId: user.id,
-          sessionId: session.id,
-          metadata,
-        });
-      }
-    } else if (path.includes("/sign-up/email") && responseData.user) {
-      // New user registration - record as login since they're auto-signed in
-      await recordLoginHistory({
-        userId: responseData.user.id,
-        sessionId: responseData.token || "session",
-        metadata: {
-          ...metadata,
-          authMethod: "registration",
-        },
-        success: true,
-      });
-    }
-  } catch (error) {
-    // Log error but don't fail the auth request
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-        path,
-      },
-      "Failed to record authentication event",
-    );
-  }
-}
-
-// Better Auth handler - handles all auth routes
-app.all("/api/auth/*", async (c) => {
-  const requestURL = new URL(c.req.url);
-  const requestId = c.get("requestId");
-
-  // Add this logging
-  logger.info(
-    {
-      requestId,
-      path: requestURL.pathname,
-      method: c.req.method,
-      url: c.req.url,
-      origin: c.req.header("origin"),
-      referer: c.req.header("referer"),
-    },
-    "🔍 Auth request received",
-  );
-
-  logger.debug(
-    {
-      requestId,
-      path: requestURL.pathname,
-      method: c.req.method,
-      url: c.req.url,
-    },
-    "Auth handler processing request",
-  );
-
-  try {
-    const result = await auth.handler(c.req.raw);
-
-    // Record authentication events after successful processing
-    if (result && result.status === 200) {
-      await recordAuthenticationEvent(c, requestURL.pathname, result);
-    }
-
-    logger.info(
-      {
-        requestId,
-        status: result ? result.status : "no result",
-      },
-      "Auth handler completed",
-    );
-    return result;
-  } catch (error) {
-    logger.error(
-      {
-        requestId,
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Auth handler failed",
-    );
-
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    return c.json(
-      { error: "Authentication failed", details: errorMessage },
-      500,
-    );
-  }
-});
+// Auth routes (Better Auth handler + event recording)
+app.route("/api/auth", authRoutes);
 
 // Health check handler
 const healthHandler = (c: Context<{ Variables: Variables }>) => {

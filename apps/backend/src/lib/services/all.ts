@@ -425,61 +425,56 @@ export async function findAllEntries(
 
     // We fetch from all services concurrently
     const promises = [
-      findBookmarks(
+      findBookmarks({
         userId,
         text,
-        tagsList,
+        tags: tagsList,
         startDate,
         endDate,
         limit,
         dueDateStart,
         dueDateEnd,
-      ).then((items) => items.map((item) => ({ ...item, type: "bookmark" }))),
-      findDocuments(
+      }).then((items) => items.map((item) => ({ ...item, type: "bookmark" }))),
+      findDocuments({
         userId,
         text,
-        tagsList,
-        undefined,
+        tags: tagsList,
         startDate,
         endDate,
         limit,
-        undefined, // sortBy - use default
-        undefined, // sortDir - use default
         dueDateStart,
         dueDateEnd,
-      ).then((items) => items.map((item) => ({ ...item, type: "document" }))),
-      findNotes(
+      }).then((items) => items.map((item) => ({ ...item, type: "document" }))),
+      findNotes({
         userId,
         text,
-        tagsList,
+        tags: tagsList,
         startDate,
         endDate,
         limit,
         dueDateStart,
         dueDateEnd,
-      ).then((items) => items.map((item) => ({ ...item, type: "note" }))),
-      findPhotos(
+      }).then((items) => items.map((item) => ({ ...item, type: "note" }))),
+      findPhotos({
         userId,
-        tagsList,
+        tags: tagsList,
         startDate,
         endDate,
-        undefined,
-        "createdAt",
         limit,
         dueDateStart,
         dueDateEnd,
-      ).then((items) => items.map((item) => ({ ...item, type: "photo" }))),
-      findTasks(
+      }).then((items) => items.map((item) => ({ ...item, type: "photo" }))),
+      findTasks({
         userId,
         text,
-        tagsList,
-        undefined,
+        tags: tagsList,
+        status: undefined,
         startDate,
         endDate,
         limit,
         dueDateStart,
         dueDateEnd,
-      ).then((items) => items.map((item) => ({ ...item, type: "task" }))),
+      }).then((items) => items.map((item) => ({ ...item, type: "task" }))),
     ];
 
     const results = await Promise.all(promises);
@@ -544,54 +539,51 @@ export async function countAllEntries(
     const dueDateEnd = dueDateFilter?.endDue;
 
     const countPromises = [
-      countBookmarks(
+      countBookmarks({
         userId,
         text,
-        tagsList,
+        tags: tagsList,
         startDate,
         endDate,
         dueDateStart,
         dueDateEnd,
-      ),
-      countDocuments(
+      }),
+      countDocuments({
         userId,
         text,
-        tagsList,
-        undefined,
+        tags: tagsList,
         startDate,
         endDate,
         dueDateStart,
         dueDateEnd,
-      ),
-      countNotes(
+      }),
+      countNotes({
         userId,
         text,
-        tagsList,
+        tags: tagsList,
         startDate,
         endDate,
         dueDateStart,
         dueDateEnd,
-      ),
-      countPhotos(
+      }),
+      countPhotos({
         userId,
-        tagsList,
+        tags: tagsList,
         startDate,
         endDate,
-        undefined,
-        "createdAt",
         dueDateStart,
         dueDateEnd,
-      ),
-      countTasks(
+      }),
+      countTasks({
         userId,
         text,
-        tagsList,
-        undefined,
+        tags: tagsList,
+        status: undefined,
         startDate,
         endDate,
         dueDateStart,
         dueDateEnd,
-      ),
+      }),
     ];
 
     const counts = await Promise.all(countPromises);

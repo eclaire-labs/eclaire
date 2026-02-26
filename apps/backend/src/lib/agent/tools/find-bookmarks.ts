@@ -26,14 +26,14 @@ export const findBookmarksTool = tool<typeof inputSchema, BackendAgentContext>({
   description: "Search bookmarks by text, tags, and date range.",
   inputSchema,
   execute: async (input, context) => {
-    const results = await findBookmarksService(
-      context.userId,
-      input.text,
-      input.tags,
-      input.startDate ? new Date(input.startDate) : undefined,
-      input.endDate ? new Date(input.endDate) : undefined,
-      input.limit,
-    );
+    const results = await findBookmarksService({
+      userId: context.userId,
+      text: input.text,
+      tags: input.tags,
+      startDate: input.startDate ? new Date(input.startDate) : undefined,
+      endDate: input.endDate ? new Date(input.endDate) : undefined,
+      limit: input.limit,
+    });
     return {
       success: true,
       content: JSON.stringify(results, null, 2),

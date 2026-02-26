@@ -48,6 +48,7 @@ import {
   putPhotoRouteDescription,
 } from "../schemas/photos-routes.js";
 import { PHOTO_MIMES } from "../types/mime-types.js";
+import { parseSearchFields } from "../lib/search-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("photos");
@@ -81,35 +82,22 @@ photosRoutes.get(
       limit: queryParams.limit || 50,
     });
 
-    // Process tags if provided (convert from comma-separated string to array)
-    const tagsList = params.tags
-      ? params.tags.split(",").map((tag: string) => tag.trim())
-      : undefined;
+    const { tags, startDate, endDate } = parseSearchFields(params);
 
-    // Parse dates if provided
-    const startDate = params.startDate ? new Date(params.startDate) : undefined;
-    const endDate = params.endDate ? new Date(params.endDate) : undefined;
-
-    // Search photos with provided criteria
-    const photos = await findPhotos(
+    const photos = await findPhotos({
       userId,
-      tagsList,
+      tags,
       startDate,
       endDate,
-      undefined, // locationCity parameter
-      "createdAt", // dateField parameter
-      params.limit,
-    );
+      limit: params.limit,
+    });
 
-    // Get total count for pagination
-    const totalCount = await countPhotos(
+    const totalCount = await countPhotos({
       userId,
-      tagsList,
+      tags,
       startDate,
       endDate,
-      undefined, // locationCity parameter
-      "createdAt", // dateField parameter
-    );
+    });
 
     return c.json({
       items: photos,

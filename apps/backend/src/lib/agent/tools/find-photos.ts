@@ -31,15 +31,15 @@ export const findPhotosTool = tool<typeof inputSchema, BackendAgentContext>({
   description: "Search photos by tags, date range, and location.",
   inputSchema,
   execute: async (input, context) => {
-    const results = await findPhotosService(
-      context.userId,
-      input.tags,
-      input.startDate ? new Date(input.startDate) : undefined,
-      input.endDate ? new Date(input.endDate) : undefined,
-      input.locationCity,
-      input.dateField || "dateTaken",
-      input.limit,
-    );
+    const results = await findPhotosService({
+      userId: context.userId,
+      tags: input.tags,
+      startDate: input.startDate ? new Date(input.startDate) : undefined,
+      endDate: input.endDate ? new Date(input.endDate) : undefined,
+      locationCity: input.locationCity,
+      dateField: input.dateField || "dateTaken",
+      limit: input.limit,
+    });
     return {
       success: true,
       content: JSON.stringify(results, null, 2),

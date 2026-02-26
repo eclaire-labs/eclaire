@@ -39,6 +39,18 @@ import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:tasks");
 
+/** Common parameters for searching / counting tasks. */
+export type FindTasksParams = {
+  userId: string;
+  text?: string;
+  tags?: string[];
+  status?: TaskStatus;
+  startDate?: Date;
+  endDate?: Date;
+  dueDateStart?: Date;
+  dueDateEnd?: Date;
+};
+
 // Queue name for task tag_generation jobs (maps to old jobType="tag_generation")
 const TASK_PROCESSING_QUEUE = "task-processing";
 
@@ -1804,15 +1816,15 @@ async function getTaskWithTags(taskId: string) {
  * @param dueDateEnd - Optional end due date filter.
  * @returns An array of Drizzle SQL conditions.
  */
-function _buildTaskQueryConditions(
-  userId: string,
-  text?: string,
-  status?: TaskStatus,
-  startDate?: Date,
-  endDate?: Date,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): (SQL | undefined)[] {
+function _buildTaskQueryConditions({
+  userId,
+  text,
+  status,
+  startDate,
+  endDate,
+  dueDateStart,
+  dueDateEnd,
+}: FindTasksParams): (SQL | undefined)[] {
   // Return type allowing undefined for clarity before filtering/spreading
   // Explicitly type the array elements
   const definedConditions: (SQL | undefined)[] = [eq(tasks.userId, userId)];
@@ -1867,30 +1879,22 @@ function _buildTaskQueryConditions(
 /**
  * Search tasks by text, tags, status, and date range.
  *
- * @param userId - The ID of the user.
- * @param text - Optional text search.
- * @param tagsList - Optional array of tags.
- * @param status - Optional task status.
- * @param startDate - Optional start date (due date).
- * @param endDate - Optional end date (due date).
- * @param limit - Optional maximum number of results.
- * @param dueDateStart - Optional start due date filter.
- * @param dueDateEnd - Optional end due date filter.
+ * @param params - {@link FindTasksParams} plus an optional `limit` (default 50).
  * @returns An array of tasks.
  */
-export async function findTasks(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  status?: TaskStatus,
-  startDate?: Date,
-  endDate?: Date,
+export async function findTasks({
+  userId,
+  text,
+  tags: tagsList,
+  status,
+  startDate,
+  endDate,
   limit = 50,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-) {
+  dueDateStart,
+  dueDateEnd,
+}: FindTasksParams & { limit?: number }) {
   try {
-    const conditions = _buildTaskQueryConditions(
+    const conditions = _buildTaskQueryConditions({
       userId,
       text,
       status,
@@ -1898,7 +1902,7 @@ export async function findTasks(
       endDate,
       dueDateStart,
       dueDateEnd,
-    );
+    });
 
     const query = db
       .select({
@@ -1989,28 +1993,21 @@ export async function findTasks(
 /**
  * Count tasks matching criteria.
  *
- * @param userId - The ID of the user.
- * @param text - Optional text search.
- * @param tagsList - Optional array of tags.
- * @param status - Optional task status.
- * @param startDate - Optional start date (due date).
- * @param endDate - Optional end date (due date).
- * @param dueDateStart - Optional start due date filter.
- * @param dueDateEnd - Optional end due date filter.
+ * @param params - {@link FindTasksParams}.
  * @returns The total count of matching tasks.
  */
-export async function countTasks(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  status?: TaskStatus,
-  startDate?: Date,
-  endDate?: Date,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): Promise<number> {
+export async function countTasks({
+  userId,
+  text,
+  tags: tagsList,
+  status,
+  startDate,
+  endDate,
+  dueDateStart,
+  dueDateEnd,
+}: FindTasksParams): Promise<number> {
   try {
-    const conditions = _buildTaskQueryConditions(
+    const conditions = _buildTaskQueryConditions({
       userId,
       text,
       status,
@@ -2018,7 +2015,7 @@ export async function countTasks(
       endDate,
       dueDateStart,
       dueDateEnd,
-    );
+    });
 
     const baseQuery = db
       .select({ id: tasks.id })

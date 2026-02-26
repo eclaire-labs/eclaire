@@ -20,14 +20,12 @@ export const countPhotosTool = tool<typeof inputSchema, BackendAgentContext>({
   description: "Count photos matching criteria.",
   inputSchema,
   execute: async (input, context) => {
-    const count = await countPhotosService(
-      context.userId,
-      input.tags,
-      input.startDate ? new Date(input.startDate) : undefined,
-      input.endDate ? new Date(input.endDate) : undefined,
-      undefined,
-      "createdAt",
-    );
+    const count = await countPhotosService({
+      userId: context.userId,
+      tags: input.tags,
+      startDate: input.startDate ? new Date(input.startDate) : undefined,
+      endDate: input.endDate ? new Date(input.endDate) : undefined,
+    });
     return {
       success: true,
       content: JSON.stringify({ count }),

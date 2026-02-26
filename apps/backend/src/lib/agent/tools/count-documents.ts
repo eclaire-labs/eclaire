@@ -26,14 +26,14 @@ export const countDocumentsTool = tool<typeof inputSchema, BackendAgentContext>(
     description: "Count documents matching criteria.",
     inputSchema,
     execute: async (input, context) => {
-      const count = await countDocumentsService(
-        context.userId,
-        input.text,
-        input.tags,
-        input.fileTypes,
-        input.startDate ? new Date(input.startDate) : undefined,
-        input.endDate ? new Date(input.endDate) : undefined,
-      );
+      const count = await countDocumentsService({
+        userId: context.userId,
+        text: input.text,
+        tags: input.tags,
+        fileTypes: input.fileTypes,
+        startDate: input.startDate ? new Date(input.startDate) : undefined,
+        endDate: input.endDate ? new Date(input.endDate) : undefined,
+      });
       return {
         success: true,
         content: JSON.stringify({ count }),

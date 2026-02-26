@@ -44,15 +44,15 @@ export const findTasksTool = tool<typeof inputSchema, BackendAgentContext>({
       validStatus = input.status as TaskStatus;
     }
 
-    const results = await findTasksService(
-      context.userId,
-      input.text,
-      input.tags,
-      validStatus,
-      input.startDate ? new Date(input.startDate) : undefined,
-      input.endDate ? new Date(input.endDate) : undefined,
-      input.limit,
-    );
+    const results = await findTasksService({
+      userId: context.userId,
+      text: input.text,
+      tags: input.tags,
+      status: validStatus,
+      startDate: input.startDate ? new Date(input.startDate) : undefined,
+      endDate: input.endDate ? new Date(input.endDate) : undefined,
+      limit: input.limit,
+    });
     return {
       success: true,
       content: JSON.stringify(results, null, 2),

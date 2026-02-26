@@ -34,6 +34,7 @@ import {
   postNotesRouteDescription,
   putNoteRouteDescription,
 } from "../schemas/notes-routes.js";
+import { parseSearchFields } from "../lib/search-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("notes");
@@ -67,20 +68,10 @@ notesRoutes.get(
       !dueDateEnd
     ) {
       // Use findNotes with no filters to get paginated results
-      const entries = await findNotes(
-        userId,
-        undefined, // text
-        undefined, // tagsList
-        undefined, // startDate
-        undefined, // endDate
-        limit,
-        undefined, // dueDateStart
-        undefined, // dueDateEnd
-        offset,
-      );
+      const entries = await findNotes({ userId, limit, offset });
 
       // Get total count for pagination
-      const totalCount = await countNotes(userId);
+      const totalCount = await countNotes({ userId });
 
       return c.json({
         items: entries,
@@ -90,38 +81,21 @@ notesRoutes.get(
       });
     }
 
-    // Parse parameters for search
-    const tagsList = tags
-      ? tags.split(",").map((tag) => tag.trim())
-      : undefined;
-    const startDateObj = startDate ? new Date(startDate) : undefined;
-    const endDateObj = endDate ? new Date(endDate) : undefined;
-    const dueDateStartObj = dueDateStart ? new Date(dueDateStart) : undefined;
-    const dueDateEndObj = dueDateEnd ? new Date(dueDateEnd) : undefined;
+    const parsed = parseSearchFields({ tags, startDate, endDate, dueDateStart, dueDateEnd });
 
-    // Search note entries with provided criteria
-    const entries = await findNotes(
+    const entries = await findNotes({
       userId,
       text,
-      tagsList,
-      startDateObj,
-      endDateObj,
+      ...parsed,
       limit,
-      dueDateStartObj,
-      dueDateEndObj,
       offset,
-    );
+    });
 
-    // Get total count for pagination
-    const totalCount = await countNotes(
+    const totalCount = await countNotes({
       userId,
       text,
-      tagsList,
-      startDateObj,
-      endDateObj,
-      dueDateStartObj,
-      dueDateEndObj,
-    );
+      ...parsed,
+    });
 
     return c.json({
       items: entries,

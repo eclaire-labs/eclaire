@@ -78,6 +78,17 @@ interface CreateBookmarkPayload {
   userAgent: string;
 }
 
+export interface FindBookmarksParams {
+  userId: string;
+  text?: string;
+  tags?: string[];
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+  dueDateStart?: Date;
+  dueDateEnd?: Date;
+}
+
 interface UpdateBookmarkParams {
   title?: string;
   url?: string;
@@ -832,14 +843,14 @@ export async function updateBookmarkArtifacts(
 
 // --- HELPER & SEARCH FUNCTIONS ---
 
-function _buildBookmarkQueryConditions(
-  userId: string,
-  text?: string,
-  startDate?: Date,
-  endDate?: Date,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): SQL<unknown>[] {
+function _buildBookmarkQueryConditions({
+  userId,
+  text,
+  startDate,
+  endDate,
+  dueDateStart,
+  dueDateEnd,
+}: Omit<FindBookmarksParams, "tags" | "limit">): SQL<unknown>[] {
   const definedConditions: SQL<unknown>[] = [eq(bookmarks.userId, userId)];
 
   if (text) {
@@ -875,25 +886,25 @@ function _buildBookmarkQueryConditions(
   return definedConditions;
 }
 
-export async function findBookmarks(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  startDate?: Date,
-  endDate?: Date,
+export async function findBookmarks({
+  userId,
+  text,
+  tags: tagsList,
+  startDate,
+  endDate,
   limit = 50,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-) {
+  dueDateStart,
+  dueDateEnd,
+}: FindBookmarksParams) {
   try {
-    const conditions = _buildBookmarkQueryConditions(
+    const conditions = _buildBookmarkQueryConditions({
       userId,
       text,
       startDate,
       endDate,
       dueDateStart,
       dueDateEnd,
-    );
+    });
 
     const query = db
       .select({
@@ -979,24 +990,24 @@ export async function findBookmarks(
   }
 }
 
-export async function countBookmarks(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  startDate?: Date,
-  endDate?: Date,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): Promise<number> {
+export async function countBookmarks({
+  userId,
+  text,
+  tags: tagsList,
+  startDate,
+  endDate,
+  dueDateStart,
+  dueDateEnd,
+}: Omit<FindBookmarksParams, "limit">): Promise<number> {
   try {
-    const conditions = _buildBookmarkQueryConditions(
+    const conditions = _buildBookmarkQueryConditions({
       userId,
       text,
       startDate,
       endDate,
       dueDateStart,
       dueDateEnd,
-    );
+    });
 
     if (!tagsList || tagsList.length === 0) {
       const [result] = await db

@@ -10,6 +10,7 @@ import {
   detectAndVerifyMimeType,
   findAllEntries,
 } from "../lib/services/all.js";
+import { parseSearchFields } from "../lib/search-params.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
@@ -33,16 +34,12 @@ allRoutes.get(
   zValidator("query", SearchQuerySchema),
   withAuth(async (c, userId) => {
     const params = c.req.valid("query");
-    const tagsList = params.tags
-      ? params.tags.split(",").map((tag: string) => tag.trim())
-      : undefined;
-    const startDate = params.startDate ? new Date(params.startDate) : undefined;
-    const endDate = params.endDate ? new Date(params.endDate) : undefined;
+    const { tags, startDate, endDate } = parseSearchFields(params);
 
     const allItems = await findAllEntries(
       userId,
       params.text,
-      tagsList,
+      tags,
       startDate,
       endDate,
       undefined,
@@ -53,7 +50,7 @@ allRoutes.get(
     const totalCount = await countAllEntries(
       userId,
       params.text,
-      tagsList,
+      tags,
       startDate,
       endDate,
       undefined,

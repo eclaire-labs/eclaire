@@ -949,27 +949,33 @@ export async function getPhotoById(photoId: string, userId: string) {
 
 // --- Search and Count Functions ---
 
+/** Common parameters shared by findPhotos, countPhotos, and the internal query-builder. */
+export interface FindPhotosParams {
+  userId: string;
+  tags?: string[];
+  startDate?: Date;
+  endDate?: Date;
+  locationCity?: string;
+  dateField?: "createdAt" | "dateTaken";
+  limit?: number;
+  dueDateStart?: Date;
+  dueDateEnd?: Date;
+}
+
 /**
  * Builds the common query conditions for finding/counting photos based on user, date range,
  * and potentially new filterable fields (e.g., location).
- * @param userId - The ID of the user.
- * @param startDate - Optional start date (for created_at or dateTaken).
- * @param endDate - Optional end date (for created_at or dateTaken).
- * @param locationCity - Optional location city filter.
- * @param dateField - Which date field to filter on ('created_at' or 'dateTaken'). Default 'created_at'.
- * @param dueDateStart - Optional start due date filter.
- * @param dueDateEnd - Optional end due date filter.
  * @returns An array of Drizzle SQL conditions.
  */
-function _buildPhotoQueryConditions(
-  userId: string,
-  startDate?: Date,
-  endDate?: Date,
-  locationCity?: string,
-  dateField: "createdAt" | "dateTaken" = "createdAt",
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): SQL<unknown>[] {
+function _buildPhotoQueryConditions({
+  userId,
+  startDate,
+  endDate,
+  locationCity,
+  dateField = "createdAt",
+  dueDateStart,
+  dueDateEnd,
+}: Omit<FindPhotosParams, "tags" | "limit">): SQL<unknown>[] {
   const definedConditions: SQL<unknown>[] = [eq(photos.userId, userId)];
   const dateColumn =
     dateField === "dateTaken" ? photos.dateTaken : photos.createdAt;
@@ -1033,30 +1039,21 @@ function _buildPhotoQueryConditions(
 
 /**
  * Finds photos matching specific criteria (tags, date range, location).
- * @param userId - The ID of the user.
- * @param tagsList - Optional array of tags (photo must have ALL specified tags).
- * @param startDate - Optional start date.
- * @param endDate - Optional end date.
- * @param locationCity - Optional location city filter.
- * @param dateField - Which date field to filter on ('created_at' or 'dateTaken').
- * @param limit - Optional maximum number of results.
- * @param dueDateStart - Optional start due date filter.
- * @param dueDateEnd - Optional end due date filter.
  * @returns An array of matching photo details.
  */
-export async function findPhotos(
-  userId: string,
-  tagsList?: string[],
-  startDate?: Date,
-  endDate?: Date,
-  locationCity?: string,
-  dateField: "createdAt" | "dateTaken" = "createdAt",
+export async function findPhotos({
+  userId,
+  tags: tagsList,
+  startDate,
+  endDate,
+  locationCity,
+  dateField = "createdAt",
   limit = 50,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-) {
+  dueDateStart,
+  dueDateEnd,
+}: FindPhotosParams) {
   try {
-    const conditions = _buildPhotoQueryConditions(
+    const conditions = _buildPhotoQueryConditions({
       userId,
       startDate,
       endDate,
@@ -1064,7 +1061,7 @@ export async function findPhotos(
       dateField,
       dueDateStart,
       dueDateEnd,
-    );
+    });
     let finalPhotoIds: string[];
     const orderByColumn =
       dateField === "dateTaken" ? photos.dateTaken : photos.createdAt;
@@ -1219,28 +1216,20 @@ export async function findPhotos(
 
 /**
  * Counts photos matching specific criteria.
- * @param userId - The ID of the user.
- * @param tagsList - Optional array of tags (photo must have ALL specified tags).
- * @param startDate - Optional start date.
- * @param endDate - Optional end date.
- * @param locationCity - Optional location city filter.
- * @param dateField - Which date field to filter on ('created_at' or 'dateTaken').
- * @param dueDateStart - Optional start due date filter.
- * @param dueDateEnd - Optional end due date filter.
  * @returns The total count of matching photos.
  */
-export async function countPhotos(
-  userId: string,
-  tagsList?: string[],
-  startDate?: Date,
-  endDate?: Date,
-  locationCity?: string,
-  dateField: "createdAt" | "dateTaken" = "createdAt",
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): Promise<number> {
+export async function countPhotos({
+  userId,
+  tags: tagsList,
+  startDate,
+  endDate,
+  locationCity,
+  dateField = "createdAt",
+  dueDateStart,
+  dueDateEnd,
+}: Omit<FindPhotosParams, "limit">): Promise<number> {
   try {
-    const conditions = _buildPhotoQueryConditions(
+    const conditions = _buildPhotoQueryConditions({
       userId,
       startDate,
       endDate,
@@ -1248,7 +1237,7 @@ export async function countPhotos(
       dateField,
       dueDateStart,
       dueDateEnd,
-    );
+    });
 
     // If no tag filter, count directly
     if (!tagsList || tagsList.length === 0) {

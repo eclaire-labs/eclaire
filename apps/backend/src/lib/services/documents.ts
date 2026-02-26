@@ -94,6 +94,22 @@ interface DocumentDetails {
 
 export { NotFoundError };
 
+// --- Params Types ---
+
+export interface FindDocumentsParams {
+  userId: string;
+  text?: string;
+  tags?: string[];
+  fileTypes?: string[];
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+  dueDateStart?: Date;
+  dueDateEnd?: Date;
+}
+
 // --- Helper Functions ---
 
 async function getDocumentTags(documentId: string): Promise<string[]> {
@@ -203,14 +219,14 @@ async function getDocumentWithDetails(
   };
 }
 
-function _buildDocumentQueryConditions(
-  userId: string,
-  text?: string,
-  startDate?: Date,
-  endDate?: Date,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): SQL<unknown>[] {
+function _buildDocumentQueryConditions({
+  userId,
+  text,
+  startDate,
+  endDate,
+  dueDateStart,
+  dueDateEnd,
+}: Pick<FindDocumentsParams, "userId" | "text" | "startDate" | "endDate" | "dueDateStart" | "dueDateEnd">): SQL<unknown>[] {
   const conditions: SQL<unknown>[] = [eq(schemaDocuments.userId, userId)];
   if (text?.trim()) {
     const searchTerm = `%${text.trim()}%`;
@@ -603,28 +619,28 @@ export async function getDocumentById(
   }
 }
 
-export async function findDocuments(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  _fileTypes?: string[],
-  startDate?: Date,
-  endDate?: Date,
+export async function findDocuments({
+  userId,
+  text,
+  tags: filterTags,
+  fileTypes: _fileTypes,
+  startDate,
+  endDate,
   limit = 50,
   sortBy = "createdAt",
-  sortDir: "asc" | "desc" = "desc",
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): Promise<DocumentDetails[]> {
+  sortDir = "desc",
+  dueDateStart,
+  dueDateEnd,
+}: FindDocumentsParams): Promise<DocumentDetails[]> {
   try {
-    const conditions = _buildDocumentQueryConditions(
+    const conditions = _buildDocumentQueryConditions({
       userId,
       text,
       startDate,
       endDate,
       dueDateStart,
       dueDateEnd,
-    );
+    });
     // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects of varying types
     const sortColumnMap: Record<string, any> = {
       createdAt: schemaDocuments.createdAt,
@@ -646,7 +662,7 @@ export async function findDocuments(
 
     let finalDocIds: string[];
 
-    if (tagsList && tagsList.length > 0) {
+    if (filterTags && filterTags.length > 0) {
       const baseMatchedDocs = await db
         .select({ id: schemaDocuments.id })
         .from(schemaDocuments)
@@ -662,11 +678,11 @@ export async function findDocuments(
           and(
             inArray(documentsTags.documentId, baseDocIds),
             eq(tags.userId, userId),
-            inArray(tags.name, tagsList),
+            inArray(tags.name, filterTags),
           ),
         )
         .groupBy(documentsTags.documentId)
-        .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
+        .having(sql`COUNT(DISTINCT ${tags.name}) = ${filterTags.length}`);
       const taggedDocIds = docsWithAllTags.map((d) => d.documentId);
       if (taggedDocIds.length === 0) return [];
 
@@ -759,26 +775,26 @@ export async function findDocuments(
   }
 }
 
-export async function countDocuments(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  _fileTypes?: string[],
-  startDate?: Date,
-  endDate?: Date,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): Promise<number> {
+export async function countDocuments({
+  userId,
+  text,
+  tags: filterTags,
+  fileTypes: _fileTypes,
+  startDate,
+  endDate,
+  dueDateStart,
+  dueDateEnd,
+}: Omit<FindDocumentsParams, "limit" | "sortBy" | "sortDir">): Promise<number> {
   try {
-    const conditions = _buildDocumentQueryConditions(
+    const conditions = _buildDocumentQueryConditions({
       userId,
       text,
       startDate,
       endDate,
       dueDateStart,
       dueDateEnd,
-    );
-    if (!tagsList || tagsList.length === 0) {
+    });
+    if (!filterTags || filterTags.length === 0) {
       const countResult = await db
         .select({ value: count() })
         .from(schemaDocuments)
@@ -799,11 +815,11 @@ export async function countDocuments(
         and(
           inArray(documentsTags.documentId, baseDocIds),
           eq(tags.userId, userId),
-          inArray(tags.name, tagsList),
+          inArray(tags.name, filterTags),
         ),
       )
       .groupBy(documentsTags.documentId)
-      .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
+      .having(sql`COUNT(DISTINCT ${tags.name}) = ${filterTags.length}`);
     return docsWithAllTags.length;
   } catch (error) {
     logger.error({ err: error, userId }, "Error counting documents");

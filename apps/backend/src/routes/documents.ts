@@ -43,6 +43,7 @@ import {
 } from "../schemas/documents-routes.js";
 import { DOCUMENT_MIMES } from "../types/mime-types.js";
 import type { Context } from "hono";
+import { parseSearchFields } from "../lib/search-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("documents");
@@ -75,41 +76,28 @@ documentsRoutes.get(
       dueDateEnd: queryParams.dueDateEnd || undefined,
     });
 
-    // Process tags if provided (convert from comma-separated string to array)
-    const tagsList = params.tags
-      ? params.tags.split(",").map((tag: string) => tag.trim())
-      : undefined;
+    const { tags, startDate, endDate, dueDateStart, dueDateEnd } = parseSearchFields(params);
 
-    // Parse dates if provided
-    const startDate = params.startDate
-      ? new Date(params.startDate)
-      : undefined;
-    const endDate = params.endDate ? new Date(params.endDate) : undefined;
-
-    // Search documents with provided criteria
-    const documents = await findDocuments(
+    const documents = await findDocuments({
       userId,
-      params.text,
-      tagsList,
-      undefined, // fileTypes parameter
+      text: params.text,
+      tags,
       startDate,
       endDate,
-      params.limit,
-      params.sortBy,
-      params.sortDir,
-      params.dueDateStart ? new Date(params.dueDateStart) : undefined,
-      params.dueDateEnd ? new Date(params.dueDateEnd) : undefined,
-    );
+      limit: params.limit,
+      sortBy: params.sortBy,
+      sortDir: params.sortDir,
+      dueDateStart,
+      dueDateEnd,
+    });
 
-    // Get total count for pagination
-    const totalCount = await countDocuments(
+    const totalCount = await countDocuments({
       userId,
-      params.text,
-      tagsList,
-      undefined, // fileTypes parameter
+      text: params.text,
+      tags,
       startDate,
       endDate,
-    );
+    });
 
     return c.json({
       items: documents,

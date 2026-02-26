@@ -615,17 +615,30 @@ async function getNoteEntryWithTags(entryId: string) {
   };
 }
 
+/** Common search/filter parameters for note queries. */
+export interface FindNotesParams {
+  userId: string;
+  text?: string;
+  tags?: string[];
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+  dueDateStart?: Date;
+  dueDateEnd?: Date;
+  offset?: number;
+}
+
 /**
  * Helper function to build query conditions for note searching
  */
-function _buildNoteQueryConditions(
-  userId: string,
-  text?: string,
-  startDate?: Date,
-  endDate?: Date,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): SQL<unknown>[] {
+function _buildNoteQueryConditions({
+  userId,
+  text,
+  startDate,
+  endDate,
+  dueDateStart,
+  dueDateEnd,
+}: Omit<FindNotesParams, "tags" | "limit" | "offset">): SQL<unknown>[] {
   const definedConditions: SQL<unknown>[] = [eq(notes.userId, userId)];
 
   if (text) {
@@ -661,35 +674,30 @@ function _buildNoteQueryConditions(
 
 /**
  * Find note entries with optional filters
- * @param userId - The user ID to search for
- * @param text - Optional text to search in title and content
- * @param tagsList - Optional array of tag names to filter by
- * @param startDate - Optional start date filter
- * @param endDate - Optional end date filter
- * @param limit - Maximum number of results to return (default: 50)
+ * @param params - Search parameters
  * @returns Array of note entries with their tags
  */
-export async function findNotes(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  startDate?: Date,
-  endDate?: Date,
+export async function findNotes({
+  userId,
+  text,
+  tags: tagsList,
+  startDate,
+  endDate,
   limit = 50,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
+  dueDateStart,
+  dueDateEnd,
   offset = 0,
-) {
+}: FindNotesParams) {
   try {
     // Build base query conditions
-    const baseConditions = _buildNoteQueryConditions(
+    const baseConditions = _buildNoteQueryConditions({
       userId,
       text,
       startDate,
       endDate,
       dueDateStart,
       dueDateEnd,
-    );
+    });
 
     // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from Drizzle query builder
     let query;
@@ -782,34 +790,28 @@ export async function findNotes(
 
 /**
  * Count note entries with optional filters
- * @param userId - The user ID to search for
- * @param text - Optional text to search in title and content
- * @param tagsList - Optional array of tag names to filter by
- * @param startDate - Optional start date filter
- * @param endDate - Optional end date filter
- * @param dueDateStart - Optional start due date filter
- * @param dueDateEnd - Optional end due date filter
+ * @param params - Search parameters (limit/offset are ignored)
  * @returns Total count of matching note entries
  */
-export async function countNotes(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  startDate?: Date,
-  endDate?: Date,
-  dueDateStart?: Date,
-  dueDateEnd?: Date,
-): Promise<number> {
+export async function countNotes({
+  userId,
+  text,
+  tags: tagsList,
+  startDate,
+  endDate,
+  dueDateStart,
+  dueDateEnd,
+}: Omit<FindNotesParams, "limit" | "offset">): Promise<number> {
   try {
     // Build base query conditions
-    const baseConditions = _buildNoteQueryConditions(
+    const baseConditions = _buildNoteQueryConditions({
       userId,
       text,
       startDate,
       endDate,
       dueDateStart,
       dueDateEnd,
-    );
+    });
 
     // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from Drizzle query builder
     let countQuery;

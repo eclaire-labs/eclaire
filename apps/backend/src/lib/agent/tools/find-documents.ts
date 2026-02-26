@@ -31,15 +31,15 @@ export const findDocumentsTool = tool<typeof inputSchema, BackendAgentContext>({
     "Search documents by full-text, tags, file types, and date range.",
   inputSchema,
   execute: async (input, context) => {
-    const results = await findDocumentsService(
-      context.userId,
-      input.text,
-      input.tags,
-      input.fileTypes,
-      input.startDate ? new Date(input.startDate) : undefined,
-      input.endDate ? new Date(input.endDate) : undefined,
-      input.limit,
-    );
+    const results = await findDocumentsService({
+      userId: context.userId,
+      text: input.text,
+      tags: input.tags,
+      fileTypes: input.fileTypes,
+      startDate: input.startDate ? new Date(input.startDate) : undefined,
+      endDate: input.endDate ? new Date(input.endDate) : undefined,
+      limit: input.limit,
+    });
     return {
       success: true,
       content: JSON.stringify(results, null, 2),
