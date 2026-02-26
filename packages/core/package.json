@@ -43,7 +43,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
@@ -57,8 +57,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@types/node": "24.10.1",
+    "@types/node": "catalog:",
     "oxlint": "catalog:",
-    "typescript": "5.9.3"
+    "typescript": "catalog:"
   }
 }

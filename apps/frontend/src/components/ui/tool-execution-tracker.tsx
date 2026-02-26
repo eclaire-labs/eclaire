@@ -270,6 +270,7 @@ export function useToolExecutionTracker() {
           // Update existing tool call
           const updated = [...prev];
           const existing = updated[existingIndex];
+          if (!existing) return prev;
           updated[existingIndex] = {
             ...existing,
             status,

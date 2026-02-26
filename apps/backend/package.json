@@ -143,7 +143,7 @@
     "@types/jsdom": "27.0.0",
     "@types/jsonwebtoken": "9.0.10",
     "@types/mime-types": "3.0.1",
-    "@types/node": "24.10.4",
+    "@types/node": "catalog:",
     "@types/pg": "8.16.0",
     "@types/semver": "7.7.1",
     "@types/tmp": "0.2.6",
@@ -153,7 +153,7 @@
     "mime-types": "3.0.2",
     "supertest": "7.2.2",
     "tsc-alias": "1.8.16",
-    "typescript": "5.9.3",
+    "typescript": "catalog:",
     "vitest": "4.0.18"
   }
 }

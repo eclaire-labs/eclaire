@@ -281,7 +281,7 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
         .select()
         .from(queueSchedules)
         .where(eq(queueSchedules.key, "update-pattern"));
-      const initialNextRunAt = initialRows[0].nextRunAt;
+      const initialNextRunAt = initialRows[0]!.nextRunAt;
 
       // Update to every minute pattern with immediately=true
       await scheduler.upsert({
@@ -297,7 +297,7 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
         .select()
         .from(queueSchedules)
         .where(eq(queueSchedules.key, "update-pattern"));
-      const updatedNextRunAt = updatedRows[0].nextRunAt;
+      const updatedNextRunAt = updatedRows[0]!.nextRunAt;
 
       // With immediately=true, nextRunAt should be now (much sooner than hourly)
       expect(updatedNextRunAt!.getTime()).toBeLessThan(
@@ -306,8 +306,8 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
 
       // Verify cron pattern was updated
       const schedules = await scheduler.list();
-      expect(schedules[0].cron).toBe("* * * * *");
-      expect(schedules[0].data).toEqual({ version: 2 });
+      expect(schedules[0]!.cron).toBe("* * * * *");
+      expect(schedules[0]!.data).toEqual({ version: 2 });
     });
 
     it("should not duplicate jobs on pattern update", async () => {
@@ -377,7 +377,7 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
         .select()
         .from(queueSchedules)
         .where(eq(queueSchedules.key, "dedup-restart"));
-      const originalNextRunAt = rowsBefore[0].nextRunAt;
+      const originalNextRunAt = rowsBefore[0]!.nextRunAt;
 
       await scheduler.start();
 
@@ -428,7 +428,7 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
         .select()
         .from(queueSchedules)
         .where(eq(queueSchedules.key, "key-check"));
-      const nextRunAt = rows[0].nextRunAt!;
+      const nextRunAt = rows[0]!.nextRunAt!;
 
       await scheduler.start();
 
@@ -446,7 +446,7 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
 
       expect(jobs).toHaveLength(1);
       // Job key should be schedule:{scheduleKey}:{nextRunAt.getTime()}
-      expect(jobs[0].key).toBe(`schedule:key-check:${nextRunAt.getTime()}`);
+      expect(jobs[0]!.key).toBe(`schedule:key-check:${nextRunAt.getTime()}`);
     });
   });
 });

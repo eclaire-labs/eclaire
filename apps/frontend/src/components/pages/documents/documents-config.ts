@@ -41,7 +41,7 @@ export function getDocumentTypeLabel(
   if (lowerMime.includes("text")) return "Text";
   if (lowerMime.includes("zip")) return "Archive";
   const parts = lowerMime.split("/");
-  return parts[parts.length - 1].toUpperCase() || "File";
+  return parts[parts.length - 1]?.toUpperCase() || "File";
 }
 
 // --- Config ---

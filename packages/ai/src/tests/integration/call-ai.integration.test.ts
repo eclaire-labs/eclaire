@@ -130,7 +130,7 @@ describe("callAI integration", () => {
       expect(result).toBeDefined();
       expect(result.toolCalls).toBeDefined();
       expect(result.toolCalls!.length).toBeGreaterThan(0);
-      expect(result.toolCalls![0].function.name).toBe("calculator");
+      expect(result.toolCalls![0]!.function.name).toBe("calculator");
     });
   });
 

@@ -124,7 +124,8 @@ export function StorageUsageChart({ stats }: StorageUsageChartProps) {
     }>;
   }) => {
     if (active && payload && payload.length) {
-      const d = payload[0].payload;
+      const d = payload[0]?.payload;
+      if (!d) return null;
       return (
         <div className="rounded-lg border bg-background p-2 shadow-md">
           <div className="flex items-center gap-2">

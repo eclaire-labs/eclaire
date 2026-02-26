@@ -261,13 +261,18 @@ export default function TasksPage() {
     {
       itemCount: state.sortedItems.length,
       viewMode: state.viewMode,
-      onSelect: (idx) => handleTaskClick(state.sortedItems[idx]),
-      onEdit: (idx) => openEditDialog(state.sortedItems[idx]),
-      onDelete: (idx) =>
-        state.openDeleteDialog(
-          state.sortedItems[idx].id,
-          state.sortedItems[idx].title,
-        ),
+      onSelect: (idx) => {
+        const item = state.sortedItems[idx];
+        if (item) handleTaskClick(item);
+      },
+      onEdit: (idx) => {
+        const item = state.sortedItems[idx];
+        if (item) openEditDialog(item);
+      },
+      onDelete: (idx) => {
+        const item = state.sortedItems[idx];
+        if (item) state.openDeleteDialog(item.id, item.title);
+      },
     },
   );
 
@@ -512,7 +517,7 @@ export default function TasksPage() {
       {
         key: "status",
         label: "Status",
-        value: state.extraFilters.status,
+        value: state.extraFilters.status ?? "all",
         onChange: (v: string) => state.setExtraFilter("status", v),
         options: [
           { value: "all", label: "All Statuses" },
@@ -524,7 +529,7 @@ export default function TasksPage() {
       {
         key: "assignee",
         label: "Assignee",
-        value: state.extraFilters.assignee,
+        value: state.extraFilters.assignee ?? "all",
         onChange: (v: string) => state.setExtraFilter("assignee", v),
         options: assigneeOptions,
       },
@@ -1055,10 +1060,10 @@ export default function TasksPage() {
                 const isGrouped = state.isGrouped;
                 let showGroupHeader = false;
                 if (isGrouped && index > 0) {
-                  const prevGroupDate = tasksConfig.getGroupDate(
-                    state.sortedItems[index - 1],
-                    state.sortBy,
-                  );
+                  const prevItem = state.sortedItems[index - 1];
+                  const prevGroupDate = prevItem
+                    ? tasksConfig.getGroupDate(prevItem, state.sortBy)
+                    : undefined;
                   const currGroupDate = tasksConfig.getGroupDate(
                     task,
                     state.sortBy,

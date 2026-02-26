@@ -42,9 +42,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "@types/node": "24.10.4",
+    "@types/node": "catalog:",
     "oxlint": "catalog:",
-    "typescript": "5.9.3",
+    "typescript": "catalog:",
     "vitest": "4.0.18",
     "zod": "4.3.6"
   }

@@ -33,7 +33,7 @@ function generateAvatarColor(seed: string): AvatarColor {
   for (let i = 0; i < seed.length; i++) {
     hash = ((hash << 5) - hash + seed.charCodeAt(i)) & 0xffffffff;
   }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length] ?? "bg-blue-500";
 }
 
 // Get user initials for fallback

@@ -94,8 +94,8 @@ function parseCronToPattern(cron: string): RecurrencePattern {
 function parseCronToTime(cron: string): string {
   const parts = cron.split(" ");
   if (parts.length >= 2) {
-    const minutes = parts[0] === "*" ? "00" : parts[0].padStart(2, "0");
-    const hours = parts[1] === "*" ? "09" : parts[1].padStart(2, "0");
+    const minutes = parts[0] === "*" ? "00" : (parts[0] ?? "00").padStart(2, "0");
+    const hours = parts[1] === "*" ? "09" : (parts[1] ?? "09").padStart(2, "0");
     return `${hours}:${minutes}`;
   }
   return "09:00";
@@ -106,7 +106,7 @@ function parseCronToWeekdays(cron: string): WeekdaySelection {
   const weekdays: WeekdaySelection = {};
 
   if (parts.length >= 5) {
-    const dayPart = parts[4];
+    const dayPart = parts[4] ?? "*";
     if (dayPart === "*") {
       WEEKDAYS.forEach((day) => {
         weekdays[day.key] = true;
@@ -178,8 +178,8 @@ export function RecurrenceDialog({
     if (pattern === "none") return null;
 
     const [hours, minutes] = customTime.split(":");
-    const h = parseInt(hours, 10);
-    const m = parseInt(minutes, 10);
+    const h = parseInt(hours ?? "0", 10);
+    const m = parseInt(minutes ?? "0", 10);
 
     switch (pattern) {
       case "daily":

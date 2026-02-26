@@ -28,20 +28,20 @@ export function parseCronExpression(cron: string): CronParts {
   if (parts.length === 5) {
     // Standard 5-field cron (minute hour day month weekday)
     return {
-      minutes: parts[0],
-      hours: parts[1],
-      dayOfMonth: parts[2],
-      month: parts[3],
-      dayOfWeek: parts[4],
+      minutes: parts[0] ?? "*",
+      hours: parts[1] ?? "*",
+      dayOfMonth: parts[2] ?? "*",
+      month: parts[3] ?? "*",
+      dayOfWeek: parts[4] ?? "*",
     };
   } else if (parts.length === 6) {
     // 6-field cron with seconds (second minute hour day month weekday)
     return {
-      minutes: parts[1],
-      hours: parts[2],
-      dayOfMonth: parts[3],
-      month: parts[4],
-      dayOfWeek: parts[5],
+      minutes: parts[1] ?? "*",
+      hours: parts[2] ?? "*",
+      dayOfMonth: parts[3] ?? "*",
+      month: parts[4] ?? "*",
+      dayOfWeek: parts[5] ?? "*",
     };
   } else {
     throw new Error("Invalid cron expression format");

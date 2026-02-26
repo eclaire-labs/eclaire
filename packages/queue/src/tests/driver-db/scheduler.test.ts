@@ -86,10 +86,10 @@ describe.each(DB_TEST_CONFIGS)("D1, D2, D6: Scheduler ($label)", ({
 
       const schedules = await scheduler.list();
       expect(schedules).toHaveLength(1);
-      expect(schedules[0].key).toBe("daily-cleanup");
-      expect(schedules[0].queue).toBe("cleanup-queue");
-      expect(schedules[0].cron).toBe("0 0 * * *");
-      expect(schedules[0].data).toEqual({ type: "cleanup" });
+      expect(schedules[0]!.key).toBe("daily-cleanup");
+      expect(schedules[0]!.queue).toBe("cleanup-queue");
+      expect(schedules[0]!.cron).toBe("0 0 * * *");
+      expect(schedules[0]!.data).toEqual({ type: "cleanup" });
     });
 
     it("should update existing schedule with same key", async () => {
@@ -113,10 +113,10 @@ describe.each(DB_TEST_CONFIGS)("D1, D2, D6: Scheduler ($label)", ({
 
       const schedules = await scheduler.list();
       expect(schedules).toHaveLength(1); // Not duplicated
-      expect(schedules[0].key).toBe("my-schedule");
-      expect(schedules[0].queue).toBe("queue-b");
-      expect(schedules[0].cron).toBe("*/5 * * * *");
-      expect(schedules[0].data).toEqual({ version: 2 });
+      expect(schedules[0]!.key).toBe("my-schedule");
+      expect(schedules[0]!.queue).toBe("queue-b");
+      expect(schedules[0]!.cron).toBe("*/5 * * * *");
+      expect(schedules[0]!.data).toEqual({ version: 2 });
     });
 
     it("should remove a schedule", async () => {
@@ -179,7 +179,7 @@ describe.each(DB_TEST_CONFIGS)("D1, D2, D6: Scheduler ($label)", ({
       // Filter by queue-b
       const queueB = await scheduler.list("queue-b");
       expect(queueB).toHaveLength(1);
-      expect(queueB[0].key).toBe("schedule-b");
+      expect(queueB[0]!.key).toBe("schedule-b");
     });
   });
 

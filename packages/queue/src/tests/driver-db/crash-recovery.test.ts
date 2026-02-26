@@ -264,7 +264,7 @@ describe.each(DB_TEST_CONFIGS)("B3: Crash Recovery ($label)", ({ dbType }) => {
           expiresAt: new Date(Date.now() - 10000),
           attempts: 1,
         })
-        .where(eq(queueJobs.id, jobIds[i]));
+        .where(eq(queueJobs.id, jobIds[i]!));
     }
 
     // 3. Start recovery workers
@@ -363,8 +363,8 @@ describe.each(DB_TEST_CONFIGS)("B3: Crash Recovery ($label)", ({ dbType }) => {
 
     // 5. Verify expired job was processed first
     expect(processOrder).toHaveLength(2);
-    expect(processOrder[0]).toBe("expired");
-    expect(processOrder[1]).toBe("new");
+    expect(processOrder[0]!).toBe("expired");
+    expect(processOrder[1]!).toBe("new");
   });
 
   it("should handle mixed pending and expired jobs", async () => {

@@ -103,13 +103,18 @@ export default function BookmarksPage() {
     {
       itemCount: state.sortedItems.length,
       viewMode: state.viewMode,
-      onSelect: (idx) => handleBookmarkClick(state.sortedItems[idx]),
-      onEdit: (idx) => openEditDialog(state.sortedItems[idx]),
-      onDelete: (idx) =>
-        state.openDeleteDialog(
-          state.sortedItems[idx].id,
-          state.sortedItems[idx].title ?? "Untitled",
-        ),
+      onSelect: (idx) => {
+        const item = state.sortedItems[idx];
+        if (item) handleBookmarkClick(item);
+      },
+      onEdit: (idx) => {
+        const item = state.sortedItems[idx];
+        if (item) openEditDialog(item);
+      },
+      onDelete: (idx) => {
+        const item = state.sortedItems[idx];
+        if (item) state.openDeleteDialog(item.id, item.title ?? "Untitled");
+      },
     },
   );
 
@@ -243,7 +248,7 @@ export default function BookmarksPage() {
       noKeyboard: true,
       onDropRejected: (rejectedFiles) => {
         const file = rejectedFiles[0];
-        if (file.errors.some((e) => e.code === "file-too-large")) {
+        if (file?.errors.some((e) => e.code === "file-too-large")) {
           toast({
             title: "File too large",
             description: "Please upload a file smaller than 5MB.",

@@ -159,7 +159,7 @@ describe("ToolLoopAgent integration", () => {
       );
       expect(toolSteps.length).toBeGreaterThan(0);
 
-      const toolExecution = toolSteps[0]!.toolResults![0];
+      const toolExecution = toolSteps[0]!.toolResults![0]!;
       expect(toolExecution.toolName).toBe("calculator");
       expect(toolExecution.output.success).toBe(true);
     });

@@ -27,17 +27,17 @@ describe("initializeStages", () => {
     const stages = initializeStages(["validation", "processing", "finalize"]);
 
     expect(stages).toHaveLength(3);
-    expect(stages[0]).toEqual({
+    expect(stages[0]!).toEqual({
       name: "validation",
       status: "pending",
       progress: 0,
     });
-    expect(stages[1]).toEqual({
+    expect(stages[1]!).toEqual({
       name: "processing",
       status: "pending",
       progress: 0,
     });
-    expect(stages[2]).toEqual({
+    expect(stages[2]!).toEqual({
       name: "finalize",
       status: "pending",
       progress: 0,
@@ -52,8 +52,8 @@ describe("initializeStages", () => {
   it("handles single stage", () => {
     const stages = initializeStages(["only-stage"]);
     expect(stages).toHaveLength(1);
-    expect(stages[0].name).toBe("only-stage");
-    expect(stages[0].status).toBe("pending");
+    expect(stages[0]!.name).toBe("only-stage");
+    expect(stages[0]!.status).toBe("pending");
   });
 });
 
@@ -116,8 +116,8 @@ describe("updateStageInList", () => {
     const stages = initializeStages(["a", "b"]);
     const updated = updateStageInList(stages, "a", { status: "processing" });
 
-    expect(updated[0].status).toBe("processing");
-    expect(updated[1].status).toBe("pending");
+    expect(updated[0]!.status).toBe("processing");
+    expect(updated[1]!.status).toBe("pending");
   });
 
   it("returns original array if stage not found", () => {
@@ -133,8 +133,8 @@ describe("updateStageInList", () => {
     const stages = initializeStages(["a"]);
     const updated = updateStageInList(stages, "a", { progress: 50 });
 
-    expect(stages[0].progress).toBe(0);
-    expect(updated[0].progress).toBe(50);
+    expect(stages[0]!.progress).toBe(0);
+    expect(updated[0]!.progress).toBe(50);
   });
 });
 
@@ -160,7 +160,7 @@ describe("startStageInList", () => {
     const stages = initializeStages(["validation"]);
     const updated = startStageInList(stages, "validation");
 
-    expect(updated[0].status).toBe("processing");
+    expect(updated[0]!.status).toBe("processing");
   });
 
   it("sets startedAt timestamp", () => {
@@ -169,11 +169,11 @@ describe("startStageInList", () => {
     const updated = startStageInList(stages, "validation");
     const after = new Date();
 
-    expect(updated[0].startedAt).toBeInstanceOf(Date);
-    expect(updated[0].startedAt!.getTime()).toBeGreaterThanOrEqual(
+    expect(updated[0]!.startedAt).toBeInstanceOf(Date);
+    expect(updated[0]!.startedAt!.getTime()).toBeGreaterThanOrEqual(
       before.getTime(),
     );
-    expect(updated[0].startedAt!.getTime()).toBeLessThanOrEqual(
+    expect(updated[0]!.startedAt!.getTime()).toBeLessThanOrEqual(
       after.getTime(),
     );
   });
@@ -182,7 +182,7 @@ describe("startStageInList", () => {
     const stages: JobStage[] = [{ name: "a", status: "pending", progress: 50 }];
     const updated = startStageInList(stages, "a");
 
-    expect(updated[0].progress).toBe(0);
+    expect(updated[0]!.progress).toBe(0);
   });
 });
 
@@ -191,7 +191,7 @@ describe("completeStageInList", () => {
     const stages = initializeStages(["validation"]);
     const updated = completeStageInList(stages, "validation");
 
-    expect(updated[0].status).toBe("completed");
+    expect(updated[0]!.status).toBe("completed");
   });
 
   it("sets progress to 100", () => {
@@ -200,7 +200,7 @@ describe("completeStageInList", () => {
     ];
     const updated = completeStageInList(stages, "a");
 
-    expect(updated[0].progress).toBe(100);
+    expect(updated[0]!.progress).toBe(100);
   });
 
   it("sets completedAt timestamp", () => {
@@ -209,11 +209,11 @@ describe("completeStageInList", () => {
     const updated = completeStageInList(stages, "validation");
     const after = new Date();
 
-    expect(updated[0].completedAt).toBeInstanceOf(Date);
-    expect(updated[0].completedAt!.getTime()).toBeGreaterThanOrEqual(
+    expect(updated[0]!.completedAt).toBeInstanceOf(Date);
+    expect(updated[0]!.completedAt!.getTime()).toBeGreaterThanOrEqual(
       before.getTime(),
     );
-    expect(updated[0].completedAt!.getTime()).toBeLessThanOrEqual(
+    expect(updated[0]!.completedAt!.getTime()).toBeLessThanOrEqual(
       after.getTime(),
     );
   });
@@ -225,14 +225,14 @@ describe("completeStageInList", () => {
       processed: true,
     });
 
-    expect(updated[0].artifacts).toEqual({ fileCount: 5, processed: true });
+    expect(updated[0]!.artifacts).toEqual({ fileCount: 5, processed: true });
   });
 
   it("does not add artifacts field when not provided", () => {
     const stages = initializeStages(["validation"]);
     const updated = completeStageInList(stages, "validation");
 
-    expect(updated[0].artifacts).toBeUndefined();
+    expect(updated[0]!.artifacts).toBeUndefined();
   });
 });
 
@@ -241,7 +241,7 @@ describe("failStageInList", () => {
     const stages = initializeStages(["validation"]);
     const updated = failStageInList(stages, "validation", "Connection timeout");
 
-    expect(updated[0].status).toBe("failed");
+    expect(updated[0]!.status).toBe("failed");
   });
 
   it("sets completedAt timestamp", () => {
@@ -250,11 +250,11 @@ describe("failStageInList", () => {
     const updated = failStageInList(stages, "validation", "Error");
     const after = new Date();
 
-    expect(updated[0].completedAt).toBeInstanceOf(Date);
-    expect(updated[0].completedAt!.getTime()).toBeGreaterThanOrEqual(
+    expect(updated[0]!.completedAt).toBeInstanceOf(Date);
+    expect(updated[0]!.completedAt!.getTime()).toBeGreaterThanOrEqual(
       before.getTime(),
     );
-    expect(updated[0].completedAt!.getTime()).toBeLessThanOrEqual(
+    expect(updated[0]!.completedAt!.getTime()).toBeLessThanOrEqual(
       after.getTime(),
     );
   });
@@ -263,7 +263,7 @@ describe("failStageInList", () => {
     const stages = initializeStages(["validation"]);
     const updated = failStageInList(stages, "validation", "Connection timeout");
 
-    expect(updated[0].error).toBe("Connection timeout");
+    expect(updated[0]!.error).toBe("Connection timeout");
   });
 
   it("preserves progress at time of failure", () => {
@@ -272,8 +272,8 @@ describe("failStageInList", () => {
     ];
     const updated = failStageInList(stages, "a", "Failed at 75%");
 
-    expect(updated[0].progress).toBe(75);
-    expect(updated[0].status).toBe("failed");
+    expect(updated[0]!.progress).toBe(75);
+    expect(updated[0]!.status).toBe("failed");
   });
 });
 
@@ -284,7 +284,7 @@ describe("updateStageProgressInList", () => {
     ];
     const updated = updateStageProgressInList(stages, "a", 50);
 
-    expect(updated[0].progress).toBe(50);
+    expect(updated[0]!.progress).toBe(50);
   });
 
   it("clamps progress to minimum 0", () => {
@@ -293,7 +293,7 @@ describe("updateStageProgressInList", () => {
     ];
     const updated = updateStageProgressInList(stages, "a", -10);
 
-    expect(updated[0].progress).toBe(0);
+    expect(updated[0]!.progress).toBe(0);
   });
 
   it("clamps progress to maximum 100", () => {
@@ -302,7 +302,7 @@ describe("updateStageProgressInList", () => {
     ];
     const updated = updateStageProgressInList(stages, "a", 150);
 
-    expect(updated[0].progress).toBe(100);
+    expect(updated[0]!.progress).toBe(100);
   });
 
   it("allows exact boundary values", () => {
@@ -310,8 +310,8 @@ describe("updateStageProgressInList", () => {
       { name: "a", status: "processing", progress: 50 },
     ];
 
-    expect(updateStageProgressInList(stages, "a", 0)[0].progress).toBe(0);
-    expect(updateStageProgressInList(stages, "a", 100)[0].progress).toBe(100);
+    expect(updateStageProgressInList(stages, "a", 0)[0]!.progress).toBe(0);
+    expect(updateStageProgressInList(stages, "a", 100)[0]!.progress).toBe(100);
   });
 });
 
@@ -321,11 +321,11 @@ describe("addStagesToList", () => {
     const updated = addStagesToList(existing, ["b", "c"]);
 
     expect(updated).toHaveLength(3);
-    expect(updated[1].name).toBe("b");
-    expect(updated[1].status).toBe("pending");
-    expect(updated[1].progress).toBe(0);
-    expect(updated[2].name).toBe("c");
-    expect(updated[2].status).toBe("pending");
+    expect(updated[1]!.name).toBe("b");
+    expect(updated[1]!.status).toBe("pending");
+    expect(updated[1]!.progress).toBe(0);
+    expect(updated[2]!.name).toBe("c");
+    expect(updated[2]!.status).toBe("pending");
   });
 
   it("preserves existing stages unchanged", () => {
@@ -334,7 +334,7 @@ describe("addStagesToList", () => {
     ];
     const updated = addStagesToList(existing, ["b"]);
 
-    expect(updated[0]).toEqual(existing[0]);
+    expect(updated[0]!).toEqual(existing[0]!);
   });
 
   it("handles empty new stages array", () => {
@@ -348,7 +348,7 @@ describe("addStagesToList", () => {
     const updated = addStagesToList([], ["a", "b"]);
 
     expect(updated).toHaveLength(2);
-    expect(updated[0].name).toBe("a");
+    expect(updated[0]!.name).toBe("a");
   });
 });
 

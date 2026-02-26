@@ -57,10 +57,10 @@
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@types/inquirer": "9.0.9",
-    "@types/node": "24.10.4",
+    "@types/node": "catalog:",
     "oxlint": "catalog:",
     "tsx": "4.21.0",
-    "typescript": "5.9.3"
+    "typescript": "catalog:"
   },
   "engines": {
     "node": "^24.0.0"

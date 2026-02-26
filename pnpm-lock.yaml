@@ -9,9 +9,15 @@ catalogs:
     '@biomejs/biome':
       specifier: 2.4.4
       version: 2.4.4
+    '@types/node':
+      specifier: 24.10.4
+      version: 24.10.4
     oxlint:
       specifier: ^1.50.0
       version: 1.50.0
+    typescript:
+      specifier: 5.9.3
+      version: 5.9.3
 
 overrides:
   npm-run-path: 5.3.0
@@ -240,7 +246,7 @@ importers:
         specifier: 3.0.1
         version: 3.0.1
       '@types/node':
-        specifier: 24.10.4
+        specifier: 'catalog:'
         version: 24.10.4
       '@types/pg':
         specifier: 8.16.0
@@ -273,7 +279,7 @@ importers:
         specifier: 1.8.16
         version: 1.8.16
       typescript:
-        specifier: 5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vitest:
         specifier: 4.0.18
@@ -481,7 +487,7 @@ importers:
         specifier: 4.0.4
         version: 4.0.4
       '@types/node':
-        specifier: 24.10.4
+        specifier: 'catalog:'
         version: 24.10.4
       '@types/react':
         specifier: 19.2.14
@@ -505,7 +511,7 @@ importers:
         specifier: 4.2.1
         version: 4.2.1
       typescript:
-        specifier: 5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vite:
         specifier: 7.3.1
@@ -530,13 +536,13 @@ importers:
         specifier: 'catalog:'
         version: 2.4.4
       '@types/node':
-        specifier: 24.10.4
+        specifier: 'catalog:'
         version: 24.10.4
       oxlint:
         specifier: 'catalog:'
         version: 1.50.0
       typescript:
-        specifier: 5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vitest:
         specifier: 4.0.18
@@ -558,13 +564,13 @@ importers:
         specifier: 'catalog:'
         version: 2.4.4
       '@types/node':
-        specifier: 24.10.1
-        version: 24.10.1
+        specifier: 'catalog:'
+        version: 24.10.4
       oxlint:
         specifier: 'catalog:'
         version: 1.50.0
       typescript:
-        specifier: 5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
 
   packages/db:
@@ -601,8 +607,8 @@ importers:
         specifier: 7.6.13
         version: 7.6.13
       '@types/node':
-        specifier: 22.10.2
-        version: 22.10.2
+        specifier: 'catalog:'
+        version: 24.10.4
       drizzle-kit:
         specifier: 0.31.8
         version: 0.31.8
@@ -613,7 +619,7 @@ importers:
         specifier: 4.21.0
         version: 4.21.0
       typescript:
-        specifier: 5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
 
   packages/logger:
@@ -626,8 +632,8 @@ importers:
         specifier: 'catalog:'
         version: 2.4.4
       '@types/node':
-        specifier: 24.10.1
-        version: 24.10.1
+        specifier: 'catalog:'
+        version: 24.10.4
       oxlint:
         specifier: 'catalog:'
         version: 1.50.0
@@ -635,7 +641,7 @@ importers:
         specifier: 13.1.3
         version: 13.1.3
       typescript:
-        specifier: 5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
 
   packages/queue:
@@ -675,7 +681,7 @@ importers:
         specifier: 7.6.13
         version: 7.6.13
       '@types/node':
-        specifier: 24.10.4
+        specifier: 'catalog:'
         version: 24.10.4
       better-sqlite3:
         specifier: 12.6.2
@@ -690,7 +696,7 @@ importers:
         specifier: 3.4.8
         version: 3.4.8
       typescript:
-        specifier: 5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vitest:
         specifier: 4.0.18
@@ -706,13 +712,13 @@ importers:
         specifier: 'catalog:'
         version: 2.4.4
       '@types/node':
-        specifier: 24.10.4
+        specifier: 'catalog:'
         version: 24.10.4
       oxlint:
         specifier: 'catalog:'
         version: 1.50.0
       typescript:
-        specifier: 5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vitest:
         specifier: 4.0.18
@@ -755,7 +761,7 @@ importers:
         specifier: 9.0.9
         version: 9.0.9
       '@types/node':
-        specifier: 24.10.4
+        specifier: 'catalog:'
         version: 24.10.4
       oxlint:
         specifier: 'catalog:'
@@ -764,7 +770,7 @@ importers:
         specifier: 4.21.0
         version: 4.21.0
       typescript:
-        specifier: 5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
 
 packages:
@@ -3939,12 +3945,6 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
-  '@types/node@22.10.2':
-    resolution: {integrity: sha512-Xxr6BBRCAOQixvonOye19wnzyDiUtTeqldOOmj3CkeblonbccA12PFwlufvRdrpjXxqnmUaeiU5EOA+7s5diUQ==}
-
-  '@types/node@24.10.1':
-    resolution: {integrity: sha512-GNWcUTRBgIRJD5zj+Tq0fKOJ5XZajIiBroOF0yvj2bSU1WvNdYS/dn9UxwsujGW4JX06dnHyjV2y9rRaybH0iQ==}
-
   '@types/node@24.10.4':
     resolution: {integrity: sha512-vnDVpYPMzs4wunl27jHrfmwojOGKya0xyM3sH+UE5iv5uPS6vX7UIoh6m+vQc5LGBq52HBKPIn/zcSZVzeDEZg==}
 
@@ -7056,9 +7056,6 @@ packages:
   unbox-primitive@1.1.0:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==}
     engines: {node: '>= 0.4'}
-
-  undici-types@6.20.0:
-    resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==}
 
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
@@ -10317,14 +10314,6 @@ snapshots:
   '@types/mocha@8.2.3': {}
 
   '@types/ms@2.1.0': {}
-
-  '@types/node@22.10.2':
-    dependencies:
-      undici-types: 6.20.0
-
-  '@types/node@24.10.1':
-    dependencies:
-      undici-types: 7.16.0
 
   '@types/node@24.10.4':
     dependencies:
@@ -13784,8 +13773,6 @@ snapshots:
       has-bigints: 1.1.0
       has-symbols: 1.1.0
       which-boxed-primitive: 1.1.1
-
-  undici-types@6.20.0: {}
 
   undici-types@7.16.0: {}
 

@@ -67,8 +67,8 @@ describe("BullMQ: Backoff", () => {
       expect(attemptTimes).toHaveLength(3);
 
       // Calculate delays between attempts
-      const delay1 = attemptTimes[1] - attemptTimes[0];
-      const delay2 = attemptTimes[2] - attemptTimes[1];
+      const delay1 = attemptTimes[1]! - attemptTimes[0]!;
+      const delay2 = attemptTimes[2]! - attemptTimes[1]!;
 
       // Exponential: first delay ~100ms, second delay ~200ms
       // Allow generous tolerance for timing variations
@@ -114,8 +114,8 @@ describe("BullMQ: Backoff", () => {
 
       expect(attemptTimes).toHaveLength(3);
 
-      const delay1 = attemptTimes[1] - attemptTimes[0];
-      const delay2 = attemptTimes[2] - attemptTimes[1];
+      const delay1 = attemptTimes[1]! - attemptTimes[0]!;
+      const delay2 = attemptTimes[2]! - attemptTimes[1]!;
 
       // Fixed: both delays should be similar (~150ms)
       expect(delay1).toBeGreaterThanOrEqual(100);
@@ -162,8 +162,8 @@ describe("BullMQ: Backoff", () => {
 
       expect(attemptTimes).toHaveLength(3);
 
-      const delay1 = attemptTimes[1] - attemptTimes[0];
-      const delay2 = attemptTimes[2] - attemptTimes[1];
+      const delay1 = attemptTimes[1]! - attemptTimes[0]!;
+      const delay2 = attemptTimes[2]! - attemptTimes[1]!;
 
       // Since linear degrades to fixed, delays should be similar
       expect(Math.abs(delay1 - delay2)).toBeLessThan(200);
@@ -208,13 +208,13 @@ describe("BullMQ: Backoff", () => {
       expect(attemptTimes).toHaveLength(2);
 
       // Verify delay was respected
-      const delay = attemptTimes[1] - attemptTimes[0];
+      const delay = attemptTimes[1]! - attemptTimes[0]!;
       expect(delay).toBeGreaterThanOrEqual(150);
 
       // RateLimitError should NOT consume attempts
       // Both invocations should show attempt 1
-      expect(attemptNumbers[0]).toBe(1);
-      expect(attemptNumbers[1]).toBe(1);
+      expect(attemptNumbers[0]!).toBe(1);
+      expect(attemptNumbers[1]!).toBe(1);
     });
 
     it("should delay by specified duration", async () => {
@@ -233,7 +233,7 @@ describe("BullMQ: Backoff", () => {
 
       await eventually(async () => attemptTimes.length >= 2, { timeout: 5000 });
 
-      const actualDelay = attemptTimes[1] - attemptTimes[0];
+      const actualDelay = attemptTimes[1]! - attemptTimes[0]!;
       expect(actualDelay).toBeGreaterThanOrEqual(delayDuration - 50);
       expect(actualDelay).toBeLessThan(delayDuration + 200);
     });

@@ -55,9 +55,9 @@ describe("BullMQ: Scheduler", () => {
 
       const schedules = await scheduler.list();
       expect(schedules).toHaveLength(1);
-      expect(schedules[0].key).toBe("test-schedule");
-      expect(schedules[0].queue).toBe("scheduled-queue");
-      expect(schedules[0].cron).toBe("0 0 * * *");
+      expect(schedules[0]!.key).toBe("test-schedule");
+      expect(schedules[0]!.queue).toBe("scheduled-queue");
+      expect(schedules[0]!.cron).toBe("0 0 * * *");
     });
 
     it("should update an existing schedule", async () => {
@@ -82,8 +82,8 @@ describe("BullMQ: Scheduler", () => {
 
       const schedules = await scheduler.list();
       expect(schedules).toHaveLength(1);
-      expect(schedules[0].cron).toBe("0 12 * * *");
-      expect(schedules[0].data).toEqual({ version: 2 });
+      expect(schedules[0]!.cron).toBe("0 12 * * *");
+      expect(schedules[0]!.data).toEqual({ version: 2 });
     });
 
     it("should create schedule with enabled: false without activating", async () => {
@@ -100,7 +100,7 @@ describe("BullMQ: Scheduler", () => {
 
       const schedules = await scheduler.list();
       expect(schedules).toHaveLength(1);
-      expect(schedules[0].enabled).toBe(false);
+      expect(schedules[0]!.enabled).toBe(false);
     });
   });
 
@@ -182,7 +182,7 @@ describe("BullMQ: Scheduler", () => {
 
       const filtered = await scheduler.list("queue-a");
       expect(filtered).toHaveLength(1);
-      expect(filtered[0].key).toBe("schedule-1");
+      expect(filtered[0]!.key).toBe("schedule-1");
     });
 
     it("should return empty array when no schedules", async () => {
@@ -297,7 +297,7 @@ describe("BullMQ: Scheduler", () => {
       await scheduler.setEnabled("toggle-schedule", false);
 
       const schedules = await scheduler.list();
-      expect(schedules[0].enabled).toBe(false);
+      expect(schedules[0]!.enabled).toBe(false);
     });
 
     it("should enable a disabled schedule", async () => {
@@ -315,7 +315,7 @@ describe("BullMQ: Scheduler", () => {
       await scheduler.setEnabled("toggle-schedule", true);
 
       const schedules = await scheduler.list();
-      expect(schedules[0].enabled).toBe(true);
+      expect(schedules[0]!.enabled).toBe(true);
     });
 
     it("should throw when schedule not found", async () => {
@@ -355,7 +355,7 @@ describe("BullMQ: Scheduler", () => {
       });
 
       expect(processedJobs.length).toBeGreaterThanOrEqual(1);
-      expect(processedJobs[0]).toEqual({ scheduled: true });
+      expect(processedJobs[0]!).toEqual({ scheduled: true });
     });
 
     it("should not create jobs when schedule is disabled", async () => {

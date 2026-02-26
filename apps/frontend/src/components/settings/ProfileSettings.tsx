@@ -279,8 +279,9 @@ export default function ProfileSettings() {
     (e: React.DragEvent) => {
       e.preventDefault();
       const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        handleFileSelect(files[0]);
+      const file = files[0];
+      if (file) {
+        handleFileSelect(file);
       }
     },
     [handleFileSelect],

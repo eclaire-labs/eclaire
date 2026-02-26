@@ -125,13 +125,18 @@ export default function PhotosPage() {
     {
       itemCount: state.sortedItems.length,
       viewMode: state.viewMode,
-      onSelect: (idx) => handlePhotoClick(state.sortedItems[idx]),
-      onEdit: (idx) => openEditDialog(state.sortedItems[idx]),
-      onDelete: (idx) =>
-        state.openDeleteDialog(
-          state.sortedItems[idx].id,
-          state.sortedItems[idx].title,
-        ),
+      onSelect: (idx) => {
+        const item = state.sortedItems[idx];
+        if (item) handlePhotoClick(item);
+      },
+      onEdit: (idx) => {
+        const item = state.sortedItems[idx];
+        if (item) openEditDialog(item);
+      },
+      onDelete: (idx) => {
+        const item = state.sortedItems[idx];
+        if (item) state.openDeleteDialog(item.id, item.title);
+      },
     },
   );
 

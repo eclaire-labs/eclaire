@@ -50,11 +50,11 @@ describe("BullMQ: Job Stages", () => {
     await done.promise;
 
     expect(capturedStages).toHaveLength(3);
-    expect(capturedStages![0].name).toBe("validation");
-    expect(capturedStages![0].status).toBe("pending");
-    expect(capturedStages![0].progress).toBe(0);
-    expect(capturedStages![1].name).toBe("processing");
-    expect(capturedStages![2].name).toBe("finalize");
+    expect(capturedStages![0]!.name).toBe("validation");
+    expect(capturedStages![0]!.status).toBe("pending");
+    expect(capturedStages![0]!.progress).toBe(0);
+    expect(capturedStages![1]!.name).toBe("processing");
+    expect(capturedStages![2]!.name).toBe("finalize");
   });
 
   it("ctx.startStage() updates stage to processing", async () => {
@@ -180,12 +180,12 @@ describe("BullMQ: Job Stages", () => {
     await done.promise;
 
     expect(stagesAfterAdd).toHaveLength(4);
-    expect(stagesAfterAdd![0].name).toBe("classify");
-    expect(stagesAfterAdd![0].status).toBe("completed");
-    expect(stagesAfterAdd![1].name).toBe("extract");
-    expect(stagesAfterAdd![1].status).toBe("pending");
-    expect(stagesAfterAdd![2].name).toBe("transform");
-    expect(stagesAfterAdd![3].name).toBe("validate");
+    expect(stagesAfterAdd![0]!.name).toBe("classify");
+    expect(stagesAfterAdd![0]!.status).toBe("completed");
+    expect(stagesAfterAdd![1]!.name).toBe("extract");
+    expect(stagesAfterAdd![1]!.status).toBe("pending");
+    expect(stagesAfterAdd![2]!.name).toBe("transform");
+    expect(stagesAfterAdd![3]!.name).toBe("validate");
   });
 
   it("job.overallProgress is calculated correctly", async () => {
@@ -251,8 +251,8 @@ describe("BullMQ: Job Stages", () => {
     await done.promise;
 
     expect(initialStagesInContext).toHaveLength(3);
-    expect(initialStagesInContext![0].name).toBe("validate");
-    expect(initialStagesInContext![0].status).toBe("pending");
+    expect(initialStagesInContext![0]!.name).toBe("validate");
+    expect(initialStagesInContext![0]!.status).toBe("pending");
 
     expect(finalStages).toHaveLength(3);
     expect(finalStages!.every((s) => s.status === "completed")).toBe(true);

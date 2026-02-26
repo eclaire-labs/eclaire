@@ -100,7 +100,7 @@ describe.each(DB_TEST_CONFIGS)("C1-C4: Backoff Timing ($label)", ({
       expect(attemptTimestamps.length).toBe(2);
 
       // Verify the gap between attempts is at least the backoff delay
-      const gap = attemptTimestamps[1] - attemptTimestamps[0];
+      const gap = attemptTimestamps[1]! - attemptTimestamps[0]!;
       // Allow 50ms tolerance for poll interval variance
       expect(gap).toBeGreaterThanOrEqual(backoffDelay - 50);
     });
@@ -160,8 +160,8 @@ describe.each(DB_TEST_CONFIGS)("C1-C4: Backoff Timing ($label)", ({
       expect(attemptTimestamps.length).toBe(3);
 
       // Calculate gaps between attempts
-      const gap1 = attemptTimestamps[1] - attemptTimestamps[0]; // After attempt 1
-      const gap2 = attemptTimestamps[2] - attemptTimestamps[1]; // After attempt 2
+      const gap1 = attemptTimestamps[1]! - attemptTimestamps[0]!; // After attempt 1
+      const gap2 = attemptTimestamps[2]! - attemptTimestamps[1]!; // After attempt 2
 
       // Verify delays are non-decreasing (gap2 >= gap1)
       // With exponential backoff: attempt1 -> 150ms delay, attempt2 -> 300ms delay
@@ -222,8 +222,8 @@ describe.each(DB_TEST_CONFIGS)("C1-C4: Backoff Timing ($label)", ({
       );
 
       // Ready job should be processed first despite being enqueued second
-      expect(processedOrder[0]).toBe("ready");
-      expect(processedOrder[1]).toBe("scheduled");
+      expect(processedOrder[0]!).toBe("ready");
+      expect(processedOrder[1]!).toBe("scheduled");
     });
   });
 
@@ -278,7 +278,7 @@ describe.each(DB_TEST_CONFIGS)("C1-C4: Backoff Timing ($label)", ({
       expect(attemptTimestamps.length).toBe(2);
 
       // Verify the gap between attempts respects the rate-limit delay
-      const gap = attemptTimestamps[1] - attemptTimestamps[0];
+      const gap = attemptTimestamps[1]! - attemptTimestamps[0]!;
       // Allow 100ms tolerance for poll interval variance
       expect(gap).toBeGreaterThanOrEqual(rateLimitDelay - 100);
     });

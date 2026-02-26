@@ -210,6 +210,7 @@ export function AssistantOverlay({
         {/* Action items */}
         {actions.map((action, index) => {
           const position = actionPositions[index];
+          if (!position) return null;
           return (
             // biome-ignore lint/a11y/useSemanticElements: positioned action item not suited for button element
             <div

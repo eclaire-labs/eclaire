@@ -220,7 +220,7 @@ describeIfPostgres("H1-H2: Multi-process workers (Postgres)", () => {
 
       // Verify job was processed
       expect(worker.processed.length).toBe(1);
-      expect(worker.processed[0].data).toEqual({ value: 42 });
+      expect(worker.processed[0]!.data).toEqual({ value: 42 });
     }, 30000);
   });
 });

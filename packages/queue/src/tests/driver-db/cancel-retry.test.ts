@@ -105,7 +105,7 @@ describe.each(DB_TEST_CONFIGS)("Cancel and Retry ($label)", ({ dbType }) => {
 
       // Only the second job should have been processed
       expect(processed).toHaveLength(1);
-      expect(processed[0].id).toBe(jobId2);
+      expect(processed[0]!.id).toBe(jobId2);
     });
 
     it("should cancel a scheduled job before it becomes available", async () => {

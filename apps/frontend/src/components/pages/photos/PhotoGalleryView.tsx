@@ -88,12 +88,14 @@ export function PhotoGalleryView({
   // Handle touch events for swipe navigation
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
+    if (!touch) return;
     setTouchStart({ x: touch.clientX, y: touch.clientY });
     setTouchEnd(null);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     const touch = e.touches[0];
+    if (!touch) return;
     setTouchEnd({ x: touch.clientX, y: touch.clientY });
   };
 
@@ -125,8 +127,8 @@ export function PhotoGalleryView({
     const start = Math.max(0, currentIndex - 3);
     const end = Math.min(total, start + 7);
     const indices = Array.from({ length: end - start }, (_, i) => start + i);
-    while (indices.length < 7 && indices[0] > 0) {
-      indices.unshift(indices[0] - 1);
+    while (indices.length < 7 && (indices[0] ?? 0) > 0) {
+      indices.unshift((indices[0] ?? 0) - 1);
     }
     return indices;
   };
@@ -253,6 +255,7 @@ export function PhotoGalleryView({
           <div className="flex justify-center gap-1 md:gap-2 overflow-x-auto pb-2 md:pb-4">
             {thumbIndices.map((idx) => {
               const thumbPhoto = photos[idx];
+              if (!thumbPhoto) return null;
               return (
                 // biome-ignore lint/a11y/useSemanticElements: thumbnail with image content not suited for button element
                 <div

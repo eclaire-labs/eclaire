@@ -58,7 +58,7 @@
     }
   },
   "scripts": {
-    "build": "tsc && cp -r src/migrations dist/",
+    "build": "tsc -p tsconfig.build.json && cp -r src/migrations dist/",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
@@ -85,10 +85,10 @@
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@types/better-sqlite3": "7.6.13",
-    "@types/node": "22.10.2",
+    "@types/node": "catalog:",
     "drizzle-kit": "0.31.8",
     "oxlint": "catalog:",
     "tsx": "4.21.0",
-    "typescript": "5.9.3"
+    "typescript": "catalog:"
   }
 }

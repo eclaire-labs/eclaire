@@ -99,9 +99,9 @@ describe.each(DB_TEST_CONFIGS)("A17: Job Stage Callbacks ($label)", ({
 
     const stageStartCalls = calls.filter((c) => c.type === "stageStart");
     expect(stageStartCalls).toHaveLength(2);
-    expect(stageStartCalls[0].stage).toBe("validation");
-    expect(stageStartCalls[0].jobId).toBe(jobId);
-    expect(stageStartCalls[1].stage).toBe("processing");
+    expect(stageStartCalls[0]!.stage).toBe("validation");
+    expect(stageStartCalls[0]!.jobId).toBe(jobId);
+    expect(stageStartCalls[1]!.stage).toBe("processing");
   });
 
   it("A17.2: onStageProgress is called on progress update", async () => {
@@ -145,10 +145,10 @@ describe.each(DB_TEST_CONFIGS)("A17: Job Stage Callbacks ($label)", ({
 
     const progressCalls = calls.filter((c) => c.type === "stageProgress");
     expect(progressCalls).toHaveLength(3);
-    expect(progressCalls[0].percent).toBe(25);
-    expect(progressCalls[1].percent).toBe(50);
-    expect(progressCalls[2].percent).toBe(75);
-    expect(progressCalls[0].stage).toBe("processing");
+    expect(progressCalls[0]!.percent).toBe(25);
+    expect(progressCalls[1]!.percent).toBe(50);
+    expect(progressCalls[2]!.percent).toBe(75);
+    expect(progressCalls[0]!.stage).toBe("processing");
   });
 
   it("A17.3: onStageComplete is called with artifacts", async () => {
@@ -199,10 +199,10 @@ describe.each(DB_TEST_CONFIGS)("A17: Job Stage Callbacks ($label)", ({
 
     const completeCalls = calls.filter((c) => c.type === "stageComplete");
     expect(completeCalls).toHaveLength(2);
-    expect(completeCalls[0].stage).toBe("validation");
-    expect(completeCalls[0].artifacts).toEqual({ fileCount: 10, valid: true });
-    expect(completeCalls[1].stage).toBe("processing");
-    expect(completeCalls[1].artifacts).toEqual({
+    expect(completeCalls[0]!.stage).toBe("validation");
+    expect(completeCalls[0]!.artifacts).toEqual({ fileCount: 10, valid: true });
+    expect(completeCalls[1]!.stage).toBe("processing");
+    expect(completeCalls[1]!.artifacts).toEqual({
       outputPath: "/tmp/output.json",
     });
   });
@@ -246,9 +246,9 @@ describe.each(DB_TEST_CONFIGS)("A17: Job Stage Callbacks ($label)", ({
 
     const failCalls = calls.filter((c) => c.type === "stageFail");
     expect(failCalls).toHaveLength(1);
-    expect(failCalls[0].stage).toBe("validation");
-    expect(failCalls[0].error).toBe("Invalid file format");
-    expect(failCalls[0].jobId).toBe(jobId);
+    expect(failCalls[0]!.stage).toBe("validation");
+    expect(failCalls[0]!.error).toBe("Invalid file format");
+    expect(failCalls[0]!.jobId).toBe(jobId);
   });
 
   it("A17.5: metadata is passed through all callbacks", async () => {
@@ -362,7 +362,7 @@ describe.each(DB_TEST_CONFIGS)("A17: Job Stage Callbacks ($label)", ({
 
     const completeCalls = calls.filter((c) => c.type === "jobComplete");
     expect(completeCalls).toHaveLength(1);
-    expect(completeCalls[0].jobId).toBe(jobId);
+    expect(completeCalls[0]!.jobId).toBe(jobId);
   });
 
   it("A17.7: onJobFail is called when job fails", async () => {
@@ -405,7 +405,7 @@ describe.each(DB_TEST_CONFIGS)("A17: Job Stage Callbacks ($label)", ({
 
     const failCalls = calls.filter((c) => c.type === "jobFail");
     expect(failCalls).toHaveLength(1);
-    expect(failCalls[0].jobId).toBe(jobId);
-    expect(failCalls[0].error).toBe("Processing failed unexpectedly");
+    expect(failCalls[0]!.jobId).toBe(jobId);
+    expect(failCalls[0]!.error).toBe("Processing failed unexpectedly");
   });
 });

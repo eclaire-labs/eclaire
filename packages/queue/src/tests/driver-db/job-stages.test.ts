@@ -72,11 +72,11 @@ describe.each(DB_TEST_CONFIGS)("A16: Job Stages ($label)", ({ dbType }) => {
     });
 
     expect(capturedStages).toHaveLength(3);
-    expect(capturedStages![0].name).toBe("validation");
-    expect(capturedStages![0].status).toBe("pending");
-    expect(capturedStages![0].progress).toBe(0);
-    expect(capturedStages![1].name).toBe("processing");
-    expect(capturedStages![2].name).toBe("finalize");
+    expect(capturedStages![0]!.name).toBe("validation");
+    expect(capturedStages![0]!.status).toBe("pending");
+    expect(capturedStages![0]!.progress).toBe(0);
+    expect(capturedStages![1]!.name).toBe("processing");
+    expect(capturedStages![2]!.name).toBe("finalize");
 
     // Verify stages are persisted
     const job = await client.getJob(jobId);
@@ -297,12 +297,12 @@ describe.each(DB_TEST_CONFIGS)("A16: Job Stages ($label)", ({ dbType }) => {
     });
 
     expect(stagesAfterAdd).toHaveLength(4);
-    expect(stagesAfterAdd![0].name).toBe("classify");
-    expect(stagesAfterAdd![0].status).toBe("completed");
-    expect(stagesAfterAdd![1].name).toBe("extract");
-    expect(stagesAfterAdd![1].status).toBe("pending");
-    expect(stagesAfterAdd![2].name).toBe("transform");
-    expect(stagesAfterAdd![3].name).toBe("validate");
+    expect(stagesAfterAdd![0]!.name).toBe("classify");
+    expect(stagesAfterAdd![0]!.status).toBe("completed");
+    expect(stagesAfterAdd![1]!.name).toBe("extract");
+    expect(stagesAfterAdd![1]!.status).toBe("pending");
+    expect(stagesAfterAdd![2]!.name).toBe("transform");
+    expect(stagesAfterAdd![3]!.name).toBe("validate");
 
     // Verify persisted
     const job = await client.getJob(jobId);
@@ -365,8 +365,8 @@ describe.each(DB_TEST_CONFIGS)("A16: Job Stages ($label)", ({ dbType }) => {
       async (ctx) => {
         // Stages should already be initialized from enqueue options
         expect(ctx.job.stages).toHaveLength(3);
-        expect(ctx.job.stages![0].name).toBe("validate");
-        expect(ctx.job.stages![0].status).toBe("pending");
+        expect(ctx.job.stages![0]!.name).toBe("validate");
+        expect(ctx.job.stages![0]!.status).toBe("pending");
 
         // Process all stages
         for (const stage of ["validate", "process", "complete"]) {
@@ -395,7 +395,7 @@ describe.each(DB_TEST_CONFIGS)("A16: Job Stages ($label)", ({ dbType }) => {
     // Verify stages are set before processing
     const jobBefore = await client.getJob(jobId);
     expect(jobBefore?.stages).toHaveLength(3);
-    expect(jobBefore?.stages![0].status).toBe("pending");
+    expect(jobBefore?.stages![0]!.status).toBe("pending");
 
     await worker.start();
 
@@ -479,8 +479,8 @@ describe.each(DB_TEST_CONFIGS)("A16: Job Stages ($label)", ({ dbType }) => {
     // Verify final job state
     const job = await client.getJob(jobId);
     expect(job?.stages).toHaveLength(4); // classify + 3 image stages
-    expect(job?.stages![0].name).toBe("classify");
-    expect(job?.stages![0].artifacts).toEqual({ type: "image" });
+    expect(job?.stages![0]!.name).toBe("classify");
+    expect(job?.stages![0]!.artifacts).toEqual({ type: "image" });
     expect(job?.stages!.every((s) => s.status === "completed")).toBe(true);
   });
 

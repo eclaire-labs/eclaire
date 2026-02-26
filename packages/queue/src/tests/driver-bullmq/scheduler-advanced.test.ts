@@ -141,10 +141,10 @@ describe("BullMQ: Scheduler Advanced", () => {
         timeout: 2000,
       });
 
-      expect(processedJobs[0].data).toEqual({ immediate: true });
+      expect(processedJobs[0]!.data).toEqual({ immediate: true });
 
       // Should have been processed quickly after upsert
-      const processingDelay = processedJobs[0].timestamp - beforeUpsert;
+      const processingDelay = processedJobs[0]!.timestamp - beforeUpsert;
       expect(processingDelay).toBeLessThan(1000);
     });
 

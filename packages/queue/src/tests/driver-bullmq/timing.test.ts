@@ -100,7 +100,7 @@ describe("BullMQ: Timing", () => {
       await eventually(async () => processedAt.length === 1);
 
       // Verify delay was respected (with some tolerance)
-      const actualDelay = processedAt[0] - enqueuedAt;
+      const actualDelay = processedAt[0]! - enqueuedAt;
       expect(actualDelay).toBeGreaterThanOrEqual(180); // Allow 20ms tolerance
       expect(actualDelay).toBeLessThan(500); // Shouldn't take too long
     });
@@ -123,7 +123,7 @@ describe("BullMQ: Timing", () => {
       await eventually(async () => processedAt.length === 1);
 
       // Should process quickly (within 200ms)
-      const actualDelay = processedAt[0] - enqueuedAt;
+      const actualDelay = processedAt[0]! - enqueuedAt;
       expect(actualDelay).toBeLessThan(200);
     });
 
@@ -141,7 +141,7 @@ describe("BullMQ: Timing", () => {
       await eventually(async () => processedAt.length === 1);
 
       // Should process quickly
-      const actualDelay = processedAt[0] - enqueuedAt;
+      const actualDelay = processedAt[0]! - enqueuedAt;
       expect(actualDelay).toBeLessThan(200);
     });
   });
@@ -169,7 +169,7 @@ describe("BullMQ: Timing", () => {
       await eventually(async () => processedAt.length === 1);
 
       // Should process around the target time
-      expect(processedAt[0]).toBeGreaterThanOrEqual(targetTime.getTime() - 20);
+      expect(processedAt[0]!).toBeGreaterThanOrEqual(targetTime.getTime() - 20);
     });
 
     it("should process immediately if runAt is in the past", async () => {
@@ -190,7 +190,7 @@ describe("BullMQ: Timing", () => {
       await eventually(async () => processedAt.length === 1);
 
       // Should process immediately
-      const processingTime = processedAt[0];
+      const processingTime = processedAt[0]!;
       expect(processingTime - Date.now()).toBeLessThan(200);
     });
   });
@@ -263,8 +263,8 @@ describe("BullMQ: Timing", () => {
       // The ready low-priority job should process first because it's available
       // The delayed high-priority job processes after its delay
       // This demonstrates that delay takes precedence over priority
-      expect(processedOrder[0]).toBe(2); // Ready job first
-      expect(processedOrder[1]).toBe(1); // Delayed job second
+      expect(processedOrder[0]!).toBe(2); // Ready job first
+      expect(processedOrder[1]!).toBe(1); // Delayed job second
     });
   });
 });

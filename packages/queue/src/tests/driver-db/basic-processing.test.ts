@@ -97,8 +97,8 @@ describe.each(DB_TEST_CONFIGS)("A1: Basic Processing ($label)", ({
     });
 
     expect(processed).toHaveLength(1);
-    expect(processed[0].data).toEqual({ value: 42 });
-    expect(processed[0].id).toBe(jobId);
+    expect(processed[0]!.data).toEqual({ value: 42 });
+    expect(processed[0]!.id).toBe(jobId);
   });
 
   it("should set job status to completed after successful processing", async () => {

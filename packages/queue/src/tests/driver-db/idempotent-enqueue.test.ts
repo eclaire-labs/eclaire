@@ -125,7 +125,7 @@ describe.each(DB_TEST_CONFIGS)("A2: Idempotent Enqueue ($label)", ({
 
     // Only one job should have been processed
     expect(processed).toHaveLength(1);
-    expect(processed[0].key).toBe(key);
+    expect(processed[0]!.key).toBe(key);
   });
 
   it("should allow same key in different queue names", async () => {

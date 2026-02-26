@@ -336,7 +336,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
         const welcomeMessage: Message = {
           id: "welcome",
           role: "assistant",
-          content: `Hello! I can see you've attached ${preAttachedAssets.length > 1 ? `${preAttachedAssets.length} items` : `"${preAttachedAssets[0].title || preAttachedAssets[0].id}"`} to our conversation. How can I help you with ${preAttachedAssets.length > 1 ? "them" : "it"} today?`,
+          content: `Hello! I can see you've attached ${preAttachedAssets.length > 1 ? `${preAttachedAssets.length} items` : `"${preAttachedAssets[0]?.title ?? preAttachedAssets[0]?.id ?? "item"}"`} to our conversation. How can I help you with ${preAttachedAssets.length > 1 ? "them" : "it"} today?`,
           timestamp: new Date(),
         };
         setMessages([welcomeMessage]);

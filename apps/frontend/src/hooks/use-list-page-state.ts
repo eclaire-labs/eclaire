@@ -199,7 +199,7 @@ export function useListPageState<TItem extends ListableItem>(
 
       // Extra filters
       for (const f of config.extraFilters ?? []) {
-        const val = extraFilterState[f.key];
+        const val = extraFilterState[f.key] ?? f.initialValue;
         if (!f.matchFn(item, val)) return false;
       }
 
