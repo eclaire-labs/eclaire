@@ -42,13 +42,14 @@ async function recordAuthenticationEvent(
         success: true,
       });
     } else if (path.includes("/sign-out")) {
-      const user = c.get("user");
-      const session = c.get("session");
+      // Resolve session lazily — only hits the DB for sign-out events
+      const resolveSession = c.get("resolveSession");
+      const resolved = resolveSession ? await resolveSession() : null;
 
-      if (user && session) {
+      if (resolved) {
         await recordLogoutHistory({
-          userId: user.id,
-          sessionId: session.id,
+          userId: resolved.user.id,
+          sessionId: resolved.session.id,
           metadata,
         });
       }

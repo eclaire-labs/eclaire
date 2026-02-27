@@ -276,6 +276,25 @@ export const patchNoteFlagRouteDescription = {
   },
 };
 
+// POST /api/notes/upload - Upload a file to create a new note
+export const postNoteUploadRouteDescription = {
+  tags: ["Notes"],
+  summary: "Upload a file to create a new note",
+  description:
+    "Create a new note entry from an uploaded file (TXT, MD, or JSON)",
+  responses: {
+    201: {
+      description: "Note created successfully",
+      content: {
+        "application/json": {
+          schema: resolver(CreatedNoteResponseSchema),
+        },
+      },
+    },
+    ...commonErrorsWithValidation,
+  },
+};
+
 // PATCH /api/notes/:id/pin - Toggle pin status
 export const patchNotePinRouteDescription = {
   tags: ["Notes"],

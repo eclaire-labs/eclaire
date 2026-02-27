@@ -610,3 +610,21 @@ export async function countAllEntries(
     throw new Error("Failed to count items across all collections");
   }
 }
+
+/** Runs findAllEntries and countAllEntries in parallel, returning both. */
+export async function findAllEntriesWithCount(
+  userId: string,
+  text?: string,
+  tagsList?: string[],
+  startDate?: Date,
+  endDate?: Date,
+  types?: string[],
+  limit = 50,
+  dueStatus?: string,
+): Promise<{ items: Awaited<ReturnType<typeof findAllEntries>>; totalCount: number }> {
+  const [items, totalCount] = await Promise.all([
+    findAllEntries(userId, text, tagsList, startDate, endDate, types, limit, dueStatus),
+    countAllEntries(userId, text, tagsList, startDate, endDate, types, dueStatus),
+  ]);
+  return { items, totalCount };
+}

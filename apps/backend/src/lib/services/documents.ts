@@ -827,6 +827,17 @@ export async function countDocuments({
   }
 }
 
+/** Runs findDocuments and countDocuments in parallel, returning both. */
+export async function findDocumentsWithCount(
+  params: FindDocumentsParams,
+): Promise<{ items: Awaited<ReturnType<typeof findDocuments>>; totalCount: number }> {
+  const [items, totalCount] = await Promise.all([
+    findDocuments(params),
+    countDocuments(params),
+  ]);
+  return { items, totalCount };
+}
+
 export async function updateDocumentArtifacts(
   documentId: string,
   artifacts: {

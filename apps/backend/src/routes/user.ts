@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
+import z from "zod/v4";
 import { ValidationError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
@@ -36,6 +37,7 @@ import {
   updateUserProfileRouteDescription,
 } from "../schemas/user-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
+import { createAssetResponse } from "./asset-response.js";
 
 const logger = createChildLogger("user");
 
@@ -55,21 +57,9 @@ userRoutes.get(
 userRoutes.patch(
   "/profile",
   describeRoute(updateUserProfileRouteDescription),
+  zValidator("json", UpdateProfileSchema),
   withAuth(async (c, userId) => {
-    const body = await c.req.json();
-    const validationResult = UpdateProfileSchema.safeParse(body);
-
-    if (!validationResult.success) {
-      return c.json(
-        {
-          error: "Invalid data",
-          details: validationResult.error.issues,
-        },
-        400,
-      );
-    }
-
-    const updatedUser = await updateUserProfile(userId, validationResult.data);
+    const updatedUser = await updateUserProfile(userId, c.req.valid("json"));
     return c.json(updatedUser);
   }, logger),
 );
@@ -139,15 +129,11 @@ userRoutes.delete(
 // PATCH /api/user/api-keys/:id - Update API key name
 userRoutes.patch(
   "/api-keys/:id",
+  zValidator("json", z.object({ name: z.string().min(1, "Name is required") })),
   withAuth(async (c, userId) => {
     const keyId = c.req.param("id");
-    const body = await c.req.json();
-
-    if (!body.name || typeof body.name !== "string") {
-      throw new ValidationError("Name is required");
-    }
-
-    const apiKey = await updateApiKeyName(userId, keyId, body.name);
+    const { name } = c.req.valid("json");
+    const apiKey = await updateApiKeyName(userId, keyId, name);
     return c.json({ apiKey });
   }, logger),
 );
@@ -286,7 +272,7 @@ userRoutes.get(
   }, logger),
 );
 
-// GET /api/user/:userId/avatar - Serve user avatar
+// GET /api/user/:userId/avatar - Serve user avatar (public, no auth required)
 userRoutes.get("/:userId/avatar", async (c) => {
   const userId = c.req.param("userId");
   if (!userId) {
@@ -296,12 +282,12 @@ userRoutes.get("/:userId/avatar", async (c) => {
   try {
     const { stream, metadata } = await getUserAvatar(userId);
 
-    const headers = new Headers();
-    headers.set("Content-Type", metadata.contentType || "image/jpeg");
-    headers.set("Content-Length", String(metadata.size));
-    headers.set("Cache-Control", "public, max-age=86400"); // Cache for 24 hours
-
-    return new Response(stream, { status: 200, headers });
+    return createAssetResponse(c, {
+      stream,
+      contentType: metadata.contentType || "image/jpeg",
+      contentLength: metadata.size,
+      cacheControl: "public, max-age=86400",
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "NotFoundError") {
       return c.json({ error: "Avatar not found" }, 404);

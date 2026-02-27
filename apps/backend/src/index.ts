@@ -31,6 +31,7 @@ import { initializeAI } from "./lib/ai-init.js";
 import { auth } from "./lib/auth.js";
 import { validateEncryptionService } from "./lib/encryption.js";
 import { logger, smartLogger } from "./lib/logger.js";
+import { createSpaMiddleware } from "./middleware/static-spa.js";
 import {
   closeQueues,
   startScheduler,
@@ -59,12 +60,9 @@ import { promptRoutes } from "./routes/prompt.js";
 import { tasksRoutes } from "./routes/tasks.js";
 import { userRoutes } from "./routes/user.js";
 
-// Define the context type for Better Auth session and user
-type Variables = {
-  user: typeof auth.$Infer.Session.user | null;
-  session: typeof auth.$Infer.Session.session | null;
-  requestId: string;
-};
+import type { RouteVariables } from "./types/route-variables.js";
+
+type Variables = RouteVariables;
 
 const app = new Hono<{ Variables: Variables }>();
 
@@ -100,26 +98,25 @@ app.use(
   }),
 );
 
-// Session middleware - runs on every request to inject user/session into context
-// Skips public endpoints that never need session data
+// Session middleware - provides a lazy session resolver
+// The session is only resolved (DB hit) when a route handler actually needs it
 app.use("*", async (c, next) => {
-  const path = c.req.path;
-  if (path === "/health" || path === "/api/health") {
-    c.set("user", null);
-    c.set("session", null);
-    return next();
-  }
+  c.set("user", null);
+  c.set("session", null);
 
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  // Lazy resolver: caches the result so the DB is hit at most once per request
+  let cached: { user: typeof auth.$Infer.Session.user; session: typeof auth.$Infer.Session.session } | null | undefined;
+  c.set("resolveSession", async () => {
+    if (cached !== undefined) return cached;
+    const result = await auth.api.getSession({ headers: c.req.raw.headers });
+    cached = result ?? null;
+    if (cached) {
+      c.set("user", cached.user);
+      c.set("session", cached.session);
+    }
+    return cached;
+  });
 
-  if (!session) {
-    c.set("user", null);
-    c.set("session", null);
-    return next();
-  }
-
-  c.set("user", session.user);
-  c.set("session", session.session);
   return next();
 });
 
@@ -154,17 +151,17 @@ app.get("/health", healthHandler);
 app.get("/api/health", healthHandler);
 
 // Session test endpoint
-app.get("/api/session", (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
+app.get("/api/session", async (c) => {
+  const resolveSession = c.get("resolveSession");
+  const result = resolveSession ? await resolveSession() : null;
 
-  if (!user) {
+  if (!result) {
     return c.json({ session: null, user: null }, 200);
   }
 
   return c.json({
-    session,
-    user,
+    session: result.session,
+    user: result.user,
   });
 });
 
@@ -188,8 +185,6 @@ app.route("/api/processing-events", processingEventsRoutes);
 
 // SPA middleware - serves frontend static files and falls back to index.html
 // Must be registered AFTER all API routes
-import { createSpaMiddleware } from "./middleware/static-spa.js";
-
 app.use("*", createSpaMiddleware());
 
 // Start the server

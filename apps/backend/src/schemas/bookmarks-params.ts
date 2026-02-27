@@ -251,6 +251,87 @@ export const CreateBookmarkSchema = z
       "Data required to create a new bookmark with flat structure for core properties",
   });
 
+// Bookmark search/filter parameters schema
+export const BookmarkSearchParamsSchema = z
+  .object({
+    text: z
+      .string()
+      .optional()
+      .meta({
+        description:
+          "Search text to match against bookmark title, description, and URL",
+        examples: ["documentation", "openai"],
+      }),
+
+    tags: z
+      .string()
+      .optional()
+      .meta({
+        description: "Comma-separated list of tags to filter by",
+        examples: ["programming,api", "personal,learning"],
+      }),
+
+    startDate: z
+      .string()
+      .optional()
+      .meta({
+        description:
+          "Filter bookmarks created on or after this date (ISO 8601 format)",
+        examples: ["2024-01-01T00:00:00Z"],
+      }),
+
+    endDate: z
+      .string()
+      .optional()
+      .meta({
+        description:
+          "Filter bookmarks created on or before this date (ISO 8601 format)",
+        examples: ["2024-12-31T23:59:59Z"],
+      }),
+
+    dueDateStart: z
+      .string()
+      .optional()
+      .meta({
+        description:
+          "Filter bookmarks with due dates on or after this date (ISO 8601 format)",
+        examples: ["2024-01-01T00:00:00Z"],
+      }),
+
+    dueDateEnd: z
+      .string()
+      .optional()
+      .meta({
+        description:
+          "Filter bookmarks with due dates on or before this date (ISO 8601 format)",
+        examples: ["2024-12-31T23:59:59Z"],
+      }),
+
+    limit: z.coerce
+      .number()
+      .min(1)
+      .optional()
+      .default(50)
+      .meta({
+        description: "Maximum number of bookmarks to return",
+        examples: [10, 25, 50, 9999],
+      }),
+
+    offset: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .default(0)
+      .meta({
+        description: "Number of results to skip (for pagination)",
+        examples: [0, 10, 50],
+      }),
+  })
+  .meta({
+    ref: "BookmarkSearchParams",
+    description: "Query parameters for searching and filtering bookmarks",
+  });
+
 // Path parameters
 export const BookmarkIdParam = z
   .object({

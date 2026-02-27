@@ -2,13 +2,12 @@ import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
-import { parseSearchFields } from "../lib/search-params.js";
+import { parseDeleteStorage, parseSearchFields } from "../lib/search-params.js";
 import {
-  countPhotos,
   createPhoto,
   deletePhoto,
   extractAndGeocode,
-  findPhotos,
+  findPhotosWithCount,
   getAnalysisStream,
   getContentStream,
   getConvertedStream,
@@ -64,7 +63,7 @@ photosRoutes.get(
     const params = PhotoSearchParamsSchema.parse(c.req.query());
     const { tags, startDate, endDate } = parseSearchFields(params);
 
-    const photos = await findPhotos({
+    const { items, totalCount } = await findPhotosWithCount({
       userId,
       tags,
       startDate,
@@ -72,15 +71,8 @@ photosRoutes.get(
       limit: params.limit,
     });
 
-    const totalCount = await countPhotos({
-      userId,
-      tags,
-      startDate,
-      endDate,
-    });
-
     return c.json({
-      items: photos,
+      items,
       totalCount,
       limit: params.limit,
       offset: 0,
@@ -201,12 +193,7 @@ photosRoutes.delete(
   describeRoute(deletePhotoRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-
-    // Parse the optional deleteStorage query parameter (defaults to true)
-    const deleteStorageParam = c.req.query("deleteStorage");
-    const deleteStorage = deleteStorageParam !== "false";
-
-    await deletePhoto(id, userId, deleteStorage);
+    await deletePhoto(id, userId, parseDeleteStorage(c));
     return new Response(null, { status: 204 });
   }, logger),
 );

@@ -1,3 +1,5 @@
+import type { Context } from "hono";
+
 /**
  * Parses common search fields from validated query params.
  * Handles tag splitting (comma-separated → array) and date string → Date conversion.
@@ -20,4 +22,11 @@ export function parseSearchFields(params: {
       : undefined,
     dueDateEnd: params.dueDateEnd ? new Date(params.dueDateEnd) : undefined,
   };
+}
+
+/**
+ * Parses the `deleteStorage` query parameter (defaults to true).
+ */
+export function parseDeleteStorage(c: Context): boolean {
+  return c.req.query("deleteStorage") !== "false";
 }

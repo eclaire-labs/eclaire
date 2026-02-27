@@ -865,6 +865,17 @@ export async function countNotes({
   }
 }
 
+/** Runs findNotes and countNotes in parallel, returning both. */
+export async function findNotesWithCount(
+  params: FindNotesParams,
+): Promise<{ items: Awaited<ReturnType<typeof findNotes>>; totalCount: number }> {
+  const [items, totalCount] = await Promise.all([
+    findNotes(params),
+    countNotes(params),
+  ]);
+  return { items, totalCount };
+}
+
 // --- INTERNAL-ONLY SERVICES (Called by Worker) ---
 
 /**

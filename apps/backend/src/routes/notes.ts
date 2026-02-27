@@ -4,10 +4,9 @@ import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import { parseSearchFields } from "../lib/search-params.js";
 import {
-  countNotes,
   createNoteEntry,
   deleteNoteEntry,
-  findNotes,
+  findNotesWithCount,
   getNoteEntryById,
   parseNoteUploadMetadata,
   prepareNoteFromUpload,
@@ -31,6 +30,7 @@ import {
   patchNotePinRouteDescription,
   patchNoteReviewRouteDescription,
   patchNoteRouteDescription,
+  postNoteUploadRouteDescription,
   postNotesRouteDescription,
   putNoteRouteDescription,
 } from "../schemas/notes-routes.js";
@@ -38,6 +38,14 @@ import type { RouteVariables } from "../types/route-variables.js";
 import { registerCommonEndpoints } from "./shared-endpoints.js";
 
 const logger = createChildLogger("notes");
+
+/** Converts null dueDate to undefined for service layer compatibility. */
+function toNoteServiceData<T extends { dueDate?: string | null }>(data: T) {
+  return {
+    ...data,
+    dueDate: data.dueDate === null ? undefined : data.dueDate,
+  };
+}
 
 export const notesRoutes = new Hono<{ Variables: RouteVariables }>();
 
@@ -49,7 +57,7 @@ notesRoutes.get(
     const params = NoteSearchSchema.parse(c.req.query());
     const parsed = parseSearchFields(params);
 
-    const entries = await findNotes({
+    const { items, totalCount } = await findNotesWithCount({
       userId,
       text: params.text,
       ...parsed,
@@ -57,14 +65,8 @@ notesRoutes.get(
       offset: params.offset,
     });
 
-    const totalCount = await countNotes({
-      userId,
-      text: params.text,
-      ...parsed,
-    });
-
     return c.json({
-      items: entries,
+      items,
       totalCount,
       limit: params.limit,
       offset: params.offset,
@@ -109,46 +111,7 @@ notesRoutes.post(
 // POST /api/notes/upload - Create a new note entry from file upload
 notesRoutes.post(
   "/upload",
-  describeRoute({
-    summary: "Upload a file to create a new note",
-    description:
-      "Create a new note entry from an uploaded file (TXT, MD, or JSON)",
-    tags: ["Notes"],
-    responses: {
-      201: {
-        description: "Note created successfully",
-        content: {
-          "application/json": {
-            schema: { $ref: "#/components/schemas/NoteResponse" },
-          },
-        },
-      },
-      400: {
-        description: "Invalid file or metadata",
-        content: {
-          "application/json": {
-            schema: { $ref: "#/components/schemas/ErrorResponse" },
-          },
-        },
-      },
-      401: {
-        description: "Unauthorized",
-        content: {
-          "application/json": {
-            schema: { $ref: "#/components/schemas/ErrorResponse" },
-          },
-        },
-      },
-      500: {
-        description: "Internal server error",
-        content: {
-          "application/json": {
-            schema: { $ref: "#/components/schemas/ErrorResponse" },
-          },
-        },
-      },
-    },
-  }),
+  describeRoute(postNoteUploadRouteDescription),
   withAuth(async (c, userId) => {
     const body = await c.req.parseBody();
     const file = body.content as File;
@@ -209,20 +172,8 @@ notesRoutes.put(
   zValidator("json", NoteSchema),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    const validatedData = c.req.valid("json");
-
-    // Convert null dates to undefined for service compatibility
-    const serviceData = {
-      ...validatedData,
-      dueDate:
-        validatedData.dueDate === null ? undefined : validatedData.dueDate,
-    };
-    const updatedEntry = await updateNoteEntry(id, serviceData, userId);
-
-    if (!updatedEntry) {
-      throw new NotFoundError("Note");
-    }
-
+    const updatedEntry = await updateNoteEntry(id, toNoteServiceData(c.req.valid("json")), userId);
+    if (!updatedEntry) throw new NotFoundError("Note");
     return c.json(updatedEntry);
   }, logger),
 );
@@ -234,20 +185,8 @@ notesRoutes.patch(
   zValidator("json", PartialNoteSchema),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    const validatedData = c.req.valid("json");
-
-    // Convert null dates to undefined for service compatibility
-    const serviceData = {
-      ...validatedData,
-      dueDate:
-        validatedData.dueDate === null ? undefined : validatedData.dueDate,
-    };
-    const updatedEntry = await updateNoteEntry(id, serviceData, userId);
-
-    if (!updatedEntry) {
-      throw new NotFoundError("Note");
-    }
-
+    const updatedEntry = await updateNoteEntry(id, toNoteServiceData(c.req.valid("json")), userId);
+    if (!updatedEntry) throw new NotFoundError("Note");
     return c.json(updatedEntry);
   }, logger),
 );

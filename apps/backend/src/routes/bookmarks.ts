@@ -6,18 +6,20 @@ import {
   type BookmarkAssetType,
   createBookmarkAndQueueJob,
   deleteBookmark,
-  getAllBookmarks,
+  findBookmarksWithCount,
   getBookmarkAssetDetails,
   getBookmarkById,
   reprocessBookmark,
   updateBookmark,
   validateAndNormalizeBookmarkUrl,
 } from "../lib/services/bookmarks.js";
+import { parseDeleteStorage, parseSearchFields } from "../lib/search-params.js";
 import { getStorage } from "../lib/storage/index.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
   BookmarkSchema,
+  BookmarkSearchParamsSchema,
   CreateBookmarkSchema,
   PartialBookmarkSchema,
 } from "../schemas/bookmarks-params.js";
@@ -42,17 +44,31 @@ const logger = createChildLogger("bookmarks");
 
 export const bookmarksRoutes = new Hono<{ Variables: RouteVariables }>();
 
-// GET /api/bookmarks - Get all bookmarks for the authenticated user
+// GET /api/bookmarks - Get all bookmarks or search bookmarks
 bookmarksRoutes.get(
   "/",
   describeRoute(getBookmarksRouteDescription),
   withAuth(async (c, userId) => {
-    const bookmarks = await getAllBookmarks(userId);
+    const params = BookmarkSearchParamsSchema.parse(c.req.query());
+    const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
+      parseSearchFields(params);
+
+    const { items, totalCount } = await findBookmarksWithCount({
+      userId,
+      text: params.text,
+      tags,
+      startDate,
+      endDate,
+      limit: params.limit,
+      dueDateStart,
+      dueDateEnd,
+    });
+
     return c.json({
-      items: bookmarks,
-      totalCount: bookmarks.length,
-      limit: bookmarks.length,
-      offset: 0,
+      items,
+      totalCount,
+      limit: params.limit,
+      offset: params.offset,
     });
   }, logger),
 );
@@ -160,12 +176,7 @@ bookmarksRoutes.delete(
   describeRoute(deleteBookmarkRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-
-    // Parse the optional deleteStorage query parameter (defaults to true)
-    const deleteStorageParam = c.req.query("deleteStorage");
-    const deleteStorage = deleteStorageParam !== "false";
-
-    await deleteBookmark(id, userId, deleteStorage);
+    await deleteBookmark(id, userId, parseDeleteStorage(c));
     return new Response(null, { status: 204 });
   }, logger),
 );

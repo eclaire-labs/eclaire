@@ -1058,6 +1058,17 @@ export async function countBookmarks({
   }
 }
 
+/** Runs findBookmarks and countBookmarks in parallel, returning both. */
+export async function findBookmarksWithCount(
+  params: FindBookmarksParams,
+): Promise<{ items: Awaited<ReturnType<typeof findBookmarks>>; totalCount: number }> {
+  const [items, totalCount] = await Promise.all([
+    findBookmarks(params),
+    countBookmarks(params),
+  ]);
+  return { items, totalCount };
+}
+
 async function getBookmarkTags(bookmarkId: string): Promise<string[]> {
   const result = await db
     .select({ name: tags.name })

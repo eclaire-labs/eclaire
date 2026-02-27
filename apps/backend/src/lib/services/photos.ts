@@ -1277,6 +1277,17 @@ export async function countPhotos({
   }
 }
 
+/** Runs findPhotos and countPhotos in parallel, returning both. */
+export async function findPhotosWithCount(
+  params: FindPhotosParams,
+): Promise<{ items: Awaited<ReturnType<typeof findPhotos>>; totalCount: number }> {
+  const [items, totalCount] = await Promise.all([
+    findPhotos(params),
+    countPhotos(params),
+  ]);
+  return { items, totalCount };
+}
+
 // --- Helper Functions (getPhotoTags, addTagsToPhoto, Error Handling) ---
 // These remain largely the same, ensure they handle errors appropriately.
 

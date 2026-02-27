@@ -56,27 +56,20 @@ export async function verifyApiKey(
 }
 
 /**
- * Gets the authenticated user ID from Hono context, supporting both Better Auth sessions and API keys
+ * Gets the authenticated user ID from Hono context, supporting both Better Auth sessions and API keys.
+ * Session resolution is lazy — the DB is only hit if an API key isn't present.
  * @param c The Hono context
  * @returns The authenticated user ID or null if not authenticated
  */
 export async function getAuthenticatedUserId(
   c: Context,
 ): Promise<string | null> {
-  // First check if user is already set by session middleware (Better Auth)
-  const user = c.get("user");
-
-  if (user?.id) {
-    return user.id;
-  }
-
-  // Check for API key in Authorization header
+  // Check for API key first (avoids session DB hit for programmatic clients)
   const authHeader = c.req.header("Authorization");
   const apiKey = authHeader?.startsWith("Bearer ")
     ? authHeader.substring(7)
     : null;
 
-  // Also check X-API-Key header as an alternative
   const xApiKey = c.req.header("X-API-Key");
   const keyToVerify = apiKey || xApiKey;
 
@@ -88,6 +81,15 @@ export async function getAuthenticatedUserId(
         return userId;
       }
     } catch (_error) {}
+  }
+
+  // Fall back to session auth (lazy — resolves session from DB only when needed)
+  const resolveSession = c.get("resolveSession");
+  if (resolveSession) {
+    const session = await resolveSession();
+    if (session?.user?.id) {
+      return session.user.id;
+    }
   }
 
   return null;

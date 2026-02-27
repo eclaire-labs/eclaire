@@ -2067,6 +2067,17 @@ export async function countTasks({
   }
 }
 
+/** Runs findTasks and countTasks in parallel, returning both. */
+export async function findTasksWithCount(
+  params: FindTasksParams & { limit?: number },
+): Promise<{ items: Awaited<ReturnType<typeof findTasks>>; totalCount: number }> {
+  const [items, totalCount] = await Promise.all([
+    findTasks(params),
+    countTasks(params),
+  ]);
+  return { items, totalCount };
+}
+
 /**
  * Re-processes an existing task by using the existing retry logic.
  * This allows users to refresh processing results without knowing about processing jobs.

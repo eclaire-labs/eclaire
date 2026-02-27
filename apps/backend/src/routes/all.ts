@@ -6,9 +6,8 @@ import { createChildLogger } from "../lib/logger.js";
 // Import service functions
 import {
   classifyAndCreateContent,
-  countAllEntries,
   detectAndVerifyMimeType,
-  findAllEntries,
+  findAllEntriesWithCount,
 } from "../lib/services/all.js";
 import { parseSearchFields } from "../lib/search-params.js";
 import { withAuth } from "../middleware/with-auth.js";
@@ -36,7 +35,7 @@ allRoutes.get(
     const params = c.req.valid("query");
     const { tags, startDate, endDate } = parseSearchFields(params);
 
-    const allItems = await findAllEntries(
+    const { items, totalCount } = await findAllEntriesWithCount(
       userId,
       params.text,
       tags,
@@ -47,18 +46,8 @@ allRoutes.get(
       params.dueStatus,
     );
 
-    const totalCount = await countAllEntries(
-      userId,
-      params.text,
-      tags,
-      startDate,
-      endDate,
-      undefined,
-      params.dueStatus,
-    );
-
     return c.json({
-      items: allItems,
+      items,
       totalCount,
       limit: params.limit,
       offset: params.offset,

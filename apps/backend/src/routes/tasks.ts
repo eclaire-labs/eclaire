@@ -11,10 +11,9 @@ import {
   updateTaskComment,
 } from "../lib/services/taskComments.js";
 import {
-  countTasks,
   createTask,
   deleteTask,
-  findTasks,
+  findTasksWithCount,
   getTaskById,
   reprocessTask,
   updateTask,
@@ -51,6 +50,17 @@ import { registerCommonEndpoints } from "./shared-endpoints.js";
 
 const logger = createChildLogger("tasks");
 
+/** Converts nullable fields to undefined for service layer compatibility. */
+function toTaskServiceData<T extends { description?: string | null; dueDate?: string | null; cronExpression?: string | null; recurrenceEndDate?: string | null }>(data: T) {
+  return {
+    ...data,
+    description: data.description || undefined,
+    dueDate: data.dueDate || undefined,
+    cronExpression: data.cronExpression || undefined,
+    recurrenceEndDate: data.recurrenceEndDate || undefined,
+  };
+}
+
 export const tasksRoutes = new Hono<{ Variables: RouteVariables }>();
 
 // GET /api/tasks - Get all tasks or search tasks
@@ -62,7 +72,7 @@ tasksRoutes.get(
     const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
       parseSearchFields(params);
 
-    const tasks = await findTasks({
+    const { items, totalCount } = await findTasksWithCount({
       userId,
       text: params.text,
       tags,
@@ -74,19 +84,8 @@ tasksRoutes.get(
       dueDateEnd,
     });
 
-    const totalCount = await countTasks({
-      userId,
-      text: params.text,
-      tags,
-      status: params.status,
-      startDate,
-      endDate,
-      dueDateStart,
-      dueDateEnd,
-    });
-
     return c.json({
-      items: tasks,
+      items,
       totalCount,
       limit: params.limit,
       offset: 0,
@@ -101,16 +100,7 @@ tasksRoutes.post(
   zValidator("json", TaskSchema),
   withAuth(async (c, userId) => {
     const validatedData = c.req.valid("json");
-    // Convert null dueDate to undefined for CreateTaskParams compatibility
-    const taskData = {
-      ...validatedData,
-      dueDate: validatedData.dueDate || undefined,
-      description: validatedData.description || undefined,
-      cronExpression: validatedData.cronExpression || undefined,
-      recurrenceEndDate: validatedData.recurrenceEndDate || undefined,
-    };
-    const newTask = await createTask(taskData, userId);
-
+    const newTask = await createTask(toTaskServiceData(validatedData), userId);
     return c.json(newTask, 201);
   }, logger),
 );
@@ -130,19 +120,11 @@ tasksRoutes.get(
 tasksRoutes.put(
   "/:id",
   describeRoute(putTaskRouteDescription),
-  zValidator("json", PartialTaskSchema),
+  zValidator("json", TaskSchema),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-
-    const taskData = {
-      ...validatedData,
-      description: validatedData.description || undefined,
-      dueDate: validatedData.dueDate || undefined,
-      cronExpression: validatedData.cronExpression || undefined,
-    };
-
-    const updatedTask = await updateTask(id, taskData, userId);
+    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), userId);
     if (!updatedTask) throw new NotFoundError("Task");
     return c.json(updatedTask);
   }, logger),
@@ -152,54 +134,11 @@ tasksRoutes.put(
 tasksRoutes.patch(
   "/:id",
   describeRoute(patchTaskRouteDescription),
+  zValidator("json", PartialTaskSchema),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-
-    // Manual validation to get better error handling
-    const body = await c.req.json();
-    const requestId = c.get("requestId");
-
-    logger.debug(
-      {
-        requestId,
-        taskId: id,
-        userId,
-        body,
-      },
-      "PATCH task request received",
-    );
-
-    const validationResult = PartialTaskSchema.safeParse(body);
-
-    if (!validationResult.success) {
-      logger.warn(
-        {
-          requestId,
-          taskId: id,
-          userId,
-          body,
-          validationErrors: validationResult.error.issues,
-        },
-        "Task PATCH validation failed",
-      );
-      return c.json(
-        {
-          error: "Invalid request data",
-          details: validationResult.error.issues,
-        },
-        400,
-      );
-    }
-
-    const validatedData = validationResult.data;
-
-    const taskData = {
-      ...validatedData,
-      description: validatedData.description || undefined,
-      dueDate: validatedData.dueDate || undefined,
-      cronExpression: validatedData.cronExpression || undefined,
-    };
-    const updatedTask = await updateTask(id, taskData, userId);
+    const validatedData = c.req.valid("json");
+    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), userId);
     if (!updatedTask) throw new NotFoundError("Task");
     return c.json(updatedTask);
   }, logger),

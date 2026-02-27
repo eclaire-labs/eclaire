@@ -113,39 +113,12 @@ export interface EclaireConfig {
 }
 
 /**
- * Get a required environment variable or throw
- */
-function _required(key: string, value: string | undefined): string {
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-  return value;
-}
-
-/**
  * Parse an integer with a default
  */
 function int(value: string | undefined, defaultValue: number): number {
   if (!value) return defaultValue;
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) ? defaultValue : parsed;
-}
-
-/**
- * Parse a boolean
- */
-function _bool(value: string | undefined, defaultValue: boolean): boolean {
-  if (!value) return defaultValue;
-  return value.toLowerCase() === "true";
-}
-
-/**
- * Generate a random hex string (for auto-generating dev secrets)
- */
-function _generateHex(bytes: number): string {
-  const array = new Uint8Array(bytes);
-  crypto.getRandomValues(array);
-  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**

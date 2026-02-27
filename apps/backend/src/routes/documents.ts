@@ -3,12 +3,11 @@ import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
-import { parseSearchFields } from "../lib/search-params.js";
+import { parseDeleteStorage, parseSearchFields } from "../lib/search-params.js";
 import {
-  countDocuments,
   createDocument,
   deleteDocument,
-  findDocuments,
+  findDocumentsWithCount,
   getDocumentAsset,
   getDocumentById,
   reprocessDocument,
@@ -22,6 +21,7 @@ import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
   DocumentMetadataSchema,
+  DocumentSchema,
   DocumentSearchParamsSchema,
   PartialDocumentSchema,
 } from "../schemas/documents-params.js";
@@ -62,7 +62,7 @@ documentsRoutes.get(
     const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
       parseSearchFields(params);
 
-    const documents = await findDocuments({
+    const { items, totalCount } = await findDocumentsWithCount({
       userId,
       text: params.text,
       tags,
@@ -75,16 +75,8 @@ documentsRoutes.get(
       dueDateEnd,
     });
 
-    const totalCount = await countDocuments({
-      userId,
-      text: params.text,
-      tags,
-      startDate,
-      endDate,
-    });
-
     return c.json({
-      items: documents,
+      items,
       totalCount,
       limit: params.limit,
       offset: 0,
@@ -166,7 +158,7 @@ documentsRoutes.get(
 documentsRoutes.put(
   "/:id",
   describeRoute(putDocumentRouteDescription),
-  zValidator("json", PartialDocumentSchema), // Note: using PartialDocumentSchema as the original code uses it
+  zValidator("json", DocumentSchema),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
@@ -282,12 +274,7 @@ documentsRoutes.delete(
   describeRoute(deleteDocumentRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-
-    // Parse the optional deleteStorage query parameter (defaults to true)
-    const deleteStorageParam = c.req.query("deleteStorage");
-    const deleteStorage = deleteStorageParam !== "false";
-
-    await deleteDocument(id, userId, deleteStorage);
+    await deleteDocument(id, userId, parseDeleteStorage(c));
     return new Response(null, { status: 204 });
   }, logger),
 );
