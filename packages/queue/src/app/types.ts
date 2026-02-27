@@ -2,8 +2,11 @@
  * Queue adapter types and interfaces
  */
 
+import type { AssetType } from "@eclaire/core/types";
 import type { DbInstance, TransactionManager } from "@eclaire/db";
 import type { Logger } from "@eclaire/logger";
+
+export type { AssetType };
 
 // --- Job Data Types ---
 
@@ -69,13 +72,6 @@ export interface QueueAdapter {
 }
 
 // --- Configuration Types ---
-
-export type AssetType =
-  | "bookmarks"
-  | "photos"
-  | "documents"
-  | "notes"
-  | "tasks";
 
 export interface RedisQueueConfig {
   /** Redis connection URL */

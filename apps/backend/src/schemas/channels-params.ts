@@ -1,8 +1,9 @@
+import { CHANNEL_CAPABILITIES, CHANNEL_PLATFORMS } from "@eclaire/core/types";
 import z from "zod/v4";
 
 // Channel platform types
 export const ChannelPlatformSchema = z
-  .enum(["telegram", "slack", "whatsapp", "email"])
+  .enum(CHANNEL_PLATFORMS)
   .meta({
     description: "Platform type for the communication channel",
     examples: ["telegram", "slack", "email"],
@@ -10,7 +11,7 @@ export const ChannelPlatformSchema = z
 
 // Channel capability types
 export const ChannelCapabilitySchema = z
-  .enum(["notification", "chat", "bidirectional"])
+  .enum(CHANNEL_CAPABILITIES)
   .meta({
     description: "Capability type of the channel",
     examples: ["notification", "chat", "bidirectional"],

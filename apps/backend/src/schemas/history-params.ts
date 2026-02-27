@@ -1,47 +1,15 @@
 // schemas/history-params.ts
+import { HISTORY_ACTIONS, HISTORY_ACTORS, HISTORY_ITEM_TYPES } from "@eclaire/core/types";
 import z from "zod/v4";
 
 // Define action types for history records
-export const HistoryActionSchema = z.enum([
-  "create",
-  "update",
-  "delete",
-  "api_call",
-  "ai_prompt_image_response",
-  "ai_prompt_text_response",
-  "ai_prompt_error",
-  "api_content_upload",
-  "api_error_general",
-  "user.login",
-  "user.logout",
-  "conversation_created",
-  "conversation_updated",
-  "conversation_deleted",
-  // Streaming-specific actions
-  "ai_prompt_streaming_response",
-  "ai_prompt_streaming_error",
-  "api_streaming_content_upload",
-  "api_error_streaming_general",
-]);
+export const HistoryActionSchema = z.enum(HISTORY_ACTIONS);
 
 // Define item types for history records
-export const HistoryItemTypeSchema = z.enum([
-  "task",
-  "note",
-  "bookmark",
-  "document",
-  "photo",
-  "api",
-  "prompt",
-  "api_error",
-  "content_submission",
-  "user_session",
-  "conversation",
-  "task_comment",
-]);
+export const HistoryItemTypeSchema = z.enum(HISTORY_ITEM_TYPES);
 
 // Define actor types for history records
-export const HistoryActorSchema = z.enum(["user", "assistant", "system"]);
+export const HistoryActorSchema = z.enum(HISTORY_ACTORS);
 
 // History record schema (read-only, matches DB structure)
 export const HistoryRecordSchema = z.object({

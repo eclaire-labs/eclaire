@@ -113,7 +113,6 @@ export function formatToISO8601(
       ? timestamp
       : new Date(timestamp as string | number);
   if (Number.isNaN(date.getTime())) {
-    console.error("formatToISO8601: Invalid timestamp", { timestamp });
     return null;
   }
   return date.toISOString();

@@ -1,27 +1,77 @@
 /**
- * Common schema types and enums shared across all database dialects
+ * Common domain types and enums shared across the Eclaire monorepo
  */
 
-export type UserType = "user" | "assistant" | "worker";
-export type ReviewStatus = "pending" | "accepted" | "rejected";
-export type FlagColor = "red" | "yellow" | "orange" | "green" | "blue";
-export type AssetType =
-  | "photos"
-  | "documents"
-  | "bookmarks"
-  | "notes"
-  | "tasks";
-export type JobStatus =
-  | "pending"
-  | "processing"
-  | "completed"
-  | "failed"
-  | "retry_pending";
-export type TaskStatus = "not-started" | "in-progress" | "completed";
-export type MessageRole = "user" | "assistant";
-export type ChannelPlatform = "telegram" | "slack" | "whatsapp" | "email";
-export type ChannelCapability = "notification" | "chat" | "bidirectional";
-export type FeedbackSentiment = "positive" | "negative";
+export const USER_TYPES = ["user", "assistant", "worker"] as const;
+export type UserType = (typeof USER_TYPES)[number];
+
+export const REVIEW_STATUSES = ["pending", "accepted", "rejected"] as const;
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
+
+export const FLAG_COLORS = ["red", "yellow", "orange", "green", "blue"] as const;
+export type FlagColor = (typeof FLAG_COLORS)[number];
+
+export const ASSET_TYPES = ["photos", "documents", "bookmarks", "notes", "tasks"] as const;
+export type AssetType = (typeof ASSET_TYPES)[number];
+
+export const JOB_STATUSES = ["pending", "processing", "completed", "failed", "retry_pending"] as const;
+export type JobStatus = (typeof JOB_STATUSES)[number];
+
+export const TASK_STATUSES = ["not-started", "in-progress", "completed"] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export const MESSAGE_ROLES = ["user", "assistant"] as const;
+export type MessageRole = (typeof MESSAGE_ROLES)[number];
+
+export const CHANNEL_PLATFORMS = ["telegram", "slack", "whatsapp", "email"] as const;
+export type ChannelPlatform = (typeof CHANNEL_PLATFORMS)[number];
+
+export const CHANNEL_CAPABILITIES = ["notification", "chat", "bidirectional"] as const;
+export type ChannelCapability = (typeof CHANNEL_CAPABILITIES)[number];
+
+export const FEEDBACK_SENTIMENTS = ["positive", "negative"] as const;
+export type FeedbackSentiment = (typeof FEEDBACK_SENTIMENTS)[number];
+
+export const HISTORY_ACTIONS = [
+  "create",
+  "update",
+  "delete",
+  "api_call",
+  "ai_prompt_image_response",
+  "ai_prompt_text_response",
+  "ai_prompt_error",
+  "api_content_upload",
+  "api_error_general",
+  "user.login",
+  "user.logout",
+  "conversation_created",
+  "conversation_updated",
+  "conversation_deleted",
+  "ai_prompt_streaming_response",
+  "ai_prompt_streaming_error",
+  "api_streaming_content_upload",
+  "api_error_streaming_general",
+] as const;
+export type HistoryAction = (typeof HISTORY_ACTIONS)[number];
+
+export const HISTORY_ITEM_TYPES = [
+  "task",
+  "note",
+  "bookmark",
+  "document",
+  "photo",
+  "api",
+  "prompt",
+  "api_error",
+  "content_submission",
+  "user_session",
+  "conversation",
+  "task_comment",
+] as const;
+export type HistoryItemType = (typeof HISTORY_ITEM_TYPES)[number];
+
+export const HISTORY_ACTORS = ["user", "assistant", "system"] as const;
+export type HistoryActor = (typeof HISTORY_ACTORS)[number];
 
 /**
  * Domain model interfaces - these represent the data structures
@@ -86,7 +136,7 @@ export interface TaskInsert {
   userId: string;
   title: string;
   description?: string;
-  status?: string;
+  status?: TaskStatus;
   dueDate?: string;
   assignedToId?: string;
   enabled?: boolean;
@@ -228,13 +278,13 @@ export interface TagInsert {
 
 export interface HistoryInsert {
   id: string;
-  action: string;
-  itemType: string;
+  action: HistoryAction;
+  itemType: HistoryItemType;
   itemId: string;
   itemName?: string;
   beforeData?: Record<string, unknown>;
   afterData?: Record<string, unknown>;
-  actor: string;
+  actor: HistoryActor;
   metadata?: Record<string, unknown>;
   timestamp?: string;
   userId?: string;

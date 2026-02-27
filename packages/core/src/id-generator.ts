@@ -67,6 +67,8 @@ export const isValidConversationId = createIdValidator("conv");
 export const isValidMessageId = createIdValidator("msg");
 export const isValidTaskCommentId = createIdValidator("tc");
 export const isValidChannelId = createIdValidator("ch");
+export const isValidAssetProcessingJobId = createIdValidator("apj");
+export const isValidFeedbackId = createIdValidator("fb");
 
 /**
  * Utility to extract entity type from ID
@@ -98,5 +100,7 @@ export const ID_CONSTANTS = {
     MESSAGE: "msg-",
     TASK_COMMENT: "tc-",
     CHANNEL: "ch-",
+    ASSET_PROCESSING_JOB: "apj-",
+    FEEDBACK: "fb-",
   },
 } as const;

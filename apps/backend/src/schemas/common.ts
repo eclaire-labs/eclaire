@@ -4,6 +4,7 @@
  * Shared zod schemas and types used across multiple schema files.
  */
 
+import { FLAG_COLORS, REVIEW_STATUSES, TASK_STATUSES } from "@eclaire/core/types";
 import { resolver } from "hono-openapi";
 import z from "zod/v4";
 
@@ -11,7 +12,6 @@ import z from "zod/v4";
 // REVIEW STATUS
 // =============================================================================
 
-export const REVIEW_STATUSES = ["pending", "accepted", "rejected"] as const;
 export const reviewStatusSchema = z.enum(REVIEW_STATUSES);
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 
@@ -28,13 +28,6 @@ export const reviewStatusFieldSchema = reviewStatusSchema.meta({
 // FLAG COLORS
 // =============================================================================
 
-export const FLAG_COLORS = [
-  "red",
-  "yellow",
-  "orange",
-  "green",
-  "blue",
-] as const;
 export const flagColorSchema = z.enum(FLAG_COLORS);
 export type FlagColor = z.infer<typeof flagColorSchema>;
 
@@ -76,11 +69,6 @@ export function isPinnedUpdateSchema(resourceName: string, ref?: string) {
 // TASK STATUS
 // =============================================================================
 
-export const TASK_STATUSES = [
-  "not-started",
-  "in-progress",
-  "completed",
-] as const;
 export const taskStatusSchema = z.enum(TASK_STATUSES);
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 

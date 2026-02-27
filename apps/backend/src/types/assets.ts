@@ -1,3 +1,5 @@
+import type { AssetType, JobStatus } from "@eclaire/core/types";
+
 // Singular - for individual asset references, metadata, labels
 export const ASSET_TYPE = {
   BOOKMARK: "bookmark",
@@ -14,10 +16,9 @@ export const ASSET_COLLECTION_TYPE = {
   PHOTOS: "photos",
   DOCUMENTS: "documents",
   TASKS: "tasks",
-} as const;
+} as const satisfies Record<string, AssetType>;
 
-export type AssetType =
-  (typeof ASSET_COLLECTION_TYPE)[keyof typeof ASSET_COLLECTION_TYPE]; // "bookmarks" | "notes" | etc
+export type { AssetType };
 export type SingleAssetType = (typeof ASSET_TYPE)[keyof typeof ASSET_TYPE]; // "bookmark" | "note" | etc
 
 export const ASSET_TYPE_LABELS = {
@@ -36,12 +37,7 @@ export const ASSET_COLLECTION_LABELS = {
   [ASSET_COLLECTION_TYPE.TASKS]: "Tasks",
 } as const;
 
-export type ProcessingStatus =
-  | "pending"
-  | "processing"
-  | "completed"
-  | "failed"
-  | "retry_pending";
+export type ProcessingStatus = JobStatus;
 
 export const PROCESSING_STATUS_VALUES = {
   PENDING: "pending",
