@@ -58,8 +58,8 @@ export class MLXNativeAdapter implements DialectAdapter {
       model: params.model,
       input: inputMessages,
       stream: params.options.stream ?? false,
-      max_output_tokens: params.options.maxTokens ?? 2000,
-      temperature: params.options.temperature ?? 0.5,
+      max_output_tokens: params.options.maxTokens,
+      temperature: params.options.temperature,
     };
 
     // Add top_p if specified

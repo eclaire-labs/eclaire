@@ -65,7 +65,7 @@ export class AnthropicMessagesAdapter implements DialectAdapter {
     const body: Record<string, unknown> = {
       model: params.model,
       messages,
-      max_tokens: params.options.maxTokens ?? 2000,
+      max_tokens: params.options.maxTokens,
     };
 
     // Add system prompt if present

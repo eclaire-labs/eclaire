@@ -11,7 +11,11 @@
  */
 
 import { getAdapter } from "./adapters/index.js";
-import { getThinkingPromptPrefix, validateAIConfig } from "./config.js";
+import {
+  getDialectEndpoint,
+  getThinkingPromptPrefix,
+  validateAIConfig,
+} from "./config.js";
 import { isDebugLoggingEnabled, logDebugEntry } from "./debug-logger.js";
 import { createLazyLogger, getErrorMessage } from "./logger.js";
 import { LLMStreamParser } from "./stream-parser.js";
@@ -32,6 +36,16 @@ import {
 } from "./validation.js";
 
 const getLogger = createLazyLogger("ai-client");
+
+// =============================================================================
+// DEFAULTS
+// =============================================================================
+
+/** Default temperature when not specified by the caller */
+const DEFAULT_TEMPERATURE = 0.5;
+
+/** Default max output tokens when not specified by the caller */
+const DEFAULT_MAX_TOKENS = 2000;
 
 // =============================================================================
 // HELPERS
@@ -85,22 +99,6 @@ function applyThinkingPrefix(
  */
 function getDialect(providerConfig: { dialect: Dialect }): Dialect {
   return providerConfig.dialect;
-}
-
-/**
- * Get the endpoint from dialect (endpoints are now derived from dialect, not stored in config)
- */
-function getEndpointForDialect(dialect: Dialect): string {
-  switch (dialect) {
-    case "openai_compatible":
-      return "/chat/completions";
-    case "mlx_native":
-      return "/responses";
-    case "anthropic_messages":
-      return "/v1/messages";
-    default:
-      return "/chat/completions";
-  }
 }
 
 // =============================================================================
@@ -202,7 +200,11 @@ export async function callAI(
   // Get adapter for this dialect
   const dialect = getDialect(providerConfig);
   const adapter = getAdapter(dialect);
-  const endpoint = getEndpointForDialect(dialect);
+  const endpoint = getDialectEndpoint(dialect);
+
+  // Apply defaults before passing to adapter
+  const temperature = options.temperature ?? DEFAULT_TEMPERATURE;
+  const maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
 
   // Build request using adapter
   const request = adapter.buildRequest(
@@ -212,8 +214,8 @@ export async function callAI(
       messages: processedMessages,
       model: provider.model,
       options: {
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        temperature,
+        maxTokens,
         top_p: options.top_p,
         stream: false,
         tools: options.tools,
@@ -478,7 +480,11 @@ export async function callAIStream(
   // Get adapter for this dialect
   const dialect = getDialect(providerConfig);
   const adapter = getAdapter(dialect);
-  const endpoint = getEndpointForDialect(dialect);
+  const endpoint = getDialectEndpoint(dialect);
+
+  // Apply defaults before passing to adapter
+  const temperature = options.temperature ?? DEFAULT_TEMPERATURE;
+  const maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
 
   // Build request using adapter
   const request = adapter.buildRequest(
@@ -488,8 +494,8 @@ export async function callAIStream(
       messages: processedMessages,
       model: provider.model,
       options: {
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        temperature,
+        maxTokens,
         top_p: options.top_p,
         stream: true,
         tools: options.tools,

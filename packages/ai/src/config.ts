@@ -559,7 +559,7 @@ export function getThinkingPromptPrefix(
 /**
  * Get the current active model configuration without sensitive fields
  */
-export function getCurrentModelConfig(context: AIContext = "backend"): {
+export function getCurrentModelConfig(context: AIContext): {
   id: string;
   name: string;
   provider: string;
@@ -893,17 +893,15 @@ export function removeModel(id: string): void {
   delete config.models[id];
   saveModelsConfiguration(config);
 
-  // Also remove from selection if active
+  // Also remove from selection if active in any context
   const selection = loadSelectionConfiguration();
   let selectionChanged = false;
 
-  if (selection.active.backend === id) {
-    delete selection.active.backend;
-    selectionChanged = true;
-  }
-  if (selection.active.workers === id) {
-    delete selection.active.workers;
-    selectionChanged = true;
+  for (const [context, activeModelId] of Object.entries(selection.active)) {
+    if (activeModelId === id) {
+      delete selection.active[context];
+      selectionChanged = true;
+    }
   }
 
   if (selectionChanged) {

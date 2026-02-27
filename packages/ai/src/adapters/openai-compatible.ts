@@ -63,8 +63,8 @@ export class OpenAICompatibleAdapter implements DialectAdapter {
         if (msg.tool_calls) m.tool_calls = msg.tool_calls;
         return m;
       }),
-      temperature: params.options.temperature ?? 0.5,
-      max_tokens: params.options.maxTokens ?? 2000,
+      temperature: params.options.temperature,
+      max_tokens: params.options.maxTokens,
       stream: params.options.stream ?? false,
     };
 

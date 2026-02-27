@@ -36,8 +36,7 @@ export interface StreamParseResult {
 
 export interface ToolCallData {
   type: "tool_calls";
-  // biome-ignore lint/suspicious/noExplicitAny: tool call structure varies by provider and is parsed dynamically
-  calls: any[];
+  calls: Array<{ name: string; args: Record<string, unknown> }>;
 }
 
 export interface SSEParseResult {

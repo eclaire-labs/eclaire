@@ -18,7 +18,16 @@ import type {
   ToolCallSummaryOutput,
   ToolExecutionResult,
 } from "../tools/types.js";
-import type { AIMessage, ToolCallResult } from "../types.js";
+import type {
+  AICallOptions,
+  AIContext,
+  AIMessage,
+  FinishReason,
+  ToolCallResult,
+  ToolCallingMode,
+  TokenUsage,
+  ToolDefinition,
+} from "../types.js";
 import {
   defaultStopConditions,
   evaluateStopConditions,
@@ -30,6 +39,8 @@ import type {
   AgentStep,
   AgentStreamEvent,
   AgentStreamResult,
+  AgentToolDefinition,
+  AnyZodType,
   GenerateOptions,
   StepToolExecution,
   StopCondition,
@@ -37,6 +48,60 @@ import type {
 } from "./types.js";
 
 const getLogger = createLazyLogger("tool-loop-agent");
+
+// =============================================================================
+// INTERNAL TYPES
+// =============================================================================
+
+/** Result from a single AI call step (content + tool calls) */
+interface StepAIResult {
+  content: string;
+  reasoning?: string;
+  toolCalls: ToolCallResult[];
+  usage?: TokenUsage;
+  finishReason?: FinishReason;
+}
+
+/** Callbacks for streaming events during tool execution */
+interface ToolExecutionCallbacks {
+  onToolCallStart(
+    toolName: string,
+    toolCallId: string,
+    args: Record<string, unknown>,
+  ): void;
+  onToolCallComplete(
+    toolName: string,
+    toolCallId: string,
+    result: ToolExecutionResult,
+    durationMs: number,
+  ): void;
+  onToolCallError(
+    toolName: string,
+    toolCallId: string,
+    error: string,
+  ): void;
+}
+
+/** Initialized loop state */
+interface LoopState<TContext extends AgentContext> {
+  messages: AIMessage[];
+  tools: Record<string, AgentToolDefinition<AnyZodType, TContext>>;
+  hasTools: boolean;
+  toolCallingMode: ToolCallingMode;
+  openAITools: ToolDefinition[] | undefined;
+}
+
+/** Step preparation result */
+interface PreparedStep {
+  aiContext: AIContext;
+  tools: ToolDefinition[] | undefined;
+  messages: AIMessage[];
+  aiOptions: Partial<AICallOptions>;
+}
+
+// =============================================================================
+// TOOL LOOP AGENT
+// =============================================================================
 
 /**
  * ToolLoopAgent orchestrates multi-step AI conversations with tool calling.
@@ -80,12 +145,16 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
     }
   }
 
+  // ===========================================================================
+  // PUBLIC API
+  // ===========================================================================
+
   /**
    * Execute agent with non-streaming response.
    */
   async generate(options: GenerateOptions<TContext>): Promise<AgentResult> {
     const logger = getLogger();
-    const { prompt, context, messages: previousMessages, aiOptions } = options;
+    const { prompt, context, aiOptions } = options;
 
     logger.info(
       {
@@ -96,19 +165,9 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
       "Starting agent execution",
     );
 
-    // Build system prompt
-    const systemPrompt =
-      typeof this.config.instructions === "function"
-        ? await this.config.instructions(context)
-        : this.config.instructions;
-
-    // Initialize messages
-    const messages: AIMessage[] = previousMessages
-      ? [...previousMessages]
-      : [{ role: "system", content: systemPrompt }];
-
-    // Add user message
-    messages.push({ role: "user", content: prompt });
+    const loopState = await this._initLoop(options);
+    const { messages, tools, hasTools, toolCallingMode, openAITools } =
+      loopState;
 
     // Tracking
     const steps: AgentStep[] = [];
@@ -116,19 +175,6 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
     let totalPromptTokens = 0;
     let totalCompletionTokens = 0;
     let thinking: string | undefined;
-
-    // Get tools in OpenAI format
-    const tools = this.config.tools;
-    const hasTools = Object.keys(tools).length > 0;
-    const toolCallingMode = this.config.toolCallingMode ?? "native";
-
-    // For "off" mode, we skip all tool calling
-    // For "text" mode, we don't send tools to AI but parse text for tool calls
-    // For "native" mode (default), we send tools and use native tool calls only
-    const openAITools =
-      hasTools && toolCallingMode === "native"
-        ? toOpenAITools(tools)
-        : undefined;
 
     // Agent loop
     let stepNumber = 0;
@@ -149,38 +195,19 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
         "Starting agent step",
       );
 
-      // Apply prepareStep if configured
-      let currentAiContext = this.config.aiContext;
-      let currentTools = openAITools;
-      let currentMessages = messages;
-      let stepAiOptions = { ...this.config.aiOptions, ...aiOptions };
+      const prepared = await this._prepareStep(
+        stepNumber,
+        messages,
+        context,
+        steps,
+        openAITools,
+        aiOptions,
+      );
 
-      if (this.config.prepareStep) {
-        const prepareResult = await this.config.prepareStep({
-          stepNumber,
-          messages,
-          context,
-          previousSteps: steps,
-        });
-
-        if (prepareResult.aiContext) {
-          currentAiContext = prepareResult.aiContext;
-        }
-        if (prepareResult.tools) {
-          currentTools = toOpenAITools(prepareResult.tools);
-        }
-        if (prepareResult.messages) {
-          currentMessages = prepareResult.messages;
-        }
-        if (prepareResult.aiOptions) {
-          stepAiOptions = { ...stepAiOptions, ...prepareResult.aiOptions };
-        }
-      }
-
-      // Call AI
-      const aiResponse = await callAI(currentMessages, currentAiContext, {
-        ...stepAiOptions,
-        tools: currentTools,
+      // Call AI (non-streaming)
+      const aiResponse = await callAI(prepared.messages, prepared.aiContext, {
+        ...prepared.aiOptions,
+        tools: prepared.tools,
         toolChoice: hasTools ? "auto" : undefined,
         debugContext: {
           requestId: context.requestId,
@@ -200,46 +227,28 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
         thinking = aiResponse.reasoning;
       }
 
-      // Process tool calls based on toolCallingMode
-      let toolCalls: ToolCallResult[] = [];
-
-      if (toolCallingMode === "off") {
-        // Off mode: ignore all tool calls
-        toolCalls = [];
-      } else if (toolCallingMode === "text") {
-        // Text mode: only parse embedded JSON from text content
-        if (hasTools) {
-          const parseResult = parseTextToolContent(
-            aiResponse.content,
-            aiResponse.reasoning,
-          );
-
-          if (parseResult.thinkingContent && !thinking) {
-            thinking = parseResult.thinkingContent;
-          }
-
-          const extractedCalls = extractToolCalls(parseResult);
-          if (extractedCalls.length > 0) {
-            toolCalls = extractedCalls.map((tc, idx) => ({
-              id: `call_${stepNumber}_${idx}`,
-              type: "function" as const,
-              function: {
-                name: tc.functionName,
-                arguments: JSON.stringify(tc.arguments),
-              },
-            }));
-          }
-        }
-      } else {
-        // Native mode (default): only use native tool calls from response
-        toolCalls = aiResponse.toolCalls || [];
-      }
+      // Extract tool calls
+      const extracted = this._extractToolCalls(
+        {
+          content: aiResponse.content,
+          reasoning: aiResponse.reasoning,
+          toolCalls: aiResponse.toolCalls || [],
+          usage: aiResponse.usage,
+          finishReason: aiResponse.finishReason,
+        },
+        toolCallingMode,
+        hasTools,
+        stepNumber,
+        thinking,
+      );
+      thinking = extracted.thinking;
 
       // Add assistant message to history
       messages.push({
         role: "assistant",
         content: aiResponse.content,
-        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+        tool_calls:
+          extracted.toolCalls.length > 0 ? extracted.toolCalls : undefined,
       });
 
       // Create step record
@@ -249,7 +258,8 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
         aiResponse: {
           content: aiResponse.content,
           reasoning: aiResponse.reasoning,
-          toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+          toolCalls:
+            extracted.toolCalls.length > 0 ? extracted.toolCalls : undefined,
           usage: aiResponse.usage,
           finishReason: aiResponse.finishReason,
         },
@@ -258,157 +268,36 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
       };
 
       // Execute tool calls if any
-      if (toolCalls.length > 0) {
-        const toolResults: StepToolExecution[] = [];
-
-        for (const toolCall of toolCalls) {
-          const toolName = toolCall.function.name;
-          const toolDef = tools[toolName];
-
-          if (!toolDef) {
-            logger.warn(
-              { requestId: context.requestId, toolName },
-              "Tool not found",
-            );
-            const errorResult: ToolExecutionResult = {
-              success: false,
-              content: "",
-              error: `Tool '${toolName}' not found`,
-            };
-            toolResults.push({
-              toolName,
-              toolCallId: toolCall.id,
-              input: {},
-              output: errorResult,
-              durationMs: 0,
-            });
-
-            // Add error result to messages
-            messages.push({
-              role: "tool",
-              content: `Error: ${errorResult.error}`,
-              name: toolName,
-              tool_call_id: toolCall.id,
-            });
-            continue;
-          }
-
-          // Parse arguments
-          let args: Record<string, unknown>;
-          try {
-            args = JSON.parse(toolCall.function.arguments);
-          } catch {
-            args = {};
-          }
-
-          // Execute tool
-          const startTime = Date.now();
-          const result = await executeAgentTool(toolDef, args, context);
-          const durationMs = Date.now() - startTime;
-
-          logger.debug(
-            {
-              requestId: context.requestId,
-              toolName,
-              durationMs,
-              success: result.success,
-            },
-            "Tool executed",
-          );
-
-          toolResults.push({
-            toolName,
-            toolCallId: toolCall.id,
-            input: args,
-            output: result,
-            durationMs,
-          });
-
-          // Add result to messages
-          messages.push({
-            role: "tool",
-            content: result.success
-              ? result.content
-              : `Error: ${result.error || "Unknown error"}`,
-            name: toolName,
-            tool_call_id: toolCall.id,
-          });
-
-          // Track for UI
-          toolCallSummaries.push(
-            createToolCallSummary({
-              functionName: toolName,
-              arguments: args,
-              result: result.success ? result.content : null,
-              executionTimeMs: durationMs,
-              success: result.success,
-              error: result.error,
-            }),
-          );
-        }
-
-        step.toolResults = toolResults;
+      if (extracted.toolCalls.length > 0) {
+        step.toolResults = await this._executeToolCalls(
+          extracted.toolCalls,
+          tools,
+          context,
+          messages,
+          toolCallSummaries,
+        );
       }
 
       steps.push(step);
 
       // Check stop conditions
-      const { shouldStop, reason } = evaluateStopConditions(
+      const shouldBreak = this._checkStopConditions(
+        step,
         steps,
-        this.stopConditions,
+        extracted.toolCalls.length,
+        context.requestId,
+        stepNumber,
       );
-
-      if (shouldStop) {
-        step.isTerminal = true;
-        step.stopReason = reason;
-        logger.info(
-          { requestId: context.requestId, stepNumber, reason },
-          "Agent loop stopped",
-        );
-        break;
-      }
-
-      // If no tool calls, stop naturally
-      if (toolCalls.length === 0) {
-        step.isTerminal = true;
-        step.stopReason = "no_tool_calls";
-        logger.info(
-          { requestId: context.requestId, stepNumber },
-          "Agent loop completed (no tool calls)",
-        );
-        break;
-      }
+      if (shouldBreak) break;
     }
 
-    // Extract final text response
-    let finalText = "";
-    if (steps.length > 0) {
-      // biome-ignore lint/style/noNonNullAssertion: length check guarantees element exists
-      const lastStep = steps[steps.length - 1]!;
-      const parseResult = parseTextToolContent(
-        lastStep.aiResponse.content,
-        lastStep.aiResponse.reasoning,
-      );
-      finalText =
-        extractFinalResponse(parseResult) || lastStep.aiResponse.content;
-
-      // Also capture thinking from final step
-      if (parseResult.thinkingContent && !thinking) {
-        thinking = parseResult.thinkingContent;
-      }
-    }
-
-    const result: AgentResult = {
-      text: finalText,
-      thinking,
+    const result = this._buildResult(
       steps,
-      usage: {
-        totalPromptTokens,
-        totalCompletionTokens,
-        totalTokens: totalPromptTokens + totalCompletionTokens,
-      },
+      thinking,
+      totalPromptTokens,
+      totalCompletionTokens,
       toolCallSummaries,
-    };
+    );
 
     logger.info(
       {
@@ -428,7 +317,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
    */
   stream(options: GenerateOptions<TContext>): AgentStreamResult {
     const logger = getLogger();
-    const { prompt, context, messages: previousMessages, aiOptions } = options;
+    const { context, aiOptions } = options;
 
     // Create a promise that will resolve to the final result
     let resolveResult: (result: AgentResult) => void;
@@ -451,39 +340,53 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
             "Starting streaming agent execution",
           );
 
-          // Build system prompt
-          const systemPrompt =
-            typeof this.config.instructions === "function"
-              ? await this.config.instructions(context)
-              : this.config.instructions;
-
-          // Initialize messages
-          const messages: AIMessage[] = previousMessages
-            ? [...previousMessages]
-            : [{ role: "system", content: systemPrompt }];
-
-          // Add user message
-          messages.push({ role: "user", content: prompt });
+          const loopState = await this._initLoop(options);
+          const {
+            messages,
+            tools,
+            hasTools,
+            toolCallingMode,
+            openAITools,
+          } = loopState;
 
           // Tracking
           const steps: AgentStep[] = [];
           const toolCallSummaries: ToolCallSummaryOutput[] = [];
-          const totalPromptTokens = 0;
-          const totalCompletionTokens = 0;
+          let totalPromptTokens = 0;
+          let totalCompletionTokens = 0;
           let thinking: string | undefined;
 
-          // Get tools in OpenAI format
-          const tools = this.config.tools;
-          const hasTools = Object.keys(tools).length > 0;
-          const toolCallingMode = this.config.toolCallingMode ?? "native";
-
-          // For "off" mode, we skip all tool calling
-          // For "text" mode, we don't send tools to AI but parse text for tool calls
-          // For "native" mode (default), we send tools and use native tool calls only
-          const openAITools =
-            hasTools && toolCallingMode === "native"
-              ? toOpenAITools(tools)
-              : undefined;
+          // Streaming callbacks for tool execution events
+          const callbacks: ToolExecutionCallbacks = {
+            onToolCallStart(toolName, toolCallId, args) {
+              controller.enqueue({
+                type: "tool-call-start",
+                toolName,
+                toolCallId,
+                arguments: args,
+                timestamp: new Date().toISOString(),
+              });
+            },
+            onToolCallComplete(toolName, toolCallId, result, durationMs) {
+              controller.enqueue({
+                type: "tool-call-complete",
+                toolName,
+                toolCallId,
+                result,
+                durationMs,
+                timestamp: new Date().toISOString(),
+              });
+            },
+            onToolCallError(toolName, toolCallId, error) {
+              controller.enqueue({
+                type: "tool-call-error",
+                toolName,
+                toolCallId,
+                error,
+                timestamp: new Date().toISOString(),
+              });
+            },
+          };
 
           // Agent loop
           let stepNumber = 0;
@@ -500,44 +403,22 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
               break;
             }
 
-            // Apply prepareStep if configured
-            let currentAiContext = this.config.aiContext;
-            let currentTools = openAITools;
-            let currentMessages = messages;
-            let stepAiOptions = { ...this.config.aiOptions, ...aiOptions };
-
-            if (this.config.prepareStep) {
-              const prepareResult = await this.config.prepareStep({
-                stepNumber,
-                messages,
-                context,
-                previousSteps: steps,
-              });
-
-              if (prepareResult.aiContext) {
-                currentAiContext = prepareResult.aiContext;
-              }
-              if (prepareResult.tools) {
-                currentTools = toOpenAITools(prepareResult.tools);
-              }
-              if (prepareResult.messages) {
-                currentMessages = prepareResult.messages;
-              }
-              if (prepareResult.aiOptions) {
-                stepAiOptions = {
-                  ...stepAiOptions,
-                  ...prepareResult.aiOptions,
-                };
-              }
-            }
+            const prepared = await this._prepareStep(
+              stepNumber,
+              messages,
+              context,
+              steps,
+              openAITools,
+              aiOptions,
+            );
 
             // Call AI with streaming
             const { stream } = await callAIStream(
-              currentMessages,
-              currentAiContext,
+              prepared.messages,
+              prepared.aiContext,
               {
-                ...stepAiOptions,
-                tools: currentTools,
+                ...prepared.aiOptions,
+                tools: prepared.tools,
                 toolChoice: hasTools ? "auto" : undefined,
                 debugContext: {
                   requestId: context.requestId,
@@ -547,98 +428,27 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
               },
             );
 
-            // Process stream
-            const streamParser = new LLMStreamParser();
-            const parsedStream = await streamParser.processSSEStream(stream);
-            const reader = parsedStream.getReader();
-            let fullContent = "";
-            const streamedToolCalls: ToolCallResult[] = [];
+            // Process stream and collect content + tool calls
+            const streamResult = await this._processStream(
+              stream,
+              toolCallingMode,
+              stepNumber,
+              thinking,
+              controller,
+            );
 
-            try {
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const timestamp = new Date().toISOString();
-
-                switch (value.type) {
-                  case "reasoning":
-                    if (value.content) {
-                      thinking = (thinking || "") + value.content;
-                      controller.enqueue({
-                        type: "thought",
-                        content: value.content,
-                        timestamp,
-                      });
-                    }
-                    break;
-
-                  case "think_content":
-                    if (value.content) {
-                      thinking = (thinking || "") + value.content;
-                      controller.enqueue({
-                        type: "thought",
-                        content: value.content,
-                        timestamp,
-                      });
-                    }
-                    break;
-
-                  case "content":
-                    if (value.content) {
-                      fullContent += value.content;
-                      controller.enqueue({
-                        type: "text-chunk",
-                        content: value.content,
-                        timestamp,
-                      });
-                    }
-                    break;
-
-                  case "tool_call":
-                    // Only capture text-based tool calls in "text" mode
-                    if (toolCallingMode === "text" && value.data?.calls) {
-                      for (const call of value.data.calls) {
-                        if (call.name && call.args) {
-                          streamedToolCalls.push({
-                            id: `call_${stepNumber}_${streamedToolCalls.length}`,
-                            type: "function",
-                            function: {
-                              name: call.name,
-                              arguments: JSON.stringify(call.args),
-                            },
-                          });
-                        }
-                      }
-                    }
-                    break;
-                }
-              }
-            } finally {
-              reader.releaseLock();
-            }
-
-            // For native mode, get accumulated tool calls from the parser
-            if (toolCallingMode === "native") {
-              const nativeToolCalls = streamParser.getAccumulatedToolCalls();
-              for (const tc of nativeToolCalls) {
-                streamedToolCalls.push({
-                  id: tc.id,
-                  type: "function",
-                  function: {
-                    name: tc.functionName,
-                    arguments: tc.arguments,
-                  },
-                });
-              }
-            }
+            thinking = streamResult.thinking;
+            totalPromptTokens += streamResult.promptTokens;
+            totalCompletionTokens += streamResult.completionTokens;
 
             // Add assistant message to history
             messages.push({
               role: "assistant",
-              content: fullContent,
+              content: streamResult.content,
               tool_calls:
-                streamedToolCalls.length > 0 ? streamedToolCalls : undefined,
+                streamResult.toolCalls.length > 0
+                  ? streamResult.toolCalls
+                  : undefined,
             });
 
             // Create step record
@@ -646,126 +456,27 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
               stepNumber,
               timestamp: new Date().toISOString(),
               aiResponse: {
-                content: fullContent,
+                content: streamResult.content,
                 reasoning: thinking,
                 toolCalls:
-                  streamedToolCalls.length > 0 ? streamedToolCalls : undefined,
+                  streamResult.toolCalls.length > 0
+                    ? streamResult.toolCalls
+                    : undefined,
               },
               toolResults: undefined,
               isTerminal: false,
             };
 
             // Execute tool calls if any
-            if (streamedToolCalls.length > 0) {
-              const toolResults: StepToolExecution[] = [];
-
-              for (const toolCall of streamedToolCalls) {
-                const toolName = toolCall.function.name;
-                const toolDef = tools[toolName];
-
-                // Emit tool start event
-                let args: Record<string, unknown> = {};
-                try {
-                  args = JSON.parse(toolCall.function.arguments);
-                } catch {
-                  // Keep empty args
-                }
-
-                controller.enqueue({
-                  type: "tool-call-start",
-                  toolName,
-                  toolCallId: toolCall.id,
-                  arguments: args,
-                  timestamp: new Date().toISOString(),
-                });
-
-                if (!toolDef) {
-                  const errorResult: ToolExecutionResult = {
-                    success: false,
-                    content: "",
-                    error: `Tool '${toolName}' not found`,
-                  };
-
-                  controller.enqueue({
-                    type: "tool-call-error",
-                    toolName,
-                    toolCallId: toolCall.id,
-                    // biome-ignore lint/style/noNonNullAssertion: error field is set in the literal above
-                    error: errorResult.error!,
-                    timestamp: new Date().toISOString(),
-                  });
-
-                  toolResults.push({
-                    toolName,
-                    toolCallId: toolCall.id,
-                    input: args,
-                    output: errorResult,
-                    durationMs: 0,
-                  });
-
-                  messages.push({
-                    role: "tool",
-                    content: `Error: ${errorResult.error}`,
-                    name: toolName,
-                    tool_call_id: toolCall.id,
-                  });
-                  continue;
-                }
-
-                // Execute tool
-                const startTime = Date.now();
-                const result = await executeAgentTool(toolDef, args, context);
-                const durationMs = Date.now() - startTime;
-
-                if (result.success) {
-                  controller.enqueue({
-                    type: "tool-call-complete",
-                    toolName,
-                    toolCallId: toolCall.id,
-                    result,
-                    durationMs,
-                    timestamp: new Date().toISOString(),
-                  });
-                } else {
-                  controller.enqueue({
-                    type: "tool-call-error",
-                    toolName,
-                    toolCallId: toolCall.id,
-                    error: result.error || "Unknown error",
-                    timestamp: new Date().toISOString(),
-                  });
-                }
-
-                toolResults.push({
-                  toolName,
-                  toolCallId: toolCall.id,
-                  input: args,
-                  output: result,
-                  durationMs,
-                });
-
-                messages.push({
-                  role: "tool",
-                  content: result.success
-                    ? result.content
-                    : `Error: ${result.error || "Unknown error"}`,
-                  name: toolName,
-                  tool_call_id: toolCall.id,
-                });
-
-                toolCallSummaries.push(
-                  createToolCallSummary({
-                    functionName: toolName,
-                    arguments: args,
-                    result: result.success ? result.content : null,
-                    executionTimeMs: durationMs,
-                    success: result.success,
-                    error: result.error,
-                  }),
-                );
-              }
-
-              step.toolResults = toolResults;
+            if (streamResult.toolCalls.length > 0) {
+              step.toolResults = await this._executeToolCalls(
+                streamResult.toolCalls,
+                tools,
+                context,
+                messages,
+                toolCallSummaries,
+                callbacks,
+              );
             }
 
             steps.push(step);
@@ -778,49 +489,23 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
             });
 
             // Check stop conditions
-            const { shouldStop, reason } = evaluateStopConditions(
+            const shouldBreak = this._checkStopConditions(
+              step,
               steps,
-              this.stopConditions,
+              streamResult.toolCalls.length,
+              context.requestId,
+              stepNumber,
             );
-
-            if (shouldStop) {
-              step.isTerminal = true;
-              step.stopReason = reason;
-              break;
-            }
-
-            // If no tool calls, stop naturally
-            if (streamedToolCalls.length === 0) {
-              step.isTerminal = true;
-              step.stopReason = "no_tool_calls";
-              break;
-            }
+            if (shouldBreak) break;
           }
 
-          // Extract final text response
-          let finalText = "";
-          if (steps.length > 0) {
-            // biome-ignore lint/style/noNonNullAssertion: length check guarantees element exists
-            const lastStep = steps[steps.length - 1]!;
-            const parseResult = parseTextToolContent(
-              lastStep.aiResponse.content,
-              lastStep.aiResponse.reasoning,
-            );
-            finalText =
-              extractFinalResponse(parseResult) || lastStep.aiResponse.content;
-          }
-
-          const result: AgentResult = {
-            text: finalText,
-            thinking,
+          const result = this._buildResult(
             steps,
-            usage: {
-              totalPromptTokens,
-              totalCompletionTokens,
-              totalTokens: totalPromptTokens + totalCompletionTokens,
-            },
+            thinking,
+            totalPromptTokens,
+            totalCompletionTokens,
             toolCallSummaries,
-          };
+          );
 
           // Emit done event
           controller.enqueue({
@@ -866,6 +551,438 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
     return {
       eventStream,
       result: resultPromise,
+    };
+  }
+
+  // ===========================================================================
+  // PRIVATE HELPERS
+  // ===========================================================================
+
+  /**
+   * Initialize the agent loop: build system prompt, messages, and tool config.
+   */
+  private async _initLoop(
+    options: GenerateOptions<TContext>,
+  ): Promise<LoopState<TContext>> {
+    const { prompt, context, messages: previousMessages } = options;
+
+    // Build system prompt
+    const systemPrompt =
+      typeof this.config.instructions === "function"
+        ? await this.config.instructions(context)
+        : this.config.instructions;
+
+    // Initialize messages
+    const messages: AIMessage[] = previousMessages
+      ? [...previousMessages]
+      : [{ role: "system", content: systemPrompt }];
+
+    // Add user message
+    messages.push({ role: "user", content: prompt });
+
+    // Get tools config
+    const tools = this.config.tools;
+    const hasTools = Object.keys(tools).length > 0;
+    const toolCallingMode = this.config.toolCallingMode ?? "native";
+
+    const openAITools =
+      hasTools && toolCallingMode === "native"
+        ? toOpenAITools(tools)
+        : undefined;
+
+    return { messages, tools, hasTools, toolCallingMode, openAITools };
+  }
+
+  /**
+   * Apply prepareStep callback and return resolved step configuration.
+   */
+  private async _prepareStep(
+    stepNumber: number,
+    messages: AIMessage[],
+    context: TContext,
+    previousSteps: AgentStep[],
+    defaultTools: ToolDefinition[] | undefined,
+    overrideAiOptions?: Partial<AICallOptions>,
+  ): Promise<PreparedStep> {
+    let aiContext = this.config.aiContext;
+    let tools = defaultTools;
+    let currentMessages = messages;
+    let aiOptions = { ...this.config.aiOptions, ...overrideAiOptions };
+
+    if (this.config.prepareStep) {
+      const prepareResult = await this.config.prepareStep({
+        stepNumber,
+        messages,
+        context,
+        previousSteps,
+      });
+
+      if (prepareResult.aiContext) {
+        aiContext = prepareResult.aiContext;
+      }
+      if (prepareResult.tools) {
+        tools = toOpenAITools(prepareResult.tools);
+      }
+      if (prepareResult.messages) {
+        currentMessages = prepareResult.messages;
+      }
+      if (prepareResult.aiOptions) {
+        aiOptions = { ...aiOptions, ...prepareResult.aiOptions };
+      }
+    }
+
+    return { aiContext, tools, messages: currentMessages, aiOptions };
+  }
+
+  /**
+   * Extract tool calls from an AI response based on the calling mode.
+   */
+  private _extractToolCalls(
+    response: StepAIResult,
+    toolCallingMode: ToolCallingMode,
+    hasTools: boolean,
+    stepNumber: number,
+    thinking: string | undefined,
+  ): { toolCalls: ToolCallResult[]; thinking: string | undefined } {
+    if (toolCallingMode === "off") {
+      return { toolCalls: [], thinking };
+    }
+
+    if (toolCallingMode === "text") {
+      if (!hasTools) return { toolCalls: [], thinking };
+
+      const parseResult = parseTextToolContent(
+        response.content,
+        response.reasoning,
+      );
+
+      if (parseResult.thinkingContent && !thinking) {
+        thinking = parseResult.thinkingContent;
+      }
+
+      const extractedCalls = extractToolCalls(parseResult);
+      const toolCalls = extractedCalls.map((tc, idx) => ({
+        id: `call_${stepNumber}_${idx}`,
+        type: "function" as const,
+        function: {
+          name: tc.functionName,
+          arguments: JSON.stringify(tc.arguments),
+        },
+      }));
+
+      return { toolCalls, thinking };
+    }
+
+    // Native mode (default)
+    return { toolCalls: response.toolCalls, thinking };
+  }
+
+  /**
+   * Execute tool calls, update messages, and track summaries.
+   */
+  private async _executeToolCalls(
+    toolCalls: ToolCallResult[],
+    tools: Record<string, AgentToolDefinition<AnyZodType, TContext>>,
+    context: TContext,
+    messages: AIMessage[],
+    toolCallSummaries: ToolCallSummaryOutput[],
+    callbacks?: ToolExecutionCallbacks,
+  ): Promise<StepToolExecution[]> {
+    const logger = getLogger();
+    const toolResults: StepToolExecution[] = [];
+
+    for (const toolCall of toolCalls) {
+      const toolName = toolCall.function.name;
+      const toolDef = tools[toolName];
+
+      // Parse arguments
+      let args: Record<string, unknown>;
+      try {
+        args = JSON.parse(toolCall.function.arguments);
+      } catch {
+        args = {};
+      }
+
+      // Emit start event (streaming only)
+      callbacks?.onToolCallStart(toolName, toolCall.id, args);
+
+      if (!toolDef) {
+        logger.warn(
+          { requestId: context.requestId, toolName },
+          "Tool not found",
+        );
+        const errorResult: ToolExecutionResult = {
+          success: false,
+          content: "",
+          error: `Tool '${toolName}' not found`,
+        };
+
+        callbacks?.onToolCallError(
+          toolName,
+          toolCall.id,
+          // biome-ignore lint/style/noNonNullAssertion: error field is set in the literal above
+          errorResult.error!,
+        );
+
+        toolResults.push({
+          toolName,
+          toolCallId: toolCall.id,
+          input: args,
+          output: errorResult,
+          durationMs: 0,
+        });
+
+        messages.push({
+          role: "tool",
+          content: `Error: ${errorResult.error}`,
+          name: toolName,
+          tool_call_id: toolCall.id,
+        });
+        continue;
+      }
+
+      // Execute tool
+      const startTime = Date.now();
+      const result = await executeAgentTool(toolDef, args, context);
+      const durationMs = Date.now() - startTime;
+
+      logger.debug(
+        {
+          requestId: context.requestId,
+          toolName,
+          durationMs,
+          success: result.success,
+        },
+        "Tool executed",
+      );
+
+      // Emit completion/error event (streaming only)
+      if (result.success) {
+        callbacks?.onToolCallComplete(toolName, toolCall.id, result, durationMs);
+      } else {
+        callbacks?.onToolCallError(
+          toolName,
+          toolCall.id,
+          result.error || "Unknown error",
+        );
+      }
+
+      toolResults.push({
+        toolName,
+        toolCallId: toolCall.id,
+        input: args,
+        output: result,
+        durationMs,
+      });
+
+      messages.push({
+        role: "tool",
+        content: result.success
+          ? result.content
+          : `Error: ${result.error || "Unknown error"}`,
+        name: toolName,
+        tool_call_id: toolCall.id,
+      });
+
+      toolCallSummaries.push(
+        createToolCallSummary({
+          functionName: toolName,
+          arguments: args,
+          result: result.success ? result.content : null,
+          executionTimeMs: durationMs,
+          success: result.success,
+          error: result.error,
+        }),
+      );
+    }
+
+    return toolResults;
+  }
+
+  /**
+   * Process an SSE stream, emitting events to the controller.
+   * Returns collected content, tool calls, thinking, and token usage.
+   */
+  private async _processStream(
+    stream: ReadableStream<Uint8Array>,
+    toolCallingMode: ToolCallingMode,
+    stepNumber: number,
+    thinking: string | undefined,
+    controller: ReadableStreamDefaultController<AgentStreamEvent>,
+  ): Promise<{
+    content: string;
+    toolCalls: ToolCallResult[];
+    thinking: string | undefined;
+    promptTokens: number;
+    completionTokens: number;
+  }> {
+    const streamParser = new LLMStreamParser();
+    const parsedStream = await streamParser.processSSEStream(stream);
+    const reader = parsedStream.getReader();
+    let fullContent = "";
+    const toolCalls: ToolCallResult[] = [];
+    let promptTokens = 0;
+    let completionTokens = 0;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const timestamp = new Date().toISOString();
+
+        switch (value.type) {
+          case "reasoning":
+          case "think_content":
+            if (value.content) {
+              thinking = (thinking || "") + value.content;
+              controller.enqueue({
+                type: "thought",
+                content: value.content,
+                timestamp,
+              });
+            }
+            break;
+
+          case "content":
+            if (value.content) {
+              fullContent += value.content;
+              controller.enqueue({
+                type: "text-chunk",
+                content: value.content,
+                timestamp,
+              });
+            }
+            break;
+
+          case "usage":
+            if (value.usage) {
+              promptTokens += value.usage.prompt_tokens ?? 0;
+              completionTokens += value.usage.completion_tokens ?? 0;
+            }
+            break;
+
+          case "tool_call":
+            // Only capture text-based tool calls in "text" mode
+            if (toolCallingMode === "text" && value.data?.calls) {
+              for (const call of value.data.calls) {
+                if (call.name && call.args) {
+                  toolCalls.push({
+                    id: `call_${stepNumber}_${toolCalls.length}`,
+                    type: "function",
+                    function: {
+                      name: call.name,
+                      arguments: JSON.stringify(call.args),
+                    },
+                  });
+                }
+              }
+            }
+            break;
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    // For native mode, get accumulated tool calls from the parser
+    if (toolCallingMode === "native") {
+      const nativeToolCalls = streamParser.getAccumulatedToolCalls();
+      for (const tc of nativeToolCalls) {
+        toolCalls.push({
+          id: tc.id,
+          type: "function",
+          function: {
+            name: tc.functionName,
+            arguments: tc.arguments,
+          },
+        });
+      }
+    }
+
+    return { content: fullContent, toolCalls, thinking, promptTokens, completionTokens };
+  }
+
+  /**
+   * Check stop conditions and update step if terminal.
+   * Returns true if the loop should break.
+   */
+  private _checkStopConditions(
+    step: AgentStep,
+    steps: AgentStep[],
+    toolCallCount: number,
+    requestId: string,
+    stepNumber: number,
+  ): boolean {
+    const logger = getLogger();
+
+    const { shouldStop, reason } = evaluateStopConditions(
+      steps,
+      this.stopConditions,
+    );
+
+    if (shouldStop) {
+      step.isTerminal = true;
+      step.stopReason = reason;
+      logger.info(
+        { requestId, stepNumber, reason },
+        "Agent loop stopped",
+      );
+      return true;
+    }
+
+    // If no tool calls, stop naturally
+    if (toolCallCount === 0) {
+      step.isTerminal = true;
+      step.stopReason = "no_tool_calls";
+      logger.info(
+        { requestId, stepNumber },
+        "Agent loop completed (no tool calls)",
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Build the final AgentResult from accumulated loop state.
+   */
+  private _buildResult(
+    steps: AgentStep[],
+    thinking: string | undefined,
+    totalPromptTokens: number,
+    totalCompletionTokens: number,
+    toolCallSummaries: ToolCallSummaryOutput[],
+  ): AgentResult {
+    // Extract final text response
+    let finalText = "";
+    if (steps.length > 0) {
+      // biome-ignore lint/style/noNonNullAssertion: length check guarantees element exists
+      const lastStep = steps[steps.length - 1]!;
+      const parseResult = parseTextToolContent(
+        lastStep.aiResponse.content,
+        lastStep.aiResponse.reasoning,
+      );
+      finalText =
+        extractFinalResponse(parseResult) || lastStep.aiResponse.content;
+
+      // Also capture thinking from final step
+      if (parseResult.thinkingContent && !thinking) {
+        thinking = parseResult.thinkingContent;
+      }
+    }
+
+    return {
+      text: finalText,
+      thinking,
+      steps,
+      usage: {
+        totalPromptTokens,
+        totalCompletionTokens,
+        totalTokens: totalPromptTokens + totalCompletionTokens,
+      },
+      toolCallSummaries,
     };
   }
 }
