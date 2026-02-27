@@ -10,6 +10,7 @@
  * 3. Derived config (computed): connection strings, full paths
  */
 
+import type { LogLevel } from "@eclaire/logger";
 import { envLoadInfo } from "../lib/env-loader.js";
 
 export type EclaireRuntime = "local" | "container";
@@ -29,7 +30,7 @@ export interface EclaireConfig {
   // Server
   port: number;
   host: string;
-  logLevel: string;
+  logLevel: LogLevel;
 
   // Service configuration
   serviceRole: ServiceRole;
@@ -319,7 +320,7 @@ export function buildConfig(): EclaireConfig {
     // Server
     port: int(env.PORT, isContainer ? 3000 : 3001),
     host: env.HOST || "0.0.0.0",
-    logLevel: env.LOG_LEVEL || (isProduction ? "info" : "debug"),
+    logLevel: (env.LOG_LEVEL || (isProduction ? "info" : "debug")) as LogLevel,
 
     // Service
     serviceRole,

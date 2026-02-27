@@ -9,13 +9,12 @@ export type { Logger } from "@eclaire/logger";
 const serviceName = "eclaire";
 
 // Support both backend (requestId/method/path) and worker (worker/module) formats
-const messageFormat =
-  config.serviceRole === "worker"
-    ? "[{worker}{module}] {msg}"
-    : "[{requestId}] {method} {path} - {msg}";
+const isWorker = config.serviceRole === "worker";
+const messageFormat = isWorker
+  ? "[{worker}{module}] {msg}"
+  : "[{requestId}] {method} {path} - {msg}";
 
 // Create logger using @eclaire/logger package factory
-// Factory auto-detects contextKey from messageFormat ({worker} → "worker", else → "module")
 const { logger, createChildLogger } = createLoggerFactory({
   service: serviceName,
   level: config.logLevel,
@@ -23,6 +22,7 @@ const { logger, createChildLogger } = createLoggerFactory({
     process.env.APP_VERSION || process.env.npm_package_version || "0.1.0",
   environment: process.env.NODE_ENV || "development",
   messageFormat,
+  contextKey: isWorker ? "worker" : "module",
 });
 
 export { logger, createChildLogger };

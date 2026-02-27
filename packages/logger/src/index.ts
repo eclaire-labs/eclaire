@@ -6,16 +6,27 @@ export type { Logger } from "pino";
 // Re-export context utilities for consumers
 export {
   asyncLocalStorage,
+  getContext,
   getRequestId,
   type RequestContext,
+  runWithContext,
   runWithRequestId,
 } from "./context.js";
+
+export type LogLevel =
+  | "fatal"
+  | "error"
+  | "warn"
+  | "info"
+  | "debug"
+  | "trace"
+  | "silent";
 
 export interface LoggerConfig {
   /** Service name for log identification */
   service: string;
   /** Log level (default: "debug") */
-  level?: string;
+  level?: LogLevel;
   /** App version for log metadata */
   version?: string;
   /** Environment name (default: "development") */
@@ -25,7 +36,9 @@ export interface LoggerConfig {
   /** Custom message format for pretty printing */
   messageFormat?: string;
   /** Fields to ignore in pretty output */
-  ignoreFields?: string;
+  ignoreFields?: string[];
+  /** Key used for child logger context (default: "module") */
+  contextKey?: string;
 }
 
 /**
@@ -35,16 +48,16 @@ export function createLogger(config: LoggerConfig): Logger {
   const {
     service,
     level = "debug",
-    version = "0.1.0",
+    version,
     environment = "development",
     pretty = environment !== "production",
     messageFormat = "[{module}] {msg}",
-    ignoreFields = "pid,hostname,service,version,environment",
+    ignoreFields = ["pid", "hostname", "service", "version", "environment"],
   } = config;
 
   const base = {
     service,
-    version,
+    ...(version && { version }),
     environment,
   };
 
@@ -75,7 +88,7 @@ export function createLogger(config: LoggerConfig): Logger {
           colorize: true,
           translateTime: "SYS:standard",
           messageFormat,
-          ignore: ignoreFields,
+          ignore: ignoreFields.join(","),
         },
       }),
     );
@@ -87,11 +100,8 @@ export function createLogger(config: LoggerConfig): Logger {
 
 /**
  * Creates a child logger with an additional context field
- * @param parent - The parent logger instance
- * @param name - The name/module identifier for this child logger
- * @param contextKey - The key to use for the context (default: "module")
  */
-export function createChildLogger(
+function createChildLogger(
   parent: Logger,
   name: string,
   contextKey = "module",
@@ -105,9 +115,7 @@ export function createChildLogger(
  */
 export function createLoggerFactory(config: LoggerConfig) {
   const rootLogger = createLogger(config);
-  const contextKey = config.messageFormat?.includes("{worker}")
-    ? "worker"
-    : "module";
+  const contextKey = config.contextKey ?? "module";
 
   return {
     logger: rootLogger,
