@@ -1,86 +1,13 @@
 // schemas/notes-responses.ts
 import z from "zod/v4";
-import { paginatedResponseSchema, reviewStatusSchema } from "./common.js";
 
-// Full note response schema
-export const NoteResponseSchema = z
-  .object({
-    id: z.string().meta({
-      description: "Unique identifier for the note",
-    }),
-
-    title: z.string().meta({
-      description: "Title of the note",
-    }),
-
-    content: z.string().meta({
-      description: "Main content of the note",
-    }),
-
-    description: z.string().meta({
-      description: "Short description or excerpt from the note content",
-    }),
-
-    tags: z.array(z.string()).meta({
-      description: "Tags associated with the note",
-    }),
-
-    createdAt: z.string().meta({
-      description: "ISO 8601 timestamp when note was created",
-    }),
-
-    updatedAt: z.string().meta({
-      description: "ISO 8601 timestamp when note was last updated",
-    }),
-
-    processingStatus: z.string().meta({
-      description: "Status of background processing for this note",
-      examples: ["pending", "processing", "completed", "failed"],
-    }),
-
-    dueDate: z.string().nullable().meta({
-      description: "Due date for the note in ISO 8601 format (null if not set)",
-    }),
-
-    reviewStatus: reviewStatusSchema.meta({
-      description: "Review status of the note",
-    }),
-
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .nullable()
-      .meta({
-        description: "Flag color for the note (null if not set)",
-      }),
-
-    isPinned: z.boolean().meta({
-      description: "Whether the note is pinned",
-    }),
-
-    // File metadata (for uploaded notes)
-    originalMimeType: z.string().nullable().optional().meta({
-      description:
-        "Original MIME type of uploaded file (if note was created from file upload)",
-    }),
-
-    fileSize: z.number().nullable().optional().meta({
-      description:
-        "Size of the original file in bytes (if note was created from file upload)",
-    }),
-
-    // Additional metadata stored as JSON
-    metadata: z.record(z.string(), z.unknown()).nullable().optional().meta({
-      description: "Additional metadata associated with the note",
-    }),
-  })
-  .meta({ ref: "NoteResponse" });
-
-// Paginated list response
-export const NotesListResponseSchema = paginatedResponseSchema(
+// Re-export the shared response schema from @eclaire/api-types
+export {
   NoteResponseSchema,
-  "NotesListResponse",
-  "notes",
-);
+  NotesListResponseSchema,
+} from "@eclaire/api-types/notes";
+
+import { NoteResponseSchema } from "@eclaire/api-types/notes";
 
 // Created note response (for POST requests) — omits fields not available at creation time
 export const CreatedNoteResponseSchema = NoteResponseSchema.omit({

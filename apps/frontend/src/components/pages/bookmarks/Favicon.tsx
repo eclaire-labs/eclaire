@@ -1,6 +1,6 @@
 import { Link as LinkIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getAbsoluteApiUrl } from "@/lib/frontend-api";
+import { getAbsoluteApiUrl } from "@/lib/api-client";
 import type { Bookmark } from "@/types/bookmark";
 
 export function Favicon({

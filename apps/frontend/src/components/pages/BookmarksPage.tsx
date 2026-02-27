@@ -13,6 +13,7 @@ import {
 import { useCallback, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
+import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,35 +30,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { useBookmarks } from "@/hooks/use-bookmarks";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/list-page-utils";
-import { getAbsoluteApiUrl } from "@/lib/frontend-api";
+import { getAbsoluteApiUrl } from "@/lib/api-client";
 import type { Bookmark } from "@/types/bookmark";
 import { BookmarkListItem } from "./bookmarks/BookmarkListItem";
 import { BookmarkTileItem } from "./bookmarks/BookmarkTileItem";
+import { CreateBookmarkDialog } from "./bookmarks/CreateBookmarkDialog";
 import { Favicon } from "./bookmarks/Favicon";
 import { bookmarksConfig } from "./bookmarks/bookmarks-config";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Normalize URLs by adding protocol if missing. */
-const normalizeUrl = (url: string): string => {
-  const trimmedUrl = url.trim();
-  if (trimmedUrl.match(/^https?:\/\//i)) {
-    return trimmedUrl;
-  }
-  return `https://${trimmedUrl}`;
-};
 
 // ---------------------------------------------------------------------------
 // Page Component
 // ---------------------------------------------------------------------------
 
 export default function BookmarksPage() {
-  const _isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -90,8 +77,6 @@ export default function BookmarksPage() {
   const [isBookmarkDialogOpen, setIsBookmarkDialogOpen] = useState(false);
   const [isNewBookmarkDialogOpen, setIsNewBookmarkDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [newBookmarkUrl, setNewBookmarkUrl] = useState("");
-  const [tagInput, setTagInput] = useState("");
 
   const containerRef = useRef<HTMLElement | null>(null);
 
@@ -133,30 +118,9 @@ export default function BookmarksPage() {
   }, []);
 
   // Create / Update handlers
-  const handleCreateBookmark = async () => {
-    if (!newBookmarkUrl.trim()) {
-      toast({
-        title: "Invalid URL",
-        description: "Please enter a valid URL.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const normalizedUrl = normalizeUrl(newBookmarkUrl);
-
-    if (!URL.canParse(normalizedUrl)) {
-      toast({
-        title: "Invalid URL",
-        description: "Please enter a valid URL.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleCreateBookmark = async (url: string) => {
     try {
-      await createBookmark({ url: normalizedUrl });
-      setNewBookmarkUrl("");
+      await createBookmark({ url });
       setIsNewBookmarkDialogOpen(false);
       toast({
         title: "Bookmark Added",
@@ -185,27 +149,6 @@ export default function BookmarksPage() {
     }
   };
 
-  // Tags
-  const handleAddTag = () => {
-    if (!tagInput.trim() || !selectedBookmark) return;
-    const tag = tagInput.trim().toLowerCase();
-    if (isEditMode && !selectedBookmark.tags.includes(tag)) {
-      setSelectedBookmark({
-        ...selectedBookmark,
-        tags: [...selectedBookmark.tags, tag],
-      });
-    }
-    setTagInput("");
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    if (isEditMode && selectedBookmark) {
-      setSelectedBookmark({
-        ...selectedBookmark,
-        tags: selectedBookmark.tags.filter((t) => t !== tag),
-      });
-    }
-  };
 
   // File upload (bookmark import)
   const handleFileUpload = useCallback(
@@ -353,51 +296,12 @@ export default function BookmarksPage() {
       dialogs={
         <>
           {/* New Bookmark Dialog */}
-          <Dialog
+          <CreateBookmarkDialog
             open={isNewBookmarkDialogOpen}
             onOpenChange={setIsNewBookmarkDialogOpen}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Bookmark</DialogTitle>
-                <DialogDescription>
-                  Enter the URL of the page you want to save.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="url">URL</Label>
-                  <Input
-                    id="url"
-                    type="url"
-                    placeholder="https://example.com"
-                    value={newBookmarkUrl}
-                    onChange={(e) => setNewBookmarkUrl(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleCreateBookmark();
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsNewBookmarkDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateBookmark} disabled={isCreating}>
-                  {isCreating && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Save
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            onCreateBookmark={handleCreateBookmark}
+            isCreating={isCreating}
+          />
 
           {/* View/Edit Bookmark Dialog */}
           {selectedBookmark && (
@@ -450,58 +354,39 @@ export default function BookmarksPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Tags</Label>
                     {isEditMode ? (
+                      <TagEditor
+                        tags={selectedBookmark.tags}
+                        onAddTag={(tag) =>
+                          setSelectedBookmark({
+                            ...selectedBookmark,
+                            tags: [...selectedBookmark.tags, tag],
+                          })
+                        }
+                        onRemoveTag={(tag) =>
+                          setSelectedBookmark({
+                            ...selectedBookmark,
+                            tags: selectedBookmark.tags.filter((t) => t !== tag),
+                          })
+                        }
+                      />
+                    ) : (
                       <>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {selectedBookmark.tags.map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="secondary"
-                              className="flex items-center gap-1"
-                            >
-                              {tag}
-                              <button
-                                type="button"
-                                className="h-4 w-4 ml-1"
-                                onClick={() => handleRemoveTag(tag)}
-                              >
-                                &times;
-                              </button>
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Add a tag..."
-                            value={tagInput}
-                            onChange={(e) => setTagInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleAddTag();
-                              }
-                            }}
-                          />
-                          <Button type="button" onClick={handleAddTag}>
-                            Add
-                          </Button>
+                        <Label>Tags</Label>
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {selectedBookmark.tags.length > 0 ? (
+                            selectedBookmark.tags.map((tag) => (
+                              <Badge key={tag} variant="outline">
+                                {tag}
+                              </Badge>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              No tags
+                            </p>
+                          )}
                         </div>
                       </>
-                    ) : (
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {selectedBookmark.tags.length > 0 ? (
-                          selectedBookmark.tags.map((tag) => (
-                            <Badge key={tag} variant="outline">
-                              {tag}
-                            </Badge>
-                          ))
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No tags
-                          </p>
-                        )}
-                      </div>
                     )}
                   </div>
 

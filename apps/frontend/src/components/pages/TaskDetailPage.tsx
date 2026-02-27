@@ -19,18 +19,13 @@ import {
 const routeApi = getRouteApi("/_authenticated/tasks/$id");
 
 import { useEffect, useState } from "react";
+import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
+import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
+import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { MarkdownDisplayWithAssets } from "@/components/markdown-display-with-assets";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,18 +46,18 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useTask } from "@/hooks/use-tasks";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api-client";
 import {
-  apiFetch,
   createTaskComment,
   deleteTaskComment,
-  getUsers,
-  setFlagColor,
-  togglePin,
   updateTaskComment,
-} from "@/lib/frontend-api";
-import type { Task, TaskComment, TaskStatus, User } from "@/types/task";
+} from "@/lib/api-comments";
+import { getUsers } from "@/lib/api-users";
+import { formatDate } from "@/lib/date-utils";
+import type { TaskComment, TaskStatus, User } from "@/types/task";
 
 export function TaskDetailClient() {
   const { id: taskId } = routeApi.useParams();
@@ -72,19 +67,20 @@ export function TaskDetailClient() {
   // Use React Query hook for data fetching
   const { task, isLoading, error, refresh } = useTask(taskId);
 
+  const actions = useDetailPageActions({
+    contentType: "tasks",
+    item: task,
+    refresh,
+    onDeleted: () => navigate({ to: "/tasks" }),
+  });
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [users, setUsers] = useState<User[]>([]);
-  const [isReprocessing, setIsReprocessing] = useState(false);
-  const [showReprocessDialog, setShowReprocessDialog] = useState(false);
-  const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] =
-    useState(false);
-  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
 
   // Comments state
   const [comments, setComments] = useState<TaskComment[]>([]);
-  const [_isLoadingComments, _setIsLoadingComments] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -223,41 +219,6 @@ export function TaskDetailClient() {
     }
   };
 
-  const _formatDateForInput = (
-    isoString: string | null | undefined,
-  ): string => {
-    if (!isoString) return "";
-    try {
-      const date = new Date(isoString);
-      // Return datetime-local format (YYYY-MM-DDTHH:mm)
-      // This automatically shows in local timezone
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      const hours = String(date.getHours()).padStart(2, "0");
-      const minutes = String(date.getMinutes()).padStart(2, "0");
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
-    } catch {
-      return "";
-    }
-  };
-
-  const formatDateForDisplay = (isoString: string | null): string => {
-    if (!isoString) return "No date set";
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return "Invalid date";
-    }
-  };
-
   const getStatusIcon = (status: TaskStatus) => {
     switch (status) {
       case "not-started":
@@ -344,7 +305,7 @@ export function TaskDetailClient() {
         throw new Error("Failed to update task");
       }
 
-      const _updatedTask: Task = await response.json();
+      await response.json();
       setIsEditing(false);
       setTagInput("");
 
@@ -364,42 +325,6 @@ export function TaskDetailClient() {
       });
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleDeleteClick = () => {
-    if (!task) return;
-    setTaskToDelete(task);
-    setIsConfirmDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirmed = async () => {
-    if (!taskToDelete) return;
-
-    try {
-      const response = await apiFetch(`/api/tasks/${taskToDelete.id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete task");
-      }
-
-      setIsConfirmDeleteDialogOpen(false);
-      setTaskToDelete(null);
-      toast({
-        title: "Task deleted",
-        description: "The task has been deleted successfully.",
-      });
-
-      navigate({ to: "/tasks" });
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete task. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -429,134 +354,6 @@ export function TaskDetailClient() {
       ...prev,
       [field]: value,
     }));
-  };
-
-  // Handle pin toggle for task
-  const handlePinToggle = async () => {
-    if (!task) return;
-
-    try {
-      const response = await togglePin("tasks", task.id, !task.isPinned);
-      if (response.ok) {
-        const updatedTask = await response.json();
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: updatedTask.isPinned ? "Pinned" : "Unpinned",
-          description: `Task has been ${updatedTask.isPinned ? "pinned" : "unpinned"}.`,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update pin status",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling pin:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update pin status",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle flag color change for task
-  const handleFlagColorChange = async (
-    color: "red" | "yellow" | "orange" | "green" | "blue" | null,
-  ) => {
-    if (!task) return;
-
-    try {
-      const response = await setFlagColor("tasks", task.id, color);
-      if (response.ok) {
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: color ? "Flag Updated" : "Flag Removed",
-          description: color
-            ? `Task flag changed to ${color}.`
-            : "Flag removed from task.",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update flag color",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error changing flag color:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update flag color",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Helper function to detect stuck processing jobs
-  const isJobStuck = (task: Task) => {
-    if (!task.processingStatus) return false;
-
-    const now = Date.now();
-    const fifteenMinutesAgo = now - 15 * 60 * 1000;
-
-    // Job is stuck if:
-    // 1. Status is "pending" and created >15 minutes ago, OR
-    // 2. Status is "processing" and not updated >15 minutes ago
-    return (
-      (task.processingStatus === "pending" &&
-        new Date(task.createdAt).getTime() < fifteenMinutesAgo) ||
-      (task.processingStatus === "processing" &&
-        new Date(task.updatedAt).getTime() < fifteenMinutesAgo)
-    );
-  };
-
-  const handleReprocess = async () => {
-    if (!task) return;
-
-    try {
-      setIsReprocessing(true);
-      setShowReprocessDialog(false);
-
-      const isStuck = isJobStuck(task);
-      const response = await apiFetch(`/api/tasks/${task.id}/reprocess`, {
-        method: "POST",
-        ...(isStuck && {
-          body: JSON.stringify({ force: true }),
-          headers: { "Content-Type": "application/json" },
-        }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Reprocessing Started",
-          description:
-            "Your task has been queued for reprocessing. This may take a few minutes.",
-        });
-
-        // SSE events will automatically update the processing status
-        // No need to manually update state
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Error",
-          description: errorData.error || "Failed to reprocess task",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error reprocessing task:", error);
-      toast({
-        title: "Error",
-        description: "Failed to reprocess task",
-        variant: "destructive",
-      });
-    } finally {
-      setIsReprocessing(false);
-    }
   };
 
   if (isLoading) {
@@ -651,32 +448,15 @@ export function TaskDetailClient() {
               size="md"
               isPinned={task.isPinned}
               flagColor={task.flagColor}
-              onPinToggle={handlePinToggle}
-              onFlagToggle={() =>
-                handleFlagColorChange(task.flagColor ? null : "orange")
-              }
-              onFlagColorChange={handleFlagColorChange}
+              onPinToggle={actions.handlePinToggle}
+              onFlagToggle={actions.handleFlagToggle}
+              onFlagColorChange={actions.handleFlagColorChange}
             />
           </TooltipProvider>
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              if (
-                typeof window !== "undefined" &&
-                // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
-                (window as any).openAssistantWithAssets
-              ) {
-                // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
-                (window as any).openAssistantWithAssets([
-                  {
-                    type: "task",
-                    id: task.id,
-                    title: task.title,
-                  },
-                ]);
-              }
-            }}
+            onClick={actions.handleChatClick}
             title="Chat about this task"
           >
             <MessageSquare className="h-4 w-4" />
@@ -703,7 +483,7 @@ export function TaskDetailClient() {
             <>
               <Button
                 variant="outline"
-                onClick={handleDeleteClick}
+                onClick={actions.openDeleteDialog}
                 className="text-red-600 hover:text-red-700"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -824,7 +604,7 @@ export function TaskDetailClient() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">
-                              {formatDateForDisplay(comment.createdAt)}
+                              {formatDate(comment.createdAt)}
                               {comment.updatedAt !== comment.createdAt &&
                                 " (edited)"}
                             </span>
@@ -948,7 +728,7 @@ export function TaskDetailClient() {
                   ) : (
                     <p className="text-muted-foreground flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
-                      {formatDateForDisplay(task.dueDate)}
+                      {task.dueDate ? formatDate(task.dueDate) : "No date set"}
                     </p>
                   )}
                 </div>
@@ -981,13 +761,12 @@ export function TaskDetailClient() {
                           </div>
                           {task.nextRunAt && (
                             <div className="text-xs">
-                              Next run: {formatDateForDisplay(task.nextRunAt)}
+                              Next run: {formatDate(task.nextRunAt)}
                             </div>
                           )}
                           {task.recurrenceEndDate && (
                             <div className="text-xs">
-                              Until:{" "}
-                              {formatDateForDisplay(task.recurrenceEndDate)}
+                              Until: {formatDate(task.recurrenceEndDate)}
                             </div>
                           )}
                           {task.recurrenceLimit && (
@@ -1087,7 +866,7 @@ export function TaskDetailClient() {
                         Created
                       </Label>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {formatDateForDisplay(task.createdAt)}
+                        {formatDate(task.createdAt)}
                       </p>
                     </div>
 
@@ -1097,7 +876,7 @@ export function TaskDetailClient() {
                         Updated
                       </Label>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {formatDateForDisplay(task.updatedAt)}
+                        {formatDate(task.updatedAt)}
                       </p>
                     </div>
 
@@ -1109,7 +888,7 @@ export function TaskDetailClient() {
                           Completed
                         </Label>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {formatDateForDisplay(task.completedAt)}
+                          {formatDate(task.completedAt)}
                         </p>
                       </div>
                     )}
@@ -1173,63 +952,18 @@ export function TaskDetailClient() {
 
                     <div>
                       <Label>Processing Status</Label>
-                      <div className="mt-1 flex items-center gap-2">
-                        <Badge
-                          variant={
-                            task.enabled === false
-                              ? "outline"
-                              : task.processingStatus === "completed"
-                                ? "default"
-                                : task.processingStatus === "failed"
-                                  ? "destructive"
-                                  : "secondary"
+                      <div className="mt-1">
+                        <ProcessingStatusBadge
+                          contentType="tasks"
+                          itemId={task.id}
+                          processingStatus={task.processingStatus}
+                          enabled={task.enabled}
+                          isJobStuck={actions.isJobStuck}
+                          isReprocessing={actions.isReprocessing}
+                          onReprocessClick={() =>
+                            actions.setShowReprocessDialog(true)
                           }
-                          className={`${task.enabled !== false ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
-                          onClick={
-                            task.enabled !== false
-                              ? () => {
-                                  navigate({
-                                    to: `/processing?assetType=tasks&assetId=${task.id}`,
-                                  });
-                                }
-                              : undefined
-                          }
-                          title={
-                            task.enabled !== false
-                              ? "Click to view processing details"
-                              : "Processing is disabled for this task"
-                          }
-                        >
-                          {task.enabled === false ? (
-                            "disabled"
-                          ) : task.processingStatus === "processing" ? (
-                            <span className="flex items-center gap-1">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              processing
-                            </span>
-                          ) : (
-                            (task.processingStatus || "unknown").replace(
-                              /_/g,
-                              " ",
-                            )
-                          )}
-                        </Badge>
-
-                        {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}
-                        {task.enabled !== false &&
-                          (task.processingStatus === "completed" ||
-                            task.processingStatus === "failed" ||
-                            isJobStuck(task)) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setShowReprocessDialog(true)}
-                              disabled={isReprocessing}
-                              title="Reprocess task"
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
-                          )}
+                        />
                       </div>
                     </div>
                   </>
@@ -1241,104 +975,33 @@ export function TaskDetailClient() {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={isConfirmDeleteDialogOpen}
-        onOpenChange={setIsConfirmDeleteDialogOpen}
+      <DeleteConfirmDialog
+        open={actions.isDeleteDialogOpen}
+        onOpenChange={actions.setIsDeleteDialogOpen}
+        label="Task"
+        onConfirm={actions.confirmDelete}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this task? This action cannot be
-              undone.
-            </DialogDescription>
-          </DialogHeader>
-          {taskToDelete && (
-            <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
-              <TaskIcon
-                task={taskToDelete}
-                className="h-6 w-6 flex-shrink-0 mt-0.5"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="font-medium break-words line-clamp-2 leading-tight">
-                  {taskToDelete.title}
-                </p>
-                <p className="text-sm text-muted-foreground truncate mt-1">
-                  ID: {taskToDelete.id}
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsConfirmDeleteDialogOpen(false);
-                setTaskToDelete(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirmed}>
-              Delete Task
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
+          <CheckCircle2 className="h-6 w-6 flex-shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium break-words line-clamp-2 leading-tight">
+              {task.title}
+            </p>
+            <p className="text-sm text-muted-foreground truncate mt-1">
+              ID: {task.id}
+            </p>
+          </div>
+        </div>
+      </DeleteConfirmDialog>
 
       {/* Reprocess Confirmation Dialog */}
-      <Dialog open={showReprocessDialog} onOpenChange={setShowReprocessDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reprocess Task</DialogTitle>
-            <DialogDescription>
-              This will re-analyze the task content, update processing metadata,
-              and reprocess all AI-generated data for this task. This may take a
-              few minutes.
-              <br />
-              <br />
-              Are you sure you want to continue?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowReprocessDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleReprocess}
-              disabled={isReprocessing}
-              className="flex items-center gap-2"
-            >
-              {isReprocessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Reprocessing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Reprocess
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ReprocessDialog
+        open={actions.showReprocessDialog}
+        onOpenChange={actions.setShowReprocessDialog}
+        label="Task"
+        isReprocessing={actions.isReprocessing}
+        onConfirm={actions.handleReprocess}
+      />
     </div>
   );
-}
-
-// Simple task icon component for the delete dialog
-function TaskIcon({
-  task: _task,
-  className,
-}: {
-  task: Task;
-  className?: string;
-}) {
-  // Use the CheckCircle2 icon as default for tasks
-  return <CheckCircle2 className={className} />;
 }

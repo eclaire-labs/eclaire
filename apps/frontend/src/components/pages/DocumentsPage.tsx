@@ -1,6 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
-  CheckCircle2,
   Download,
   Edit,
   File as FileIconGeneric,
@@ -8,22 +7,17 @@ import {
   Loader2,
   Trash2,
   UploadCloud,
-  X,
-  XCircle,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
+import { TagEditor } from "@/components/shared/TagEditor";
+import { UploadProgressList } from "@/components/shared/UploadProgressList";
+import type { UploadingFile } from "@/components/shared/UploadProgressList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogClose,
@@ -35,14 +29,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useDocuments } from "@/hooks/use-documents";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Document } from "@/types/document";
 import { DocumentListItem } from "./documents/DocumentListItem";
@@ -57,12 +49,7 @@ import {
 // Upload types & constants
 // ---------------------------------------------------------------------------
 
-interface UploadingFile {
-  id: string;
-  file: File;
-  progress: number;
-  status: "pending" | "uploading" | "success" | "error";
-  error?: string;
+interface DocumentUploadingFile extends UploadingFile {
   documentId?: string;
 }
 
@@ -108,7 +95,6 @@ const ALLOWED_UPLOAD_TYPES = {
 // ---------------------------------------------------------------------------
 
 export default function DocumentsPage() {
-  const _isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -140,8 +126,7 @@ export default function DocumentsPage() {
     useState(false);
   const [editingDocument, setEditingDocument] =
     useState<EditDocumentState | null>(null);
-  const [tagInput, setTagInput] = useState("");
-  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<DocumentUploadingFile[]>([]);
 
   const containerRef = useRef<HTMLElement | null>(null);
 
@@ -207,26 +192,6 @@ export default function DocumentsPage() {
     );
   };
 
-  const handleAddTag = () => {
-    if (!tagInput.trim()) return;
-    const tag = tagInput.trim().toLowerCase();
-    if (editingDocument && !editingDocument.tags.includes(tag)) {
-      setEditingDocument({
-        ...editingDocument,
-        tags: [...editingDocument.tags, tag],
-      });
-    }
-    setTagInput("");
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    if (editingDocument) {
-      setEditingDocument({
-        ...editingDocument,
-        tags: editingDocument.tags.filter((t) => t !== tag),
-      });
-    }
-  };
 
   // --- API Action Handlers ---
 
@@ -259,7 +224,7 @@ export default function DocumentsPage() {
   // --- Upload Handling ---
   const handleUpload = useCallback(
     async (acceptedFiles: File[]) => {
-      const newUploads: UploadingFile[] = acceptedFiles.map((file) => ({
+      const newUploads: DocumentUploadingFile[] = acceptedFiles.map((file) => ({
         id: nanoid(),
         file,
         progress: 0,
@@ -706,46 +671,21 @@ export default function DocumentsPage() {
                         onChange={handleEditingDocChange}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Tags</Label>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {editingDocument.tags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="secondary"
-                            className="flex items-center gap-1"
-                          >
-                            {tag}
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-4 w-4 ml-1"
-                              onClick={() => handleRemoveTag(tag)}
-                            >
-                              <span className="sr-only">Remove tag</span>
-                              &times;
-                            </Button>
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Add a tag..."
-                          value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddTag();
-                            }
-                          }}
-                        />
-                        <Button type="button" onClick={handleAddTag}>
-                          Add
-                        </Button>
-                      </div>
-                    </div>
+                    <TagEditor
+                      tags={editingDocument.tags}
+                      onAddTag={(tag) =>
+                        setEditingDocument({
+                          ...editingDocument,
+                          tags: [...editingDocument.tags, tag],
+                        })
+                      }
+                      onRemoveTag={(tag) =>
+                        setEditingDocument({
+                          ...editingDocument,
+                          tags: editingDocument.tags.filter((t) => t !== tag),
+                        })
+                      }
+                    />
                     {/* Display non-editable info */}
                     <div className="space-y-2 pt-2 border-t mt-4">
                       <Label className="text-xs text-muted-foreground font-medium">
@@ -838,92 +778,5 @@ export default function DocumentsPage() {
         </div>
       )}
     </ListPageLayout>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Upload Progress List (page-specific)
-// ---------------------------------------------------------------------------
-
-function UploadProgressList({
-  uploads,
-  onClearComplete,
-}: { uploads: UploadingFile[]; onClearComplete: () => void }) {
-  const completedCount = uploads.filter(
-    (u) => u.status === "success" || u.status === "error",
-  ).length;
-  const showClearButton = completedCount > 0;
-
-  return (
-    <Card className="mb-4 shadow-sm">
-      <CardHeader className="pb-2 pt-3 px-4">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-base font-semibold">Uploads</CardTitle>
-          {showClearButton && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7"
-              onClick={onClearComplete}
-            >
-              <X className="h-3.5 w-3.5 mr-1" /> Clear Completed
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 pt-2 space-y-3 max-h-60 overflow-y-auto">
-        {uploads.map((upload) => (
-          <div
-            key={upload.id}
-            className={`flex items-center gap-3 p-2 rounded-md transition-opacity ${
-              upload.status === "success" || upload.status === "error"
-                ? "opacity-70"
-                : ""
-            }`}
-          >
-            <div className="flex-shrink-0">
-              {upload.status === "pending" && (
-                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
-              )}
-              {upload.status === "uploading" && (
-                <UploadCloud className="h-4 w-4 text-blue-500 animate-pulse" />
-              )}
-              {upload.status === "success" && (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-              )}
-              {upload.status === "error" && (
-                <XCircle className="h-4 w-4 text-red-500" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p
-                className="text-sm font-medium truncate"
-                title={upload.file.name}
-              >
-                {upload.file.name}
-              </p>
-              {(upload.status === "pending" ||
-                upload.status === "uploading") && (
-                <Progress value={upload.progress} className="h-1 mt-1" />
-              )}
-              {upload.status === "error" && (
-                <p
-                  className="text-xs text-red-600 truncate"
-                  title={upload.error}
-                >
-                  {upload.error}
-                </p>
-              )}
-              {upload.status === "success" && (
-                <p className="text-xs text-green-600">Upload complete</p>
-              )}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {formatFileSize(upload.file.size)}
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
   );
 }

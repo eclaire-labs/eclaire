@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/api-client";
 import {
   useProcessingEvents,
   useSSEConnectionStatus,

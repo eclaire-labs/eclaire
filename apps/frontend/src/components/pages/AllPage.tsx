@@ -37,7 +37,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { apiFetch, setFlagColor, togglePin } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/api-client";
+import { setFlagColor, togglePin } from "@/lib/api-content";
 
 type ItemType = "task" | "bookmark" | "document" | "photo" | "note";
 

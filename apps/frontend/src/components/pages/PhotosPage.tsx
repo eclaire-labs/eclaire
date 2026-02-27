@@ -14,9 +14,10 @@ import { useCallback, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import type { ViewModeDef } from "@/components/list-page";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
+import { TagEditor } from "@/components/shared/TagEditor";
+import { UploadProgressList } from "@/components/shared/UploadProgressList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogClose,
@@ -28,16 +29,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { usePhotos } from "@/hooks/use-photos";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/list-page-utils";
-import type { EditPhotoState, Photo, UploadingFile } from "@/types/photo";
+import type { EditPhotoState, Photo } from "@/types/photo";
+import type { UploadingFile } from "@/components/shared/UploadProgressList";
 import { PhotoGalleryView } from "./photos/PhotoGalleryView";
 import { PhotoListItem } from "./photos/PhotoListItem";
 import { PhotoTileItem } from "./photos/PhotoTileItem";
@@ -84,7 +84,6 @@ const photosViewModes: ViewModeDef[] = [
 // ---------------------------------------------------------------------------
 
 export default function PhotosPage() {
-  const _isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -111,7 +110,6 @@ export default function PhotosPage() {
   const [isEditPhotoDialogOpen, setIsEditPhotoDialogOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [editingPhoto, setEditingPhoto] = useState<EditPhotoState | null>(null);
-  const [tagInput, setTagInput] = useState("");
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
 
@@ -223,26 +221,6 @@ export default function PhotosPage() {
     );
   };
 
-  const handleAddTag = () => {
-    if (!tagInput.trim()) return;
-    const tag = tagInput.trim().toLowerCase();
-    if (editingPhoto && !editingPhoto.tags.includes(tag)) {
-      setEditingPhoto({
-        ...editingPhoto,
-        tags: [...editingPhoto.tags, tag],
-      });
-    }
-    setTagInput("");
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    if (editingPhoto) {
-      setEditingPhoto({
-        ...editingPhoto,
-        tags: editingPhoto.tags.filter((t) => t !== tag),
-      });
-    }
-  };
 
   // --- API Action Handlers ---
 
@@ -832,46 +810,21 @@ export default function PhotosPage() {
                         onChange={handleEditingPhotoChange}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Tags</Label>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {editingPhoto.tags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="secondary"
-                            className="flex items-center gap-1"
-                          >
-                            {tag}
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-4 w-4 ml-1"
-                              onClick={() => handleRemoveTag(tag)}
-                            >
-                              <span className="sr-only">Remove tag</span>
-                              &times;
-                            </Button>
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Add a tag..."
-                          value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddTag();
-                            }
-                          }}
-                        />
-                        <Button type="button" onClick={handleAddTag}>
-                          Add
-                        </Button>
-                      </div>
-                    </div>
+                    <TagEditor
+                      tags={editingPhoto.tags}
+                      onAddTag={(tag) =>
+                        setEditingPhoto({
+                          ...editingPhoto,
+                          tags: [...editingPhoto.tags, tag],
+                        })
+                      }
+                      onRemoveTag={(tag) =>
+                        setEditingPhoto({
+                          ...editingPhoto,
+                          tags: editingPhoto.tags.filter((t) => t !== tag),
+                        })
+                      }
+                    />
                     <div className="space-y-2">
                       <Label htmlFor="edit-deviceId">Device ID</Label>
                       <Input
@@ -964,80 +917,5 @@ export default function PhotosPage() {
         </div>
       )}
     </ListPageLayout>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Upload Progress List (page-specific)
-// ---------------------------------------------------------------------------
-
-function UploadProgressList({
-  uploads,
-  onClearComplete,
-}: {
-  uploads: UploadingFile[];
-  onClearComplete: () => void;
-}) {
-  const completedCount = uploads.filter(
-    (u) => u.status === "success" || u.status === "error",
-  ).length;
-  const showClearButton =
-    completedCount > 0 && uploads.length === completedCount;
-
-  return (
-    <Card className="mb-4">
-      <CardHeader className="pb-2 pt-4 px-4">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg">Uploads</CardTitle>
-          {showClearButton && (
-            <Button variant="ghost" size="sm" onClick={onClearComplete}>
-              Clear Completed
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 space-y-3 max-h-60 overflow-y-auto">
-        {uploads.map((upload) => (
-          <div key={upload.id} className="flex items-center gap-3">
-            <div className="flex-shrink-0">
-              {upload.status === "pending" && (
-                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
-              )}
-              {upload.status === "uploading" && (
-                <UploadCloud className="h-4 w-4 text-blue-500 animate-pulse" />
-              )}
-              {upload.status === "success" && (
-                <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
-                  <div className="h-2 w-2 rounded-full bg-white" />
-                </div>
-              )}
-              {upload.status === "error" && (
-                <AlertCircle className="h-4 w-4 text-red-500" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p
-                className="text-sm font-medium truncate"
-                title={upload.file.name}
-              >
-                {upload.file.name}
-              </p>
-              {upload.status === "uploading" && (
-                <Progress value={upload.progress} className="h-1 mt-1" />
-              )}
-              {upload.status === "error" && (
-                <p className="text-xs text-red-600 truncate">{upload.error}</p>
-              )}
-              {upload.status === "success" && (
-                <p className="text-xs text-green-600">Upload complete</p>
-              )}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {formatFileSize(upload.file.size)}
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
   );
 }

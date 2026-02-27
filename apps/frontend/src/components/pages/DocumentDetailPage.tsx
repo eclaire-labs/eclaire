@@ -9,7 +9,6 @@ import {
   Image as ImageIcon,
   Loader2,
   MessageSquare,
-  RefreshCw,
   Save,
   Trash2,
   X,
@@ -18,17 +17,12 @@ import {
 const routeApi = getRouteApi("/_authenticated/documents/$id");
 
 import { useEffect, useState } from "react";
+import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
+import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
+import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { DueDatePicker } from "@/components/ui/due-date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,62 +30,13 @@ import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useDocument } from "@/hooks/use-documents";
 import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useToast } from "@/hooks/use-toast";
-import {
-  apiFetch,
-  getAbsoluteApiUrl,
-  setFlagColor,
-  togglePin,
-} from "@/lib/frontend-api";
+import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
+import { formatDate, formatFileSize } from "@/lib/date-utils";
 import type { Document } from "@/types/document";
-
-// Helper function to format Unix timestamps
-const formatDate = (dateString: string | null | undefined) => {
-  if (!dateString) return "N/A";
-  try {
-    return new Date(dateString).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch (error) {
-    console.error("Error formatting date:", dateString, error);
-    return "Invalid Date";
-  }
-};
-
-const _formatDateForInput = (isoString: string | null | undefined): string => {
-  if (!isoString) return "";
-  try {
-    const date = new Date(isoString);
-    // Return datetime-local format (YYYY-MM-DDTHH:mm)
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  } catch {
-    return "";
-  }
-};
-
-// Helper function to format file size
-const formatFileSize = (bytes: number | null) => {
-  if (!bytes) return "Unknown size";
-  const sizes = ["B", "KB", "MB", "GB"];
-  let i = 0;
-  let size = bytes;
-  while (size >= 1024 && i < sizes.length - 1) {
-    size /= 1024;
-    i++;
-  }
-  return `${size.toFixed(1)} ${sizes[i]}`;
-};
 
 export function DocumentDetailClient() {
   const { id: documentId } = routeApi.useParams();
@@ -104,6 +49,14 @@ export function DocumentDetailClient() {
   // Initialize SSE for real-time updates
   useProcessingEvents();
 
+  // Shared detail page actions (pin, flag, chat, delete, reprocess)
+  const actions = useDetailPageActions({
+    contentType: "documents",
+    item: document,
+    refresh,
+    onDeleted: () => navigate({ to: "/documents" }),
+  });
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -111,13 +64,6 @@ export function DocumentDetailClient() {
   const [editDueDate, setEditDueDate] = useState(""); // This will hold ISO string
   const [editTags, setEditTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
-  const [isReprocessing, setIsReprocessing] = useState(false);
-  const [showReprocessDialog, setShowReprocessDialog] = useState(false);
-  const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] =
-    useState(false);
-  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(
-    null,
-  );
 
   // Initialize editing state when document loads
   useEffect(() => {
@@ -196,42 +142,6 @@ export function DocumentDetailClient() {
     setIsEditing(false);
   };
 
-  // Handle delete document
-  const handleDelete = () => {
-    if (!document) return;
-    setDocumentToDelete(document);
-    setIsConfirmDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirmed = async () => {
-    if (!documentToDelete) return;
-
-    try {
-      const response = await apiFetch(`/api/documents/${documentToDelete.id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        setIsConfirmDeleteDialogOpen(false);
-        setDocumentToDelete(null);
-        toast({
-          title: "Document deleted",
-          description: "The document has been deleted successfully.",
-        });
-        navigate({ to: "/documents" });
-      } else {
-        throw new Error("Failed to delete document");
-      }
-    } catch (error) {
-      console.error("Error deleting document:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete document.",
-        variant: "destructive",
-      });
-    }
-  };
-
   // Handle add tag
   const handleAddTag = () => {
     if (!newTag.trim()) return;
@@ -245,212 +155,6 @@ export function DocumentDetailClient() {
   // Handle remove tag
   const handleRemoveTag = (tagToRemove: string) => {
     setEditTags(editTags.filter((tag) => tag !== tagToRemove));
-  };
-
-  // Handle pin toggle
-  const handlePinToggle = async () => {
-    if (!document) return;
-
-    const newPinnedState = !document.isPinned;
-    console.log("Toggling pin:", {
-      current: document.isPinned,
-      new: newPinnedState,
-    });
-
-    try {
-      const response = await togglePin(
-        "documents",
-        document.id,
-        newPinnedState,
-      );
-      if (response.ok) {
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: newPinnedState ? "Pinned" : "Unpinned",
-          description: `Document has been ${newPinnedState ? "pinned" : "unpinned"}.`,
-        });
-      } else {
-        const errorText = await response.text();
-        console.error("Pin toggle error:", response.status, errorText);
-        toast({
-          title: "Error",
-          description: "Failed to update pin status",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling pin:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update pin status",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle flag toggle
-  const handleFlagToggle = async () => {
-    if (!document) return;
-
-    const newColor = document.flagColor ? null : "orange";
-    console.log("Toggling flag:", {
-      current: document.flagColor,
-      new: newColor,
-    });
-
-    try {
-      const response = await setFlagColor("documents", document.id, newColor);
-      if (response.ok) {
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: newColor ? "Flagged" : "Unflagged",
-          description: `Document has been ${newColor ? "flagged" : "unflagged"}.`,
-        });
-      } else {
-        const errorText = await response.text();
-        console.error("Flag toggle error:", response.status, errorText);
-        toast({
-          title: "Error",
-          description: "Failed to update flag",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling flag:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update flag",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle flag color change
-  const handleFlagColorChange = async (
-    color: "red" | "yellow" | "orange" | "green" | "blue",
-  ) => {
-    if (!document) return;
-
-    console.log("Changing flag color:", {
-      current: document.flagColor,
-      new: color,
-    });
-
-    try {
-      const response = await setFlagColor("documents", document.id, color);
-      if (response.ok) {
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: "Flag Updated",
-          description: `Document flag changed to ${color}.`,
-        });
-      } else {
-        const errorText = await response.text();
-        console.error("Flag color error:", response.status, errorText);
-        toast({
-          title: "Error",
-          description: "Failed to update flag color",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error changing flag color:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update flag color",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Helper function to detect stuck processing jobs
-  const isJobStuck = (document: Document) => {
-    if (!document.processingStatus) return false;
-
-    const now = Date.now();
-    const fifteenMinutesAgo = now - 15 * 60 * 1000;
-
-    // Job is stuck if:
-    // 1. Status is "pending" and created >15 minutes ago, OR
-    // 2. Status is "processing" and not updated >15 minutes ago
-    return (
-      (document.processingStatus === "pending" &&
-        new Date(document.createdAt).getTime() < fifteenMinutesAgo) ||
-      (document.processingStatus === "processing" &&
-        new Date(document.updatedAt).getTime() < fifteenMinutesAgo)
-    );
-  };
-
-  const handleReprocess = async () => {
-    if (!document) return;
-
-    try {
-      setIsReprocessing(true);
-      setShowReprocessDialog(false);
-
-      const isStuck = isJobStuck(document);
-      const response = await apiFetch(
-        `/api/documents/${document.id}/reprocess`,
-        {
-          method: "POST",
-          ...(isStuck && {
-            body: JSON.stringify({ force: true }),
-            headers: { "Content-Type": "application/json" },
-          }),
-        },
-      );
-
-      if (response.ok) {
-        toast({
-          title: "Reprocessing Started",
-          description:
-            "Your document has been queued for reprocessing. This may take a few minutes.",
-        });
-
-        // SSE events will automatically update the processing status
-        // No need to manually update state
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Error",
-          description: errorData.error || "Failed to reprocess document",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error reprocessing document:", error);
-      toast({
-        title: "Error",
-        description: "Failed to reprocess document",
-        variant: "destructive",
-      });
-    } finally {
-      setIsReprocessing(false);
-    }
-  };
-
-  // Handle chat click
-  const handleChatClick = () => {
-    if (!document) return;
-
-    // Use the global function to open assistant with pre-attached assets
-    if (
-      typeof window !== "undefined" &&
-      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
-      (window as any).openAssistantWithAssets
-    ) {
-      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
-      (window as any).openAssistantWithAssets([
-        {
-          type: "document",
-          id: document.id,
-          title: document.title,
-        },
-      ]);
-    }
   };
 
   if (isLoading) {
@@ -549,16 +253,16 @@ export function DocumentDetailClient() {
             <PinFlagControls
               isPinned={document.isPinned || false}
               flagColor={document.flagColor}
-              onPinToggle={handlePinToggle}
-              onFlagToggle={handleFlagToggle}
-              onFlagColorChange={handleFlagColorChange}
+              onPinToggle={actions.handlePinToggle}
+              onFlagToggle={actions.handleFlagToggle}
+              onFlagColorChange={actions.handleFlagColorChange}
               size="md"
             />
 
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleChatClick}
+              onClick={actions.handleChatClick}
               title="Chat about this document"
             >
               <MessageSquare className="h-4 w-4" />
@@ -594,7 +298,10 @@ export function DocumentDetailClient() {
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
                 </Button>
-                <Button variant="destructive" onClick={handleDelete}>
+                <Button
+                  variant="destructive"
+                  onClick={actions.openDeleteDialog}
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </Button>
@@ -822,64 +529,17 @@ export function DocumentDetailClient() {
                   <CardTitle>Processing Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        document.enabled === false
-                          ? "outline"
-                          : document.processingStatus === "completed"
-                            ? "default"
-                            : document.processingStatus === "failed"
-                              ? "destructive"
-                              : "secondary"
-                      }
-                      className={`${document.enabled !== false ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
-                      onClick={
-                        document.enabled !== false
-                          ? () => {
-                              navigate({
-                                to: `/processing?assetType=documents&assetId=${document.id}`,
-                              });
-                            }
-                          : undefined
-                      }
-                      title={
-                        document.enabled !== false
-                          ? "Click to view processing details"
-                          : "Processing is disabled for this document"
-                      }
-                    >
-                      {document.enabled === false ? (
-                        "disabled"
-                      ) : document.processingStatus === "processing" ? (
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          processing
-                        </span>
-                      ) : (
-                        (document.processingStatus || "unknown").replace(
-                          /_/g,
-                          " ",
-                        )
-                      )}
-                    </Badge>
-
-                    {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}
-                    {document.enabled !== false &&
-                      (document.processingStatus === "completed" ||
-                        document.processingStatus === "failed" ||
-                        isJobStuck(document)) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setShowReprocessDialog(true)}
-                          disabled={isReprocessing}
-                          title="Reprocess document"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                      )}
-                  </div>
+                  <ProcessingStatusBadge
+                    contentType="documents"
+                    itemId={document.id}
+                    processingStatus={document.processingStatus}
+                    enabled={document.enabled}
+                    isJobStuck={actions.isJobStuck}
+                    isReprocessing={actions.isReprocessing}
+                    onReprocessClick={() =>
+                      actions.setShowReprocessDialog(true)
+                    }
+                  />
                 </CardContent>
               </Card>
             )}
@@ -977,95 +637,39 @@ export function DocumentDetailClient() {
         </div>
 
         {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={isConfirmDeleteDialogOpen}
-          onOpenChange={setIsConfirmDeleteDialogOpen}
+        <DeleteConfirmDialog
+          open={actions.isDeleteDialogOpen}
+          onOpenChange={actions.setIsDeleteDialogOpen}
+          label="Document"
+          onConfirm={actions.confirmDelete}
         >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Confirm Deletion</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this document? This action
-                cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            {documentToDelete && (
-              <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
-                <DocumentIcon
-                  document={documentToDelete}
-                  className="h-6 w-6 flex-shrink-0 mt-0.5"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium break-words line-clamp-2 leading-tight">
-                    {documentToDelete.title || "Untitled Document"}
-                  </p>
-                  <p className="text-sm text-muted-foreground truncate mt-1">
-                    {documentToDelete.originalFilename}
-                  </p>
-                </div>
+          {document && (
+            <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
+              <DocumentIcon
+                document={document}
+                className="h-6 w-6 flex-shrink-0 mt-0.5"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium break-words line-clamp-2 leading-tight">
+                  {document.title || "Untitled Document"}
+                </p>
+                <p className="text-sm text-muted-foreground truncate mt-1">
+                  {document.originalFilename}
+                </p>
               </div>
-            )}
-            <DialogFooter className="sm:justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsConfirmDeleteDialogOpen(false);
-                  setDocumentToDelete(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleDeleteConfirmed}>
-                Delete Document
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </div>
+          )}
+        </DeleteConfirmDialog>
 
         {/* Reprocess Confirmation Dialog */}
-        <Dialog
-          open={showReprocessDialog}
-          onOpenChange={setShowReprocessDialog}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reprocess Document</DialogTitle>
-              <DialogDescription>
-                This will re-extract content, generate new thumbnails, take
-                fresh screenshots, and reprocess all AI-generated data for this
-                document. This may take a few minutes.
-                <br />
-                <br />
-                Are you sure you want to continue?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowReprocessDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleReprocess}
-                disabled={isReprocessing}
-                className="flex items-center gap-2"
-              >
-                {isReprocessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Reprocessing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4" />
-                    Reprocess
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ReprocessDialog
+          open={actions.showReprocessDialog}
+          onOpenChange={actions.setShowReprocessDialog}
+          label="Document"
+          description="This will re-extract content, generate new thumbnails, take fresh screenshots, and reprocess all AI-generated data for this document. This may take a few minutes."
+          isReprocessing={actions.isReprocessing}
+          onConfirm={actions.handleReprocess}
+        />
       </div>
     </TooltipProvider>
   );

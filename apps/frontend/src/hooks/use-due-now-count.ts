@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/api-client";
 
 export function useDueNowCount() {
   const [count, setCount] = useState<number>(0);

@@ -43,7 +43,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/api-client";
 import { COUNTRIES, getUserTimezone, TIMEZONES } from "@/lib/location-data";
 import type { User } from "@/types/user";
 

@@ -11,7 +11,6 @@ import {
   Loader2,
   MapPin,
   MessageSquare,
-  RefreshCw,
   RotateCcw,
   Save,
   Trash2,
@@ -23,6 +22,9 @@ import {
 const routeApi = getRouteApi("/_authenticated/photos/$id");
 
 import { useEffect, useState } from "react";
+import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
+import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
+import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { PhotoAnalysisCard } from "@/components/photo-analysis";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,14 +35,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { DueDatePicker } from "@/components/ui/due-date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,44 +42,12 @@ import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { usePhotoAnalysis } from "@/hooks/use-photo-analysis";
 import { usePhoto } from "@/hooks/use-photos";
 import { useToast } from "@/hooks/use-toast";
-import {
-  apiFetch,
-  getAbsoluteApiUrl,
-  setFlagColor,
-  togglePin,
-} from "@/lib/frontend-api";
-import type { Photo } from "@/types/photo";
-
-// Helper function to format dates
-const formatDate = (dateString: string | null) => {
-  if (!dateString) return "Unknown";
-  try {
-    return new Date(dateString).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch (_error) {
-    return "Invalid Date";
-  }
-};
-
-// Helper function to format file size
-const formatFileSize = (bytes: number) => {
-  const sizes = ["B", "KB", "MB", "GB"];
-  let i = 0;
-  let size = bytes;
-  while (size >= 1024 && i < sizes.length - 1) {
-    size /= 1024;
-    i++;
-  }
-  return `${size.toFixed(1)} ${sizes[i]}`;
-};
+import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
+import { formatDate, formatFileSize } from "@/lib/date-utils";
 
 // Helper function to format camera settings
 const formatExposureTime = (exposureTime: number | null) => {
@@ -135,6 +97,18 @@ export function PhotoDetailClient() {
     enabled: !!photo && photo.processingStatus === "completed",
   });
 
+  // Shared detail page actions (pin, flag, chat, delete, reprocess)
+  const actions = useDetailPageActions({
+    contentType: "photos",
+    item: photo,
+    refresh,
+    onDeleted: () => navigate({ to: "/photos" }),
+    onReprocessed: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["photo-analysis", photoId],
+      }),
+  });
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -144,11 +118,6 @@ export function PhotoDetailClient() {
   const [newTag, setNewTag] = useState("");
   const [imageScale, setImageScale] = useState(1);
   const [showFullscreen, setShowFullscreen] = useState(false);
-  const [isReprocessing, setIsReprocessing] = useState(false);
-  const [showReprocessDialog, setShowReprocessDialog] = useState(false);
-  const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] =
-    useState(false);
-  const [photoToDelete, setPhotoToDelete] = useState<Photo | null>(null);
 
   // Initialize editing state when photo loads
   useEffect(() => {
@@ -227,42 +196,6 @@ export function PhotoDetailClient() {
     setIsEditing(false);
   };
 
-  // Handle delete photo
-  const handleDelete = () => {
-    if (!photo) return;
-    setPhotoToDelete(photo);
-    setIsConfirmDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirmed = async () => {
-    if (!photoToDelete) return;
-
-    try {
-      const response = await apiFetch(`/api/photos/${photoToDelete.id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        setIsConfirmDeleteDialogOpen(false);
-        setPhotoToDelete(null);
-        toast({
-          title: "Photo deleted",
-          description: "The photo has been deleted successfully.",
-        });
-        navigate({ to: "/photos" });
-      } else {
-        throw new Error("Failed to delete photo");
-      }
-    } catch (error) {
-      console.error("Error deleting photo:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete photo.",
-        variant: "destructive",
-      });
-    }
-  };
-
   // Handle add tag
   const handleAddTag = () => {
     if (!newTag.trim()) return;
@@ -276,194 +209,6 @@ export function PhotoDetailClient() {
   // Handle remove tag
   const handleRemoveTag = (tagToRemove: string) => {
     setEditTags(editTags.filter((tag) => tag !== tagToRemove));
-  };
-
-  // Handle pin toggle
-  const handlePinToggle = async () => {
-    if (!photo) return;
-
-    const newPinnedState = !photo.isPinned;
-    console.log("Toggling pin:", {
-      current: photo.isPinned,
-      new: newPinnedState,
-    });
-
-    try {
-      const response = await togglePin("photos", photo.id, newPinnedState);
-      if (response.ok) {
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: newPinnedState ? "Pinned" : "Unpinned",
-          description: `Photo has been ${newPinnedState ? "pinned" : "unpinned"}.`,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update pin status",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling pin:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update pin status",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle flag toggle
-  const handleFlagToggle = async () => {
-    if (!photo) return;
-
-    const newColor = photo.flagColor ? null : "orange";
-    try {
-      const response = await setFlagColor("photos", photo.id, newColor);
-      if (response.ok) {
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: newColor ? "Flagged" : "Unflagged",
-          description: `Photo has been ${newColor ? "flagged" : "unflagged"}.`,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update flag",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling flag:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update flag",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle flag color change
-  const handleFlagColorChange = async (
-    color: "red" | "yellow" | "orange" | "green" | "blue",
-  ) => {
-    if (!photo) return;
-
-    try {
-      const response = await setFlagColor("photos", photo.id, color);
-      if (response.ok) {
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: "Flag Updated",
-          description: `Photo flag changed to ${color}.`,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update flag color",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error changing flag color:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update flag color",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Helper function to detect stuck processing jobs
-  const isJobStuck = (photo: Photo) => {
-    if (!photo.processingStatus) return false;
-
-    const now = Date.now();
-    const fifteenMinutesAgo = now - 15 * 60 * 1000;
-
-    // Job is stuck if:
-    // 1. Status is "pending" and created >15 minutes ago, OR
-    // 2. Status is "processing" and not updated >15 minutes ago
-    return (
-      (photo.processingStatus === "pending" &&
-        new Date(photo.createdAt).getTime() < fifteenMinutesAgo) ||
-      (photo.processingStatus === "processing" &&
-        new Date(photo.updatedAt).getTime() < fifteenMinutesAgo)
-    );
-  };
-
-  const handleReprocess = async () => {
-    if (!photo) return;
-
-    try {
-      setIsReprocessing(true);
-      setShowReprocessDialog(false);
-
-      const isStuck = isJobStuck(photo);
-      const response = await apiFetch(`/api/photos/${photo.id}/reprocess`, {
-        method: "POST",
-        ...(isStuck && {
-          body: JSON.stringify({ force: true }),
-          headers: { "Content-Type": "application/json" },
-        }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Reprocessing Started",
-          description:
-            "Your photo has been queued for reprocessing. This may take a few minutes.",
-        });
-
-        // Invalidate the photo analysis cache to ensure fresh data when processing completes
-        queryClient.invalidateQueries({
-          queryKey: ["photo-analysis", photoId],
-        });
-
-        // SSE events will automatically update the processing status
-        // No need to manually update state
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Error",
-          description: errorData.error || "Failed to reprocess photo",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error reprocessing photo:", error);
-      toast({
-        title: "Error",
-        description: "Failed to reprocess photo",
-        variant: "destructive",
-      });
-    } finally {
-      setIsReprocessing(false);
-    }
-  };
-
-  // Handle chat click
-  const handleChatClick = () => {
-    if (!photo) return;
-
-    // Use the global function to open assistant with pre-attached assets
-    if (
-      typeof window !== "undefined" &&
-      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
-      (window as any).openAssistantWithAssets
-    ) {
-      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
-      (window as any).openAssistantWithAssets([
-        {
-          type: "photo",
-          id: photo.id,
-          title: photo.title,
-        },
-      ]);
-    }
   };
 
   // Handle zoom
@@ -568,15 +313,15 @@ export function PhotoDetailClient() {
             <PinFlagControls
               isPinned={photo.isPinned || false}
               flagColor={photo.flagColor}
-              onPinToggle={handlePinToggle}
-              onFlagToggle={handleFlagToggle}
-              onFlagColorChange={handleFlagColorChange}
+              onPinToggle={actions.handlePinToggle}
+              onFlagToggle={actions.handleFlagToggle}
+              onFlagColorChange={actions.handleFlagColorChange}
               size="md"
             />
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleChatClick}
+              onClick={actions.handleChatClick}
               title="Chat about this photo"
             >
               <MessageSquare className="h-4 w-4" />
@@ -614,7 +359,10 @@ export function PhotoDetailClient() {
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
                 </Button>
-                <Button variant="destructive" onClick={handleDelete}>
+                <Button
+                  variant="destructive"
+                  onClick={actions.openDeleteDialog}
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </Button>
@@ -859,61 +607,17 @@ export function PhotoDetailClient() {
                   <CardTitle>Processing Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        photo.enabled === false
-                          ? "outline"
-                          : photo.processingStatus === "completed"
-                            ? "default"
-                            : photo.processingStatus === "failed"
-                              ? "destructive"
-                              : "secondary"
-                      }
-                      className={`${photo.enabled !== false ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
-                      onClick={
-                        photo.enabled !== false
-                          ? () => {
-                              navigate({
-                                to: `/processing?assetType=photos&assetId=${photo.id}`,
-                              });
-                            }
-                          : undefined
-                      }
-                      title={
-                        photo.enabled !== false
-                          ? "Click to view processing details"
-                          : "Processing is disabled for this photo"
-                      }
-                    >
-                      {photo.enabled === false ? (
-                        "disabled"
-                      ) : photo.processingStatus === "processing" ? (
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          processing
-                        </span>
-                      ) : (
-                        (photo.processingStatus || "unknown").replace(/_/g, " ")
-                      )}
-                    </Badge>
-
-                    {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}
-                    {photo.enabled !== false &&
-                      (photo.processingStatus === "completed" ||
-                        photo.processingStatus === "failed" ||
-                        isJobStuck(photo)) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setShowReprocessDialog(true)}
-                          disabled={isReprocessing}
-                          title="Reprocess photo"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                      )}
-                  </div>
+                  <ProcessingStatusBadge
+                    contentType="photos"
+                    itemId={photo.id}
+                    processingStatus={photo.processingStatus}
+                    enabled={photo.enabled}
+                    isJobStuck={actions.isJobStuck}
+                    isReprocessing={actions.isReprocessing}
+                    onReprocessClick={() =>
+                      actions.setShowReprocessDialog(true)
+                    }
+                  />
                 </CardContent>
               </Card>
             )}
@@ -1112,102 +816,35 @@ export function PhotoDetailClient() {
         )}
 
         {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={isConfirmDeleteDialogOpen}
-          onOpenChange={setIsConfirmDeleteDialogOpen}
+        <DeleteConfirmDialog
+          open={actions.isDeleteDialogOpen}
+          onOpenChange={actions.setIsDeleteDialogOpen}
+          label="Photo"
+          onConfirm={actions.confirmDelete}
         >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Confirm Deletion</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this photo? This action cannot
-                be undone.
-              </DialogDescription>
-            </DialogHeader>
-            {photoToDelete && (
-              <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
-                <PhotoIcon
-                  photo={photoToDelete}
-                  className="h-6 w-6 flex-shrink-0 mt-0.5"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium break-words line-clamp-2 leading-tight">
-                    {photoToDelete.title || "Untitled Photo"}
-                  </p>
-                  <p className="text-sm text-muted-foreground truncate mt-1">
-                    {photoToDelete.originalFilename}
-                  </p>
-                </div>
-              </div>
-            )}
-            <DialogFooter className="sm:justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsConfirmDeleteDialogOpen(false);
-                  setPhotoToDelete(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleDeleteConfirmed}>
-                Delete Photo
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
+            <Camera className="h-6 w-6 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium break-words line-clamp-2 leading-tight">
+                {photo.title || "Untitled Photo"}
+              </p>
+              <p className="text-sm text-muted-foreground truncate mt-1">
+                {photo.originalFilename}
+              </p>
+            </div>
+          </div>
+        </DeleteConfirmDialog>
 
         {/* Reprocess Confirmation Dialog */}
-        <Dialog
-          open={showReprocessDialog}
-          onOpenChange={setShowReprocessDialog}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reprocess Photo</DialogTitle>
-              <DialogDescription>
-                This will re-analyze the photo, regenerate thumbnails, extract
-                new metadata, and reprocess all AI-generated data for this
-                photo. This may take a few minutes.
-                <br />
-                <br />
-                Are you sure you want to continue?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowReprocessDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleReprocess}
-                disabled={isReprocessing}
-                className="flex items-center gap-2"
-              >
-                {isReprocessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Reprocessing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4" />
-                    Reprocess
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ReprocessDialog
+          open={actions.showReprocessDialog}
+          onOpenChange={actions.setShowReprocessDialog}
+          label="Photo"
+          description="This will re-extract EXIF data, generate new thumbnails, and reprocess all AI-generated data for this photo. This may take a few minutes."
+          isReprocessing={actions.isReprocessing}
+          onConfirm={actions.handleReprocess}
+        />
       </div>
     </TooltipProvider>
   );
-}
-
-// Simple photo icon component for the delete dialog
-function PhotoIcon({ className }: { photo: Photo; className?: string }) {
-  // Use the Camera icon as default for photos
-  return <Camera className={className} />;
 }

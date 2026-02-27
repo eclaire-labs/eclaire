@@ -2,34 +2,50 @@
  * Common Schema Definitions
  *
  * Shared zod schemas and types used across multiple schema files.
+ * Base schemas (reviewStatus, flagColor, taskStatus, paginatedResponse)
+ * live in @eclaire/api-types and are re-exported here for backend convenience.
  */
 
-import { FLAG_COLORS, REVIEW_STATUSES, TASK_STATUSES } from "@eclaire/core/types";
+import { FLAG_COLORS, REVIEW_STATUSES } from "@eclaire/core/types";
 import { resolver } from "hono-openapi";
 import z from "zod/v4";
 
 // =============================================================================
-// REVIEW STATUS
+// RE-EXPORT shared schemas from @eclaire/api-types
 // =============================================================================
 
-export const reviewStatusSchema = z.enum(REVIEW_STATUSES);
-export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
+export {
+  reviewStatusSchema,
+  flagColorSchema,
+  taskStatusSchema,
+  paginatedResponseSchema,
+  type ReviewStatus,
+  type FlagColor,
+  type TaskStatus,
+} from "@eclaire/api-types/common";
+
+import { flagColorSchema } from "@eclaire/api-types/common";
+
+// =============================================================================
+// BACKEND-ONLY: OpenAPI field schemas with metadata
+// =============================================================================
 
 /**
  * Review status schema with OpenAPI metadata.
  * Use this when defining API response/request schemas.
  */
-export const reviewStatusFieldSchema = reviewStatusSchema.meta({
+export const reviewStatusFieldSchema = z.enum(REVIEW_STATUSES).meta({
   description: "Review status of the item",
   example: "pending",
 });
 
-// =============================================================================
-// FLAG COLORS
-// =============================================================================
-
-export const flagColorSchema = z.enum(FLAG_COLORS);
-export type FlagColor = z.infer<typeof flagColorSchema>;
+/**
+ * Task status schema with OpenAPI metadata.
+ */
+export const taskStatusFieldSchema = z.enum(["not-started", "in-progress", "completed"]).meta({
+  description: "Current status of the task",
+  example: "not-started",
+});
 
 // =============================================================================
 // SHARED FIELD UPDATE SCHEMAS (for review/flag/pin endpoints)
@@ -64,21 +80,6 @@ export function isPinnedUpdateSchema(resourceName: string, ref?: string) {
   });
   return ref ? schema.meta({ ref }) : schema;
 }
-
-// =============================================================================
-// TASK STATUS
-// =============================================================================
-
-export const taskStatusSchema = z.enum(TASK_STATUSES);
-export type TaskStatus = z.infer<typeof taskStatusSchema>;
-
-/**
- * Task status schema with OpenAPI metadata.
- */
-export const taskStatusFieldSchema = taskStatusSchema.meta({
-  description: "Current status of the task",
-  example: "not-started",
-});
 
 // =============================================================================
 // PARTIAL SCHEMA HELPER
@@ -157,29 +158,6 @@ export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
  * Schema for tool call arguments - a record of JSON values.
  */
 export const toolArgumentsSchema = z.record(z.string(), jsonValueSchema);
-
-// =============================================================================
-// PAGINATED LIST RESPONSE
-// =============================================================================
-
-/**
- * Creates a standard paginated list response schema: { items, totalCount, limit, offset }.
- * Use this for all GET list endpoints to ensure a consistent response shape.
- */
-export function paginatedResponseSchema(
-  itemSchema: z.ZodType,
-  ref: string,
-  itemDescription: string,
-) {
-  return z
-    .object({
-      items: z.array(itemSchema).meta({ description: `Array of ${itemDescription}` }),
-      totalCount: z.number().meta({ description: "Total number of items matching the query" }),
-      limit: z.number().meta({ description: "Maximum number of results returned" }),
-      offset: z.number().meta({ description: "Number of results skipped" }),
-    })
-    .meta({ ref });
-}
 
 // =============================================================================
 // REQUEST BODY RESOLVER

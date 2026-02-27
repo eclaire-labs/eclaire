@@ -6,7 +6,6 @@ import {
   FileText,
   Loader2,
   MessageSquare,
-  RefreshCw,
   Save,
   Trash2,
   Type,
@@ -16,61 +15,25 @@ import {
 const routeApi = getRouteApi("/_authenticated/notes/$id");
 
 import { useEffect, useState } from "react";
+import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
+import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
+import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { DueDatePicker } from "@/components/ui/due-date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useNote } from "@/hooks/use-notes";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch, setFlagColor, togglePin } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/api-client";
+import { formatDate } from "@/lib/date-utils";
 import type { Note } from "@/types/note";
-
-// Helper function to format ISO date strings
-const formatDate = (dateString: string | null | undefined) => {
-  if (!dateString) return "N/A";
-  try {
-    return new Date(dateString).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch (error) {
-    console.error("Error formatting date:", dateString, error);
-    return "Invalid Date";
-  }
-};
-
-const _formatDateForInput = (isoString: string | null | undefined): string => {
-  if (!isoString) return "";
-  try {
-    const date = new Date(isoString);
-    // Return datetime-local format (YYYY-MM-DDTHH:mm)
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  } catch {
-    return "";
-  }
-};
 
 export function NoteDetailClient() {
   const navigate = useNavigate();
@@ -79,14 +42,15 @@ export function NoteDetailClient() {
   const [localNote, setLocalNote] = useState<Note | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [tagInput, setTagInput] = useState("");
-  const [isReprocessing, setIsReprocessing] = useState(false);
-  const [showReprocessDialog, setShowReprocessDialog] = useState(false);
-  const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] =
-    useState(false);
-  const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
 
-  // Use React Query hook for data fetching
   const { note, isLoading, error, refresh } = useNote(noteId);
+
+  const actions = useDetailPageActions({
+    contentType: "notes",
+    item: note,
+    refresh,
+    onDeleted: () => navigate({ to: "/notes" }),
+  });
 
   // Initialize local note state for editing
   useEffect(() => {
@@ -111,7 +75,6 @@ export function NoteDetailClient() {
 
       if (response.ok) {
         setIsEditing(false);
-        // Refresh to get the latest data from server
         refresh();
         toast({
           title: "Note updated",
@@ -124,8 +87,7 @@ export function NoteDetailClient() {
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Error updating note:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update note",
@@ -140,53 +102,11 @@ export function NoteDetailClient() {
     setTagInput("");
   };
 
-  const handleDelete = () => {
-    if (!note) return;
-    setNoteToDelete(note);
-    setIsConfirmDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirmed = async () => {
-    if (!noteToDelete) return;
-
-    try {
-      const response = await apiFetch(`/api/notes/${noteToDelete.id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        setIsConfirmDeleteDialogOpen(false);
-        setNoteToDelete(null);
-        toast({
-          title: "Note deleted",
-          description: "Your note has been deleted.",
-        });
-        navigate({ to: "/notes" });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to delete note",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error deleting note:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete note",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleAddTag = () => {
     if (!tagInput.trim() || !localNote) return;
     const tag = tagInput.trim().toLowerCase();
     if (isEditing && !localNote.tags.includes(tag)) {
-      setLocalNote({
-        ...localNote,
-        tags: [...localNote.tags, tag],
-      });
+      setLocalNote({ ...localNote, tags: [...localNote.tags, tag] });
     }
     setTagInput("");
   };
@@ -197,160 +117,6 @@ export function NoteDetailClient() {
         ...localNote,
         tags: localNote.tags.filter((t) => t !== tag),
       });
-    }
-  };
-
-  // Handle pin toggle for note
-  const handlePinToggle = async () => {
-    if (!note) return;
-
-    try {
-      const response = await togglePin("notes", note.id, !note.isPinned);
-      if (response.ok) {
-        const updatedNote = await response.json();
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: updatedNote.isPinned ? "Pinned" : "Unpinned",
-          description: `Note has been ${updatedNote.isPinned ? "pinned" : "unpinned"}.`,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update pin status",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling pin:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update pin status",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleFlagToggle = async () => {
-    if (!note) return;
-    await handleFlagColorChange(note.flagColor ? null : "orange");
-  };
-
-  // Handle flag color change for note
-  const handleFlagColorChange = async (
-    color: "red" | "yellow" | "orange" | "green" | "blue" | null,
-  ) => {
-    if (!note) return;
-
-    try {
-      const response = await setFlagColor("notes", note.id, color);
-      if (response.ok) {
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: color ? "Flag Updated" : "Flag Removed",
-          description: color
-            ? `Note flag changed to ${color}.`
-            : "Flag removed from note.",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update flag color",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error changing flag color:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update flag color",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle chat button click
-  const handleChatClick = () => {
-    if (!note) return;
-
-    // Use the global function to open assistant with pre-attached assets
-    if (
-      typeof window !== "undefined" &&
-      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
-      (window as any).openAssistantWithAssets
-    ) {
-      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
-      (window as any).openAssistantWithAssets([
-        {
-          type: "note",
-          id: note.id,
-          title: note.title,
-        },
-      ]);
-    }
-  };
-
-  // Helper function to detect stuck processing jobs
-  const isJobStuck = (note: Note) => {
-    if (!note.processingStatus) return false;
-
-    const now = Date.now();
-    const fifteenMinutesAgo = now - 15 * 60 * 1000;
-
-    // Job is stuck if:
-    // 1. Status is "pending" and created >15 minutes ago, OR
-    // 2. Status is "processing" and not updated >15 minutes ago
-    return (
-      (note.processingStatus === "pending" &&
-        new Date(note.createdAt).getTime() < fifteenMinutesAgo) ||
-      (note.processingStatus === "processing" &&
-        new Date(note.updatedAt).getTime() < fifteenMinutesAgo)
-    );
-  };
-
-  const handleReprocess = async () => {
-    if (!note) return;
-
-    try {
-      setIsReprocessing(true);
-      setShowReprocessDialog(false);
-
-      const isStuck = isJobStuck(note);
-      const response = await apiFetch(`/api/notes/${note.id}/reprocess`, {
-        method: "POST",
-        ...(isStuck && {
-          body: JSON.stringify({ force: true }),
-          headers: { "Content-Type": "application/json" },
-        }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Reprocessing Started",
-          description:
-            "Your note has been queued for reprocessing. This may take a few minutes.",
-        });
-
-        // SSE events will automatically update the processing status
-        // No need to manually update state
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Error",
-          description: errorData.error || "Failed to reprocess note",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error reprocessing note:", error);
-      toast({
-        title: "Error",
-        description: "Failed to reprocess note",
-        variant: "destructive",
-      });
-    } finally {
-      setIsReprocessing(false);
     }
   };
 
@@ -410,7 +176,6 @@ export function NoteDetailClient() {
     );
   }
 
-  // At this point note should be defined since we checked for loading/error above
   if (!note) return null;
 
   return (
@@ -452,14 +217,14 @@ export function NoteDetailClient() {
               size="md"
               isPinned={note.isPinned || false}
               flagColor={note.flagColor}
-              onPinToggle={handlePinToggle}
-              onFlagToggle={handleFlagToggle}
-              onFlagColorChange={handleFlagColorChange}
+              onPinToggle={actions.handlePinToggle}
+              onFlagToggle={actions.handleFlagToggle}
+              onFlagColorChange={actions.handleFlagColorChange}
             />
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleChatClick}
+              onClick={actions.handleChatClick}
               title="Chat about this note"
             >
               <MessageSquare className="h-4 w-4" />
@@ -479,7 +244,7 @@ export function NoteDetailClient() {
               <>
                 <Button
                   variant="outline"
-                  onClick={handleDelete}
+                  onClick={actions.openDeleteDialog}
                   className="text-red-600 hover:text-red-700"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -500,7 +265,6 @@ export function NoteDetailClient() {
           <div className="flex-1 flex flex-col">
             <Card className="flex-1 flex flex-col">
               <CardContent className="pt-6 flex-1 flex flex-col">
-                {/* Content */}
                 <div className="flex-1 flex flex-col">
                   {isEditing ? (
                     <Textarea
@@ -601,7 +365,7 @@ export function NoteDetailClient() {
                                 className="h-4 w-4 ml-1 hover:bg-muted-foreground/20 rounded"
                                 onClick={() => handleRemoveTag(tag)}
                               >
-                                ×
+                                x
                               </button>
                             </Badge>
                           ))}
@@ -650,63 +414,18 @@ export function NoteDetailClient() {
                       </div>
                       <div>
                         <Label>Processing Status</Label>
-                        <div className="mt-1 flex items-center gap-2">
-                          <Badge
-                            variant={
-                              note.enabled === false
-                                ? "outline"
-                                : note.processingStatus === "completed"
-                                  ? "default"
-                                  : note.processingStatus === "failed"
-                                    ? "destructive"
-                                    : "secondary"
+                        <div className="mt-1">
+                          <ProcessingStatusBadge
+                            contentType="notes"
+                            itemId={note.id}
+                            processingStatus={note.processingStatus}
+                            enabled={note.enabled}
+                            isJobStuck={actions.isJobStuck}
+                            isReprocessing={actions.isReprocessing}
+                            onReprocessClick={() =>
+                              actions.setShowReprocessDialog(true)
                             }
-                            className={`${note.enabled !== false ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
-                            onClick={
-                              note.enabled !== false
-                                ? () => {
-                                    navigate({
-                                      to: `/processing?assetType=notes&assetId=${note.id}`,
-                                    });
-                                  }
-                                : undefined
-                            }
-                            title={
-                              note.enabled !== false
-                                ? "Click to view processing details"
-                                : "Processing is disabled for this note"
-                            }
-                          >
-                            {note.enabled === false ? (
-                              "disabled"
-                            ) : note.processingStatus === "processing" ? (
-                              <span className="flex items-center gap-1">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                processing
-                              </span>
-                            ) : (
-                              (note.processingStatus || "unknown").replace(
-                                /_/g,
-                                " ",
-                              )
-                            )}
-                          </Badge>
-
-                          {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}
-                          {note.enabled !== false &&
-                            (note.processingStatus === "completed" ||
-                              note.processingStatus === "failed" ||
-                              isJobStuck(note)) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setShowReprocessDialog(true)}
-                                disabled={isReprocessing}
-                                title="Reprocess note"
-                              >
-                                <RefreshCw className="h-4 w-4" />
-                              </Button>
-                            )}
+                          />
                         </div>
                       </div>
                       <div>
@@ -725,108 +444,35 @@ export function NoteDetailClient() {
         </div>
 
         {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={isConfirmDeleteDialogOpen}
-          onOpenChange={setIsConfirmDeleteDialogOpen}
+        <DeleteConfirmDialog
+          open={actions.isDeleteDialogOpen}
+          onOpenChange={actions.setIsDeleteDialogOpen}
+          label="Note"
+          onConfirm={actions.confirmDelete}
         >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Confirm Deletion</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this note? This action cannot be
-                undone.
-              </DialogDescription>
-            </DialogHeader>
-            {noteToDelete && (
-              <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
-                <NoteIcon
-                  note={noteToDelete}
-                  className="h-6 w-6 flex-shrink-0 mt-0.5"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium break-words line-clamp-2 leading-tight">
-                    {noteToDelete.title || "Untitled Note"}
-                  </p>
-                  <p className="text-sm text-muted-foreground truncate mt-1">
-                    ID: {noteToDelete.id}
-                  </p>
-                </div>
-              </div>
-            )}
-            <DialogFooter className="sm:justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsConfirmDeleteDialogOpen(false);
-                  setNoteToDelete(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleDeleteConfirmed}>
-                Delete Note
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
+            <FileText className="h-6 w-6 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium break-words line-clamp-2 leading-tight">
+                {note.title || "Untitled Note"}
+              </p>
+              <p className="text-sm text-muted-foreground truncate mt-1">
+                ID: {note.id}
+              </p>
+            </div>
+          </div>
+        </DeleteConfirmDialog>
 
         {/* Reprocess Confirmation Dialog */}
-        <Dialog
-          open={showReprocessDialog}
-          onOpenChange={setShowReprocessDialog}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reprocess Note</DialogTitle>
-              <DialogDescription>
-                This will re-extract content, generate new tags, and reprocess
-                all AI-generated data for this note. This may take a few
-                minutes.
-                <br />
-                <br />
-                Are you sure you want to continue?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowReprocessDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleReprocess}
-                disabled={isReprocessing}
-                className="flex items-center gap-2"
-              >
-                {isReprocessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Reprocessing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4" />
-                    Reprocess
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ReprocessDialog
+          open={actions.showReprocessDialog}
+          onOpenChange={actions.setShowReprocessDialog}
+          label="Note"
+          description="This will re-extract content, generate new tags, and reprocess all AI-generated data for this note. This may take a few minutes."
+          isReprocessing={actions.isReprocessing}
+          onConfirm={actions.handleReprocess}
+        />
       </div>
     </TooltipProvider>
   );
-}
-
-// Simple note icon component for the delete dialog
-function NoteIcon({
-  note: _note,
-  className,
-}: {
-  note: Note;
-  className?: string;
-}) {
-  // Use the FileText icon as default for notes
-  return <FileText className={className} />;
 }

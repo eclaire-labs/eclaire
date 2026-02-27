@@ -1,0 +1,69 @@
+{
+  "name": "@eclaire/api-types",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared Zod response schemas and inferred TypeScript types for the Eclaire API",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./notes": {
+      "development": "./src/notes.ts",
+      "types": "./src/notes.ts",
+      "default": "./dist/notes.js"
+    },
+    "./bookmarks": {
+      "development": "./src/bookmarks.ts",
+      "types": "./src/bookmarks.ts",
+      "default": "./dist/bookmarks.js"
+    },
+    "./documents": {
+      "development": "./src/documents.ts",
+      "types": "./src/documents.ts",
+      "default": "./dist/documents.js"
+    },
+    "./photos": {
+      "development": "./src/photos.ts",
+      "types": "./src/photos.ts",
+      "default": "./dist/photos.js"
+    },
+    "./tasks": {
+      "development": "./src/tasks.ts",
+      "types": "./src/tasks.ts",
+      "default": "./dist/tasks.js"
+    },
+    "./common": {
+      "development": "./src/common.ts",
+      "types": "./src/common.ts",
+      "default": "./dist/common.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "biome format --write ./",
+    "check": "biome check ./",
+    "fix": "biome check --write ./"
+  },
+  "dependencies": {
+    "@eclaire/core": "workspace:*",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

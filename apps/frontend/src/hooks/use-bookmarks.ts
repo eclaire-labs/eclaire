@@ -1,292 +1,93 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { apiFetch, getAbsoluteApiUrl } from "@/lib/frontend-api";
+import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
 import type { Bookmark } from "@/types/bookmark";
+import { createCrudHooks } from "./create-crud-hooks";
 
-// Transform backend bookmark data to frontend format
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
-const transformBookmarkData = (backendBookmark: any): Bookmark => {
-  return {
-    id: backendBookmark.id,
-    title: backendBookmark.title,
-    description: backendBookmark.description,
-    url: backendBookmark.url,
-    normalizedUrl: backendBookmark.normalizedUrl,
-    author: backendBookmark.author,
-    lang: backendBookmark.lang,
-    dueDate: backendBookmark.dueDate,
-    pageLastUpdatedAt: backendBookmark.pageLastUpdatedAt,
-    contentType: backendBookmark.contentType,
-    etag: backendBookmark.etag,
-    lastModified: backendBookmark.lastModified,
-    tags: backendBookmark.tags || [],
-    // Computed URLs for assets
-    faviconUrl: backendBookmark.faviconUrl
-      ? getAbsoluteApiUrl(backendBookmark.faviconUrl)
-      : null,
-    thumbnailUrl: backendBookmark.thumbnailUrl
-      ? getAbsoluteApiUrl(backendBookmark.thumbnailUrl)
-      : null,
-    screenshotUrl: backendBookmark.screenshotUrl
-      ? getAbsoluteApiUrl(backendBookmark.screenshotUrl)
-      : null,
-    screenshotMobileUrl: backendBookmark.screenshotMobileUrl
-      ? getAbsoluteApiUrl(backendBookmark.screenshotMobileUrl)
-      : null,
-    screenshotFullPageUrl: backendBookmark.screenshotFullPageUrl
-      ? getAbsoluteApiUrl(backendBookmark.screenshotFullPageUrl)
-      : null,
-    pdfUrl: backendBookmark.pdfUrl
-      ? getAbsoluteApiUrl(backendBookmark.pdfUrl)
-      : null,
-    contentUrl: backendBookmark.contentUrl
-      ? getAbsoluteApiUrl(backendBookmark.contentUrl)
-      : null,
-    readableUrl: backendBookmark.readableUrl
-      ? getAbsoluteApiUrl(backendBookmark.readableUrl)
-      : null,
-    readmeUrl: backendBookmark.readmeUrl
-      ? getAbsoluteApiUrl(backendBookmark.readmeUrl)
-      : null,
-    extractedText: backendBookmark.extractedText,
-    // Processing status (unified from backend)
-    processingStatus: backendBookmark.processingStatus || null,
-    // Timestamps (backend returns ISO strings)
-    createdAt: backendBookmark.createdAt || new Date().toISOString(),
-    updatedAt: backendBookmark.updatedAt || new Date().toISOString(),
-    // Review, flagging, and pinning
-    reviewStatus: backendBookmark.reviewStatus || "pending",
-    flagColor: backendBookmark.flagColor || null,
-    isPinned: backendBookmark.isPinned || false,
-    enabled: backendBookmark.enabled ?? true,
-    // Raw metadata
-    rawMetadata: backendBookmark.rawMetadata,
-  };
-};
+const transformBookmarkData = (raw: any): Bookmark => ({
+  id: raw.id,
+  title: raw.title,
+  description: raw.description,
+  url: raw.url,
+  normalizedUrl: raw.normalizedUrl,
+  author: raw.author,
+  lang: raw.lang,
+  dueDate: raw.dueDate,
+  pageLastUpdatedAt: raw.pageLastUpdatedAt,
+  contentType: raw.contentType,
+  etag: raw.etag,
+  lastModified: raw.lastModified,
+  tags: raw.tags || [],
+  faviconUrl: raw.faviconUrl ? getAbsoluteApiUrl(raw.faviconUrl) : null,
+  thumbnailUrl: raw.thumbnailUrl ? getAbsoluteApiUrl(raw.thumbnailUrl) : null,
+  screenshotUrl: raw.screenshotUrl
+    ? getAbsoluteApiUrl(raw.screenshotUrl)
+    : null,
+  screenshotMobileUrl: raw.screenshotMobileUrl
+    ? getAbsoluteApiUrl(raw.screenshotMobileUrl)
+    : null,
+  screenshotFullPageUrl: raw.screenshotFullPageUrl
+    ? getAbsoluteApiUrl(raw.screenshotFullPageUrl)
+    : null,
+  pdfUrl: raw.pdfUrl ? getAbsoluteApiUrl(raw.pdfUrl) : null,
+  contentUrl: raw.contentUrl ? getAbsoluteApiUrl(raw.contentUrl) : null,
+  readableUrl: raw.readableUrl ? getAbsoluteApiUrl(raw.readableUrl) : null,
+  readmeUrl: raw.readmeUrl ? getAbsoluteApiUrl(raw.readmeUrl) : null,
+  extractedText: raw.extractedText,
+  processingStatus: raw.processingStatus || null,
+  createdAt: raw.createdAt || new Date().toISOString(),
+  updatedAt: raw.updatedAt || new Date().toISOString(),
+  reviewStatus: raw.reviewStatus || "pending",
+  flagColor: raw.flagColor || null,
+  isPinned: raw.isPinned || false,
+  enabled: raw.enabled ?? true,
+  rawMetadata: raw.rawMetadata,
+});
 
-/**
- * React Query hook for bookmarks data fetching and management
- */
+const { useList, useSingle } = createCrudHooks<Bookmark>({
+  resourceName: "bookmarks",
+  apiPath: "/api/bookmarks",
+  transform: transformBookmarkData,
+});
+
 export function useBookmarks() {
-  const queryClient = useQueryClient();
-
-  const queryKey = ["bookmarks"];
-
-  // Main bookmarks query
   const {
-    data: bookmarks = [],
-    isLoading,
-    error,
-    refetch,
-  } = useQuery<Bookmark[]>({
+    items: bookmarks,
     queryKey,
-    queryFn: async () => {
-      const response = await apiFetch("/api/bookmarks?limit=9999");
+    queryClient,
+    createItem,
+    updateItem,
+    deleteItem,
+    ...rest
+  } = useList();
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to load bookmarks");
-      }
-
-      const data = await response.json();
-
-      // Transform backend data to frontend format
-      return data.items.map(transformBookmarkData);
-    },
-    staleTime: 30000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  // Create bookmark mutation
-  const createBookmarkMutation = useMutation({
-    mutationFn: async (bookmarkData: { url: string }) => {
-      const response = await apiFetch("/api/bookmarks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookmarkData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to create bookmark");
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      // Invalidate and refetch bookmarks
-      queryClient.invalidateQueries({ queryKey });
-    },
-    onError: (error) => {
-      toast.error(`Failed to create bookmark: ${error.message}`);
-    },
-  });
-
-  // Update bookmark mutation
-  const updateBookmarkMutation = useMutation({
-    mutationFn: async ({
-      id,
-      updates,
-    }: {
-      id: string;
-      updates: Partial<Bookmark>;
-    }) => {
-      const response = await apiFetch(`/api/bookmarks/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to update bookmark");
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
-    onError: (error) => {
-      toast.error(`Update failed: ${error.message}`);
-    },
-  });
-
-  // Delete bookmark mutation
-  const deleteBookmarkMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await apiFetch(`/api/bookmarks/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to delete bookmark");
-      }
-
-      return;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
-    onError: (error) => {
-      toast.error(`Delete failed: ${error.message}`);
-    },
-  });
-
-  // Import bookmarks mutation
-  const importBookmarksMutation = useMutation({
+  const importMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       const response = await apiFetch("/api/bookmarks/import", {
         method: "POST",
         body: formData,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to import bookmarks");
-      }
-
       return response.json();
     },
-    onSuccess: () => {
-      // Invalidate and refetch bookmarks
-      queryClient.invalidateQueries({ queryKey });
-    },
-    onError: (error) => {
-      toast.error(`Import failed: ${error.message}`);
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (error: Error) =>
+      toast.error(`Import failed: ${error.message}`),
   });
 
-  // Helper functions
-  const createBookmark = useCallback(
-    (bookmarkData: { url: string }) => {
-      return createBookmarkMutation.mutateAsync(bookmarkData);
-    },
-    [createBookmarkMutation],
-  );
-
-  const updateBookmark = useCallback(
-    (id: string, updates: Partial<Bookmark>) => {
-      return updateBookmarkMutation.mutateAsync({ id, updates });
-    },
-    [updateBookmarkMutation],
-  );
-
-  const deleteBookmark = useCallback(
-    (id: string) => {
-      return deleteBookmarkMutation.mutateAsync(id);
-    },
-    [deleteBookmarkMutation],
-  );
-
-  const importBookmarks = useCallback(
-    (formData: FormData) => {
-      return importBookmarksMutation.mutateAsync(formData);
-    },
-    [importBookmarksMutation],
-  );
-
-  const refresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
   return {
-    // Data
     bookmarks,
-
-    // States
-    isLoading,
-    error,
-
-    // Actions
-    createBookmark,
-    updateBookmark,
-    deleteBookmark,
-    importBookmarks,
-    refresh,
-
-    // Mutation states
-    isCreating: createBookmarkMutation.isPending,
-    isUpdating: updateBookmarkMutation.isPending,
-    isDeleting: deleteBookmarkMutation.isPending,
-    isImporting: importBookmarksMutation.isPending,
+    ...rest,
+    createBookmark: (data: { url: string }) => createItem(data),
+    updateBookmark: updateItem,
+    deleteBookmark: deleteItem,
+    importBookmarks: (formData: FormData) =>
+      importMutation.mutateAsync(formData),
+    isImporting: importMutation.isPending,
   };
 }
 
-/**
- * Hook for a single bookmark by ID
- */
 export function useBookmark(id: string) {
-  const queryKey = ["bookmarks", id];
-
-  const {
-    data: bookmark,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery<Bookmark>({
-    queryKey,
-    queryFn: async () => {
-      const response = await apiFetch(`/api/bookmarks/${id}`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to load bookmark");
-      }
-
-      const data = await response.json();
-      return transformBookmarkData(data);
-    },
-    enabled: !!id,
-    staleTime: 30000, // 30 seconds
-  });
-
-  return {
-    bookmark,
-    isLoading,
-    error,
-    refresh: refetch,
-  };
+  const { item: bookmark, ...rest } = useSingle(id);
+  return { bookmark, ...rest };
 }

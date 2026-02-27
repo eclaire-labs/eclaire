@@ -6,11 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ToolCall } from "@/components/ui/tool-execution-tracker";
-import {
-  type BackendMessage,
-  type ConversationSummary,
-  getConversations,
-} from "@/lib/frontend-api";
+import { getConversations } from "@/lib/api-conversations";
+import type { BackendMessage, ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
 
 // Helper function to convert backend messages to frontend format

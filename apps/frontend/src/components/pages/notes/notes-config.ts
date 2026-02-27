@@ -1,8 +1,8 @@
 import type { ListPageConfig } from "@/hooks/use-list-page-state";
 import { getTimestamp } from "@/lib/list-page-utils";
-import type { NoteEntry } from "@/types/note";
+import type { Note } from "@/types/note";
 
-export const notesConfig: ListPageConfig<NoteEntry> = {
+export const notesConfig: ListPageConfig<Note> = {
   pageType: "notes",
   contentType: "notes",
   entityName: "note",

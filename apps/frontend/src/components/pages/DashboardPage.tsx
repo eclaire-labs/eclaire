@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { DashboardClientContent } from "@/components/dashboard/DashboardClientContent";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { useAuth } from "@/hooks/use-auth";
-import { apiFetch } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/api-client";
 
 interface DashboardData {
   // biome-ignore lint/suspicious/noExplicitAny: untyped API response

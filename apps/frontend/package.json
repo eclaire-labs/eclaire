@@ -31,6 +31,7 @@
     "typecheck": "tsr generate && tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@eclaire/api-types": "workspace:*",
     "@hookform/resolvers": "5.2.2",
     "@radix-ui/react-accordion": "1.2.12",
     "@radix-ui/react-alert-dialog": "1.1.15",
@@ -91,7 +92,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "oxlint": "catalog:",
     "@tailwindcss/postcss": "4.2.1",
     "@tailwindcss/typography": "0.5.19",
     "@tanstack/router-cli": "1.162.6",
@@ -105,6 +105,8 @@
     "@types/react-dom": "19.2.3",
     "@types/unist": "3.0.3",
     "@vitejs/plugin-react": "5.1.4",
+    "jsdom": "27.4.0",
+    "oxlint": "catalog:",
     "postcss": "8.5.6",
     "tailwindcss": "4.2.1",
     "typescript": "catalog:",

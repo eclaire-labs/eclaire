@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/api-client";
 import type { Bookmark as BookmarkType } from "@/types/bookmark";
 import type { ContentLink } from "@/types/message";
 

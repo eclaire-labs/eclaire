@@ -10,6 +10,9 @@ import { nanoid } from "nanoid";
 import { useCallback, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
+import { TagEditor } from "@/components/shared/TagEditor";
+import { UploadProgressList } from "@/components/shared/UploadProgressList";
+import type { UploadingFile } from "@/components/shared/UploadProgressList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,25 +28,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useNotes } from "@/hooks/use-notes";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/list-page-utils";
-import type { NoteEntry } from "@/types/note";
+import type { Note } from "@/types/note";
 import { NoteListItem } from "./notes/NoteListItem";
 import { NoteTileItem } from "./notes/NoteTileItem";
+import { CreateNoteDialog } from "./notes/CreateNoteDialog";
 import { notesConfig } from "./notes/notes-config";
 
 // ---------------------------------------------------------------------------
 // Upload types & constants
 // ---------------------------------------------------------------------------
 
-interface UploadingFile {
-  id: string;
-  file: File;
-  progress: number;
-  status: "pending" | "uploading" | "success" | "error";
-  error?: string;
+interface NotesUploadingFile extends UploadingFile {
   noteId?: string;
 }
 
@@ -60,7 +58,6 @@ const ALLOWED_UPLOAD_TYPES = {
 // ---------------------------------------------------------------------------
 
 export default function NotesPage() {
-  const _isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -85,18 +82,13 @@ export default function NotesPage() {
   });
 
   // Page-specific state
-  const [selectedEntry, setSelectedEntry] = useState<NoteEntry | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<Note | null>(null);
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
   const [isNewEntryDialogOpen, setIsNewEntryDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [newEntry, setNewEntry] = useState({
-    title: "",
-    content: "",
-    dueDate: null as string | null,
-    tags: [] as string[],
-  });
-  const [tagInput, setTagInput] = useState("");
-  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<NotesUploadingFile[]>(
+    [],
+  );
 
   const containerRef = useRef<HTMLElement | null>(null);
 
@@ -125,28 +117,27 @@ export default function NotesPage() {
 
   // Navigation
   const handleEntryClick = useCallback(
-    (entry: NoteEntry) => {
+    (entry: Note) => {
       navigate({ to: `/notes/${entry.id}` });
     },
     [navigate],
   );
 
-  const openEditDialog = useCallback((entry: NoteEntry) => {
+  const openEditDialog = useCallback((entry: Note) => {
     setSelectedEntry(entry);
     setIsEditMode(true);
     setIsEntryDialogOpen(true);
   }, []);
 
   // Create / Update handlers
-  const handleCreateEntry = async () => {
+  const handleCreateEntry = async (data: {
+    title: string;
+    content: string;
+    dueDate?: string;
+    tags: string[];
+  }) => {
     try {
-      await createNote({
-        title: newEntry.title,
-        content: newEntry.content || "",
-        dueDate: newEntry.dueDate || undefined,
-        tags: newEntry.tags,
-      });
-      setNewEntry({ title: "", content: "", dueDate: null, tags: [] });
+      await createNote(data);
       setIsNewEntryDialogOpen(false);
       toast({
         title: "Note entry created",
@@ -186,33 +177,11 @@ export default function NotesPage() {
     }
   };
 
-  // Tags
-  const handleAddTag = () => {
-    if (!tagInput.trim()) return;
-    const tag = tagInput.trim().toLowerCase();
-    if (isNewEntryDialogOpen && !newEntry.tags.includes(tag)) {
-      setNewEntry({ ...newEntry, tags: [...newEntry.tags, tag] });
-    } else if (isEditMode && selectedEntry && !selectedEntry.tags.includes(tag)) {
-      setSelectedEntry({ ...selectedEntry, tags: [...selectedEntry.tags, tag] });
-    }
-    setTagInput("");
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    if (isNewEntryDialogOpen) {
-      setNewEntry({ ...newEntry, tags: newEntry.tags.filter((t) => t !== tag) });
-    } else if (isEditMode && selectedEntry) {
-      setSelectedEntry({
-        ...selectedEntry,
-        tags: selectedEntry.tags.filter((t) => t !== tag),
-      });
-    }
-  };
 
   // File upload
   const handleFileUpload = useCallback(
     async (acceptedFiles: File[]) => {
-      const newUploads: UploadingFile[] = acceptedFiles.map((file) => ({
+      const newUploads: NotesUploadingFile[] = acceptedFiles.map((file) => ({
         id: nanoid(),
         file,
         progress: 0,
@@ -311,7 +280,7 @@ export default function NotesPage() {
 
   // Render item for GroupedItemList
   const renderTileItem = useCallback(
-    (entry: NoteEntry, index: number) => (
+    (entry: Note, index: number) => (
       <NoteTileItem
         key={entry.id}
         entry={entry}
@@ -328,46 +297,6 @@ export default function NotesPage() {
     [state, handleEntryClick, openEditDialog],
   );
 
-  // Tag editor used in both create and edit dialogs
-  const tagEditor = (
-    tags: string[],
-  ) => (
-    <div className="space-y-2">
-      <Label>Tags</Label>
-      <div className="flex flex-wrap gap-2 mb-2">
-        {tags.map((tag) => (
-          <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-            {tag}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-4 w-4 ml-1"
-              onClick={() => handleRemoveTag(tag)}
-            >
-              <span className="sr-only">Remove tag</span>&times;
-            </Button>
-          </Badge>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <Input
-          placeholder="Add a tag..."
-          value={tagInput}
-          onChange={(e) => setTagInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleAddTag();
-            }
-          }}
-        />
-        <Button type="button" onClick={handleAddTag}>
-          Add
-        </Button>
-      </div>
-    </div>
-  );
 
   return (
     <ListPageLayout
@@ -499,7 +428,18 @@ export default function NotesPage() {
                           }
                         />
                       </div>
-                      {tagEditor(selectedEntry.tags)}
+                      <TagEditor
+                        tags={selectedEntry.tags}
+                        onAddTag={(tag) =>
+                          setSelectedEntry({ ...selectedEntry, tags: [...selectedEntry.tags, tag] })
+                        }
+                        onRemoveTag={(tag) =>
+                          setSelectedEntry({
+                            ...selectedEntry,
+                            tags: selectedEntry.tags.filter((t) => t !== tag),
+                          })
+                        }
+                      />
                     </>
                   ) : (
                     <>
@@ -556,70 +496,12 @@ export default function NotesPage() {
           </Dialog>
 
           {/* New Entry Dialog */}
-          <Dialog open={isNewEntryDialogOpen} onOpenChange={setIsNewEntryDialogOpen}>
-            <DialogContent className="sm:max-w-[625px]">
-              <DialogHeader>
-                <DialogTitle>New Note Entry</DialogTitle>
-                <DialogDescription>
-                  Create a new note entry to record your thoughts.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="new-title">Title</Label>
-                  <Input
-                    id="new-title"
-                    placeholder="Enter a title"
-                    value={newEntry.title}
-                    onChange={(e) =>
-                      setNewEntry({ ...newEntry, title: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-content">Content (optional)</Label>
-                  <Textarea
-                    id="new-content"
-                    placeholder="Add content to your note (optional)..."
-                    rows={8}
-                    value={newEntry.content || ""}
-                    onChange={(e) =>
-                      setNewEntry({ ...newEntry, content: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-due-date">Due Date (optional)</Label>
-                  <Input
-                    id="new-due-date"
-                    type="datetime-local"
-                    value={
-                      newEntry.dueDate
-                        ? new Date(newEntry.dueDate).toISOString().slice(0, 16)
-                        : ""
-                    }
-                    onChange={(e) =>
-                      setNewEntry({
-                        ...newEntry,
-                        dueDate: e.target.value
-                          ? new Date(e.target.value).toISOString()
-                          : null,
-                      })
-                    }
-                  />
-                </div>
-                {tagEditor(newEntry.tags)}
-              </div>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsNewEntryDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateEntry} disabled={!newEntry.title.trim()}>
-                  Create Entry
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <CreateNoteDialog
+            open={isNewEntryDialogOpen}
+            onOpenChange={setIsNewEntryDialogOpen}
+            onCreateNote={handleCreateEntry}
+            isCreating={false}
+          />
         </>
       }
     >
@@ -666,81 +548,5 @@ export default function NotesPage() {
         </div>
       )}
     </ListPageLayout>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Upload Progress List (page-specific)
-// ---------------------------------------------------------------------------
-
-function UploadProgressList({
-  uploads,
-  onClearComplete,
-}: { uploads: UploadingFile[]; onClearComplete: () => void }) {
-  const completedCount = uploads.filter(
-    (u) => u.status === "success" || u.status === "error",
-  ).length;
-
-  return (
-    <div className="bg-card rounded-lg border p-4 shadow-sm">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="font-semibold text-sm">File Uploads</h3>
-        {completedCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClearComplete}
-            className="text-xs h-7"
-          >
-            Clear Completed
-          </Button>
-        )}
-      </div>
-      <div className="space-y-2 max-h-40 overflow-y-auto">
-        {uploads.map((upload) => (
-          <div
-            key={upload.id}
-            className={`flex items-center gap-3 p-2 rounded-md transition-opacity ${
-              upload.status === "success" || upload.status === "error"
-                ? "opacity-70"
-                : ""
-            }`}
-          >
-            <div className="flex-shrink-0">
-              {upload.status === "pending" && (
-                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
-              )}
-              {upload.status === "uploading" && (
-                <Upload className="h-4 w-4 text-blue-500 animate-pulse" />
-              )}
-              {upload.status === "success" && (
-                <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
-                  <div className="h-2 w-2 rounded-full bg-white" />
-                </div>
-              )}
-              {upload.status === "error" && (
-                <AlertCircle className="h-4 w-4 text-red-500" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate" title={upload.file.name}>
-                {upload.file.name}
-              </p>
-              {upload.status === "error" && (
-                <p className="text-xs text-red-600 truncate" title={upload.error}>
-                  {upload.error}
-                </p>
-              )}
-              {upload.status === "success" && (
-                <p className="text-xs text-green-600">Upload complete</p>
-              )}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {Math.round(upload.file.size / 1024)}KB
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }

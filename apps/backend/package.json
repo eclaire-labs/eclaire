@@ -74,6 +74,7 @@
   },
   "dependencies": {
     "@eclaire/ai": "workspace:*",
+    "@eclaire/api-types": "workspace:*",
     "@eclaire/core": "workspace:*",
     "@eclaire/db": "workspace:*",
     "@eclaire/logger": "workspace:*",

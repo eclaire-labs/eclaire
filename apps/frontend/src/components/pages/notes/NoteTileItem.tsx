@@ -27,18 +27,18 @@ import {
 import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
-import type { NoteEntry } from "@/types/note";
+import type { Note } from "@/types/note";
 
 interface NoteTileItemProps {
-  entry: NoteEntry;
+  entry: Note;
   index: number;
   isFocused: boolean;
   onClick: () => void;
-  onEditClick: (entry: NoteEntry) => void;
-  onDeleteClick: (entry: NoteEntry) => void;
-  onPinToggle: (entry: NoteEntry) => void;
-  onFlagColorChange: (entry: NoteEntry, color: FlagColor) => void;
-  onChatClick: (entry: NoteEntry) => void;
+  onEditClick: (entry: Note) => void;
+  onDeleteClick: (entry: Note) => void;
+  onPinToggle: (entry: Note) => void;
+  onFlagColorChange: (entry: Note, color: FlagColor) => void;
+  onChatClick: (entry: Note) => void;
 }
 
 export function NoteTileItem({

@@ -36,17 +36,16 @@ import { AssistantOverlay } from "@/components/ui/assistant-overlay";
 import { useToolExecutionTracker } from "@/components/ui/tool-execution-tracker";
 import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { apiFetch } from "@/lib/api-client";
+import type { PromptRequest } from "@/lib/api-ai";
+import { sendPrompt } from "@/lib/api-ai";
 import {
-  apiFetch,
-  type BackendMessage,
-  type ConversationSummary,
   deleteConversation,
   getConversations,
   getConversationWithMessages,
-  type PromptRequest,
-  sendPrompt,
   updateConversation,
-} from "@/lib/frontend-api";
+} from "@/lib/api-conversations";
+import type { BackendMessage, ConversationSummary } from "@/types/conversation";
 import {
   getMobileTabFromPathname,
   getRouteForMobileTab,

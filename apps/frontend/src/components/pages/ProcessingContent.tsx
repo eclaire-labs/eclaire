@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/table";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProcessingEvents } from "@/hooks/use-processing-status";
-import { apiFetch } from "@/lib/frontend-api";
+import { apiFetch } from "@/lib/api-client";
 
 interface ProcessingJob {
   id: string;

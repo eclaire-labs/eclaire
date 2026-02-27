@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { AIAvatar } from "@/components/ui/ai-avatar";
-import { Badge } from "@/components/ui/badge";
+import { TagEditor } from "@/components/shared/TagEditor";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RecurrenceToggle } from "@/components/ui/recurrence-toggle";
 import {
   Select,
   SelectContent,
@@ -46,10 +45,11 @@ import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation"
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useTasks } from "@/hooks/use-tasks";
 import { useToast } from "@/hooks/use-toast";
-import { getUsers } from "@/lib/frontend-api";
+import { getUsers } from "@/lib/api-users";
 import type { Task, TaskStatus, User } from "@/types/task";
 import { TaskListItem } from "./tasks/TaskListItem";
 import { TaskTileItem } from "./tasks/TaskTileItem";
+import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
 import { tasksConfig } from "./tasks/tasks-config";
 
 const routeApi = getRouteApi("/_authenticated/tasks/");
@@ -196,32 +196,9 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
-  const [newTask, setNewTask] = useState<Omit<Task, "id">>({
-    title: "",
-    description: "",
-    status: "not-started",
-    dueDate: "",
-    assignedToId: null,
-    tags: [],
-    createdAt: "",
-    updatedAt: "",
-    userId: "",
-    reviewStatus: "pending",
-    flagColor: null,
-    isPinned: false,
-    enabled: true,
-    processingStatus: null,
-    isRecurring: false,
-    cronExpression: null,
-    recurrenceEndDate: null,
-    recurrenceLimit: null,
-    runImmediately: false,
-    nextRunAt: null,
-    lastRunAt: null,
-    completedAt: null,
-  });
-  const [tagInput, setTagInput] = useState("");
-
+  const [newTaskDefaultAssignee, setNewTaskDefaultAssignee] = useState<
+    string | undefined
+  >(undefined);
   const containerRef = useRef<HTMLElement | null>(null);
 
   // Error toast
@@ -243,10 +220,7 @@ export default function TasksPage() {
         (user) => user.userType === "assistant",
       );
       if (aiAssistant) {
-        setNewTask((prev) => ({
-          ...prev,
-          assignedToId: aiAssistant.id,
-        }));
+        setNewTaskDefaultAssignee(aiAssistant.id);
       }
       setIsNewTaskDialogOpen(true);
       navigate({ to: "/tasks", replace: true });
@@ -325,8 +299,8 @@ export default function TasksPage() {
   );
 
   // Create task
-  const handleCreateTask = async () => {
-    if (!newTask.title) {
+  const handleCreateTask = async (taskData: Omit<Task, "id">) => {
+    if (!taskData.title) {
       toast({
         title: "Error",
         description: "Task title is required.",
@@ -337,25 +311,25 @@ export default function TasksPage() {
 
     try {
       const taskToSend = {
-        ...newTask,
-        ...(newTask.dueDate && {
-          dueDate: new Date(newTask.dueDate).toISOString(),
+        ...taskData,
+        ...(taskData.dueDate && {
+          dueDate: new Date(taskData.dueDate).toISOString(),
         }),
-        status: newTask.status || "not-started",
-        ...(newTask.assignedToId?.trim() && {
-          assignedToId: newTask.assignedToId,
+        status: taskData.status || "not-started",
+        ...(taskData.assignedToId?.trim() && {
+          assignedToId: taskData.assignedToId,
         }),
-        ...(newTask.description && { description: newTask.description }),
-        isRecurring: newTask.isRecurring || false,
-        ...(newTask.isRecurring && {
-          cronExpression: newTask.cronExpression,
-          ...(newTask.recurrenceEndDate && {
-            recurrenceEndDate: newTask.recurrenceEndDate,
+        ...(taskData.description && { description: taskData.description }),
+        isRecurring: taskData.isRecurring || false,
+        ...(taskData.isRecurring && {
+          cronExpression: taskData.cronExpression,
+          ...(taskData.recurrenceEndDate && {
+            recurrenceEndDate: taskData.recurrenceEndDate,
           }),
-          ...(newTask.recurrenceLimit && {
-            recurrenceLimit: newTask.recurrenceLimit,
+          ...(taskData.recurrenceLimit && {
+            recurrenceLimit: taskData.recurrenceLimit,
           }),
-          runImmediately: newTask.runImmediately || false,
+          runImmediately: taskData.runImmediately || false,
         }),
       };
 
@@ -371,32 +345,6 @@ export default function TasksPage() {
       }
 
       await createTask(taskToSend);
-
-      setNewTask({
-        title: "",
-        description: "",
-        status: "not-started",
-        dueDate: "",
-        assignedToId: null,
-        tags: [],
-        createdAt: "",
-        updatedAt: "",
-        userId: "",
-        reviewStatus: "pending",
-        flagColor: null,
-        isPinned: false,
-        enabled: true,
-        processingStatus: null,
-        isRecurring: false,
-        cronExpression: null,
-        recurrenceEndDate: null,
-        recurrenceLimit: null,
-        runImmediately: false,
-        nextRunAt: null,
-        lastRunAt: null,
-        completedAt: null,
-      });
-      setTagInput("");
       setIsNewTaskDialogOpen(false);
       toast({
         title: "Task Created",
@@ -454,7 +402,7 @@ export default function TasksPage() {
 
       setIsTaskDialogOpen(false);
       setEditingTask(null);
-      setTagInput("");
+
       toast({
         title: "Task Updated",
         description: `"${editingTask.title}" saved.`,
@@ -464,39 +412,6 @@ export default function TasksPage() {
     }
   };
 
-  // Tag handling
-  const handleAddTag = () => {
-    if (!tagInput.trim()) return;
-    const tag = tagInput.trim().toLowerCase();
-
-    if (isNewTaskDialogOpen) {
-      if (!newTask.tags.includes(tag)) {
-        setNewTask((prev) => ({ ...prev, tags: [...prev.tags, tag] }));
-      }
-    } else if (editingTask) {
-      if (!editingTask.tags.includes(tag)) {
-        setEditingTask((prev) =>
-          prev ? { ...prev, tags: [...prev.tags, tag] } : null,
-        );
-      }
-    }
-    setTagInput("");
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    if (isNewTaskDialogOpen) {
-      setNewTask((prev) => ({
-        ...prev,
-        tags: prev.tags.filter((t) => t !== tagToRemove),
-      }));
-    } else if (editingTask) {
-      setEditingTask((prev) =>
-        prev
-          ? { ...prev, tags: prev.tags.filter((t) => t !== tagToRemove) }
-          : null,
-      );
-    }
-  };
 
   // Current user for avatars
   const currentUser = auth?.user ? transformBackendUser(auth.user) : undefined;
@@ -622,47 +537,6 @@ export default function TasksPage() {
     </SelectContent>
   );
 
-  // Tag editor used in both create and edit dialogs
-  const tagEditor = (tags: string[]) => (
-    <div className="space-y-2">
-      <Label>Tags</Label>
-      <div className="flex flex-wrap gap-2 mb-2 min-h-[24px]">
-        {tags.map((tag) => (
-          <Badge
-            key={tag}
-            variant="secondary"
-            className="flex items-center gap-1"
-          >
-            {tag}
-            <button
-              type="button"
-              className="ml-1 text-muted-foreground hover:text-foreground focus:outline-none"
-              onClick={() => handleRemoveTag(tag)}
-              aria-label={`Remove tag ${tag}`}
-            >
-              &times;
-            </button>
-          </Badge>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <Input
-          placeholder="Add a tag..."
-          value={tagInput}
-          onChange={(e) => setTagInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleAddTag();
-            }
-          }}
-        />
-        <Button type="button" variant="outline" onClick={handleAddTag}>
-          Add
-        </Button>
-      </div>
-    </div>
-  );
 
   return (
     <ListPageLayout
@@ -687,31 +561,7 @@ export default function TasksPage() {
       headerAction={
         <Button
           onClick={() => {
-            setNewTask({
-              title: "",
-              description: "",
-              status: "not-started",
-              dueDate: "",
-              assignedToId: currentUserId,
-              tags: [],
-              createdAt: "",
-              updatedAt: "",
-              userId: currentUserId,
-              reviewStatus: "pending",
-              flagColor: null,
-              isPinned: false,
-              enabled: true,
-              processingStatus: null,
-              isRecurring: false,
-              cronExpression: null,
-              recurrenceEndDate: null,
-              recurrenceLimit: null,
-              runImmediately: false,
-              nextRunAt: null,
-              lastRunAt: null,
-              completedAt: null,
-            });
-            setTagInput("");
+            setNewTaskDefaultAssignee(currentUserId);
             setIsNewTaskDialogOpen(true);
           }}
         >
@@ -729,7 +579,7 @@ export default function TasksPage() {
               setIsTaskDialogOpen(open);
               if (!open) {
                 setEditingTask(null);
-                setTagInput("");
+          
               }
             }}
           >
@@ -825,7 +675,21 @@ export default function TasksPage() {
                     </div>
                   </div>
                   {/* Tags */}
-                  {tagEditor(editingTask.tags)}
+                  <TagEditor
+                    tags={editingTask.tags}
+                    onAddTag={(tag) =>
+                      setEditingTask((prev) =>
+                        prev ? { ...prev, tags: [...prev.tags, tag] } : null,
+                      )
+                    }
+                    onRemoveTag={(tag) =>
+                      setEditingTask((prev) =>
+                        prev
+                          ? { ...prev, tags: prev.tags.filter((t) => t !== tag) }
+                          : null,
+                      )
+                    }
+                  />
                 </div>
               )}
               <DialogFooter className="sm:justify-between gap-2 pt-4 border-t mt-2">
@@ -866,156 +730,14 @@ export default function TasksPage() {
           </Dialog>
 
           {/* New Task Dialog */}
-          <Dialog
+          <CreateTaskDialog
             open={isNewTaskDialogOpen}
             onOpenChange={setIsNewTaskDialogOpen}
-          >
-            <DialogContent className="sm:max-w-[625px]">
-              <DialogHeader>
-                <DialogTitle>Create New Task</DialogTitle>
-                <DialogDescription>
-                  Add a new task to your list.
-                </DialogDescription>
-              </DialogHeader>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleCreateTask();
-                }}
-              >
-                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto px-2">
-                  {/* Title */}
-                  <div className="space-y-2">
-                    <Label htmlFor="new-title">
-                      Title <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="new-title"
-                      placeholder="Task title"
-                      value={newTask.title}
-                      onChange={(e) =>
-                        setNewTask({ ...newTask, title: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  {/* Description */}
-                  <div className="space-y-2">
-                    <Label htmlFor="new-description">Description</Label>
-                    <Textarea
-                      id="new-description"
-                      placeholder="Task description (optional)"
-                      rows={3}
-                      value={newTask.description || ""}
-                      onChange={(e) =>
-                        setNewTask({
-                          ...newTask,
-                          description: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  {/* Status & Due Date */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-status">Status</Label>
-                      <Select
-                        value={newTask.status}
-                        onValueChange={(value) =>
-                          setNewTask({
-                            ...newTask,
-                            status: value as TaskStatus,
-                          })
-                        }
-                      >
-                        <SelectTrigger id="new-status">
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not-started">
-                            Not Started
-                          </SelectItem>
-                          <SelectItem value="in-progress">
-                            In Progress
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-due-date">Due Date</Label>
-                      <Input
-                        id="new-due-date"
-                        type="datetime-local"
-                        value={formatDateForInput(newTask.dueDate)}
-                        onChange={(e) =>
-                          setNewTask({ ...newTask, dueDate: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    {/* Recurrence */}
-                    <div className="space-y-2">
-                      <RecurrenceToggle
-                        value={{
-                          isRecurring: newTask.isRecurring,
-                          cronExpression: newTask.cronExpression,
-                          recurrenceEndDate: newTask.recurrenceEndDate,
-                          recurrenceLimit: newTask.recurrenceLimit,
-                          runImmediately: newTask.runImmediately,
-                        }}
-                        onChange={(config) =>
-                          setNewTask({
-                            ...newTask,
-                            isRecurring: config.isRecurring,
-                            cronExpression: config.cronExpression,
-                            recurrenceEndDate: config.recurrenceEndDate,
-                            recurrenceLimit: config.recurrenceLimit,
-                            runImmediately: config.runImmediately,
-                          })
-                        }
-                        dueDate={newTask.dueDate}
-                      />
-                    </div>
-                  </div>
-                  {/* Assignee */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-assignee">Assignee</Label>
-                      <Select
-                        value={newTask.assignedToId || "UNASSIGNED"}
-                        onValueChange={(value) =>
-                          setNewTask({
-                            ...newTask,
-                            assignedToId: value === "UNASSIGNED" ? null : value,
-                          })
-                        }
-                      >
-                        <SelectTrigger id="new-assignee">
-                          <SelectValue placeholder="Assignee" />
-                        </SelectTrigger>
-                        {renderAssigneeSelectContent()}
-                      </Select>
-                    </div>
-                  </div>
-                  {/* Tags */}
-                  {tagEditor(newTask.tags)}
-                </div>
-                <DialogFooter className="pt-4 border-t mt-2">
-                  <DialogClose asChild>
-                    <Button type="button" variant="ghost" disabled={isUpdating}>
-                      Cancel
-                    </Button>
-                  </DialogClose>
-                  <Button type="submit" disabled={isUpdating || !newTask.title}>
-                    {isUpdating && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Create Task
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+            onCreateTask={handleCreateTask}
+            isCreating={isUpdating}
+            defaultAssigneeId={newTaskDefaultAssignee}
+            renderAssigneeSelectContent={renderAssigneeSelectContent}
+          />
         </>
       }
     >

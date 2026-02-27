@@ -23,7 +23,6 @@ import {
   MessageSquare,
   Monitor,
   Package,
-  RefreshCw,
   Repeat,
   Shield,
   Smartphone,
@@ -37,17 +36,12 @@ import {
 const routeApi = getRouteApi("/_authenticated/bookmarks/$id");
 
 import { useEffect, useState } from "react";
+import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
+import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
+import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { DueDatePicker } from "@/components/ui/due-date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,48 +49,16 @@ import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useBookmark } from "@/hooks/use-bookmarks";
+import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useToast } from "@/hooks/use-toast";
-import {
-  apiFetch,
-  getAbsoluteApiUrl,
-  setFlagColor,
-  togglePin,
-} from "@/lib/frontend-api";
+import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
+import { formatDate } from "@/lib/date-utils";
 import type {
   Bookmark,
   GitHubMetadata,
   RedditMetadata,
   TwitterMetadata,
 } from "@/types/bookmark";
-
-const formatDate = (date: number | string | null | undefined) => {
-  if (!date) return "N/A";
-  try {
-    let dateObj: Date;
-    if (typeof date === "string") {
-      // Handle ISO date strings
-      dateObj = new Date(date);
-    } else {
-      // Handle Unix timestamps
-      dateObj = new Date(date * 1000);
-    }
-
-    if (Number.isNaN(dateObj.getTime())) {
-      return "Invalid Date";
-    }
-
-    return dateObj.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch (error) {
-    console.error("Error formatting date:", date, error);
-    return "Invalid Date";
-  }
-};
 
 const getDomainFromUrl = (url: string) => {
   try {
@@ -156,16 +118,17 @@ export function BookmarkDetailClient() {
   const [localBookmark, setLocalBookmark] = useState<Bookmark | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [tagInput, setTagInput] = useState("");
-  const [isReprocessing, setIsReprocessing] = useState(false);
-  const [showReprocessDialog, setShowReprocessDialog] = useState(false);
-  const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] =
-    useState(false);
-  const [bookmarkToDelete, setBookmarkToDelete] = useState<Bookmark | null>(
-    null,
-  );
 
   // Use React Query hook for data fetching
   const { bookmark, isLoading, error, refresh } = useBookmark(bookmarkId);
+
+  // Shared detail page actions (pin, flag, chat, delete, reprocess)
+  const actions = useDetailPageActions({
+    contentType: "bookmarks",
+    item: bookmark,
+    refresh,
+    onDeleted: () => navigate({ to: "/bookmarks" }),
+  });
 
   // Initialize local bookmark state for editing
   useEffect(() => {
@@ -230,203 +193,6 @@ export function BookmarkDetailClient() {
         ...localBookmark,
         tags: localBookmark.tags.filter((t) => t !== tag),
       });
-    }
-  };
-
-  const handlePinToggle = async () => {
-    if (!bookmark) return;
-
-    try {
-      const response = await togglePin(
-        "bookmarks",
-        bookmark.id,
-        !bookmark.isPinned,
-      );
-      if (response.ok) {
-        const updatedBookmark = await response.json();
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: updatedBookmark.isPinned ? "Pinned" : "Unpinned",
-          description: `Bookmark has been ${updatedBookmark.isPinned ? "pinned" : "unpinned"}.`,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update pin status",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling pin:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update pin status",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleFlagToggle = async () => {
-    if (!bookmark) return;
-    await handleFlagColorChange(bookmark.flagColor ? null : "orange");
-  };
-
-  const handleDelete = () => {
-    if (!bookmark) return;
-    setBookmarkToDelete(bookmark);
-    setIsConfirmDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirmed = async () => {
-    if (!bookmarkToDelete) return;
-
-    try {
-      const response = await apiFetch(`/api/bookmarks/${bookmarkToDelete.id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        setIsConfirmDeleteDialogOpen(false);
-        setBookmarkToDelete(null);
-        toast({
-          title: "Bookmark deleted",
-          description: "Your bookmark has been deleted.",
-        });
-        navigate({ to: "/bookmarks" });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to delete bookmark",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error deleting bookmark:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete bookmark",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleChatClick = () => {
-    if (!bookmark) return;
-
-    // Use the global function to open assistant with pre-attached assets
-    if (
-      typeof window !== "undefined" &&
-      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
-      (window as any).openAssistantWithAssets
-    ) {
-      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
-      (window as any).openAssistantWithAssets([
-        {
-          type: "bookmark",
-          id: bookmark.id,
-          title: bookmark.title,
-        },
-      ]);
-    }
-  };
-
-  const handleFlagColorChange = async (
-    color: "red" | "yellow" | "orange" | "green" | "blue" | null,
-  ) => {
-    if (!bookmark) return;
-
-    try {
-      const response = await setFlagColor("bookmarks", bookmark.id, color);
-      if (response.ok) {
-        // Refresh to get latest data from server
-        refresh();
-        toast({
-          title: color ? "Flag Updated" : "Flag Removed",
-          description: color
-            ? `Bookmark flag changed to ${color}.`
-            : "Flag removed from bookmark.",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update flag color",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error changing flag color:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update flag color",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Helper function to detect stuck processing jobs
-  const isJobStuck = (bookmark: Bookmark) => {
-    if (!bookmark.processingStatus) return false;
-
-    const now = Date.now();
-    const fifteenMinutesAgo = now - 15 * 60 * 1000;
-
-    // Job is stuck if:
-    // 1. Status is "pending" and created >15 minutes ago, OR
-    // 2. Status is "processing" and not updated >15 minutes ago
-    return (
-      (bookmark.processingStatus === "pending" &&
-        new Date(bookmark.createdAt).getTime() < fifteenMinutesAgo) ||
-      (bookmark.processingStatus === "processing" &&
-        new Date(bookmark.updatedAt).getTime() < fifteenMinutesAgo)
-    );
-  };
-
-  const handleReprocess = async () => {
-    if (!bookmark) return;
-
-    try {
-      setIsReprocessing(true);
-      setShowReprocessDialog(false);
-
-      const isStuck = isJobStuck(bookmark);
-      const response = await apiFetch(
-        `/api/bookmarks/${bookmark.id}/reprocess`,
-        {
-          method: "POST",
-          ...(isStuck && {
-            body: JSON.stringify({ force: true }),
-            headers: { "Content-Type": "application/json" },
-          }),
-        },
-      );
-
-      if (response.ok) {
-        toast({
-          title: "Reprocessing Started",
-          description:
-            "Your bookmark has been queued for reprocessing. This may take a few minutes.",
-        });
-
-        // SSE events will automatically update the processing status
-        // No need to manually update state
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Error",
-          description: errorData.error || "Failed to reprocess bookmark",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error reprocessing bookmark:", error);
-      toast({
-        title: "Error",
-        description: "Failed to reprocess bookmark",
-        variant: "destructive",
-      });
-    } finally {
-      setIsReprocessing(false);
     }
   };
 
@@ -535,14 +301,14 @@ export function BookmarkDetailClient() {
               size="md"
               isPinned={bookmark.isPinned || false}
               flagColor={bookmark.flagColor}
-              onPinToggle={handlePinToggle}
-              onFlagToggle={handleFlagToggle}
-              onFlagColorChange={handleFlagColorChange}
+              onPinToggle={actions.handlePinToggle}
+              onFlagToggle={actions.handleFlagToggle}
+              onFlagColorChange={actions.handleFlagColorChange}
             />
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleChatClick}
+              onClick={actions.handleChatClick}
               title="Chat about this bookmark"
             >
               <MessageSquare className="h-4 w-4" />
@@ -558,7 +324,7 @@ export function BookmarkDetailClient() {
               <>
                 <Button
                   variant="outline"
-                  onClick={handleDelete}
+                  onClick={actions.openDeleteDialog}
                   className="text-red-600 hover:text-red-700"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -799,63 +565,18 @@ export function BookmarkDetailClient() {
 
                 <div>
                   <Label>Processing Status</Label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Badge
-                      variant={
-                        bookmark.enabled === false
-                          ? "outline"
-                          : bookmark.processingStatus === "completed"
-                            ? "default"
-                            : bookmark.processingStatus === "failed"
-                              ? "destructive"
-                              : "secondary"
+                  <div className="mt-1">
+                    <ProcessingStatusBadge
+                      contentType="bookmarks"
+                      itemId={bookmark.id}
+                      processingStatus={bookmark.processingStatus}
+                      enabled={bookmark.enabled}
+                      isJobStuck={actions.isJobStuck}
+                      isReprocessing={actions.isReprocessing}
+                      onReprocessClick={() =>
+                        actions.setShowReprocessDialog(true)
                       }
-                      className={`${bookmark.enabled !== false ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
-                      onClick={
-                        bookmark.enabled !== false
-                          ? () => {
-                              navigate({
-                                to: `/processing?assetType=bookmarks&assetId=${bookmark.id}`,
-                              });
-                            }
-                          : undefined
-                      }
-                      title={
-                        bookmark.enabled !== false
-                          ? "Click to view processing details"
-                          : "Processing is disabled for this bookmark"
-                      }
-                    >
-                      {bookmark.enabled === false ? (
-                        "disabled"
-                      ) : bookmark.processingStatus === "processing" ? (
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          processing
-                        </span>
-                      ) : (
-                        (bookmark.processingStatus || "unknown").replace(
-                          /_/g,
-                          " ",
-                        )
-                      )}
-                    </Badge>
-
-                    {/* Show reprocess button for completed, failed, or stuck jobs but not disabled */}
-                    {bookmark.enabled !== false &&
-                      (bookmark.processingStatus === "completed" ||
-                        bookmark.processingStatus === "failed" ||
-                        isJobStuck(bookmark)) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setShowReprocessDialog(true)}
-                          disabled={isReprocessing}
-                          title="Reprocess bookmark"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                      )}
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -1553,95 +1274,39 @@ export function BookmarkDetailClient() {
         </div>
 
         {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={isConfirmDeleteDialogOpen}
-          onOpenChange={setIsConfirmDeleteDialogOpen}
+        <DeleteConfirmDialog
+          open={actions.isDeleteDialogOpen}
+          onOpenChange={actions.setIsDeleteDialogOpen}
+          label="Bookmark"
+          onConfirm={actions.confirmDelete}
         >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Confirm Deletion</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this bookmark? This action
-                cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            {bookmarkToDelete && (
-              <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
-                <Favicon
-                  bookmark={bookmarkToDelete}
-                  className="h-6 w-6 flex-shrink-0 mt-0.5"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium break-words line-clamp-2 leading-tight">
-                    {bookmarkToDelete.title || "Untitled"}
-                  </p>
-                  <p className="text-sm text-muted-foreground truncate mt-1">
-                    {bookmarkToDelete.url}
-                  </p>
-                </div>
+          {bookmark && (
+            <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
+              <Favicon
+                bookmark={bookmark}
+                className="h-6 w-6 flex-shrink-0 mt-0.5"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium break-words line-clamp-2 leading-tight">
+                  {bookmark.title || "Untitled"}
+                </p>
+                <p className="text-sm text-muted-foreground truncate mt-1">
+                  {bookmark.url}
+                </p>
               </div>
-            )}
-            <DialogFooter className="sm:justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsConfirmDeleteDialogOpen(false);
-                  setBookmarkToDelete(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleDeleteConfirmed}>
-                Delete Bookmark
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </div>
+          )}
+        </DeleteConfirmDialog>
 
         {/* Reprocess Confirmation Dialog */}
-        <Dialog
-          open={showReprocessDialog}
-          onOpenChange={setShowReprocessDialog}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reprocess Bookmark</DialogTitle>
-              <DialogDescription>
-                This will re-extract content, generate new tags, take fresh
-                screenshots, and reprocess all AI-generated data for this
-                bookmark. This may take a few minutes.
-                <br />
-                <br />
-                Are you sure you want to continue?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowReprocessDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleReprocess}
-                disabled={isReprocessing}
-                className="flex items-center gap-2"
-              >
-                {isReprocessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Reprocessing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4" />
-                    Reprocess
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <ReprocessDialog
+          open={actions.showReprocessDialog}
+          onOpenChange={actions.setShowReprocessDialog}
+          label="Bookmark"
+          description="This will re-scrape the URL, take new screenshots, and reprocess all data for this bookmark. This may take a few minutes."
+          isReprocessing={actions.isReprocessing}
+          onConfirm={actions.handleReprocess}
+        />
       </div>
     </TooltipProvider>
   );

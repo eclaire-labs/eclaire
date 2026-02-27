@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { useSession } from "@/lib/auth";
-import { getAbsoluteApiUrl } from "@/lib/frontend-api";
+import { getAbsoluteApiUrl } from "@/lib/api-client";
 
 export type AssetType =
   | "photos"

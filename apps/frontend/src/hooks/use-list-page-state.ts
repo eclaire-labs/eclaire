@@ -5,7 +5,7 @@ import {
   type ViewPreferences,
   useViewPreferences,
 } from "@/hooks/use-view-preferences";
-import { setFlagColor, togglePin } from "@/lib/frontend-api";
+import { setFlagColor, togglePin } from "@/lib/api-content";
 
 // ---------------------------------------------------------------------------
 // Types
