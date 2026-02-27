@@ -7,7 +7,7 @@
 
 import { getErrorMessage } from "@eclaire/core";
 import type { QueueLogger } from "../core/types.js";
-import type { AssetType, JobWaitlistInterface } from "./types.js";
+import type { JobWaitlistInterface } from "./types.js";
 
 interface Waiter {
   // biome-ignore lint/suspicious/noExplicitAny: resolve callback accepts any job type or null
@@ -21,7 +21,7 @@ export interface WaitlistConfig {
   /** Logger instance */
   logger: QueueLogger;
   /** Function to find the next scheduled job (for scheduling wakeups) */
-  findNextScheduledJob?: (assetType: AssetType) => Promise<Date | null>;
+  findNextScheduledJob?: (queue: string) => Promise<Date | null>;
 }
 
 /**
@@ -32,33 +32,31 @@ export function createJobWaitlist(
 ): JobWaitlistInterface {
   const { logger, findNextScheduledJob } = config;
 
-  const waiters = new Map<AssetType, Waiter[]>();
-  const wakeTimers = new Map<AssetType, NodeJS.Timeout>();
+  const waiters = new Map<string, Waiter[]>();
+  const wakeTimers = new Map<string, NodeJS.Timeout>();
 
-  // Initialize empty arrays for each asset type
-  const assetTypes: AssetType[] = [
-    "bookmarks",
-    "photos",
-    "documents",
-    "notes",
-    "tasks",
-  ];
-  for (const assetType of assetTypes) {
-    waiters.set(assetType, []);
+  /** Get or create the waiter list for a queue */
+  function getWaiters(queue: string): Waiter[] {
+    let list = waiters.get(queue);
+    if (!list) {
+      list = [];
+      waiters.set(queue, list);
+    }
+    return list;
   }
 
-  function removeWaiter(assetType: AssetType, waiter: Waiter): void {
-    const waitersForType = waiters.get(assetType);
-    if (!waitersForType) return;
+  function removeWaiter(queue: string, waiter: Waiter): void {
+    const waitersForQueue = waiters.get(queue);
+    if (!waitersForQueue) return;
 
-    const index = waitersForType.indexOf(waiter);
+    const index = waitersForQueue.indexOf(waiter);
     if (index !== -1) {
-      waitersForType.splice(index, 1);
+      waitersForQueue.splice(index, 1);
       logger.debug(
         {
-          assetType,
+          queue,
           workerId: waiter.workerId,
-          remainingWaiters: waitersForType.length,
+          remainingWaiters: waitersForQueue.length,
         },
         "Removed worker from waitlist",
       );
@@ -67,7 +65,7 @@ export function createJobWaitlist(
 
   return {
     async addWaiter(
-      assetType: AssetType,
+      queue: string,
       workerId: string,
       timeout: number = 30000,
       // biome-ignore lint/suspicious/noExplicitAny: return type varies — resolves with claimed job or null
@@ -80,22 +78,17 @@ export function createJobWaitlist(
           workerId,
         };
 
-        const waitersForType = waiters.get(assetType);
-        if (!waitersForType) {
-          reject(new Error(`Invalid asset type: ${assetType}`));
-          return;
-        }
-
-        waitersForType.push(waiter);
+        const waitersForQueue = getWaiters(queue);
+        waitersForQueue.push(waiter);
         logger.debug(
-          { assetType, workerId, waitersCount: waitersForType.length },
+          { queue, workerId, waitersCount: waitersForQueue.length },
           "Added worker to waitlist",
         );
 
         // Set timeout to reject if no job arrives
         const safeTimeout = Math.max(1, timeout);
         const timeoutTimer = setTimeout(() => {
-          removeWaiter(assetType, waiter);
+          removeWaiter(queue, waiter);
           resolve(null); // Timeout - no job available
         }, safeTimeout);
 
@@ -109,21 +102,21 @@ export function createJobWaitlist(
       });
     },
 
-    notifyWaiters(assetType: AssetType, count: number = 1): number {
-      const waitersForType = waiters.get(assetType);
-      if (!waitersForType || waitersForType.length === 0) {
-        logger.debug({ assetType }, "No waiters to notify");
+    notifyWaiters(queue: string, count: number = 1): number {
+      const waitersForQueue = waiters.get(queue);
+      if (!waitersForQueue || waitersForQueue.length === 0) {
+        logger.debug({ queue }, "No waiters to notify");
         return 0;
       }
 
-      const toNotify = Math.min(count, waitersForType.length);
+      const toNotify = Math.min(count, waitersForQueue.length);
       logger.info(
-        { assetType, count: toNotify, totalWaiters: waitersForType.length },
+        { queue, count: toNotify, totalWaiters: waitersForQueue.length },
         "Notifying waiters",
       );
 
       for (let i = 0; i < toNotify; i++) {
-        const waiter = waitersForType.shift();
+        const waiter = waitersForQueue.shift();
         if (waiter) {
           // Resolve with undefined - the waiter will try to claim a job
           waiter.resolve(undefined);
@@ -133,32 +126,32 @@ export function createJobWaitlist(
       return toNotify;
     },
 
-    notifyAllWaiters(assetType: AssetType): number {
-      const waitersForType = waiters.get(assetType);
-      if (!waitersForType) return 0;
+    notifyAllWaiters(queue: string): number {
+      const waitersForQueue = waiters.get(queue);
+      if (!waitersForQueue) return 0;
 
-      const count = waitersForType.length;
-      return this.notifyWaiters(assetType, count);
+      const count = waitersForQueue.length;
+      return this.notifyWaiters(queue, count);
     },
 
-    async scheduleNextWakeup(assetType: AssetType): Promise<void> {
+    async scheduleNextWakeup(queue: string): Promise<void> {
       // Clear existing timer
-      const existingTimer = wakeTimers.get(assetType);
+      const existingTimer = wakeTimers.get(queue);
       if (existingTimer) {
         clearTimeout(existingTimer);
       }
 
       if (!findNextScheduledJob) {
         logger.debug(
-          { assetType },
+          { queue },
           "No findNextScheduledJob function provided - skipping wakeup scheduling",
         );
         return;
       }
 
       try {
-        // Find the earliest scheduled job for this asset type
-        const nextRun = await findNextScheduledJob(assetType);
+        // Find the earliest scheduled job for this queue
+        const nextRun = await findNextScheduledJob(queue);
 
         if (nextRun) {
           const delay = nextRun.getTime() - Date.now();
@@ -166,25 +159,25 @@ export function createJobWaitlist(
           if (delay > 0 && delay < 86400000) {
             // Max 24 hours
             logger.info(
-              { assetType, nextRun: nextRun.toISOString(), delay },
+              { queue, nextRun: nextRun.toISOString(), delay },
               "Scheduled next wakeup",
             );
 
             const safeDelay = Math.max(1, delay || 0);
             const timer = setTimeout(() => {
-              logger.debug({ assetType }, "Wakeup timer fired");
-              this.notifyAllWaiters(assetType);
+              logger.debug({ queue }, "Wakeup timer fired");
+              this.notifyAllWaiters(queue);
               // Schedule the next wakeup
-              this.scheduleNextWakeup(assetType);
+              this.scheduleNextWakeup(queue);
             }, safeDelay);
 
-            wakeTimers.set(assetType, timer);
+            wakeTimers.set(queue, timer);
           }
         }
       } catch (error) {
         logger.error(
           {
-            assetType,
+            queue,
             error: getErrorMessage(error),
           },
           "Failed to schedule next wakeup",
@@ -192,40 +185,40 @@ export function createJobWaitlist(
       }
     },
 
-    getWaiterCount(assetType: AssetType): number {
-      return waiters.get(assetType)?.length || 0;
+    getWaiterCount(queue: string): number {
+      return waiters.get(queue)?.length || 0;
     },
 
-    getStats(): Record<AssetType, number> {
+    getStats(): Record<string, number> {
       const stats: Record<string, number> = {};
-      for (const [assetType, waitersForType] of waiters.entries()) {
-        stats[assetType] = waitersForType.length;
+      for (const [queue, waitersForQueue] of waiters.entries()) {
+        stats[queue] = waitersForQueue.length;
       }
-      return stats as Record<AssetType, number>;
+      return stats;
     },
 
     close(): void {
       logger.debug({}, "Closing waitlist");
 
       // Clear all wake timers
-      for (const [assetType, timer] of wakeTimers.entries()) {
+      for (const [queue, timer] of wakeTimers.entries()) {
         clearTimeout(timer);
-        logger.debug({ assetType }, "Cleared wake timer");
+        logger.debug({ queue }, "Cleared wake timer");
       }
       wakeTimers.clear();
 
       // Resolve all pending waiters with null (no job)
-      for (const [assetType, waitersForType] of waiters.entries()) {
-        const count = waitersForType.length;
+      for (const [queue, waitersForQueue] of waiters.entries()) {
+        const count = waitersForQueue.length;
         if (count > 0) {
           logger.debug(
-            { assetType, count },
+            { queue, count },
             "Resolving pending waiters on close",
           );
-          for (const waiter of waitersForType) {
+          for (const waiter of waitersForQueue) {
             waiter.resolve(null);
           }
-          waitersForType.length = 0; // Clear the array
+          waitersForQueue.length = 0; // Clear the array
         }
       }
 

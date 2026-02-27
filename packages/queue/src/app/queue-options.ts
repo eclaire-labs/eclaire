@@ -1,48 +1,22 @@
 /**
- * Centralized BullMQ queue and job options
+ * Centralized queue and worker options
  *
  * This module provides a single source of truth for:
- * - Job options (attempts, backoff, removal policies) per queue
  * - Worker option factories for different task durations
+ * - Queue-to-worker-category mapping
+ *
+ * BullMQ-specific job options (attempts, backoff, removal policies) are in
+ * `driver-bullmq/job-options.ts` and re-exported here for backward compatibility.
  */
 
-import type { JobsOptions } from "bullmq";
 import { type QueueName, QueueNames } from "./queue-names.js";
 
-// --- Job Options Per Queue ---
-
-/**
- * Default job options for bookmark processing
- * Higher retry count (3) with shorter initial delay due to network variability
- */
-export const bookmarkJobOptions: JobsOptions = {
-  attempts: 3,
-  backoff: { type: "exponential", delay: 1000 },
-  removeOnComplete: { count: 1000 },
-  removeOnFail: { count: 5000 },
-};
-
-/**
- * Default job options for standard processing queues
- * (image, document, note, task, task-execution)
- * 2 attempts with longer backoff for resource-intensive operations
- */
-export const standardJobOptions: JobsOptions = {
-  attempts: 2,
-  backoff: { type: "exponential", delay: 10000 },
-  removeOnComplete: { count: 1000 },
-  removeOnFail: { count: 5000 },
-};
-
-/**
- * Get default job options for a specific queue
- */
-export function getDefaultJobOptions(queueName: QueueName): JobsOptions {
-  if (queueName === QueueNames.BOOKMARK_PROCESSING) {
-    return bookmarkJobOptions;
-  }
-  return standardJobOptions;
-}
+// Re-export BullMQ-specific job options for backward compatibility
+export {
+  bookmarkJobOptions,
+  getDefaultJobOptions,
+  standardJobOptions,
+} from "../driver-bullmq/job-options.js";
 
 // --- Worker Timeout Constants ---
 

@@ -5,12 +5,14 @@
  */
 
 import { getRequestId, type Logger } from "@eclaire/logger";
+import type { QueueName } from "../queue-names.js";
 import { QueueNames } from "../queue-names.js";
 import type { QueueManager } from "../queues.js";
 import type {
   BookmarkJobData,
   DocumentJobData,
   ImageJobData,
+  JobData,
   NoteJobData,
   QueueAdapter,
   TaskJobData,
@@ -29,132 +31,54 @@ export interface BullMQAdapterConfig {
 export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
   const { queueManager, logger } = config;
 
+  async function enqueueToRedis(
+    queueName: QueueName,
+    jobName: string,
+    assetType: string,
+    assetId: string,
+    userId: string,
+    data: JobData,
+  ): Promise<void> {
+    const queue = queueManager.getQueue(queueName);
+    if (!queue) {
+      logger.error({ queueName }, "Queue not available");
+      throw new Error("Queue not available");
+    }
+
+    const requestId = getRequestId();
+
+    await queue.add(jobName, {
+      ...data,
+      requestId,
+      __metadata: {
+        assetType,
+        assetId,
+        userId,
+      },
+    });
+
+    logger.info({ assetId, userId, queue: queueName }, `${jobName} enqueued to Redis`);
+  }
+
   return {
     async enqueueBookmark(data: BookmarkJobData): Promise<void> {
-      const queue = queueManager.getQueue(QueueNames.BOOKMARK_PROCESSING);
-      if (!queue) {
-        logger.error({}, "Failed to get bookmark processing queue");
-        throw new Error("Queue not available");
-      }
-
-      // Get requestId from AsyncLocalStorage (set by HTTP middleware)
-      const requestId = getRequestId();
-
-      // Job options inherited from queue's defaultJobOptions
-      await queue.add("process-bookmark", {
-        ...data,
-        requestId,
-        __metadata: {
-          assetType: "bookmark",
-          assetId: data.bookmarkId,
-          userId: data.userId,
-        },
-      });
-
-      logger.info(
-        { bookmarkId: data.bookmarkId, userId: data.userId },
-        "Bookmark job enqueued to Redis",
-      );
+      await enqueueToRedis(QueueNames.BOOKMARK_PROCESSING, "process-bookmark", "bookmark", data.bookmarkId, data.userId, data);
     },
 
     async enqueueImage(data: ImageJobData): Promise<void> {
-      const queue = queueManager.getQueue(QueueNames.IMAGE_PROCESSING);
-      if (!queue) {
-        logger.error({}, "Failed to get image processing queue");
-        throw new Error("Queue not available");
-      }
-
-      const requestId = getRequestId();
-
-      await queue.add("process-image", {
-        ...data,
-        requestId,
-        __metadata: {
-          assetType: "image",
-          assetId: data.imageId,
-          userId: data.userId,
-        },
-      });
-
-      logger.info(
-        { imageId: data.imageId, userId: data.userId },
-        "Image job enqueued to Redis",
-      );
+      await enqueueToRedis(QueueNames.IMAGE_PROCESSING, "process-image", "image", data.imageId, data.userId, data);
     },
 
     async enqueueDocument(data: DocumentJobData): Promise<void> {
-      const queue = queueManager.getQueue(QueueNames.DOCUMENT_PROCESSING);
-      if (!queue) {
-        logger.error({}, "Failed to get document processing queue");
-        throw new Error("Queue not available");
-      }
-
-      const requestId = getRequestId();
-
-      await queue.add("process-document", {
-        ...data,
-        requestId,
-        __metadata: {
-          assetType: "document",
-          assetId: data.documentId,
-          userId: data.userId,
-        },
-      });
-
-      logger.info(
-        { documentId: data.documentId, userId: data.userId },
-        "Document job enqueued to Redis",
-      );
+      await enqueueToRedis(QueueNames.DOCUMENT_PROCESSING, "process-document", "document", data.documentId, data.userId, data);
     },
 
     async enqueueNote(data: NoteJobData): Promise<void> {
-      const queue = queueManager.getQueue(QueueNames.NOTE_PROCESSING);
-      if (!queue) {
-        logger.error({}, "Failed to get note processing queue");
-        throw new Error("Queue not available");
-      }
-
-      const requestId = getRequestId();
-
-      await queue.add("process-note", {
-        ...data,
-        requestId,
-        __metadata: {
-          assetType: "note",
-          assetId: data.noteId,
-          userId: data.userId,
-        },
-      });
-
-      logger.info(
-        { noteId: data.noteId, userId: data.userId },
-        "Note job enqueued to Redis",
-      );
+      await enqueueToRedis(QueueNames.NOTE_PROCESSING, "process-note", "note", data.noteId, data.userId, data);
     },
 
     async enqueueTask(data: TaskJobData): Promise<void> {
-      const queue = queueManager.getQueue(QueueNames.TASK_PROCESSING);
-      if (!queue) {
-        logger.error({}, "Failed to get task processing queue");
-        throw new Error("Queue not available");
-      }
-
-      const requestId = getRequestId();
-
-      await queue.add("process-task", {
-        ...data,
-        requestId,
-        __metadata: {
-          assetType: "task",
-          assetId: data.taskId,
-          userId: data.userId,
-        },
-      });
-
-      logger.info(
-        { taskId: data.taskId, userId: data.userId },
-        "Task job enqueued to Redis",
-      );
+      await enqueueToRedis(QueueNames.TASK_PROCESSING, "process-task", "task", data.taskId, data.userId, data);
     },
 
     async close(): Promise<void> {

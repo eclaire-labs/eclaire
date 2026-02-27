@@ -18,7 +18,6 @@ import type {
   BookmarkJobData,
   DocumentJobData,
   ImageJobData,
-  JobWaitlistInterface,
   NoteJobData,
   QueueAdapter,
   TaskJobData,
@@ -31,8 +30,6 @@ export interface DatabaseAdapterConfig {
   dbType: "postgres" | "sqlite";
   /** Logger instance */
   logger: Logger;
-  /** Optional job waitlist for push notifications (legacy, use notifyEmitter instead) */
-  waitlist?: JobWaitlistInterface;
   /** Optional notify emitter for instant worker wakeup */
   notifyEmitter?: NotifyEmitter;
 }
@@ -62,7 +59,7 @@ function getQueueName(assetType: AssetType, jobType?: string): string {
 export function createDatabaseAdapter(
   config: DatabaseAdapterConfig,
 ): QueueAdapter {
-  const { db, dbType, logger, waitlist, notifyEmitter } = config;
+  const { db, dbType, logger, notifyEmitter } = config;
 
   // Get the appropriate schema for the database type
   const schema = getQueueSchema(dbType);
@@ -126,24 +123,9 @@ export function createDatabaseAdapter(
       );
 
       // Notify waiting workers immediately (push-based notification)
-      // Prefer notifyEmitter (works with createDbWorker's notifyListener)
       if (notifyEmitter) {
         await notifyEmitter.emit(queueName);
         logger.debug({ queueName }, "Emitted job notification");
-      } else if (waitlist) {
-        // Legacy waitlist support
-        const notifiedCount = waitlist.notifyWaiters(assetType, 1);
-        if (notifiedCount > 0) {
-          logger.debug(
-            { assetType, notifiedCount },
-            "Notified waiting workers (legacy waitlist)",
-          );
-        }
-
-        // Schedule wakeup for next scheduled job if applicable
-        if (options.scheduledFor && options.scheduledFor > new Date()) {
-          await waitlist.scheduleNextWakeup(assetType);
-        }
       }
     } catch (error) {
       logger.error(

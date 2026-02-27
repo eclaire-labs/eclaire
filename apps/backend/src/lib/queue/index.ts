@@ -36,16 +36,12 @@ export {
 
 // Database queue helpers
 export {
-  type ClaimedJob,
-  formatJobResult,
   getExpirationTime,
   getScheduledTime,
   isJobExpired,
   isJobReady,
 } from "./db-helpers.js";
 
-// Job waitlist (for database mode push notifications)
-export { jobWaitlist } from "./job-waitlist.js";
 // BullMQ queue access (for Redis mode)
 export { closeQueues, getQueue } from "./queues.js";
 

@@ -7,6 +7,8 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import type { JobWaitlistInterface } from "../../app/types.js";
+// Tests use plain strings as queue names (e.g. "bookmarks", "photos") — the
+// waitlist is now generic and accepts any string key.
 import { createJobWaitlist } from "../../app/waitlist.js";
 import { createTestLogger, sleep } from "../testkit/index.js";
 
@@ -219,9 +221,10 @@ describe("G1-G3: Waitlist", () => {
       const stats = waitlist.getStats();
       expect(stats.bookmarks).toBe(2);
       expect(stats.photos).toBe(1);
-      expect(stats.documents).toBe(0);
-      expect(stats.notes).toBe(0);
-      expect(stats.tasks).toBe(0);
+      // Only queues with active waiters appear in stats
+      expect(stats.documents).toBeUndefined();
+      expect(stats.notes).toBeUndefined();
+      expect(stats.tasks).toBeUndefined();
 
       // Clean up
       waitlist.notifyAllWaiters("bookmarks");

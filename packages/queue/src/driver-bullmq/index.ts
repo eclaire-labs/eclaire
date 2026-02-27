@@ -72,6 +72,18 @@ export {
   closeRedisConnection,
   createRedisConnection,
 } from "./connection.js";
+// Job options exports
+export {
+  bookmarkJobOptions,
+  getDefaultJobOptions,
+  standardJobOptions,
+} from "./job-options.js";
+// Queue manager exports
+export {
+  createQueueManager,
+  type QueueManager,
+  type QueueManagerConfig,
+} from "./queue-manager.js";
 // Scheduler exports
 export { createBullMQScheduler } from "./scheduler.js";
 // Type exports

@@ -6,7 +6,6 @@
  * - Asset type definitions (bookmarks, photos, documents, notes, tasks)
  * - QueueAdapter interface and implementations
  * - Job waitlist for database mode
- * - Polling utilities for remote workers
  *
  * For the generic queue library, use:
  * - @eclaire/queue (main entry)
@@ -40,16 +39,6 @@ export {
 } from "./event-callbacks.js";
 // Re-export database helpers (now local)
 export * from "./helpers.js";
-// Re-export job adapters (now local)
-export {
-  adaptDatabaseJob,
-  createRateLimitError,
-  getRateLimitDelay,
-  isRateLimitError,
-  RateLimitError,
-} from "./job-adapters.js";
-// Re-export poller (now local)
-export { generateWorkerId, startPolling } from "./poller.js";
 // Re-export queue names
 export * from "./queue-names.js";
 // Re-export queue options (now local)
@@ -83,13 +72,7 @@ import { createBullMQAdapter as _createBullMQAdapter } from "./adapters/bullmq.j
 import { createDatabaseAdapter as _createDatabaseAdapter } from "./adapters/database.js";
 // Import functions needed for factory (re-exports don't make them available locally)
 import { createQueueManager as _createQueueManager } from "./queues.js";
-import type {
-  AssetType,
-  JobWaitlistInterface,
-  QueueAdapter,
-  QueueConfig,
-} from "./types.js";
-import { createJobWaitlist as _createJobWaitlist } from "./waitlist.js";
+import type { QueueAdapter, QueueConfig } from "./types.js";
 
 /**
  * Creates a queue adapter based on the configuration
@@ -116,17 +99,16 @@ import { createJobWaitlist as _createJobWaitlist } from "./waitlist.js";
  * @example
  * ```typescript
  * // Database mode
- * import { createQueueAdapter, createJobWaitlist } from "@eclaire/queue/app";
+ * import { createQueueAdapter } from "@eclaire/queue/app";
  * import { initializeDatabase } from "@eclaire/db";
  * import { createLogger } from "@eclaire/logger";
  *
  * const logger = createLogger({ service: "backend" });
  * const { db, schema } = initializeDatabase({ logger });
- * const waitlist = createJobWaitlist({ logger });
  *
  * const adapter = createQueueAdapter({
  *   mode: "database",
- *   database: { db, schema },
+ *   database: { db, dbType: "postgres" },
  *   logger,
  * });
  * ```
@@ -169,43 +151,4 @@ export async function createQueueAdapter(
   } else {
     throw new Error(`Unknown queue mode: ${mode}`);
   }
-}
-
-/**
- * Creates a queue adapter with an integrated job waitlist for database mode
- *
- * This is a convenience function that sets up the database adapter with a waitlist
- * for push-based notifications to waiting workers.
- *
- * @param config - Queue configuration
- * @param findNextScheduledJob - Optional function to find the next scheduled job for wakeup scheduling
- * @returns Object containing the adapter and waitlist
- */
-export async function createQueueAdapterWithWaitlist(
-  config: QueueConfig & { mode: "database" },
-  findNextScheduledJob?: (assetType: AssetType) => Promise<Date | null>,
-): Promise<{ adapter: QueueAdapter; waitlist: JobWaitlistInterface }> {
-  const { logger, database } = config;
-
-  if (!database?.db || !database?.dbType) {
-    throw new Error(
-      "Database instance and dbType are required for database mode",
-    );
-  }
-
-  const waitlist = _createJobWaitlist({
-    logger,
-    findNextScheduledJob,
-  });
-
-  const adapter = _createDatabaseAdapter({
-    db: database.db,
-    dbType: database.dbType,
-    logger,
-    waitlist,
-  });
-
-  logger.info({}, "Using database-backed queue adapter with waitlist");
-
-  return { adapter, waitlist };
 }

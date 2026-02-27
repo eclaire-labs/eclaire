@@ -100,94 +100,20 @@ export interface QueueConfig {
   logger: Logger;
 }
 
-// --- Polling Configuration ---
-
-export interface PollingConfig {
-  /** Asset type to poll for */
-  assetType: AssetType;
-  /** Backend URL for job API */
-  backendUrl: string;
-  /** Job processor function */
-  processor: (job: DatabaseJob) => Promise<void>;
-  /** Logger instance */
-  logger: Logger;
-  /** Custom worker ID (optional) */
-  workerId?: string;
-  /** Wait timeout in ms (default: 30000) */
-  waitTimeout?: number;
-  /** Error retry delay in ms (default: 2000) */
-  errorRetryDelay?: number;
-  /** Heartbeat interval in ms (default: 60000) */
-  heartbeatInterval?: number;
-}
-
-// --- Database Job Types ---
-
-/**
- * Database job structure from backend API
- */
-export interface DatabaseJob {
-  id: string;
-  asset_type: string;
-  asset_id: string;
-  user_id: string;
-  job_type: string;
-  status: string;
-  // biome-ignore lint/suspicious/noExplicitAny: job data is user-defined JSON — shape varies by job type
-  job_data: any;
-  locked_by: string | null;
-  locked_at: string | null;
-  expires_at: string | null;
-  retry_count: number;
-  max_retries: number;
-  created_at: string;
-}
-
-/**
- * Mock BullMQ Job object for processors
- */
-export interface MockBullMQJob {
-  // biome-ignore lint/suspicious/noExplicitAny: mock job data — must accept any shape for testing
-  data: any;
-  id: string;
-  updateProgress?: (progress: number) => Promise<void>;
-  log?: (message: string) => void;
-}
-
-/**
- * Claimed job result type (from database query)
- */
-export interface ClaimedJob {
-  id: string;
-  asset_type: string;
-  asset_id: string;
-  user_id: string;
-  job_type: string;
-  status: string;
-  // biome-ignore lint/suspicious/noExplicitAny: job data is user-defined JSON — shape varies by job type
-  job_data: any;
-  locked_by: string | null;
-  locked_at: Date | null;
-  expires_at: Date | null;
-  retry_count: number;
-  max_retries: number;
-  created_at: Date;
-}
-
 // --- Waitlist Interface ---
 
 export interface JobWaitlistInterface {
   addWaiter(
-    assetType: AssetType,
+    queue: string,
     workerId: string,
     timeout?: number,
     // biome-ignore lint/suspicious/noExplicitAny: return type varies — resolves with claimed job or null
   ): Promise<any>;
-  notifyWaiters(assetType: AssetType, count?: number): number;
-  notifyAllWaiters(assetType: AssetType): number;
-  scheduleNextWakeup(assetType: AssetType): Promise<void>;
-  getWaiterCount(assetType: AssetType): number;
-  getStats(): Record<AssetType, number>;
+  notifyWaiters(queue: string, count?: number): number;
+  notifyAllWaiters(queue: string): number;
+  scheduleNextWakeup(queue: string): Promise<void>;
+  getWaiterCount(queue: string): number;
+  getStats(): Record<string, number>;
   /** Close the waitlist, clearing all timers and rejecting pending waiters */
   close(): void;
 }
