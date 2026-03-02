@@ -84,10 +84,32 @@ export interface Note {
   id: string;
   title: string;
   content: string;
-  tags: string[] | null;
+  description: string;
+  tags: string[];
   createdAt: string;
-  updatedAt?: string;
-  userId?: string;
+  updatedAt: string;
+  dueDate: string | null;
+
+  // Processing status
+  processingStatus: string | null;
+
+  // Review and organization
+  reviewStatus: "pending" | "accepted" | "rejected";
+  flagColor: "red" | "yellow" | "orange" | "green" | "blue" | null;
+  isPinned: boolean;
+
+  // File metadata
+  originalMimeType?: string | null;
+  fileSize?: number | null;
+  metadata?: Record<string, unknown> | null;
+  enabled?: boolean;
+}
+
+export interface NoteListResponse {
+  items: Note[];
+  totalCount: number;
+  limit: number;
+  offset: number;
 }
 
 export interface Photo {
