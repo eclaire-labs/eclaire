@@ -46,6 +46,8 @@
     "check": "biome check ./",
     "fix": "biome check --write ./",
     "test": "vitest run",
+    "test:unit": "vitest run src/tests/unit",
+    "test:integration": "vitest run src/tests/integration",
     "test:watch": "vitest"
   },
   "dependencies": {},

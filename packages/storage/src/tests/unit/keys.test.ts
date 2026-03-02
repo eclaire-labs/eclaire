@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { StorageInvalidKeyError } from "../../core/errors.js";
 import {
   assetPrefix,
+  assertSafeKey,
+  assertSafePrefix,
   buildKey,
   categoryPrefix,
   isSafeKey,
@@ -10,7 +13,7 @@ import {
   parseKey,
   sanitizeKeyComponent,
   userPrefix,
-} from "../core/keys.js";
+} from "../../core/keys.js";
 
 describe("buildKey", () => {
   it("builds a key from components", () => {
@@ -20,9 +23,9 @@ describe("buildKey", () => {
   });
 
   it("handles nested file names", () => {
-    expect(buildKey("user-123", "bookmarks", "bm-789", "images/img1.jpg")).toBe(
-      "user-123/bookmarks/bm-789/images/img1.jpg",
-    );
+    expect(
+      buildKey("user-123", "bookmarks", "bm-789", "images/img1.jpg"),
+    ).toBe("user-123/bookmarks/bm-789/images/img1.jpg");
   });
 });
 
@@ -62,7 +65,9 @@ describe("prefix builders", () => {
   });
 
   it("builds category prefix", () => {
-    expect(categoryPrefix("user-123", "documents")).toBe("user-123/documents/");
+    expect(categoryPrefix("user-123", "documents")).toBe(
+      "user-123/documents/",
+    );
   });
 
   it("builds user prefix", () => {
@@ -114,6 +119,33 @@ describe("isSafePrefix", () => {
 
   it("rejects absolute paths", () => {
     expect(isSafePrefix("/absolute/")).toBe(false);
+  });
+});
+
+describe("assertSafeKey", () => {
+  it("does not throw for safe keys", () => {
+    expect(() => assertSafeKey("user-1/docs/doc-1/file.txt")).not.toThrow();
+  });
+
+  it("throws StorageInvalidKeyError for unsafe keys", () => {
+    expect(() => assertSafeKey("../evil")).toThrow(StorageInvalidKeyError);
+    expect(() => assertSafeKey("")).toThrow(StorageInvalidKeyError);
+    expect(() => assertSafeKey("/absolute")).toThrow(StorageInvalidKeyError);
+    expect(() => assertSafeKey("a//b")).toThrow(StorageInvalidKeyError);
+  });
+});
+
+describe("assertSafePrefix", () => {
+  it("does not throw for safe prefixes", () => {
+    expect(() => assertSafePrefix("")).not.toThrow();
+    expect(() => assertSafePrefix("user-1/")).not.toThrow();
+  });
+
+  it("throws StorageInvalidKeyError for unsafe prefixes", () => {
+    expect(() => assertSafePrefix("../evil/")).toThrow(StorageInvalidKeyError);
+    expect(() => assertSafePrefix("/absolute/")).toThrow(
+      StorageInvalidKeyError,
+    );
   });
 });
 
