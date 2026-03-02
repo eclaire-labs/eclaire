@@ -3,7 +3,7 @@ import {
   globalTestCleanup,
   loggedFetch,
   type TaskEntry,
-  type TaskSearchResponse,
+  type TaskListResponse,
 } from "../utils/tasks-test-helpers.js";
 
 describe("Task Search and Filtering", { timeout: 30000 }, () => {
@@ -45,12 +45,13 @@ describe("Task Search and Filtering", { timeout: 30000 }, () => {
       });
 
       expect(response.status).toBe(200);
-      const data = (await response.json()) as TaskSearchResponse;
+      const data = (await response.json()) as TaskListResponse;
 
-      expect(data.tasks).toBeInstanceOf(Array);
+      expect(data.items).toBeInstanceOf(Array);
       expect(data.totalCount).toBeTypeOf("number");
       expect(data.limit).toBeTypeOf("number");
-      const found = data.tasks.find((t) => t.id === searchTaskId);
+      expect(data.offset).toBeTypeOf("number");
+      const found = data.items.find((t) => t.id === searchTaskId);
       expect(found).toBeDefined();
       expect(found?.title).toContain("Searchable");
     });
@@ -61,10 +62,10 @@ describe("Task Search and Filtering", { timeout: 30000 }, () => {
       });
 
       expect(response.status).toBe(200);
-      const data = (await response.json()) as TaskSearchResponse;
+      const data = (await response.json()) as TaskListResponse;
 
-      expect(data.tasks).toBeInstanceOf(Array);
-      const found = data.tasks.find((t) => t.id === searchTaskId);
+      expect(data.items).toBeInstanceOf(Array);
+      const found = data.items.find((t) => t.id === searchTaskId);
       expect(found).toBeDefined();
       expect(found?.tags).toContain("urgent");
     });
@@ -75,10 +76,10 @@ describe("Task Search and Filtering", { timeout: 30000 }, () => {
       });
 
       expect(response.status).toBe(200);
-      const data = (await response.json()) as TaskSearchResponse;
+      const data = (await response.json()) as TaskListResponse;
 
-      expect(data.tasks).toBeInstanceOf(Array);
-      const found = data.tasks.find((t) => t.id === searchTaskId);
+      expect(data.items).toBeInstanceOf(Array);
+      const found = data.items.find((t) => t.id === searchTaskId);
       expect(found).toBeDefined();
       expect(found?.status).toBe("completed");
     });
@@ -89,10 +90,10 @@ describe("Task Search and Filtering", { timeout: 30000 }, () => {
       });
 
       expect(response.status).toBe(200);
-      const data = (await response.json()) as TaskSearchResponse;
+      const data = (await response.json()) as TaskListResponse;
 
-      expect(data.tasks).toBeInstanceOf(Array);
-      expect(data.tasks.length).toBe(1);
+      expect(data.items).toBeInstanceOf(Array);
+      expect(data.items.length).toBe(1);
       expect(data.limit).toBe(1);
     });
 

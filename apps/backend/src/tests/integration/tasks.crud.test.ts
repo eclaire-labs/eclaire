@@ -3,12 +3,20 @@ import {
   globalTestCleanup,
   loggedFetch,
   type TaskEntry,
+  type TaskListResponse,
 } from "../utils/tasks-test-helpers.js";
-import { BASE_URL, delay, TEST_API_KEY } from "../utils/test-helpers.js";
+import { delay } from "../utils/test-helpers.js";
 
 describe("Task CRUD Operations", { timeout: 30000 }, () => {
   let createdTaskId: string | null = null;
-  const _searchTaskId: string | null = null;
+
+  /** Throws early with a clear message if the create test didn't succeed. */
+  const ensureTaskCreated = (): string => {
+    if (createdTaskId) return createdTaskId;
+    throw new Error(
+      "Task was not created in the POST test. Check the POST test for failures.",
+    );
+  };
 
   const initialTaskData = {
     title: "Test Task",
@@ -75,12 +83,9 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
     });
 
     it("GET /api/tasks/:id - should retrieve the created task", async () => {
-      expect(
-        createdTaskId,
-        "Test setup failed: createdTaskId is null",
-      ).not.toBeNull();
+      const taskId = ensureTaskCreated();
 
-      const response = await loggedFetch(`/tasks/${createdTaskId}`, {
+      const response = await loggedFetch(`/tasks/${taskId}`, {
         method: "GET",
       });
 
@@ -107,25 +112,25 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
     });
 
     it("GET /api/tasks - should list tasks including the new one", async () => {
-      expect(
-        createdTaskId,
-        "Test setup failed: createdTaskId is null",
-      ).not.toBeNull();
+      const taskId = ensureTaskCreated();
 
       const response = await loggedFetch(`/tasks`, {
         method: "GET",
       });
 
       expect(response.status).toBe(200);
-      const data = (await response.json()) as TaskEntry[];
+      const data = (await response.json()) as TaskListResponse;
 
-      expect(data).toBeInstanceOf(Array);
-      expect(data.length).toBeGreaterThan(0);
+      expect(data.items).toBeInstanceOf(Array);
+      expect(data.items.length).toBeGreaterThan(0);
+      expect(data.totalCount).toBeGreaterThan(0);
+      expect(data.limit).toBeTypeOf("number");
+      expect(data.offset).toBeTypeOf("number");
 
-      const found = data.find((t) => t.id === createdTaskId);
+      const found = data.items.find((t) => t.id === taskId);
       expect(
         found,
-        `Task with ID ${createdTaskId} not found in the list`,
+        `Task with ID ${taskId} not found in the list`,
       ).toBeDefined();
       expect(found?.title).toBe(initialTaskData.title);
       expect(found?.status).toBe(initialTaskData.status);
@@ -324,12 +329,8 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
         "Test cleanup check requires createdTaskId",
       ).not.toBeNull();
 
-      // Use standard fetch directly for this test case
-      const response = await fetch(`${BASE_URL}/tasks/${createdTaskId}`, {
+      const response = await loggedFetch(`/tasks/${createdTaskId}`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${TEST_API_KEY}`,
-        },
       });
 
       expect(response.status).toBe(404); // Expect Not Found
@@ -346,10 +347,10 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
       });
 
       expect(response.status).toBe(200);
-      const data = (await response.json()) as TaskEntry[];
+      const data = (await response.json()) as TaskListResponse;
 
-      expect(data).toBeInstanceOf(Array);
-      const found = data.find((t) => t.id === createdTaskId);
+      expect(data.items).toBeInstanceOf(Array);
+      const found = data.items.find((t) => t.id === createdTaskId);
       expect(
         found,
         `Deleted task with ID ${createdTaskId} still found in the list`,

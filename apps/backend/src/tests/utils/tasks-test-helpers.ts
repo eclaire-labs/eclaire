@@ -6,14 +6,22 @@ import {
   createAuthenticatedFetch,
   delay,
   TEST_API_KEY,
+  TEST_API_KEY_2,
   VERBOSE,
 } from "../utils/test-helpers.js";
 
-// Create authenticated fetch function with base URL handling
-export const loggedFetch = (url: string, options?: RequestInit) => {
-  const fullUrl = url.startsWith("http") ? url : `${BASE_URL}${url}`;
-  return createAuthenticatedFetch(TEST_API_KEY)(fullUrl, options);
+// Factory for creating authenticated fetch functions with base URL handling
+export const createLoggedFetch = (apiKey: string) => {
+  const fetchFn = createAuthenticatedFetch(apiKey);
+  return (url: string, options?: RequestInit) => {
+    const fullUrl = url.startsWith("http") ? url : `${BASE_URL}${url}`;
+    return fetchFn(fullUrl, options);
+  };
 };
+
+// Create authenticated fetch functions for both test users
+export const loggedFetch = createLoggedFetch(TEST_API_KEY);
+export const loggedFetch2 = createLoggedFetch(TEST_API_KEY_2);
 
 // AI Assistant user ID (created by migration)
 export const AI_ASSISTANT_USER_ID = "user-ai-assistant";
@@ -74,12 +82,16 @@ export interface CommentDeleteResponse {
   message: string;
 }
 
-// Response interface for search operations
-export interface TaskSearchResponse {
-  tasks: TaskEntry[];
+// Response interface for list/search operations (matches API: { items, totalCount, limit, offset })
+export interface TaskListResponse {
+  items: TaskEntry[];
   totalCount: number;
   limit: number;
+  offset: number;
 }
+
+/** @deprecated Use TaskListResponse instead — the API returns `items`, not `tasks` */
+export type TaskSearchResponse = TaskListResponse;
 
 // Global tracking for all recurring tasks (accessible to helpers and tests)
 export let allRecurringTaskIds: string[] = [];
