@@ -58,17 +58,21 @@ async function generatePdfThumbnailWithPdftocairo(
     const renderScale = scale === 400 ? 1200 : scale;
 
     // Use pdftocairo to convert first page to PNG
-    const result = await execa("pdftocairo", [
-      "-png",
-      "-f",
-      "1", // first page
-      "-l",
-      "1", // last page (same as first)
-      "-scale-to",
-      renderScale.toString(), // scale to specified width
-      pdfPath,
-      outputBaseName, // output without extension
-    ]);
+    const result = await execa(
+      "pdftocairo",
+      [
+        "-png",
+        "-f",
+        "1", // first page
+        "-l",
+        "1", // last page (same as first)
+        "-scale-to",
+        renderScale.toString(), // scale to specified width
+        pdfPath,
+        outputBaseName, // output without extension
+      ],
+      { timeout: 120_000 },
+    );
 
     logger.debug(
       {
@@ -192,6 +196,11 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
   });
 
   // Validate required job data
+  if (!documentId || !userId) {
+    throw new Error(
+      `Missing required job data: documentId=${documentId}, userId=${userId}`,
+    );
+  }
   if (!storageId || storageId.trim() === "") {
     const errorMsg = `Invalid or missing storageId for document ${documentId}. Received: ${storageId}`;
     jobLogger.error({ documentId, jobId: ctx.job.id, storageId }, errorMsg);
@@ -229,6 +238,16 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
     jobLogger.info("Starting preparation stage.");
     tempDir = await fs.mkdtemp(path.join(tmpdir(), `doc-proc-${documentId}-`));
     const storage = getStorage();
+
+    // Check file size before downloading to prevent OOM on very large files
+    const MAX_DOCUMENT_SIZE = 200 * 1024 * 1024; // 200MB
+    const meta = await storage.head(storageId);
+    if (meta && meta.size > MAX_DOCUMENT_SIZE) {
+      throw new Error(
+        `Document too large: ${meta.size} bytes exceeds ${MAX_DOCUMENT_SIZE} byte limit`,
+      );
+    }
+
     const { buffer: documentBuffer } = await storage.readBuffer(storageId);
     jobLogger.info(
       { bufferSize: documentBuffer.length },
@@ -822,7 +841,9 @@ async function extractTextFromHtml(
 
 async function extractPdfText(pdfPath: string): Promise<string> {
   try {
-    const { stdout } = await execa("pdftotext", [pdfPath, "-"]);
+    const { stdout } = await execa("pdftotext", [pdfPath, "-"], {
+      timeout: 120_000,
+    });
     return stdout;
   } catch (error: unknown) {
     logger.warn(
@@ -841,14 +862,11 @@ async function extractNumbersDocumentText(
     const csvOutputDir = path.join(tempDir, "csv_output");
     await fs.mkdir(csvOutputDir, { recursive: true });
     const libreOfficeCmd = await findLibreOfficeExecutable();
-    await execa(libreOfficeCmd, [
-      "--headless",
-      "--convert-to",
-      "csv",
-      "--outdir",
-      csvOutputDir,
-      docPath,
-    ]);
+    await execa(
+      libreOfficeCmd,
+      ["--headless", "--convert-to", "csv", "--outdir", csvOutputDir, docPath],
+      { timeout: 120_000 },
+    );
     const files = await fs.readdir(csvOutputDir);
     const csvFile = files.find((f) => f.endsWith(".csv"));
     if (csvFile) {
@@ -880,14 +898,11 @@ async function extractOfficeDocumentText(
     const textOutputDir = path.join(tempDir, "text_output");
     await fs.mkdir(textOutputDir, { recursive: true });
     const libreOfficeCmd = await findLibreOfficeExecutable();
-    await execa(libreOfficeCmd, [
-      "--headless",
-      "--convert-to",
-      "txt",
-      "--outdir",
-      textOutputDir,
-      docPath,
-    ]);
+    await execa(
+      libreOfficeCmd,
+      ["--headless", "--convert-to", "txt", "--outdir", textOutputDir, docPath],
+      { timeout: 120_000 },
+    );
     const files = await fs.readdir(textOutputDir);
     const txtFile = files.find((f) => f.endsWith(".txt"));
     if (txtFile) {
@@ -1061,7 +1076,15 @@ async function generateHtmlPdf(htmlContent: string): Promise<Buffer> {
   const browser = await chromium.launch();
   const page = await browser.newPage();
   try {
-    await page.setContent(htmlContent, { waitUntil: "networkidle" });
+    // Block network requests to prevent SSRF from user-uploaded HTML
+    await page.route("**/*", (route) => {
+      const url = route.request().url();
+      if (url.startsWith("data:") || url === "about:blank") {
+        return route.continue();
+      }
+      return route.abort();
+    });
+    await page.setContent(htmlContent, { waitUntil: "domcontentloaded" });
     return await page.pdf({
       format: "A4",
       margin: { top: "1in", right: "1in", bottom: "1in", left: "1in" },
@@ -1107,14 +1130,11 @@ async function attemptLibreOfficeConversion(
   const pdfOutputDir = path.join(tempDir, "pdf_output");
   await fs.mkdir(pdfOutputDir, { recursive: true });
   const libreOfficeCmd = await findLibreOfficeExecutable();
-  await execa(libreOfficeCmd, [
-    "--headless",
-    "--convert-to",
-    "pdf",
-    "--outdir",
-    pdfOutputDir,
-    docPath,
-  ]);
+  await execa(
+    libreOfficeCmd,
+    ["--headless", "--convert-to", "pdf", "--outdir", pdfOutputDir, docPath],
+    { timeout: 120_000 },
+  );
   const files = await fs.readdir(pdfOutputDir);
   const pdfFile = files.find((f) => f.endsWith(".pdf"));
   if (pdfFile) {
@@ -1131,10 +1151,18 @@ async function generateHtmlThumbnailAndScreenshot(
   const browser = await chromium.launch();
   const page = await browser.newPage();
   try {
+    // Block network requests to prevent SSRF from user-uploaded HTML
+    await page.route("**/*", (route) => {
+      const url = route.request().url();
+      if (url.startsWith("data:") || url === "about:blank") {
+        return route.continue();
+      }
+      return route.abort();
+    });
     // Render at high-res, then derive both sizes from the same capture
     await page.setViewportSize({ width: 2560, height: 1600 });
     await page.setContent(htmlBuffer.toString("utf-8"), {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
     });
     const screenshotPng = await page.screenshot({
       type: "png",
@@ -1257,12 +1285,14 @@ async function findLibreOfficeExecutable(): Promise<string> {
  */
 function extractTextFromCsv(csvBuffer: Buffer): string {
   try {
+    const MAX_CSV_ROWS = 10_000;
     const records: Record<string, string>[] = parseCsv(csvBuffer, {
       columns: true,
       skip_empty_lines: true,
       bom: true,
       relax_column_count: true,
       trim: true,
+      to: MAX_CSV_ROWS,
     });
 
     if (records.length === 0) return "";
@@ -1298,20 +1328,22 @@ function extractTextFromJson(jsonString: string): string {
   try {
     const json = JSON.parse(jsonString);
     const lines: string[] = [];
+    const MAX_DEPTH = 50;
 
     // biome-ignore lint/suspicious/noExplicitAny: recursive JSON traversal handles arbitrary nested structures
-    function traverse(value: any, key?: string) {
+    function traverse(value: any, key?: string, depth = 0) {
+      if (depth > MAX_DEPTH) return;
       if (typeof value === "string") {
         lines.push(key ? `${key}: ${value}` : value);
       } else if (typeof value === "number" || typeof value === "boolean") {
         lines.push(key ? `${key}: ${value}` : String(value));
       } else if (Array.isArray(value)) {
         for (const item of value) {
-          traverse(item, key);
+          traverse(item, key, depth + 1);
         }
       } else if (typeof value === "object" && value !== null) {
         for (const [k, v] of Object.entries(value)) {
-          traverse(v, k);
+          traverse(v, k, depth + 1);
         }
       }
     }

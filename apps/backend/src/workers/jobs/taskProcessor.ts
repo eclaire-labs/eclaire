@@ -49,7 +49,20 @@ async function generateTaskTags(
       },
     });
     const jsonMatch = aiResponse.content.match(/```json\s*([\s\S]*?)\s*```/);
-    const cleanedJsonString = jsonMatch?.[1] || aiResponse.content;
+    const cleanedJsonString = (jsonMatch?.[1] || aiResponse.content).trim();
+
+    // Validate that the string looks like JSON before parsing
+    if (
+      !cleanedJsonString.startsWith("[") &&
+      !cleanedJsonString.startsWith("{")
+    ) {
+      logger.warn(
+        { taskId, response: aiResponse.content.substring(0, 100) },
+        "AI response does not appear to be JSON, using empty tags",
+      );
+      return [];
+    }
+
     const parsed = JSON.parse(cleanedJsonString);
 
     if (Array.isArray(parsed)) {
@@ -85,6 +98,13 @@ async function generateTaskTags(
  */
 async function processTaskJob(ctx: JobContext<TaskJobData>) {
   const { taskId, title, description, userId } = ctx.job.data;
+
+  if (!taskId || !userId) {
+    throw new Error(
+      `Missing required job data: taskId=${taskId}, userId=${userId}`,
+    );
+  }
+
   logger.info(
     { jobId: ctx.job.id, taskId, userId },
     "Starting task processing job",

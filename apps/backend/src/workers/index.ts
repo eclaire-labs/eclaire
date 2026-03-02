@@ -166,12 +166,12 @@ export async function startBullMQWorkers(): Promise<void> {
   );
   bullmqWorkers.push(imageWorker);
 
-  // Document Worker
+  // Document Worker (concurrency capped to 1 — each job may spawn Chromium + LibreOffice)
   const documentWorker = createBullMQWorker(
     QueueNames.DOCUMENT_PROCESSING,
     processDocumentJob,
     workerConfig,
-    longTaskOptions,
+    { ...longTaskOptions, concurrency: 1 },
   );
   bullmqWorkers.push(documentWorker);
 

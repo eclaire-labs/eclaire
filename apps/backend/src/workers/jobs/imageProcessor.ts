@@ -489,6 +489,11 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
   );
 
   // Validate required job data
+  if (!photoId || !userId) {
+    throw new Error(
+      `Missing required job data: photoId=${photoId}, userId=${userId}`,
+    );
+  }
   if (!storageId || storageId.trim() === "") {
     const errorMsg = `Invalid or missing storageId for photo ${photoId}. Received: ${storageId}`;
     logger.error({ photoId, jobId: ctx.job.id, storageId }, errorMsg);
@@ -522,6 +527,16 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
     // STAGE: IMAGE PREPARATION
     await ctx.startStage(STAGES.PREPARATION);
     const storage = getStorage();
+
+    // Check file size before downloading to prevent OOM on very large files
+    const MAX_IMAGE_SIZE = 100 * 1024 * 1024; // 100MB
+    const meta = await storage.head(storageId);
+    if (meta && meta.size > MAX_IMAGE_SIZE) {
+      throw new Error(
+        `Image too large: ${meta.size} bytes exceeds ${MAX_IMAGE_SIZE} byte limit`,
+      );
+    }
+
     const { buffer: imageBufferRaw } = await storage.readBuffer(storageId);
     let imageBuffer = imageBufferRaw;
     if (imageBuffer.length === 0)

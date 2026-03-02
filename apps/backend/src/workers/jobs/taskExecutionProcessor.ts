@@ -299,50 +299,24 @@ async function processUserTask(ctx: JobContext<TaskExecutionJobData>) {
 async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
   const { taskId, title, description, userId, assignedToId, isAssignedToAI } =
     ctx.job.data;
-  logger.info(
-    { jobId: ctx.job.id, taskId, userId, assignedToId },
-    "Starting task execution processing job",
-  );
+
+  if (!taskId || !userId) {
+    throw new Error(
+      `Missing required job data: taskId=${taskId}, userId=${userId}`,
+    );
+  }
 
   logger.info(
-    {
-      jobId: ctx.job.id,
-      taskId,
-      title,
-      description,
-      userId,
-      assignedToId,
-      fullJobData: ctx.job.data,
-    },
-    "Task execution job details",
+    { jobId: ctx.job.id, taskId, userId, assignedToId, isAssignedToAI },
+    "Starting task execution processing job",
   );
 
   try {
     // Use the isAssignedToAI field provided by the backend job data
     const isAI = isAssignedToAI || false;
 
-    logger.info(
-      {
-        taskId,
-        assignedToId,
-        isAI,
-        hasAssignedTo: !!assignedToId,
-      },
-      "Using isAssignedToAI field from job data",
-    );
-
     if (assignedToId && isAI) {
       logger.info({ taskId, assignedToId }, "Processing AI assistant task");
-      logger.info(
-        {
-          taskId,
-          assignedToId,
-          userId,
-          title,
-          description,
-        },
-        "Entering AI assistant processing path with full details",
-      );
 
       const STAGE_NAME = "ai_response";
       await ctx.initStages([STAGE_NAME]);
@@ -373,20 +347,7 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
         // Generate AI response - use prompt AI or simple AI based on configuration
         let aiResponse: string;
         if (USE_PROMPT_AI) {
-          logger.info(
-            { taskId },
-            "Generating AI assistant response using prompt AI",
-          );
-          logger.info(
-            {
-              taskId,
-              title,
-              description,
-              userId,
-            },
-            "About to generate prompt AI response with task details",
-          );
-
+          logger.info({ taskId }, "Generating AI response using prompt AI");
           aiResponse = await generatePromptAIResponse(
             title,
             description,
@@ -394,19 +355,7 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
             userId,
           );
         } else {
-          logger.info(
-            { taskId },
-            "Generating AI assistant response using simple AI",
-          );
-          logger.info(
-            {
-              taskId,
-              title,
-              description,
-            },
-            "About to generate simple AI response with task details",
-          );
-
+          logger.info({ taskId }, "Generating AI response using simple AI");
           aiResponse = await generateAIAssistantResponse(
             title,
             description,
@@ -415,34 +364,14 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
         }
 
         logger.info(
-          {
-            taskId,
-            responseLength: aiResponse.length,
-            responsePreview: `${aiResponse.substring(0, 100)}...`,
-          },
-          "AI response generated successfully",
+          { taskId, responseLength: aiResponse.length },
+          "AI response generated",
         );
 
         await ctx.updateStageProgress(STAGE_NAME, 50);
 
-        // Create comment with AI response
-        logger.info({ taskId }, "Creating task comment with AI response");
-        logger.info(
-          {
-            taskId,
-            responseLength: aiResponse.length,
-          },
-          "About to create task comment with AI response",
-        );
-
         await createTaskComment(taskId, aiResponse);
-
-        logger.info(
-          {
-            taskId,
-          },
-          "Task comment creation completed successfully",
-        );
+        logger.info({ taskId }, "Task comment created");
 
         await ctx.updateStageProgress(STAGE_NAME, 90);
 
@@ -494,25 +423,7 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
     } else {
       // Process as user task
       logger.info({ taskId, assignedToId }, "Processing user task");
-      logger.info(
-        {
-          taskId,
-          assignedToId,
-          userId,
-          reason: !assignedToId ? "no assignedToId" : "not AI assistant",
-        },
-        "Entering user task processing path",
-      );
-
       await processUserTask(ctx);
-
-      logger.info(
-        {
-          taskId,
-          assignedToId,
-        },
-        "User task processing completed",
-      );
     }
 
     logger.info(

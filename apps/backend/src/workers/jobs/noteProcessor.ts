@@ -117,6 +117,13 @@ export interface NoteJobData {
  */
 async function processNoteJob(ctx: JobContext<NoteJobData>) {
   const { noteId, title, content, userId } = ctx.job.data;
+
+  if (!noteId || !userId) {
+    throw new Error(
+      `Missing required job data: noteId=${noteId}, userId=${userId}`,
+    );
+  }
+
   logger.info(
     { jobId: ctx.job.id, noteId, userId },
     "Starting note processing job",

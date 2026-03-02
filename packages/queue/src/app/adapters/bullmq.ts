@@ -47,17 +47,25 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
 
     const requestId = getRequestId();
 
-    await queue.add(jobName, {
-      ...data,
-      requestId,
-      __metadata: {
-        assetType,
-        assetId,
-        userId,
-      },
-    });
+    // Use assetType:assetId as jobId for deduplication — BullMQ skips
+    // duplicate jobs with the same ID that are still in the queue.
+    const jobId = `${assetType}:${assetId}`;
 
-    logger.info({ assetId, userId, queue: queueName }, `${jobName} enqueued to Redis`);
+    await queue.add(
+      jobName,
+      {
+        ...data,
+        requestId,
+        __metadata: {
+          assetType,
+          assetId,
+          userId,
+        },
+      },
+      { jobId },
+    );
+
+    logger.info({ assetId, userId, queue: queueName, jobId }, `${jobName} enqueued to Redis`);
   }
 
   return {
