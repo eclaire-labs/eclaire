@@ -335,9 +335,9 @@ describe("extractBookmarksFromFolder", () => {
     };
     const result = extractBookmarksFromFolder(folder);
     expect(result).toHaveLength(2);
-    expect(result[0].url).toBe("https://example.com");
-    expect(result[0].title).toBe("Example");
-    expect(result[1].url).toBe("https://test.com");
+    expect(result[0]!.url).toBe("https://example.com");
+    expect(result[0]!.title).toBe("Example");
+    expect(result[1]!.url).toBe("https://test.com");
   });
 
   it("should convert folder path to lowercase tags", () => {
@@ -353,7 +353,7 @@ describe("extractBookmarksFromFolder", () => {
       ],
     };
     const result = extractBookmarksFromFolder(folder, ["Bookmarks-Bar"]);
-    expect(result[0].tags).toEqual(["bookmarks-bar"]);
+    expect(result[0]!.tags).toEqual(["bookmarks-bar"]);
   });
 
   it("should recurse into nested folders and build tag path", () => {
@@ -382,8 +382,8 @@ describe("extractBookmarksFromFolder", () => {
     };
     const result = extractBookmarksFromFolder(folder);
     expect(result).toHaveLength(1);
-    expect(result[0].url).toBe("https://developer.mozilla.org");
-    expect(result[0].tags).toEqual(["tech", "javascript"]);
+    expect(result[0]!.url).toBe("https://developer.mozilla.org");
+    expect(result[0]!.tags).toEqual(["tech", "javascript"]);
   });
 
   it("should handle mixed content (folders and URLs at same level)", () => {
@@ -411,10 +411,10 @@ describe("extractBookmarksFromFolder", () => {
     };
     const result = extractBookmarksFromFolder(folder);
     expect(result).toHaveLength(2);
-    expect(result[0].url).toBe("https://top.com");
-    expect(result[0].tags).toEqual([]);
-    expect(result[1].url).toBe("https://nested.com");
-    expect(result[1].tags).toEqual(["sub"]);
+    expect(result[0]!.url).toBe("https://top.com");
+    expect(result[0]!.tags).toEqual([]);
+    expect(result[1]!.url).toBe("https://nested.com");
+    expect(result[1]!.tags).toEqual(["sub"]);
   });
 
   it("should skip URL items without a url property", () => {
@@ -436,7 +436,7 @@ describe("extractBookmarksFromFolder", () => {
     };
     const result = extractBookmarksFromFolder(folder);
     expect(result).toHaveLength(1);
-    expect(result[0].url).toBe("https://example.com");
+    expect(result[0]!.url).toBe("https://example.com");
   });
 
   it("should use current date when date_added is missing", () => {
@@ -455,7 +455,7 @@ describe("extractBookmarksFromFolder", () => {
     };
     const result = extractBookmarksFromFolder(folder);
     const after = Date.now();
-    expect(result[0].dateAdded.getTime()).toBeGreaterThanOrEqual(before);
-    expect(result[0].dateAdded.getTime()).toBeLessThanOrEqual(after);
+    expect(result[0]!.dateAdded.getTime()).toBeGreaterThanOrEqual(before);
+    expect(result[0]!.dateAdded.getTime()).toBeLessThanOrEqual(after);
   });
 });

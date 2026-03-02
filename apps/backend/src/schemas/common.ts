@@ -6,7 +6,7 @@
  * live in @eclaire/api-types and are re-exported here for backend convenience.
  */
 
-import { FLAG_COLORS, REVIEW_STATUSES } from "@eclaire/core/types";
+import { REVIEW_STATUSES } from "@eclaire/core/types";
 import { resolver } from "hono-openapi";
 import z from "zod/v4";
 

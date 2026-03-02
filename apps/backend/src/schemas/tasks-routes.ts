@@ -19,7 +19,6 @@ import {
   TaskSchema,
 } from "./tasks-params.js";
 import {
-  CommentDeleteSuccessSchema,
   CommentNotFoundSchema,
   CreatedTaskResponseSchema,
   TaskCommentSchema,
@@ -412,13 +411,8 @@ export const deleteTaskCommentRouteDescription = {
   summary: "Delete task comment",
   description: "Delete an existing task comment",
   responses: {
-    200: {
+    204: {
       description: "Comment deleted successfully",
-      content: {
-        "application/json": {
-          schema: resolver(CommentDeleteSuccessSchema),
-        },
-      },
     },
     ...commonErrors,
     404: notFoundError("Comment", CommentNotFoundSchema),

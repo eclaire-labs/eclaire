@@ -40,11 +40,3 @@ export const CommentNotFoundSchema = z
   })
   .meta({ ref: "CommentNotFound" });
 
-// Comment delete success response
-export const CommentDeleteSuccessSchema = z
-  .object({
-    message: z.string().meta({
-      description: "Success message confirming comment deletion",
-    }),
-  })
-  .meta({ ref: "CommentDeleteSuccess" });

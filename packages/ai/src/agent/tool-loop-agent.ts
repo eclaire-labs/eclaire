@@ -154,7 +154,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
    */
   async generate(options: GenerateOptions<TContext>): Promise<AgentResult> {
     const logger = getLogger();
-    const { prompt, context, aiOptions } = options;
+    const { context, aiOptions } = options;
 
     logger.info(
       {

@@ -6,5 +6,4 @@ export interface Document extends ApiDocument {
   rawMetadata: any;
   originalMimeType: string | null;
   userId: string;
-  enabled: boolean;
 }

@@ -210,6 +210,16 @@ export const TaskSearchParamsSchema = z
         examples: [10, 25, 50, 9999],
       }),
 
+    offset: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .default(0)
+      .meta({
+        description: "Number of results to skip (for pagination)",
+        examples: [0, 10, 50],
+      }),
+
     dueDateStart: z
       .string()
       .optional()

@@ -8,7 +8,6 @@ export interface Photo
   > {
   originalUrl: string;
   convertedJpgUrl: string | null;
-  enabled: boolean;
 }
 
 // Frontend-only types

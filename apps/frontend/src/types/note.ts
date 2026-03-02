@@ -5,5 +5,4 @@ export interface Note extends ApiNote {
   userId: string;
   rawMetadata: string | null;
   userAgent: string | null;
-  enabled: boolean;
 }

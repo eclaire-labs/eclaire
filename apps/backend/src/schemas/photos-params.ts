@@ -279,6 +279,16 @@ export const PhotoSearchParamsSchema = z
         description: "Maximum number of photos to return",
         examples: [25, 50, 100, 9999],
       }),
+
+    offset: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .default(0)
+      .meta({
+        description: "Number of results to skip (for pagination)",
+        examples: [0, 10, 50],
+      }),
   })
   .meta({
     ref: "PhotoSearchParams",

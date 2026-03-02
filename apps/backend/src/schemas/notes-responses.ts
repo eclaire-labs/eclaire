@@ -17,15 +17,6 @@ export const CreatedNoteResponseSchema = NoteResponseSchema.omit({
   metadata: true,
 }).meta({ ref: "CreatedNoteResponse" });
 
-// Delete success response
-export const NoteDeleteResponseSchema = z
-  .object({
-    message: z.literal("Note entry deleted successfully").meta({
-      description: "Confirmation message for successful deletion",
-    }),
-  })
-  .meta({ ref: "NoteDeleteResponse" });
-
 // Note not found error
 export const NoteNotFoundSchema = z
   .object({

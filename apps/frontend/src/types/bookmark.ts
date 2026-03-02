@@ -2,10 +2,6 @@ import type { Bookmark as ApiBookmark } from "@eclaire/api-types";
 
 // Extend the API Bookmark type with fields used by the frontend
 export interface Bookmark extends ApiBookmark {
-  screenshotUrl: string | null;
-  readableUrl: string | null;
-  readmeUrl: string | null;
-  enabled: boolean;
   rawMetadata?: RawMetadata;
 }
 

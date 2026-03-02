@@ -20,6 +20,7 @@ export const NoteResponseSchema = z
     originalMimeType: z.string().nullable().optional(),
     fileSize: z.number().nullable().optional(),
     metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+    enabled: z.boolean(),
   })
   .meta({ ref: "NoteResponse" });
 

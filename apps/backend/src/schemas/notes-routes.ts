@@ -15,7 +15,6 @@ import {
 } from "./notes-params.js";
 import {
   CreatedNoteResponseSchema,
-  NoteDeleteResponseSchema,
   NoteNotFoundSchema,
   NoteResponseSchema,
   NotesListResponseSchema,
@@ -209,13 +208,8 @@ export const deleteNoteRouteDescription = {
   summary: "Delete note",
   description: "Delete a note entry permanently",
   responses: {
-    200: {
+    204: {
       description: "Note deleted successfully",
-      content: {
-        "application/json": {
-          schema: resolver(NoteDeleteResponseSchema),
-        },
-      },
     },
     ...commonErrors,
     404: notFoundError("Note", NoteNotFoundSchema),

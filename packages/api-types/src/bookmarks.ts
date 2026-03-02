@@ -1,5 +1,5 @@
 import z from "zod/v4";
-import { reviewStatusSchema } from "./common.js";
+import { paginatedResponseSchema, reviewStatusSchema } from "./common.js";
 
 export const BookmarkResponseSchema = z
   .object({
@@ -31,13 +31,18 @@ export const BookmarkResponseSchema = z
     screenshotFullPageUrl: z.string().nullable(),
     pdfUrl: z.string().nullable(),
     contentUrl: z.string().nullable(),
+    screenshotUrl: z.string().nullable(),
+    readableUrl: z.string().nullable(),
+    readmeUrl: z.string().nullable(),
+    enabled: z.boolean(),
   })
   .meta({ ref: "BookmarkResponse" });
 
-// Note: bookmarks list endpoint returns a plain array, not paginated
-export const BookmarksListResponseSchema = z
-  .array(BookmarkResponseSchema)
-  .meta({ ref: "BookmarksListResponse" });
+export const BookmarksListResponseSchema = paginatedResponseSchema(
+  BookmarkResponseSchema,
+  "BookmarksListResponse",
+  "bookmarks",
+);
 
 export type Bookmark = z.infer<typeof BookmarkResponseSchema>;
 export type BookmarksListResponse = z.infer<typeof BookmarksListResponseSchema>;

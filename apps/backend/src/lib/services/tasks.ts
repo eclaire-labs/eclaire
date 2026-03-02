@@ -594,12 +594,6 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
       ? new Date(taskData.recurrenceEndDate)
       : null;
 
-    // Calculate next run time for recurring tasks
-    let nextRunAtValue: Date | null = null;
-    if (taskData.isRecurring && taskData.cronExpression) {
-      nextRunAtValue = getNextExecutionTime(taskData.cronExpression);
-    }
-
     // Set completedAt if task is being created with "completed" status
     const taskStatus = taskData.status || "not-started";
     const completedAtValue = taskStatus === "completed" ? new Date() : null;

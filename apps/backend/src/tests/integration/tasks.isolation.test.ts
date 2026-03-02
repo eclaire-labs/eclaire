@@ -14,7 +14,6 @@ import { delay } from "../utils/test-helpers.js";
 
 describe("Tasks — Multi-user Isolation", { timeout: 30000 }, () => {
   let user1TaskId: string | null = null;
-  let user1CommentId: string | null = null;
 
   beforeAll(async () => {
     await delay(200);
@@ -44,8 +43,7 @@ describe("Tasks — Multi-user Isolation", { timeout: 30000 }, () => {
     );
 
     expect(commentResponse.status).toBe(201);
-    const comment = (await commentResponse.json()) as TaskComment;
-    user1CommentId = comment.id;
+    (await commentResponse.json()) as TaskComment;
   });
 
   it("should not allow user 2 to GET user 1's task", async () => {

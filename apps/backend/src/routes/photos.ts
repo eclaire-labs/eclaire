@@ -75,7 +75,7 @@ photosRoutes.get(
       items,
       totalCount,
       limit: params.limit,
-      offset: 0,
+      offset: params.offset,
     });
   }, logger),
 );

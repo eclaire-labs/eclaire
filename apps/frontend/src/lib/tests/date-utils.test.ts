@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { formatDate, formatFileSize, isJobStuck } from "@/lib/date-utils";
 
 describe("formatDate", () => {

@@ -40,16 +40,15 @@ const BaseItemSchema = z
       .nullable()
       .meta({ description: "Due date for the item (ISO 8601 format)" }),
     reviewStatus: z
-      .enum(["unreviewed", "reviewed", "flagged"])
+      .enum(["pending", "accepted", "rejected"])
       .nullable()
       .meta({ description: "Review status of the item" }),
     flagColor: z
-      .string()
+      .enum(["red", "yellow", "orange", "green", "blue"])
       .nullable()
       .meta({ description: "Color flag for the item" }),
     isPinned: z
       .boolean()
-      .nullable()
       .meta({ description: "Whether the item is pinned" }),
     content: z
       .string()
@@ -132,16 +131,15 @@ export const CreatedItemSchema = z
       description: "Due date for the created item (ISO 8601 format)",
     }),
     reviewStatus: z
-      .enum(["unreviewed", "reviewed", "flagged"])
+      .enum(["pending", "accepted", "rejected"])
       .nullable()
       .meta({ description: "Review status of the created item" }),
     flagColor: z
-      .string()
+      .enum(["red", "yellow", "orange", "green", "blue"])
       .nullable()
       .meta({ description: "Color flag for the created item" }),
     isPinned: z
       .boolean()
-      .nullable()
       .meta({ description: "Whether the created item is pinned" }),
     fileSize: z.number().nullable().meta({ description: "File size in bytes" }),
     originalFilename: z

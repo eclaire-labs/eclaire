@@ -4,7 +4,7 @@ import {
   createAuthenticatedFetch,
   TEST_API_KEY,
 } from "../utils/test-helpers.js";
-import type { Bookmark, BookmarkListResponse } from "../utils/types.js";
+import type { Bookmark } from "../utils/types.js";
 
 /**
  * Search/filter integration tests for the bookmark API.

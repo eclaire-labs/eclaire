@@ -212,6 +212,16 @@ export const DocumentSearchParamsSchema = z
         maximum: 10000,
       }),
 
+    offset: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .default(0)
+      .meta({
+        description: "Number of results to skip (for pagination)",
+        examples: [0, 10, 50],
+      }),
+
     dueDateStart: z
       .string()
       .optional()
