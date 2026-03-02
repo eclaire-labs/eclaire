@@ -1,7 +1,6 @@
 import { Buffer } from "node:buffer";
 import { type AIMessage, callAI } from "@eclaire/ai";
 import type { JobContext } from "@eclaire/queue/core";
-import heicConvert from "heic-convert";
 import sharp from "sharp";
 import { createChildLogger } from "../../lib/logger.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
@@ -17,13 +16,18 @@ export interface ImageJobData {
   originalFilename?: string;
 }
 
-// Define which MIME types are unsupported by the AI and require conversion.
+// Define which MIME types require conversion to JPEG for consistent processing.
+// Includes formats unsupported by AI models, those with alpha channels (transparency
+// becomes black in JPEG thumbnails), and uncommon formats best normalized early.
 const CONVERSION_REQUIRED_MIME_TYPES = new Set([
   "image/heic",
   "image/heif",
   "image/avif",
   "image/webp",
   "image/svg+xml",
+  "image/png", // Normalize: avoids alpha-channel artifacts in JPEG thumbnails
+  "image/tiff", // Normalize: some variants (CMYK, 16-bit, multi-page) can fail
+  "image/bmp", // Normalize: unnecessarily large format
 ]);
 
 const STAGES = {
@@ -94,27 +98,14 @@ async function executeImageConversion(
   await ctx.updateStageProgress(stageName, 10);
 
   try {
-    let jpegBuffer: Buffer;
-
-    // HEIC/HEIF requires a special library.
-    if (sourceMimeType === "image/heic" || sourceMimeType === "image/heif") {
-      const u8 = new Uint8Array(
-        imageBuffer.buffer,
-        imageBuffer.byteOffset,
-        imageBuffer.byteLength,
-      );
-
-      const conversionResult = await heicConvert({
-        buffer: u8 as unknown as ArrayBufferLike, // appease the too-narrow d.ts
-        format: "JPEG",
-        quality: 0.9,
-      });
-
-      jpegBuffer = Buffer.from(conversionResult);
-    } else {
-      // Sharp handles AVIF, WebP, SVG, and more.
-      jpegBuffer = await sharp(imageBuffer).jpeg({ quality: 90 }).toBuffer();
-    }
+    // Sharp handles all formats: HEIC/HEIF (via libheif), AVIF, WebP, SVG,
+    // PNG, TIFF, BMP, and more. Using .rotate() auto-applies EXIF orientation.
+    const sharpOptions =
+      sourceMimeType === "image/svg+xml" ? { density: 300 } : {};
+    const jpegBuffer = await sharp(imageBuffer, sharpOptions)
+      .rotate()
+      .jpeg({ quality: 90 })
+      .toBuffer();
 
     await ctx.updateStageProgress(stageName, 50);
 
@@ -165,6 +156,7 @@ async function executeThumbnailGeneration(
 
   try {
     const thumbnailBuffer = await sharp(imageBuffer)
+      .rotate() // Auto-apply EXIF orientation
       .resize(400, 400, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 85 })
       .toBuffer();
@@ -206,6 +198,7 @@ async function executeThumbnailGeneration(
 async function executeAIWorkflowStep(
   stageName: Stage,
   imageBase64: string,
+  mediaMime: string,
   photoId: string,
   ctx: JobContext<ImageJobData>,
   // biome-ignore lint/suspicious/noExplicitAny: AI model returns dynamic JSON output
@@ -218,25 +211,10 @@ async function executeAIWorkflowStep(
     throw new Error(`No prompt defined for AI stage: ${stageName}`);
   }
 
+  // Content extraction uses a dedicated OCR prompt with lower temperature and
+  // higher maxTokens since documents can contain significant text.
   if (stageName === STAGES.CONTENT_EXTRACTION) {
-    const _extractionSchema = {
-      type: "object",
-      properties: {
-        extracted_text: {
-          type: "string",
-          description:
-            "All visible text extracted from the image, preserving original formatting and line breaks.",
-        },
-        has_text: {
-          type: "boolean",
-          description:
-            "A boolean flag indicating whether any text was found in the image.",
-        },
-      },
-      required: ["extracted_text", "has_text"],
-    };
-
-    const tempMessages: AIMessage[] = [
+    const ocrMessages: AIMessage[] = [
       {
         role: "system",
         content:
@@ -247,29 +225,90 @@ async function executeAIWorkflowStep(
         content: [
           {
             type: "image_url",
-            image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
+            image_url: { url: `data:${mediaMime};base64,${imageBase64}` },
           },
           {
             type: "text",
-            text: "Extract all visible text from this image.",
+            text: 'Extract all visible text from this image. Respond with JSON: {"extracted_text": "all text here", "has_text": true/false}',
           },
         ],
       },
     ];
 
-    const modelResponse = await callAI(tempMessages, "workers", {
-      temperature: 0.1,
-      maxTokens: 1000,
-      timeout: config.worker.aiTimeout || 180000,
-    });
+    try {
+      const modelResponse = await callAI(ocrMessages, "workers", {
+        temperature: 0.1,
+        maxTokens: 4096,
+        timeout: config.worker.aiTimeout || 180000,
+      });
 
-    // log raw response
-    logger.debug(
-      { photoId, step: stageName, modelResponse },
-      "AI workflow step response",
-    );
+      logger.debug(
+        { photoId, step: stageName, modelResponse },
+        "OCR workflow step response",
+      );
+
+      // Check for repetitive content (model stuck in a loop)
+      if (modelResponse.content && detectRepetition(modelResponse.content)) {
+        logger.warn(
+          {
+            photoId,
+            step: stageName,
+            contentLength: modelResponse.content.length,
+          },
+          "Detected repetitive pattern in OCR response",
+        );
+        throw new Error(
+          "AI response contains repetitive content - model may be stuck in a loop",
+        );
+      }
+
+      // Handle truncation gracefully for OCR — return partial text instead of failing
+      if (modelResponse.finishReason === "length") {
+        logger.warn(
+          { photoId, step: stageName },
+          "OCR response truncated due to token limit - returning partial result",
+        );
+        try {
+          const partial = parseModelResponse(modelResponse);
+          partial._truncated = true;
+          await ctx.updateStageProgress(stageName, 80);
+          await ctx.completeStage(stageName, partial);
+          return partial;
+        } catch {
+          // JSON was cut off mid-parse; wrap raw content as best-effort
+          const fallback = {
+            extracted_text: modelResponse.content || "",
+            has_text: !!modelResponse.content?.trim(),
+            _truncated: true,
+          };
+          await ctx.updateStageProgress(stageName, 80);
+          await ctx.completeStage(stageName, fallback);
+          return fallback;
+        }
+      }
+
+      await ctx.updateStageProgress(stageName, 80);
+      const parsedResponse = parseModelResponse(modelResponse);
+      await ctx.completeStage(stageName, parsedResponse);
+      return parsedResponse;
+    } catch (error: unknown) {
+      logger.error(
+        {
+          photoId,
+          step: stageName,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "OCR workflow step failed",
+      );
+      await ctx.failStage(
+        stageName,
+        error instanceof Error ? error : new Error(String(error)),
+      );
+      throw error;
+    }
   }
 
+  // Generic AI workflow for non-OCR stages (classification, object detection, etc.)
   const messages: AIMessage[] = [
     {
       role: "system",
@@ -279,10 +318,9 @@ async function executeAIWorkflowStep(
     {
       role: "user",
       content: [
-        // Since we convert everything to JPEG, this data URI is always correct.
         {
           type: "image_url",
-          image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
+          image_url: { url: `data:${mediaMime};base64,${imageBase64}` },
         },
         { type: "text", text: prompt },
       ],
@@ -296,7 +334,6 @@ async function executeAIWorkflowStep(
       timeout: config.worker.aiTimeout || 180000,
     });
 
-    // log raw response
     logger.debug(
       { photoId, step: stageName, modelResponse },
       "AI workflow step response",
@@ -420,6 +457,27 @@ function parseModelResponse(responseText: string | any): any {
 }
 
 /**
+ * Prepare an image buffer for AI analysis by resizing to a manageable dimension,
+ * auto-orienting from EXIF, and converting to JPEG. This prevents memory issues
+ * with large images (especially important for local models with limited VRAM)
+ * and ensures the data URI MIME type always matches the actual content.
+ */
+async function prepareImageForAI(
+  imageBuffer: Buffer,
+): Promise<{ base64: string; mediaType: string }> {
+  const AI_MAX_DIMENSION = 2048;
+  const processed = await sharp(imageBuffer)
+    .rotate()
+    .resize(AI_MAX_DIMENSION, AI_MAX_DIMENSION, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: 85 })
+    .toBuffer();
+  return { base64: processed.toString("base64"), mediaType: "image/jpeg" };
+}
+
+/**
  * Main processing function for an image.
  */
 async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
@@ -506,11 +564,14 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
     };
 
     // STAGE: CLASSIFICATION
-    // This will also use the appropriate buffer.
-    const imageBase64 = imageBuffer.toString("base64");
+    // Resize and normalize the image for AI analysis to avoid memory issues
+    // with large files and ensure consistent MIME types in data URIs.
+    const { base64: imageBase64, mediaType: aiMimeType } =
+      await prepareImageForAI(imageBuffer);
     const classificationResult = await executeAIWorkflowStep(
       STAGES.CLASSIFICATION,
       imageBase64,
+      aiMimeType,
       photoId,
       ctx,
     );
@@ -540,6 +601,7 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
       const stepArtifacts = await executeAIWorkflowStep(
         stepName,
         imageBase64,
+        aiMimeType,
         photoId,
         ctx,
       );
