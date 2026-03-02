@@ -562,4 +562,93 @@ describe("callAI", () => {
       );
     });
   });
+
+  describe("default options", () => {
+    it("uses default temperature (0.5) when not specified", async () => {
+      mockFetch.queueJsonResponse(
+        createOpenAIResponse({ content: "Response" }),
+      );
+
+      await callAI([{ role: "user", content: "Hello" }], "backend");
+
+      const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+      expect(requestBody.temperature).toBe(0.5);
+    });
+
+    it("uses default max_tokens (2000) when not specified", async () => {
+      mockFetch.queueJsonResponse(
+        createOpenAIResponse({ content: "Response" }),
+      );
+
+      await callAI([{ role: "user", content: "Hello" }], "backend");
+
+      const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+      expect(requestBody.max_tokens).toBe(2000);
+    });
+
+    it("explicit temperature overrides default", async () => {
+      mockFetch.queueJsonResponse(
+        createOpenAIResponse({ content: "Response" }),
+      );
+
+      await callAI([{ role: "user", content: "Hello" }], "backend", {
+        temperature: 0.9,
+      });
+
+      const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+      expect(requestBody.temperature).toBe(0.9);
+    });
+
+    it("explicit maxTokens overrides default", async () => {
+      mockFetch.queueJsonResponse(
+        createOpenAIResponse({ content: "Response" }),
+      );
+
+      await callAI([{ role: "user", content: "Hello" }], "backend", {
+        maxTokens: 4000,
+      });
+
+      const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
+      expect(requestBody.max_tokens).toBe(4000);
+    });
+  });
+
+  describe("timeout handling", () => {
+    it("sets AbortSignal when timeout is provided", async () => {
+      mockFetch.queueJsonResponse(
+        createOpenAIResponse({ content: "Response" }),
+      );
+
+      await callAI([{ role: "user", content: "Hello" }], "backend", {
+        timeout: 5000,
+      });
+
+      const init = mockFetch.calls[0]!.init;
+      expect(init?.signal).toBeDefined();
+    });
+
+    it("does not set signal when timeout is not provided", async () => {
+      mockFetch.queueJsonResponse(
+        createOpenAIResponse({ content: "Response" }),
+      );
+
+      await callAI([{ role: "user", content: "Hello" }], "backend");
+
+      const init = mockFetch.calls[0]!.init;
+      expect(init?.signal).toBeUndefined();
+    });
+
+    it("does not set signal when timeout is 0", async () => {
+      mockFetch.queueJsonResponse(
+        createOpenAIResponse({ content: "Response" }),
+      );
+
+      await callAI([{ role: "user", content: "Hello" }], "backend", {
+        timeout: 0,
+      });
+
+      const init = mockFetch.calls[0]!.init;
+      expect(init?.signal).toBeUndefined();
+    });
+  });
 });

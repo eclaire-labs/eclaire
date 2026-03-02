@@ -340,11 +340,261 @@ describe("Adapters", () => {
         const body = request.body as Record<string, unknown>;
         expect(body.model).toBe("test-model");
       });
+
+      it("uses 'input' field instead of 'messages'", () => {
+        const request = mlxNativeAdapter.buildRequest(
+          "http://localhost:8081",
+          "/responses",
+          {
+            messages: [
+              { role: "system", content: "Be helpful" },
+              { role: "user", content: "Hello" },
+            ],
+            model: "test-model",
+            options: {},
+          },
+          { type: "none" },
+        );
+
+        const body = request.body as Record<string, unknown>;
+        expect(body.input).toBeDefined();
+        expect(body.messages).toBeUndefined();
+        expect(body.input).toHaveLength(2);
+      });
+
+      it("uses max_output_tokens instead of max_tokens", () => {
+        const request = mlxNativeAdapter.buildRequest(
+          "http://localhost:8081",
+          "/responses",
+          {
+            messages: [{ role: "user", content: "Hello" }],
+            model: "test-model",
+            options: { maxTokens: 500 },
+          },
+          { type: "none" },
+        );
+
+        const body = request.body as Record<string, unknown>;
+        expect(body.max_output_tokens).toBe(500);
+        expect(body.max_tokens).toBeUndefined();
+      });
+
+      it("passes temperature through", () => {
+        const request = mlxNativeAdapter.buildRequest(
+          "http://localhost:8081",
+          "/responses",
+          {
+            messages: [{ role: "user", content: "Hello" }],
+            model: "test-model",
+            options: { temperature: 0.3 },
+          },
+          { type: "none" },
+        );
+
+        const body = request.body as Record<string, unknown>;
+        expect(body.temperature).toBe(0.3);
+      });
+
+      it("defaults stream to false", () => {
+        const request = mlxNativeAdapter.buildRequest(
+          "http://localhost:8081",
+          "/responses",
+          {
+            messages: [{ role: "user", content: "Hello" }],
+            model: "test-model",
+            options: {},
+          },
+          { type: "none" },
+        );
+
+        const body = request.body as Record<string, unknown>;
+        expect(body.stream).toBe(false);
+      });
+
+      it("sets stream to true when requested", () => {
+        const request = mlxNativeAdapter.buildRequest(
+          "http://localhost:8081",
+          "/responses",
+          {
+            messages: [{ role: "user", content: "Hello" }],
+            model: "test-model",
+            options: { stream: true },
+          },
+          { type: "none" },
+        );
+
+        const body = request.body as Record<string, unknown>;
+        expect(body.stream).toBe(true);
+      });
+
+      it("includes top_p when specified", () => {
+        const request = mlxNativeAdapter.buildRequest(
+          "http://localhost:8081",
+          "/responses",
+          {
+            messages: [{ role: "user", content: "Hello" }],
+            model: "test-model",
+            options: { top_p: 0.9 },
+          },
+          { type: "none" },
+        );
+
+        const body = request.body as Record<string, unknown>;
+        expect(body.top_p).toBe(0.9);
+      });
+
+      it("omits top_p when not specified", () => {
+        const request = mlxNativeAdapter.buildRequest(
+          "http://localhost:8081",
+          "/responses",
+          {
+            messages: [{ role: "user", content: "Hello" }],
+            model: "test-model",
+            options: {},
+          },
+          { type: "none" },
+        );
+
+        const body = request.body as Record<string, unknown>;
+        expect(body.top_p).toBeUndefined();
+      });
+
+      it("uses default /responses endpoint when empty", () => {
+        const request = mlxNativeAdapter.buildRequest(
+          "http://localhost:8081",
+          "",
+          {
+            messages: [{ role: "user", content: "Hello" }],
+            model: "test-model",
+            options: {},
+          },
+          { type: "none" },
+        );
+
+        expect(request.url).toBe("http://localhost:8081/responses");
+      });
+
+      it("includes custom headers", () => {
+        const request = mlxNativeAdapter.buildRequest(
+          "http://localhost:8081",
+          "/responses",
+          {
+            messages: [{ role: "user", content: "Hello" }],
+            model: "test-model",
+            options: {},
+          },
+          { type: "none" },
+          { "X-Custom": "value" },
+        );
+
+        expect(request.headers["X-Custom"]).toBe("value");
+        expect(request.headers["Content-Type"]).toBe("application/json");
+      });
+    });
+
+    describe("parseResponse", () => {
+      it("extracts content from response.output_text", () => {
+        const parsed = mlxNativeAdapter.parseResponse({
+          response: { output_text: "Hello from MLX" },
+        });
+
+        expect(parsed.content).toBe("Hello from MLX");
+        expect(parsed.finishReason).toBe("stop");
+      });
+
+      it("extracts content from response.text", () => {
+        const parsed = mlxNativeAdapter.parseResponse({
+          response: { text: "Hello from MLX" },
+        });
+
+        expect(parsed.content).toBe("Hello from MLX");
+      });
+
+      it("extracts content from top-level output_text", () => {
+        const parsed = mlxNativeAdapter.parseResponse({
+          output_text: "Hello from MLX",
+        });
+
+        expect(parsed.content).toBe("Hello from MLX");
+      });
+
+      it("extracts content from top-level text", () => {
+        const parsed = mlxNativeAdapter.parseResponse({
+          text: "Hello from MLX",
+        });
+
+        expect(parsed.content).toBe("Hello from MLX");
+      });
+
+      it("extracts content from top-level content field", () => {
+        const parsed = mlxNativeAdapter.parseResponse({
+          content: "Hello from MLX",
+        });
+
+        expect(parsed.content).toBe("Hello from MLX");
+      });
+
+      it("prefers response.output_text over other fields", () => {
+        const parsed = mlxNativeAdapter.parseResponse({
+          response: { output_text: "preferred" },
+          output_text: "fallback",
+          text: "other",
+        });
+
+        expect(parsed.content).toBe("preferred");
+      });
+
+      it("throws on empty response", () => {
+        expect(() => mlxNativeAdapter.parseResponse({})).toThrow(
+          "No content in MLX response",
+        );
+      });
+
+      it("returns no toolCalls, usage, or reasoning", () => {
+        const parsed = mlxNativeAdapter.parseResponse({
+          response: { output_text: "Hello" },
+        });
+
+        expect(parsed.toolCalls).toBeUndefined();
+        expect(parsed.usage).toBeUndefined();
+        expect(parsed.reasoning).toBeUndefined();
+      });
     });
 
     describe("transformStream", () => {
+      /**
+       * Helper to create an MLX-style SSE input stream
+       */
+      function createMLXStream(lines: string[]): ReadableStream<Uint8Array> {
+        const encoder = new TextEncoder();
+        return new ReadableStream({
+          start(controller) {
+            for (const line of lines) {
+              controller.enqueue(encoder.encode(`${line}\n`));
+            }
+            controller.close();
+          },
+        });
+      }
+
+      /**
+       * Helper to consume a stream and return all decoded chunks
+       */
+      async function consumeStream(
+        stream: ReadableStream<Uint8Array>,
+      ): Promise<string[]> {
+        const decoder = new TextDecoder();
+        const reader = stream.getReader();
+        const chunks: string[] = [];
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(decoder.decode(value));
+        }
+        return chunks;
+      }
+
       it("transforms stream (returns a stream)", async () => {
-        // Create a simple input stream
         const encoder = new TextEncoder();
         const inputStream = new ReadableStream({
           start(controller) {
@@ -356,6 +606,121 @@ describe("Adapters", () => {
         const transformedStream = mlxNativeAdapter.transformStream(inputStream);
 
         expect(transformedStream).toBeInstanceOf(ReadableStream);
+      });
+
+      it("converts output_text delta events to OpenAI content deltas", async () => {
+        const input = createMLXStream([
+          `data: ${JSON.stringify({ type: "response.output_text.delta", delta: "Hello" })}`,
+          `data: ${JSON.stringify({ type: "response.output_text.delta", delta: " world" })}`,
+        ]);
+
+        const output = await consumeStream(
+          mlxNativeAdapter.transformStream(input),
+        );
+        const joined = output.join("");
+
+        // Should contain OpenAI-format content deltas
+        expect(joined).toContain('"content":"Hello"');
+        expect(joined).toContain('"content":" world"');
+        expect(joined).toContain('"finish_reason":null');
+      });
+
+      it("converts response.completed to OpenAI finish_reason stop", async () => {
+        const input = createMLXStream([
+          `data: ${JSON.stringify({ type: "response.completed" })}`,
+        ]);
+
+        const output = await consumeStream(
+          mlxNativeAdapter.transformStream(input),
+        );
+        const joined = output.join("");
+
+        expect(joined).toContain('"finish_reason":"stop"');
+      });
+
+      it("skips empty delta content", async () => {
+        const input = createMLXStream([
+          `data: ${JSON.stringify({ type: "response.output_text.delta", delta: "" })}`,
+          `data: ${JSON.stringify({ type: "response.output_text.delta", delta: "actual" })}`,
+        ]);
+
+        const output = await consumeStream(
+          mlxNativeAdapter.transformStream(input),
+        );
+        const joined = output.join("");
+
+        // Should only contain the non-empty delta
+        expect(joined).toContain('"content":"actual"');
+        // The empty delta should not produce a content event
+        const contentMatches = joined.match(/"content"/g);
+        expect(contentMatches).toHaveLength(1);
+      });
+
+      it("passes through [DONE] marker", async () => {
+        const input = createMLXStream(["data: [DONE]"]);
+
+        const output = await consumeStream(
+          mlxNativeAdapter.transformStream(input),
+        );
+        const joined = output.join("");
+
+        expect(joined).toContain("data: [DONE]");
+      });
+
+      it("emits [DONE] at end of stream", async () => {
+        const input = createMLXStream([
+          `data: ${JSON.stringify({ type: "response.output_text.delta", delta: "Hi" })}`,
+        ]);
+
+        const output = await consumeStream(
+          mlxNativeAdapter.transformStream(input),
+        );
+        const joined = output.join("");
+
+        // Stream close should emit [DONE]
+        expect(joined).toContain("data: [DONE]");
+      });
+
+      it("passes through comments and empty lines", async () => {
+        const input = createMLXStream([": this is a comment", ""]);
+
+        const output = await consumeStream(
+          mlxNativeAdapter.transformStream(input),
+        );
+        const joined = output.join("");
+
+        expect(joined).toContain(": this is a comment");
+      });
+
+      it("handles malformed JSON data lines gracefully", async () => {
+        const input = createMLXStream([
+          "data: {not valid json",
+          `data: ${JSON.stringify({ type: "response.output_text.delta", delta: "ok" })}`,
+        ]);
+
+        const output = await consumeStream(
+          mlxNativeAdapter.transformStream(input),
+        );
+        const joined = output.join("");
+
+        // Should still process valid events after malformed one
+        expect(joined).toContain('"content":"ok"');
+      });
+
+      it("silently skips unknown event types", async () => {
+        const input = createMLXStream([
+          `data: ${JSON.stringify({ type: "response.unknown_event", data: "foo" })}`,
+          `data: ${JSON.stringify({ type: "response.output_text.delta", delta: "real" })}`,
+        ]);
+
+        const output = await consumeStream(
+          mlxNativeAdapter.transformStream(input),
+        );
+        const joined = output.join("");
+
+        // Unknown event should not produce output, but known one should
+        expect(joined).toContain('"content":"real"');
+        expect(joined).not.toContain("unknown_event");
       });
     });
   });
