@@ -73,6 +73,9 @@
     "workers:dev": "NODE_ENV=development SERVICE_ROLE=worker NODE_OPTIONS='--conditions=development' tsx watch src/index.ts"
   },
   "dependencies": {
+    "@bull-board/api": "6.19.0",
+    "@bull-board/hono": "6.19.0",
+    "@bull-board/ui": "6.19.0",
     "@eclaire/ai": "workspace:*",
     "@eclaire/api-types": "workspace:*",
     "@eclaire/core": "workspace:*",
@@ -80,9 +83,6 @@
     "@eclaire/logger": "workspace:*",
     "@eclaire/queue": "workspace:*",
     "@eclaire/storage": "workspace:*",
-    "@bull-board/api": "6.19.0",
-    "@bull-board/hono": "6.19.0",
-    "@bull-board/ui": "6.19.0",
     "@electric-sql/pglite": "0.3.14",
     "@hono/node-server": "1.19.9",
     "@hono/standard-validator": "0.2.1",
@@ -130,12 +130,12 @@
     "tmp-promise": "3.0.3",
     "tsx": "4.21.0",
     "turndown": "7.2.2",
+    "turndown-plugin-gfm": "^1.0.2",
     "uuid": "13.0.0",
     "zod": "4.3.6"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "oxlint": "catalog:",
     "@types/bcrypt": "6.0.0",
     "@types/better-sqlite3": "7.6.13",
     "@types/heic-convert": "2.1.0",
@@ -151,6 +151,7 @@
     "@types/turndown": "5.0.6",
     "drizzle-kit": "0.31.8",
     "mime-types": "3.0.2",
+    "oxlint": "catalog:",
     "supertest": "7.2.2",
     "tsc-alias": "1.8.16",
     "typescript": "catalog:",

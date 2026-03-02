@@ -6,12 +6,38 @@ import { getQueue } from "../queues.js";
 
 const logger = createChildLogger("domain-rate-limiter");
 
+/** Error categories for graduated failure tracking */
+export type DomainErrorCategory =
+  | "server_error" // 5xx responses
+  | "network_error" // DNS, TLS, connection failures
+  | "client_error" // 4xx responses (should not trigger blocking)
+  | "processing_error"; // sharp, storage, content extraction failures (should not trigger blocking)
+
+interface DomainFailure {
+  category: DomainErrorCategory;
+  message: string;
+  timestamp: number;
+}
+
+/** Categories that count toward domain blocking when they occur consecutively */
+const BLOCKABLE_CATEGORIES: ReadonlySet<DomainErrorCategory> = new Set([
+  "server_error",
+  "network_error",
+]);
+
+/** Number of consecutive blockable failures before blocking a domain */
+const BLOCK_THRESHOLD = 3;
+
+/** Time window for consecutive failures (10 minutes) */
+const FAILURE_WINDOW_MS = 10 * 60 * 1000;
+
 interface DomainState {
   lastProcessedAt: number;
   currentlyRunning: Set<string>; // job IDs
   blockedUntil?: number; // Timestamp when domain can be retried again
   blockedReason?: string;
   blockedAt?: number;
+  recentFailures: DomainFailure[]; // Tracks failures within the time window
 }
 
 interface DomainRule {
@@ -204,6 +230,83 @@ export class DomainRateLimiter {
   }
 
   /**
+   * Record a job failure for a domain. Uses graduated tracking:
+   * - Only server_error and network_error count toward blocking
+   * - client_error and processing_error are logged but never trigger blocking
+   * - Domain is blocked only after BLOCK_THRESHOLD consecutive blockable failures within FAILURE_WINDOW_MS
+   * Returns true if the domain was blocked as a result.
+   */
+  recordFailure(
+    url: string,
+    category: DomainErrorCategory,
+    message: string,
+    blockDurationMs: number = 60 * 60 * 1000,
+  ): boolean {
+    const domain = this.extractDomain(url);
+    const state = this.getDomainState(domain);
+    const now = Date.now();
+
+    // Prune failures outside the time window
+    state.recentFailures = state.recentFailures.filter(
+      (f) => now - f.timestamp < FAILURE_WINDOW_MS,
+    );
+
+    // Record the failure
+    state.recentFailures.push({ category, message, timestamp: now });
+
+    // Non-blockable categories are recorded for stats but never trigger blocking
+    if (!BLOCKABLE_CATEGORIES.has(category)) {
+      logger.info(
+        { domain, category, message },
+        "Non-blockable failure recorded (will not trigger domain block)",
+      );
+      return false;
+    }
+
+    // Count consecutive blockable failures (from the end of the list)
+    let consecutiveBlockable = 0;
+    for (let i = state.recentFailures.length - 1; i >= 0; i--) {
+      const failure = state.recentFailures[i];
+      if (failure && BLOCKABLE_CATEGORIES.has(failure.category)) {
+        consecutiveBlockable++;
+      } else {
+        break; // Non-blockable failure (or end of list) breaks the consecutive streak
+      }
+    }
+
+    logger.info(
+      {
+        domain,
+        category,
+        consecutiveBlockable,
+        threshold: BLOCK_THRESHOLD,
+        message,
+      },
+      "Blockable failure recorded",
+    );
+
+    if (consecutiveBlockable >= BLOCK_THRESHOLD) {
+      this.blockDomain(
+        url,
+        `${consecutiveBlockable} consecutive ${category} failures: ${message}`,
+        blockDurationMs,
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Mark a domain as having completed a job successfully. Resets the failure counter.
+   */
+  markDomainSuccess(url: string): void {
+    const domain = this.extractDomain(url);
+    const state = this.getDomainState(domain);
+    state.recentFailures = [];
+  }
+
+  /**
    * Block a domain due to errors - will automatically unblock after 1 hour
    */
   blockDomain(
@@ -365,6 +468,7 @@ export class DomainRateLimiter {
       this.domainStates.set(domain, {
         lastProcessedAt: 0,
         currentlyRunning: new Set<string>(),
+        recentFailures: [],
       });
     }
     // biome-ignore lint/style/noNonNullAssertion: guarded by .has() check and .set() above

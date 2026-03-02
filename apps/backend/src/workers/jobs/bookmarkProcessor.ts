@@ -1,24 +1,22 @@
 import type { JobContext } from "@eclaire/queue/core";
-import { type BrowserContext, chromium, type Page } from "patchright";
-import sharp from "sharp";
 import { createChildLogger } from "../../lib/logger.js";
-import { buildKey, getStorage } from "../../lib/storage/index.js";
-import { config } from "../config.js";
+import { BrowserPipeline } from "../lib/bookmarks/browser-pipeline.js";
 import {
   type BookmarkHandlerType,
   type BookmarkJobData,
   extractContentFromHtml,
   generateBookmarkTags,
-  generateOptimizedPdf,
   getHandlerForUrl,
   normalizeUrl,
   processGitHubBookmark,
   validateApiCredentials,
 } from "../lib/bookmarks/index.js";
 import { processRedditApiBookmark } from "../lib/bookmarks/reddit-api.js";
-import { domainRateLimiter } from "../lib/domainRateLimiter.js";
+import {
+  type DomainErrorCategory,
+  domainRateLimiter,
+} from "../lib/domainRateLimiter.js";
 import { createRateLimitError } from "../lib/job-utils.js";
-import { TimeoutError, withTimeout } from "../lib/utils/timeout.js";
 
 const logger = createChildLogger("bookmark-processor");
 
@@ -26,18 +24,17 @@ const logger = createChildLogger("bookmark-processor");
 validateApiCredentials();
 
 /**
- * Regular bookmark processing handler using ctx methods.
+ * Regular bookmark processing handler using BrowserPipeline.
  */
 async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
   const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with REGULAR handler");
-  // biome-ignore lint/suspicious/noExplicitAny: Patchright Browser instance, no exported type available
-  let browser: any = null;
-  let context: BrowserContext | null = null;
-  let page: Page | null = null;
+
   // biome-ignore lint/suspicious/noExplicitAny: dynamic artifact accumulator populated across processing stages
   const allArtifacts: Record<string, any> = {};
   let currentStage = "initialization";
+
+  const pipeline = new BrowserPipeline({ bookmarkId, userId, logger });
 
   try {
     currentStage = "validation";
@@ -50,393 +47,95 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
     currentStage = "content_extraction";
     await ctx.startStage("content_extraction");
 
-    // Browser launch with hard timeout
-    try {
-      logger.debug({ bookmarkId }, "Attempting to launch browser...");
-      browser = await withTimeout(
-        chromium.launch({
-          headless: true,
-          args: ["--use-mock-keychain"],
-        }),
-        config.timeouts.browserContext,
-        "Browser launch",
-      );
-      logger.debug({ bookmarkId }, "Browser launched successfully.");
+    // Browser launch and navigation via pipeline
+    await pipeline.launch();
+    const navResult = await pipeline.navigateTo(processUrl);
+    Object.assign(allArtifacts, navResult);
 
-      context = await browser.newContext({ viewport: null });
-      logger.debug({ bookmarkId }, "Browser context created successfully.");
-    } catch (error) {
-      if (error instanceof TimeoutError) {
-        throw new Error(
-          `Browser launch timed out after ${config.timeouts.browserContext}ms`,
-        );
-      }
-      throw error;
-    }
+    // Detect non-HTML content types and handle appropriately
+    const ct = (allArtifacts.contentType || "").toLowerCase();
+    const isNonHtml =
+      ct.includes("application/pdf") ||
+      ct.startsWith("image/") ||
+      ct.includes("application/octet-stream");
 
-    if (!context) {
-      throw new Error("Failed to create browser context");
-    }
-
-    logger.debug({ bookmarkId }, "Creating new page...");
-    page = await context.newPage();
-    logger.debug({ bookmarkId }, "New page created successfully.");
-
-    // Navigate to the URL and let the browser handle redirects with hard timeout
-    // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from page.goto
-    let response;
-    try {
-      logger.debug(
-        { bookmarkId, url: processUrl },
-        "Attempting to navigate to page...",
-      );
-      response = await withTimeout(
-        page.goto(processUrl, {
-          waitUntil: "networkidle",
-          timeout: 60000, // Playwright's internal timeout
-        }),
-        config.timeouts.pageNavigation, // Hard timeout (65s)
-        "Page navigation",
-      );
-      logger.debug(
-        { bookmarkId, url: processUrl },
-        "Page navigation successful.",
-      );
-    } catch (navError: unknown) {
-      logger.warn(
-        {
-          bookmarkId,
-          url: processUrl,
-          error:
-            navError instanceof Error ? navError.message : String(navError),
-        },
-        "Navigation failed, attempting with reduced timeout",
-      );
-      // Retry with reduced timeout and different wait condition
-      try {
-        response = await withTimeout(
-          page.goto(processUrl, {
-            waitUntil: "load",
-            timeout: 30000, // Playwright's internal timeout
-          }),
-          35000, // Hard timeout slightly longer than Playwright timeout
-          "Page navigation (retry)",
-        );
-      } catch (retryError: unknown) {
-        if (retryError instanceof TimeoutError) {
-          throw new Error(
-            `Page navigation timed out after retries (${retryError.message})`,
-          );
-        }
-        throw retryError;
-      }
-    }
-
-    // Get the final URL after redirects and extract metadata
-    allArtifacts.normalizedUrl = page.url();
-    allArtifacts.contentType = response?.headers()["content-type"] || "";
-    allArtifacts.etag = response?.headers().etag || "";
-    allArtifacts.lastModified = response?.headers()["last-modified"] || "";
-
-    // Screenshot generation with error boundaries
-    currentStage = "screenshot_generation";
-    let ssDesktopBuffer: Buffer;
-    try {
-      logger.debug(
-        { bookmarkId },
-        "Setting viewport for desktop screenshot...",
-      );
-      await page.setViewportSize({ width: 1920, height: 1080 });
-      logger.debug({ bookmarkId }, "Attempting desktop screenshot...");
-      ssDesktopBuffer = await withTimeout(
-        page.screenshot({
-          type: "png",
-          timeout: 30000, // Playwright's internal timeout
-        }),
-        config.timeouts.screenshotDesktop, // Hard timeout (35s)
-        "Desktop screenshot",
-      );
-      logger.debug(
-        { bookmarkId },
-        "Desktop screenshot completed successfully.",
+    if (isNonHtml) {
+      logger.info(
+        { bookmarkId, contentType: ct },
+        "Non-HTML content detected, using simplified extraction",
       );
 
-      // Extract raw pixel data to bypass libvips colorspace interpretation issues
-      // (Playwright PNGs can have colorspace values that libvips doesn't recognize)
-      const { data: rawPixels, info: imageInfo } = await sharp(ssDesktopBuffer)
-        .raw()
-        .toBuffer({ resolveWithObject: true });
+      // Still capture screenshots (the browser renders PDFs and images)
+      currentStage = "screenshot_generation";
+      const screenshotArtifacts = await pipeline.captureAllScreenshots();
+      Object.assign(allArtifacts, screenshotArtifacts);
 
-      const rawInput = {
-        raw: {
-          width: imageInfo.width,
-          height: imageInfo.height,
-          channels: imageInfo.channels,
-        },
-      };
-
-      // Generate thumbnail (lower resolution, 400x400, 85% quality)
-      const storage = getStorage();
-      const thumbnailBuffer = await sharp(rawPixels, rawInput)
-        .resize(400, 400, { fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality: 85 })
-        .toBuffer();
-      const thumbnailKey = buildKey(
-        userId,
-        "bookmarks",
-        bookmarkId,
-        "thumbnail.jpg",
-      );
-      await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
-        contentType: "image/jpeg",
-      });
-      allArtifacts.thumbnailStorageId = thumbnailKey;
-
-      // Generate screenshot (higher resolution, 1920x1440, 90% quality)
-      const screenshotBuffer = await sharp(rawPixels, rawInput)
-        .resize(1920, 1440, { fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality: 90 })
-        .toBuffer();
-      const screenshotKey = buildKey(
-        userId,
-        "bookmarks",
-        bookmarkId,
-        "screenshot.jpg",
-      );
-      await storage.writeBuffer(screenshotKey, screenshotBuffer, {
-        contentType: "image/jpeg",
-      });
-      allArtifacts.screenshotDesktopStorageId = screenshotKey;
-    } catch (screenshotError: unknown) {
-      const errorMessage =
-        screenshotError instanceof TimeoutError
-          ? `Desktop screenshot timed out after ${screenshotError.timeoutMs}ms`
-          : screenshotError instanceof Error
-            ? screenshotError.message
-            : String(screenshotError);
-      logger.error(
-        {
-          bookmarkId,
-          error: errorMessage,
-          isTimeout: screenshotError instanceof TimeoutError,
-        },
-        "Desktop screenshot/thumbnail generation failed",
-      );
-      // Let the error propagate - don't create fallback, let job fail
-      throw screenshotError;
-    }
-
-    // Full page screenshot with error handling
-    try {
-      logger.debug({ bookmarkId }, "Attempting full page screenshot...");
-      const ssFullPageBuffer = await withTimeout(
-        page.screenshot({
-          type: "png",
-          fullPage: true,
-          timeout: 45000, // Playwright's internal timeout
-        }),
-        config.timeouts.screenshotFullpage, // Hard timeout (50s)
-        "Full page screenshot",
-      );
-      logger.debug(
-        { bookmarkId },
-        "Full page screenshot completed successfully.",
-      );
-      const storageForFullPage = getStorage();
-      const fullpageKey = buildKey(
-        userId,
-        "bookmarks",
-        bookmarkId,
-        "screenshot-fullpage.png",
-      );
-      await storageForFullPage.writeBuffer(fullpageKey, ssFullPageBuffer, {
-        contentType: "image/png",
-      });
-      allArtifacts.screenshotFullPageStorageId = fullpageKey;
-    } catch (fullPageError: unknown) {
-      const errorMessage =
-        fullPageError instanceof TimeoutError
-          ? `Full page screenshot timed out after ${fullPageError.timeoutMs}ms`
-          : fullPageError instanceof Error
-            ? fullPageError.message
-            : String(fullPageError);
-      logger.warn(
-        {
-          bookmarkId,
-          error: errorMessage,
-          isTimeout: fullPageError instanceof TimeoutError,
-        },
-        "Full page screenshot failed, skipping",
-      );
-    }
-
-    // Mobile screenshot with error handling
-    try {
-      logger.debug({ bookmarkId }, "Setting viewport for mobile screenshot...");
-      await page.setViewportSize({ width: 375, height: 667 });
-      logger.debug({ bookmarkId }, "Attempting mobile screenshot...");
-      const ssMobileBuffer = await withTimeout(
-        page.screenshot({
-          type: "png",
-          timeout: 30000, // Playwright's internal timeout
-        }),
-        config.timeouts.screenshotMobile, // Hard timeout (35s)
-        "Mobile screenshot",
-      );
-      logger.debug({ bookmarkId }, "Mobile screenshot completed successfully.");
-      const storageForMobile = getStorage();
-      const mobileKey = buildKey(
-        userId,
-        "bookmarks",
-        bookmarkId,
-        "screenshot-mobile.png",
-      );
-      await storageForMobile.writeBuffer(mobileKey, ssMobileBuffer, {
-        contentType: "image/png",
-      });
-      allArtifacts.screenshotMobileStorageId = mobileKey;
-    } catch (mobileError: unknown) {
-      const errorMessage =
-        mobileError instanceof TimeoutError
-          ? `Mobile screenshot timed out after ${mobileError.timeoutMs}ms`
-          : mobileError instanceof Error
-            ? mobileError.message
-            : String(mobileError);
-      logger.warn(
-        {
-          bookmarkId,
-          error: errorMessage,
-          isTimeout: mobileError instanceof TimeoutError,
-        },
-        "Mobile screenshot failed, skipping",
-      );
-    }
-
-    // PDF generation with error handling
-    currentStage = "pdf_generation";
-    try {
-      logger.debug({ bookmarkId }, "Resetting viewport for PDF generation...");
-      // Reset viewport for PDF generation
-      await page.setViewportSize({ width: 1920, height: 1080 });
-
-      logger.debug({ bookmarkId }, "Attempting PDF generation...");
-      const pdfBuffer = await withTimeout(
-        generateOptimizedPdf(page, bookmarkId),
-        config.timeouts.pdfGeneration, // Hard timeout (90s)
-        "PDF generation",
-      );
-      logger.debug({ bookmarkId }, "PDF generation completed successfully.");
-      const storageForPdf = getStorage();
-      const pdfKey = buildKey(userId, "bookmarks", bookmarkId, "content.pdf");
-      await storageForPdf.writeBuffer(pdfKey, pdfBuffer, {
-        contentType: "application/pdf",
-      });
-      allArtifacts.pdfStorageId = pdfKey;
-    } catch (pdfError: unknown) {
-      const errorMessage =
-        pdfError instanceof TimeoutError
-          ? `PDF generation timed out after ${pdfError.timeoutMs}ms`
-          : pdfError instanceof Error
-            ? pdfError.message
-            : String(pdfError);
-      logger.warn(
-        {
-          bookmarkId,
-          error: errorMessage,
-          isTimeout: pdfError instanceof TimeoutError,
-        },
-        "PDF generation failed, skipping",
-      );
-    }
-
-    // Favicon extraction via Playwright (before closing page)
-    currentStage = "favicon_extraction";
-    let faviconStorageId: string | null = null;
-    try {
-      logger.debug(
-        { bookmarkId },
-        "Attempting favicon extraction via Playwright...",
-      );
-      const faviconHref = await page.evaluate(() => {
-        const link =
-          document.querySelector("link[rel='icon']") ||
-          document.querySelector("link[rel='shortcut icon']");
-        return link?.getAttribute("href") || null;
-      });
-
-      if (faviconHref) {
-        const absoluteFaviconUrl = new URL(faviconHref, page.url()).href;
-        logger.debug(
-          { bookmarkId, faviconUrl: absoluteFaviconUrl },
-          "Found favicon, fetching via Playwright...",
-        );
-        const faviconResponse = await page.request.get(absoluteFaviconUrl);
-        if (faviconResponse.ok()) {
-          const faviconBuffer = await faviconResponse.body();
-          if (faviconBuffer.length > 0) {
-            const contentType =
-              faviconResponse.headers()["content-type"] || "image/x-icon";
-            // Determine file extension from content type
-            let ext = ".ico";
-            if (contentType.includes("svg")) ext = ".svg";
-            else if (contentType.includes("png")) ext = ".png";
-            else if (
-              contentType.includes("jpeg") ||
-              contentType.includes("jpg")
-            )
-              ext = ".jpg";
-            else if (contentType.includes("gif")) ext = ".gif";
-
-            const storage = getStorage();
-            const faviconKey = buildKey(
-              userId,
-              "bookmarks",
-              bookmarkId,
-              `favicon${ext}`,
-            );
-            await storage.writeBuffer(faviconKey, faviconBuffer, {
-              contentType,
-            });
-            faviconStorageId = faviconKey;
-            logger.debug(
-              { bookmarkId, faviconKey },
-              "Favicon saved successfully",
-            );
-          }
-        }
+      // For PDFs, the original URL is the PDF -- store it directly as the PDF artifact
+      if (ct.includes("application/pdf")) {
+        // Browser already rendered the PDF; use the navigation URL as the source
+        // The PDF is the content itself, so skip Readability and just note the content type
+        allArtifacts.title = allArtifacts.title || new URL(processUrl).pathname.split("/").pop() || "PDF Document";
+        allArtifacts.description = `PDF document from ${new URL(processUrl).hostname}`;
+        allArtifacts.extractedText = "";
+        allArtifacts.author = null;
+        allArtifacts.lang = "en";
+      } else if (ct.startsWith("image/")) {
+        allArtifacts.title = allArtifacts.title || new URL(processUrl).pathname.split("/").pop() || "Image";
+        allArtifacts.description = `Image from ${new URL(processUrl).hostname}`;
+        allArtifacts.extractedText = "";
+        allArtifacts.author = null;
+        allArtifacts.lang = "en";
       } else {
-        logger.debug({ bookmarkId }, "No favicon link found in page");
+        allArtifacts.title = allArtifacts.title || "Binary content";
+        allArtifacts.description = `Content type: ${ct}`;
+        allArtifacts.extractedText = "";
+        allArtifacts.author = null;
+        allArtifacts.lang = "en";
       }
-    } catch (faviconError: unknown) {
-      logger.debug(
-        {
-          bookmarkId,
-          error:
-            faviconError instanceof Error
-              ? faviconError.message
-              : String(faviconError),
-        },
-        "Could not fetch favicon via Playwright",
-      );
+
+      await ctx.completeStage("content_extraction");
+
+      // AI tagging with limited info
+      currentStage = "ai_tagging";
+      await ctx.startStage("ai_tagging");
+      allArtifacts.tags = ct.includes("pdf")
+        ? ["pdf", "document"]
+        : ct.startsWith("image/")
+          ? ["image"]
+          : ["file"];
+      const { extractedText: _excludeText, ...finalArtifacts } = allArtifacts;
+      await ctx.completeStage("ai_tagging", finalArtifacts);
+      return;
     }
 
-    // Content extraction with error handling
+    // --- Standard HTML processing path ---
+
+    // Screenshots (desktop/thumbnail fatal, fullpage/mobile non-fatal)
+    currentStage = "screenshot_generation";
+    const screenshotArtifacts = await pipeline.captureAllScreenshots();
+    Object.assign(allArtifacts, screenshotArtifacts);
+
+    // PDF generation (non-fatal)
+    currentStage = "pdf_generation";
+    const pdfArtifacts = await pipeline.capturePdf();
+    Object.assign(allArtifacts, pdfArtifacts);
+
+    // Favicon extraction (non-fatal)
+    currentStage = "favicon_extraction";
+    const faviconStorageId = await pipeline.extractFavicon();
+
+    // Content extraction
     currentStage = "html_content_extraction";
     try {
-      logger.debug({ bookmarkId }, "Attempting HTML content extraction...");
-      const rawHtml = await page.content();
+      const rawHtml = await pipeline.getPageContent();
       const contentData = await extractContentFromHtml(
         rawHtml,
         allArtifacts.normalizedUrl,
         userId,
         bookmarkId,
-        faviconStorageId, // Pass pre-fetched favicon
+        faviconStorageId,
       );
       Object.assign(allArtifacts, contentData);
-      logger.debug(
-        { bookmarkId },
-        "HTML content extraction completed successfully.",
-      );
     } catch (contentError: unknown) {
       logger.error(
         {
@@ -445,12 +144,9 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
             contentError instanceof Error
               ? contentError.message
               : String(contentError),
-          stack: contentError instanceof Error ? contentError.stack : undefined,
         },
-        "Content extraction failed with happy-dom error",
+        "Content extraction failed",
       );
-
-      // Set minimal fallback content
       allArtifacts.title = allArtifacts.title || "Content extraction failed";
       allArtifacts.description =
         allArtifacts.description || "Unable to extract content from this page";
@@ -461,17 +157,16 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
 
     await ctx.completeStage("content_extraction");
 
-    // AI tagging with error handling
+    // AI tagging (pass structured metadata for better results)
     currentStage = "ai_tagging";
     await ctx.startStage("ai_tagging");
     try {
-      logger.debug({ bookmarkId }, "Attempting AI tag generation...");
       allArtifacts.tags = await generateBookmarkTags(
         allArtifacts.extractedText || allArtifacts.title || "",
         allArtifacts.title || "",
         false,
+        allArtifacts.rawMetadata?.structured,
       );
-      logger.debug({ bookmarkId }, "AI tag generation completed successfully.");
     } catch (aiError: unknown) {
       logger.warn(
         {
@@ -480,14 +175,11 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         },
         "AI tagging failed, using fallback tags",
       );
-      // Use fallback tags based on domain or basic content
       allArtifacts.tags = ["webpage", "bookmark"];
     }
-    // Remove extractedText from artifacts - it's stored in blob storage via extractedTxtStorageId
-    // The artifact processor will load it from storage when updating the domain table
+
     const { extractedText: _excludeText, ...finalArtifacts } = allArtifacts;
     await ctx.completeStage("ai_tagging", finalArtifacts);
-    // Job completes implicitly when handler returns successfully
   } catch (error: unknown) {
     logger.error(
       {
@@ -498,79 +190,82 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       },
       "Regular bookmark processing failed at stage",
     );
-
-    // Report the error with stage context
     await ctx.failStage(
       currentStage,
       error instanceof Error ? error : new Error(String(error)),
     );
     throw error;
   } finally {
-    logger.debug(
-      { bookmarkId },
-      "Entering cleanup phase for bookmark processing.",
-    );
-
-    // Cleanup with individual error handling
-    try {
-      if (page && !page.isClosed()) {
-        logger.debug({ bookmarkId }, "Closing page...");
-        await page.close();
-        logger.debug({ bookmarkId }, "Page closed successfully.");
-      }
-    } catch (pageCloseError: unknown) {
-      logger.warn(
-        {
-          bookmarkId,
-          error:
-            pageCloseError instanceof Error
-              ? pageCloseError.message
-              : String(pageCloseError),
-        },
-        "Failed to close page during cleanup",
-      );
-    }
-
-    try {
-      if (context) {
-        logger.debug({ bookmarkId }, "Closing browser context...");
-        await context.close();
-        logger.debug({ bookmarkId }, "Browser context closed successfully.");
-      }
-    } catch (contextCloseError: unknown) {
-      logger.warn(
-        {
-          bookmarkId,
-          error:
-            contextCloseError instanceof Error
-              ? contextCloseError.message
-              : String(contextCloseError),
-        },
-        "Failed to close browser context during cleanup",
-      );
-    }
-
-    try {
-      if (browser) {
-        logger.debug({ bookmarkId }, "Closing browser...");
-        await browser.close();
-        logger.debug({ bookmarkId }, "Browser closed successfully.");
-      }
-    } catch (browserCloseError: unknown) {
-      logger.warn(
-        {
-          bookmarkId,
-          error:
-            browserCloseError instanceof Error
-              ? browserCloseError.message
-              : String(browserCloseError),
-        },
-        "Failed to close browser during cleanup",
-      );
-    }
-
-    logger.debug({ bookmarkId }, "Cleanup phase completed.");
+    await pipeline.cleanup();
   }
+}
+
+// --- ERROR CLASSIFICATION ---
+
+/**
+ * Classify an error message into a domain error category for graduated failure tracking.
+ * Only server_error and network_error count toward domain blocking.
+ */
+function classifyError(errorMessage: string): DomainErrorCategory {
+  const msg = errorMessage.toLowerCase();
+
+  // Server errors (5xx) - blockable
+  if (
+    msg.includes("500") ||
+    msg.includes("502") ||
+    msg.includes("503") ||
+    msg.includes("504") ||
+    msg.includes("internal server error") ||
+    msg.includes("bad gateway") ||
+    msg.includes("service unavailable")
+  ) {
+    return "server_error";
+  }
+
+  // Network errors - blockable
+  if (
+    msg.includes("econnrefused") ||
+    msg.includes("enotfound") ||
+    msg.includes("dns") ||
+    msg.includes("econnreset") ||
+    msg.includes("ssl") ||
+    msg.includes("tls") ||
+    msg.includes("certificate") ||
+    msg.includes("err_name_not_resolved")
+  ) {
+    return "network_error";
+  }
+
+  // Client errors (4xx) - not blockable
+  if (
+    msg.includes("403") ||
+    msg.includes("401") ||
+    msg.includes("404") ||
+    msg.includes("429") ||
+    msg.includes("forbidden") ||
+    msg.includes("unauthorized") ||
+    msg.includes("not found")
+  ) {
+    return "client_error";
+  }
+
+  // Processing errors (sharp, storage, module, timeout, content extraction) - not blockable
+  if (
+    msg.includes("sharp") ||
+    msg.includes("storage") ||
+    msg.includes("err_module_not_found") ||
+    msg.includes("cannot find module") ||
+    msg.includes("timeout") ||
+    msg.includes("readability") ||
+    msg.includes("content extraction") ||
+    msg.includes("screenshot")
+  ) {
+    return "processing_error";
+  }
+
+  // Default: treat unknown errors as processing errors (non-blockable) to avoid
+  // over-blocking. Previously unknown errors would block the entire domain.
+  return "processing_error";
 }
 
 // --- MAIN JOB PROCESSOR ---
@@ -666,6 +361,9 @@ async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       } else {
         await processRegularBookmarkJob(ctx);
       }
+
+      // Reset failure counter on success
+      domainRateLimiter.markDomainSuccess(originalUrl);
     } finally {
       domainRateLimiter.markDomainComplete(originalUrl, jobId);
     }
@@ -693,27 +391,19 @@ async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       "Bookmark job failed",
     );
 
-    // Only block domain for certain types of errors, not module resolution issues
+    // Use graduated failure tracking instead of immediate domain blocking.
+    // Only server_error and network_error count toward blocking, and only
+    // after multiple consecutive failures within a time window.
     if (availability?.domain) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      const isModuleError =
-        errorMessage.includes("ERR_MODULE_NOT_FOUND") ||
-        errorMessage.includes("Cannot find module");
-      const isTimeoutError =
-        errorMessage.includes("timeout") || errorMessage.includes("Timeout");
+      const category = classifyError(errorMessage);
 
-      if (!isModuleError && !isTimeoutError) {
-        domainRateLimiter.blockDomain(
-          availability.domain,
-          `Job failed: ${errorMessage}`,
-        );
-      } else {
-        logger.info(
-          { jobId, bookmarkId, domain: availability.domain },
-          "Not blocking domain for module/timeout error",
-        );
-      }
+      domainRateLimiter.recordFailure(
+        availability.domain,
+        category,
+        errorMessage,
+      );
     }
 
     // Job failure is handled implicitly when the handler throws

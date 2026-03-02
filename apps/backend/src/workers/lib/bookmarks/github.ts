@@ -1,6 +1,4 @@
 import type { JobContext } from "@eclaire/queue/core";
-import { type BrowserContext, chromium } from "patchright";
-import sharp from "sharp";
 import { createChildLogger } from "../../../lib/logger.js";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
 import {
@@ -9,21 +7,19 @@ import {
   isGitHubUrl,
   parseGitHubUrl,
 } from "../github-api.js";
+import { BrowserPipeline } from "./browser-pipeline.js";
 import type {
   BookmarkHandler,
   BookmarkHandlerType,
   BookmarkJobData,
 } from "./index.js";
-import {
-  extractContentFromHtml,
-  generateBookmarkTags,
-  generateOptimizedPdf,
-} from "./utils.js";
+import { normalizeUrl } from "./index.js";
+import { extractContentFromHtml, generateBookmarkTags } from "./utils.js";
 
 const logger = createChildLogger("github-bookmark-handler");
 
 /**
- * GitHub specific bookmark processing handler
+ * GitHub specific bookmark processing handler using BrowserPipeline.
  */
 export async function processGitHubBookmark(
   ctx: JobContext<BookmarkJobData>,
@@ -31,17 +27,13 @@ export async function processGitHubBookmark(
   const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with GITHUB handler");
 
-  // biome-ignore lint/suspicious/noExplicitAny: Patchright Browser instance, no exported type available
-  let browser: any = null;
-  let context: BrowserContext | null = null;
   // biome-ignore lint/suspicious/noExplicitAny: dynamic artifact accumulator populated across processing stages
   const allArtifacts: Record<string, any> = {};
 
+  const pipeline = new BrowserPipeline({ bookmarkId, userId, logger });
+
   try {
-    // Normalize URL
-    const normalizedUrl = originalUrl.startsWith("http")
-      ? originalUrl
-      : `https://${originalUrl}`;
+    const normalizedUrl = normalizeUrl(originalUrl);
     allArtifacts.normalizedUrl = normalizedUrl;
 
     await ctx.startStage("validation");
@@ -60,143 +52,22 @@ export async function processGitHubBookmark(
 
     await ctx.startStage("content_extraction");
 
-    // Standard browser-based content extraction
-    browser = await chromium.launch({
-      headless: true,
-      args: ["--use-mock-keychain"],
-    });
-    context = await browser.newContext({ viewport: null });
-    // biome-ignore lint/style/noNonNullAssertion: context is assigned on the line above
-    const page = await context!.newPage();
+    // Browser-based content extraction via pipeline
+    await pipeline.launch();
+    const navResult = await pipeline.navigateTo(normalizedUrl);
+    allArtifacts.contentType = navResult.contentType;
+    allArtifacts.etag = navResult.etag;
+    allArtifacts.lastModified = navResult.lastModified;
 
-    // Navigate to the URL with fallback strategies for slow-loading pages
-    // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from page.goto
-    let response;
-    try {
-      response = await page.goto(normalizedUrl, {
-        waitUntil: "networkidle",
-        timeout: 90000, // Increased timeout to 90 seconds
-      });
-    } catch (timeoutError: unknown) {
-      if (
-        timeoutError instanceof Error &&
-        timeoutError.message.includes("Timeout")
-      ) {
-        logger.warn(
-          { bookmarkId, url: normalizedUrl, error: timeoutError.message },
-          "Navigation failed with networkidle, attempting with reduced wait condition",
-        );
+    // Screenshots and PDF via pipeline (hardened with timeouts and error boundaries)
+    const screenshotArtifacts = await pipeline.captureAllScreenshots();
+    Object.assign(allArtifacts, screenshotArtifacts);
 
-        // Fallback: try with domcontentloaded instead of networkidle
-        try {
-          response = await page.goto(normalizedUrl, {
-            waitUntil: "domcontentloaded",
-            timeout: 60000,
-          });
-
-          // Wait a bit more for dynamic content to load
-          await page.waitForTimeout(5000);
-        } catch (fallbackError: unknown) {
-          logger.error(
-            {
-              bookmarkId,
-              url: normalizedUrl,
-              error:
-                fallbackError instanceof Error
-                  ? fallbackError.message
-                  : String(fallbackError),
-            },
-            "Both navigation attempts failed",
-          );
-          throw fallbackError;
-        }
-      } else {
-        throw timeoutError;
-      }
-    }
-
-    // Extract standard metadata
-    allArtifacts.contentType = response?.headers()["content-type"] || "";
-    allArtifacts.etag = response?.headers().etag || "";
-    allArtifacts.lastModified = response?.headers()["last-modified"] || "";
-
-    // Take screenshots
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    const ssDesktopBuffer = await page.screenshot({ type: "png" });
-
-    // Generate thumbnail (lower resolution, 400x400, 85% quality)
-    const storage = getStorage();
-    const thumbnailBuffer = await sharp(ssDesktopBuffer)
-      .resize(400, 400, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
-    const thumbnailKey = buildKey(
-      userId,
-      "bookmarks",
-      bookmarkId,
-      "thumbnail.jpg",
-    );
-    await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
-      contentType: "image/jpeg",
-    });
-    allArtifacts.thumbnailStorageId = thumbnailKey;
-
-    // Generate screenshot (higher resolution, 1920x1440, 90% quality)
-    const screenshotBuffer = await sharp(ssDesktopBuffer)
-      .resize(1920, 1440, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 90 })
-      .toBuffer();
-    const screenshotKey = buildKey(
-      userId,
-      "bookmarks",
-      bookmarkId,
-      "screenshot.jpg",
-    );
-    await storage.writeBuffer(screenshotKey, screenshotBuffer, {
-      contentType: "image/jpeg",
-    });
-    allArtifacts.screenshotDesktopStorageId = screenshotKey;
-
-    const ssFullPageBuffer = await page.screenshot({
-      type: "png",
-      fullPage: true,
-    });
-    const fullpageKey = buildKey(
-      userId,
-      "bookmarks",
-      bookmarkId,
-      "screenshot-fullpage.png",
-    );
-    await storage.writeBuffer(fullpageKey, ssFullPageBuffer, {
-      contentType: "image/png",
-    });
-    allArtifacts.screenshotFullPageStorageId = fullpageKey;
-
-    await page.setViewportSize({ width: 375, height: 667 });
-    const ssMobileBuffer = await page.screenshot({ type: "png" });
-    const mobileKey = buildKey(
-      userId,
-      "bookmarks",
-      bookmarkId,
-      "screenshot-mobile.png",
-    );
-    await storage.writeBuffer(mobileKey, ssMobileBuffer, {
-      contentType: "image/png",
-    });
-    allArtifacts.screenshotMobileStorageId = mobileKey;
-
-    // Reset viewport for PDF generation
-    await page.setViewportSize({ width: 1920, height: 1080 });
-
-    const pdfBuffer = await generateOptimizedPdf(page, bookmarkId);
-    const pdfKey = buildKey(userId, "bookmarks", bookmarkId, "content.pdf");
-    await storage.writeBuffer(pdfKey, pdfBuffer, {
-      contentType: "application/pdf",
-    });
-    allArtifacts.pdfStorageId = pdfKey;
+    const pdfArtifacts = await pipeline.capturePdf();
+    Object.assign(allArtifacts, pdfArtifacts);
 
     // Extract HTML content
-    const rawHtml = await page.content();
+    const rawHtml = await pipeline.getPageContent();
     const contentData = await extractContentFromHtml(
       rawHtml,
       normalizedUrl,
@@ -217,15 +88,12 @@ export async function processGitHubBookmark(
         { error: githubError },
         `Failed to fetch GitHub API data for ${owner}/${repo}`,
       );
-      // Continue with regular processing but log the error
     } else {
-      // Override title and description with GitHub data if available
       allArtifacts.title = repoInfo.name || allArtifacts.title;
       allArtifacts.description =
         repoInfo.description || allArtifacts.description;
       allArtifacts.author = repoInfo.owner;
 
-      // Store GitHub-specific metadata
       allArtifacts.rawMetadata = {
         ...allArtifacts.rawMetadata,
         github: {
@@ -245,6 +113,7 @@ export async function processGitHubBookmark(
 
       // Save README content if available
       if (repoInfo.readmeContent) {
+        const storage = getStorage();
         const readmeKey = buildKey(
           userId,
           "bookmarks",
@@ -258,7 +127,6 @@ export async function processGitHubBookmark(
         );
         allArtifacts.readmeStorageId = readmeKey;
 
-        // Include README content in extracted text for better AI processing
         allArtifacts.extractedText = `${allArtifacts.extractedText || ""}\n\n${repoInfo.readmeContent}`;
       }
     }
@@ -273,25 +141,18 @@ export async function processGitHubBookmark(
       githubTags = generateGitHubTags(repoInfo);
     }
 
-    // Also generate AI tags using the enhanced content
     const aiTags = await generateBookmarkTags(
       allArtifacts.extractedText,
       allArtifacts.title || "",
       false,
     );
 
-    // Combine GitHub tags with AI tags, removing duplicates
     allArtifacts.tags = Array.from(new Set([...githubTags, ...aiTags]));
 
-    // Remove extractedText from artifacts - it's stored in blob storage via extractedTxtStorageId
-    // The artifact processor will load it from storage when updating the domain table
     const { extractedText: _excludeText, ...finalArtifacts } = allArtifacts;
-
-    // Complete the final stage with artifacts - job completion is implicit when handler returns
     await ctx.completeStage("ai_tagging", finalArtifacts);
   } finally {
-    if (context) await context.close();
-    if (browser) await browser.close();
+    await pipeline.cleanup();
   }
 }
 
