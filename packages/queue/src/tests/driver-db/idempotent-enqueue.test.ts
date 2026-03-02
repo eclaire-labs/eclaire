@@ -61,6 +61,18 @@ describe.each(DB_TEST_CONFIGS)("A2: Idempotent Enqueue ($label)", ({
     expect(job?.key).toBe(key);
   });
 
+  it("should update data when re-enqueueing with the same key", async () => {
+    const key = "data-update-key";
+
+    await client.enqueue("test-queue", { value: 1, original: true }, { key });
+    await client.enqueue("test-queue", { value: 2, updated: true }, { key });
+
+    const job = await client.getJob(key);
+    expect(job).toBeDefined();
+    // Verify the data reflects the most recent enqueue
+    expect(job?.data).toEqual({ value: 2, updated: true });
+  });
+
   it("should not duplicate jobs with the same key", async () => {
     const key = "unique-key-456";
 

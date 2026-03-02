@@ -7,6 +7,7 @@
  * - A10: RateLimitError - job reschedules without counting as attempt
  */
 
+import { eq, or } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   PermanentError,
@@ -394,6 +395,206 @@ describe.each(DB_TEST_CONFIGS)("A8-A10: Error Handling ($label)", ({
       });
 
       expect(receivedData).toEqual(jobData);
+    });
+  });
+
+  // =========================================================================
+  // A11: Generic Error (plain Error treated as retryable)
+  // =========================================================================
+
+  describe("A11: Generic Error handling", () => {
+    it("should treat plain Error as retryable", async () => {
+      const jobId = await client.enqueue(
+        "test-queue",
+        { value: 42 },
+        { attempts: 3 },
+      );
+
+      let attemptCount = 0;
+
+      worker = createDbWorker(
+        "test-queue",
+        async () => {
+          attemptCount++;
+          throw new Error("Generic failure");
+        },
+        {
+          db: testDb.db,
+          schema: testDb.schema,
+          capabilities: testDb.capabilities,
+          logger,
+          pollInterval: TEST_TIMEOUTS.pollInterval,
+        },
+      );
+
+      await worker.start();
+
+      // Wait for first attempt to set retry_pending
+      await eventually(async () => {
+        const job = await client.getJob(jobId);
+        return job?.status === "retry_pending";
+      });
+
+      // Stop worker to prevent further attempts
+      await worker.stop();
+      worker = null;
+
+      const job = await client.getJob(jobId);
+      expect(job?.status).toBe("retry_pending");
+      expect(job?.attempts).toBe(1);
+      expect(attemptCount).toBe(1);
+    });
+
+    it("should fail after exhausting retries with plain Error", async () => {
+      const jobId = await client.enqueue(
+        "test-queue",
+        { value: 42 },
+        { attempts: 2 },
+      );
+
+      let attemptCount = 0;
+
+      worker = createDbWorker(
+        "test-queue",
+        async () => {
+          attemptCount++;
+          throw new Error("Keeps failing");
+        },
+        {
+          db: testDb.db,
+          schema: testDb.schema,
+          capabilities: testDb.capabilities,
+          logger,
+          pollInterval: TEST_TIMEOUTS.pollInterval,
+        },
+      );
+
+      await worker.start();
+
+      await eventually(async () => {
+        const job = await client.getJob(jobId);
+        return job?.status === "failed";
+      });
+
+      const job = await client.getJob(jobId);
+      expect(job?.status).toBe("failed");
+      expect(job?.attempts).toBe(2);
+      expect(attemptCount).toBe(2);
+    });
+  });
+
+  // =========================================================================
+  // Error Message Persistence (verifies errorMessage stored in DB)
+  // =========================================================================
+
+  describe("Error message persistence", () => {
+    /** Helper to read raw job row from database */
+    async function getRawJob(jobId: string): Promise<any> {
+      const { queueJobs } = testDb.schema;
+      const [row] = await testDb.db
+        .select()
+        .from(queueJobs)
+        .where(
+          or(eq(queueJobs.id, jobId), eq(queueJobs.key, jobId)),
+        )
+        .limit(1);
+      return row;
+    }
+
+    it("should persist PermanentError message in database", async () => {
+      const jobId = await client.enqueue(
+        "test-queue",
+        { value: 42 },
+        { attempts: 3 },
+      );
+
+      worker = createDbWorker(
+        "test-queue",
+        async () => {
+          throw new PermanentError("Document not found in storage");
+        },
+        {
+          db: testDb.db,
+          schema: testDb.schema,
+          capabilities: testDb.capabilities,
+          logger,
+          pollInterval: TEST_TIMEOUTS.pollInterval,
+        },
+      );
+
+      await worker.start();
+
+      await eventually(async () => {
+        const job = await client.getJob(jobId);
+        return job?.status === "failed";
+      });
+
+      const raw = await getRawJob(jobId);
+      expect(raw.errorMessage).toBe("Document not found in storage");
+    });
+
+    it("should persist RetryableError message on final failure", async () => {
+      const jobId = await client.enqueue(
+        "test-queue",
+        { value: 42 },
+        { attempts: 1 },
+      );
+
+      worker = createDbWorker(
+        "test-queue",
+        async () => {
+          throw new RetryableError("Connection timed out");
+        },
+        {
+          db: testDb.db,
+          schema: testDb.schema,
+          capabilities: testDb.capabilities,
+          logger,
+          pollInterval: TEST_TIMEOUTS.pollInterval,
+        },
+      );
+
+      await worker.start();
+
+      await eventually(async () => {
+        const job = await client.getJob(jobId);
+        return job?.status === "failed";
+      });
+
+      const raw = await getRawJob(jobId);
+      expect(raw.errorMessage).toBe("Connection timed out");
+    });
+
+    it("should persist plain Error message on final failure", async () => {
+      const jobId = await client.enqueue(
+        "test-queue",
+        { value: 42 },
+        { attempts: 1 },
+      );
+
+      worker = createDbWorker(
+        "test-queue",
+        async () => {
+          throw new Error("Unexpected null reference");
+        },
+        {
+          db: testDb.db,
+          schema: testDb.schema,
+          capabilities: testDb.capabilities,
+          logger,
+          pollInterval: TEST_TIMEOUTS.pollInterval,
+        },
+      );
+
+      await worker.start();
+
+      await eventually(async () => {
+        const job = await client.getJob(jobId);
+        return job?.status === "failed";
+      });
+
+      const raw = await getRawJob(jobId);
+      expect(raw.errorMessage).toBe("Unexpected null reference");
     });
   });
 });
