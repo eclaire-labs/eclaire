@@ -3,23 +3,13 @@ import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import {
+  type AssetType,
+  type ProcessingStatus,
   useProcessingEvents,
   useSSEConnectionStatus,
 } from "@/providers/ProcessingEventsProvider";
 
-export type AssetType =
-  | "photos"
-  | "documents"
-  | "bookmarks"
-  | "notes"
-  | "tasks";
-export type ProcessingStatus =
-  | "pending"
-  | "processing"
-  | "completed"
-  | "failed"
-  | "retry_pending"
-  | "unknown";
+export type { AssetType, ProcessingStatus };
 
 export interface ProcessingStage {
   name: string;
@@ -49,24 +39,6 @@ export interface ProcessingSummary {
   failed: number;
   retryPending: number;
   totalActive: number;
-}
-
-export interface ProcessingEvent {
-  type:
-    | "connected"
-    | "ping"
-    | "status_update"
-    | "error"
-    | "progress"
-    | "stage_complete";
-  assetType?: AssetType;
-  assetId?: string;
-  status?: ProcessingStatus;
-  stage?: string;
-  progress?: number;
-  error?: string;
-  timestamp: number;
-  userId?: string;
 }
 
 /**
@@ -197,14 +169,8 @@ export function useProcessingSummary() {
   };
 }
 
-/**
- * Hook for global processing events (for dashboard-wide updates)
- * Now uses the singleton ProcessingEventsProvider
- */
-export {
-  useProcessingEvents,
-  useSSEConnectionStatus,
-} from "@/providers/ProcessingEventsProvider";
+// Re-export hooks for consumers that import from this module
+export { useProcessingEvents, useSSEConnectionStatus };
 
 /**
  * Hook to automatically refresh asset data when processing completes

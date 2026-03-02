@@ -63,9 +63,7 @@ export interface ProcessingEvent {
 }
 
 interface ProcessingEventsContextType {
-  events: ProcessingEvent[];
   isConnected: boolean;
-  clearEvents: () => void;
   registerRefreshCallback: (
     assetType: AssetType,
     callback: () => void,
@@ -85,7 +83,6 @@ export function ProcessingEventsProvider({
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const [isConnected, setIsConnected] = useState(false);
-  const [events, setEvents] = useState<ProcessingEvent[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
@@ -108,9 +105,7 @@ export function ProcessingEventsProvider({
 
       try {
         const sseUrl = getAbsoluteApiUrl("/api/processing-events/stream");
-        const eventSource = new EventSource(sseUrl, {
-          withCredentials: true,
-        });
+        const eventSource = new EventSource(sseUrl);
 
         eventSource.onopen = () => {
           setIsConnected(true);
@@ -121,9 +116,6 @@ export function ProcessingEventsProvider({
         eventSource.onmessage = (event) => {
           try {
             const data: ProcessingEvent = JSON.parse(event.data);
-
-            // Add to events list (keep last 50 events)
-            setEvents((prev) => [...prev.slice(-49), data]);
 
             // Handle different event types
             const { type, assetType, assetId, progress } = data;
@@ -150,6 +142,10 @@ export function ProcessingEventsProvider({
                 });
                 queryClient.invalidateQueries({
                   queryKey: [assetType, assetId],
+                });
+                // Update summary counts (new job added)
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-summary"],
                 });
                 break;
 
@@ -225,6 +221,10 @@ export function ProcessingEventsProvider({
                     type: "active",
                   });
                 }
+                // Update summary counts (job moved to completed)
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-summary"],
+                });
                 // Trigger registered refresh callbacks
                 const callback = refreshCallbacksRef.current.get(assetType);
                 if (callback) {
@@ -244,6 +244,12 @@ export function ProcessingEventsProvider({
                   queryKey: [assetType],
                   type: "active",
                 });
+                // Update summary counts (job moved to failed)
+                if (type === "job_failed") {
+                  queryClient.invalidateQueries({
+                    queryKey: ["processing-summary"],
+                  });
+                }
                 break;
             }
           } catch (parseError) {
@@ -306,10 +312,6 @@ export function ProcessingEventsProvider({
     };
   }, [queryClient, session?.user]);
 
-  const clearEvents = useCallback(() => {
-    setEvents([]);
-  }, []);
-
   const registerRefreshCallback = useCallback(
     (assetType: AssetType, callback: () => void) => {
       refreshCallbacksRef.current.set(assetType, callback);
@@ -324,12 +326,10 @@ export function ProcessingEventsProvider({
 
   const value = useMemo<ProcessingEventsContextType>(
     () => ({
-      events,
       isConnected,
-      clearEvents,
       registerRefreshCallback,
     }),
-    [events, isConnected, clearEvents, registerRefreshCallback],
+    [isConnected, registerRefreshCallback],
   );
 
   return (

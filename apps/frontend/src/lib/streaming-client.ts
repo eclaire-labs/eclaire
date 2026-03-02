@@ -67,7 +67,7 @@ export interface StreamEventHandlers {
 
 // Streaming client class
 export class StreamingClient {
-  private eventSource: EventSource | null = null;
+  private abortController: AbortController | null = null;
   private handlers: StreamEventHandlers = {};
   private isConnected = false;
 
@@ -82,6 +82,8 @@ export class StreamingClient {
     // Close any existing connection
     this.disconnect();
 
+    this.abortController = new AbortController();
+
     try {
       // Make the initial request to get the streaming response
       const response = await fetch("/api/prompt/stream", {
@@ -90,6 +92,7 @@ export class StreamingClient {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(request),
+        signal: this.abortController.signal,
       });
 
       if (!response.ok) {
@@ -121,6 +124,10 @@ export class StreamingClient {
       // Parse the streaming response manually since EventSource doesn't work with POST
       await this.parseStreamingResponse(response);
     } catch (error) {
+      // Don't report abort as an error — it's an intentional disconnect
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
       this.handlers.onError?.(
         error instanceof Error ? error.message : "Failed to start streaming",
       );
@@ -243,9 +250,9 @@ export class StreamingClient {
    * Disconnect from the stream
    */
   disconnect(): void {
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
     }
     this.isConnected = false;
     this.handlers.onDisconnect?.();
@@ -268,17 +275,25 @@ export class StreamingClient {
 
 // React hook for easier integration
 export function useStreamingClient(handlers: StreamEventHandlers = {}) {
+  // Use a ref for handlers so the client always calls the latest version
+  // without needing an effect that fires every render
+  const handlersRef = React.useRef(handlers);
+  handlersRef.current = handlers;
+
   const clientRef = React.useRef<StreamingClient | null>(null);
 
-  // Initialize client on first use
+  // Initialize client on first use with stable proxy handlers
   if (!clientRef.current) {
-    clientRef.current = new StreamingClient(handlers);
+    clientRef.current = new StreamingClient({
+      onThought: (...args) => handlersRef.current.onThought?.(...args),
+      onToolCall: (...args) => handlersRef.current.onToolCall?.(...args),
+      onTextChunk: (...args) => handlersRef.current.onTextChunk?.(...args),
+      onError: (...args) => handlersRef.current.onError?.(...args),
+      onDone: (...args) => handlersRef.current.onDone?.(...args),
+      onConnect: () => handlersRef.current.onConnect?.(),
+      onDisconnect: () => handlersRef.current.onDisconnect?.(),
+    });
   }
-
-  // Update handlers when they change
-  React.useEffect(() => {
-    clientRef.current?.updateHandlers(handlers);
-  }, [handlers]);
 
   // Cleanup on unmount
   React.useEffect(() => {
