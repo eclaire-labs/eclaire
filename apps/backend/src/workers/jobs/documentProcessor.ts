@@ -1,6 +1,5 @@
 // src/workers/document-processor.ts
 
-import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -10,6 +9,7 @@ import { type AIMessage, callAI } from "@eclaire/ai";
 import type { JobContext } from "@eclaire/queue/core";
 import { Readability } from "@mozilla/readability";
 import axios from "axios";
+import { parse as parseCsv } from "csv-parse/sync";
 import { execa } from "execa";
 import FormData from "form-data";
 import { convert as htmlToText } from "html-to-text";
@@ -30,15 +30,18 @@ const rtf2text = require("rtf2text");
 const logger = createChildLogger("document-processor");
 const DOCLING_SERVER_URL = config.docling.url;
 
-// Check if pdftocairo is available on the system
+// Check if pdftocairo is available on the system (cached after first check)
+let _pdftocairoAvailable: boolean | null = null;
 async function isPdftocairoAvailable(): Promise<boolean> {
+  if (_pdftocairoAvailable !== null) return _pdftocairoAvailable;
   try {
     await execa("pdftocairo", ["-v"]);
-    return true;
+    _pdftocairoAvailable = true;
   } catch (_error) {
-    logger.debug("pdftocairo not available, will use pdfjs-dist fallback");
-    return false;
+    logger.debug("pdftocairo not available");
+    _pdftocairoAvailable = false;
   }
+  return _pdftocairoAvailable;
 }
 
 // Generate PDF thumbnail using pdftocairo (faster, native approach)
@@ -393,30 +396,30 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
       await ctx.startStage(currentStage);
       jobLogger.info("Starting HTML thumbnail and screenshot generation.");
 
-      // Generate thumbnail
-      const thumbnailBuffer = await generateHtmlThumbnail(documentBuffer);
+      const { thumbnail: thumbnailBuffer, screenshot: screenshotBuffer } =
+        await generateHtmlThumbnailAndScreenshot(documentBuffer);
+
       const thumbnailKey = buildKey(
         userId,
         "documents",
         documentId,
         "thumbnail.jpg",
       );
-      await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
-        contentType: "image/jpeg",
-      });
-      allArtifacts.thumbnailStorageId = thumbnailKey;
-
-      // Generate screenshot
-      const screenshotBuffer = await generateHtmlScreenshot(documentBuffer);
       const screenshotKey = buildKey(
         userId,
         "documents",
         documentId,
         "screenshot.jpg",
       );
-      await storage.writeBuffer(screenshotKey, screenshotBuffer, {
-        contentType: "image/jpeg",
-      });
+      await Promise.all([
+        storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
+          contentType: "image/jpeg",
+        }),
+        storage.writeBuffer(screenshotKey, screenshotBuffer, {
+          contentType: "image/jpeg",
+        }),
+      ]);
+      allArtifacts.thumbnailStorageId = thumbnailKey;
       allArtifacts.screenshotStorageId = screenshotKey;
 
       jobLogger.info(
@@ -673,11 +676,11 @@ async function extractTextFromDocument(
   }
 
   if (mimeType === "text/csv") {
-    return await extractTextFromCsv(docBuffer);
+    return extractTextFromCsv(docBuffer);
   }
 
   if (mimeType === "application/json") {
-    return await extractTextFromJsonWithJq(docBuffer.toString("utf-8"));
+    return extractTextFromJson(docBuffer.toString("utf-8"));
   }
 
   // Handle other simple text types with basic XML/structured data cleaning
@@ -690,11 +693,12 @@ async function extractTextFromDocument(
 
   if (otherSimpleTextTypes.includes(mimeType)) {
     const rawText = docBuffer.toString("utf-8");
-    // Clean XML tags if present
+    // Preserve XML structure as-is — LLMs handle XML natively.
+    // Just strip processing instructions and comments for cleaner indexing.
     if (mimeType === "text/xml" || mimeType === "application/xml") {
       return rawText
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\s+/g, " ")
+        .replace(/<\?xml[^?]*\?>/gi, "")
+        .replace(/<!--[\s\S]*?-->/g, "")
         .trim();
     }
     return rawText;
@@ -784,11 +788,8 @@ async function extractTextFromHtml(
   const rawHtml = htmlBuffer.toString("utf-8");
 
   try {
-    // Use JSDOM with JavaScript execution disabled
-    const dom = new JSDOM(rawHtml, {
-      runScripts: "outside-only", // Disable all JavaScript execution
-      // Default: no external resource loading (prevents CSS parsing errors)
-    });
+    // Use JSDOM with no JavaScript execution (omitting runScripts = scripts disabled by default)
+    const dom = new JSDOM(rawHtml);
     const document = dom.window.document;
 
     // Remove all script tags to ensure no potential issues
@@ -820,32 +821,16 @@ async function extractTextFromHtml(
 }
 
 async function extractPdfText(pdfPath: string): Promise<string> {
-  return new Promise((resolve) => {
-    const pdfProcess = spawn("pdftotext", [pdfPath, "-"]);
-    let stdout = "";
-    let stderr = "";
-    pdfProcess.stdout.on("data", (data) => {
-      stdout += data.toString();
-    });
-    pdfProcess.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
-    pdfProcess.on("close", (code) => {
-      if (code !== 0)
-        logger.warn(
-          { code, stderr },
-          "pdftotext process exited with non-zero code.",
-        );
-      resolve(stdout);
-    });
-    pdfProcess.on("error", (err) => {
-      logger.error(
-        { error: err.message },
-        "Failed to spawn pdftotext process.",
-      );
-      resolve("");
-    });
-  });
+  try {
+    const { stdout } = await execa("pdftotext", [pdfPath, "-"]);
+    return stdout;
+  } catch (error: unknown) {
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      "pdftotext extraction failed",
+    );
+    return "";
+  }
 }
 
 async function extractNumbersDocumentText(
@@ -856,7 +841,7 @@ async function extractNumbersDocumentText(
     const csvOutputDir = path.join(tempDir, "csv_output");
     await fs.mkdir(csvOutputDir, { recursive: true });
     const libreOfficeCmd = await findLibreOfficeExecutable();
-    const libreOfficeProcess = spawn(libreOfficeCmd, [
+    await execa(libreOfficeCmd, [
       "--headless",
       "--convert-to",
       "csv",
@@ -864,52 +849,24 @@ async function extractNumbersDocumentText(
       csvOutputDir,
       docPath,
     ]);
-
-    let stderr = "";
-    libreOfficeProcess.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
-
-    return new Promise((resolve) => {
-      libreOfficeProcess.on("close", async (code) => {
-        if (code === 0) {
-          const files = await fs.readdir(csvOutputDir);
-          const csvFile = files.find((f) => f.endsWith(".csv"));
-          if (csvFile) {
-            const csvBuffer = await fs.readFile(
-              path.join(csvOutputDir, csvFile),
-            );
-            const extractedText = await extractTextFromCsv(csvBuffer);
-            resolve(extractedText);
-          } else {
-            logger.warn(
-              { docPath, files },
-              "LibreOffice conversion succeeded but no CSV file found for .numbers",
-            );
-            resolve("");
-          }
-        } else {
-          logger.warn(
-            { code, stderr, docPath },
-            "LibreOffice failed to convert .numbers file to CSV",
-          );
-          resolve("");
-        }
-      });
-
-      libreOfficeProcess.on("error", (err) => {
-        logger.error(
-          { error: err.message, docPath },
-          "Failed to spawn LibreOffice process for .numbers conversion",
-        );
-        resolve("");
-      });
-    });
+    const files = await fs.readdir(csvOutputDir);
+    const csvFile = files.find((f) => f.endsWith(".csv"));
+    if (csvFile) {
+      const csvBuffer = await fs.readFile(path.join(csvOutputDir, csvFile));
+      return extractTextFromCsv(csvBuffer);
+    }
+    logger.warn(
+      { docPath, files },
+      "LibreOffice conversion succeeded but no CSV file found for .numbers",
+    );
+    return "";
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
     logger.error(
-      { error: message, docPath },
-      "Exception during .numbers text extraction",
+      {
+        error: error instanceof Error ? error.message : String(error),
+        docPath,
+      },
+      "Failed to extract text from .numbers file",
     );
     return "";
   }
@@ -923,7 +880,7 @@ async function extractOfficeDocumentText(
     const textOutputDir = path.join(tempDir, "text_output");
     await fs.mkdir(textOutputDir, { recursive: true });
     const libreOfficeCmd = await findLibreOfficeExecutable();
-    const libreOfficeProcess = spawn(libreOfficeCmd, [
+    await execa(libreOfficeCmd, [
       "--headless",
       "--convert-to",
       "txt",
@@ -931,50 +888,23 @@ async function extractOfficeDocumentText(
       textOutputDir,
       docPath,
     ]);
-
-    let stderr = "";
-    libreOfficeProcess.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
-
-    return new Promise((resolve) => {
-      libreOfficeProcess.on("close", async (code) => {
-        if (code === 0) {
-          const files = await fs.readdir(textOutputDir);
-          const txtFile = files.find((f) => f.endsWith(".txt"));
-          if (txtFile) {
-            resolve(
-              await fs.readFile(path.join(textOutputDir, txtFile), "utf-8"),
-            );
-          } else {
-            logger.warn(
-              { docPath, files },
-              "LibreOffice conversion succeeded but no txt file found",
-            );
-            resolve("");
-          }
-        } else {
-          logger.warn(
-            { code, stderr, docPath },
-            "LibreOffice failed to convert office document to txt",
-          );
-          resolve("");
-        }
-      });
-
-      libreOfficeProcess.on("error", (err) => {
-        logger.error(
-          { error: err.message, docPath },
-          "Failed to spawn LibreOffice process for office document conversion",
-        );
-        resolve("");
-      });
-    });
+    const files = await fs.readdir(textOutputDir);
+    const txtFile = files.find((f) => f.endsWith(".txt"));
+    if (txtFile) {
+      return await fs.readFile(path.join(textOutputDir, txtFile), "utf-8");
+    }
+    logger.warn(
+      { docPath, files },
+      "LibreOffice conversion succeeded but no txt file found",
+    );
+    return "";
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
     logger.error(
-      { error: message, docPath },
-      "Exception during office document text extraction",
+      {
+        error: error instanceof Error ? error.message : String(error),
+        docPath,
+      },
+      "Failed to extract text from office document",
     );
     return "";
   }
@@ -1043,6 +973,22 @@ function cleanAIResponse(response: string): string {
   return response.replace(/```json\s*|```/g, "").trim();
 }
 
+/**
+ * Sample text from beginning, middle, and end of a document for better AI analysis.
+ * For short documents the full text is returned; for long ones we take representative slices.
+ */
+function sampleDocumentText(text: string, budget = 4000): string {
+  if (text.length <= budget) return text;
+  const introLen = Math.floor(budget * 0.5);
+  const midLen = Math.floor(budget * 0.25);
+  const outroLen = budget - introLen - midLen;
+  const intro = text.substring(0, introLen);
+  const midStart = Math.floor(text.length / 2) - Math.floor(midLen / 2);
+  const middle = text.substring(midStart, midStart + midLen);
+  const outro = text.substring(text.length - outroLen);
+  return `[Document length: ${text.length} characters]\n\n--- Beginning ---\n${intro}\n\n--- Middle ---\n${middle}\n\n--- End ---\n${outro}`;
+}
+
 async function generateDocumentMetadata(
   extractedText: string,
   originalFilename: string,
@@ -1051,7 +997,7 @@ async function generateDocumentMetadata(
   description: string | null;
   tags: string[];
 }> {
-  const textSample = extractedText.substring(0, 4000);
+  const textSample = sampleDocumentText(extractedText);
   const prompt = `Based on the following document text, generate a JSON object with a concise title, a brief description, and an array of relevant tags.\n\nFilename: ${originalFilename}\nContent: ${textSample}\n\nRespond with only a valid JSON object.`;
   const messages: AIMessage[] = [
     {
@@ -1161,7 +1107,7 @@ async function attemptLibreOfficeConversion(
   const pdfOutputDir = path.join(tempDir, "pdf_output");
   await fs.mkdir(pdfOutputDir, { recursive: true });
   const libreOfficeCmd = await findLibreOfficeExecutable();
-  const libreOfficeProcess = spawn(libreOfficeCmd, [
+  await execa(libreOfficeCmd, [
     "--headless",
     "--convert-to",
     "pdf",
@@ -1169,73 +1115,44 @@ async function attemptLibreOfficeConversion(
     pdfOutputDir,
     docPath,
   ]);
-  let stderr = "";
-  libreOfficeProcess.stderr.on("data", (data) => {
-    stderr += data.toString();
-  });
-  return new Promise((resolve, reject) => {
-    libreOfficeProcess.on("close", async (code) => {
-      if (code === 0) {
-        const files = await fs.readdir(pdfOutputDir);
-        const pdfFile = files.find((f) => f.endsWith(".pdf"));
-        if (pdfFile) {
-          resolve(await fs.readFile(path.join(pdfOutputDir, pdfFile)));
-        } else {
-          reject(
-            new Error("LibreOffice conversion succeeded but no PDF file found"),
-          );
-        }
-      } else {
-        reject(new Error(`LibreOffice failed with code ${code}: ${stderr}`));
-      }
-    });
-    libreOfficeProcess.on("error", reject);
-  });
+  const files = await fs.readdir(pdfOutputDir);
+  const pdfFile = files.find((f) => f.endsWith(".pdf"));
+  if (pdfFile) {
+    return await fs.readFile(path.join(pdfOutputDir, pdfFile));
+  }
+  throw new Error("LibreOffice conversion succeeded but no PDF file found");
 }
 
 // --- Thumbnail Generation Helpers ---
 
-async function generateHtmlThumbnail(htmlBuffer: Buffer): Promise<Buffer> {
+async function generateHtmlThumbnailAndScreenshot(
+  htmlBuffer: Buffer,
+): Promise<{ thumbnail: Buffer; screenshot: Buffer }> {
   const browser = await chromium.launch();
   const page = await browser.newPage();
   try {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.setContent(htmlBuffer.toString("utf-8"), {
-      waitUntil: "networkidle",
-    });
-    await page.waitForTimeout(1000);
-    const screenshot = await page.screenshot({
-      type: "png",
-      clip: { x: 0, y: 0, width: 1280, height: 800 },
-    });
-    // Convert to JPG and resize for thumbnail
-    return await sharp(screenshot)
-      .resize(600, 600, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
-  } finally {
-    await browser.close();
-  }
-}
-
-async function generateHtmlScreenshot(htmlBuffer: Buffer): Promise<Buffer> {
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-  try {
+    // Render at high-res, then derive both sizes from the same capture
     await page.setViewportSize({ width: 2560, height: 1600 });
     await page.setContent(htmlBuffer.toString("utf-8"), {
       waitUntil: "networkidle",
     });
-    await page.waitForTimeout(1000);
-    const screenshot = await page.screenshot({
+    const screenshotPng = await page.screenshot({
       type: "png",
       clip: { x: 0, y: 0, width: 2560, height: 1600 },
     });
-    // Convert to JPG and resize for high-res screenshot
-    return await sharp(screenshot)
-      .resize(1920, 1440, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 90 })
-      .toBuffer();
+
+    const [screenshot, thumbnail] = await Promise.all([
+      sharp(screenshotPng)
+        .resize(1920, 1440, { fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 90 })
+        .toBuffer(),
+      sharp(screenshotPng)
+        .resize(600, 600, { fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer(),
+    ]);
+
+    return { thumbnail, screenshot };
   } finally {
     await browser.close();
   }
@@ -1285,37 +1202,32 @@ async function generatePdfScreenshot(pdfPath: string): Promise<Buffer> {
   }
 }
 
+function generatePlaceholderSvg(width: number, height: number): Buffer {
+  const fontSize = Math.round(Math.min(width, height) * 0.15);
+  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+    <rect width="${width}" height="${height}" fill="#f0f2f5"/>
+    <text x="${width / 2}" y="${height / 2 + fontSize * 0.35}" text-anchor="middle" font-family="sans-serif" font-size="${fontSize}" fill="#a0aec0">DOC</text>
+  </svg>`;
+  return Buffer.from(svg);
+}
+
 async function generatePlaceholderThumbnail(): Promise<Buffer> {
-  const htmlContent = `<!DOCTYPE html><html><head><style>body{margin:0;width:800px;height:600px;background:#f0f2f5;display:flex;justify-content:center;align-items:center;font-family:sans-serif;color:#a0aec0;}.icon{font-size:120px;}</style></head><body><div class="icon">📄</div></body></html>`;
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-  try {
-    await page.setContent(htmlContent);
-    const screenshot = await page.screenshot({ type: "png" });
-    // Convert to JPG for consistency
-    return await sharp(screenshot).jpeg({ quality: 85 }).toBuffer();
-  } finally {
-    await browser.close();
-  }
+  return sharp(generatePlaceholderSvg(800, 600))
+    .jpeg({ quality: 85 })
+    .toBuffer();
 }
 
 async function generatePlaceholderScreenshot(): Promise<Buffer> {
-  const htmlContent = `<!DOCTYPE html><html><head><style>body{margin:0;width:1920px;height:1440px;background:#f0f2f5;display:flex;justify-content:center;align-items:center;font-family:sans-serif;color:#a0aec0;}.icon{font-size:320px;}</style></head><body><div class="icon">📄</div></body></html>`;
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-  try {
-    await page.setContent(htmlContent);
-    const screenshot = await page.screenshot({ type: "png" });
-    // Convert to JPG for consistency
-    return await sharp(screenshot).jpeg({ quality: 90 }).toBuffer();
-  } finally {
-    await browser.close();
-  }
+  return sharp(generatePlaceholderSvg(1920, 1440))
+    .jpeg({ quality: 90 })
+    .toBuffer();
 }
 
 // --- Utility Helpers ---
 
+let _libreOfficeExecutable: string | null = null;
 async function findLibreOfficeExecutable(): Promise<string> {
+  if (_libreOfficeExecutable !== null) return _libreOfficeExecutable;
   const candidates = [
     "/Applications/LibreOffice.app/Contents/MacOS/soffice",
     "/usr/bin/libreoffice",
@@ -1324,7 +1236,13 @@ async function findLibreOfficeExecutable(): Promise<string> {
   ];
   for (const candidate of candidates) {
     try {
-      await fs.access(candidate);
+      if (path.isAbsolute(candidate)) {
+        await fs.access(candidate);
+      } else {
+        // For non-absolute paths, probe via PATH by running the command
+        await execa(candidate, ["--version"]);
+      }
+      _libreOfficeExecutable = candidate;
       return candidate;
     } catch {}
   }
@@ -1337,54 +1255,26 @@ async function findLibreOfficeExecutable(): Promise<string> {
  * Extracts searchable text from CSV by converting each row to descriptive sentences.
  * Uses the header row to create meaningful descriptions for each data row.
  */
-async function extractTextFromCsv(csvBuffer: Buffer): Promise<string> {
+function extractTextFromCsv(csvBuffer: Buffer): string {
   try {
-    const csvContent = csvBuffer.toString("utf-8");
-    const lines = csvContent
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
+    const records: Record<string, string>[] = parseCsv(csvBuffer, {
+      columns: true,
+      skip_empty_lines: true,
+      bom: true,
+      relax_column_count: true,
+      trim: true,
+    });
 
-    if (lines.length === 0) {
-      return "";
-    }
-
-    // Parse CSV manually (simple approach - assumes no commas in quoted fields for now)
-    const parseCSVLine = (line: string): string[] => {
-      // Simple CSV parsing - split by comma and trim whitespace
-      return line.split(",").map((field) => field.trim().replace(/^"|"$/g, ""));
-    };
-
-    const firstLine = lines[0];
-    if (!firstLine) {
-      return "";
-    }
-
-    const headers = parseCSVLine(firstLine);
-    const dataRows = lines.slice(1);
+    if (records.length === 0) return "";
 
     const descriptiveRows: string[] = [];
-
-    for (let i = 0; i < dataRows.length; i++) {
-      const currentRow = dataRows[i];
-      if (!currentRow) continue;
-
-      const row = parseCSVLine(currentRow);
-      if (row.length === 0) continue;
-
+    for (const record of records) {
       const descriptions: string[] = [];
-      for (let j = 0; j < Math.min(headers.length, row.length); j++) {
-        const header = headers[j];
-        const value = row[j];
-        if (header && value && header.trim() && value.trim()) {
-          const trimmedHeader = header.trim();
-          const trimmedValue = value.trim();
-          if (trimmedHeader && trimmedValue) {
-            descriptions.push(`${trimmedHeader} is ${trimmedValue}`);
-          }
+      for (const [header, value] of Object.entries(record)) {
+        if (header.trim() && value.trim()) {
+          descriptions.push(`${header.trim()} is ${value.trim()}`);
         }
       }
-
       if (descriptions.length > 0) {
         descriptiveRows.push(`Row: ${descriptions.join(". ")}.`);
       }
@@ -1401,65 +1291,33 @@ async function extractTextFromCsv(csvBuffer: Buffer): Promise<string> {
 }
 
 /**
- * Uses the 'jq' command-line tool to extract searchable text from a JSON string.
- * @param jsonString The raw JSON content as a string.
- * @returns A Promise that resolves to a single string of clean, searchable text.
+ * Extracts searchable text from JSON, preserving key names as context.
+ * Produces "key: value" pairs so LLMs and search can understand the structure.
  */
-async function extractTextFromJsonWithJq(jsonString: string): Promise<string> {
-  return new Promise((resolve, _reject) => {
-    // The jq command and its arguments
-    const jqCommand =
-      '.. | strings? | select(test("^https?://|^-|@|/|\\\\.") | not)';
-
-    const jqProcess = spawn("jq", ["-r", jqCommand]);
-
-    let output = "";
-    let errorOutput = "";
-
-    jqProcess.stdout.on("data", (data) => {
-      output += data.toString();
-    });
-
-    jqProcess.stderr.on("data", (data) => {
-      errorOutput += data.toString();
-    });
-
-    jqProcess.on("close", (code) => {
-      if (code !== 0) {
-        logger.warn(
-          { code, error: errorOutput },
-          "jq process failed, falling back to simple JSON text extraction",
-        );
-        // Fallback to simple JSON text extraction
-        resolve(extractTextFromJsonFallback(jsonString));
-        return;
-      }
-      // The output will be lines of text, join them with spaces.
-      resolve(output.replace(/\n/g, " ").trim());
-    });
-
-    jqProcess.on("error", (err) => {
-      logger.warn(
-        { error: err.message },
-        "jq command not found, falling back to simple JSON text extraction",
-      );
-      // Fallback to simple JSON text extraction
-      resolve(extractTextFromJsonFallback(jsonString));
-    });
-
-    // Pipe the JSON string into the jq process
-    jqProcess.stdin.write(jsonString);
-    jqProcess.stdin.end();
-  });
-}
-
-/**
- * Fallback JSON text extraction when jq is not available.
- */
-function extractTextFromJsonFallback(jsonString: string): string {
+function extractTextFromJson(jsonString: string): string {
   try {
     const json = JSON.parse(jsonString);
-    return extractTextFromObject(json);
+    const lines: string[] = [];
+
+    // biome-ignore lint/suspicious/noExplicitAny: recursive JSON traversal handles arbitrary nested structures
+    function traverse(value: any, key?: string) {
+      if (typeof value === "string") {
+        lines.push(key ? `${key}: ${value}` : value);
+      } else if (typeof value === "number" || typeof value === "boolean") {
+        lines.push(key ? `${key}: ${value}` : String(value));
+      } else if (Array.isArray(value)) {
+        for (const item of value) {
+          traverse(item, key);
+        }
+      } else if (typeof value === "object" && value !== null) {
+        for (const [k, v] of Object.entries(value)) {
+          traverse(v, k);
+        }
+      }
+    }
+
+    traverse(json);
+    return lines.join("\n");
   } catch (error) {
     logger.warn(
       { error: (error as Error).message },
@@ -1467,31 +1325,4 @@ function extractTextFromJsonFallback(jsonString: string): string {
     );
     return jsonString;
   }
-}
-
-/**
- * Recursively extracts text values from a JSON object.
- */
-// biome-ignore lint/suspicious/noExplicitAny: recursive JSON traversal handles arbitrary nested structures
-function extractTextFromObject(obj: any): string {
-  const textValues: string[] = [];
-
-  // biome-ignore lint/suspicious/noExplicitAny: recursive JSON traversal handles arbitrary nested structures
-  function traverse(value: any) {
-    if (typeof value === "string") {
-      // Skip URLs, file paths, and other non-textual strings
-      if (!/^https?:\/\/|^-|@|\/|\\\./.test(value)) {
-        textValues.push(value);
-      }
-    } else if (typeof value === "number") {
-      textValues.push(value.toString());
-    } else if (Array.isArray(value)) {
-      value.forEach(traverse);
-    } else if (typeof value === "object" && value !== null) {
-      Object.values(value).forEach(traverse);
-    }
-  }
-
-  traverse(obj);
-  return textValues.join(" ");
 }
