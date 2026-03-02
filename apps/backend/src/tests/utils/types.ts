@@ -43,14 +43,41 @@ export interface Document {
   id: string;
   title: string;
   description: string | null;
-  filename: string;
-  filetype: string;
-  filesize: number;
-  tags: string[] | null;
+  tags: string[];
   createdAt: string;
-  updatedAt?: string;
-  processingStatus?: string;
-  userId?: string;
+  updatedAt: string;
+  dueDate: string | null;
+
+  // File metadata
+  originalFilename: string | null;
+  mimeType: string;
+  fileSize: number | null;
+
+  // Processing status
+  processingStatus: "pending" | "processing" | "completed" | "failed" | null;
+
+  // Review and organization
+  reviewStatus: "pending" | "accepted" | "rejected";
+  flagColor: "red" | "yellow" | "orange" | "green" | "blue" | null;
+  isPinned: boolean;
+
+  // Asset URLs
+  fileUrl: string | null;
+  thumbnailUrl: string | null;
+  screenshotUrl: string | null;
+  pdfUrl: string | null;
+  contentUrl: string | null;
+
+  // Content metadata
+  extractedText: string | null;
+  pageCount: number | null;
+}
+
+export interface DocumentListResponse {
+  items: Document[];
+  totalCount: number;
+  limit: number;
+  offset: number;
 }
 
 export interface Note {
