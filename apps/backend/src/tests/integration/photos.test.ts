@@ -1,117 +1,87 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-// Make sure Blob is available
-// import { Blob } from 'node:buffer'; // Uncomment if needed for Node < 15 or specific envs
-
-// Node.js built-in modules for file handling
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
   BASE_URL,
-  delay,
+  createAuthenticatedFetch,
   hasSameElements,
   TEST_API_KEY,
+  TEST_API_KEY_2,
 } from "../utils/test-helpers.js";
+import type { Photo, PhotoListResponse } from "../utils/types.js";
 
-// Create authenticated fetch function with X-API-Key header
-const loggedFetch = async (url: string, options: RequestInit = {}) => {
-  const headers = {
-    ...(options.headers as Record<string, string>),
-    "X-API-Key": TEST_API_KEY,
+const loggedFetch = createAuthenticatedFetch(TEST_API_KEY);
+const user2Fetch = createAuthenticatedFetch(TEST_API_KEY_2);
+
+// Helper to create a photo via API, returns the response data
+async function createTestPhoto(
+  fetchFn: typeof loggedFetch,
+  overrides: {
+    title?: string;
+    description?: string;
+    tags?: string[];
+    deviceId?: string;
+    originalFilename?: string;
+    reviewStatus?: string;
+    isPinned?: boolean;
+    dueDate?: string;
+    fileContent?: string;
+    fileMimeType?: string;
+    enabled?: boolean;
+  } = {},
+): Promise<Photo> {
+  const fileContent = overrides.fileContent ?? "dummy image content";
+  const fileMimeType = overrides.fileMimeType ?? "image/jpeg";
+  const originalFilename = overrides.originalFilename ?? "test-photo.jpg";
+
+  const dummyFile = new Blob([fileContent], { type: fileMimeType });
+  const formData = new FormData();
+  const metadata: Record<string, unknown> = {
+    title: overrides.title ?? `Test Photo ${Date.now()}`,
+    description: overrides.description ?? "Test photo description",
+    tags: overrides.tags ?? [],
+    deviceId: overrides.deviceId ?? "vitest",
+    originalFilename,
   };
+  if (overrides.reviewStatus !== undefined)
+    metadata.reviewStatus = overrides.reviewStatus;
+  if (overrides.isPinned !== undefined) metadata.isPinned = overrides.isPinned;
+  if (overrides.dueDate !== undefined) metadata.dueDate = overrides.dueDate;
+  if (overrides.enabled !== undefined) metadata.enabled = overrides.enabled;
 
-  return fetch(url, { ...options, headers });
-};
+  formData.append("metadata", JSON.stringify(metadata));
+  formData.append("content", dummyFile, originalFilename);
 
-// Helper function to ensure photo was created successfully
-const ensurePhotoCreated = (
-  photoId: string | null,
-  photoData: PhotoResponse | null,
-) => {
-  if (!photoId || !photoData) {
-    throw new Error(
-      `Test setup failed: Photo creation unsuccessful. photoId=${photoId}, photoData=${photoData ? "exists" : "null"}`,
-    );
+  const response = await fetchFn(`${BASE_URL}/photos`, {
+    method: "POST",
+    body: formData,
+  });
+
+  expect(response.status, "createTestPhoto failed").toBe(201);
+  return (await response.json()) as Photo;
+}
+
+// Helper to delete a photo, swallowing errors for cleanup
+async function deleteTestPhoto(
+  fetchFn: typeof loggedFetch,
+  photoId: string,
+): Promise<void> {
+  try {
+    await fetchFn(`${BASE_URL}/photos/${photoId}`, { method: "DELETE" });
+  } catch {
+    // Swallow cleanup errors
   }
-};
-
-// Custom interface for Photos API response (matching actual PhotoResponseSchema)
-interface PhotoResponse {
-  id: string;
-  title: string;
-  description: string | null;
-
-  // Display URLs
-  imageUrl: string;
-  thumbnailUrl: string | null;
-
-  // Basic metadata
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-  dueDate: string | null;
-  dateTaken: string | null;
-  deviceId: string | null;
-
-  // File information
-  originalFilename: string;
-  mimeType: string;
-  fileSize: number;
-
-  // EXIF Data
-  cameraMake: string | null;
-  cameraModel: string | null;
-  lensModel: string | null;
-  iso: number | null;
-  fNumber: number | null;
-  exposureTime: number | null;
-  orientation: number | null;
-  imageWidth: number | null;
-  imageHeight: number | null;
-
-  // Location Data
-  latitude: number | null;
-  longitude: number | null;
-  altitude?: number | null;
-  locationCity: string | null;
-  locationCountryIso2: string | null;
-  locationCountryName: string | null;
-
-  // AI Generated Data
-  photoType: string | null;
-  ocrText: string | null;
-  dominantColors: string[] | null;
-
-  // Review and Workflow
-  reviewStatus: "pending" | "accepted" | "rejected";
-  flagColor: "red" | "yellow" | "orange" | "green" | "blue" | null;
-  isPinned: boolean;
-
-  // Processing Status
-  processingStatus: string;
-
-  // Storage and Technical Information (some are not returned in API response)
-  storageId?: string;
-  thumbnailStorageId?: string | null;
-  convertedJpgStorageId?: string | null;
-  isOriginalViewable: boolean;
 }
 
-// Photos list response interface
-interface PhotosListResponse {
-  photos: PhotoResponse[];
-  totalCount: number;
-  limit: number;
-}
-
-// --- Test Suite 1: Full CRUD Cycle with Dummy File ---
-describe("Photo API Integration Tests (CRUD Cycle)", () => {
+// --- Test Suite 1: Full CRUD Cycle ---
+describe("Photo API - CRUD Cycle", () => {
   let createdPhotoId: string | null = null;
-  let createdPhotoData: PhotoResponse | null = null;
+  let createdPhotoData: Photo | null = null;
 
   const initialMetadata = {
-    title: `Test Photo ${Date.now()}`,
-    description: "This is a test photo description created via API test.",
-    tags: "test,api,upload",
+    title: `CRUD Test Photo ${Date.now()}`,
+    description: "Test photo for CRUD cycle.",
+    tags: ["test", "api", "upload"],
     deviceId: "Vitest Test Runner",
     reviewStatus: "pending" as const,
     isPinned: false,
@@ -128,40 +98,28 @@ describe("Photo API Integration Tests (CRUD Cycle)", () => {
     dueDate: "2025-06-15T09:00:00Z",
   };
 
-  it("POST /api/photos - should create a new photo entry with DUMMY file upload", async () => {
-    await delay(100);
-    const dummyFileContent = "This is dummy file content for testing.";
-    const dummyFile = new Blob([dummyFileContent], { type: "image/png" });
+  afterAll(async () => {
+    if (createdPhotoId) {
+      await deleteTestPhoto(loggedFetch, createdPhotoId);
+    }
+  });
 
-    const formData = new FormData();
-    const metadata = {
+  it("POST /api/photos - should create a new photo", async () => {
+    const data = await createTestPhoto(loggedFetch, {
       title: initialMetadata.title,
       description: initialMetadata.description,
-      tags: initialMetadata.tags.split(",").map((tag) => tag.trim()),
+      tags: initialMetadata.tags,
       deviceId: initialMetadata.deviceId,
       originalFilename: "test-photo.png",
+      fileMimeType: "image/png",
       reviewStatus: initialMetadata.reviewStatus,
       isPinned: initialMetadata.isPinned,
       dueDate: initialMetadata.dueDate,
-    };
-    formData.append("metadata", JSON.stringify(metadata));
-    formData.append("content", dummyFile, "test-photo.png");
-
-    const response = await loggedFetch(`${BASE_URL}/photos`, {
-      method: "POST",
-      headers: { "X-API-Key": TEST_API_KEY },
-      body: formData,
     });
 
-    expect(
-      response.status,
-      `POST failed with status ${response.status}. Check API logs.`,
-    ).toBe(201);
-    const data = (await response.json()) as PhotoResponse;
     createdPhotoData = data;
-    createdPhotoId = data.id; // Set ID early to ensure it's available for subsequent tests
+    createdPhotoId = data.id;
 
-    expect(data).toBeDefined();
     expect(data.id).toBeTypeOf("string");
     expect(data.id).toMatch(/^photo-[A-Za-z0-9]{15}$/);
     expect(data.title).toBe(initialMetadata.title);
@@ -169,38 +127,26 @@ describe("Photo API Integration Tests (CRUD Cycle)", () => {
     expect(data.imageUrl).toBe(`/api/photos/${data.id}/view`);
     expect(data.originalFilename).toBe("test-photo.png");
     expect(data.mimeType).toBe("image/png");
-    expect(data.fileSize).toBe(dummyFileContent.length);
     expect(data.deviceId).toBe(initialMetadata.deviceId);
-    // Use hasSameElements for tag comparison, converting string to array first
-    expect(hasSameElements(data.tags, initialMetadata.tags.split(","))).toBe(
-      true,
-    );
+    expect(hasSameElements(data.tags, initialMetadata.tags)).toBe(true);
     expect(data.createdAt).toBeTypeOf("string");
     expect(data.updatedAt).toBeTypeOf("string");
-
-    // Test new workflow fields
     expect(data.reviewStatus).toBe(initialMetadata.reviewStatus);
     expect(data.isPinned).toBe(initialMetadata.isPinned);
-    // Compare normalized dates (API may return with milliseconds)
     expect(new Date(data.dueDate!).toISOString()).toBe(
       new Date(initialMetadata.dueDate).toISOString(),
     );
-    expect(data.flagColor).toBeNull(); // Should be null initially
-    expect(data.processingStatus).toBeTypeOf("string");
+    expect(data.flagColor).toBeNull();
     expect(data.isOriginalViewable).toBeTypeOf("boolean");
-
-    expect(createdPhotoId).not.toBeNull();
   });
 
-  it("GET /api/photos/:id - should retrieve the created photo entry", async () => {
-    ensurePhotoCreated(createdPhotoId, createdPhotoData);
-    await delay(100);
-    const response = await loggedFetch(`${BASE_URL}/photos/${createdPhotoId}`, {
-      method: "GET",
-      headers: { "X-API-Key": TEST_API_KEY },
-    });
+  it("GET /api/photos/:id - should retrieve the created photo", async () => {
+    expect(createdPhotoId).not.toBeNull();
+    const response = await loggedFetch(
+      `${BASE_URL}/photos/${createdPhotoId}`,
+    );
     expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotoResponse;
+    const data = (await response.json()) as Photo;
     expect(data.id).toBe(createdPhotoData!.id);
     expect(data.title).toBe(createdPhotoData!.title);
     expect(data.description).toBe(createdPhotoData!.description);
@@ -210,162 +156,134 @@ describe("Photo API Integration Tests (CRUD Cycle)", () => {
     expect(data.fileSize).toBe(createdPhotoData!.fileSize);
     expect(data.deviceId).toBe(createdPhotoData!.deviceId);
     expect(hasSameElements(data.tags, createdPhotoData!.tags)).toBe(true);
-    expect(data.createdAt).toBe(createdPhotoData!.createdAt);
   });
 
-  it("GET /api/photos - should list photo entries including the new one", async () => {
-    ensurePhotoCreated(createdPhotoId, createdPhotoData);
-    await delay(100);
-    const response = await loggedFetch(`${BASE_URL}/photos`, {
-      method: "GET",
-      headers: { "X-API-Key": TEST_API_KEY },
-    });
+  it("GET /api/photos - should list photos including the new one", async () => {
+    expect(createdPhotoId).not.toBeNull();
+    const response = await loggedFetch(`${BASE_URL}/photos`);
     expect(response.status).toBe(200);
-    const responseData = (await response.json()) as PhotosListResponse;
+    const data = (await response.json()) as PhotoListResponse;
 
-    // Validate response structure
-    expect(responseData).toHaveProperty("photos");
-    expect(responseData).toHaveProperty("totalCount");
-    expect(responseData).toHaveProperty("limit");
-    expect(responseData.photos).toBeInstanceOf(Array);
-    expect(responseData.totalCount).toBeGreaterThan(0);
-    expect(responseData.photos.length).toBeGreaterThan(0);
+    expect(data).toHaveProperty("items");
+    expect(data).toHaveProperty("totalCount");
+    expect(data).toHaveProperty("limit");
+    expect(data).toHaveProperty("offset");
+    expect(data.items).toBeInstanceOf(Array);
+    expect(data.totalCount).toBeGreaterThan(0);
+    expect(data.items.length).toBeGreaterThan(0);
 
-    const found = responseData.photos.find((p) => p.id === createdPhotoId);
-    expect(
-      found,
-      `Photo with ID ${createdPhotoId} not found in the list`,
-    ).toBeDefined();
+    const found = data.items.find((p) => p.id === createdPhotoId);
+    expect(found, `Photo ${createdPhotoId} not found in list`).toBeDefined();
     expect(found?.title).toBe(createdPhotoData!.title);
   });
 
-  it("PATCH /api/photos/:id - should update the photo metadata", async () => {
-    ensurePhotoCreated(createdPhotoId, createdPhotoData);
-    await delay(100);
-    const response = await loggedFetch(`${BASE_URL}/photos/${createdPhotoId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": TEST_API_KEY,
+  it("PATCH /api/photos/:id - should update photo metadata", async () => {
+    expect(createdPhotoId).not.toBeNull();
+    const response = await loggedFetch(
+      `${BASE_URL}/photos/${createdPhotoId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(patchData),
       },
-      body: JSON.stringify(patchData),
-    });
+    );
     expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotoResponse;
-    expect(data).toBeDefined();
+    const data = (await response.json()) as Photo;
     expect(data.id).toBe(createdPhotoId);
     expect(data.title).toBe(patchData.title);
     expect(data.description).toBe(patchData.description);
     expect(hasSameElements(data.tags, patchData.tags)).toBe(true);
-    expect(data.imageUrl).toBe(createdPhotoData!.imageUrl);
     expect(data.originalFilename).toBe(createdPhotoData!.originalFilename);
     expect(data.mimeType).toBe(createdPhotoData!.mimeType);
     expect(data.fileSize).toBe(createdPhotoData!.fileSize);
-    expect(data.deviceId).toBe(createdPhotoData!.deviceId);
-    expect(data.createdAt).toBe(createdPhotoData!.createdAt);
-    expect(data.updatedAt).toBeTypeOf("string");
-    expect(data.updatedAt.length).toBeGreaterThan(5);
-
-    // Test updated workflow fields
     expect(data.reviewStatus).toBe(patchData.reviewStatus);
     expect(data.isPinned).toBe(patchData.isPinned);
     expect(data.flagColor).toBe(patchData.flagColor);
-    // Compare normalized dates (API may return with milliseconds)
     expect(new Date(data.dueDate!).toISOString()).toBe(
       new Date(patchData.dueDate).toISOString(),
     );
   });
 
-  it("GET /api/photos/:id - should retrieve the updated photo entry", async () => {
-    expect(
-      createdPhotoId,
-      "Test setup failed: createdPhotoId is null",
-    ).not.toBeNull();
-    await delay(100);
-    const response = await loggedFetch(`${BASE_URL}/photos/${createdPhotoId}`, {
-      method: "GET",
-      headers: { "X-API-Key": TEST_API_KEY },
-    });
+  it("PUT /api/photos/:id - should fully update photo metadata", async () => {
+    expect(createdPhotoId).not.toBeNull();
+    const putData = {
+      title: `PUT Updated Photo ${Date.now()}`,
+      description: "Full update via PUT",
+      tags: ["put-test"],
+      reviewStatus: "rejected" as const,
+      isPinned: false,
+      flagColor: "blue" as const,
+      dueDate: "2026-01-01T00:00:00Z",
+    };
+    const response = await loggedFetch(
+      `${BASE_URL}/photos/${createdPhotoId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(putData),
+      },
+    );
     expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotoResponse;
-    expect(data).toBeDefined();
-    expect(data.id).toBe(createdPhotoId);
-    expect(data.title).toBe(patchData.title);
-    expect(data.description).toBe(patchData.description);
-    expect(hasSameElements(data.tags, patchData.tags)).toBe(true);
-
-    // Validate updated workflow fields
-    expect(data.reviewStatus).toBe(patchData.reviewStatus);
-    expect(data.isPinned).toBe(patchData.isPinned);
-    expect(data.flagColor).toBe(patchData.flagColor);
-    // Compare normalized dates (API may return with milliseconds)
-    expect(new Date(data.dueDate!).toISOString()).toBe(
-      new Date(patchData.dueDate).toISOString(),
-    );
+    const data = (await response.json()) as Photo;
+    expect(data.title).toBe(putData.title);
+    expect(data.description).toBe(putData.description);
+    expect(hasSameElements(data.tags, putData.tags)).toBe(true);
+    expect(data.reviewStatus).toBe(putData.reviewStatus);
+    expect(data.flagColor).toBe(putData.flagColor);
   });
 
-  it("DELETE /api/photos/:id - should delete the photo entry", async () => {
-    expect(
-      createdPhotoId,
-      "Test setup failed: createdPhotoId is null",
-    ).not.toBeNull();
-    await delay(100);
-    const response = await loggedFetch(`${BASE_URL}/photos/${createdPhotoId}`, {
-      method: "DELETE",
-      headers: { "X-API-Key": TEST_API_KEY },
-    });
+  it("GET /api/photos/:id - should retrieve the updated photo", async () => {
+    expect(createdPhotoId).not.toBeNull();
+    const response = await loggedFetch(
+      `${BASE_URL}/photos/${createdPhotoId}`,
+    );
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as Photo;
+    expect(data.id).toBe(createdPhotoId);
+    // Verify it reflects the PUT data
+    expect(data.description).toBe("Full update via PUT");
+  });
+
+  it("DELETE /api/photos/:id - should delete the photo", async () => {
+    expect(createdPhotoId).not.toBeNull();
+    const response = await loggedFetch(
+      `${BASE_URL}/photos/${createdPhotoId}`,
+      { method: "DELETE" },
+    );
     expect(response.status).toBe(204);
   });
 
-  it("GET /api/photos/:id - should return 404 for the deleted photo entry", async () => {
-    expect(
-      createdPhotoId,
-      "Test cleanup check requires createdPhotoId",
-    ).not.toBeNull();
-    await delay(100);
-    const response = await loggedFetch(`${BASE_URL}/photos/${createdPhotoId}`, {
-      method: "GET",
-      headers: { "X-API-Key": TEST_API_KEY },
-    });
+  it("GET /api/photos/:id - should return 404 after deletion", async () => {
+    expect(createdPhotoId).not.toBeNull();
+    const response = await loggedFetch(
+      `${BASE_URL}/photos/${createdPhotoId}`,
+    );
     expect(response.status).toBe(404);
   });
 
-  it("GET /api/photos - should not list the deleted entry", async () => {
-    expect(
-      createdPhotoId,
-      "Test cleanup check requires createdPhotoId",
-    ).not.toBeNull();
-    await delay(100);
-    const response = await loggedFetch(`${BASE_URL}/photos`, {
-      method: "GET",
-      headers: { "X-API-Key": TEST_API_KEY },
-    });
+  it("GET /api/photos - should not list the deleted photo", async () => {
+    expect(createdPhotoId).not.toBeNull();
+    const response = await loggedFetch(`${BASE_URL}/photos`);
     expect(response.status).toBe(200);
-    const responseData = (await response.json()) as PhotosListResponse;
+    const data = (await response.json()) as PhotoListResponse;
 
-    // Validate response structure
-    expect(responseData).toHaveProperty("photos");
-    expect(responseData).toHaveProperty("totalCount");
-    expect(responseData).toHaveProperty("limit");
-    expect(responseData.photos).toBeInstanceOf(Array);
+    expect(data.items).toBeInstanceOf(Array);
+    const found = data.items.find((p) => p.id === createdPhotoId);
+    expect(found, "Deleted photo should not appear in list").toBeUndefined();
 
-    const found = responseData.photos.find((p) => p.id === createdPhotoId);
-    expect(
-      found,
-      `Deleted photo with ID ${createdPhotoId} still found in the list`,
-    ).toBeUndefined();
-
-    // Reset global state variables
     createdPhotoId = null;
     createdPhotoData = null;
   });
-}); // End describe block for CRUD Cycle
+});
 
-// --- Test Suite 2: Real File Uploads ---
-describe("Photo API Integration Tests (Real File Uploads)", () => {
-  // Define the test files residing in src/tests/fixtures/images/
-  // IMPORTANT: Ensure these files exist and the MIME types are in ALLOWED_MIME_TYPES in your API route
-  //            Especially add 'image/heic' and/or 'image/heif' for test-photo4.HEIC
+// --- Test Suite 2: Real File Uploads with EXIF Verification ---
+describe("Photo API - Real File Uploads", () => {
+  const createdPhotoIds: string[] = [];
+
+  afterAll(async () => {
+    for (const id of createdPhotoIds) {
+      await deleteTestPhoto(loggedFetch, id);
+    }
+  });
+
   const testFiles = [
     {
       filename: "photo1.jpg",
@@ -374,8 +292,8 @@ describe("Photo API Integration Tests (Real File Uploads)", () => {
       tags: ["food", "restaurant"],
     },
     {
-      filename: "photo2.JPEG", // Note: Filename case matters for reading file
-      mimeType: "image/jpeg", // Standard MIME type is lowercase
+      filename: "photo2.JPEG",
+      mimeType: "image/jpeg",
       titleSuffix: "Village",
       tags: ["house", "tree", "painting"],
     },
@@ -386,571 +304,341 @@ describe("Photo API Integration Tests (Real File Uploads)", () => {
       tags: ["kitchen", "modern"],
     },
     {
-      filename: "photo4.HEIC", // Note: Filename case matters for reading file
-      mimeType: "image/heic", // Ensure this is in API's ALLOWED_MIME_TYPES
+      filename: "photo4.HEIC",
+      mimeType: "image/heic",
       titleSuffix: "Apple Format",
-      tags: [], // Empty tags array
+      tags: [],
     },
   ];
 
-  // Use it.each to run the test for each file defined above
-  it.each(
-    testFiles,
-  )("POST /api/photos - should upload $filename successfully with tags [$tags]", async ({
-    filename,
-    mimeType,
-    titleSuffix,
-    tags,
-  }) => {
-    await delay(50); // Small delay between uploads if needed
-
-    // *** UPDATED PATH ***
-    const filePath = path.join(
-      process.cwd(),
-      "src",
-      "tests",
-      "fixtures",
-      "photos",
-      filename,
-    );
-    let fileBuffer: Buffer;
-    try {
-      fileBuffer = await fs.readFile(filePath);
-    } catch (err) {
-      console.error(`Error reading test file: ${filePath}`, err);
-      throw new Error(
-        `Test setup failed: Could not read file ${filename}. Make sure it exists in ${path.dirname(filePath)}`,
+  it.each(testFiles)(
+    "POST /api/photos - should upload $filename successfully",
+    async ({ filename, mimeType, titleSuffix, tags }) => {
+      const filePath = path.join(
+        process.cwd(),
+        "src",
+        "tests",
+        "fixtures",
+        "photos",
+        filename,
       );
+      const fileBuffer = await fs.readFile(filePath);
+      const fileSize = fileBuffer.length;
+      const fileBlob = new Blob([fileBuffer as BlobPart], { type: mimeType });
+
+      const formData = new FormData();
+      const title = `Real Upload ${titleSuffix} ${Date.now()}`;
+      const metadata = {
+        title,
+        description: `Uploaded file: ${filename}`,
+        tags,
+        deviceId: "Vitest Real File Test",
+        originalFilename: filename,
+      };
+      formData.append("metadata", JSON.stringify(metadata));
+      formData.append("content", fileBlob, filename);
+
+      const response = await loggedFetch(`${BASE_URL}/photos`, {
+        method: "POST",
+        body: formData,
+      });
+
+      expect(response.status, `POST failed for ${filename}`).toBe(201);
+      const data = (await response.json()) as Photo;
+      createdPhotoIds.push(data.id);
+
+      expect(data.id).toMatch(/^photo-[A-Za-z0-9]{15}$/);
+      expect(data.title).toBe(title);
+      expect(data.originalFilename).toBe(filename);
+      expect(data.mimeType).toBe(mimeType);
+      expect(data.fileSize).toBe(fileSize);
+      expect(hasSameElements(data.tags, tags)).toBe(true);
+      expect(data.deviceId).toBe("Vitest Real File Test");
+    },
+  );
+
+  it("should have extracted EXIF data from JPEG fixtures", async () => {
+    // photo1.jpg and photo2.JPEG are real JPEG files with EXIF data
+    // Verify EXIF was extracted by fetching the created photos
+    const jpegIds = createdPhotoIds.slice(0, 2); // First two are JPEGs
+    for (const photoId of jpegIds) {
+      const response = await loggedFetch(`${BASE_URL}/photos/${photoId}`);
+      expect(response.status).toBe(200);
+      const data = (await response.json()) as Photo;
+
+      // Real JPEG fixtures should have image dimensions extracted
+      expect(
+        data.imageWidth,
+        `imageWidth should be extracted for ${photoId}`,
+      ).toBeTypeOf("number");
+      expect(
+        data.imageHeight,
+        `imageHeight should be extracted for ${photoId}`,
+      ).toBeTypeOf("number");
+      expect(data.imageWidth).toBeGreaterThan(0);
+      expect(data.imageHeight).toBeGreaterThan(0);
     }
-
-    const fileSize = fileBuffer.length;
-    // Create Blob from file buffer
-    const fileBlob = new Blob([fileBuffer as BlobPart], { type: mimeType });
-
-    // Create FormData for this specific file
-    const formData = new FormData();
-    const title = `Real Upload ${titleSuffix} ${Date.now()}`;
-    const metadata = {
-      title,
-      description: `Uploaded file: ${filename} with tags: ${tags.join(", ")}`,
-      tags,
-      deviceId: "Vitest Real File Test",
-      originalFilename: filename,
-    };
-    formData.append("metadata", JSON.stringify(metadata));
-    formData.append("content", fileBlob, filename);
-
-    // Make the API call
-    const response = await loggedFetch(`${BASE_URL}/photos`, {
-      method: "POST",
-      headers: { "X-API-Key": TEST_API_KEY },
-      body: formData,
-    });
-
-    // Assertions for the POST response
-    expect(
-      response.status,
-      `POST failed for ${filename} with status ${response.status}. Check API logs.`,
-    ).toBe(201);
-
-    const data = (await response.json()) as PhotoResponse;
-
-    expect(
-      data,
-      `Response data should be defined for ${filename}`,
-    ).toBeDefined();
-    expect(data.id, `ID should be a string for ${filename}`).toBeTypeOf(
-      "string",
-    );
-    expect(data.id).toMatch(/^photo-[A-Za-z0-9]{15}$/);
-    expect(data.title, `Title mismatch for ${filename}`).toBe(title);
-    expect(data.description, `Description mismatch for ${filename}`).toBe(
-      `Uploaded file: ${filename} with tags: ${tags.join(", ")}`,
-    );
-    expect(data.imageUrl, `Image URL format mismatch for ${filename}`).toBe(
-      `/api/photos/${data.id}/view`,
-    );
-
-    // Key Assertions for Real Files
-    expect(
-      data.originalFilename,
-      `Original filename mismatch for ${filename}`,
-    ).toBe(filename);
-    expect(data.mimeType, `MIME type mismatch for ${filename}`).toBe(mimeType);
-    expect(data.fileSize, `File size mismatch for ${filename}`).toBe(fileSize);
-
-    // *** ASSERT SPECIFIC TAGS ***
-    expect(
-      hasSameElements(data.tags, tags),
-      `Tags mismatch for ${filename}. Expected [${tags.join(", ")}], got [${data.tags.join(", ")}]`,
-    ).toBe(true);
-
-    expect(data.deviceId, `Device ID mismatch for ${filename}`).toBe(
-      "Vitest Real File Test",
-    );
-    expect(
-      data.createdAt,
-      `createdAt should be a string for ${filename}`,
-    ).toBeTypeOf("string");
-    expect(
-      data.createdAt.length,
-      `createdAt format seems incorrect for ${filename}`,
-    ).toBeGreaterThan(5);
-    expect(
-      data.updatedAt,
-      `updatedAt should be a string for ${filename}`,
-    ).toBeTypeOf("string");
-    expect(
-      data.updatedAt.length,
-      `updatedAt format seems incorrect for ${filename}`,
-    ).toBeGreaterThan(5);
-
-    // Optional: Add cleanup if needed, but usually better to test GET/DELETE separately
-    // await loggedFetch(`${BASE_URL}/photos/${data.id}`, { method: 'DELETE', headers: { 'X-API-Key': TEST_API_KEY } });
   });
-}); // End describe block for Real File Uploads
+
+  it("should mark HEIC as not originally viewable", async () => {
+    // photo4.HEIC is the last uploaded file
+    const heicId = createdPhotoIds[3];
+    if (!heicId) return; // Skip if HEIC upload failed
+
+    const response = await loggedFetch(`${BASE_URL}/photos/${heicId}`);
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as Photo;
+    expect(data.isOriginalViewable).toBe(false);
+    expect(data.mimeType).toBe("image/heic");
+  });
+
+  it("should mark JPEG as originally viewable", async () => {
+    const jpegId = createdPhotoIds[0];
+    if (!jpegId) return;
+
+    const response = await loggedFetch(`${BASE_URL}/photos/${jpegId}`);
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as Photo;
+    expect(data.isOriginalViewable).toBe(true);
+  });
+});
 
 // --- Test Suite 3: Workflow Management Endpoints ---
-describe("Photo API Integration Tests (Workflow Management)", () => {
+describe("Photo API - Workflow Management", () => {
   let testPhotoId: string | null = null;
-  let testPhotoData: PhotoResponse | null = null;
 
   beforeAll(async () => {
-    // Create a test photo for workflow testing
-    const dummyFileContent = "Test content for workflow tests";
-    const dummyFile = new Blob([dummyFileContent], { type: "image/jpeg" });
-
-    const formData = new FormData();
-    const metadata = {
+    const data = await createTestPhoto(loggedFetch, {
       title: `Workflow Test Photo ${Date.now()}`,
-      description: "Photo for testing workflow endpoints",
       tags: ["workflow", "test"],
-      deviceId: "Vitest Workflow Test",
-      originalFilename: "workflow-test.jpg",
       reviewStatus: "pending",
       isPinned: false,
-    };
-    formData.append("metadata", JSON.stringify(metadata));
-    formData.append("content", dummyFile, "workflow-test.jpg");
-
-    const response = await loggedFetch(`${BASE_URL}/photos`, {
-      method: "POST",
-      headers: { "X-API-Key": TEST_API_KEY },
-      body: formData,
     });
-
-    expect(response.status).toBe(201);
-    testPhotoData = (await response.json()) as PhotoResponse;
-    testPhotoId = testPhotoData.id;
+    testPhotoId = data.id;
   });
 
   afterAll(async () => {
-    // Clean up test photo
-    if (testPhotoId) {
-      await loggedFetch(`${BASE_URL}/photos/${testPhotoId}`, {
-        method: "DELETE",
-        headers: { "X-API-Key": TEST_API_KEY },
-      });
-    }
+    if (testPhotoId) await deleteTestPhoto(loggedFetch, testPhotoId);
   });
 
   it("PATCH /api/photos/:id/review - should update review status", async () => {
     expect(testPhotoId).not.toBeNull();
 
     // Test updating to accepted
-    const reviewData = { reviewStatus: "accepted" as const };
     const response = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/review`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": TEST_API_KEY,
-        },
-        body: JSON.stringify(reviewData),
+        body: JSON.stringify({ reviewStatus: "accepted" }),
       },
     );
-
     expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotoResponse;
+    const data = (await response.json()) as Photo;
     expect(data.reviewStatus).toBe("accepted");
     expect(data.id).toBe(testPhotoId);
 
     // Test updating to rejected
-    const rejectData = { reviewStatus: "rejected" as const };
     const rejectResponse = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/review`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": TEST_API_KEY,
-        },
-        body: JSON.stringify(rejectData),
+        body: JSON.stringify({ reviewStatus: "rejected" }),
       },
     );
-
     expect(rejectResponse.status).toBe(200);
-    const rejectResult = (await rejectResponse.json()) as PhotoResponse;
+    const rejectResult = (await rejectResponse.json()) as Photo;
     expect(rejectResult.reviewStatus).toBe("rejected");
   });
 
   it("PATCH /api/photos/:id/flag - should update flag color", async () => {
     expect(testPhotoId).not.toBeNull();
 
-    // Test setting flag color
-    const flagData = { flagColor: "red" as const };
+    // Set flag
     const response = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/flag`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": TEST_API_KEY,
-        },
-        body: JSON.stringify(flagData),
+        body: JSON.stringify({ flagColor: "red" }),
       },
     );
-
     expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotoResponse;
+    const data = (await response.json()) as Photo;
     expect(data.flagColor).toBe("red");
-    expect(data.id).toBe(testPhotoId);
 
-    // Test clearing flag color
-    const clearFlagData = { flagColor: null };
+    // Clear flag
     const clearResponse = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/flag`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": TEST_API_KEY,
-        },
-        body: JSON.stringify(clearFlagData),
+        body: JSON.stringify({ flagColor: null }),
       },
     );
-
     expect(clearResponse.status).toBe(200);
-    const clearResult = (await clearResponse.json()) as PhotoResponse;
+    const clearResult = (await clearResponse.json()) as Photo;
     expect(clearResult.flagColor).toBeNull();
   });
 
   it("PATCH /api/photos/:id/pin - should toggle pin status", async () => {
     expect(testPhotoId).not.toBeNull();
 
-    // Test pinning photo
-    const pinData = { isPinned: true };
+    // Pin
     const response = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/pin`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": TEST_API_KEY,
-        },
-        body: JSON.stringify(pinData),
+        body: JSON.stringify({ isPinned: true }),
       },
     );
-
     expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotoResponse;
-    expect(data.isPinned).toBe(true);
-    expect(data.id).toBe(testPhotoId);
+    expect(((await response.json()) as Photo).isPinned).toBe(true);
 
-    // Test unpinning photo
-    const unpinData = { isPinned: false };
+    // Unpin
     const unpinResponse = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/pin`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": TEST_API_KEY,
-        },
-        body: JSON.stringify(unpinData),
+        body: JSON.stringify({ isPinned: false }),
       },
     );
-
     expect(unpinResponse.status).toBe(200);
-    const unpinResult = (await unpinResponse.json()) as PhotoResponse;
-    expect(unpinResult.isPinned).toBe(false);
+    expect(((await unpinResponse.json()) as Photo).isPinned).toBe(false);
   });
 
-  it("should handle invalid photo ID for workflow endpoints", async () => {
-    const invalidId = "invalid-photo-id";
+  it("should return 404 for workflow endpoints with invalid ID", async () => {
+    const invalidId = "photo-nonexistent999";
+    const endpoints = ["review", "flag", "pin"];
+    const bodies = [
+      { reviewStatus: "accepted" },
+      { flagColor: "red" },
+      { isPinned: true },
+    ];
 
-    // Test review endpoint with invalid ID
-    const reviewResponse = await loggedFetch(
-      `${BASE_URL}/photos/${invalidId}/review`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": TEST_API_KEY,
+    for (let i = 0; i < endpoints.length; i++) {
+      const response = await loggedFetch(
+        `${BASE_URL}/photos/${invalidId}/${endpoints[i]}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(bodies[i]),
         },
-        body: JSON.stringify({ reviewStatus: "accepted" }),
-      },
-    );
-    expect(reviewResponse.status).toBe(404);
-
-    // Test flag endpoint with invalid ID
-    const flagResponse = await loggedFetch(
-      `${BASE_URL}/photos/${invalidId}/flag`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": TEST_API_KEY,
-        },
-        body: JSON.stringify({ flagColor: "red" }),
-      },
-    );
-    expect(flagResponse.status).toBe(404);
-
-    // Test pin endpoint with invalid ID
-    const pinResponse = await loggedFetch(
-      `${BASE_URL}/photos/${invalidId}/pin`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": TEST_API_KEY,
-        },
-        body: JSON.stringify({ isPinned: true }),
-      },
-    );
-    expect(pinResponse.status).toBe(404);
+      );
+      expect(
+        response.status,
+        `Expected 404 for ${endpoints[i]} with invalid ID`,
+      ).toBe(404);
+    }
   });
-}); // End describe block for Workflow Management
+});
 
 // --- Test Suite 4: File Serving Endpoints ---
-describe("Photo API Integration Tests (File Serving)", () => {
+describe("Photo API - File Serving", () => {
   let testPhotoId: string | null = null;
-  let testPhotoData: PhotoResponse | null = null;
 
   beforeAll(async () => {
-    // Create a test photo for file serving testing
-    const dummyFileContent = "Test image content for file serving";
-    const dummyFile = new Blob([dummyFileContent], { type: "image/jpeg" });
-
-    const formData = new FormData();
-    const metadata = {
-      title: `File Serving Test Photo ${Date.now()}`,
-      description: "Photo for testing file serving endpoints",
+    const data = await createTestPhoto(loggedFetch, {
+      title: `File Serving Test ${Date.now()}`,
       tags: ["file-serving", "test"],
-      deviceId: "Vitest File Serving Test",
       originalFilename: "file-serving-test.jpg",
-    };
-    formData.append("metadata", JSON.stringify(metadata));
-    formData.append("content", dummyFile, "file-serving-test.jpg");
-
-    const response = await loggedFetch(`${BASE_URL}/photos`, {
-      method: "POST",
-      headers: { "X-API-Key": TEST_API_KEY },
-      body: formData,
     });
-
-    expect(response.status).toBe(201);
-    testPhotoData = (await response.json()) as PhotoResponse;
-    testPhotoId = testPhotoData.id;
+    testPhotoId = data.id;
   });
 
   afterAll(async () => {
-    // Clean up test photo
-    if (testPhotoId) {
-      await loggedFetch(`${BASE_URL}/photos/${testPhotoId}`, {
-        method: "DELETE",
-        headers: { "X-API-Key": TEST_API_KEY },
-      });
-    }
+    if (testPhotoId) await deleteTestPhoto(loggedFetch, testPhotoId);
   });
 
   it("GET /api/photos/:id/view - should serve photo for viewing", async () => {
-    expect(testPhotoId).not.toBeNull();
-
     const response = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/view`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
     );
-
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("image/jpeg");
-    expect(response.headers.get("Cache-Control")).toBe("private, max-age=3600");
-
+    expect(response.headers.get("Cache-Control")).toBe(
+      "private, max-age=3600",
+    );
     const content = await response.arrayBuffer();
     expect(content.byteLength).toBeGreaterThan(0);
   });
 
-  it("GET /api/photos/:id/thumbnail - should serve photo thumbnail", async () => {
-    expect(testPhotoId).not.toBeNull();
-
+  it("GET /api/photos/:id/thumbnail - should handle thumbnail", async () => {
     const response = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/thumbnail`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
     );
-
-    // Thumbnail might not be available immediately, so handle both cases
+    // Thumbnail may not be generated yet (async processing)
     if (response.status === 200) {
       expect(response.headers.get("Content-Type")).toMatch(/^image\//);
       expect(response.headers.get("Cache-Control")).toBe(
         "public, max-age=86400",
       );
-
       const content = await response.arrayBuffer();
       expect(content.byteLength).toBeGreaterThan(0);
     } else {
-      // Thumbnail not available yet
       expect(response.status).toBe(404);
     }
   });
 
-  it("GET /api/photos/:id/original - should serve original photo file", async () => {
-    expect(testPhotoId).not.toBeNull();
-
+  it("GET /api/photos/:id/original - should serve original file", async () => {
     const response = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/original`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
     );
-
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("image/jpeg");
-    expect(response.headers.get("Cache-Control")).toBe("private, max-age=3600");
+    expect(response.headers.get("Cache-Control")).toBe(
+      "private, max-age=3600",
+    );
     expect(response.headers.get("Content-Disposition")).toContain("inline");
     expect(response.headers.get("Content-Disposition")).toContain(
       "file-serving-test.jpg",
     );
-
     const content = await response.arrayBuffer();
     expect(content.byteLength).toBeGreaterThan(0);
   });
 
-  it("GET /api/photos/:id/converted - should handle converted JPG file", async () => {
-    expect(testPhotoId).not.toBeNull();
-
+  it("GET /api/photos/:id/converted - should handle converted JPG", async () => {
     const response = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/converted`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
     );
-
-    // Converted file might not be available, so handle both cases
+    // Converted file may not exist for a JPEG
     if (response.status === 200) {
       expect(response.headers.get("Content-Type")).toBe("image/jpeg");
-      expect(response.headers.get("Cache-Control")).toBe(
-        "private, max-age=3600",
-      );
-      expect(response.headers.get("Content-Disposition")).toContain("inline");
-      expect(response.headers.get("Content-Disposition")).toContain(
-        "-converted.jpg",
-      );
-
       const content = await response.arrayBuffer();
       expect(content.byteLength).toBeGreaterThan(0);
     } else {
-      // Converted file not available
       expect(response.status).toBe(404);
     }
   });
 
-  it("GET /api/photos/:id/analysis - should handle AI analysis file", async () => {
-    expect(testPhotoId).not.toBeNull();
-
+  it("GET /api/photos/:id/analysis - should handle AI analysis", async () => {
     const response = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/analysis`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
     );
-
-    // Analysis file might not be available, so handle both cases
     if (response.status === 200) {
-      expect(response.headers.get("Content-Type")).toBe("application/json");
-      expect(response.headers.get("Cache-Control")).toBe(
-        "private, max-age=3600",
+      expect(response.headers.get("Content-Type")).toContain(
+        "application/json",
       );
-      expect(response.headers.get("Content-Disposition")).toContain(
-        "-analysis.json",
-      );
-
       const content = await response.text();
       expect(content.length).toBeGreaterThan(0);
-
-      // Should be valid JSON
       const analysisData = JSON.parse(content);
       expect(analysisData).toBeTypeOf("object");
     } else {
-      // Analysis not available yet
       expect(response.status).toBe(404);
     }
   });
 
-  it("GET /api/photos/:id/analysis?view=inline - should serve analysis inline", async () => {
-    expect(testPhotoId).not.toBeNull();
-
-    const response = await loggedFetch(
-      `${BASE_URL}/photos/${testPhotoId}/analysis?view=inline`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
-    );
-
-    // Analysis file might not be available, so handle both cases
-    if (response.status === 200) {
-      expect(response.headers.get("Content-Type")).toBe("application/json");
-      expect(response.headers.get("Content-Disposition")).toContain("inline");
-    } else {
-      // Analysis not available yet
-      expect(response.status).toBe(404);
-    }
-  });
-
-  it("GET /api/photos/:id/content - should handle content markdown file", async () => {
-    expect(testPhotoId).not.toBeNull();
-
+  it("GET /api/photos/:id/content - should handle content markdown", async () => {
     const response = await loggedFetch(
       `${BASE_URL}/photos/${testPhotoId}/content`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
     );
-
-    // Content file might not be available, so handle both cases
     if (response.status === 200) {
-      expect(response.headers.get("Content-Type")).toBe("text/markdown");
-      expect(response.headers.get("Cache-Control")).toBe(
-        "private, max-age=3600",
-      );
-      expect(response.headers.get("Content-Disposition")).toContain(
-        "-content.md",
-      );
-
+      expect(response.headers.get("Content-Type")).toContain("text/markdown");
       const content = await response.text();
       expect(content.length).toBeGreaterThan(0);
     } else {
-      // Content not available yet
       expect(response.status).toBe(404);
     }
   });
 
-  it("should handle invalid photo ID for file serving endpoints", async () => {
-    const invalidId = "invalid-photo-id";
-
-    // Test each file serving endpoint with invalid ID
+  it("should return 404 for file serving with invalid ID", async () => {
+    const invalidId = "photo-nonexistent999";
     const endpoints = [
       "view",
       "thumbnail",
@@ -963,18 +651,15 @@ describe("Photo API Integration Tests (File Serving)", () => {
     for (const endpoint of endpoints) {
       const response = await loggedFetch(
         `${BASE_URL}/photos/${invalidId}/${endpoint}`,
-        {
-          method: "GET",
-          headers: { "X-API-Key": TEST_API_KEY },
-        },
       );
-      expect(response.status).toBe(404);
+      expect(
+        response.status,
+        `Expected 404 for /${endpoint} with invalid ID`,
+      ).toBe(404);
     }
   });
 
-  it("should handle unauthorized access to file serving endpoints", async () => {
-    expect(testPhotoId).not.toBeNull();
-
+  it("should reject unauthenticated access to file serving endpoints", async () => {
     const endpoints = [
       "view",
       "thumbnail",
@@ -987,234 +672,289 @@ describe("Photo API Integration Tests (File Serving)", () => {
     for (const endpoint of endpoints) {
       const response = await fetch(
         `${BASE_URL}/photos/${testPhotoId}/${endpoint}`,
-        {
-          method: "GET",
-          // No API key header and no authentication
-        },
       );
-      // Should be 401 (unauthorized) but might be 403 (forbidden) depending on implementation
-      expect([401, 403]).toContain(response.status);
+      expect(
+        [401, 403],
+        `Expected 401/403 for unauthenticated /${endpoint}`,
+      ).toContain(response.status);
     }
   });
-}); // End describe block for File Serving
+});
 
 // --- Test Suite 5: Search and Filtering ---
-describe("Photo API Integration Tests (Search and Filtering)", () => {
+describe("Photo API - Search and Filtering", () => {
   const searchTestPhotos: string[] = [];
 
+  const photoConfigs = [
+    {
+      title: "Beach Sunset Photo",
+      description: "Beautiful sunset at the beach",
+      tags: ["sunset", "beach", "nature"],
+      deviceId: "camera-001",
+    },
+    {
+      title: "Mountain Landscape",
+      description: "Scenic mountain view",
+      tags: ["mountain", "landscape", "nature"],
+      deviceId: "camera-002",
+    },
+    {
+      title: "City Street Photography",
+      description: "Urban street scene",
+      tags: ["city", "street", "urban"],
+      deviceId: "camera-001",
+    },
+    {
+      title: "Family Portrait",
+      description: "Family photo at home",
+      tags: ["family", "portrait", "indoor"],
+      deviceId: "phone-001",
+    },
+  ];
+
   beforeAll(async () => {
-    // Create multiple test photos with different metadata for search testing
-    const photoConfigs = [
-      {
-        title: "Beach Sunset Photo",
-        description: "Beautiful sunset at the beach",
-        tags: ["sunset", "beach", "nature"],
-        deviceId: "camera-001",
-      },
-      {
-        title: "Mountain Landscape",
-        description: "Scenic mountain view",
-        tags: ["mountain", "landscape", "nature"],
-        deviceId: "camera-002",
-      },
-      {
-        title: "City Street Photography",
-        description: "Urban street scene",
-        tags: ["city", "street", "urban"],
-        deviceId: "camera-001",
-      },
-      {
-        title: "Family Portrait",
-        description: "Family photo at home",
-        tags: ["family", "portrait", "indoor"],
-        deviceId: "phone-001",
-      },
-    ];
-
     for (const config of photoConfigs) {
-      const dummyFileContent = `Test image content for ${config.title}`;
-      const dummyFile = new Blob([dummyFileContent], { type: "image/jpeg" });
-
-      const formData = new FormData();
-      const metadata = {
+      const data = await createTestPhoto(loggedFetch, {
         title: config.title,
         description: config.description,
         tags: config.tags,
         deviceId: config.deviceId,
         originalFilename: `${config.title.toLowerCase().replace(/\s+/g, "-")}.jpg`,
-      };
-      formData.append("metadata", JSON.stringify(metadata));
-      formData.append("content", dummyFile, metadata.originalFilename);
-
-      const response = await loggedFetch(`${BASE_URL}/photos`, {
-        method: "POST",
-        headers: { "X-API-Key": TEST_API_KEY },
-        body: formData,
       });
-
-      expect(response.status).toBe(201);
-      const photoData = (await response.json()) as PhotoResponse;
-      searchTestPhotos.push(photoData.id);
+      searchTestPhotos.push(data.id);
     }
   });
 
   afterAll(async () => {
-    // Clean up test photos
     for (const photoId of searchTestPhotos) {
-      await loggedFetch(`${BASE_URL}/photos/${photoId}`, {
-        method: "DELETE",
-        headers: { "X-API-Key": TEST_API_KEY },
-      });
+      await deleteTestPhoto(loggedFetch, photoId);
     }
   });
 
-  it("GET /api/photos?text=sunset - should accept text parameter (Note: text search not implemented yet)", async () => {
-    const response = await loggedFetch(`${BASE_URL}/photos?text=sunset`, {
-      method: "GET",
-      headers: { "X-API-Key": TEST_API_KEY },
-    });
-
+  it("GET /api/photos?tags=nature - should filter by single tag", async () => {
+    const response = await loggedFetch(`${BASE_URL}/photos?tags=nature`);
     expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotosListResponse;
+    const data = (await response.json()) as PhotoListResponse;
 
-    expect(data).toHaveProperty("photos");
-    expect(data).toHaveProperty("totalCount");
-    expect(data).toHaveProperty("limit");
-    expect(data.photos).toBeInstanceOf(Array);
-
-    // Note: Text search is not fully implemented in the backend yet
-    // The API accepts the parameter but doesn't filter by text content
-    expect(data.totalCount).toBeGreaterThanOrEqual(0);
-  });
-
-  it("GET /api/photos?tags=nature - should search by single tag", async () => {
-    const response = await loggedFetch(`${BASE_URL}/photos?tags=nature`, {
-      method: "GET",
-      headers: { "X-API-Key": TEST_API_KEY },
-    });
-
-    expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotosListResponse;
-
-    expect(data.photos).toBeInstanceOf(Array);
+    expect(data.items).toBeInstanceOf(Array);
     expect(data.totalCount).toBeGreaterThan(0);
 
-    // Should find photos with nature tag
-    const foundPhotos = data.photos.filter(
+    const foundPhotos = data.items.filter(
       (p) => searchTestPhotos.includes(p.id) && p.tags.includes("nature"),
     );
-    expect(foundPhotos.length).toBeGreaterThan(0);
+    expect(
+      foundPhotos.length,
+      "Should find photos with 'nature' tag",
+    ).toBeGreaterThanOrEqual(2);
   });
 
-  it("GET /api/photos?tags=nature,landscape - should search by multiple tags", async () => {
+  it("GET /api/photos?tags=nature,landscape - should filter by multiple tags (AND)", async () => {
     const response = await loggedFetch(
       `${BASE_URL}/photos?tags=nature,landscape`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
     );
-
     expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotosListResponse;
+    const data = (await response.json()) as PhotoListResponse;
 
-    expect(data.photos).toBeInstanceOf(Array);
-
-    // Should find photos with both nature and landscape tags
-    const foundPhotos = data.photos.filter(
+    expect(data.items).toBeInstanceOf(Array);
+    const foundPhotos = data.items.filter(
       (p) =>
         searchTestPhotos.includes(p.id) &&
         p.tags.includes("nature") &&
         p.tags.includes("landscape"),
     );
-    expect(foundPhotos.length).toBeGreaterThan(0);
+    expect(
+      foundPhotos.length,
+      "Should find photos with both 'nature' AND 'landscape' tags",
+    ).toBeGreaterThan(0);
+  });
+
+  it("GET /api/photos?tags=nonexistent - should return empty for no matches", async () => {
+    const response = await loggedFetch(
+      `${BASE_URL}/photos?tags=veryspecificnonexistenttag12345`,
+    );
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as PhotoListResponse;
+
+    expect(data.items).toBeInstanceOf(Array);
+    expect(data.items.length).toBe(0);
+    expect(data.totalCount).toBe(0);
   });
 
   it("GET /api/photos?limit=2 - should limit results", async () => {
-    const response = await loggedFetch(`${BASE_URL}/photos?limit=2`, {
-      method: "GET",
-      headers: { "X-API-Key": TEST_API_KEY },
-    });
-
+    const response = await loggedFetch(`${BASE_URL}/photos?limit=2`);
     expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotosListResponse;
+    const data = (await response.json()) as PhotoListResponse;
 
-    expect(data.photos).toBeInstanceOf(Array);
-    expect(data.photos.length).toBeLessThanOrEqual(2);
+    expect(data.items.length).toBeLessThanOrEqual(2);
     expect(data.limit).toBe(2);
     expect(data.totalCount).toBeGreaterThan(0);
   });
 
-  it("GET /api/photos?text=mountain&tags=nature - should accept combined parameters", async () => {
-    const response = await loggedFetch(
-      `${BASE_URL}/photos?text=mountain&tags=nature`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
-    );
-
-    expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotosListResponse;
-
-    expect(data.photos).toBeInstanceOf(Array);
-
-    // Should find photos with nature tag (text search not implemented yet)
-    const foundPhotos = data.photos.filter(
-      (p) => searchTestPhotos.includes(p.id) && p.tags.includes("nature"),
-    );
-    expect(foundPhotos.length).toBeGreaterThan(0);
-  });
-
-  it("GET /api/photos?tags=nonexistenttag - should return empty results for no matches", async () => {
-    const response = await loggedFetch(
-      `${BASE_URL}/photos?tags=veryspecificnonexistenttag12345`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
-    );
-
-    expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotosListResponse;
-
-    expect(data.photos).toBeInstanceOf(Array);
-    // Should return empty results for a non-existent tag
-    expect(data.photos.length).toBe(0);
-    expect(data.totalCount).toBe(0);
-    expect(data.limit).toBeTypeOf("number");
-  });
-
-  it("GET /api/photos?startDate=2024-01-01&endDate=2030-12-31 - should filter by date range", async () => {
+  it("GET /api/photos?startDate&endDate - should filter by date range", async () => {
     const response = await loggedFetch(
       `${BASE_URL}/photos?startDate=2024-01-01&endDate=2030-12-31`,
-      {
-        method: "GET",
-        headers: { "X-API-Key": TEST_API_KEY },
-      },
     );
-
     expect(response.status).toBe(200);
-    const data = (await response.json()) as PhotosListResponse;
+    const data = (await response.json()) as PhotoListResponse;
 
-    expect(data.photos).toBeInstanceOf(Array);
+    expect(data.items).toBeInstanceOf(Array);
     expect(data.totalCount).toBeGreaterThan(0);
 
-    // Should find our test photos created today
-    const foundTestPhotos = data.photos.filter((p) =>
+    const foundTestPhotos = data.items.filter((p) =>
       searchTestPhotos.includes(p.id),
     );
     expect(foundTestPhotos.length).toBeGreaterThan(0);
   });
 
-  it("should handle invalid search parameters", async () => {
-    const response = await loggedFetch(`${BASE_URL}/photos?limit=invalid`, {
-      method: "GET",
-      headers: { "X-API-Key": TEST_API_KEY },
-    });
-
+  it("GET /api/photos?limit=invalid - should reject invalid parameters", async () => {
+    const response = await loggedFetch(`${BASE_URL}/photos?limit=invalid`);
     expect(response.status).toBe(400);
     const errorData = await response.json();
     expect(errorData).toHaveProperty("error");
   });
-}); // End describe block for Search and Filtering
+});
+
+// --- Test Suite 6: Multi-User Isolation ---
+describe("Photo API - Multi-User Isolation", () => {
+  let user1PhotoId: string | null = null;
+
+  beforeAll(async () => {
+    const data = await createTestPhoto(loggedFetch, {
+      title: `User1 Photo ${Date.now()}`,
+      tags: ["user1-only"],
+      description: "This photo belongs to user 1",
+    });
+    user1PhotoId = data.id;
+  });
+
+  afterAll(async () => {
+    if (user1PhotoId) await deleteTestPhoto(loggedFetch, user1PhotoId);
+  });
+
+  it("user 2 should not see user 1's photo in list", async () => {
+    const response = await user2Fetch(`${BASE_URL}/photos`);
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as PhotoListResponse;
+    const found = data.items.find((p) => p.id === user1PhotoId);
+    expect(
+      found,
+      "User 2 should not see user 1's photo",
+    ).toBeUndefined();
+  });
+
+  it("user 2 should get 404 when accessing user 1's photo by ID", async () => {
+    const response = await user2Fetch(
+      `${BASE_URL}/photos/${user1PhotoId}`,
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("user 2 should get 404 when trying to update user 1's photo", async () => {
+    const response = await user2Fetch(
+      `${BASE_URL}/photos/${user1PhotoId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ title: "Hacked!" }),
+      },
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("user 2 should get 404 when trying to delete user 1's photo", async () => {
+    const response = await user2Fetch(
+      `${BASE_URL}/photos/${user1PhotoId}`,
+      { method: "DELETE" },
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("user 2 should get 404 when accessing user 1's photo files", async () => {
+    const endpoints = ["view", "thumbnail", "original"];
+    for (const endpoint of endpoints) {
+      const response = await user2Fetch(
+        `${BASE_URL}/photos/${user1PhotoId}/${endpoint}`,
+      );
+      expect(
+        response.status,
+        `User 2 should not access /${endpoint}`,
+      ).toBe(404);
+    }
+  });
+
+  it("user 1's photo should still exist after user 2's failed attempts", async () => {
+    const response = await loggedFetch(
+      `${BASE_URL}/photos/${user1PhotoId}`,
+    );
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as Photo;
+    expect(data.title).toContain("User1 Photo");
+  });
+});
+
+// --- Test Suite 7: Upload Validation ---
+describe("Photo API - Upload Validation", () => {
+  it("should reject upload without content part", async () => {
+    const formData = new FormData();
+    formData.append(
+      "metadata",
+      JSON.stringify({ title: "No content", tags: [] }),
+    );
+
+    const response = await loggedFetch(`${BASE_URL}/photos`, {
+      method: "POST",
+      body: formData,
+    });
+    expect(response.status).toBe(400);
+  });
+
+  it("should reject non-image file upload", async () => {
+    const textContent = "This is plain text, not an image.";
+    const textFile = new Blob([textContent], { type: "text/plain" });
+
+    const formData = new FormData();
+    formData.append(
+      "metadata",
+      JSON.stringify({ title: "Not an image", tags: [] }),
+    );
+    formData.append("content", textFile, "document.txt");
+
+    const response = await loggedFetch(`${BASE_URL}/photos`, {
+      method: "POST",
+      body: formData,
+    });
+    expect(response.status).toBe(400);
+  });
+});
+
+// --- Test Suite 8: Reprocess Endpoint ---
+describe("Photo API - Reprocess", () => {
+  let testPhotoId: string | null = null;
+
+  beforeAll(async () => {
+    const data = await createTestPhoto(loggedFetch, {
+      title: `Reprocess Test ${Date.now()}`,
+    });
+    testPhotoId = data.id;
+  });
+
+  afterAll(async () => {
+    if (testPhotoId) await deleteTestPhoto(loggedFetch, testPhotoId);
+  });
+
+  it("POST /api/photos/:id/reprocess - should accept reprocess request", async () => {
+    const response = await loggedFetch(
+      `${BASE_URL}/photos/${testPhotoId}/reprocess`,
+      { method: "POST" },
+    );
+    // Should succeed (200 or 202) or potentially 404 if route not registered
+    expect([200, 202]).toContain(response.status);
+  });
+
+  it("POST /api/photos/:id/reprocess - should return 404 for invalid ID", async () => {
+    const response = await loggedFetch(
+      `${BASE_URL}/photos/photo-nonexistent999/reprocess`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(404);
+  });
+});

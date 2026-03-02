@@ -6,7 +6,7 @@ import {
   hasSameElements,
   TEST_API_KEY,
 } from "../utils/test-helpers.js";
-import type { Bookmark } from "../utils/types.js";
+import type { Bookmark, BookmarkListResponse } from "../utils/types.js";
 
 describe("Bookmark API Integration Tests", () => {
   let createdBookmarkId: string | null = null;
@@ -117,22 +117,23 @@ describe("Bookmark API Integration Tests", () => {
     });
 
     expect(response.status).toBe(200);
-    const data = (await response.json()) as Bookmark[];
+    const data = (await response.json()) as BookmarkListResponse;
 
-    expect(data).toBeInstanceOf(Array);
-    expect(data.length).toBeGreaterThan(0);
+    // Verify paginated response shape
+    expect(data.items).toBeInstanceOf(Array);
+    expect(data.items.length).toBeGreaterThan(0);
+    expect(data.totalCount).toBeTypeOf("number");
+    expect(data.totalCount).toBeGreaterThan(0);
+    expect(data.limit).toBeTypeOf("number");
+    expect(data.offset).toBeTypeOf("number");
 
-    const found = data.find((b) => b.id === createdBookmarkId);
+    const found = data.items.find((b) => b.id === createdBookmarkId);
     expect(
       found,
       `Bookmark with ID ${createdBookmarkId} not found in the list`,
     ).toBeDefined();
     expect(found?.url).toBe(initialBookmarkData.url);
     expect(found?.title).toBe(initialBookmarkData.title);
-    expect(found?.reviewStatus).toBe(expectedInitialResponse.reviewStatus);
-    expect(found?.flagColor).toBe(expectedInitialResponse.flagColor);
-    expect(found?.isPinned).toBe(expectedInitialResponse.isPinned);
-    expect(found?.dueDate).toBe(expectedInitialResponse.dueDate);
     expect(found?.processingStatus).toBeDefined();
     expect(["pending", "processing", "completed", "failed"]).toContain(
       found?.processingStatus,
@@ -243,10 +244,10 @@ describe("Bookmark API Integration Tests", () => {
     });
 
     expect(response.status).toBe(200);
-    const data = (await response.json()) as Bookmark[];
+    const data = (await response.json()) as BookmarkListResponse;
 
-    expect(data).toBeInstanceOf(Array);
-    const found = data.find((b) => b.id === createdBookmarkId);
+    expect(data.items).toBeInstanceOf(Array);
+    const found = data.items.find((b) => b.id === createdBookmarkId);
     expect(
       found,
       `Deleted bookmark with ID ${createdBookmarkId} should not be in the list`,

@@ -108,7 +108,7 @@ interface UpdateBookmarkParams {
 /**
  * Helper function to detect MIME type from file extension in storage ID
  */
-const getMimeTypeFromStorageId = (storageId: string): string => {
+export const getMimeTypeFromStorageId = (storageId: string): string => {
   const lowerStorageId = storageId.toLowerCase();
 
   if (lowerStorageId.endsWith(".svg")) return "image/svg+xml";
@@ -519,7 +519,7 @@ export async function deleteBookmark(
  * - timestamps converted to ISO strings
  */
 // biome-ignore lint/suspicious/noExplicitAny: raw DB row with variable shape
-function mapBookmarkToApiResponse(dbBookmark: any) {
+export function mapBookmarkToApiResponse(dbBookmark: any) {
   const {
     originalUrl,
     normalizedUrl,
@@ -598,7 +598,7 @@ function mapBookmarkToApiResponse(dbBookmark: any) {
  * - url -> originalUrl (but preserve normalizedUrl if it exists)
  */
 // biome-ignore lint/suspicious/noExplicitAny: dynamic field remapping from API request
-function mapApiRequestToDbFields(apiData: any) {
+export function mapApiRequestToDbFields(apiData: any) {
   const { url, ...rest } = apiData;
 
   const dbFields = { ...rest };
@@ -1101,7 +1101,7 @@ interface BookmarkImportResult {
   errors: string[];
 }
 
-interface ChromeBookmarkItem {
+export interface ChromeBookmarkItem {
   type: "url" | "folder";
   name: string;
   url?: string;
@@ -1124,7 +1124,7 @@ interface ChromeBookmarkFile {
  * Convert Chrome WebKit timestamp to JavaScript Date
  * Chrome timestamps are in microseconds since January 1, 1601 UTC
  */
-function convertChromeTimestamp(timestamp: string): Date {
+export function convertChromeTimestamp(timestamp: string): Date {
   const microseconds = parseInt(timestamp, 10);
   // Convert to milliseconds since epoch (Jan 1, 1970)
   const milliseconds = (microseconds - 11644473600000000) / 1000;
@@ -1134,7 +1134,7 @@ function convertChromeTimestamp(timestamp: string): Date {
 /**
  * Recursively extract bookmarks from Chrome folder structure
  */
-function extractBookmarksFromFolder(
+export function extractBookmarksFromFolder(
   folder: ChromeBookmarkItem,
   folderPath: string[] = [],
 ): Array<{ url: string; title: string; tags: string[]; dateAdded: Date }> {

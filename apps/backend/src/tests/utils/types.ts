@@ -16,6 +16,13 @@ export interface Bookmark {
   dueDate: string | null;
 }
 
+export interface BookmarkListResponse {
+  items: Bookmark[];
+  totalCount: number;
+  limit: number;
+  offset: number;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -58,15 +65,68 @@ export interface Note {
 
 export interface Photo {
   id: string;
-  filename: string;
-  filetype: string;
-  filesize: number;
-  tags: string[] | null;
+  title: string;
   description: string | null;
+
+  // Display URLs
+  imageUrl: string;
+  thumbnailUrl: string | null;
+  originalUrl: string;
+  convertedJpgUrl: string | null;
+
+  // Basic metadata
+  tags: string[];
   createdAt: string;
-  updatedAt?: string;
-  processingStatus?: string;
-  userId?: string;
+  updatedAt: string;
+  dueDate: string | null;
+  dateTaken: string | null;
+  deviceId: string | null;
+
+  // File information
+  originalFilename: string;
+  mimeType: string;
+  fileSize: number;
+
+  // EXIF Data
+  cameraMake: string | null;
+  cameraModel: string | null;
+  lensModel: string | null;
+  iso: number | null;
+  fNumber: number | null;
+  exposureTime: number | null;
+  orientation: number | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
+
+  // Location Data
+  latitude: number | null;
+  longitude: number | null;
+  altitude?: number | null;
+  locationCity: string | null;
+  locationCountryIso2: string | null;
+  locationCountryName: string | null;
+
+  // AI Generated Data
+  photoType: string | null;
+  ocrText: string | null;
+  dominantColors: string[] | null;
+
+  // Review and Workflow
+  reviewStatus: "pending" | "accepted" | "rejected";
+  flagColor: "red" | "yellow" | "orange" | "green" | "blue" | null;
+  isPinned: boolean;
+
+  // Processing Status
+  processingStatus: string | null;
+  isOriginalViewable: boolean;
+  enabled: boolean;
+}
+
+export interface PhotoListResponse {
+  items: Photo[];
+  totalCount: number;
+  limit: number;
+  offset: number;
 }
 
 export interface Task {
