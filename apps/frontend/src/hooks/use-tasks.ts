@@ -5,7 +5,7 @@ import type { Task, TaskStatus } from "@/types/task";
 import { createCrudHooks } from "./create-crud-hooks";
 
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
-const transformTaskData = (raw: any): Task => ({
+export const transformTaskData = (raw: any): Task => ({
   id: raw.id,
   userId: raw.userId || "",
   title: raw.title,

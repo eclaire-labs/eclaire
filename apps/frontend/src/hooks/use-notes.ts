@@ -5,7 +5,7 @@ import type { Note } from "@/types/note";
 import { createCrudHooks } from "./create-crud-hooks";
 
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
-const transformNoteData = (raw: any): Note => ({
+export const transformNoteData = (raw: any): Note => ({
   id: raw.id,
   title: raw.title,
   content: raw.content,

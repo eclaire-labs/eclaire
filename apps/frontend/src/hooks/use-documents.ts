@@ -3,7 +3,7 @@ import type { Document } from "@/types/document";
 import { createCrudHooks } from "./create-crud-hooks";
 
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
-const transformDocumentData = (raw: any): Document => ({
+export const transformDocumentData = (raw: any): Document => ({
   id: raw.id,
   userId: raw.userId || "",
   title: raw.title,

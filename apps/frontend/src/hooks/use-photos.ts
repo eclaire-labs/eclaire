@@ -3,7 +3,7 @@ import type { Photo } from "@/types/photo";
 import { createCrudHooks } from "./create-crud-hooks";
 
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
-const transformPhotoData = (raw: any): Photo => ({
+export const transformPhotoData = (raw: any): Photo => ({
   id: raw.id,
   title: raw.title,
   description: raw.description,

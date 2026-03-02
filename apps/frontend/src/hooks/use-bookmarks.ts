@@ -5,7 +5,7 @@ import type { Bookmark } from "@/types/bookmark";
 import { createCrudHooks } from "./create-crud-hooks";
 
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
-const transformBookmarkData = (raw: any): Bookmark => ({
+export const transformBookmarkData = (raw: any): Bookmark => ({
   id: raw.id,
   title: raw.title,
   description: raw.description,
