@@ -7,6 +7,7 @@ import {
   extractContentFromHtml,
   generateBookmarkTags,
   getHandlerForUrl,
+  lightweightFetch,
   normalizeUrl,
   processGitHubBookmark,
   validateApiCredentials,
@@ -47,8 +48,15 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
     currentStage = "content_extraction";
     await ctx.startStage("content_extraction");
 
-    // Browser launch and navigation via pipeline
-    await pipeline.launch();
+    // Tiered extraction: start lightweight fetch and browser launch concurrently
+    const lightweightPromise = lightweightFetch(processUrl, bookmarkId);
+    const browserLaunchPromise = pipeline.launch();
+    const [lightweightResult] = await Promise.all([
+      lightweightPromise,
+      browserLaunchPromise,
+    ]);
+
+    // Browser navigation (always needed for screenshots/PDF)
     const navResult = await pipeline.navigateTo(processUrl);
     Object.assign(allArtifacts, navResult);
 
@@ -120,22 +128,42 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
     const pdfArtifacts = await pipeline.capturePdf();
     Object.assign(allArtifacts, pdfArtifacts);
 
-    // Favicon extraction (non-fatal)
-    currentStage = "favicon_extraction";
-    const faviconStorageId = await pipeline.extractFavicon();
-
-    // Content extraction
+    // Content extraction -- tiered approach
     currentStage = "html_content_extraction";
     try {
-      const rawHtml = await pipeline.getPageContent();
-      const contentData = await extractContentFromHtml(
-        rawHtml,
-        allArtifacts.normalizedUrl,
-        userId,
-        bookmarkId,
-        faviconStorageId,
-      );
-      Object.assign(allArtifacts, contentData);
+      if (lightweightResult) {
+        // Lightweight path: use pre-fetched HTML (extractContentFromHtml handles its own favicon fetch)
+        logger.info(
+          { bookmarkId },
+          "Using lightweight extraction (HTTP fetch + Readability)",
+        );
+        const contentData = await extractContentFromHtml(
+          lightweightResult.html,
+          lightweightResult.finalUrl,
+          userId,
+          bookmarkId,
+        );
+        Object.assign(allArtifacts, contentData);
+        if (lightweightResult.finalUrl !== processUrl) {
+          allArtifacts.normalizedUrl = lightweightResult.finalUrl;
+        }
+      } else {
+        // Full browser path: extract favicon from browser, then get rendered HTML
+        logger.info(
+          { bookmarkId },
+          "Using full browser extraction (lightweight fetch failed or insufficient)",
+        );
+        const faviconStorageId = await pipeline.extractFavicon();
+        const rawHtml = await pipeline.getPageContent();
+        const contentData = await extractContentFromHtml(
+          rawHtml,
+          allArtifacts.normalizedUrl,
+          userId,
+          bookmarkId,
+          faviconStorageId,
+        );
+        Object.assign(allArtifacts, contentData);
+      }
     } catch (contentError: unknown) {
       logger.error(
         {

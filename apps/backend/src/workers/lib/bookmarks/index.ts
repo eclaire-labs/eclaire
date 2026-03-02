@@ -2,6 +2,7 @@ import type { JobContext } from "@eclaire/queue/core";
 import { createChildLogger } from "../../../lib/logger.js";
 
 export * from "./github.js";
+export * from "./lightweight-fetch.js";
 export * from "./reddit-api.js";
 // Re-export platform-specific handlers
 export * from "./utils.js";
