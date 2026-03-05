@@ -29,8 +29,11 @@ const useRedisPubSub = queueBackend === "redis";
 const redisKeyPrefix = config.queue.redisKeyPrefix;
 
 // Database type for Postgres LISTEN (used when not in Redis mode)
+// In "all" mode, workers run in-process and publish via publishDirectSSEEvent() (in-memory).
+// Postgres LISTEN is only needed when workers run in a separate process (serviceRole="api").
 const dbType = getDatabaseType();
-const usePostgresListen = !useRedisPubSub && dbType === "postgres";
+const usePostgresListen =
+  !useRedisPubSub && dbType === "postgres" && config.serviceRole !== "all";
 const postgresUrl = usePostgresListen ? getDatabaseUrl() : null;
 
 // Redis connection for pub/sub (only used in redis mode)
@@ -62,11 +65,16 @@ if (!publisherConnection) {
   );
 }
 
-// Map to track active SSE streams by userId
-const activeStreams = new Map<
-  string,
-  Set<{ write: (data: string) => Promise<unknown>; closed: boolean }>
->();
+// Map to track active SSE streams by userId → clientId → stream ref
+type StreamRef = {
+  write: (data: string) => Promise<unknown>;
+  readonly closed: boolean;
+  abort: () => void;
+};
+const activeStreams = new Map<string, Map<string, StreamRef>>();
+
+// Validate clientId: must be a UUID-like string (alphanumeric + hyphens, max 64 chars)
+const CLIENT_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
 
 /**
  * GET /api/processing-events/stream
@@ -80,6 +88,13 @@ const activeStreams = new Map<
 processingEventsRoutes.get(
   "/stream",
   withAuth(async (c, userId) => {
+    // Read clientId from query param (stable per browser tab via sessionStorage)
+    const rawClientId = c.req.query("clientId");
+    const clientId =
+      rawClientId && CLIENT_ID_RE.test(rawClientId)
+        ? rawClientId
+        : crypto.randomUUID();
+
     return stream(c, async (stream) => {
       // Set up SSE headers
       c.header("Content-Type", "text/event-stream");
@@ -90,15 +105,29 @@ processingEventsRoutes.get(
 
       // Register this stream for direct publishing
       if (!activeStreams.has(userId)) {
-        activeStreams.set(userId, new Set());
+        activeStreams.set(userId, new Map());
       }
       // biome-ignore lint/style/noNonNullAssertion: map entry set on preceding line
       const userStreams = activeStreams.get(userId)!;
-      const streamRef = {
+
+      // Close previous connection from the same client/tab
+      const existingStream = userStreams.get(clientId);
+      if (existingStream) {
+        logger.info(
+          { userId, clientId },
+          "Closing previous SSE connection for same client",
+        );
+        existingStream.abort();
+      }
+
+      const streamRef: StreamRef = {
         write: stream.write.bind(stream) as (data: string) => Promise<unknown>,
-        closed: stream.closed,
+        get closed() {
+          return stream.closed || stream.aborted;
+        },
+        abort: () => stream.abort(),
       };
-      userStreams.add(streamRef);
+      userStreams.set(clientId, streamRef);
 
       let subscriber: Redis | null = null;
       let pgSubscriber: postgres.Sql | null = null;
@@ -230,11 +259,13 @@ processingEventsRoutes.get(
           }
         }, 30000);
 
-        // Wait for the stream to be closed
-        await new Promise((resolve) => {
+        // Wait for the stream to be closed or aborted (client disconnect)
+        await new Promise<void>((resolve) => {
+          stream.onAbort(() => resolve());
+          // Also poll in case stream closes without abort signal
           const checkConnection = () => {
-            if (stream.closed) {
-              resolve(undefined);
+            if (stream.closed || stream.aborted) {
+              resolve();
             } else {
               setTimeout(checkConnection, 1000);
             }
@@ -311,18 +342,19 @@ processingEventsRoutes.get(
         }
 
         // Unregister this stream from direct publishing
-        const userStreams = activeStreams.get(userId);
-        if (userStreams) {
-          userStreams.delete(streamRef);
-          if (userStreams.size === 0) {
+        const currentStreams = activeStreams.get(userId);
+        if (currentStreams) {
+          // Only remove if this stream is still the registered one for this clientId
+          if (currentStreams.get(clientId) === streamRef) {
+            currentStreams.delete(clientId);
+          }
+          if (currentStreams.size === 0) {
             activeStreams.delete(userId);
           }
         }
 
         logger.info(
-          {
-            userId,
-          },
+          { userId, clientId },
           "Processing events SSE connection closed",
         );
       }
@@ -432,12 +464,11 @@ export async function publishDirectSSEEvent(
     const sseData = `data: ${JSON.stringify(eventWithTimestamp)}\n\n`;
 
     // Send to all active streams for this user
-    // biome-ignore lint/suspicious/noExplicitAny: heterogeneous stream references
-    const streamsToRemove: any[] = [];
-    for (const streamRef of Array.from(userStreams)) {
+    const clientIdsToRemove: string[] = [];
+    for (const [clientId, streamRef] of Array.from(userStreams)) {
       try {
         if (streamRef.closed) {
-          streamsToRemove.push(streamRef);
+          clientIdsToRemove.push(clientId);
           continue;
         }
         await streamRef.write(sseData);
@@ -449,13 +480,13 @@ export async function publishDirectSSEEvent(
           },
           "Error writing to SSE stream, marking for removal",
         );
-        streamsToRemove.push(streamRef);
+        clientIdsToRemove.push(clientId);
       }
     }
 
     // Clean up closed streams
-    for (const streamRef of streamsToRemove) {
-      userStreams.delete(streamRef);
+    for (const clientId of clientIdsToRemove) {
+      userStreams.delete(clientId);
     }
     if (userStreams.size === 0) {
       activeStreams.delete(userId);

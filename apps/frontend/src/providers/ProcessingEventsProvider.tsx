@@ -12,6 +12,16 @@ import {
 import { useSession } from "@/lib/auth";
 import { getAbsoluteApiUrl } from "@/lib/api-client";
 
+// Stable per-tab client ID for SSE deduplication (survives refresh, unique per tab)
+function getClientId(): string {
+  let id = sessionStorage.getItem("sse-client-id");
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem("sse-client-id", id);
+  }
+  return id;
+}
+
 export type AssetType =
   | "photos"
   | "documents"
@@ -104,7 +114,9 @@ export function ProcessingEventsProvider({
       }
 
       try {
-        const sseUrl = getAbsoluteApiUrl("/api/processing-events/stream");
+        const sseUrl = getAbsoluteApiUrl(
+          `/api/processing-events/stream?clientId=${getClientId()}`,
+        );
         const eventSource = new EventSource(sseUrl);
 
         eventSource.onopen = () => {
