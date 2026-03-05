@@ -48,7 +48,7 @@ describe("extractAndGeocode", () => {
   });
 
   it("should extract image dimensions from an HEIC file", async () => {
-    const buffer = await fs.readFile(path.join(fixturesDir, "photo4.HEIC"));
+    const buffer = await fs.readFile(path.join(fixturesDir, "photo4.heic"));
     const result = await extractAndGeocode(buffer as Buffer);
 
     expect(result).toBeDefined();
