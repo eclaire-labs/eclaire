@@ -2,7 +2,7 @@
   "name": "@eclaire/monorepo",
   "version": "0.6.2",
   "private": true,
-  "packageManager": "pnpm@10.30.2",
+  "packageManager": "pnpm@10.30.3",
   "license": "MIT",
   "description": "Eclaire - AI-powered productivity platform",
   "repository": {
@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
-    "node-addon-api": "8.5.0",
+    "node-addon-api": "8.6.0",
     "node-gyp": "12.2.0",
     "oxlint": "catalog:"
   },

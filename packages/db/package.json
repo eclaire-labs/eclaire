@@ -75,7 +75,7 @@
   "dependencies": {
     "@eclaire/core": "workspace:*",
     "@eclaire/logger": "workspace:*",
-    "@electric-sql/pglite": "0.3.14",
+    "@electric-sql/pglite": "0.3.15",
     "async-mutex": "0.5.0",
     "better-sqlite3": "12.6.2",
     "dotenv": "17.3.1",
@@ -86,7 +86,7 @@
     "@biomejs/biome": "catalog:",
     "@types/better-sqlite3": "7.6.13",
     "@types/node": "catalog:",
-    "drizzle-kit": "0.31.8",
+    "drizzle-kit": "0.31.9",
     "oxlint": "catalog:",
     "tsx": "4.21.0",
     "typescript": "catalog:"
