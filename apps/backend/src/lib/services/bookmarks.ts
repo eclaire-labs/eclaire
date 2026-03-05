@@ -919,6 +919,8 @@ export async function findBookmarks({
         isPinned: bookmarks.isPinned,
         enabled: bookmarks.enabled,
         status: queueJobs.status,
+        thumbnailStorageId: bookmarks.thumbnailStorageId,
+        faviconStorageId: bookmarks.faviconStorageId,
       })
       .from(bookmarks)
       .leftJoin(
@@ -967,6 +969,12 @@ export async function findBookmarks({
         flagColor: entry.flagColor,
         isPinned: entry.isPinned,
         processingStatus: entry.status || null,
+        thumbnailUrl: entry.thumbnailStorageId
+          ? `/api/bookmarks/${entry.id}/thumbnail`
+          : null,
+        faviconUrl: entry.faviconStorageId
+          ? `/api/bookmarks/${entry.id}/favicon`
+          : null,
         tags: await getBookmarkTags(entry.id),
       })),
     );
