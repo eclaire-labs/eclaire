@@ -183,7 +183,7 @@ import {
   ErrorResponseSchema,
   UnauthorizedSchema,
   ValidationErrorSchema,
-} from "./all-responses.js";
+} from "./error-schemas.js";
 
 const resolvedValidationError = resolver(ValidationErrorSchema);
 const resolvedUnauthorized = resolver(UnauthorizedSchema);
