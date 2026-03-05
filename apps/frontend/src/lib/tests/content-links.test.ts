@@ -78,20 +78,20 @@ describe("detectContentLinks", () => {
   it("handles IDs containing hyphens", () => {
     const links = detectContentLinks("/bookmarks/abc-123-def");
     expect(links).toHaveLength(1);
-    expect(links[0].id).toBe("abc-123-def");
+    expect(links[0]!.id).toBe("abc-123-def");
   });
 
   it("handles IDs containing underscores", () => {
     const links = detectContentLinks("/bookmarks/abc_123");
     expect(links).toHaveLength(1);
-    expect(links[0].id).toBe("abc_123");
+    expect(links[0]!.id).toBe("abc_123");
   });
 
   it("sets url and title correctly", () => {
     const links = detectContentLinks("/documents/myDoc42");
     expect(links).toHaveLength(1);
-    expect(links[0].url).toBe("/documents/myDoc42");
-    expect(links[0].title).toBe("document myDoc42");
+    expect(links[0]!.url).toBe("/documents/myDoc42");
+    expect(links[0]!.title).toBe("document myDoc42");
   });
 });
 
@@ -337,9 +337,9 @@ describe("fetchContentMetadataBatch", () => {
 
     const results = await fetchContentMetadataBatch(links);
 
-    expect(results[0].title).toBe("Enriched B");
-    expect(results[0].description).toBe("enriched desc");
-    expect(results[1].title).toBe("Enriched N");
-    expect(results[1].description).toBe("enriched note desc");
+    expect(results[0]!.title).toBe("Enriched B");
+    expect(results[0]!.description).toBe("enriched desc");
+    expect(results[1]!.title).toBe("Enriched N");
+    expect(results[1]!.description).toBe("enriched note desc");
   });
 });

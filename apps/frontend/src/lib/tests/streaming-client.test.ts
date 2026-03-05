@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StreamingClient } from "@/lib/streaming-client";
 import type {
-  StreamEventHandlers,
   StreamingRequest,
 } from "@/lib/streaming-client";
 
@@ -107,7 +106,7 @@ describe("StreamingClient", () => {
       await client.startStream(request);
 
       expect(fetchMock).toHaveBeenCalledOnce();
-      const [url, options] = fetchMock.mock.calls[0];
+      const [url, options] = fetchMock.mock.calls[0]!;
       expect(url).toBe("/api/prompt/stream");
       expect(options.method).toBe("POST");
       expect(options.headers).toEqual({ "Content-Type": "application/json" });

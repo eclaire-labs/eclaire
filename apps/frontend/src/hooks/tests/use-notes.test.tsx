@@ -14,7 +14,7 @@ vi.mock("sonner", () => ({
 
 import { apiFetch } from "@/lib/api-client";
 import { toast } from "sonner";
-import { transformNoteData, useNote, useNotes } from "@/hooks/use-notes";
+import { transformNoteData, useNotes } from "@/hooks/use-notes";
 
 const mockApiFetch = vi.mocked(apiFetch);
 
