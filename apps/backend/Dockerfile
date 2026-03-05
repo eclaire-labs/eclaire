@@ -36,7 +36,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
 
 # Copy workspace root files and frontend package.json
-COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/frontend/package.json ./apps/frontend/
 
 # Install frontend dependencies
@@ -80,7 +80,7 @@ ENV APP_VERSION=${APP_VERSION} \
 
 # Install all deps (including dev) with cache
 # Copy workspace root files and package.json files
-COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/db/package.json ./packages/db/
 COPY packages/queue/package.json ./packages/queue/
@@ -88,6 +88,7 @@ COPY packages/core/package.json ./packages/core/
 COPY packages/logger/package.json ./packages/logger/
 COPY packages/storage/package.json ./packages/storage/
 COPY packages/ai/package.json ./packages/ai/
+COPY packages/api-types/package.json ./packages/api-types/
 COPY tools/admin-cli/package.json ./tools/admin-cli/
 
 # Install dependencies for backend workspace + CLI (includes workspace packages)
@@ -109,6 +110,7 @@ RUN pnpm --filter @eclaire/core build && \
     pnpm --filter @eclaire/ai build && \
     pnpm --filter @eclaire/db build && \
     pnpm --filter @eclaire/queue build && \
+    pnpm --filter @eclaire/api-types build && \
     pnpm --filter @eclaire/cli build
 
 RUN pnpm build
