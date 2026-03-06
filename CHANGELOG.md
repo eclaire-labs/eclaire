@@ -1,5 +1,61 @@
 # Eclaire Changelog
 
+## [0.6.3] - 2026-03-05
+
+### Bug Fixes
+
+- **workers**: add tiered extraction with lightweight HTTP fetch before browser
+- **backend**: include missing `thumbnailUrl` and `faviconUrl` in bookmark list responses
+- **auth**: harden Better Auth integration — security fixes, fail-fast init, dead code removal
+- **frontend**: fix SSE connection leak on page refresh
+- **frontend**: improve SSE streaming robustness and eliminate unnecessary re-renders
+- **frontend**: fix re-render issues, remove debug logging, and improve data fetching
+- **frontend**: remove hardcoded manifest link from `index.html`
+- **frontend**: fix typecheck errors in `use-list-page-state` and test files
+- **backend**: correct case-sensitive filename in photos test
+- **backend**: add missing type declaration for `turndown-plugin-gfm`
+- **workers**: harden job processors with size guards, timeouts, SSRF protection, and dedup
+- **workers**: improve document processor extraction quality, fix bugs, reduce resource usage
+- **workers**: fix image processor bugs, improve robustness and format handling
+- **docker**: add missing `tsconfig.base.json` and `api-types` to build stages
+- **deps**: upgrade hono 4.12.5, @hono/node-server 1.19.11, add overrides for rollup/serialize-javascript/minimatch/tar
+- **vitest**: fix broken frontend alias, clean up configs across monorepo
+
+### Refactoring
+
+- **backend**: standardize all list endpoints to unified pagination shape
+- **backend**: deduplicate schema definitions, review/flag/pin/reprocess endpoints, and route handlers
+- **backend**: consolidate error classes, add `withAuth()` wrapper, extract error schemas
+- **backend**: clean up routes, fix validation, add lazy sessions
+- **frontend**: deduplicate list pages into shared abstractions, extract shared components
+- **frontend**: split API modules, add CRUD hook factory and tests
+- **api**: consolidate API types, fix pagination offset, and clean up schemas
+- **core**: export const arrays for enum types, eliminate cross-package duplication
+- **ai**: fix bugs and clean up for reusability
+- **queue**: remove dead code, deduplicate adapters, fix layering
+- **logger**: typed levels, explicit `contextKey`, extensible context
+- **db**: harden PostgreSQL client, type `Tx` interface, fix schema issues
+- **storage**: decouple adapters from domain key structure, clean up design
+- **workers**: harden bookmark processing, extract `BrowserPipeline`, improve content quality
+- **monorepo**: standardize TypeScript configuration; simplify and deduplicate utilities across all packages
+
+### Tests
+
+- **backend**: fix and expand photo, bookmark, document, notes, and task test suites
+- **frontend**: expand test suite with entity hooks, utilities, and API contract tests
+- **core**: add comprehensive test suite for `@eclaire/core`
+- **queue**: add core unit tests and strengthen integration test coverage
+- **storage**: restructure tests with conformance suite and unit/integration split
+- **ai**: expand MLX adapter and client test coverage
+
+### Maintenance
+
+- **deps**: upgrade patch and minor dependencies across all workspaces
+- **deps**: bump `actions/checkout` from 4 to 6, `actions/setup-node` from 4 to 6
+- **lint**: consolidate linting config with pnpm catalog
+
+---
+
 ## [0.6.2] - 2026-02-24
 
 ### Security
