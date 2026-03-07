@@ -1,0 +1,21 @@
+import { ChannelRegistry } from "@eclaire/channels-core";
+import { initTelegramAdapter } from "@eclaire/channels-telegram";
+import { db, schema } from "../db/index.js";
+import { encrypt, decrypt } from "./encryption.js";
+import { processPromptRequest } from "./agent/index.js";
+import { recordHistory } from "./services/history.js";
+import { createChildLogger } from "./logger.js";
+
+export const channelRegistry = new ChannelRegistry();
+
+const telegramAdapter = initTelegramAdapter({
+  db,
+  schema,
+  encrypt,
+  decrypt,
+  processPromptRequest,
+  recordHistory,
+  logger: createChildLogger("telegram"),
+});
+
+channelRegistry.register(telegramAdapter);

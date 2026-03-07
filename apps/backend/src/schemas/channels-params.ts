@@ -17,29 +17,6 @@ export const ChannelCapabilitySchema = z
     examples: ["notification", "chat", "bidirectional"],
   });
 
-// Telegram-specific config schema
-export const TelegramConfigSchema = z
-  .object({
-    chat_identifier: z
-      .string()
-      .min(1, "Chat identifier is required")
-      .meta({
-        description: "Telegram chat identifier (chat ID or username)",
-        examples: ["-1001234567890", "@mychannel", "123456789"],
-      }),
-    bot_token: z
-      .string()
-      .min(1, "Bot token is required")
-      .meta({
-        description: "Telegram bot token for authentication",
-        examples: ["1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"],
-      }),
-  })
-  .strict()
-  .meta({
-    description: "Configuration for Telegram channels",
-  });
-
 // Create channel request schema
 export const CreateChannelSchema = z
   .object({
@@ -190,7 +167,6 @@ export const SendNotificationSchema = z
 
 export type ChannelPlatform = z.infer<typeof ChannelPlatformSchema>;
 export type ChannelCapability = z.infer<typeof ChannelCapabilitySchema>;
-export type TelegramConfig = z.infer<typeof TelegramConfigSchema>;
 export type CreateChannelRequest = z.infer<typeof CreateChannelSchema>;
 export type UpdateChannelRequest = z.infer<typeof UpdateChannelSchema>;
 export type ChannelIdParam = z.infer<typeof ChannelIdParamSchema>;

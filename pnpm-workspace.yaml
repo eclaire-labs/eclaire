@@ -2,6 +2,7 @@ packages:
   - 'apps/*'
   - 'tools/*'
   - 'packages/*'
+  - 'packages/channels/*'
 
 catalog:
   '@biomejs/biome': '2.4.4'

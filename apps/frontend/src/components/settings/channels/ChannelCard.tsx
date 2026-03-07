@@ -9,6 +9,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useState } from "react";
+import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,29 +44,13 @@ interface ChannelCardProps {
   onEdit: (channel: Channel) => void;
 }
 
-// Platform icons and colors
-const platformConfig = {
-  telegram: {
-    icon: "📱",
-    color: "bg-blue-500",
-    name: "Telegram",
-  },
-  slack: {
-    icon: "💬",
-    color: "bg-purple-500",
-    name: "Slack",
-  },
-  whatsapp: {
-    icon: "💚",
-    color: "bg-green-500",
-    name: "WhatsApp",
-  },
-  email: {
-    icon: "📧",
-    color: "bg-orange-500",
-    name: "Email",
-  },
-} as const;
+// Platform badge colors (UI-only concern)
+const platformColors: Record<string, string> = {
+  telegram: "bg-blue-500",
+  slack: "bg-purple-500",
+  whatsapp: "bg-green-500",
+  email: "bg-orange-500",
+};
 
 // Capability icons and descriptions
 const capabilityConfig = {
@@ -102,7 +87,7 @@ export default function ChannelCard({ channel, onEdit }: ChannelCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
-  const platformInfo = platformConfig[channel.platform];
+  const platformInfo = PLATFORM_METADATA[channel.platform];
   const capabilityInfo = capabilityConfig[channel.capability];
   const CapabilityIcon = capabilityInfo.icon;
 
@@ -153,7 +138,7 @@ export default function ChannelCard({ channel, onEdit }: ChannelCardProps) {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div
-                className={`w-8 h-8 rounded-lg ${platformInfo.color} flex items-center justify-center text-white text-sm font-medium`}
+                className={`w-8 h-8 rounded-lg ${platformColors[channel.platform]} flex items-center justify-center text-white text-sm font-medium`}
               >
                 {platformInfo.icon}
               </div>
@@ -162,7 +147,7 @@ export default function ChannelCard({ channel, onEdit }: ChannelCardProps) {
                   {channel.name}
                 </CardTitle>
                 <CardDescription className="text-sm">
-                  {platformInfo.name} • Created {formatDate(channel.createdAt)}
+                  {platformInfo.displayName} • Created {formatDate(channel.createdAt)}
                 </CardDescription>
               </div>
             </div>

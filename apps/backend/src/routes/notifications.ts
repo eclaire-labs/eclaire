@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
+import { channelRegistry } from "../lib/channels.js";
 import { createChildLogger } from "../lib/logger.js";
 // Import services
 import { getNotificationChannels } from "../lib/services/channels.js";
 import { recordHistory } from "../lib/services/history.js";
-import { sendTelegramMessage } from "../lib/services/telegram.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import { SendNotificationSchema } from "../schemas/channels-params.js";
@@ -65,26 +65,18 @@ notificationsRoutes.post(
           let success = false;
           let error: string | undefined;
 
-          switch (channel.platform) {
-            case "telegram":
-              success = await sendTelegramMessage(
-                channel.id,
-                notificationData.message,
-                notificationData.options,
-              );
-              break;
-
-            case "slack":
-            case "whatsapp":
-            case "email":
-              // TODO: Implement other platforms
-              success = false;
-              error = `${channel.platform} notifications not yet implemented`;
-              break;
-
-            default:
-              success = false;
-              error = `Unsupported platform: ${channel.platform}`;
+          if (channelRegistry.has(channel.platform)) {
+            const adapter = channelRegistry.get(channel.platform);
+            const result = await adapter.send(
+              channel,
+              notificationData.message,
+              notificationData.options,
+            );
+            success = result.success;
+            error = result.error;
+          } else {
+            success = false;
+            error = `No adapter registered for platform: ${channel.platform}`;
           }
 
           return {

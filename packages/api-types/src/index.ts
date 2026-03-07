@@ -48,3 +48,8 @@ export {
   type TaskStatus,
   type TasksListResponse,
 } from "./tasks.js";
+
+export {
+  PLATFORM_METADATA,
+  type PlatformMetadata,
+} from "./channels.js";

@@ -17,39 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import {
   type Channel,
   type TelegramConfig,
   useChannels,
 } from "@/hooks/use-channels";
 import TelegramChannelForm from "./TelegramChannelForm";
-
-const platformInfo = {
-  telegram: {
-    name: "Telegram",
-    description: "Receive notifications and chat via Telegram Bot",
-    icon: "📱",
-    available: true,
-  },
-  slack: {
-    name: "Slack",
-    description: "Send notifications to Slack channels",
-    icon: "💬",
-    available: false, // Not implemented yet
-  },
-  whatsapp: {
-    name: "WhatsApp",
-    description: "Send notifications via WhatsApp Business API",
-    icon: "💚",
-    available: false, // Not implemented yet
-  },
-  email: {
-    name: "Email",
-    description: "Send email notifications",
-    icon: "📧",
-    available: false, // Not implemented yet
-  },
-} as const;
 
 interface AddChannelDialogProps {
   trigger?: React.ReactNode;
@@ -150,7 +124,7 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
                   <SelectValue placeholder="Select a platform" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(platformInfo).map(([platform, info]) => (
+                  {Object.entries(PLATFORM_METADATA).map(([platform, info]) => (
                     <SelectItem
                       key={platform}
                       value={platform}
@@ -160,7 +134,7 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
                         <span className="text-base">{info.icon}</span>
                         <div className="flex-1">
                           <div className="font-medium flex items-center gap-2">
-                            {info.name}
+                            {info.displayName}
                             {!info.available && (
                               <span className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground">
                                 Coming Soon
@@ -201,10 +175,10 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-base font-medium">
-                    Configure {platformInfo[selectedPlatform].name}
+                    Configure {PLATFORM_METADATA[selectedPlatform].displayName}
                   </Label>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {platformInfo[selectedPlatform].description}
+                    {PLATFORM_METADATA[selectedPlatform].description}
                   </p>
                 </div>
                 <Button

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import {
   Dialog,
   DialogContent,
@@ -18,25 +19,6 @@ interface EditChannelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const platformInfo = {
-  telegram: {
-    name: "Telegram",
-    icon: "📱",
-  },
-  slack: {
-    name: "Slack",
-    icon: "💬",
-  },
-  whatsapp: {
-    name: "WhatsApp",
-    icon: "💚",
-  },
-  email: {
-    name: "Email",
-    icon: "📧",
-  },
-} as const;
 
 export default function EditChannelDialog({
   channel,
@@ -108,7 +90,7 @@ export default function EditChannelDialog({
 
   if (!channel) return null;
 
-  const platform = platformInfo[channel.platform];
+  const platform = PLATFORM_METADATA[channel.platform];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,10 +98,10 @@ export default function EditChannelDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="text-base">{platform.icon}</span>
-            Edit {platform.name} Channel
+            Edit {platform.displayName} Channel
           </DialogTitle>
           <DialogDescription>
-            Update your {platform.name} channel configuration and settings.
+            Update your {platform.displayName} channel configuration and settings.
           </DialogDescription>
         </DialogHeader>
 

@@ -1,0 +1,41 @@
+{
+  "name": "@eclaire/channels-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Channel adapter interfaces and registry for Eclaire",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist",
+    "lint": "biome lint ./ && oxlint --tsconfig ../../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "biome format --write ./",
+    "check": "biome check ./",
+    "fix": "biome check --write ./"
+  },
+  "dependencies": {
+    "@eclaire/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "4.0.18"
+  }
+}

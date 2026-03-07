@@ -37,10 +37,7 @@ import {
   startScheduler,
   stopScheduler,
 } from "./lib/queue/index.js";
-import {
-  startAllTelegramBots,
-  stopAllTelegramBots,
-} from "./lib/services/telegram.js";
+import { channelRegistry } from "./lib/channels.js";
 
 import { allRoutes } from "./routes/all.js";
 import { authRoutes } from "./routes/auth.js";
@@ -246,11 +243,11 @@ const start = async () => {
 
       // Start Telegram bots after server is running
       if (config.security.masterEncryptionKey) {
-        logger.info("Starting Telegram bots...");
-        await startAllTelegramBots();
+        logger.info("Starting channel adapters...");
+        await channelRegistry.startAll();
       } else {
         logger.info(
-          "Skipping Telegram bot startup - encryption not configured",
+          "Skipping channel startup - encryption not configured",
         );
       }
 
@@ -306,11 +303,11 @@ const shutdown = async (signal: string) => {
   );
 
   try {
-    // Stop Telegram bots first
-    await stopAllTelegramBots();
-    logger.info("Telegram bots stopped");
+    // Stop channel adapters first
+    await channelRegistry.stopAll();
+    logger.info("Channel adapters stopped");
   } catch (error) {
-    logger.error({ error }, "Error stopping Telegram bots");
+    logger.error({ error }, "Error stopping channel adapters");
   }
 
   // Stop scheduler if running (all mode)

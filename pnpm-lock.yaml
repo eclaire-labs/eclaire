@@ -65,6 +65,12 @@ importers:
       '@eclaire/api-types':
         specifier: workspace:*
         version: link:../../packages/api-types
+      '@eclaire/channels-core':
+        specifier: workspace:*
+        version: link:../../packages/channels/core
+      '@eclaire/channels-telegram':
+        specifier: workspace:*
+        version: link:../../packages/channels/telegram
       '@eclaire/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -209,9 +215,6 @@ importers:
       sharp:
         specifier: 0.34.5
         version: 0.34.5
-      telegraf:
-        specifier: 4.16.3
-        version: 4.16.3(encoding@0.1.13)
       tmp-promise:
         specifier: 3.0.3
         version: 3.0.3
@@ -585,6 +588,62 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+
+  packages/channels/core:
+    dependencies:
+      '@eclaire/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      '@biomejs/biome':
+        specifier: 'catalog:'
+        version: 2.4.4
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.10.4
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.50.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 4.0.18
+        version: 4.0.18(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@2.0.1))(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+
+  packages/channels/telegram:
+    dependencies:
+      '@eclaire/channels-core':
+        specifier: workspace:*
+        version: link:../core
+      '@eclaire/core':
+        specifier: workspace:*
+        version: link:../../core
+      drizzle-orm:
+        specifier: ^0.45.0
+        version: 0.45.1(@electric-sql/pglite@0.3.15)(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.6.2)(kysely@0.28.11)(pg@8.20.0)(postgres@3.4.8)
+      telegraf:
+        specifier: 4.16.3
+        version: 4.16.3(encoding@0.1.13)
+    devDependencies:
+      '@biomejs/biome':
+        specifier: 'catalog:'
+        version: 2.4.4
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.10.4
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.50.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 4.0.18
+        version: 4.0.18(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@2.0.1))(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+      zod:
+        specifier: 4.3.6
+        version: 4.3.6
 
   packages/core:
     dependencies:

@@ -45,6 +45,11 @@
       "development": "./src/common.ts",
       "types": "./src/common.ts",
       "default": "./dist/common.js"
+    },
+    "./channels": {
+      "development": "./src/channels.ts",
+      "types": "./src/channels.ts",
+      "default": "./dist/channels.js"
     }
   },
   "scripts": {

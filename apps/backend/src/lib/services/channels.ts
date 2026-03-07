@@ -3,11 +3,10 @@ import { db, schema } from "../../db/index.js";
 
 const { channels } = schema;
 
-import {
-  type ChannelPlatform,
-  type CreateChannelRequest,
-  TelegramConfigSchema,
-  type UpdateChannelRequest,
+import type {
+  ChannelPlatform,
+  CreateChannelRequest,
+  UpdateChannelRequest,
 } from "../../schemas/channels-params.js";
 import type {
   ChannelResponse,
@@ -16,50 +15,25 @@ import type {
   ListChannelsResponse,
   UpdateChannelResponse,
 } from "../../schemas/channels-responses.js";
+import { channelRegistry } from "../channels.js";
 import { formatRequiredTimestamp } from "../db-helpers.js";
-import { encrypt } from "../encryption.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
-import { startTelegramBot, stopTelegramBot } from "./telegram.js";
 
 const logger = createChildLogger("channels");
 
 /**
- * Validates and encrypts platform-specific config
+ * Validates and encrypts platform-specific config via the channel adapter.
  */
-function validateAndEncryptConfig(
+async function validateAndEncryptConfig(
   platform: ChannelPlatform,
-  // biome-ignore lint/suspicious/noExplicitAny: platform-specific config validation
-  config: any,
-  // biome-ignore lint/suspicious/noExplicitAny: platform-specific config validation
-): any | null {
+  config: unknown,
+): Promise<Record<string, unknown> | null> {
   try {
-    // biome-ignore lint/suspicious/noExplicitAny: platform-specific config validation
-    let validatedConfig: any;
-
-    switch (platform) {
-      case "telegram":
-        validatedConfig = TelegramConfigSchema.parse(config);
-        // Encrypt the bot token
-        validatedConfig.bot_token = encrypt(validatedConfig.bot_token);
-        break;
-
-      case "slack":
-      case "whatsapp":
-      case "email":
-        // TODO: Implement validation schemas for other platforms
-        validatedConfig = config;
-        break;
-
-      default:
-        logger.error({ platform }, "Unsupported platform");
-        return null;
-    }
-
-    return validatedConfig;
+    const adapter = channelRegistry.get(platform);
+    return await adapter.validateAndEncryptConfig(config);
   } catch (error) {
-    // Log detailed error for debugging
     logger.error(
       {
         platform,
@@ -132,7 +106,7 @@ export async function createChannel(
 ): Promise<CreateChannelResponse> {
   try {
     // Validate and encrypt the platform-specific config
-    const encryptedConfig = validateAndEncryptConfig(
+    const encryptedConfig = await validateAndEncryptConfig(
       channelData.platform,
       channelData.config,
     );
@@ -172,13 +146,15 @@ export async function createChannel(
       userId: userId,
     });
 
-    // Start the bot if it's a Telegram channel
-    if (channelData.platform === "telegram") {
-      const started = await startTelegramBot(newChannel.id);
-      if (!started) {
+    // Start channel runtime if the adapter supports it
+    const adapter = channelRegistry.get(channelData.platform);
+    if (adapter.start) {
+      try {
+        await adapter.start(newChannel);
+      } catch (startError) {
         logger.warn(
           { channelId: newChannel.id },
-          "Failed to start Telegram bot after channel creation",
+          "Failed to start channel after creation",
         );
       }
     }
@@ -255,7 +231,7 @@ export async function updateChannel(
 
     if (updateData.config !== undefined) {
       // Validate and encrypt the new config
-      const encryptedConfig = validateAndEncryptConfig(
+      const encryptedConfig = await validateAndEncryptConfig(
         existingChannel.platform,
         updateData.config,
       );
@@ -288,24 +264,20 @@ export async function updateChannel(
       userId: userId,
     });
 
-    // Handle Telegram bot restart if config or active status changed
-    if (existingChannel.platform === "telegram") {
-      if (
-        updateData.config !== undefined ||
-        updateData.isActive !== undefined
-      ) {
-        // Stop existing bot
-        await stopTelegramBot(channelId);
-
-        // Start new bot if channel is active
-        if (updatedChannel.isActive) {
-          const started = await startTelegramBot(channelId);
-          if (!started) {
-            logger.warn(
-              { channelId },
-              "Failed to restart Telegram bot after channel update",
-            );
-          }
+    // Handle channel runtime restart if config or active status changed
+    if (updateData.config !== undefined || updateData.isActive !== undefined) {
+      const adapter = channelRegistry.get(existingChannel.platform);
+      if (adapter.stop) {
+        await adapter.stop(channelId);
+      }
+      if (updatedChannel.isActive && adapter.start) {
+        try {
+          await adapter.start(updatedChannel);
+        } catch (startError) {
+          logger.warn(
+            { channelId },
+            "Failed to restart channel after update",
+          );
         }
       }
     }
@@ -362,9 +334,12 @@ export async function deleteChannel(
       throw new NotFoundError("Channel");
     }
 
-    // Stop Telegram bot if it exists
-    if (existingChannel.platform === "telegram") {
-      await stopTelegramBot(channelId);
+    // Stop channel runtime if the adapter supports it
+    if (channelRegistry.has(existingChannel.platform)) {
+      const adapter = channelRegistry.get(existingChannel.platform);
+      if (adapter.stop) {
+        await adapter.stop(channelId);
+      }
     }
 
     // Delete the channel
