@@ -6,6 +6,13 @@
  * injects these at startup via `setDeps()`.
  */
 
+/** Minimal stream event shape consumed by the Telegram adapter. */
+export interface StreamEvent {
+  type: "thought" | "tool-call" | "text-chunk" | "error" | "done";
+  content?: string;
+  error?: string;
+}
+
 export interface TelegramLogger {
   info(obj: Record<string, unknown>, msg: string): void;
   info(msg: string): void;
@@ -24,6 +31,8 @@ export interface TelegramDeps {
   decrypt: (value: string) => string;
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   processPromptRequest: (...args: any[]) => Promise<{ response?: string; type?: string; requestId?: string }>;
+  // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
+  processPromptRequestStream?: (...args: any[]) => Promise<ReadableStream<StreamEvent>>;
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   recordHistory: (entry: any) => Promise<void>;
   logger: TelegramLogger;

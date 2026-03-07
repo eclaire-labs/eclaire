@@ -2,6 +2,9 @@ import { and, eq } from "drizzle-orm";
 import type { Context } from "telegraf";
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
+import { splitMessage } from "./message-utils.js";
+import { sendStreamingResponse } from "./stream-sender.js";
+import { safeSendChatAction } from "./typing-indicator.js";
 
 /**
  * Handles incoming messages from Telegram for bidirectional channels.
@@ -65,31 +68,52 @@ export async function handleIncomingMessage(
       return;
     }
 
-    // Send typing indicator
-    await ctx.sendChatAction("typing");
+    // Send typing indicator (with circuit breaker protection)
+    if (ctx.chat) {
+      await safeSendChatAction(ctx.telegram, ctx.chat.id, "typing", logger);
+    }
 
-    // Process the message through the AI system
-    const result = await processPromptRequest(
-      userId,
-      message,
-      { agent: "telegram-bot" },
-      `telegram-${channelId}-${Date.now()}`,
-      undefined,
-      false,
-    );
+    const deps = getDeps();
+    const requestId = `telegram-${channelId}-${Date.now()}`;
 
-    // Send the AI response back to Telegram
-    if (result.response) {
-      const response = result.response;
-      if (response.length <= 4096) {
-        await ctx.reply(response);
-      } else {
-        // Split into chunks
-        const chunks = response.match(/.{1,4000}/gs) || [];
-        for (const chunk of chunks) {
-          await ctx.reply(chunk);
-          // Small delay between messages to avoid rate limits
-          await new Promise((resolve) => setTimeout(resolve, 100));
+    // Use streaming if available, otherwise fall back to non-streaming
+    let responseText: string | undefined;
+
+    if (deps.processPromptRequestStream && ctx.chat) {
+      const stream = await deps.processPromptRequestStream(
+        userId,
+        message,
+        { agent: "telegram-bot" },
+        requestId,
+        undefined,
+        false,
+      );
+
+      responseText = await sendStreamingResponse(
+        ctx.telegram,
+        ctx.chat.id,
+        stream,
+        { logger },
+      );
+    } else {
+      // Non-streaming fallback
+      const result = await processPromptRequest(
+        userId,
+        message,
+        { agent: "telegram-bot" },
+        requestId,
+        undefined,
+        false,
+      );
+
+      responseText = result.response;
+      if (responseText) {
+        const chunks = splitMessage(responseText);
+        for (let i = 0; i < chunks.length; i++) {
+          await ctx.reply(chunks[i]!);
+          if (i < chunks.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
         }
       }
     }
@@ -107,9 +131,9 @@ export async function handleIncomingMessage(
         channelId,
       },
       afterData: {
-        response: result.response,
-        type: result.type,
-        requestId: result.requestId,
+        response: responseText,
+        platform: "telegram",
+        channelId,
       },
       actor: "user",
       userId: userId,

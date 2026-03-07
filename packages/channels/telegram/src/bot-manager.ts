@@ -3,6 +3,9 @@ import { type Context, session, Telegraf } from "telegraf";
 import { getDeps } from "./deps.js";
 import { decryptConfig, type TelegramConfig } from "./config.js";
 import { handleIncomingMessage } from "./incoming.js";
+import { splitMessage } from "./message-utils.js";
+import { withRetry } from "./retry.js";
+import { resetCircuitBreaker } from "./typing-indicator.js";
 
 interface TelegramBotInstance {
   bot: Telegraf;
@@ -247,6 +250,7 @@ export async function stopBot(channelId: string): Promise<void> {
           "Error during graceful bot stop, forcing cleanup",
         );
       } finally {
+        resetCircuitBreaker(instance.config.bot_token);
         activeBots.delete(channelId);
         logger.info(
           { channelId },
@@ -352,22 +356,37 @@ export async function sendMessage(
 
     const parseMode = options?.parseMode as string | undefined;
 
-    // Split long messages if needed
-    if (message.length <= 4096) {
-      await instance.bot.telegram.sendMessage(
-        instance.config.chat_identifier,
-        message,
-        parseMode ? { parse_mode: parseMode as "HTML" | "Markdown" | "MarkdownV2" } : {},
+    const chunks = splitMessage(message);
+    const sendOpts = parseMode
+      ? { parse_mode: parseMode as "HTML" | "Markdown" | "MarkdownV2" }
+      : {};
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i]!;
+      await withRetry(
+        () =>
+          instance.bot.telegram.sendMessage(
+            instance.config.chat_identifier,
+            chunk,
+            sendOpts,
+          ),
+        {
+          onRetry: (error, attempt) => {
+            logger.warn(
+              {
+                channelId,
+                attempt,
+                error:
+                  error instanceof Error ? error.message : "Unknown error",
+              },
+              "Retrying Telegram sendMessage",
+            );
+          },
+        },
       );
-    } else {
-      const chunks = message.match(/.{1,4000}/gs) || [];
-      for (const chunk of chunks) {
-        await instance.bot.telegram.sendMessage(
-          instance.config.chat_identifier,
-          chunk,
-          parseMode ? { parse_mode: parseMode as "HTML" | "Markdown" | "MarkdownV2" } : {},
-        );
-        // Small delay between messages to avoid rate limits
+
+      // Small delay between messages to avoid rate limits
+      if (i < chunks.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
