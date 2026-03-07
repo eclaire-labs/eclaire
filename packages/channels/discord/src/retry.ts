@@ -1,3 +1,5 @@
+import { DiscordAPIError } from "discord.js";
+
 const RECOVERABLE_CODES = new Set([
   "ECONNRESET",
   "ECONNREFUSED",
@@ -24,11 +26,30 @@ const RECOVERABLE_MESSAGE_PATTERNS = [
 ];
 
 /**
+ * Extracts the retry_after delay (in ms) from a Discord 429 error, if present.
+ */
+export function getRetryAfterMs(err: unknown): number | null {
+  if (err instanceof DiscordAPIError && err.status === 429) {
+    // DiscordAPIError exposes retryAfter in seconds
+    const retryAfter = (err as DiscordAPIError & { retryAfter?: number }).retryAfter;
+    if (typeof retryAfter === "number" && retryAfter > 0) {
+      return retryAfter * 1000;
+    }
+    // Fallback: 5 seconds
+    return 5000;
+  }
+  return null;
+}
+
+/**
  * Determines if an error is recoverable (worth retrying).
- * discord.js handles API rate limits internally, so this focuses on network errors.
+ * Includes Discord API rate limits (429) and network errors.
  */
 export function isRecoverableError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
+
+  // Discord API rate limit (429)
+  if (err instanceof DiscordAPIError && err.status === 429) return true;
 
   // Node.js network error codes
   const code = (err as NodeJS.ErrnoException).code;
@@ -74,7 +95,9 @@ export async function withRetry<T>(
 
       opts?.onRetry?.(err, attempt);
 
-      const backoff = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
+      // Use retry_after from Discord 429 if available, otherwise exponential backoff
+      const retryAfter = getRetryAfterMs(err);
+      const backoff = retryAfter ?? Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
       const jitter = backoff * 0.1 * Math.random();
       const delay = backoff + jitter;
 

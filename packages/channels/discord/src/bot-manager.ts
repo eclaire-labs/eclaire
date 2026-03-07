@@ -6,11 +6,17 @@ import { handleIncomingMessage } from "./incoming.js";
 import { splitMessage } from "./message-utils.js";
 import { withRetry } from "./retry.js";
 import { resetCircuitBreaker } from "./typing-indicator.js";
+import { checkBotPermissions } from "./permissions.js";
+import { joinChannel, leaveAllChannels } from "./voice-manager.js";
 
 interface ChannelMeta {
   channelId: string;
   userId: string;
   discordChannelId: string;
+  mentionMode: DiscordConfig["mention_mode"];
+  voiceChannelId?: string;
+  voiceMode?: DiscordConfig["voice_mode"];
+  sttEnabled?: boolean;
 }
 
 interface DiscordClientInstance {
@@ -24,6 +30,73 @@ const clientPool = new Map<string, DiscordClientInstance>();
 // Map eclaire channelId -> bot token for reverse lookup
 const channelTokenMap = new Map<string, string>();
 
+/**
+ * Schedules a reconnection attempt for all channels managed by a bot token.
+ * Uses exponential backoff with max 3 attempts.
+ */
+function scheduleReconnect(
+  botToken: string,
+  managedChannels: Map<string, ChannelMeta>,
+  logger: ReturnType<typeof getDeps>["logger"],
+  attempt = 1,
+): void {
+  const maxAttempts = 3;
+  if (attempt > maxAttempts) {
+    logger.error(
+      { attempt },
+      "Discord reconnect failed after max attempts",
+    );
+    return;
+  }
+
+  const delay = Math.min(5000 * 2 ** (attempt - 1), 30_000);
+  logger.info(
+    { attempt, delayMs: delay },
+    "Scheduling Discord reconnect",
+  );
+
+  setTimeout(async () => {
+    // Clean up old client
+    const oldInstance = clientPool.get(botToken);
+    if (oldInstance) {
+      try { oldInstance.client.destroy(); } catch { /* already destroyed */ }
+      clientPool.delete(botToken);
+    }
+
+    // Restart all channels that were on this token
+    const channelIds = Array.from(managedChannels.keys());
+    if (channelIds.length === 0) return;
+
+    // Use startBot for the first channel (it creates a new client)
+    const firstId = channelIds[0];
+    if (!firstId) return;
+    const success = await startBot(firstId);
+    if (!success) {
+      scheduleReconnect(botToken, managedChannels, logger, attempt + 1);
+      return;
+    }
+
+    // Re-register remaining channels on the new client
+    const newInstance = clientPool.get(channelTokenMap.get(firstId) ?? "");
+    if (newInstance) {
+      for (let i = 1; i < channelIds.length; i++) {
+        const chId = channelIds[i];
+        if (!chId) continue;
+        const meta = managedChannels.get(chId);
+        if (meta) {
+          newInstance.managedChannels.set(chId, meta);
+          channelTokenMap.set(chId, botToken);
+        }
+      }
+    }
+
+    logger.info(
+      { channelCount: channelIds.length },
+      "Discord reconnect successful",
+    );
+  }, delay);
+}
+
 function createClient(
   botToken: string,
   initialChannel: ChannelMeta,
@@ -35,6 +108,7 @@ function createClient(
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.MessageContent,
+      GatewayIntentBits.GuildVoiceStates,
     ],
   });
 
@@ -54,6 +128,30 @@ function createClient(
     }
 
     if (!channelMeta) return;
+
+    // Mention filtering
+    if (channelMeta.mentionMode !== "all") {
+      const isMentioned = client.user
+        ? message.mentions.has(client.user)
+        : false;
+      const isReplyToBot =
+        channelMeta.mentionMode === "mention_or_reply" &&
+        message.reference?.messageId != null &&
+        (
+          await message.channel.messages
+            .fetch(message.reference.messageId)
+            .catch(() => null)
+        )?.author?.id === client.user?.id;
+
+      if (!isMentioned && !isReplyToBot) return;
+
+      // Strip bot mention from message content
+      if (client.user && isMentioned) {
+        message.content = message.content
+          .replace(new RegExp(`<@!?${client.user.id}>`, "g"), "")
+          .trim();
+      }
+    }
 
     try {
       await handleIncomingMessage(message, channelMeta.channelId, channelMeta.userId);
@@ -92,6 +190,26 @@ function createClient(
       { warning },
       "Discord client warning",
     );
+  });
+
+  // Reconnection: if the session is invalidated, attempt to re-login
+  client.on("invalidated", () => {
+    logger.error("Discord session invalidated - scheduling reconnect");
+    scheduleReconnect(botToken, managedChannels, logger);
+  });
+
+  client.on("shardDisconnect", (event, shardId) => {
+    logger.warn(
+      { shardId, code: event.code },
+      "Discord shard disconnected",
+    );
+    // discord.js auto-reconnects for most codes; only intervene on fatal codes
+    if (event.code === 4004 || event.code === 4014) {
+      logger.error(
+        { code: event.code },
+        "Fatal Discord disconnect (invalid token or disallowed intents) - not reconnecting",
+      );
+    }
   });
 
   const readyPromise = new Promise<void>((resolve, reject) => {
@@ -216,6 +334,10 @@ export async function startBot(channelId: string): Promise<boolean> {
       channelId,
       userId: channel.userId,
       discordChannelId: config.channel_id,
+      mentionMode: config.mention_mode,
+      voiceChannelId: config.voice_channel_id,
+      voiceMode: config.voice_mode,
+      sttEnabled: config.stt_enabled,
     };
 
     // Check if there's already a client for this bot token
@@ -255,6 +377,49 @@ export async function startBot(channelId: string): Promise<boolean> {
       // Clean up on failure
       await stopBot(channelId);
       return false;
+    }
+
+    // Check permissions in the target channel
+    try {
+      const targetCh = instance.client.channels.cache.get(config.channel_id) as TextChannel | undefined
+        ?? await instance.client.channels.fetch(config.channel_id) as TextChannel | null;
+      if (targetCh && "guild" in targetCh) {
+        const permCheck = checkBotPermissions(targetCh, instance.client);
+        if (!permCheck.ok) {
+          logger.warn(
+            { channelId, discordChannelId: config.channel_id, missing: permCheck.missing },
+            "Discord bot missing permissions in target channel",
+          );
+        }
+      }
+    } catch (permError) {
+      logger.debug(
+        { channelId, error: permError instanceof Error ? permError.message : "Unknown error" },
+        "Could not verify Discord channel permissions",
+      );
+    }
+
+    // Auto-join voice channel if configured
+    if (config.voice_channel_id) {
+      try {
+        const voiceChId = config.voice_channel_id;
+        const guild = instance.client.guilds.cache.find((g) =>
+          g.channels.cache.has(voiceChId),
+        );
+        if (guild) {
+          await joinChannel(instance.client, guild.id, config.voice_channel_id, logger);
+        } else {
+          logger.warn(
+            { channelId, voiceChannelId: config.voice_channel_id },
+            "Could not find guild for voice channel",
+          );
+        }
+      } catch (voiceError) {
+        logger.warn(
+          { channelId, error: voiceError instanceof Error ? voiceError.message : "Unknown error" },
+          "Failed to join voice channel on startup",
+        );
+      }
     }
 
     logger.info({ channelId }, "Discord bot started successfully");
@@ -363,6 +528,88 @@ export async function sendMessage(
 }
 
 /**
+ * Sends a voice message to a Discord channel using the voice message protocol.
+ * Requires the audio to be in OGG/Opus format.
+ */
+export async function sendVoiceMessage(
+  channelId: string,
+  audioBuffer: Buffer,
+  _durationSecs: number,
+  _waveform: string,
+): Promise<boolean> {
+  const { logger } = getDeps();
+
+  try {
+    const botToken = channelTokenMap.get(channelId);
+    if (!botToken) {
+      logger.error({ channelId }, "No Discord client for this channel");
+      return false;
+    }
+
+    const instance = clientPool.get(botToken);
+    if (!instance) {
+      logger.error({ channelId }, "Discord client instance not found");
+      return false;
+    }
+
+    const meta = instance.managedChannels.get(channelId);
+    if (!meta) {
+      logger.error({ channelId }, "Channel metadata not found");
+      return false;
+    }
+
+    const targetChannel = (
+      instance.client.channels.cache.get(meta.discordChannelId) ??
+      await instance.client.channels.fetch(meta.discordChannelId)
+    ) as TextChannel;
+
+    if (!targetChannel) {
+      logger.error({ channelId }, "Discord channel not found for voice message");
+      return false;
+    }
+
+    // Discord voice messages are sent as regular attachments with the IS_VOICE_MESSAGE flag
+    const { AttachmentBuilder } = await import("discord.js");
+    const attachment = new AttachmentBuilder(audioBuffer, {
+      name: "voice-message.ogg",
+      description: "Voice message",
+    });
+
+    await withRetry(
+      () =>
+        targetChannel.send({
+          files: [attachment],
+          // MessageFlags.IsVoiceMessage = 1 << 13
+          flags: `${1 << 13}` as `${bigint}`,
+        }),
+      {
+        onRetry: (error, attempt) => {
+          logger.warn(
+            { channelId, attempt, error: error instanceof Error ? error.message : "Unknown error" },
+            "Retrying Discord sendVoiceMessage",
+          );
+        },
+      },
+    );
+
+    logger.info(
+      { channelId, durationSecs: _durationSecs },
+      "Discord voice message sent successfully",
+    );
+    return true;
+  } catch (error) {
+    logger.error(
+      {
+        channelId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Failed to send Discord voice message",
+    );
+    return false;
+  }
+}
+
+/**
  * Starts all active Discord channels for all users.
  */
 export async function startAllBots(): Promise<void> {
@@ -415,6 +662,10 @@ export async function startAllBots(): Promise<void> {
           channelId: first.channel.id,
           userId: first.channel.userId,
           discordChannelId: first.config.channel_id,
+          mentionMode: first.config.mention_mode,
+          voiceChannelId: first.config.voice_channel_id,
+          voiceMode: first.config.voice_mode,
+          sttEnabled: first.config.stt_enabled,
         };
 
         const instance = createClient(botToken, firstMeta);
@@ -428,6 +679,10 @@ export async function startAllBots(): Promise<void> {
             channelId: entry.channel.id,
             userId: entry.channel.userId,
             discordChannelId: entry.config.channel_id,
+            mentionMode: entry.config.mention_mode,
+            voiceChannelId: entry.config.voice_channel_id,
+            voiceMode: entry.config.voice_mode,
+            sttEnabled: entry.config.stt_enabled,
           };
           instance.managedChannels.set(entry.channel.id, meta);
           channelTokenMap.set(entry.channel.id, botToken);
@@ -495,8 +750,11 @@ export async function stopAllBots(): Promise<void> {
 
   logger.info("Stopping all Discord bots");
 
+  // Leave all voice channels first
+  leaveAllChannels(logger);
+
   // Destroy all clients directly
-  for (const [botToken, instance] of clientPool) {
+  for (const [_botToken, instance] of clientPool) {
     try {
       // Reset circuit breakers for all managed channels
       for (const meta of instance.managedChannels.values()) {

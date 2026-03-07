@@ -1,10 +1,23 @@
 import { and, eq } from "drizzle-orm";
-import type { Message, TextChannel } from "discord.js";
+import { MessageFlags, type Message, type TextChannel } from "discord.js";
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
 import { splitMessage } from "./message-utils.js";
 import { sendStreamingResponse } from "./stream-sender.js";
 import { safeSendTyping } from "./typing-indicator.js";
+import { downloadFile } from "./voice-utils.js";
+
+/**
+ * Extracts attachment metadata from a Discord message.
+ */
+function extractAttachments(message: Message): { url: string; name: string; contentType: string | null; size: number }[] {
+  return message.attachments.map((a) => ({
+    url: a.url,
+    name: a.name,
+    contentType: a.contentType,
+    size: a.size,
+  }));
+}
 
 /**
  * Handles incoming messages from Discord for bidirectional channels.
@@ -19,7 +32,10 @@ export async function handleIncomingMessage(
   const { channels } = schema;
 
   const text = message.content;
-  if (!text) return;
+  const attachments = extractAttachments(message);
+
+  // Drop messages with no text and no attachments
+  if (!text && attachments.length === 0) return;
 
   const discordUserId = message.author.id;
   const discordUsername = message.author.username;
@@ -73,11 +89,62 @@ export async function handleIncomingMessage(
 
     let responseText: string | undefined;
 
+    // Handle voice messages
+    const isVoiceMessage = message.flags.has(MessageFlags.IsVoiceMessage);
+    if (isVoiceMessage && deps.processAudioMessage) {
+      const voiceAttachment = attachments.find((a) =>
+        a.contentType?.includes("ogg") || a.name.endsWith(".ogg"),
+      );
+      if (voiceAttachment) {
+        try {
+          const audioBuffer = await downloadFile(voiceAttachment.url);
+          const result = await deps.processAudioMessage(
+            userId,
+            audioBuffer,
+            { agent: "discord-bot", channelId, discordUserId, format: "ogg" },
+          );
+          responseText = result.response;
+          if (responseText) {
+            const chunks = splitMessage(responseText);
+            for (let i = 0; i < chunks.length; i++) {
+              await message.reply(chunks[i] ?? "");
+              if (i < chunks.length - 1) {
+                await new Promise((resolve) => setTimeout(resolve, 100));
+              }
+            }
+          }
+          // Record history and return early
+          await recordHistory({
+            action: "discord_voice_message_processed",
+            itemType: "discord_voice",
+            itemId: `discord-voice-${discordUserId}-${Date.now()}`,
+            itemName: "Discord Voice Message",
+            beforeData: { discordUserId, discordUsername, channelId, voiceMessage: true },
+            afterData: { response: responseText, platform: "discord", channelId },
+            actor: "user",
+            userId,
+            metadata: { platform: "discord", channelId },
+          });
+          return;
+        } catch (audioError) {
+          logger.warn(
+            { error: audioError instanceof Error ? audioError.message : "Unknown error" },
+            "Failed to process voice message, falling back to text",
+          );
+        }
+      }
+    }
+
+    // Build prompt text: include attachment URLs if present
+    const promptText = attachments.length > 0
+      ? `${text || ""}${text ? "\n" : ""}[Attachments: ${attachments.map((a) => `${a.name} (${a.contentType ?? "unknown"}): ${a.url}`).join(", ")}]`
+      : text;
+
     if (deps.processPromptRequestStream) {
       const stream = await deps.processPromptRequestStream(
         userId,
-        text,
-        { agent: "discord-bot" },
+        promptText,
+        { agent: "discord-bot", attachments },
         requestId,
         undefined,
         false,
@@ -92,8 +159,8 @@ export async function handleIncomingMessage(
       // Non-streaming fallback
       const result = await processPromptRequest(
         userId,
-        text,
-        { agent: "discord-bot" },
+        promptText,
+        { agent: "discord-bot", attachments },
         requestId,
         undefined,
         false,
@@ -119,6 +186,7 @@ export async function handleIncomingMessage(
       itemName: "Discord Chat Message",
       beforeData: {
         message: text,
+        attachments: attachments.length > 0 ? attachments : undefined,
         discordUserId,
         discordUsername,
         channelId,
