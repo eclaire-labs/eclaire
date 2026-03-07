@@ -88,6 +88,7 @@
     "@eclaire/api-types": "workspace:*",
     "@eclaire/channels-core": "workspace:*",
     "@eclaire/channels-discord": "workspace:*",
+    "@eclaire/channels-slack": "workspace:*",
     "@eclaire/channels-telegram": "workspace:*",
     "@eclaire/core": "workspace:*",
     "@eclaire/db": "workspace:*",

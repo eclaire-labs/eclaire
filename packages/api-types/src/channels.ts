@@ -24,10 +24,10 @@ export const PLATFORM_METADATA: Record<ChannelPlatform, PlatformMetadata> = {
   slack: {
     platform: "slack",
     displayName: "Slack",
-    description: "Send notifications to Slack channels",
+    description: "Receive notifications and chat via Slack Bot",
     icon: "💬",
-    capabilities: ["notification"],
-    available: false,
+    capabilities: ["notification", "chat", "bidirectional"],
+    available: true,
   },
   whatsapp: {
     platform: "whatsapp",

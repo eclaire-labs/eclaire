@@ -1,6 +1,7 @@
 import { ChannelRegistry } from "@eclaire/channels-core";
 import { initTelegramAdapter } from "@eclaire/channels-telegram";
 import { initDiscordAdapter } from "@eclaire/channels-discord";
+import { initSlackAdapter } from "@eclaire/channels-slack";
 import { db, schema } from "../db/index.js";
 import { encrypt, decrypt } from "./encryption.js";
 import { processPromptRequest, processPromptRequestStream } from "./agent/index.js";
@@ -34,3 +35,16 @@ const discordAdapter = initDiscordAdapter({
 });
 
 channelRegistry.register(discordAdapter);
+
+const slackAdapter = initSlackAdapter({
+  db,
+  schema,
+  encrypt,
+  decrypt,
+  processPromptRequest,
+  processPromptRequestStream,
+  recordHistory,
+  logger: createChildLogger("slack"),
+});
+
+channelRegistry.register(slackAdapter);

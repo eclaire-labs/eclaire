@@ -21,9 +21,11 @@ import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import {
   type Channel,
   type TelegramConfig,
+  type SlackConfig,
   useChannels,
 } from "@/hooks/use-channels";
 import TelegramChannelForm from "./TelegramChannelForm";
+import SlackChannelForm from "./SlackChannelForm";
 
 interface AddChannelDialogProps {
   trigger?: React.ReactNode;
@@ -39,7 +41,7 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
   const handleCreateChannel = async (data: {
     name: string;
     capability: Channel["capability"];
-    config: TelegramConfig | Partial<TelegramConfig>;
+    config: TelegramConfig | Partial<TelegramConfig> | SlackConfig | Partial<SlackConfig>;
   }) => {
     if (!selectedPlatform) return;
 
@@ -71,6 +73,13 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
       case "telegram":
         return (
           <TelegramChannelForm
+            onSubmit={handleCreateChannel}
+            isSubmitting={isCreating}
+          />
+        );
+      case "slack":
+        return (
+          <SlackChannelForm
             onSubmit={handleCreateChannel}
             isSubmitting={isCreating}
           />

@@ -20,17 +20,24 @@ export interface TelegramConfig {
   bot_token: string;
 }
 
+export interface SlackConfig {
+  bot_token: string;
+  app_token: string;
+  channel_id: string;
+  mention_mode?: "all" | "mention_only" | "mention_or_reply";
+}
+
 export interface CreateChannelData {
   name: string;
   platform: Channel["platform"];
   capability: Channel["capability"];
-  config: TelegramConfig | Record<string, unknown>;
+  config: TelegramConfig | SlackConfig | Record<string, unknown>;
 }
 
 export interface UpdateChannelData {
   name?: string;
   capability?: Channel["capability"];
-  config?: TelegramConfig | Record<string, unknown>;
+  config?: TelegramConfig | SlackConfig | Record<string, unknown>;
   isActive?: boolean;
 }
 

@@ -10,9 +10,11 @@ import {
 import {
   type Channel,
   type TelegramConfig,
+  type SlackConfig,
   useChannels,
 } from "@/hooks/use-channels";
 import TelegramChannelForm from "./TelegramChannelForm";
+import SlackChannelForm from "./SlackChannelForm";
 
 interface EditChannelDialogProps {
   channel: Channel | null;
@@ -26,15 +28,20 @@ export default function EditChannelDialog({
   onOpenChange,
 }: EditChannelDialogProps) {
   const { updateChannel, isUpdating } = useChannels();
-  const [config, setConfig] = useState<TelegramConfig | null>(null);
+  const [config, setConfig] = useState<TelegramConfig | SlackConfig | null>(null);
 
   // Fetch current config when dialog opens (we need to get the decrypted config)
   useEffect(() => {
-    if (open && channel && channel.platform === "telegram") {
+    if (open && channel) {
       // Since the API doesn't return the config for security reasons,
-      // we'll need to handle this differently. For now, we'll show empty fields
-      // and let the user re-enter their configuration if they want to update it.
-      setConfig({ chat_identifier: "", bot_token: "" });
+      // we'll show empty fields and let the user re-enter their configuration if they want to update it.
+      if (channel.platform === "telegram") {
+        setConfig({ chat_identifier: "", bot_token: "" });
+      } else if (channel.platform === "slack") {
+        setConfig({ bot_token: "", app_token: "", channel_id: "" });
+      } else {
+        setConfig(null);
+      }
     } else {
       setConfig(null);
     }
@@ -43,7 +50,7 @@ export default function EditChannelDialog({
   const handleUpdateChannel = async (data: {
     name: string;
     capability: Channel["capability"];
-    config: TelegramConfig | Partial<TelegramConfig>;
+    config: TelegramConfig | Partial<TelegramConfig> | SlackConfig | Partial<SlackConfig>;
   }) => {
     if (!channel) return;
 
@@ -72,7 +79,20 @@ export default function EditChannelDialog({
             initialData={{
               name: channel.name,
               capability: channel.capability,
-              config: config || undefined,
+              config: (config as TelegramConfig) || undefined,
+            }}
+            onSubmit={handleUpdateChannel}
+            isSubmitting={isUpdating}
+            isEditing={true}
+          />
+        );
+      case "slack":
+        return (
+          <SlackChannelForm
+            initialData={{
+              name: channel.name,
+              capability: channel.capability,
+              config: (config as SlackConfig) || undefined,
             }}
             onSubmit={handleUpdateChannel}
             isSubmitting={isUpdating}
