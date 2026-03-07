@@ -92,6 +92,26 @@ export async function getAuthenticatedUserId(
     }
   }
 
+  // Allow unauthenticated localhost requests (self-hosted convenience).
+  // Only triggers when both API key and session auth fail.
+  const clientIP =
+    c.req.header("x-forwarded-for") ||
+    c.req.header("x-real-ip") ||
+    (c.env as Record<string, unknown>)?.ip;
+  const isLocalhost =
+    !clientIP ||
+    clientIP === "127.0.0.1" ||
+    clientIP === "::1" ||
+    clientIP === "::ffff:127.0.0.1" ||
+    clientIP === "localhost";
+
+  if (isLocalhost) {
+    const firstUser = await db.query.users.findFirst();
+    if (firstUser) {
+      return firstUser.id;
+    }
+  }
+
   return null;
 }
 

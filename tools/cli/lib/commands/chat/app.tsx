@@ -1,40 +1,38 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { render, Box, Text, useInput, useApp } from "ink";
-import {
-  callAI,
-  callAIStream,
-  getActiveModelForContext,
-  LLMStreamParser,
-} from "@eclaire/ai";
-import type { AIMessage, AIContext } from "@eclaire/ai";
+import { backendFetch, getModelInfo } from "../../backend-client.js";
 import { ChatInput } from "./components/ChatInput.js";
 import { MessageList } from "./components/MessageList.js";
 import { StatusBar } from "./components/StatusBar.js";
 import { StreamingMessage } from "./components/StreamingMessage.js";
 
 interface ChatOptions {
-  model?: string;
-  context: string;
   stream: boolean;
+  conversation?: string;
 }
 
 interface DisplayMessage {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "tool";
   content: string;
 }
 
 function ChatApp({ options }: { options: ChatOptions }) {
   const { exit } = useApp();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
-  const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [currentThinking, setCurrentThinking] = useState("");
   const [currentResponse, setCurrentResponse] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | undefined>(
+    options.conversation,
+  );
+  const [modelName, setModelName] = useState("Loading...");
 
-  // Get model info
-  const context = (options.context || "backend") as AIContext;
-  const model = getActiveModelForContext(context);
-  const modelName = options.model || model?.name || "Unknown model";
+  useEffect(() => {
+    getModelInfo()
+      .then((info) => setModelName(info.modelShortName || info.modelFullName))
+      .catch(() => setModelName("Unknown model"));
+  }, []);
 
   useInput((_input, key) => {
     if (key.ctrl && _input === "c") {
@@ -49,47 +47,106 @@ function ChatApp({ options }: { options: ChatOptions }) {
       const userMessage: DisplayMessage = { role: "user", content: input };
       setMessages((prev) => [...prev, userMessage]);
       setError(null);
+      setIsStreaming(true);
 
-      const newAiMessages: AIMessage[] = [
-        ...aiMessages,
-        { role: "user" as const, content: input },
-      ];
-      setAiMessages(newAiMessages);
+      const body = {
+        prompt: input,
+        conversationId,
+        stream: options.stream,
+        enableThinking: true,
+      };
 
       if (options.stream) {
-        setIsStreaming(true);
         setCurrentResponse("");
+        setCurrentThinking("");
 
         try {
-          const { stream } = await callAIStream(newAiMessages, context, {
-            maxTokens: 4096,
+          const response = await backendFetch("/api/prompt/stream", {
+            method: "POST",
+            body: JSON.stringify(body),
           });
 
-          const parser = new LLMStreamParser();
-          const parsedStream = await parser.processSSEStream(stream);
-          const reader = parsedStream.getReader();
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `API error: ${response.status} ${response.statusText} - ${errorText}`,
+            );
+          }
+
+          if (!response.body) {
+            throw new Error("No response body available for streaming");
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
           let fullResponse = "";
+          let fullThinking = "";
+          let buffer = "";
 
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            if (value.type === "content" && value.content) {
-              fullResponse += value.content;
-              setCurrentResponse(fullResponse);
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              const data = line.slice(6).trim();
+              if (!data || data === "[DONE]") continue;
+
+              try {
+                const event = JSON.parse(data);
+
+                switch (event.type) {
+                  case "text-chunk":
+                    if (!fullResponse) {
+                      setCurrentThinking("");
+                    }
+                    fullResponse += event.content;
+                    setCurrentResponse(fullResponse);
+                    break;
+                  case "thought":
+                    fullThinking += event.content;
+                    setCurrentThinking(fullThinking);
+                    break;
+                  case "tool-call":
+                    if (
+                      event.status === "starting" ||
+                      event.status === "executing"
+                    ) {
+                      setMessages((prev) => [
+                        ...prev,
+                        {
+                          role: "tool",
+                          content: `🔧 ${event.name}...`,
+                        },
+                      ]);
+                    }
+                    break;
+                  case "done":
+                    if (event.conversationId) {
+                      setConversationId(event.conversationId);
+                    }
+                    break;
+                  case "error":
+                    setError(event.error || event.message || "Stream error");
+                    break;
+                }
+              } catch {
+                // Skip malformed JSON lines
+              }
             }
           }
 
-          const assistantMessage: DisplayMessage = {
-            role: "assistant",
-            content: fullResponse,
-          };
-          setMessages((prev) => [...prev, assistantMessage]);
-          setAiMessages((prev) => [
-            ...prev,
-            { role: "assistant" as const, content: fullResponse },
-          ]);
-          setCurrentResponse("");
+          if (fullResponse) {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: fullResponse },
+            ]);
+            setCurrentResponse("");
+          }
         } catch (err) {
           setError(
             err instanceof Error ? err.message : "Failed to get response",
@@ -99,21 +156,38 @@ function ChatApp({ options }: { options: ChatOptions }) {
         }
       } else {
         // Non-streaming mode
-        setIsStreaming(true);
         try {
-          const response = await callAI(newAiMessages, context, {
-            maxTokens: 4096,
+          const response = await backendFetch("/api/prompt", {
+            method: "POST",
+            body: JSON.stringify(body),
           });
 
-          const content = response.content || "";
-          const assistantMessage: DisplayMessage = {
-            role: "assistant",
-            content,
-          };
-          setMessages((prev) => [...prev, assistantMessage]);
-          setAiMessages((prev) => [
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `API error: ${response.status} ${response.statusText} - ${errorText}`,
+            );
+          }
+
+          const data = await response.json();
+          const content = data.response || "";
+
+          if (data.conversationId) {
+            setConversationId(data.conversationId);
+          }
+
+          if (data.toolCalls?.length) {
+            for (const tc of data.toolCalls) {
+              setMessages((prev) => [
+                ...prev,
+                { role: "tool", content: `🔧 ${tc.name}` },
+              ]);
+            }
+          }
+
+          setMessages((prev) => [
             ...prev,
-            { role: "assistant" as const, content },
+            { role: "assistant", content },
           ]);
         } catch (err) {
           setError(
@@ -124,7 +198,7 @@ function ChatApp({ options }: { options: ChatOptions }) {
         }
       }
     },
-    [aiMessages, context, isStreaming, options.stream],
+    [conversationId, isStreaming, options.stream],
   );
 
   return (
@@ -134,13 +208,21 @@ function ChatApp({ options }: { options: ChatOptions }) {
       <Box flexDirection="column" paddingX={1} flexGrow={1}>
         <MessageList messages={messages} />
 
+        {isStreaming && currentThinking && !currentResponse && (
+          <StreamingMessage
+            content={currentThinking}
+            label="Thinking"
+            color="yellow"
+          />
+        )}
+
         {isStreaming && currentResponse && (
           <StreamingMessage content={currentResponse} />
         )}
 
-        {isStreaming && !currentResponse && (
+        {isStreaming && !currentResponse && !currentThinking && (
           <Box marginY={0}>
-            <Text color="yellow">Thinking...</Text>
+            <Text color="yellow">Waiting...</Text>
           </Box>
         )}
 
