@@ -26,9 +26,79 @@ const appPool = new Map<string, SlackAppInstance>();
 // Map eclaire channelId -> bot token for reverse lookup
 const channelTokenMap = new Map<string, string>();
 
+// Deduplication: track recently seen message timestamps to prevent
+// double-processing when both `message` and `app_mention` fire for the same event.
+const DEDUP_TTL_MS = 60_000;
+const seenMessages = new Map<string, number>();
+
+function isDuplicate(ts: string): boolean {
+  const now = Date.now();
+  // Prune expired entries periodically (every 100 checks)
+  if (seenMessages.size > 0 && seenMessages.size % 100 === 0) {
+    for (const [key, expiry] of seenMessages) {
+      if (expiry < now) seenMessages.delete(key);
+    }
+  }
+  if (seenMessages.has(ts)) return true;
+  seenMessages.set(ts, now + DEDUP_TTL_MS);
+  return false;
+}
+
+// Thread participation cache: remember threads the bot has replied in
+// so users don't need to @mention on every message in mention_or_reply mode.
+const THREAD_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_THREAD_CACHE_SIZE = 5000;
+const participatedThreads = new Map<string, number>();
+
+function markThreadParticipation(channelTs: string): void {
+  // Evict oldest entries if at capacity
+  if (participatedThreads.size >= MAX_THREAD_CACHE_SIZE) {
+    const now = Date.now();
+    for (const [key, expiry] of participatedThreads) {
+      if (expiry < now) participatedThreads.delete(key);
+    }
+    // If still at capacity after pruning expired, remove oldest
+    if (participatedThreads.size >= MAX_THREAD_CACHE_SIZE) {
+      const firstKey = participatedThreads.keys().next().value;
+      if (firstKey) participatedThreads.delete(firstKey);
+    }
+  }
+  participatedThreads.set(channelTs, Date.now() + THREAD_CACHE_TTL_MS);
+}
+
+function hasParticipatedInThread(channelTs: string): boolean {
+  const expiry = participatedThreads.get(channelTs);
+  if (!expiry) return false;
+  if (expiry < Date.now()) {
+    participatedThreads.delete(channelTs);
+    return false;
+  }
+  return true;
+}
+
+// Message debouncing: batch rapid messages from the same user in the same
+// channel/thread to avoid triggering multiple AI responses.
+const DEBOUNCE_MS = 1500;
+interface DebouncedMessage {
+  timer: ReturnType<typeof setTimeout>;
+  texts: string[];
+  lastArgs: {
+    client: InstanceType<typeof App>["client"];
+    channel: string;
+    user: string;
+    ts: string;
+    channelMeta: ChannelMeta;
+  };
+}
+const debounceMap = new Map<string, DebouncedMessage>();
+
+function debounceKey(slackChannel: string, slackUser: string, threadTs: string | null): string {
+  return `${slackChannel}:${slackUser}:${threadTs ?? "main"}`;
+}
+
 /**
  * Schedules a reconnection attempt for all channels managed by a bot token.
- * Uses exponential backoff with max 3 attempts.
+ * Uses exponential backoff with jitter and up to 10 attempts.
  */
 function scheduleReconnect(
   botToken: string,
@@ -37,7 +107,7 @@ function scheduleReconnect(
   logger: ReturnType<typeof getDeps>["logger"],
   attempt = 1,
 ): void {
-  const maxAttempts = 3;
+  const maxAttempts = 10;
   if (attempt > maxAttempts) {
     logger.error(
       { attempt },
@@ -46,7 +116,9 @@ function scheduleReconnect(
     return;
   }
 
-  const delay = Math.min(5000 * 2 ** (attempt - 1), 30_000);
+  const baseDelay = Math.min(2000 * 1.8 ** (attempt - 1), 30_000);
+  const jitter = baseDelay * 0.25 * Math.random();
+  const delay = Math.round(baseDelay + jitter);
   logger.info(
     { attempt, delayMs: delay },
     "Scheduling Slack reconnect",
@@ -93,6 +165,57 @@ function scheduleReconnect(
   }, delay);
 }
 
+async function dispatchDebounced(
+  key: string,
+  logger: ReturnType<typeof getDeps>["logger"],
+): Promise<void> {
+  const entry = debounceMap.get(key);
+  if (!entry) return;
+  debounceMap.delete(key);
+
+  const { texts, lastArgs } = entry;
+  const { client, channel, user, ts, channelMeta } = lastArgs;
+  const combinedText = texts.join("\n");
+
+  try {
+    await handleIncomingMessage(
+      client,
+      combinedText,
+      channel,
+      user,
+      ts,
+      channelMeta.channelId,
+      channelMeta.userId,
+    );
+
+    // Track thread participation so the bot auto-responds in this thread
+    const replyThreadTs = ts;
+    markThreadParticipation(`${channel}:${replyThreadTs}`);
+  } catch (error) {
+    logger.error(
+      {
+        channelId: channelMeta.channelId,
+        userId: channelMeta.userId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Error handling incoming Slack message",
+    );
+
+    try {
+      await client.chat.postMessage({
+        channel,
+        thread_ts: ts,
+        text: "Sorry, I encountered an error processing your message. Please try again.",
+      });
+    } catch (_replyError) {
+      logger.error(
+        { channelId: channelMeta.channelId },
+        "Failed to send error reply to Slack",
+      );
+    }
+  }
+}
+
 function createApp(
   botToken: string,
   appToken: string,
@@ -118,6 +241,9 @@ function createApp(
     if (!("user" in message) || !("text" in message) || !("ts" in message)) return;
     if (!message.user || !message.text) return;
 
+    // Deduplicate: skip if we've already seen this message timestamp
+    if (isDuplicate(message.ts)) return;
+
     // Find which eclaire channel manages this Slack channel
     let channelMeta: ChannelMeta | undefined;
     for (const meta of managedChannels.values()) {
@@ -131,15 +257,23 @@ function createApp(
 
     // Mention filtering
     let messageText = message.text;
+    const threadTs = "thread_ts" in message ? (message.thread_ts as string) : null;
+    const threadKey = threadTs ? `${message.channel}:${threadTs}` : null;
+
     if (channelMeta.mentionMode !== "all") {
       const isMentioned = botUserId ? messageText.includes(`<@${botUserId}>`) : false;
 
-      const isReplyToBot =
+      // In mention_or_reply mode, respond if:
+      // - The message is any reply in a thread (original behavior), OR
+      // - The bot has previously participated in this thread (auto-continue)
+      const isThreadReply =
         channelMeta.mentionMode === "mention_or_reply" &&
-        "thread_ts" in message &&
-        message.thread_ts != null;
+        threadTs != null;
 
-      if (!isMentioned && !isReplyToBot) return;
+      const isReplyInParticipatedThread =
+        isThreadReply || (threadKey != null && hasParticipatedInThread(threadKey));
+
+      if (!isMentioned && !isReplyInParticipatedThread) return;
 
       // Strip bot mention from message content
       if (botUserId && isMentioned) {
@@ -149,38 +283,23 @@ function createApp(
       }
     }
 
-    try {
-      await handleIncomingMessage(
-        client,
-        messageText,
-        message.channel,
-        message.user,
-        message.ts,
-        channelMeta.channelId,
-        channelMeta.userId,
-      );
-    } catch (error) {
-      logger.error(
-        {
-          channelId: channelMeta.channelId,
-          userId: channelMeta.userId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error handling incoming Slack message",
-      );
+    // Debounce rapid messages from the same user in the same conversation.
+    // Batches text and dispatches once after a quiet period.
+    const dKey = debounceKey(message.channel, message.user, threadTs);
+    const existing = debounceMap.get(dKey);
 
-      try {
-        await client.chat.postMessage({
-          channel: message.channel,
-          thread_ts: message.ts,
-          text: "Sorry, I encountered an error processing your message. Please try again.",
-        });
-      } catch (_replyError) {
-        logger.error(
-          { channelId: channelMeta.channelId },
-          "Failed to send error reply to Slack",
-        );
-      }
+    if (existing) {
+      clearTimeout(existing.timer);
+      existing.texts.push(messageText);
+      existing.lastArgs = { client, channel: message.channel, user: message.user, ts: message.ts, channelMeta };
+      existing.timer = setTimeout(() => dispatchDebounced(dKey, logger), DEBOUNCE_MS);
+    } else {
+      const entry: DebouncedMessage = {
+        texts: [messageText],
+        lastArgs: { client, channel: message.channel, user: message.user, ts: message.ts, channelMeta },
+        timer: setTimeout(() => dispatchDebounced(dKey, logger), DEBOUNCE_MS),
+      };
+      debounceMap.set(dKey, entry);
     }
   });
 
@@ -593,6 +712,10 @@ export async function stopAllBots(): Promise<void> {
 
   appPool.clear();
   channelTokenMap.clear();
+  seenMessages.clear();
+  participatedThreads.clear();
+  for (const entry of debounceMap.values()) clearTimeout(entry.timer);
+  debounceMap.clear();
 
   logger.info("All Slack bots stopped");
 }

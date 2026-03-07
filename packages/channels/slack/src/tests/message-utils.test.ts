@@ -70,4 +70,27 @@ describe("convertMarkdownToMrkdwn", () => {
   it("leaves plain text unchanged", () => {
     expect(convertMarkdownToMrkdwn("plain text")).toBe("plain text");
   });
+
+  it("escapes ampersands", () => {
+    expect(convertMarkdownToMrkdwn("Tom & Jerry")).toBe("Tom &amp; Jerry");
+  });
+
+  it("escapes angle brackets to prevent mrkdwn injection", () => {
+    expect(convertMarkdownToMrkdwn("<script>alert('xss')</script>")).toBe(
+      "&lt;script&gt;alert('xss')&lt;/script&gt;",
+    );
+  });
+
+  it("preserves link angle brackets while escaping others", () => {
+    const input = "Check [here](https://example.com) and <not a tag>";
+    const result = convertMarkdownToMrkdwn(input);
+    expect(result).toContain("<https://example.com|here>");
+    expect(result).toContain("&lt;not a tag&gt;");
+  });
+
+  it("escapes ampersands in URLs within links", () => {
+    const input = "[search](https://example.com?a=1&b=2)";
+    const result = convertMarkdownToMrkdwn(input);
+    expect(result).toBe("<https://example.com?a=1&amp;b=2|search>");
+  });
 });

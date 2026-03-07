@@ -1,3 +1,18 @@
+/**
+ * Non-recoverable Slack auth/permission errors that should never be retried.
+ * Retrying these wastes time and can trigger rate limits.
+ */
+const NON_RECOVERABLE_AUTH_PATTERN =
+  /account_inactive|invalid_auth|token_revoked|token_expired|not_authed|org_login_required|team_access_not_granted|missing_scope|cannot_find_service|invalid_token/i;
+
+function isNonRecoverableError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  if (NON_RECOVERABLE_AUTH_PATTERN.test(err.message)) return true;
+  const code = (err as Error & { code?: string }).code;
+  if (code && NON_RECOVERABLE_AUTH_PATTERN.test(code)) return true;
+  return false;
+}
+
 const RECOVERABLE_CODES = new Set([
   "ECONNRESET",
   "ECONNREFUSED",
@@ -55,6 +70,9 @@ export function getRetryAfterMs(err: unknown): number | null {
  */
 export function isRecoverableError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
+
+  // Auth/permission errors should never be retried
+  if (isNonRecoverableError(err)) return false;
 
   // Slack rate limit
   if (getRetryAfterMs(err) !== null) return true;

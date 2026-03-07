@@ -74,14 +74,20 @@ function findSplitIndex(text: string, maxLength: number): number {
 export function convertMarkdownToMrkdwn(text: string): string {
   let result = text;
 
-  // Convert links first (before bold conversion could interfere)
-  // [text](url) -> <url|text>
+  // 1. Escape special Slack characters to prevent mrkdwn injection.
+  //    Must happen before any conversion that introduces intentional brackets.
+  result = result.replace(/&/g, "&amp;");
+  result = result.replace(/</g, "&lt;");
+  result = result.replace(/>/g, "&gt;");
+
+  // 2. Convert markdown links: [text](url) -> <url|text>
+  //    These produce intentional Slack link brackets on already-escaped text.
   result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "<$2|$1>");
 
-  // Convert bold: **text** -> *text*
+  // 3. Convert bold: **text** -> *text*
   result = result.replace(/\*\*(.+?)\*\*/g, "*$1*");
 
-  // Convert strikethrough: ~~text~~ -> ~text~
+  // 4. Convert strikethrough: ~~text~~ -> ~text~
   result = result.replace(/~~(.+?)~~/g, "~$1~");
 
   return result;
