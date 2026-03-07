@@ -806,7 +806,7 @@ export const channels = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 255 }).notNull(),
     platform: text("platform", {
-      enum: ["telegram", "slack", "whatsapp", "email"],
+      enum: ["telegram", "slack", "whatsapp", "email", "discord"],
     }).notNull(),
     capability: text("capability", {
       enum: ["notification", "chat", "bidirectional"],

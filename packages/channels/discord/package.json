@@ -1,0 +1,48 @@
+{
+  "name": "@eclaire/channels-discord",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Discord channel adapter for Eclaire",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist",
+    "lint": "biome lint ./ && oxlint --tsconfig ../../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "biome format --write ./",
+    "check": "biome check ./",
+    "fix": "biome check --write ./"
+  },
+  "dependencies": {
+    "@eclaire/channels-core": "workspace:*",
+    "@eclaire/core": "workspace:*",
+    "discord.js": "14.18.0"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "^0.45.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "4.0.18",
+    "zod": "4.3.6"
+  }
+}

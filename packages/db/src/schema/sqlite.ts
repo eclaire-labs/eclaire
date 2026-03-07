@@ -665,7 +665,7 @@ export const channels = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name", { length: 255 }).notNull(),
     platform: text("platform", {
-      enum: ["telegram", "slack", "whatsapp", "email"],
+      enum: ["telegram", "slack", "whatsapp", "email", "discord"],
     }).notNull(),
     capability: text("capability", {
       enum: ["notification", "chat", "bidirectional"],

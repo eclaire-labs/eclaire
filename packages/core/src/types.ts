@@ -23,7 +23,7 @@ export type TaskStatus = (typeof TASK_STATUSES)[number];
 export const MESSAGE_ROLES = ["user", "assistant"] as const;
 export type MessageRole = (typeof MESSAGE_ROLES)[number];
 
-export const CHANNEL_PLATFORMS = ["telegram", "slack", "whatsapp", "email"] as const;
+export const CHANNEL_PLATFORMS = ["telegram", "slack", "whatsapp", "email", "discord"] as const;
 export type ChannelPlatform = (typeof CHANNEL_PLATFORMS)[number];
 
 export const CHANNEL_CAPABILITIES = ["notification", "chat", "bidirectional"] as const;

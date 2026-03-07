@@ -3,7 +3,7 @@ import { ChannelRegistry } from "../registry.js";
 import type { ChannelAdapter } from "../types.js";
 
 function createMockAdapter(
-  platform: "telegram" | "slack" | "whatsapp" | "email",
+  platform: "telegram" | "slack" | "whatsapp" | "email" | "discord",
   overrides?: Partial<ChannelAdapter>,
 ): ChannelAdapter {
   return {

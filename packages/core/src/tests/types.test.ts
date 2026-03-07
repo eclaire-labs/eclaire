@@ -54,7 +54,7 @@ const constArrays = [
   {
     name: "CHANNEL_PLATFORMS",
     arr: CHANNEL_PLATFORMS,
-    expected: ["telegram", "slack", "whatsapp", "email"],
+    expected: ["telegram", "slack", "whatsapp", "email", "discord"],
   },
   {
     name: "CHANNEL_CAPABILITIES",

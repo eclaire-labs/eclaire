@@ -8,7 +8,7 @@ export interface Channel {
   id: string;
   userId: string;
   name: string;
-  platform: "telegram" | "slack" | "whatsapp" | "email";
+  platform: "telegram" | "slack" | "whatsapp" | "email" | "discord";
   capability: "notification" | "chat" | "bidirectional";
   isActive: boolean;
   createdAt: string;

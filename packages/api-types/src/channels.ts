@@ -45,4 +45,12 @@ export const PLATFORM_METADATA: Record<ChannelPlatform, PlatformMetadata> = {
     capabilities: ["notification"],
     available: false,
   },
+  discord: {
+    platform: "discord",
+    displayName: "Discord",
+    description: "Receive notifications and chat via Discord Bot",
+    icon: "🎮",
+    capabilities: ["notification", "chat", "bidirectional"],
+    available: true,
+  },
 };
