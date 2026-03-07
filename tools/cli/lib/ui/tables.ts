@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import Table from "cli-table3";
 import { estimateModelMemory, formatMemorySize } from "../engine/memory.js";
 import type { Model, ProviderConfig } from "../types/index.js";
@@ -200,6 +201,58 @@ export function createIssuesTable(issues: ValidationIssue[]): string {
   });
 
   return table.toString();
+}
+
+/**
+ * Create a channels table
+ */
+export function createChannelsTable(
+  channels: Array<{
+    id: string;
+    name: string;
+    platform: string;
+    capability: string;
+    isActive: boolean;
+  }>,
+): string {
+  const table = new Table({
+    head: [
+      colors.header("ID"),
+      colors.header("Name"),
+      colors.header("Platform"),
+      colors.header("Capability"),
+      colors.header("Status"),
+    ],
+    style: {
+      head: [],
+      border: ["gray"],
+    },
+  });
+
+  for (const channel of channels) {
+    table.push([
+      colors.emphasis(channel.id),
+      channel.name,
+      formatPlatform(channel.platform),
+      channel.capability,
+      formatStatus(channel.isActive),
+    ]);
+  }
+
+  return table.toString();
+}
+
+function formatPlatform(platform: string): string {
+  switch (platform) {
+    case "telegram":
+      return chalk.blue(platform);
+    case "discord":
+      return chalk.magenta(platform);
+    case "slack":
+      return chalk.yellow(platform);
+    default:
+      return chalk.white(platform);
+  }
 }
 
 /**

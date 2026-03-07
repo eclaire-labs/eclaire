@@ -2,14 +2,14 @@
   "name": "@eclaire/cli",
   "version": "0.0.0",
   "private": true,
-  "description": "Eclaire Admin CLI - Manage providers, models, and configuration",
+  "description": "Eclaire CLI - Manage providers, models, channels, and chat with AI",
   "main": "dist/main.js",
   "type": "module",
   "packageManager": "pnpm@10.30.3",
   "repository": {
     "type": "git",
     "url": "https://github.com/eclaire-labs/eclaire.git",
-    "directory": "tools/admin-cli"
+    "directory": "tools/cli"
   },
   "bugs": {
     "url": "https://github.com/eclaire-labs/eclaire/issues"
@@ -45,7 +45,18 @@
   "license": "MIT",
   "dependencies": {
     "@eclaire/ai": "workspace:*",
+    "@eclaire/channels-core": "workspace:*",
+    "@eclaire/channels-discord": "workspace:*",
+    "@eclaire/channels-slack": "workspace:*",
+    "@eclaire/channels-telegram": "workspace:*",
+    "@eclaire/core": "workspace:*",
+    "@eclaire/db": "workspace:*",
     "@eclaire/logger": "workspace:*",
+    "drizzle-orm": "0.45.1",
+    "ink": "^5.2.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.1.0",
     "axios": "1.13.6",
     "boxen": "8.0.1",
     "chalk": "5.6.2",
@@ -57,6 +68,7 @@
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@types/inquirer": "9.0.9",
+    "@types/react": "^19.1.0",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "tsx": "4.21.0",

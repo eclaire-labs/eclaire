@@ -7,11 +7,12 @@
     "rootDir": "./",
     "incremental": true,
     "inlineSources": true,
+    "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./lib/*"]
     }
   },
-  "include": ["main.ts", "lib/**/*.ts", "lib/types/**/*.d.ts"],
+  "include": ["main.ts", "lib/**/*.ts", "lib/**/*.tsx", "lib/types/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

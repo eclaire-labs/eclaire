@@ -5,10 +5,11 @@ import { type AILogger, setConfigPath, setLoggerFactory } from "@eclaire/ai";
 import boxen from "boxen";
 import chalk from "chalk";
 import { Command } from "commander";
+import { registerChannelCommands } from "./lib/commands/channel/index.js";
+import { registerChatCommand } from "./lib/commands/chat/index.js";
 import { registerConfigCommands } from "./lib/commands/config/index.js";
 import { registerEngineCommands } from "./lib/commands/engine/index.js";
 import { registerModelCommands } from "./lib/commands/model/index.js";
-// Import subcommand registrations
 import { registerProviderCommands } from "./lib/commands/provider/index.js";
 import { setConfigDir } from "./lib/config/models.js";
 
@@ -35,26 +36,30 @@ function getDefaultConfigDir(): string {
   if (configDir) {
     return path.join(configDir, "ai");
   }
-  // From main.ts go up 2 levels to reach the repo root: admin-cli/ -> tools/ -> root/
+  // From main.ts go up 2 levels to reach the repo root: cli/ -> tools/ -> root/
   return path.join(import.meta.dirname, "..", "..", "config", "ai");
 }
 
+// Suppress banner for chat TUI (it takes over the terminal)
+const isChatCommand = process.argv[2] === "chat";
+
 const program = new Command();
 
-// CLI Header
-console.log(
-  boxen(chalk.cyan.bold("Eclaire Admin CLI"), {
-    padding: 1,
-    margin: 1,
-    borderStyle: "round",
-    borderColor: "cyan",
-  }),
-);
+if (!isChatCommand) {
+  console.log(
+    boxen(chalk.cyan.bold("Eclaire CLI"), {
+      padding: 1,
+      margin: 1,
+      borderStyle: "round",
+      borderColor: "cyan",
+    }),
+  );
+}
 
 program
   .name("eclaire")
   .description(
-    "Eclaire Admin CLI - Manage providers, models, and configuration",
+    "Eclaire CLI - Manage providers, models, channels, and chat with AI",
   )
   .version("1.0.0")
   .option("-c, --config <path>", "Path to config/ai directory")
@@ -63,7 +68,9 @@ program
 // Register subcommand groups
 registerProviderCommands(program);
 registerModelCommands(program);
+registerChannelCommands(program);
 registerConfigCommands(program);
+registerChatCommand(program);
 
 // Only register engine commands if not in container
 // (engine runs on host, not accessible from container)
