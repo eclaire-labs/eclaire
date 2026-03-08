@@ -62,24 +62,9 @@ const testConfig: ListPageConfig<TestItem> = {
   contentType: "notes",
   entityName: "note",
   entityNamePlural: "notes",
-  getSearchableText: (item) => [item.title ?? "", item.description ?? "", item.content ?? ""],
   sortOptions: [
-    {
-      value: "createdAt",
-      label: "Date Created",
-      compareFn: (a, b, dir) => {
-        const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        return dir === "asc" ? diff : -diff;
-      },
-    },
-    {
-      value: "title",
-      label: "Title",
-      compareFn: (a, b, dir) => {
-        const diff = (a.title ?? "").localeCompare(b.title ?? "");
-        return dir === "asc" ? diff : -diff;
-      },
-    },
+    { value: "createdAt", label: "Date Created" },
+    { value: "title", label: "Title" },
   ],
   groupableSortKeys: ["createdAt"],
   getGroupDate: (item) => item.createdAt,
@@ -92,9 +77,16 @@ function makeOperations(): ListPageOperations {
   };
 }
 
-function renderState(items: TestItem[] = [], config = testConfig, ops?: ListPageOperations) {
+const defaultTags = ["work", "personal"];
+
+function renderState(
+  items: TestItem[] = [],
+  allTags: string[] = defaultTags,
+  config = testConfig,
+  ops?: ListPageOperations,
+) {
   const operations = ops ?? makeOperations();
-  return renderHook(() => useListPageState(items, config, operations));
+  return renderHook(() => useListPageState(items, allTags, config, operations));
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────
@@ -104,154 +96,74 @@ beforeEach(() => {
   mockPreferences = { viewMode: "tile", sortBy: "createdAt", sortDir: "desc" };
 });
 
-describe("filtering", () => {
-  const items = [
-    makeItem("1", { title: "Alpha Note", tags: ["work"], content: "hello world" }),
-    makeItem("2", { title: "Beta Note", tags: ["personal"] }),
-    makeItem("3", { title: "Gamma Note", tags: ["work", "personal"] }),
-  ];
-
-  it("returns all items with no search or filter", () => {
-    const { result } = renderState(items);
-    expect(result.current.filteredItems).toHaveLength(3);
+describe("serverParams", () => {
+  it("includes sortBy and sortDir from preferences", () => {
+    mockPreferences = { viewMode: "tile", sortBy: "title", sortDir: "asc" };
+    const { result } = renderState();
+    expect(result.current.serverParams.sortBy).toBe("title");
+    expect(result.current.serverParams.sortDir).toBe("asc");
   });
 
-  it("filters by search query (title match)", () => {
-    const { result } = renderState(items);
+  it("includes tag filter when not 'all'", () => {
+    const { result } = renderState();
 
     act(() => {
-      result.current.handleSearchChange({
-        target: { value: "alpha" },
-      } as React.ChangeEvent<HTMLInputElement>);
-    });
-
-    expect(result.current.filteredItems).toHaveLength(1);
-    expect(result.current.filteredItems[0]!.id).toBe("1");
-  });
-
-  it("filters by search query (content match)", () => {
-    const { result } = renderState(items);
-
-    act(() => {
-      result.current.handleSearchChange({
-        target: { value: "hello" },
-      } as React.ChangeEvent<HTMLInputElement>);
-    });
-
-    expect(result.current.filteredItems).toHaveLength(1);
-    expect(result.current.filteredItems[0]!.id).toBe("1");
-  });
-
-  it("filters by tag", () => {
-    const { result } = renderState(items);
-
-    act(() => {
-      result.current.handleTagFilterChange("personal");
-    });
-
-    expect(result.current.filteredItems).toHaveLength(2);
-    expect(result.current.filteredItems.map((i) => i.id).sort()).toEqual(["2", "3"]);
-  });
-
-  it("combines search and tag filter", () => {
-    const { result } = renderState(items);
-
-    act(() => {
-      result.current.handleSearchChange({
-        target: { value: "gamma" },
-      } as React.ChangeEvent<HTMLInputElement>);
       result.current.handleTagFilterChange("work");
     });
 
-    expect(result.current.filteredItems).toHaveLength(1);
-    expect(result.current.filteredItems[0]!.id).toBe("3");
+    expect(result.current.serverParams.tags).toBe("work");
   });
 
-  it("applies extra filters", () => {
+  it("does not include tag filter when 'all'", () => {
+    const { result } = renderState();
+    expect(result.current.serverParams.tags).toBeUndefined();
+  });
+
+  it("includes extra filter values that differ from initial", () => {
     const configWithExtra: ListPageConfig<TestItem> = {
       ...testConfig,
       extraFilters: [
-        {
-          key: "pinned",
-          label: "Pinned",
-          initialValue: "all",
-          matchFn: (item, value) => value === "all" || (value === "pinned" && item.isPinned),
-        },
+        { key: "status", label: "Status", initialValue: "all" },
       ],
     };
 
-    const itemsWithPin = [
-      makeItem("1", { isPinned: true }),
-      makeItem("2", { isPinned: false }),
-    ];
-
-    const { result } = renderState(itemsWithPin, configWithExtra);
+    const { result } = renderState([], defaultTags, configWithExtra);
 
     act(() => {
-      result.current.setExtraFilter("pinned", "pinned");
+      result.current.setExtraFilter("status", "active");
     });
 
-    expect(result.current.filteredItems).toHaveLength(1);
-    expect(result.current.filteredItems[0]!.id).toBe("1");
+    expect(result.current.serverParams.status).toBe("active");
   });
 });
 
-describe("sorting", () => {
-  it("sorts by selected option and direction", () => {
-    mockPreferences = { viewMode: "tile", sortBy: "title", sortDir: "asc" };
-
+describe("sortedItems passthrough", () => {
+  it("returns items as-is (server handles sorting)", () => {
     const items = [
       makeItem("1", { title: "Charlie" }),
       makeItem("2", { title: "Alpha" }),
-      makeItem("3", { title: "Bravo" }),
     ];
 
     const { result } = renderState(items);
 
-    expect(result.current.sortedItems.map((i) => i.title)).toEqual([
-      "Alpha",
-      "Bravo",
-      "Charlie",
-    ]);
-  });
-
-  it("respects descending direction", () => {
-    mockPreferences = { viewMode: "tile", sortBy: "title", sortDir: "desc" };
-
-    const items = [
-      makeItem("1", { title: "Alpha" }),
-      makeItem("2", { title: "Charlie" }),
-      makeItem("3", { title: "Bravo" }),
-    ];
-
-    const { result } = renderState(items);
-
-    expect(result.current.sortedItems.map((i) => i.title)).toEqual([
-      "Charlie",
-      "Bravo",
-      "Alpha",
-    ]);
+    expect(result.current.sortedItems).toEqual(items);
   });
 });
 
 describe("computed state", () => {
-  it("allTags returns unique tags from all items", () => {
-    const items = [
-      makeItem("1", { tags: ["a", "b"] }),
-      makeItem("2", { tags: ["b", "c"] }),
-    ];
-
-    const { result } = renderState(items);
-    expect(result.current.allTags.sort()).toEqual(["a", "b", "c"]);
+  it("allTags returns the provided tags", () => {
+    const tags = ["a", "b", "c"];
+    const { result } = renderState([], tags);
+    expect(result.current.allTags).toEqual(tags);
   });
 
   it("activeFilterCount is 0 with no active filters", () => {
-    const { result } = renderState([]);
+    const { result } = renderState();
     expect(result.current.activeFilterCount).toBe(0);
   });
 
   it("activeFilterCount counts tag filter", () => {
-    const { result } = renderState([makeItem("1", { tags: ["work"] })]);
+    const { result } = renderState();
 
     act(() => {
       result.current.handleTagFilterChange("work");
@@ -264,16 +176,11 @@ describe("computed state", () => {
     const configWithExtra: ListPageConfig<TestItem> = {
       ...testConfig,
       extraFilters: [
-        {
-          key: "status",
-          label: "Status",
-          initialValue: "all",
-          matchFn: () => true,
-        },
+        { key: "status", label: "Status", initialValue: "all" },
       ],
     };
 
-    const { result } = renderState([], configWithExtra);
+    const { result } = renderState([], defaultTags, configWithExtra);
 
     act(() => {
       result.current.setExtraFilter("status", "active");
@@ -284,20 +191,20 @@ describe("computed state", () => {
 
   it("isGrouped is true when sortBy is in groupableSortKeys", () => {
     mockPreferences = { viewMode: "tile", sortBy: "createdAt", sortDir: "desc" };
-    const { result } = renderState([]);
+    const { result } = renderState();
     expect(result.current.isGrouped).toBe(true);
   });
 
   it("isGrouped is false when sortBy is not in groupableSortKeys", () => {
     mockPreferences = { viewMode: "tile", sortBy: "title", sortDir: "asc" };
-    const { result } = renderState([]);
+    const { result } = renderState();
     expect(result.current.isGrouped).toBe(false);
   });
 });
 
 describe("handlers", () => {
   it("clearSearch resets search query", () => {
-    const { result } = renderState([makeItem("1")]);
+    const { result } = renderState();
 
     act(() => {
       result.current.handleSearchChange({
@@ -316,16 +223,11 @@ describe("handlers", () => {
     const configWithExtra: ListPageConfig<TestItem> = {
       ...testConfig,
       extraFilters: [
-        {
-          key: "status",
-          label: "Status",
-          initialValue: "all",
-          matchFn: () => true,
-        },
+        { key: "status", label: "Status", initialValue: "all" },
       ],
     };
 
-    const { result } = renderState([makeItem("1", { tags: ["work"] })], configWithExtra);
+    const { result } = renderState([makeItem("1", { tags: ["work"] })], defaultTags, configWithExtra);
 
     act(() => {
       result.current.handleTagFilterChange("work");
@@ -342,7 +244,7 @@ describe("handlers", () => {
   });
 
   it("handleSortByChange updates preference", () => {
-    const { result } = renderState([]);
+    const { result } = renderState();
 
     act(() => {
       result.current.handleSortByChange("title");
@@ -353,7 +255,7 @@ describe("handlers", () => {
 
   it("toggleSortDir flips direction", () => {
     mockPreferences = { viewMode: "tile", sortBy: "createdAt", sortDir: "desc" };
-    const { result } = renderState([]);
+    const { result } = renderState();
 
     act(() => {
       result.current.toggleSortDir();
@@ -371,7 +273,7 @@ describe("pin/flag actions", () => {
   it("handlePinToggle calls togglePin and refreshes", async () => {
     mockTogglePin.mockResolvedValueOnce(okResponse());
     const ops = makeOperations();
-    const { result } = renderState([makeItem("1")], testConfig, ops);
+    const { result } = renderState([makeItem("1")], defaultTags, testConfig, ops);
 
     const item = result.current.sortedItems[0]!;
     await act(() => result.current.handlePinToggle(item));
@@ -383,7 +285,7 @@ describe("pin/flag actions", () => {
   it("handleFlagColorChange calls setFlagColor and refreshes", async () => {
     mockSetFlagColor.mockResolvedValueOnce(okResponse());
     const ops = makeOperations();
-    const { result } = renderState([makeItem("1")], testConfig, ops);
+    const { result } = renderState([makeItem("1")], defaultTags, testConfig, ops);
 
     const item = result.current.sortedItems[0]!;
     await act(() => result.current.handleFlagColorChange(item, "red"));
@@ -396,7 +298,7 @@ describe("pin/flag actions", () => {
 describe("delete flow", () => {
   it("openDeleteDialog → handleDeleteConfirmed calls deleteItem and closes", async () => {
     const ops = makeOperations();
-    const { result } = renderState([makeItem("1")], testConfig, ops);
+    const { result } = renderState([makeItem("1")], defaultTags, testConfig, ops);
 
     act(() => {
       result.current.openDeleteDialog("1", "Item 1");
@@ -412,7 +314,7 @@ describe("delete flow", () => {
   });
 
   it("closeDeleteDialog resets state", () => {
-    const { result } = renderState([makeItem("1")]);
+    const { result } = renderState();
 
     act(() => {
       result.current.openDeleteDialog("1", "Item 1");

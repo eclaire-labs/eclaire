@@ -13,7 +13,7 @@ import {
 import {
   createTask,
   deleteTask,
-  findTasksWithCount,
+  findTasksPaginated,
   getTaskById,
   reprocessTask,
   updateTask,
@@ -72,7 +72,7 @@ tasksRoutes.get(
     const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
       parseSearchFields(params);
 
-    const { items, totalCount } = await findTasksWithCount({
+    const result = await findTasksPaginated({
       userId,
       text: params.text,
       tags,
@@ -80,16 +80,14 @@ tasksRoutes.get(
       startDate,
       endDate,
       limit: params.limit,
+      cursor: params.cursor,
+      sortBy: params.sortBy,
+      sortDir: params.sortDir,
       dueDateStart,
       dueDateEnd,
     });
 
-    return c.json({
-      items,
-      totalCount,
-      limit: params.limit,
-      offset: params.offset,
-    });
+    return c.json(result);
   }, logger),
 );
 

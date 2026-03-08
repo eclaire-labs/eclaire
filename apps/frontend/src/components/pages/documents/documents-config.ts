@@ -1,5 +1,4 @@
 import type { ListPageConfig } from "@/hooks/use-list-page-state";
-import { getTimestamp } from "@/lib/list-page-utils";
 import type { Document } from "@/types/document";
 
 // --- Helper Functions ---
@@ -52,52 +51,16 @@ export const documentsConfig: ListPageConfig<Document> = {
   entityName: "document",
   entityNamePlural: "Documents",
 
-  getSearchableText: (item) => [
-    item.title,
-    item.description ?? "",
-    item.originalFilename ?? "",
-    item.extractedText ?? "",
-    getDocumentTypeLabel(item.mimeType),
-    ...item.tags,
-  ],
-
   sortOptions: [
-    {
-      value: "date",
-      label: "Date Added",
-      compareFn: (a, b, dir) => {
-        const diff = getTimestamp(a.createdAt) - getTimestamp(b.createdAt);
-        const result =
-          diff || a.title.toLowerCase().localeCompare(b.title.toLowerCase());
-        return dir === "asc" ? result : -result;
-      },
-    },
-    {
-      value: "title",
-      label: "Title",
-      compareFn: (a, b, dir) => {
-        const cmp = a.title.toLowerCase().localeCompare(b.title.toLowerCase());
-        return dir === "asc" ? cmp : -cmp;
-      },
-    },
-    {
-      value: "mimeType",
-      label: "Type",
-      compareFn: (a, b, dir) => {
-        const typeA = getDocumentTypeLabel(a.mimeType).toLowerCase();
-        const typeB = getDocumentTypeLabel(b.mimeType).toLowerCase();
-        const cmp = typeA.localeCompare(typeB);
-        const result =
-          cmp || a.title.toLowerCase().localeCompare(b.title.toLowerCase());
-        return dir === "asc" ? result : -result;
-      },
-    },
+    { value: "createdAt", label: "Date Added" },
+    { value: "title", label: "Title" },
+    { value: "mimeType", label: "Type" },
   ],
 
-  groupableSortKeys: ["date"],
+  groupableSortKeys: ["createdAt"],
 
   getGroupDate: (item, sortBy) => {
-    if (sortBy === "date") return item.createdAt;
+    if (sortBy === "createdAt") return item.createdAt;
     return null;
   },
 };

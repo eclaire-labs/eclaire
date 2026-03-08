@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
 import type { Bookmark } from "@/types/bookmark";
-import { createCrudHooks } from "./create-crud-hooks";
+import { type ListParams, createCrudHooks } from "./create-crud-hooks";
 
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 export const transformBookmarkData = (raw: any): Bookmark => ({
@@ -51,7 +51,7 @@ const { useList, useSingle } = createCrudHooks<Bookmark>({
   transform: transformBookmarkData,
 });
 
-export function useBookmarks() {
+export function useBookmarks(params: ListParams = {}) {
   const {
     items: bookmarks,
     queryKey,
@@ -60,7 +60,7 @@ export function useBookmarks() {
     updateItem,
     deleteItem,
     ...rest
-  } = useList();
+  } = useList(params);
 
   const importMutation = useMutation({
     mutationFn: async (formData: FormData) => {

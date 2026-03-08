@@ -31,7 +31,7 @@ export const findPhotosTool = tool<typeof inputSchema, BackendAgentContext>({
   description: "Search photos by tags, date range, and location.",
   inputSchema,
   execute: async (input, context) => {
-    const results = await findPhotosService({
+    const result = await findPhotosService({
       userId: context.userId,
       tags: input.tags,
       startDate: input.startDate ? new Date(input.startDate) : undefined,
@@ -42,7 +42,7 @@ export const findPhotosTool = tool<typeof inputSchema, BackendAgentContext>({
     });
     return {
       success: true,
-      content: JSON.stringify(results, null, 2),
+      content: JSON.stringify(result.items, null, 2),
     };
   },
 });

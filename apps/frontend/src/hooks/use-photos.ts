@@ -1,6 +1,6 @@
 import { getAbsoluteApiUrl } from "@/lib/api-client";
 import type { Photo } from "@/types/photo";
-import { createCrudHooks } from "./create-crud-hooks";
+import { type ListParams, createCrudHooks } from "./create-crud-hooks";
 
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 export const transformPhotoData = (raw: any): Photo => ({
@@ -54,9 +54,9 @@ const { useList, useSingle } = createCrudHooks<Photo>({
   transform: transformPhotoData,
 });
 
-export function usePhotos() {
+export function usePhotos(params: ListParams = {}) {
   const { items: photos, createItem, updateItem, deleteItem, ...rest } =
-    useList();
+    useList(params);
 
   return {
     photos,

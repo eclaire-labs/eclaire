@@ -13,27 +13,27 @@ interface BaseViewPreferences {
 // Page-specific view preferences with proper typing
 export interface BookmarksViewPreferences extends BaseViewPreferences {
   viewMode: "tile" | "list";
-  sortBy: "createdAt" | "title" | "url";
+  sortBy: "createdAt" | "title";
 }
 
 export interface TasksViewPreferences extends BaseViewPreferences {
   viewMode: "tile" | "list";
-  sortBy: "dueDate" | "assignedToId" | "status" | "title";
+  sortBy: "dueDate" | "status" | "title";
 }
 
 export interface NotesViewPreferences extends BaseViewPreferences {
   viewMode: "tile" | "list";
-  sortBy: "date" | "title" | "content";
+  sortBy: "createdAt" | "title";
 }
 
 export interface DocumentsViewPreferences extends BaseViewPreferences {
   viewMode: "tile" | "list";
-  sortBy: "createdAt" | "title" | "mimeType";
+  sortBy: "createdAt" | "title" | "mimeType" | "updatedAt" | "fileSize" | "originalFilename";
 }
 
 export interface PhotosViewPreferences extends BaseViewPreferences {
   viewMode: "tile" | "list" | "gallery";
-  sortBy: "dateTaken" | "createdAt" | "title" | "location";
+  sortBy: "dateTaken" | "createdAt" | "title";
 }
 
 // Union type for all view preferences
@@ -58,7 +58,7 @@ const DEFAULT_PREFERENCES: Record<PageType, ViewPreferences> = {
   } as TasksViewPreferences,
   notes: {
     viewMode: "tile",
-    sortBy: "date",
+    sortBy: "createdAt",
     sortDir: "desc",
   } as NotesViewPreferences,
   documents: {

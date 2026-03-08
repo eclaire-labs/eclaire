@@ -10,7 +10,7 @@ import {
   Smartphone,
   Upload,
 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
@@ -26,7 +26,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { ListParams } from "@/hooks/create-crud-hooks";
 import { useBookmarks } from "@/hooks/use-bookmarks";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +48,7 @@ import { bookmarksConfig } from "./bookmarks/bookmarks-config";
 export default function BookmarksPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [params, setParams] = useState<ListParams>({});
 
   // Data
   const {
@@ -61,12 +64,31 @@ export default function BookmarksPage() {
     isUpdating,
     isDeleting,
     isImporting,
-  } = useBookmarks();
+    totalCount,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useBookmarks(params);
+
+  const allTags = useMemo(
+    () => [...new Set(bookmarks.flatMap((b) => b.tags))].sort(),
+    [bookmarks],
+  );
 
   // Shared list page state
-  const state = useListPageState(bookmarks, bookmarksConfig, {
+  const state = useListPageState(bookmarks, allTags, bookmarksConfig, {
     refresh,
     deleteItem: deleteBookmark,
+  });
+
+  useEffect(() => {
+    setParams(state.serverParams);
+  }, [state.serverParams]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
   });
 
   // Page-specific state
@@ -229,8 +251,17 @@ export default function BookmarksPage() {
       emptyMessage="Your bookmark collection is empty."
       emptyFilterMessage="No bookmarks found matching your criteria."
       searchPlaceholder="Search bookmarks..."
-      totalCount={bookmarks.length}
+      totalCount={totalCount ?? bookmarks.length}
       filteredCount={state.sortedItems.length}
+      loadMoreSentinel={
+        hasNextPage ? (
+          <div ref={sentinelRef} className="flex justify-center py-4">
+            {isFetchingNextPage && (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            )}
+          </div>
+        ) : undefined
+      }
       isLoading={isLoading}
       error={error instanceof Error ? error : error ? new Error(String(error)) : null}
       onRetry={refresh}

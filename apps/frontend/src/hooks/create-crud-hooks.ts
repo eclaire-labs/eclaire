@@ -1,25 +1,25 @@
 /**
- * Generic CRUD hook factory.
+ * Generic CRUD hook factory with cursor-based pagination.
  *
  * Each entity hook (notes, bookmarks, …) calls `createCrudHooks` once at
  * module level and re-exports thin wrappers that preserve the entity-specific
  * consumer API.
  *
  * Design notes:
- * - Uses `useQuery` (NOT `useInfiniteQuery`) because list pages do
- *   client-side filtering/sorting via `useListPageState`, which requires all
- *   items loaded at once.
+ * - Uses `useInfiniteQuery` for server-side paginated fetching with cursor.
+ * - Filtering, sorting, and search are server-side via query params.
  * - `apiFetch` already sets `Content-Type: application/json` for non-FormData
- *   bodies and throws on 4xx/5xx with a parsed error message, so mutations
- *   don't need redundant response-ok checks or Content-Type headers.
+ *   bodies and throws on 4xx/5xx with a parsed error message.
  */
 
 import {
   type QueryClient,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 
@@ -41,6 +41,32 @@ export interface CrudHookConfig<TItem> {
   listStaleTime?: number;
 }
 
+/** Server-side query parameters for list endpoints. */
+export interface ListParams {
+  text?: string;
+  tags?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+  startDate?: string;
+  endDate?: string;
+  dueDateStart?: string;
+  dueDateEnd?: string;
+  limit?: number;
+  /** Entity-specific extra filters (e.g. status for tasks). */
+  [key: string]: string | number | undefined;
+}
+
+// ---------------------------------------------------------------------------
+// API response type (cursor-paginated)
+// ---------------------------------------------------------------------------
+
+interface CursorPage<TItem> {
+  items: TItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  totalCount?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Return types
 // ---------------------------------------------------------------------------
@@ -48,6 +74,10 @@ export interface CrudHookConfig<TItem> {
 export interface ListHookResult<TItem> {
   items: TItem[];
   isLoading: boolean;
+  isFetchingNextPage: boolean;
+  hasNextPage: boolean;
+  fetchNextPage: () => void;
+  totalCount: number | undefined;
   error: Error | null;
   // biome-ignore lint/suspicious/noExplicitAny: create input varies per entity
   createItem: (input: any) => Promise<any>;
@@ -58,7 +88,7 @@ export interface ListHookResult<TItem> {
   isUpdating: boolean;
   isDeleting: boolean;
   /** Exposed so entity hooks can build extra mutations that invalidate the list. */
-  queryKey: readonly string[];
+  queryKey: readonly unknown[];
   /** Exposed so entity hooks can call `invalidateQueries`. */
   queryClient: QueryClient;
 }
@@ -83,27 +113,65 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
     listStaleTime = 5 * 60 * 1000,
   } = config;
 
-  const listQueryKey = [resourceName] as const;
-
-  /** Hook for the full item list with create / update / delete mutations. */
-  function useList(): ListHookResult<TItem> {
+  /**
+   * Hook for paginated item list with create / update / delete mutations.
+   * Pass server-side params (search, sort, filters) to control what's fetched.
+   */
+  function useList(params: ListParams = {}): ListHookResult<TItem> {
     const queryClient = useQueryClient();
 
+    // Query key includes all params so changing any param resets pagination
+    const listQueryKey = [resourceName, params] as const;
+
     const {
-      data: items = [],
+      data,
       isLoading,
       error,
       refetch,
-    } = useQuery<TItem[]>({
+      fetchNextPage: fetchNext,
+      hasNextPage: hasNext,
+      isFetchingNextPage,
+    } = useInfiniteQuery<CursorPage<TItem>>({
       queryKey: listQueryKey,
-      queryFn: async () => {
-        const response = await apiFetch(`${apiPath}?limit=10000`);
-        const data = await response.json();
-        return data.items.map(transform);
+      queryFn: async ({ pageParam }) => {
+        const searchParams = new URLSearchParams();
+        // Add all non-undefined params
+        for (const [key, value] of Object.entries(params)) {
+          if (value !== undefined && value !== "") {
+            searchParams.set(key, String(value));
+          }
+        }
+        // Add cursor for subsequent pages
+        if (pageParam) {
+          searchParams.set("cursor", pageParam as string);
+        }
+        const url = `${apiPath}?${searchParams.toString()}`;
+        const response = await apiFetch(url);
+        const page = await response.json();
+        return {
+          items: page.items.map(transform),
+          nextCursor: page.nextCursor,
+          hasMore: page.hasMore,
+          totalCount: page.totalCount,
+        };
       },
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       staleTime: listStaleTime,
       gcTime: 5 * 60 * 1000,
     });
+
+    // Flatten all pages into a single items array
+    const items = useMemo(
+      () => data?.pages.flatMap((page) => page.items) ?? [],
+      [data],
+    );
+
+    // Total count from first page
+    const totalCount = data?.pages[0]?.totalCount;
+
+    // Invalidation key (covers all param variations for this resource)
+    const invalidationKey = [resourceName] as const;
 
     const createMutation = useMutation({
       // biome-ignore lint/suspicious/noExplicitAny: create input varies per entity
@@ -117,7 +185,7 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
         return response.json();
       },
       onSuccess: () =>
-        queryClient.invalidateQueries({ queryKey: listQueryKey }),
+        queryClient.invalidateQueries({ queryKey: invalidationKey }),
       onError: (error: Error) =>
         toast.error(`Create failed: ${error.message}`),
     });
@@ -134,7 +202,7 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
         return response.json();
       },
       onSuccess: () =>
-        queryClient.invalidateQueries({ queryKey: listQueryKey }),
+        queryClient.invalidateQueries({ queryKey: invalidationKey }),
       onError: (error: Error) =>
         toast.error(`Update failed: ${error.message}`),
     });
@@ -144,7 +212,7 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
         await apiFetch(`${apiPath}/${id}`, { method: "DELETE" });
       },
       onSuccess: () =>
-        queryClient.invalidateQueries({ queryKey: listQueryKey }),
+        queryClient.invalidateQueries({ queryKey: invalidationKey }),
       onError: (error: Error) =>
         toast.error(`Delete failed: ${error.message}`),
     });
@@ -152,6 +220,10 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
     return {
       items,
       isLoading,
+      isFetchingNextPage,
+      hasNextPage: hasNext ?? false,
+      fetchNextPage: fetchNext,
+      totalCount,
       error,
       createItem: createMutation.mutateAsync,
       updateItem: (id: string, updates: Partial<TItem>) =>

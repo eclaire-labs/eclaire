@@ -202,24 +202,21 @@ export const DocumentSearchParamsSchema = z
     limit: z.coerce
       .number()
       .min(1)
-      .max(10000)
+      .max(200)
       .optional()
       .default(50)
       .meta({
-        description: "Maximum number of documents to return",
-        examples: [10, 25, 50, 9999],
-        minimum: 1,
-        maximum: 10000,
+        description: "Maximum number of documents to return per page",
+        examples: [10, 25, 50],
       }),
 
-    offset: z.coerce
-      .number()
-      .int()
-      .nonnegative()
-      .default(0)
+    cursor: z
+      .string()
+      .optional()
       .meta({
-        description: "Number of results to skip (for pagination)",
-        examples: [0, 10, 50],
+        description:
+          "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
+        examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6ImRvY18xMjMifQ"],
       }),
 
     dueDateStart: z

@@ -7,7 +7,7 @@ import {
   createPhoto,
   deletePhoto,
   extractAndGeocode,
-  findPhotosWithCount,
+  findPhotosPaginated,
   getAnalysisStream,
   getContentStream,
   getConvertedStream,
@@ -61,22 +61,23 @@ photosRoutes.get(
   describeRoute(getPhotosRouteDescription),
   withAuth(async (c, userId) => {
     const params = PhotoSearchParamsSchema.parse(c.req.query());
-    const { tags, startDate, endDate } = parseSearchFields(params);
+    const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
+      parseSearchFields(params);
 
-    const { items, totalCount } = await findPhotosWithCount({
+    const result = await findPhotosPaginated({
       userId,
       tags,
       startDate,
       endDate,
       limit: params.limit,
+      cursor: params.cursor,
+      sortBy: params.sortBy,
+      sortDir: params.sortDir,
+      dueDateStart,
+      dueDateEnd,
     });
 
-    return c.json({
-      items,
-      totalCount,
-      limit: params.limit,
-      offset: params.offset,
-    });
+    return c.json(result);
   }, logger),
 );
 

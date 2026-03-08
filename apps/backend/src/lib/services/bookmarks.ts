@@ -3,6 +3,7 @@
 import { generateBookmarkId, generateHistoryId } from "@eclaire/core";
 import {
   and,
+  asc,
   count,
   desc,
   eq,
@@ -19,7 +20,12 @@ import { db, queueJobs, schema, txManager } from "../../db/index.js";
 const { bookmarks, bookmarksTags, tags } = schema;
 
 import isUrl from "is-url";
-import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { batchGetTags, formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import {
+  buildCursorCondition,
+  encodeCursor,
+  type CursorPaginatedResponse,
+} from "../pagination.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
@@ -85,6 +91,10 @@ export interface FindBookmarksParams {
   startDate?: Date;
   endDate?: Date;
   limit?: number;
+  offset?: number;
+  cursor?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
   dueDateStart?: Date;
   dueDateEnd?: Date;
 }
@@ -880,6 +890,9 @@ export async function findBookmarks({
   startDate,
   endDate,
   limit = 50,
+  cursor,
+  sortBy = "createdAt",
+  sortDir = "desc",
   dueDateStart,
   dueDateEnd,
 }: FindBookmarksParams) {
@@ -893,7 +906,78 @@ export async function findBookmarks({
       dueDateEnd,
     });
 
-    const query = db
+    // Resolve sort column
+    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
+    const sortColumnMap: Record<string, any> = {
+      createdAt: bookmarks.createdAt,
+      title: bookmarks.title,
+    };
+    const sortColumn = sortColumnMap[sortBy] || bookmarks.createdAt;
+    const orderDir = sortDir === "asc" ? asc : desc;
+
+    // Add cursor condition if paginating
+    if (cursor) {
+      conditions.push(
+        buildCursorCondition(sortColumn, bookmarks.id, cursor, sortDir),
+      );
+    }
+
+    // Determine final IDs with tag filtering BEFORE applying limit
+    let finalIds: string[];
+    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+
+    if (tagsList && tagsList.length > 0) {
+      // Find all IDs matching base conditions
+      const baseMatched = await db
+        .select({ id: bookmarks.id })
+        .from(bookmarks)
+        .where(and(...conditions));
+      const baseIds = baseMatched.map((e) => e.id);
+      if (baseIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+
+      // Filter to IDs that have ALL required tags
+      const withAllTags = await db
+        .select({ bookmarkId: bookmarksTags.bookmarkId })
+        .from(bookmarksTags)
+        .innerJoin(tags, eq(bookmarksTags.tagId, tags.id))
+        .where(
+          and(
+            inArray(bookmarksTags.bookmarkId, baseIds),
+            eq(tags.userId, userId),
+            inArray(tags.name, tagsList),
+          ),
+        )
+        .groupBy(bookmarksTags.bookmarkId)
+        .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
+      const taggedIds = withAllTags.map((e) => e.bookmarkId);
+      if (taggedIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+
+      // Apply sort + limit on the filtered set
+      const sorted = await db
+        .select({ id: bookmarks.id })
+        .from(bookmarks)
+        .where(inArray(bookmarks.id, taggedIds))
+        .orderBy(orderDir(sortColumn), orderDir(bookmarks.id))
+        .limit(fetchLimit);
+      finalIds = sorted.map((e) => e.id);
+    } else {
+      const matched = await db
+        .select({ id: bookmarks.id })
+        .from(bookmarks)
+        .where(and(...conditions))
+        .orderBy(orderDir(sortColumn), orderDir(bookmarks.id))
+        .limit(fetchLimit);
+      finalIds = matched.map((e) => e.id);
+    }
+
+    if (finalIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+
+    // Check hasMore before trimming
+    const hasMore = finalIds.length > limit;
+    if (hasMore) finalIds = finalIds.slice(0, limit);
+
+    // Fetch full data for the final page of IDs
+    const entriesList = await db
       .select({
         id: bookmarks.id,
         title: bookmarks.title,
@@ -914,57 +998,50 @@ export async function findBookmarks({
         queueJobs,
         eq(queueJobs.key, sql`'bookmarks:' || ${bookmarks.id}`),
       )
-      .where(and(...conditions))
-      .orderBy(desc(bookmarks.createdAt))
-      .limit(limit);
+      .where(inArray(bookmarks.id, finalIds))
+      .orderBy(orderDir(sortColumn), orderDir(bookmarks.id));
 
-    let entriesList = await query;
-
-    if (tagsList && tagsList.length > 0) {
-      const entryIds = entriesList.map((e) => e.id);
-      if (entryIds.length === 0) return [];
-
-      const entriesWithAllTags = await db
-        .select({ bookmarkId: bookmarksTags.bookmarkId })
-        .from(bookmarksTags)
-        .innerJoin(tags, eq(bookmarksTags.tagId, tags.id))
-        .where(
-          and(
-            inArray(bookmarksTags.bookmarkId, entryIds),
-            eq(tags.userId, userId),
-            inArray(tags.name, tagsList),
-          ),
-        )
-        .groupBy(bookmarksTags.bookmarkId)
-        .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
-
-      const filteredEntryIds = new Set(entriesWithAllTags.map((e) => e.bookmarkId));
-      entriesList = entriesList.filter((entry) =>
-        filteredEntryIds.has(entry.id),
-      );
-    }
-
-    return await Promise.all(
-      entriesList.map(async (entry) => ({
-        id: entry.id,
-        title: entry.title,
-        url: entry.originalUrl, // Return originalUrl as 'url' for consistency
-        description: entry.description,
-        date: formatToISO8601(entry.createdAt),
-        dueDate: entry.dueDate ? formatToISO8601(entry.dueDate) : null,
-        reviewStatus: entry.reviewStatus,
-        flagColor: entry.flagColor,
-        isPinned: entry.isPinned,
-        processingStatus: entry.status || null,
-        thumbnailUrl: entry.thumbnailStorageId
-          ? `/api/bookmarks/${entry.id}/thumbnail`
-          : null,
-        faviconUrl: entry.faviconStorageId
-          ? `/api/bookmarks/${entry.id}/favicon`
-          : null,
-        tags: await getBookmarkTags(entry.id),
-      })),
+    // Batch-load tags for all entries in one query
+    const tagMap = await batchGetTags(
+      bookmarksTags,
+      bookmarksTags.bookmarkId,
+      bookmarksTags.tagId,
+      finalIds,
     );
+
+    const items = entriesList.map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      url: entry.originalUrl,
+      description: entry.description,
+      date: formatToISO8601(entry.createdAt),
+      dueDate: entry.dueDate ? formatToISO8601(entry.dueDate) : null,
+      reviewStatus: entry.reviewStatus,
+      flagColor: entry.flagColor,
+      isPinned: entry.isPinned,
+      processingStatus: entry.status || null,
+      thumbnailUrl: entry.thumbnailStorageId
+        ? `/api/bookmarks/${entry.id}/thumbnail`
+        : null,
+      faviconUrl: entry.faviconStorageId
+        ? `/api/bookmarks/${entry.id}/favicon`
+        : null,
+      tags: tagMap.get(entry.id) ?? [],
+    }));
+
+    // Build cursor from the last item
+    const lastItem = items[items.length - 1];
+    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
+    const getSortVal = (item: any) => {
+      if (sortBy === "title") return item.title;
+      return item.date; // createdAt formatted as ISO string
+    };
+    const nextCursor =
+      hasMore && lastItem
+        ? encodeCursor(getSortVal(lastItem), lastItem.id)
+        : null;
+
+    return { items, nextCursor, hasMore };
   } catch (error) {
     logger.error(
       {
@@ -1053,15 +1130,24 @@ export async function countBookmarks({
   }
 }
 
-/** Runs findBookmarks and countBookmarks in parallel, returning both. */
-export async function findBookmarksWithCount(
+/**
+ * Runs findBookmarks and (on first page only) countBookmarks in parallel.
+ * Returns a cursor-paginated response.
+ */
+export async function findBookmarksPaginated(
   params: FindBookmarksParams,
-): Promise<{ items: Awaited<ReturnType<typeof findBookmarks>>; totalCount: number }> {
-  const [items, totalCount] = await Promise.all([
-    findBookmarks(params),
-    countBookmarks(params),
-  ]);
-  return { items, totalCount };
+): Promise<CursorPaginatedResponse<Awaited<ReturnType<typeof findBookmarks>>["items"][number]>> {
+  const isFirstPage = !params.cursor;
+
+  if (isFirstPage) {
+    const [result, totalCount] = await Promise.all([
+      findBookmarks(params),
+      countBookmarks(params),
+    ]);
+    return { ...result, totalCount };
+  }
+
+  return findBookmarks(params);
 }
 
 async function getBookmarkTags(bookmarkId: string): Promise<string[]> {

@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import type React from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
@@ -30,7 +30,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { ListParams } from "@/hooks/create-crud-hooks";
 import { useDocuments } from "@/hooks/use-documents";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useToast } from "@/hooks/use-toast";
@@ -97,6 +99,7 @@ const ALLOWED_UPLOAD_TYPES = {
 export default function DocumentsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [params, setParams] = useState<ListParams>({});
 
   // Data
   const {
@@ -108,12 +111,31 @@ export default function DocumentsPage() {
     refresh,
     isUpdating,
     isDeleting,
-  } = useDocuments();
+    totalCount,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useDocuments(params);
+
+  const allTags = useMemo(
+    () => [...new Set(entries.flatMap((d) => d.tags))].sort(),
+    [entries],
+  );
 
   // Shared list page state
-  const state = useListPageState(entries, documentsConfig, {
+  const state = useListPageState(entries, allTags, documentsConfig, {
     refresh,
     deleteItem: deleteDocument,
+  });
+
+  useEffect(() => {
+    setParams(state.serverParams);
+  }, [state.serverParams]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
   });
 
   // Page-specific state
@@ -379,7 +401,7 @@ export default function DocumentsPage() {
       emptyMessage="Your document collection is empty."
       emptyFilterMessage="No documents found matching your criteria."
       searchPlaceholder="Search documents..."
-      totalCount={entries.length}
+      totalCount={totalCount ?? entries.length}
       filteredCount={state.sortedItems.length}
       isLoading={isLoading}
       error={error instanceof Error ? error : error ? new Error(String(error)) : null}
@@ -418,6 +440,15 @@ export default function DocumentsPage() {
               )
             }
           />
+        ) : undefined
+      }
+      loadMoreSentinel={
+        hasNextPage ? (
+          <div ref={sentinelRef} className="flex justify-center py-4">
+            {isFetchingNextPage && (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            )}
+          </div>
         ) : undefined
       }
       deleteEntityName="document"

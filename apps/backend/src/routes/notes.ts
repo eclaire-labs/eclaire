@@ -6,7 +6,7 @@ import { parseSearchFields } from "../lib/search-params.js";
 import {
   createNoteEntry,
   deleteNoteEntry,
-  findNotesWithCount,
+  findNotesPaginated,
   getNoteEntryById,
   parseNoteUploadMetadata,
   prepareNoteFromUpload,
@@ -57,20 +57,17 @@ notesRoutes.get(
     const params = NoteSearchSchema.parse(c.req.query());
     const parsed = parseSearchFields(params);
 
-    const { items, totalCount } = await findNotesWithCount({
+    const result = await findNotesPaginated({
       userId,
       text: params.text,
       ...parsed,
       limit: params.limit,
-      offset: params.offset,
+      cursor: params.cursor,
+      sortBy: params.sortBy,
+      sortDir: params.sortDir,
     });
 
-    return c.json({
-      items,
-      totalCount,
-      limit: params.limit,
-      offset: params.offset,
-    });
+    return c.json(result);
   }, logger),
 );
 

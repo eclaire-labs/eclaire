@@ -5,6 +5,7 @@ import {
 } from "@eclaire/core";
 import {
   and,
+  asc,
   count,
   desc,
   eq,
@@ -22,9 +23,14 @@ import { db, queueJobs, schema, txManager } from "../../db/index.js";
 const { tags, taskComments, tasks, tasksTags, users } = schema;
 
 import { config } from "../../config/index.js";
-import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { batchGetTags, formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import {
+  buildCursorCondition,
+  encodeCursor,
+  type CursorPaginatedResponse,
+} from "../pagination.js";
 import {
   getNextExecutionTime,
   getQueue,
@@ -49,6 +55,10 @@ export type FindTasksParams = {
   endDate?: Date;
   dueDateStart?: Date;
   dueDateEnd?: Date;
+  offset?: number;
+  cursor?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
 };
 
 // Queue name for task tag_generation jobs (maps to old jobType="tag_generation")
@@ -1869,10 +1879,10 @@ function _buildTaskQueryConditions({
 }
 
 /**
- * Search tasks by text, tags, status, and date range.
+ * Search tasks by text, tags, status, and date range (cursor-based pagination).
  *
  * @param params - {@link FindTasksParams} plus an optional `limit` (default 50).
- * @returns An array of tasks.
+ * @returns Cursor-paginated response of tasks.
  */
 export async function findTasks({
   userId,
@@ -1884,6 +1894,9 @@ export async function findTasks({
   limit = 50,
   dueDateStart,
   dueDateEnd,
+  cursor,
+  sortBy = "createdAt",
+  sortDir = "desc",
 }: FindTasksParams & { limit?: number }) {
   try {
     const conditions = _buildTaskQueryConditions({
@@ -1896,71 +1909,131 @@ export async function findTasks({
       dueDateEnd,
     });
 
-    const query = db
-      .select({
-        task: tasks,
-        status: queueJobs.status,
-      })
-      .from(tasks)
-      .leftJoin(
-        queueJobs,
-        and(
-          eq(queueJobs.key, sql`'tasks:' || ${tasks.id}`),
-          eq(queueJobs.queue, TASK_PROCESSING_QUEUE),
-        ),
-      )
-      .where(and(...conditions))
-      .orderBy(desc(tasks.createdAt))
-      .limit(limit);
+    // Resolve sort column
+    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
+    const sortColumnMap: Record<string, any> = {
+      createdAt: tasks.createdAt,
+      dueDate: tasks.dueDate,
+      status: tasks.status,
+      title: tasks.title,
+    };
+    const sortColumn = sortColumnMap[sortBy] || tasks.createdAt;
+    const orderDir = sortDir === "asc" ? asc : desc;
 
-    // Fetch query results and schedule data in parallel
-    const [entriesListInitial, schedulesMap] = await Promise.all([
-      query,
-      getTaskSchedulesMap(),
-    ]);
+    // Add cursor condition if paginating
+    if (cursor) {
+      conditions.push(
+        buildCursorCondition(sortColumn, tasks.id, cursor, sortDir),
+      );
+    }
 
-    let entriesList = entriesListInitial;
+    // Determine final IDs with tag filtering BEFORE applying limit
+    let finalIds: string[];
+    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
 
     if (tagsList && tagsList.length > 0) {
-      const entryIds = entriesList.map((e) => e.task.id);
-      if (entryIds.length === 0) return [];
+      // Find all IDs matching base conditions
+      const baseMatched = await db
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(and(...conditions));
+      const baseIds = baseMatched.map((e) => e.id);
+      if (baseIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
 
-      const entriesWithAllTags = await db
+      // Filter to IDs that have ALL required tags
+      const withAllTags = await db
         .select({ taskId: tasksTags.taskId })
         .from(tasksTags)
         .innerJoin(tags, eq(tasksTags.tagId, tags.id))
         .where(
           and(
-            inArray(tasksTags.taskId, entryIds),
+            inArray(tasksTags.taskId, baseIds),
             eq(tags.userId, userId),
             inArray(tags.name, tagsList),
           ),
         )
         .groupBy(tasksTags.taskId)
         .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
+      const taggedIds = withAllTags.map((e) => e.taskId);
+      if (taggedIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
 
-      const filteredEntryIds = new Set(entriesWithAllTags.map((e) => e.taskId));
-      entriesList = entriesList.filter((entry) =>
-        filteredEntryIds.has(entry.task.id),
-      );
+      // Apply sort + limit on the filtered set
+      const sorted = await db
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(inArray(tasks.id, taggedIds))
+        .orderBy(orderDir(sortColumn), orderDir(tasks.id))
+        .limit(fetchLimit);
+      finalIds = sorted.map((e) => e.id);
+    } else {
+      const matched = await db
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(and(...conditions))
+        .orderBy(orderDir(sortColumn), orderDir(tasks.id))
+        .limit(fetchLimit);
+      finalIds = matched.map((e) => e.id);
     }
 
-    const resultsWithTags = await Promise.all(
-      entriesList.map(async (result) => {
-        const task = result.task;
-        const entryTagNames = await getTaskTags(task.id);
-        const scheduleData = schedulesMap.get(task.id) || null;
-        return cleanTaskForResponse(
-          task,
-          entryTagNames,
-          result.status,
-          [],
-          scheduleData,
-        );
-      }),
-    );
+    if (finalIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
 
-    return resultsWithTags;
+    // Check hasMore before trimming
+    const hasMore = finalIds.length > limit;
+    if (hasMore) finalIds = finalIds.slice(0, limit);
+
+    // Fetch full data for the final page of IDs, schedule data, and tags in parallel
+    const [entriesList, schedulesMap, tagMap] = await Promise.all([
+      db
+        .select({
+          task: tasks,
+          status: queueJobs.status,
+        })
+        .from(tasks)
+        .leftJoin(
+          queueJobs,
+          and(
+            eq(queueJobs.key, sql`'tasks:' || ${tasks.id}`),
+            eq(queueJobs.queue, TASK_PROCESSING_QUEUE),
+          ),
+        )
+        .where(inArray(tasks.id, finalIds))
+        .orderBy(orderDir(sortColumn), orderDir(tasks.id)),
+      getTaskSchedulesMap(),
+      batchGetTags(
+        tasksTags,
+        tasksTags.taskId,
+        tasksTags.tagId,
+        finalIds,
+      ),
+    ]);
+
+    const items = entriesList.map((result) => {
+      const task = result.task;
+      const scheduleData = schedulesMap.get(task.id) || null;
+      return cleanTaskForResponse(
+        task,
+        tagMap.get(task.id) ?? [],
+        result.status,
+        [],
+        scheduleData,
+      );
+    });
+
+    // Build cursor from the last item
+    const lastItem = items[items.length - 1];
+    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
+    const getSortVal = (item: any) => {
+      if (sortBy === "title") return item.title;
+      if (sortBy === "dueDate") return item.dueDate;
+      if (sortBy === "status") return item.status;
+      return item.createdAt; // createdAt formatted as ISO string
+    };
+    const nextCursor =
+      hasMore && lastItem
+        ? encodeCursor(getSortVal(lastItem), lastItem.id)
+        : null;
+
+    return { items, nextCursor, hasMore };
   } catch (error) {
     logger.error(
       {
@@ -2061,15 +2134,24 @@ export async function countTasks({
   }
 }
 
-/** Runs findTasks and countTasks in parallel, returning both. */
-export async function findTasksWithCount(
+/**
+ * Runs findTasks and (on first page only) countTasks in parallel.
+ * Returns a cursor-paginated response.
+ */
+export async function findTasksPaginated(
   params: FindTasksParams & { limit?: number },
-): Promise<{ items: Awaited<ReturnType<typeof findTasks>>; totalCount: number }> {
-  const [items, totalCount] = await Promise.all([
-    findTasks(params),
-    countTasks(params),
-  ]);
-  return { items, totalCount };
+): Promise<CursorPaginatedResponse<Awaited<ReturnType<typeof findTasks>>["items"][number]>> {
+  const isFirstPage = !params.cursor;
+
+  if (isFirstPage) {
+    const [result, totalCount] = await Promise.all([
+      findTasks(params),
+      countTasks(params),
+    ]);
+    return { ...result, totalCount };
+  }
+
+  return findTasks(params);
 }
 
 /**

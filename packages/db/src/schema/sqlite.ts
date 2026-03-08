@@ -214,6 +214,20 @@ export const tasks = sqliteTable(
     dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
     isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
     completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
+    // Composite indexes for cursor pagination
+    userCreatedAtIdx: index("tasks_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userDueDateIdx: index("tasks_user_id_due_date_idx").on(
+      table.userId,
+      table.dueDate,
+    ),
+    userStatusCreatedAtIdx: index("tasks_user_id_status_created_at_idx").on(
+      table.userId,
+      table.status,
+      table.createdAt,
+    ),
   }),
 );
 
@@ -311,6 +325,15 @@ export const bookmarks = sqliteTable(
       table.userId,
       table.normalizedUrl,
     ),
+    // Composite indexes for cursor pagination
+    userCreatedAtIdx: index("bookmarks_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userTitleIdx: index("bookmarks_user_id_title_idx").on(
+      table.userId,
+      table.title,
+    ),
   }),
 );
 
@@ -360,6 +383,19 @@ export const documents = sqliteTable(
   (table) => ({
     userIdx: index("documents_user_id_idx").on(table.userId),
     isPinnedIdx: index("documents_is_pinned_idx").on(table.isPinned),
+    // Composite indexes for cursor pagination
+    userCreatedAtIdx: index("documents_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userTitleIdx: index("documents_user_id_title_idx").on(
+      table.userId,
+      table.title,
+    ),
+    userUpdatedAtIdx: index("documents_user_id_updated_at_idx").on(
+      table.userId,
+      table.updatedAt,
+    ),
   }),
 );
 
@@ -433,6 +469,19 @@ export const photos = sqliteTable(
     userIdx: index("photos_user_id_idx").on(table.userId),
     isPinnedIdx: index("photos_is_pinned_idx").on(table.isPinned),
     dateTakenIdx: index("photos_date_taken_idx").on(table.dateTaken),
+    // Composite indexes for cursor pagination
+    userCreatedAtIdx: index("photos_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userDateTakenIdx: index("photos_user_id_date_taken_idx").on(
+      table.userId,
+      table.dateTaken,
+    ),
+    userTitleIdx: index("photos_user_id_title_idx").on(
+      table.userId,
+      table.title,
+    ),
   }),
 );
 
@@ -472,6 +521,15 @@ export const notes = sqliteTable(
   (table) => ({
     userIdx: index("notes_user_id_idx").on(table.userId),
     isPinnedIdx: index("notes_is_pinned_idx").on(table.isPinned),
+    // Composite indexes for cursor pagination
+    userCreatedAtIdx: index("notes_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userTitleIdx: index("notes_user_id_title_idx").on(
+      table.userId,
+      table.title,
+    ),
   }),
 );
 

@@ -219,6 +219,20 @@ export const tasks = pgTable(
     userEnabledIdx: index("tasks_user_id_enabled_idx")
       .on(table.userId)
       .where(sql`enabled = true`),
+    // Composite indexes for cursor pagination
+    userCreatedAtIdx: index("tasks_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userDueDateIdx: index("tasks_user_id_due_date_idx").on(
+      table.userId,
+      table.dueDate,
+    ),
+    userStatusCreatedAtIdx: index("tasks_user_id_status_created_at_idx").on(
+      table.userId,
+      table.status,
+      table.createdAt,
+    ),
   }),
 );
 
@@ -320,6 +334,15 @@ export const bookmarks = pgTable(
     userEnabledIdx: index("bookmarks_user_id_enabled_idx")
       .on(table.userId)
       .where(sql`enabled = true`),
+    // Composite indexes for cursor pagination
+    userCreatedAtIdx: index("bookmarks_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userTitleIdx: index("bookmarks_user_id_title_idx").on(
+      table.userId,
+      table.title,
+    ),
   }),
 );
 
@@ -373,6 +396,19 @@ export const documents = pgTable(
     userEnabledIdx: index("documents_user_id_enabled_idx")
       .on(table.userId)
       .where(sql`enabled = true`),
+    // Composite indexes for cursor pagination
+    userCreatedAtIdx: index("documents_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userTitleIdx: index("documents_user_id_title_idx").on(
+      table.userId,
+      table.title,
+    ),
+    userUpdatedAtIdx: index("documents_user_id_updated_at_idx").on(
+      table.userId,
+      table.updatedAt,
+    ),
   }),
 );
 
@@ -448,6 +484,19 @@ export const photos = pgTable(
     userEnabledIdx: index("photos_user_id_enabled_idx")
       .on(table.userId)
       .where(sql`enabled = true`),
+    // Composite indexes for cursor pagination
+    userCreatedAtIdx: index("photos_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userDateTakenIdx: index("photos_user_id_date_taken_idx").on(
+      table.userId,
+      table.dateTaken,
+    ),
+    userTitleIdx: index("photos_user_id_title_idx").on(
+      table.userId,
+      table.title,
+    ),
   }),
 );
 
@@ -491,6 +540,15 @@ export const notes = pgTable(
     userEnabledIdx: index("notes_user_id_enabled_idx")
       .on(table.userId)
       .where(sql`enabled = true`),
+    // Composite indexes for cursor pagination
+    userCreatedAtIdx: index("notes_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userTitleIdx: index("notes_user_id_title_idx").on(
+      table.userId,
+      table.title,
+    ),
   }),
 );
 

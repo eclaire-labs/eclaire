@@ -55,7 +55,7 @@ export const findTasksTool = tool<typeof inputSchema, BackendAgentContext>({
     });
     return {
       success: true,
-      content: JSON.stringify(results, null, 2),
+      content: JSON.stringify(results.items, null, 2),
     };
   },
 });

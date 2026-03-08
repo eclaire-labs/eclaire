@@ -43,6 +43,8 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
+import type { ListParams } from "@/hooks/create-crud-hooks";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useTasks } from "@/hooks/use-tasks";
 import { useToast } from "@/hooks/use-toast";
 import { getUsers } from "@/lib/api-users";
@@ -113,6 +115,8 @@ export default function TasksPage() {
   const { openDialog } = routeApi.useSearch();
   const { data: auth } = useAuth();
 
+  const [params, setParams] = useState<ListParams>({});
+
   // Data
   const {
     tasks,
@@ -125,7 +129,16 @@ export default function TasksPage() {
     refresh,
     isUpdating,
     isDeleting,
-  } = useTasks();
+    totalCount,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useTasks(params);
+
+  const allTags = useMemo(
+    () => [...new Set(tasks.flatMap((t) => t.tags))].sort(),
+    [tasks],
+  );
 
   // Users for assignee dropdown
   const [users, setUsers] = useState<User[]>([]);
@@ -187,9 +200,19 @@ export default function TasksPage() {
     }, [tasks, users]);
 
   // Shared list page state
-  const state = useListPageState(tasks, tasksConfig, {
+  const state = useListPageState(tasks, allTags, tasksConfig, {
     refresh,
     deleteItem: deleteTask,
+  });
+
+  useEffect(() => {
+    setParams(state.serverParams);
+  }, [state.serverParams]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
   });
 
   // Page-specific state
@@ -546,7 +569,7 @@ export default function TasksPage() {
       emptyMessage="Your task collection is empty. Create your first task to get started organizing your work."
       emptyFilterMessage="No tasks found matching your criteria."
       searchPlaceholder="Search tasks..."
-      totalCount={tasks.length}
+      totalCount={totalCount ?? tasks.length}
       filteredCount={state.sortedItems.length}
       isLoading={isLoading}
       error={
@@ -567,6 +590,15 @@ export default function TasksPage() {
         >
           <Plus className="mr-2 h-4 w-4" /> New Task
         </Button>
+      }
+      loadMoreSentinel={
+        hasNextPage ? (
+          <div ref={sentinelRef} className="flex justify-center py-4">
+            {isFetchingNextPage && (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            )}
+          </div>
+        ) : undefined
       }
       deleteEntityName="task"
       isDeleting={isDeleting}

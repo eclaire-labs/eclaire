@@ -2,6 +2,7 @@ import type { Buffer } from "node:buffer"; // Node.js Buffer
 import { Readable } from "node:stream";
 import {
   and,
+  asc,
   count,
   desc,
   eq,
@@ -15,13 +16,18 @@ import exifr from "exifr"; // <-- Import exifr
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
-import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { batchGetTags, formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 
 const { photos, photosTags, tags } = schema;
 
 import { generateHistoryId, generatePhotoId } from "@eclaire/core";
 import { ForbiddenError, NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import {
+  buildCursorCondition,
+  encodeCursor,
+  type CursorPaginatedResponse,
+} from "../pagination.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
 import { recordHistory } from "./history.js"; // Assuming this service exists and is configured
@@ -847,11 +853,18 @@ export async function getAllPhotos(userId: string) {
       .where(eq(photos.userId, userId))
       .orderBy(desc(photos.createdAt)); // Order by creation date
 
+    // Batch-load tags for all photos in one query (fixes N+1)
+    const photoIds = entriesList.map((r) => r.photo.id);
+    const tagMap = await batchGetTags(
+      photosTags,
+      photosTags.photoId,
+      photosTags.tagId,
+      photoIds,
+    );
+
     // Process results to include tags and processing status
-    const entriesWithTags = await Promise.all(
-      entriesList.map(async (result) => {
+    const entriesWithTags = entriesList.map((result) => {
         const photo = result.photo;
-        const tags = await getPhotoTags(photo.id);
 
         // The main `imageUrl` will now always point to the smart `/view` endpoint.
         const imageUrl = `/api/photos/${photo.id}/view`; // Simplified
@@ -884,7 +897,7 @@ export async function getAllPhotos(userId: string) {
           updatedAt: formatToISO8601(photo.updatedAt),
           dateTaken: photo.dateTaken ? formatToISO8601(photo.dateTaken) : null,
           deviceId: photo.deviceId,
-          tags: tags,
+          tags: tagMap.get(photo.id) ?? [],
           // EXIF Data
           cameraMake: photo.cameraMake,
           cameraModel: photo.cameraModel,
@@ -923,8 +936,7 @@ export async function getAllPhotos(userId: string) {
           isPinned: photo.isPinned || false,
           enabled: photo.enabled || false,
         };
-      }),
-    );
+      });
 
     return entriesWithTags;
   } catch (error) {
@@ -958,6 +970,10 @@ export interface FindPhotosParams {
   locationCity?: string;
   dateField?: "createdAt" | "dateTaken";
   limit?: number;
+  offset?: number;
+  cursor?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
   dueDateStart?: Date;
   dueDateEnd?: Date;
 }
@@ -1039,7 +1055,7 @@ function _buildPhotoQueryConditions({
 
 /**
  * Finds photos matching specific criteria (tags, date range, location).
- * @returns An array of matching photo details.
+ * Returns a cursor-paginated result with items, nextCursor, and hasMore.
  */
 export async function findPhotos({
   userId,
@@ -1049,6 +1065,9 @@ export async function findPhotos({
   locationCity,
   dateField = "createdAt",
   limit = 50,
+  cursor,
+  sortBy = "createdAt",
+  sortDir = "desc",
   dueDateStart,
   dueDateEnd,
 }: FindPhotosParams) {
@@ -1062,9 +1081,26 @@ export async function findPhotos({
       dueDateStart,
       dueDateEnd,
     });
+
+    // Resolve sort column
+    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
+    const sortColumnMap: Record<string, any> = {
+      createdAt: photos.createdAt,
+      dateTaken: photos.dateTaken,
+      title: photos.title,
+    };
+    const sortColumn = sortColumnMap[sortBy] || photos.createdAt;
+    const orderDir = sortDir === "asc" ? asc : desc;
+
+    // Add cursor condition if paginating
+    if (cursor) {
+      conditions.push(
+        buildCursorCondition(sortColumn, photos.id, cursor, sortDir),
+      );
+    }
+
     let finalPhotoIds: string[];
-    const orderByColumn =
-      dateField === "dateTaken" ? photos.dateTaken : photos.createdAt;
+    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
 
     // If filtering by tags:
     if (tagsList && tagsList.length > 0) {
@@ -1075,7 +1111,7 @@ export async function findPhotos({
         .where(and(...conditions));
 
       const basePhotoIds = baseMatchedPhotos.map((p) => p.id);
-      if (basePhotoIds.length === 0) return []; // No photos match base criteria
+      if (basePhotoIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
 
       // Find which of those photos have ALL the required tags
       const photosWithAllTags = await db
@@ -1095,13 +1131,13 @@ export async function findPhotos({
       const taggedPhotoIds = photosWithAllTags.map((p) => p.photoId);
 
       // Need to re-query to apply ordering and limit *after* tag filtering
-      if (taggedPhotoIds.length === 0) return [];
+      if (taggedPhotoIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
       const finalPhotos = await db
         .select({ id: photos.id })
         .from(photos)
-        .where(inArray(photos.id, taggedPhotoIds)) // Filter by IDs that have the tags
-        .orderBy(desc(orderByColumn)) // Order the final set
-        .limit(limit);
+        .where(inArray(photos.id, taggedPhotoIds))
+        .orderBy(orderDir(sortColumn), orderDir(photos.id))
+        .limit(fetchLimit);
       finalPhotoIds = finalPhotos.map((p) => p.id);
     } else {
       // No tag filter, just apply base conditions and limit/order
@@ -1109,12 +1145,16 @@ export async function findPhotos({
         .select({ id: photos.id })
         .from(photos)
         .where(and(...conditions))
-        .orderBy(desc(orderByColumn)) // Order before limiting
-        .limit(limit);
+        .orderBy(orderDir(sortColumn), orderDir(photos.id))
+        .limit(fetchLimit);
       finalPhotoIds = matchedPhotos.map((p) => p.id);
     }
 
-    if (finalPhotoIds.length === 0) return [];
+    if (finalPhotoIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+
+    // Check hasMore before trimming
+    const hasMore = finalPhotoIds.length > limit;
+    if (hasMore) finalPhotoIds = finalPhotoIds.slice(0, limit);
 
     // Fetch full details with processing status using single query with JOIN
     const entriesList = await db
@@ -1125,13 +1165,20 @@ export async function findPhotos({
       .from(photos)
       .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
       .where(inArray(photos.id, finalPhotoIds))
-      .orderBy(desc(orderByColumn)); // Maintain the same ordering
+      .orderBy(orderDir(sortColumn), orderDir(photos.id));
+
+    // Batch-load tags for all photos in one query (fixes N+1)
+    const batchPhotoIds = entriesList.map((r) => r.photo.id);
+    const tagMap = await batchGetTags(
+      photosTags,
+      photosTags.photoId,
+      photosTags.tagId,
+      batchPhotoIds,
+    );
 
     // Process results to include tags and processing status
-    const entriesWithTags = await Promise.all(
-      entriesList.map(async (result) => {
+    const items = entriesList.map((result) => {
         const photo = result.photo;
-        const tags = await getPhotoTags(photo.id);
 
         // The main `imageUrl` will now always point to the smart `/view` endpoint.
         const imageUrl = `/api/photos/${photo.id}/view`; // Simplified
@@ -1164,7 +1211,7 @@ export async function findPhotos({
           updatedAt: formatToISO8601(photo.updatedAt),
           dateTaken: photo.dateTaken ? formatToISO8601(photo.dateTaken) : null,
           deviceId: photo.deviceId,
-          tags: tags,
+          tags: tagMap.get(photo.id) ?? [],
           // EXIF Data
           cameraMake: photo.cameraMake,
           cameraModel: photo.cameraModel,
@@ -1203,10 +1250,22 @@ export async function findPhotos({
           isPinned: photo.isPinned || false,
           enabled: photo.enabled || false,
         };
-      }),
-    );
+      });
 
-    return entriesWithTags;
+    // Build cursor from the last item
+    const lastItem = items[items.length - 1];
+    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
+    const getSortVal = (item: any) => {
+      if (sortBy === "title") return item.title;
+      if (sortBy === "dateTaken") return item.dateTaken;
+      return item.createdAt; // createdAt formatted as ISO string
+    };
+    const nextCursor =
+      hasMore && lastItem
+        ? encodeCursor(getSortVal(lastItem), lastItem.id)
+        : null;
+
+    return { items, nextCursor, hasMore };
   } catch (error) {
     handleServiceError(error, "Failed to search photos");
   }
@@ -1277,15 +1336,24 @@ export async function countPhotos({
   }
 }
 
-/** Runs findPhotos and countPhotos in parallel, returning both. */
-export async function findPhotosWithCount(
+/**
+ * Runs findPhotos and (on first page only) countPhotos in parallel.
+ * Returns a cursor-paginated response.
+ */
+export async function findPhotosPaginated(
   params: FindPhotosParams,
-): Promise<{ items: Awaited<ReturnType<typeof findPhotos>>; totalCount: number }> {
-  const [items, totalCount] = await Promise.all([
-    findPhotos(params),
-    countPhotos(params),
-  ]);
-  return { items, totalCount };
+): Promise<CursorPaginatedResponse<Awaited<ReturnType<typeof findPhotos>>["items"][number]>> {
+  const isFirstPage = !params.cursor;
+
+  if (isFirstPage) {
+    const [result, totalCount] = await Promise.all([
+      findPhotos(params),
+      countPhotos(params),
+    ]);
+    return { ...result, totalCount };
+  }
+
+  return findPhotos(params);
 }
 
 // --- Helper Functions (getPhotoTags, addTagsToPhoto, Error Handling) ---

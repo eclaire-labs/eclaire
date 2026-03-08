@@ -7,7 +7,7 @@ import { parseDeleteStorage, parseSearchFields } from "../lib/search-params.js";
 import {
   createDocument,
   deleteDocument,
-  findDocumentsWithCount,
+  findDocumentsPaginated,
   getDocumentAsset,
   getDocumentById,
   reprocessDocument,
@@ -62,25 +62,21 @@ documentsRoutes.get(
     const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
       parseSearchFields(params);
 
-    const { items, totalCount } = await findDocumentsWithCount({
+    const result = await findDocumentsPaginated({
       userId,
       text: params.text,
       tags,
       startDate,
       endDate,
       limit: params.limit,
+      cursor: params.cursor,
       sortBy: params.sortBy,
       sortDir: params.sortDir,
       dueDateStart,
       dueDateEnd,
     });
 
-    return c.json({
-      items,
-      totalCount,
-      limit: params.limit,
-      offset: params.offset,
-    });
+    return c.json(result);
   }, logger),
 );
 

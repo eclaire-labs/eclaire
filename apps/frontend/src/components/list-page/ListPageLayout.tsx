@@ -65,6 +65,8 @@ export interface ListPageLayoutProps<TItem extends ListableItem> {
   deleteDialogExtra?: React.ReactNode;
   /** Page-specific dialogs rendered after content. */
   dialogs?: React.ReactNode;
+  /** Infinite scroll sentinel rendered below content. */
+  loadMoreSentinel?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -98,6 +100,7 @@ export function ListPageLayout<TItem extends ListableItem>({
   isDeleting,
   deleteDialogExtra,
   dialogs,
+  loadMoreSentinel,
   children,
 }: ListPageLayoutProps<TItem>) {
   const content = isLoading ? (
@@ -292,6 +295,9 @@ export function ListPageLayout<TItem extends ListableItem>({
 
       {/* Main content area */}
       {content}
+
+      {/* Infinite scroll sentinel */}
+      {loadMoreSentinel}
 
       {/* Delete confirmation dialog */}
       <DeleteConfirmationDialog

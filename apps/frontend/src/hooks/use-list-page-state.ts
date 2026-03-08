@@ -6,6 +6,8 @@ import {
   useViewPreferences,
 } from "@/hooks/use-view-preferences";
 import { setFlagColor, togglePin } from "@/lib/api-content";
+import { useDebouncedValue } from "./use-debounced-value";
+import type { ListParams } from "./create-crud-hooks";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -33,17 +35,17 @@ export type ContentType =
   | "photos"
   | "documents";
 
-export interface SortOption<TItem> {
+export interface SortOption {
   value: string;
   label: string;
-  compareFn: (a: TItem, b: TItem, dir: "asc" | "desc") => number;
 }
 
-export interface ExtraFilterDef<TItem> {
+export interface ExtraFilterDef {
   key: string;
   label: string;
   initialValue: string;
-  matchFn: (item: TItem, filterValue: string) => boolean;
+  /** Options for the filter dropdown. */
+  options?: { value: string; label: string }[];
 }
 
 /** Per-page static configuration object. */
@@ -52,9 +54,8 @@ export interface ListPageConfig<TItem extends ListableItem> {
   contentType: ContentType;
   entityName: string;
   entityNamePlural: string;
-  getSearchableText: (item: TItem) => string[];
-  extraFilters?: ExtraFilterDef<TItem>[];
-  sortOptions: SortOption<TItem>[];
+  sortOptions: SortOption[];
+  extraFilters?: ExtraFilterDef[];
   /** Which sortBy keys should trigger date-based grouping. */
   groupableSortKeys: string[];
   /** Extract the date value to group by, given the current sortBy key. */
@@ -84,8 +85,10 @@ export interface ListPageState<TItem extends ListableItem> {
   allTags: string[];
   activeFilterCount: number;
 
-  // Computed data
-  filteredItems: TItem[];
+  // Server params (to pass to the CRUD hook)
+  serverParams: ListParams;
+
+  // Items come from the server (passed through, not filtered/sorted locally)
   sortedItems: TItem[];
   isGrouped: boolean;
 
@@ -127,6 +130,7 @@ export interface ListPageState<TItem extends ListableItem> {
 
 export function useListPageState<TItem extends ListableItem>(
   items: TItem[],
+  allTags: string[],
   config: ListPageConfig<TItem>,
   operations: ListPageOperations,
 ): ListPageState<TItem> {
@@ -151,6 +155,9 @@ export function useListPageState<TItem extends ListableItem>(
     return init;
   });
 
+  // Debounce search for server requests
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
+
   // UI state
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
@@ -163,12 +170,6 @@ export function useListPageState<TItem extends ListableItem>(
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Derived: all unique tags
-  const allTags = useMemo(
-    () => Array.from(new Set(items.flatMap((item) => item.tags ?? []))),
-    [items],
-  );
-
   // Derived: active filter count (for mobile badge)
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -179,40 +180,30 @@ export function useListPageState<TItem extends ListableItem>(
     return count;
   }, [filterTag, extraFilterState, config.extraFilters]);
 
-  // Derived: filtered items
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      // Search match
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const texts = config.getSearchableText(item);
-        const matchesSearch = texts.some(
-          (text) => text?.toLowerCase().includes(q),
-        );
-        if (!matchesSearch) return false;
+  // Build server params from current state
+  const serverParams: ListParams = useMemo(() => {
+    const params: ListParams = {
+      sortBy,
+      sortDir,
+    };
+    if (debouncedSearch) {
+      params.text = debouncedSearch;
+    }
+    if (filterTag !== "all") {
+      params.tags = filterTag;
+    }
+    // Include extra filters that aren't at their initial value
+    for (const f of config.extraFilters ?? []) {
+      const val = extraFilterState[f.key];
+      if (val && val !== f.initialValue) {
+        params[f.key] = val;
       }
+    }
+    return params;
+  }, [sortBy, sortDir, debouncedSearch, filterTag, extraFilterState, config.extraFilters]);
 
-      // Tag filter
-      if (filterTag !== "all" && !(item.tags ?? []).includes(filterTag)) {
-        return false;
-      }
-
-      // Extra filters
-      for (const f of config.extraFilters ?? []) {
-        const val = extraFilterState[f.key] ?? f.initialValue;
-        if (!f.matchFn(item, val)) return false;
-      }
-
-      return true;
-    });
-  }, [items, searchQuery, filterTag, extraFilterState, config]);
-
-  // Derived: sorted items
-  const sortedItems = useMemo(() => {
-    const opt = config.sortOptions.find((o) => o.value === sortBy);
-    if (!opt) return filteredItems;
-    return [...filteredItems].sort((a, b) => opt.compareFn(a, b, sortDir));
-  }, [filteredItems, sortBy, sortDir, config.sortOptions]);
+  // Items from server are already sorted — pass through directly
+  const sortedItems = items;
 
   // Derived: should show date group headers?
   const isGrouped = config.groupableSortKeys.includes(sortBy);
@@ -406,7 +397,7 @@ export function useListPageState<TItem extends ListableItem>(
     extraFilters: extraFilterState,
     allTags,
     activeFilterCount,
-    filteredItems,
+    serverParams,
     sortedItems,
     isGrouped,
     focusedIndex,

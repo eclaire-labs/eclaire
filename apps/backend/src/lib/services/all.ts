@@ -434,7 +434,7 @@ export async function findAllEntries(
         limit,
         dueDateStart,
         dueDateEnd,
-      }).then((items) => items.map((item) => ({ ...item, type: "bookmark" }))),
+      }).then((result) => result.items.map((item) => ({ ...item, type: "bookmark" }))),
       findDocuments({
         userId,
         text,
@@ -444,7 +444,7 @@ export async function findAllEntries(
         limit,
         dueDateStart,
         dueDateEnd,
-      }).then((items) => items.map((item) => ({ ...item, type: "document" }))),
+      }).then((result) => result.items.map((item) => ({ ...item, type: "document" }))),
       findNotes({
         userId,
         text,
@@ -454,7 +454,7 @@ export async function findAllEntries(
         limit,
         dueDateStart,
         dueDateEnd,
-      }).then((items) => items.map((item) => ({ ...item, type: "note" }))),
+      }).then((result) => result.items.map((item) => ({ ...item, type: "note" }))),
       findPhotos({
         userId,
         tags: tagsList,
@@ -463,7 +463,7 @@ export async function findAllEntries(
         limit,
         dueDateStart,
         dueDateEnd,
-      }).then((items) => items.map((item) => ({ ...item, type: "photo" }))),
+      }).then((result) => result.items.map((item) => ({ ...item, type: "photo" }))),
       findTasks({
         userId,
         text,
@@ -474,7 +474,7 @@ export async function findAllEntries(
         limit,
         dueDateStart,
         dueDateEnd,
-      }).then((items) => items.map((item) => ({ ...item, type: "task" }))),
+      }).then((result) => result.items.map((item) => ({ ...item, type: "task" }))),
     ];
 
     const results = await Promise.all(promises);

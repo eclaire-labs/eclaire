@@ -273,21 +273,39 @@ export const PhotoSearchParamsSchema = z
     limit: z.coerce
       .number()
       .min(1)
+      .max(200)
       .optional()
       .default(50)
       .meta({
-        description: "Maximum number of photos to return",
-        examples: [25, 50, 100, 9999],
+        description: "Maximum number of photos to return per page",
+        examples: [25, 50, 100],
       }),
 
-    offset: z.coerce
-      .number()
-      .int()
-      .nonnegative()
-      .default(0)
+    cursor: z
+      .string()
+      .optional()
       .meta({
-        description: "Number of results to skip (for pagination)",
-        examples: [0, 10, 50],
+        description:
+          "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
+        examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6InBodF8xMjMifQ"],
+      }),
+
+    sortBy: z
+      .enum(["createdAt", "dateTaken", "title"])
+      .optional()
+      .default("createdAt")
+      .meta({
+        description: "Field to sort photos by",
+        examples: ["createdAt", "dateTaken", "title"],
+      }),
+
+    sortDir: z
+      .enum(["asc", "desc"])
+      .optional()
+      .default("desc")
+      .meta({
+        description: "Sort direction",
+        examples: ["asc", "desc"],
       }),
   })
   .meta({

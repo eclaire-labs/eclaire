@@ -1,6 +1,7 @@
 import { generateHistoryId, generateNoteId } from "@eclaire/core";
 import {
   and,
+  asc,
   count,
   countDistinct,
   desc,
@@ -17,9 +18,14 @@ import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { notes, notesTags, tags } = schema;
 
-import { formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { batchGetTags, formatToISO8601, getOrCreateTags } from "../db-helpers.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import {
+  buildCursorCondition,
+  encodeCursor,
+  type CursorPaginatedResponse,
+} from "../pagination.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { recordHistory } from "./history.js";
 
@@ -456,34 +462,36 @@ export async function getAllNoteEntries(userId: string) {
       .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
       .where(eq(notes.userId, userId));
 
-    // For each entry, get its tags
-    const entriesWithTags = await Promise.all(
-      entriesList.map(async (result) => {
-        const entry = result.note;
-        const entryTagNames = await getNoteEntryTags(entry.id);
-
-        return {
-          id: entry.id,
-          title: entry.title,
-          content: entry.content,
-          description: entry.description,
-          dueDate: entry.dueDate ? formatToISO8601(entry.dueDate) : null,
-          createdAt: formatToISO8601(entry.createdAt),
-          updatedAt: formatToISO8601(entry.updatedAt),
-          processingStatus: result.status || null,
-          reviewStatus: entry.reviewStatus || "pending",
-          flagColor: entry.flagColor,
-          isPinned: entry.isPinned || false,
-          enabled: entry.enabled || false,
-          originalMimeType: entry.originalMimeType,
-          fileSize: null, // Not stored in notes table
-          metadata: entry.rawMetadata,
-          tags: entryTagNames,
-        };
-      }),
+    // Batch-load tags for all entries in one query
+    const noteIds = entriesList.map((r) => r.note.id);
+    const tagMap = await batchGetTags(
+      notesTags,
+      notesTags.noteId,
+      notesTags.tagId,
+      noteIds,
     );
 
-    return entriesWithTags;
+    return entriesList.map((result) => {
+      const entry = result.note;
+      return {
+        id: entry.id,
+        title: entry.title,
+        content: entry.content,
+        description: entry.description,
+        dueDate: entry.dueDate ? formatToISO8601(entry.dueDate) : null,
+        createdAt: formatToISO8601(entry.createdAt),
+        updatedAt: formatToISO8601(entry.updatedAt),
+        processingStatus: result.status || null,
+        reviewStatus: entry.reviewStatus || "pending",
+        flagColor: entry.flagColor,
+        isPinned: entry.isPinned || false,
+        enabled: entry.enabled || false,
+        originalMimeType: entry.originalMimeType,
+        fileSize: null, // Not stored in notes table
+        metadata: entry.rawMetadata,
+        tags: tagMap.get(entry.id) ?? [],
+      };
+    });
   } catch (error) {
     logger.error(
       {
@@ -626,6 +634,9 @@ export interface FindNotesParams {
   dueDateStart?: Date;
   dueDateEnd?: Date;
   offset?: number;
+  cursor?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
 }
 
 /**
@@ -673,9 +684,9 @@ function _buildNoteQueryConditions({
 }
 
 /**
- * Find note entries with optional filters
+ * Find note entries with optional filters (cursor-based pagination).
  * @param params - Search parameters
- * @returns Array of note entries with their tags
+ * @returns Cursor-paginated response of note entries with their tags
  */
 export async function findNotes({
   userId,
@@ -686,7 +697,9 @@ export async function findNotes({
   limit = 50,
   dueDateStart,
   dueDateEnd,
-  offset = 0,
+  cursor,
+  sortBy = "createdAt",
+  sortDir = "desc",
 }: FindNotesParams) {
   try {
     // Build base query conditions
@@ -699,75 +712,128 @@ export async function findNotes({
       dueDateEnd,
     });
 
-    // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from Drizzle query builder
-    let query;
+    // Resolve sort column
+    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
+    const sortColumnMap: Record<string, any> = {
+      createdAt: notes.createdAt,
+      title: notes.title,
+    };
+    const sortColumn = sortColumnMap[sortBy] || notes.createdAt;
+    const orderDir = sortDir === "asc" ? asc : desc;
+
+    // Add cursor condition if paginating
+    if (cursor) {
+      baseConditions.push(
+        buildCursorCondition(sortColumn, notes.id, cursor, sortDir),
+      );
+    }
+
+    // Determine final IDs with tag filtering BEFORE applying limit
+    let finalIds: string[];
+    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
 
     if (tagsList && tagsList.length > 0) {
-      // More complex query when filtering by tags
-      // We need to find note entries that have all the specified tags
-      query = db
-        .selectDistinct({
-          note: notes,
-          status: queueJobs.status,
-        })
+      // Find all IDs matching base conditions
+      const baseMatched = await db
+        .select({ id: notes.id })
         .from(notes)
-        .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
-        .innerJoin(notesTags, eq(notes.id, notesTags.noteId))
+        .where(and(...baseConditions));
+      const baseIds = baseMatched.map((e) => e.id);
+      if (baseIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+
+      // Filter to IDs that have ALL required tags
+      const withAllTags = await db
+        .select({ noteId: notesTags.noteId })
+        .from(notesTags)
         .innerJoin(tags, eq(notesTags.tagId, tags.id))
         .where(
           and(
-            ...baseConditions,
+            inArray(notesTags.noteId, baseIds),
             eq(tags.userId, userId),
             inArray(tags.name, tagsList),
           ),
         )
-        .groupBy(notes.id, queueJobs.status)
-        .having(eq(countDistinct(tags.id), tagsList.length)) // Ensure all tags are present
-        .orderBy(desc(notes.createdAt))
-        .limit(limit)
-        .offset(offset);
-    } else {
-      // Simple query when not filtering by tags
-      query = db
-        .select({
-          note: notes,
-          status: queueJobs.status,
-        })
+        .groupBy(notesTags.noteId)
+        .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
+      const taggedIds = withAllTags.map((e) => e.noteId);
+      if (taggedIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+
+      // Apply sort + limit on the filtered set
+      const sorted = await db
+        .select({ id: notes.id })
         .from(notes)
-        .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
+        .where(inArray(notes.id, taggedIds))
+        .orderBy(orderDir(sortColumn), orderDir(notes.id))
+        .limit(fetchLimit);
+      finalIds = sorted.map((e) => e.id);
+    } else {
+      const matched = await db
+        .select({ id: notes.id })
+        .from(notes)
         .where(and(...baseConditions))
-        .orderBy(desc(notes.createdAt))
-        .limit(limit)
-        .offset(offset);
+        .orderBy(orderDir(sortColumn), orderDir(notes.id))
+        .limit(fetchLimit);
+      finalIds = matched.map((e) => e.id);
     }
 
-    const entriesList = await query;
+    if (finalIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
 
-    // For each entry, get its tags
-    const entriesWithTags = await Promise.all(
-      entriesList.map(async (result) => {
-        const entry = result.note;
-        const entryTagNames = await getNoteEntryTags(entry.id);
+    // Check hasMore before trimming
+    const hasMore = finalIds.length > limit;
+    if (hasMore) finalIds = finalIds.slice(0, limit);
 
-        return {
-          id: entry.id,
-          title: entry.title,
-          content: entry.content,
-          description: entry.description,
-          dueDate: entry.dueDate ? formatToISO8601(entry.dueDate) : null,
-          createdAt: formatToISO8601(entry.createdAt),
-          updatedAt: formatToISO8601(entry.updatedAt),
-          processingStatus: result.status || null,
-          reviewStatus: entry.reviewStatus || "pending",
-          flagColor: entry.flagColor,
-          isPinned: entry.isPinned || false,
-          enabled: entry.enabled || false,
-          tags: entryTagNames,
-        };
-      }),
+    // Fetch full data for the final page of IDs
+    const entriesList = await db
+      .select({
+        note: notes,
+        status: queueJobs.status,
+      })
+      .from(notes)
+      .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
+      .where(inArray(notes.id, finalIds))
+      .orderBy(orderDir(sortColumn), orderDir(notes.id));
+
+    // Batch-load tags for all entries in one query
+    const noteIds = entriesList.map((r) => r.note.id);
+    const tagMap = await batchGetTags(
+      notesTags,
+      notesTags.noteId,
+      notesTags.tagId,
+      noteIds,
     );
 
-    return entriesWithTags;
+    const items = entriesList.map((result) => {
+      const entry = result.note;
+      return {
+        id: entry.id,
+        title: entry.title,
+        content: entry.content,
+        description: entry.description,
+        dueDate: entry.dueDate ? formatToISO8601(entry.dueDate) : null,
+        createdAt: formatToISO8601(entry.createdAt),
+        updatedAt: formatToISO8601(entry.updatedAt),
+        processingStatus: result.status || null,
+        reviewStatus: entry.reviewStatus || "pending",
+        flagColor: entry.flagColor,
+        isPinned: entry.isPinned || false,
+        enabled: entry.enabled || false,
+        tags: tagMap.get(entry.id) ?? [],
+      };
+    });
+
+    // Build cursor from the last item
+    const lastItem = items[items.length - 1];
+    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
+    const getSortVal = (item: any) => {
+      if (sortBy === "title") return item.title;
+      return item.createdAt; // createdAt formatted as ISO string
+    };
+    const nextCursor =
+      hasMore && lastItem
+        ? encodeCursor(getSortVal(lastItem), lastItem.id)
+        : null;
+
+    return { items, nextCursor, hasMore };
   } catch (error) {
     logger.error(
       {
@@ -865,15 +931,24 @@ export async function countNotes({
   }
 }
 
-/** Runs findNotes and countNotes in parallel, returning both. */
-export async function findNotesWithCount(
+/**
+ * Runs findNotes and (on first page only) countNotes in parallel.
+ * Returns a cursor-paginated response.
+ */
+export async function findNotesPaginated(
   params: FindNotesParams,
-): Promise<{ items: Awaited<ReturnType<typeof findNotes>>; totalCount: number }> {
-  const [items, totalCount] = await Promise.all([
-    findNotes(params),
-    countNotes(params),
-  ]);
-  return { items, totalCount };
+): Promise<CursorPaginatedResponse<Awaited<ReturnType<typeof findNotes>>["items"][number]>> {
+  const isFirstPage = !params.cursor;
+
+  if (isFirstPage) {
+    const [result, totalCount] = await Promise.all([
+      findNotes(params),
+      countNotes(params),
+    ]);
+    return { ...result, totalCount };
+  }
+
+  return findNotes(params);
 }
 
 // --- INTERNAL-ONLY SERVICES (Called by Worker) ---

@@ -10,9 +10,11 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import type React from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import type { ViewModeDef } from "@/components/list-page";
+import type { ListParams } from "@/hooks/create-crud-hooks";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { UploadProgressList } from "@/components/shared/UploadProgressList";
@@ -86,6 +88,7 @@ const photosViewModes: ViewModeDef[] = [
 export default function PhotosPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [params, setParams] = useState<ListParams>({});
 
   // Data
   const {
@@ -97,12 +100,31 @@ export default function PhotosPage() {
     refresh,
     isUpdating,
     isDeleting,
-  } = usePhotos();
+    totalCount,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = usePhotos(params);
+
+  const allTags = useMemo(
+    () => [...new Set(photos.flatMap((p) => p.tags))].sort(),
+    [photos],
+  );
 
   // Shared list page state
-  const state = useListPageState(photos, photosConfig, {
+  const state = useListPageState(photos, allTags, photosConfig, {
     refresh,
     deleteItem: deletePhoto,
+  });
+
+  useEffect(() => {
+    setParams(state.serverParams);
+  }, [state.serverParams]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
   });
 
   // Page-specific state
@@ -405,7 +427,7 @@ export default function PhotosPage() {
       emptyMessage="Your photo collection is empty."
       emptyFilterMessage="No photos found matching your criteria."
       searchPlaceholder="Search photos..."
-      totalCount={photos.length}
+      totalCount={totalCount ?? photos.length}
       filteredCount={state.sortedItems.length}
       isLoading={isLoading}
       error={
@@ -462,6 +484,15 @@ export default function PhotosPage() {
               )
             }
           />
+        ) : undefined
+      }
+      loadMoreSentinel={
+        hasNextPage ? (
+          <div ref={sentinelRef} className="flex justify-center py-4">
+            {isFetchingNextPage && (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            )}
+          </div>
         ) : undefined
       }
       deleteEntityName="photo"

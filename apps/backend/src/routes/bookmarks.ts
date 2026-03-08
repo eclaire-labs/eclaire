@@ -6,7 +6,7 @@ import {
   type BookmarkAssetType,
   createBookmarkAndQueueJob,
   deleteBookmark,
-  findBookmarksWithCount,
+  findBookmarksPaginated,
   getBookmarkAssetDetails,
   getBookmarkById,
   reprocessBookmark,
@@ -53,23 +53,21 @@ bookmarksRoutes.get(
     const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
       parseSearchFields(params);
 
-    const { items, totalCount } = await findBookmarksWithCount({
+    const result = await findBookmarksPaginated({
       userId,
       text: params.text,
       tags,
       startDate,
       endDate,
       limit: params.limit,
+      cursor: params.cursor,
+      sortBy: params.sortBy,
+      sortDir: params.sortDir,
       dueDateStart,
       dueDateEnd,
     });
 
-    return c.json({
-      items,
-      totalCount,
-      limit: params.limit,
-      offset: params.offset,
-    });
+    return c.json(result);
   }, logger),
 );
 

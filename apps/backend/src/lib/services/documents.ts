@@ -24,10 +24,16 @@ const { documentsTags, documents: schemaDocuments, tags } = schema;
 import { generateDocumentId, generateHistoryId } from "@eclaire/core";
 import type { ProcessingStatus } from "../../types/assets.js";
 import {
+  batchGetTags,
   formatRequiredTimestamp,
   formatToISO8601,
   getOrCreateTags,
 } from "../db-helpers.js";
+import {
+  buildCursorCondition,
+  encodeCursor,
+  type CursorPaginatedResponse,
+} from "../pagination.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
@@ -104,6 +110,8 @@ export interface FindDocumentsParams {
   startDate?: Date;
   endDate?: Date;
   limit?: number;
+  offset?: number;
+  cursor?: string;
   sortBy?: string;
   sortDir?: "asc" | "desc";
   dueDateStart?: Date;
@@ -549,56 +557,61 @@ export async function getAllDocuments(
       .where(eq(schemaDocuments.userId, userId))
       .orderBy(desc(schemaDocuments.createdAt));
 
-    // Process documents with tags in parallel
-    const results = await Promise.all(
-      documentsList.map(async (result) => {
-        const document = result.document;
-        const documentTagNames = await getDocumentTags(document.id);
-
-        const fileUrl = document.storageId
-          ? `/api/documents/${document.id}/file`
-          : null;
-        const thumbnailUrl = document.thumbnailStorageId
-          ? `/api/documents/${document.id}/thumbnail`
-          : null;
-        const screenshotUrl = document.screenshotStorageId
-          ? `/api/documents/${document.id}/screenshot`
-          : null;
-        const pdfUrl = document.pdfStorageId
-          ? `/api/documents/${document.id}/pdf`
-          : null;
-        const contentUrl = document.extractedMdStorageId
-          ? `/api/documents/${document.id}/content`
-          : null;
-
-        return {
-          id: document.id,
-          title: document.title,
-          description: document.description || null,
-          dueDate: document.dueDate ? formatToISO8601(document.dueDate) : null,
-          originalFilename: document.originalFilename,
-          mimeType: document.mimeType,
-          fileSize: document.fileSize,
-          fileUrl,
-          createdAt: formatRequiredTimestamp(document.createdAt),
-          updatedAt: formatRequiredTimestamp(document.updatedAt),
-          tags: documentTagNames,
-          thumbnailUrl,
-          screenshotUrl,
-          pdfUrl,
-          contentUrl,
-          extractedText: document.extractedText,
-          processingStatus:
-            result.status && typeof result.status === "string"
-              ? result.status
-              : null,
-          reviewStatus: document.reviewStatus || "pending",
-          flagColor: document.flagColor,
-          isPinned: document.isPinned || false,
-          enabled: document.enabled || false,
-        };
-      }),
+    // Batch-load tags for all documents in a single query
+    const docIds = documentsList.map((r) => r.document.id);
+    const tagMap = await batchGetTags(
+      documentsTags,
+      documentsTags.documentId,
+      documentsTags.tagId,
+      docIds,
     );
+
+    const results = documentsList.map((result) => {
+      const document = result.document;
+
+      const fileUrl = document.storageId
+        ? `/api/documents/${document.id}/file`
+        : null;
+      const thumbnailUrl = document.thumbnailStorageId
+        ? `/api/documents/${document.id}/thumbnail`
+        : null;
+      const screenshotUrl = document.screenshotStorageId
+        ? `/api/documents/${document.id}/screenshot`
+        : null;
+      const pdfUrl = document.pdfStorageId
+        ? `/api/documents/${document.id}/pdf`
+        : null;
+      const contentUrl = document.extractedMdStorageId
+        ? `/api/documents/${document.id}/content`
+        : null;
+
+      return {
+        id: document.id,
+        title: document.title,
+        description: document.description || null,
+        dueDate: document.dueDate ? formatToISO8601(document.dueDate) : null,
+        originalFilename: document.originalFilename,
+        mimeType: document.mimeType,
+        fileSize: document.fileSize,
+        fileUrl,
+        createdAt: formatRequiredTimestamp(document.createdAt),
+        updatedAt: formatRequiredTimestamp(document.updatedAt),
+        tags: tagMap.get(document.id) ?? [],
+        thumbnailUrl,
+        screenshotUrl,
+        pdfUrl,
+        contentUrl,
+        extractedText: document.extractedText,
+        processingStatus:
+          result.status && typeof result.status === "string"
+            ? result.status
+            : null,
+        reviewStatus: document.reviewStatus || "pending",
+        flagColor: document.flagColor,
+        isPinned: document.isPinned || false,
+        enabled: document.enabled || false,
+      };
+    });
     return results;
   } catch (error) {
     logger.error({ err: error, userId }, "Error getting all documents");
@@ -627,11 +640,12 @@ export async function findDocuments({
   startDate,
   endDate,
   limit = 50,
+  cursor,
   sortBy = "createdAt",
   sortDir = "desc",
   dueDateStart,
   dueDateEnd,
-}: FindDocumentsParams): Promise<DocumentDetails[]> {
+}: FindDocumentsParams) {
   try {
     const conditions = _buildDocumentQueryConditions({
       userId,
@@ -651,16 +665,17 @@ export async function findDocuments({
       originalFilename: schemaDocuments.originalFilename,
     };
     const sortColumn = sortColumnMap[sortBy] || schemaDocuments.createdAt;
-    // Use lower() for text columns to ensure consistent case-insensitive sorting across databases
-    // (SQLite uses BINARY collation by default which doesn't provide proper alphabetical ordering)
-    const textSortColumns = ["title", "mimeType", "originalFilename"];
-    const sortExpression = textSortColumns.includes(sortBy)
-      ? sql`lower(${sortColumn})`
-      : sortColumn;
-    const orderByClause =
-      sortDir === "asc" ? asc(sortExpression) : desc(sortExpression);
+    const orderDir = sortDir === "asc" ? asc : desc;
+
+    // Add cursor condition if paginating
+    if (cursor) {
+      conditions.push(
+        buildCursorCondition(sortColumn, schemaDocuments.id, cursor, sortDir),
+      );
+    }
 
     let finalDocIds: string[];
+    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
 
     if (filterTags && filterTags.length > 0) {
       const baseMatchedDocs = await db
@@ -668,7 +683,7 @@ export async function findDocuments({
         .from(schemaDocuments)
         .where(and(...conditions));
       const baseDocIds = baseMatchedDocs.map((d) => d.id);
-      if (baseDocIds.length === 0) return [];
+      if (baseDocIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
 
       const docsWithAllTags = await db
         .select({ documentId: documentsTags.documentId })
@@ -684,26 +699,30 @@ export async function findDocuments({
         .groupBy(documentsTags.documentId)
         .having(sql`COUNT(DISTINCT ${tags.name}) = ${filterTags.length}`);
       const taggedDocIds = docsWithAllTags.map((d) => d.documentId);
-      if (taggedDocIds.length === 0) return [];
+      if (taggedDocIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
 
       const finalDocs = await db
         .select({ id: schemaDocuments.id })
         .from(schemaDocuments)
         .where(inArray(schemaDocuments.id, taggedDocIds))
-        .orderBy(orderByClause)
-        .limit(limit);
+        .orderBy(orderDir(sortColumn), orderDir(schemaDocuments.id))
+        .limit(fetchLimit);
       finalDocIds = finalDocs.map((d) => d.id);
     } else {
       const matchedDocs = await db
         .select({ id: schemaDocuments.id })
         .from(schemaDocuments)
         .where(and(...conditions))
-        .orderBy(orderByClause)
-        .limit(limit);
+        .orderBy(orderDir(sortColumn), orderDir(schemaDocuments.id))
+        .limit(fetchLimit);
       finalDocIds = matchedDocs.map((d) => d.id);
     }
 
-    if (finalDocIds.length === 0) return [];
+    if (finalDocIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+
+    // Check hasMore before trimming
+    const hasMore = finalDocIds.length > limit;
+    if (hasMore) finalDocIds = finalDocIds.slice(0, limit);
 
     // Efficiently fetch all documents with processing status in a single query
     const documentsWithStatus = await db
@@ -716,59 +735,82 @@ export async function findDocuments({
         queueJobs,
         eq(queueJobs.key, sql`'documents:' || ${schemaDocuments.id}`),
       )
-      .where(inArray(schemaDocuments.id, finalDocIds));
+      .where(inArray(schemaDocuments.id, finalDocIds))
+      .orderBy(orderDir(sortColumn), orderDir(schemaDocuments.id));
 
-    // Process documents with tags in parallel
-    const results = await Promise.all(
-      documentsWithStatus.map(async (result) => {
-        const document = result.document;
-        const documentTagNames = await getDocumentTags(document.id);
-
-        const fileUrl = document.storageId
-          ? `/api/documents/${document.id}/file`
-          : null;
-        const thumbnailUrl = document.thumbnailStorageId
-          ? `/api/documents/${document.id}/thumbnail`
-          : null;
-        const screenshotUrl = document.screenshotStorageId
-          ? `/api/documents/${document.id}/screenshot`
-          : null;
-        const pdfUrl = document.pdfStorageId
-          ? `/api/documents/${document.id}/pdf`
-          : null;
-        const contentUrl = document.extractedMdStorageId
-          ? `/api/documents/${document.id}/content`
-          : null;
-
-        return {
-          id: document.id,
-          title: document.title,
-          description: document.description || null,
-          dueDate: document.dueDate ? formatToISO8601(document.dueDate) : null,
-          originalFilename: document.originalFilename,
-          mimeType: document.mimeType,
-          fileSize: document.fileSize,
-          fileUrl,
-          createdAt: formatRequiredTimestamp(document.createdAt),
-          updatedAt: formatRequiredTimestamp(document.updatedAt),
-          tags: documentTagNames,
-          thumbnailUrl,
-          screenshotUrl,
-          pdfUrl,
-          contentUrl,
-          extractedText: document.extractedText,
-          processingStatus:
-            result.status && typeof result.status === "string"
-              ? result.status
-              : null,
-          reviewStatus: document.reviewStatus || "pending",
-          flagColor: document.flagColor,
-          isPinned: document.isPinned || false,
-          enabled: document.enabled || false,
-        };
-      }),
+    // Batch-load tags for all documents in a single query
+    const docIds = documentsWithStatus.map((r) => r.document.id);
+    const tagMap = await batchGetTags(
+      documentsTags,
+      documentsTags.documentId,
+      documentsTags.tagId,
+      docIds,
     );
-    return results;
+
+    const items = documentsWithStatus.map((result) => {
+      const document = result.document;
+
+      const fileUrl = document.storageId
+        ? `/api/documents/${document.id}/file`
+        : null;
+      const thumbnailUrl = document.thumbnailStorageId
+        ? `/api/documents/${document.id}/thumbnail`
+        : null;
+      const screenshotUrl = document.screenshotStorageId
+        ? `/api/documents/${document.id}/screenshot`
+        : null;
+      const pdfUrl = document.pdfStorageId
+        ? `/api/documents/${document.id}/pdf`
+        : null;
+      const contentUrl = document.extractedMdStorageId
+        ? `/api/documents/${document.id}/content`
+        : null;
+
+      return {
+        id: document.id,
+        title: document.title,
+        description: document.description || null,
+        dueDate: document.dueDate ? formatToISO8601(document.dueDate) : null,
+        originalFilename: document.originalFilename,
+        mimeType: document.mimeType,
+        fileSize: document.fileSize,
+        fileUrl,
+        createdAt: formatRequiredTimestamp(document.createdAt),
+        updatedAt: formatRequiredTimestamp(document.updatedAt),
+        tags: tagMap.get(document.id) ?? [],
+        thumbnailUrl,
+        screenshotUrl,
+        pdfUrl,
+        contentUrl,
+        extractedText: document.extractedText,
+        processingStatus:
+          result.status && typeof result.status === "string"
+            ? result.status
+            : null,
+        reviewStatus: document.reviewStatus || "pending",
+        flagColor: document.flagColor,
+        isPinned: document.isPinned || false,
+        enabled: document.enabled || false,
+      };
+    });
+
+    // Build cursor from the last item
+    const lastItem = items[items.length - 1];
+    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
+    const getSortVal = (item: any) => {
+      if (sortBy === "title") return item.title;
+      if (sortBy === "updatedAt") return item.updatedAt;
+      if (sortBy === "mimeType") return item.mimeType;
+      if (sortBy === "fileSize") return item.fileSize;
+      if (sortBy === "originalFilename") return item.originalFilename;
+      return item.createdAt; // default
+    };
+    const nextCursor =
+      hasMore && lastItem
+        ? encodeCursor(getSortVal(lastItem), lastItem.id)
+        : null;
+
+    return { items, nextCursor, hasMore };
   } catch (error) {
     logger.error({ err: error, userId }, "Error searching documents");
     throw new Error("Failed to search documents");
@@ -784,7 +826,7 @@ export async function countDocuments({
   endDate,
   dueDateStart,
   dueDateEnd,
-}: Omit<FindDocumentsParams, "limit" | "sortBy" | "sortDir">): Promise<number> {
+}: Omit<FindDocumentsParams, "limit">): Promise<number> {
   try {
     const conditions = _buildDocumentQueryConditions({
       userId,
@@ -827,15 +869,24 @@ export async function countDocuments({
   }
 }
 
-/** Runs findDocuments and countDocuments in parallel, returning both. */
-export async function findDocumentsWithCount(
+/**
+ * Runs findDocuments and (on first page only) countDocuments in parallel.
+ * Returns a cursor-paginated response.
+ */
+export async function findDocumentsPaginated(
   params: FindDocumentsParams,
-): Promise<{ items: Awaited<ReturnType<typeof findDocuments>>; totalCount: number }> {
-  const [items, totalCount] = await Promise.all([
-    findDocuments(params),
-    countDocuments(params),
-  ]);
-  return { items, totalCount };
+): Promise<CursorPaginatedResponse<Awaited<ReturnType<typeof findDocuments>>["items"][number]>> {
+  const isFirstPage = !params.cursor;
+
+  if (isFirstPage) {
+    const [result, totalCount] = await Promise.all([
+      findDocuments(params),
+      countDocuments(params),
+    ]);
+    return { ...result, totalCount };
+  }
+
+  return findDocuments(params);
 }
 
 export async function updateDocumentArtifacts(

@@ -203,21 +203,39 @@ export const TaskSearchParamsSchema = z
     limit: z.coerce
       .number()
       .min(1)
+      .max(200)
       .optional()
       .default(50)
       .meta({
-        description: "Maximum number of tasks to return",
-        examples: [10, 25, 50, 9999],
+        description: "Maximum number of tasks to return per page",
+        examples: [10, 25, 50],
       }),
 
-    offset: z.coerce
-      .number()
-      .int()
-      .nonnegative()
-      .default(0)
+    cursor: z
+      .string()
+      .optional()
       .meta({
-        description: "Number of results to skip (for pagination)",
-        examples: [0, 10, 50],
+        description:
+          "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
+        examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6InRza18xMjMifQ"],
+      }),
+
+    sortBy: z
+      .enum(["createdAt", "dueDate", "status", "title"])
+      .optional()
+      .default("createdAt")
+      .meta({
+        description: "Field to sort tasks by",
+        examples: ["createdAt", "dueDate", "status", "title"],
+      }),
+
+    sortDir: z
+      .enum(["asc", "desc"])
+      .optional()
+      .default("desc")
+      .meta({
+        description: "Sort direction",
+        examples: ["asc", "desc"],
       }),
 
     dueDateStart: z
