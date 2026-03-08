@@ -5,7 +5,12 @@
  * Extracted from the original prompt.ts for better modularity.
  */
 
-import { toOpenAITools } from "@eclaire/ai";
+import {
+  getAlwaysIncludeSkills,
+  getSkillSummary,
+  loadSkillContent,
+  toOpenAITools,
+} from "@eclaire/ai";
 import { backendTools } from "./tools/index.js";
 import type { UserContext } from "./types.js";
 
@@ -46,6 +51,29 @@ function getToolSignatures(): string {
       return `function ${t.function.name}(${paramStr}): Promise<any>; // ${t.function.description}`;
     })
     .join("\n");
+}
+
+/**
+ * Append skill content to a system prompt.
+ * No-op when no skills are configured or discovered.
+ */
+function appendSkillContent(prompt: string): string {
+  let result = prompt;
+
+  const summary = getSkillSummary();
+  if (summary) {
+    result += `\n\n## Skills\n${summary}`;
+  }
+
+  const alwaysInclude = getAlwaysIncludeSkills();
+  for (const skill of alwaysInclude) {
+    const content = loadSkillContent(skill.name);
+    if (content) {
+      result += `\n\n## ${skill.name}\n${content}`;
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -169,7 +197,7 @@ If you need to call tools, use this JSON format:
 `
       : "";
 
-    return `${basePrompt}
+    return appendSkillContent(`${basePrompt}
 
 You are an AI assistant that has been assigned to work on a task. You have full access to search tools to find related information in the user's knowledge base (notes, bookmarks, documents, photos, and other tasks) that might be relevant to completing this task.
 
@@ -200,14 +228,14 @@ CRITICAL RULES:
 5. These are internal app navigation links, NOT web URLs
 
 REMEMBER: These /content-type/id links become clickable buttons in the user interface for easy navigation.
-${toolSignaturesSection}`;
+${toolSignaturesSection}`);
   }
 
   // If tools are off, return simple conversational prompt
   if (toolCallingMode === "off") {
-    return `${basePrompt}
+    return appendSkillContent(`${basePrompt}
 
-Please provide a helpful and informative response based on the user's question and any referenced content above. Be conversational and focus on directly answering their question.`;
+Please provide a helpful and informative response based on the user's question and any referenced content above. Be conversational and focus on directly answering their question.`);
   }
 
   // Tool signatures section only for "text" mode
@@ -237,7 +265,7 @@ ${getToolSignatures()}
     : "";
 
   // Prompt with content linking requirements (always) and tool signatures (text mode only)
-  return `${basePrompt}
+  return appendSkillContent(`${basePrompt}
 
 **CRITICAL: Content Linking Requirements**
 
@@ -260,5 +288,5 @@ CRITICAL RULES:
 5. These are internal app navigation links, NOT web URLs
 
 REMEMBER: These /content-type/id links become clickable buttons in the user interface for easy navigation.
-${toolSignaturesSection}`;
+${toolSignaturesSection}`);
 }

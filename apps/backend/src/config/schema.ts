@@ -76,6 +76,7 @@ export interface EclaireConfig {
   ai: {
     debugLogPath?: string;
     timeout: number;
+    skillsDir?: string;
   };
 
   // Worker
@@ -343,6 +344,7 @@ export function buildConfig(): EclaireConfig {
     ai: {
       debugLogPath: env.AI_DEBUG_LOG_PATH || undefined,
       timeout: int(env.AI_TIMEOUT, 180000),
+      skillsDir: env.AI_SKILLS_DIR || undefined,
     },
 
     // Worker

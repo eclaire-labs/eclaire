@@ -27,7 +27,6 @@ import { Hono } from "hono";
 import { getOpenAPIDocument } from "../src/lib/openapi-config.js";
 import { allRoutes } from "../src/routes/all.js";
 import { bookmarksRoutes } from "../src/routes/bookmarks.js";
-import { conversationsRoutes } from "../src/routes/conversations.js";
 import { documentsRoutes } from "../src/routes/documents.js";
 import { historyRoutes } from "../src/routes/history.js";
 import { modelRoutes } from "../src/routes/model.js";
@@ -35,7 +34,7 @@ import { notesRoutes } from "../src/routes/notes.js";
 import { photosRoutes } from "../src/routes/photos.js";
 import { processingEventsRoutes } from "../src/routes/processing-events.js";
 import { processingStatusRoutes } from "../src/routes/processing-status.js";
-import { promptRoutes } from "../src/routes/prompt.js";
+import { sessionsRoutes } from "../src/routes/sessions.js";
 import { tasksRoutes } from "../src/routes/tasks.js";
 import { userRoutes } from "../src/routes/user.js";
 
@@ -45,7 +44,6 @@ async function main() {
   // Register API routes exactly as in the real server
   app.route("/api/tasks", tasksRoutes);
   app.route("/api/bookmarks", bookmarksRoutes);
-  app.route("/api/conversations", conversationsRoutes);
   app.route("/api/documents", documentsRoutes);
   app.route("/api/notes", notesRoutes);
   app.route("/api/photos", photosRoutes);
@@ -53,7 +51,7 @@ async function main() {
   app.route("/api/all", allRoutes);
   app.route("/api/user", userRoutes);
   app.route("/api/model", modelRoutes);
-  app.route("/api/prompt", promptRoutes);
+  app.route("/api/sessions", sessionsRoutes);
   app.route("/api/processing-status", processingStatusRoutes);
   app.route("/api/processing-events", processingEventsRoutes);
 

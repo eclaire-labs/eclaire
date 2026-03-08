@@ -1,18 +1,16 @@
 /**
  * Prompt Service
  *
- * Thin service layer that uses ToolLoopAgent for AI interactions.
- * Replaces the monolithic prompt.ts with a clean, modular implementation.
+ * Thin service layer that uses RuntimeAgent for AI interactions.
  */
 
 import type { AIMessage, ToolCallSummaryOutput } from "@eclaire/ai";
 import {
-  type AgentStreamEvent,
-  anyOf,
-  createAgentContext,
-  noToolCalls,
-  stepCountIs,
-  ToolLoopAgent,
+  convertFromLlm,
+  createRuntimeContext,
+  RuntimeAgent,
+  type RuntimeStreamEvent,
+  wrapLegacyTools,
 } from "@eclaire/ai";
 import type { Context } from "../../schemas/prompt-params.js";
 import { createChildLogger } from "../logger.js";
@@ -25,7 +23,7 @@ import {
 } from "./conversation-adapter.js";
 import { buildSystemPrompt } from "./system-prompt-builder.js";
 import { backendTools } from "./tools/index.js";
-import type { BackendAgentContext, UserContext } from "./types.js";
+import type { UserContext } from "./types.js";
 
 const logger = createChildLogger("prompt-service");
 
@@ -51,38 +49,40 @@ export interface PromptResponse {
 }
 
 /**
- * Create a configured ToolLoopAgent for the backend
+ * Create a configured RuntimeAgent for the backend.
  */
-function createBackendAgent(options: {
+export function createBackendAgent(options: {
   includeTools: boolean;
   isBackgroundTask: boolean;
   assetContents?: Array<{ type: string; id: string; content: string }>;
   enableThinking?: boolean;
 }) {
-  // Explicitly set tool calling mode based on whether tools are enabled
   const toolCallingMode = options.includeTools ? "native" : "off";
 
-  return new ToolLoopAgent<BackendAgentContext>({
+  return new RuntimeAgent({
     aiContext: "backend",
     toolCallingMode,
 
     instructions: (context) => {
+      const userContext = context.extra?.userContext as
+        | UserContext
+        | undefined;
       return buildSystemPrompt({
-        userContext: context.userContext,
+        userContext,
         assetContents: options.assetContents,
         toolCallingMode,
         isBackgroundTaskExecution: options.isBackgroundTask,
       });
     },
 
-    tools: options.includeTools ? backendTools : {},
+    tools: options.includeTools ? wrapLegacyTools(backendTools) : {},
 
-    stopWhen: anyOf(stepCountIs(10), noToolCalls()),
+    maxSteps: 10,
 
     aiOptions: {
       temperature: 0.1,
       maxTokens: 2000,
-      timeout: 180000, // 3 minutes
+      timeout: 180000,
       enableThinking: options.enableThinking,
     },
   });
@@ -140,22 +140,7 @@ export async function processPromptRequest(
 
     const hasAssets = assetContents && assetContents.length > 0;
     const isBackgroundTask = context?.backgroundTaskExecution === true;
-
-    // Create agent
-    const agent = createBackendAgent({
-      includeTools: !hasAssets || isBackgroundTask,
-      isBackgroundTask,
-      assetContents,
-      enableThinking,
-    });
-
-    // Create context
-    const agentContext = createAgentContext<UserContext>({
-      userId,
-      requestId,
-      conversationId,
-      userContext,
-    });
+    const includeTools = !hasAssets || isBackgroundTask;
 
     // Load conversation history if exists
     let previousMessages: AIMessage[] | undefined;
@@ -176,14 +161,30 @@ export async function processPromptRequest(
       }
     }
 
-    // Execute agent
-    const result = await agent.generate({
-      prompt,
-      context: agentContext,
-      messages: previousMessages,
+    const agent = createBackendAgent({
+      includeTools,
+      isBackgroundTask,
+      assetContents,
+      enableThinking,
     });
 
-    // Save to conversation
+    const runtimeContext = createRuntimeContext({
+      userId,
+      requestId,
+      conversationId,
+      extra: { userContext },
+    });
+
+    const previousRuntimeMessages = previousMessages
+      ? convertFromLlm(previousMessages)
+      : undefined;
+
+    const result = await agent.generate({
+      prompt,
+      context: runtimeContext,
+      messages: previousRuntimeMessages,
+    });
+
     const finalConversationId = await saveConversationMessages({
       conversationId,
       userId,
@@ -251,80 +252,86 @@ export interface StreamEvent {
 }
 
 /**
- * Transform agent stream events to API-compatible stream events.
+ * Transform RuntimeAgent stream events to API-compatible stream events.
  * Returns null for internal events that shouldn't be sent to the frontend.
  */
-function transformAgentEvent(event: AgentStreamEvent): StreamEvent | null {
+export function transformRuntimeEvent(
+  event: RuntimeStreamEvent,
+): StreamEvent | null {
+  const timestamp = new Date().toISOString();
+
   switch (event.type) {
-    case "thought":
-      return {
-        type: "thought",
-        content: event.content,
-        timestamp: event.timestamp,
-      };
+    case "text_delta":
+      return { type: "text-chunk", content: event.text, timestamp };
 
-    case "text-chunk":
-      return {
-        type: "text-chunk",
-        content: event.content,
-        timestamp: event.timestamp,
-      };
+    case "thinking_delta":
+      return { type: "thought", content: event.text, timestamp };
 
-    case "tool-call-start":
+    case "tool_call_start":
       return {
         type: "tool-call",
-        name: event.toolName,
+        name: event.name,
+        status: "starting",
+        timestamp,
+      };
+
+    case "tool_call_end":
+      return {
+        type: "tool-call",
+        name: event.name,
         status: "starting",
         arguments: event.arguments,
-        timestamp: event.timestamp,
+        timestamp,
       };
 
-    case "tool-call-complete":
+    case "tool_progress":
       return {
         type: "tool-call",
-        name: event.toolName,
+        name: event.name,
+        status: "executing",
+        timestamp,
+      };
+
+    case "tool_result": {
+      const isError = event.result.isError;
+      const textContent = event.result.content
+        .filter((c): c is { type: "text"; text: string } => c.type === "text")
+        .map((c) => c.text)
+        .join("\n");
+
+      if (isError) {
+        return {
+          type: "tool-call",
+          name: event.name,
+          status: "error",
+          error: textContent,
+          timestamp,
+        };
+      }
+      return {
+        type: "tool-call",
+        name: event.name,
         status: "completed",
-        result: event.result,
-        timestamp: event.timestamp,
+        result: textContent,
+        timestamp,
       };
-
-    case "tool-call-error":
-      return {
-        type: "tool-call",
-        name: event.toolName,
-        status: "error",
-        error: event.error,
-        timestamp: event.timestamp,
-      };
-
-    case "done":
-      return {
-        type: "done",
-        requestId: undefined, // Will be set by caller
-        conversationId: undefined, // Will be set by caller
-        totalTokens: event.result.usage.totalTokens,
-        thinkingContent: event.result.thinking,
-        toolCalls: event.result.toolCallSummaries,
-        timestamp: event.timestamp,
-      };
+    }
 
     case "error":
-      return {
-        type: "error",
-        error: event.error,
-        timestamp: event.timestamp,
-      };
+      return { type: "error", error: event.error, timestamp };
 
-    case "step-complete":
-      // Internal event, not needed by frontend
+    // Internal events — not sent to frontend
+    case "text_start":
+    case "text_end":
+    case "thinking_start":
+    case "thinking_end":
+    case "tool_call_start":
+    case "tool_call_delta":
+    case "message_complete":
+    case "turn_complete":
       return null;
 
     default:
-      // Log warning for truly unknown events, don't send error to frontend
-      logger.warn(
-        { eventType: (event as { type: string }).type },
-        "Unknown agent event type received",
-      );
       return null;
   }
 }
@@ -380,22 +387,7 @@ export async function processPromptRequestStream(
 
   const hasAssets = assetContents && assetContents.length > 0;
   const isBackgroundTask = context?.backgroundTaskExecution === true;
-
-  // Create agent
-  const agent = createBackendAgent({
-    includeTools: !hasAssets || isBackgroundTask,
-    isBackgroundTask,
-    assetContents,
-    enableThinking,
-  });
-
-  // Create context
-  const agentContext = createAgentContext<UserContext>({
-    userId,
-    requestId,
-    conversationId,
-    userContext,
-  });
+  const includeTools = !hasAssets || isBackgroundTask;
 
   // Load conversation history if exists
   let previousMessages: AIMessage[] | undefined;
@@ -423,14 +415,30 @@ export async function processPromptRequestStream(
     }
   }
 
-  // Execute agent with streaming
-  const streamResult = agent.stream({
-    prompt,
-    context: agentContext,
-    messages: previousMessages,
+  const agent = createBackendAgent({
+    includeTools,
+    isBackgroundTask,
+    assetContents,
+    enableThinking,
   });
 
-  // Transform stream and handle completion
+  const runtimeContext = createRuntimeContext({
+    userId,
+    requestId,
+    conversationId,
+    extra: { userContext },
+  });
+
+  const previousRuntimeMessages = previousMessages
+    ? convertFromLlm(previousMessages)
+    : undefined;
+
+  const streamResult = agent.stream({
+    prompt,
+    context: runtimeContext,
+    messages: previousRuntimeMessages,
+  });
+
   return new ReadableStream<StreamEvent>({
     async start(controller) {
       const reader = streamResult.eventStream.getReader();
@@ -440,18 +448,9 @@ export async function processPromptRequestStream(
           const { done, value } = await reader.read();
           if (done) break;
 
-          const event = transformAgentEvent(value);
+          if (value.type === "turn_complete") {
+            const result = await streamResult.result;
 
-          // Skip internal events that don't need to be sent to frontend
-          if (event === null) {
-            continue;
-          }
-
-          // Handle done event specially to save conversation
-          if (value.type === "done") {
-            const result = value.result;
-
-            // Save conversation
             const finalConversationId = await saveConversationMessages({
               conversationId,
               userId,
@@ -462,7 +461,6 @@ export async function processPromptRequestStream(
 
             const endTime = Date.now();
 
-            // Emit done event with full info
             controller.enqueue({
               type: "done",
               requestId: requestId || `req_stream_${Date.now()}`,
@@ -489,9 +487,11 @@ export async function processPromptRequestStream(
               },
               "Streaming prompt request completed",
             );
-          } else {
-            controller.enqueue(event);
+            continue;
           }
+
+          const event = transformRuntimeEvent(value);
+          if (event) controller.enqueue(event);
         }
       } catch (error) {
         logger.error(

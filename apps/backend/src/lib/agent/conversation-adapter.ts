@@ -4,7 +4,7 @@
  * Handles loading and saving conversation messages for the agent.
  */
 
-import type { AgentResult, AIMessage } from "@eclaire/ai";
+import type { AIMessage, ToolCallSummaryOutput } from "@eclaire/ai";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
@@ -60,11 +60,18 @@ export async function loadConversationMessages(
   return buildAIMessageArray(conversation.id, !!systemPrompt, systemPrompt);
 }
 
+/** Structural type covering the fields used by saveConversationMessages. */
+export interface SaveableResult {
+  text: string;
+  thinking?: string;
+  toolCallSummaries: ToolCallSummaryOutput[];
+}
+
 export interface SaveConversationOptions {
   conversationId?: string;
   userId: string;
   prompt: string;
-  result: AgentResult;
+  result: SaveableResult;
   requestId?: string;
 }
 

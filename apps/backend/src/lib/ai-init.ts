@@ -6,7 +6,7 @@
  */
 
 import * as path from "node:path";
-import { initAI } from "@eclaire/ai";
+import { initAI, registerSkillSource } from "@eclaire/ai";
 import { config } from "../config/index.js";
 import { createChildLogger } from "./logger.js";
 
@@ -20,4 +20,12 @@ export function initializeAI(): void {
     createChildLogger,
     debugLogPath: config.ai.debugLogPath,
   });
+
+  // Register skill sources (directories may not exist yet — registry handles gracefully)
+  const defaultSkillsDir = path.join(config.dirs.config, "ai", "skills");
+  registerSkillSource(defaultSkillsDir, "admin");
+
+  if (config.ai.skillsDir) {
+    registerSkillSource(config.ai.skillsDir, "admin");
+  }
 }

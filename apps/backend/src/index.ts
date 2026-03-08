@@ -43,7 +43,6 @@ import { allRoutes } from "./routes/all.js";
 import { authRoutes } from "./routes/auth.js";
 import { bookmarksRoutes } from "./routes/bookmarks.js";
 import { channelsRoutes } from "./routes/channels.js";
-import { conversationsRoutes } from "./routes/conversations.js";
 import { documentsRoutes } from "./routes/documents.js";
 import { feedbackRoutes } from "./routes/feedback.js";
 import { historyRoutes } from "./routes/history.js";
@@ -53,7 +52,7 @@ import { notificationsRoutes } from "./routes/notifications.js";
 import { photosRoutes } from "./routes/photos.js";
 import { processingEventsRoutes } from "./routes/processing-events.js";
 import { processingStatusRoutes } from "./routes/processing-status.js";
-import { promptRoutes } from "./routes/prompt.js";
+import { sessionsRoutes } from "./routes/sessions.js";
 import { tasksRoutes } from "./routes/tasks.js";
 import { userRoutes } from "./routes/user.js";
 
@@ -166,7 +165,6 @@ app.get("/api/session", async (c) => {
 app.route("/api/tasks", tasksRoutes);
 app.route("/api/bookmarks", bookmarksRoutes);
 app.route("/api/channels", channelsRoutes);
-app.route("/api/conversations", conversationsRoutes);
 app.route("/api/documents", documentsRoutes);
 app.route("/api/feedback", feedbackRoutes);
 app.route("/api/notes", notesRoutes);
@@ -176,7 +174,7 @@ app.route("/api/history", historyRoutes);
 app.route("/api/all", allRoutes);
 app.route("/api/user", userRoutes);
 app.route("/api/model", modelRoutes);
-app.route("/api/prompt", promptRoutes);
+app.route("/api/sessions", sessionsRoutes);
 app.route("/api/processing-status", processingStatusRoutes);
 app.route("/api/processing-events", processingEventsRoutes);
 

@@ -19,11 +19,13 @@ export {
 // Main service functions
 export {
   ConversationNotFoundError,
+  createBackendAgent,
   type ProcessPromptOptions,
   type PromptResponse,
   processPromptRequest,
   processPromptRequestStream,
   type StreamEvent,
+  transformRuntimeEvent,
 } from "./prompt-service.js";
 // System prompt building
 export {
