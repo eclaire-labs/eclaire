@@ -347,6 +347,107 @@ export {
 } from "./agent/index.js";
 
 // =============================================================================
+// RUNTIME (v2)
+// =============================================================================
+
+export type {
+  // Message model
+  TextBlock,
+  ThinkingBlock,
+  ToolCallBlock,
+  ImageBlock,
+  AssistantContentBlock,
+  UserContentBlock,
+  ResultContentBlock,
+  UserMessage as RuntimeUserMessage,
+  AssistantMessage as RuntimeAssistantMessage,
+  ToolResultMessage as RuntimeToolResultMessage,
+  SystemMessage as RuntimeSystemMessage,
+  RuntimeMessage,
+  AnyRuntimeMessage,
+  StopReason as RuntimeStopReason,
+  RuntimeStreamEvent,
+  ToolProgressUpdate,
+  // Tool types
+  RuntimeToolDefinition,
+  RuntimeToolResult,
+  ToolResultContent,
+  ToolContext,
+  ToolUpdateCallback,
+  ToolProgressInfo,
+  // Skill types
+  Skill,
+  SkillFrontmatter,
+  SkillScope,
+  SkillSource,
+  // Agent types
+  RuntimeAgentConfig,
+  RuntimeAgentContext,
+  RuntimeAgentResult,
+  RuntimeAgentStep,
+  RuntimeGenerateOptions,
+  RuntimeStepToolExecution,
+  RuntimeStreamResult,
+  CreateRuntimeContextOptions,
+} from "./runtime/index.js";
+
+export {
+  // Message helpers
+  getTextContent,
+  getToolCalls,
+  getThinkingContent,
+  userMessage,
+  systemMessage,
+  // Tool result helpers
+  textResult,
+  errorResult,
+  // LLM boundary
+  convertToLlm,
+  convertFromLlm,
+  // Agent
+  RuntimeAgent,
+  createRuntimeContext,
+  runtimeToolToOpenAI,
+  executeRuntimeTool,
+  // Compatibility bridge
+  wrapLegacyTool,
+  wrapLegacyTools,
+} from "./runtime/index.js";
+
+// Registries
+export {
+  // Provider registry
+  registerProvider,
+  getProvider,
+  getAdapterByDialect,
+  listProviders,
+  unregisterProvider,
+  hasProvider,
+  clearProviders,
+  type ProviderRegistration,
+  // Tool registry
+  registerTool,
+  getTool,
+  getToolDefinition,
+  getActiveTools,
+  setActiveTools,
+  listTools,
+  unregisterTool,
+  hasTool as hasRuntimeTool,
+  getPromptContributions,
+  clearTools,
+  // Skill registry
+  registerSkillSource,
+  discoverSkills,
+  getSkill,
+  getSkillSummary,
+  loadSkillContent,
+  getAlwaysIncludeSkills,
+  invalidateSkillCache,
+  clearSkillSources,
+} from "./registries/index.js";
+
+// =============================================================================
 // TYPES
 // =============================================================================
 

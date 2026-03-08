@@ -910,10 +910,13 @@ describe("ToolLoopAgent", () => {
         const requestBody = JSON.parse(
           mockFetch.calls[0]!.init?.body as string,
         );
-        expect(requestBody.messages).toHaveLength(3);
-        expect(requestBody.messages[0].content).toBe("My name is Alice");
-        expect(requestBody.messages[1].content).toBe("Hello Alice!");
-        expect(requestBody.messages[2].content).toBe("What did I say earlier?");
+        // System prompt is always prepended, even with previous messages
+        expect(requestBody.messages).toHaveLength(4);
+        expect(requestBody.messages[0].role).toBe("system");
+        expect(requestBody.messages[0].content).toBe("You are helpful.");
+        expect(requestBody.messages[1].content).toBe("My name is Alice");
+        expect(requestBody.messages[2].content).toBe("Hello Alice!");
+        expect(requestBody.messages[3].content).toBe("What did I say earlier?");
       });
     });
   });

@@ -95,6 +95,8 @@ interface LoopState<TContext extends AgentContext> {
 interface PreparedStep {
   aiContext: AIContext;
   tools: ToolDefinition[] | undefined;
+  /** Execution tool map — only set when prepareStep overrides tools */
+  executionTools?: Record<string, AgentToolDefinition<AnyZodType, AgentContext>>;
   messages: AIMessage[];
   aiOptions: Partial<AICallOptions>;
 }
@@ -267,11 +269,12 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
         isTerminal: false,
       };
 
-      // Execute tool calls if any
+      // Execute tool calls if any — use per-step tools if prepareStep overrode them
       if (extracted.toolCalls.length > 0) {
+        const effectiveTools = prepared.executionTools ?? tools;
         step.toolResults = await this._executeToolCalls(
           extracted.toolCalls,
-          tools,
+          effectiveTools,
           context,
           messages,
           toolCallSummaries,
@@ -467,11 +470,12 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
               isTerminal: false,
             };
 
-            // Execute tool calls if any
+            // Execute tool calls if any — use per-step tools if prepareStep overrode them
             if (streamResult.toolCalls.length > 0) {
+              const effectiveTools = prepared.executionTools ?? tools;
               step.toolResults = await this._executeToolCalls(
                 streamResult.toolCalls,
-                tools,
+                effectiveTools,
                 context,
                 messages,
                 toolCallSummaries,
@@ -572,10 +576,19 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
         ? await this.config.instructions(context)
         : this.config.instructions;
 
-    // Initialize messages
-    const messages: AIMessage[] = previousMessages
-      ? [...previousMessages]
-      : [{ role: "system", content: systemPrompt }];
+    // Initialize messages — always ensure system prompt is present
+    const systemMessage: AIMessage = { role: "system", content: systemPrompt };
+    let messages: AIMessage[];
+    if (previousMessages) {
+      // Replace existing system message (if any) or prepend one
+      if (previousMessages[0]?.role === "system") {
+        messages = [systemMessage, ...previousMessages.slice(1)];
+      } else {
+        messages = [systemMessage, ...previousMessages];
+      }
+    } else {
+      messages = [systemMessage];
+    }
 
     // Add user message
     messages.push({ role: "user", content: prompt });
@@ -606,6 +619,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
   ): Promise<PreparedStep> {
     let aiContext = this.config.aiContext;
     let tools = defaultTools;
+    let executionTools: PreparedStep["executionTools"];
     let currentMessages = messages;
     let aiOptions = { ...this.config.aiOptions, ...overrideAiOptions };
 
@@ -622,6 +636,11 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
       }
       if (prepareResult.tools) {
         tools = toOpenAITools(prepareResult.tools);
+        // Also update the execution map so tools can actually be executed
+        executionTools = prepareResult.tools as Record<
+          string,
+          AgentToolDefinition<AnyZodType, AgentContext>
+        >;
       }
       if (prepareResult.messages) {
         currentMessages = prepareResult.messages;
@@ -631,7 +650,13 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
       }
     }
 
-    return { aiContext, tools, messages: currentMessages, aiOptions };
+    return {
+      aiContext,
+      tools,
+      executionTools,
+      messages: currentMessages,
+      aiOptions,
+    };
   }
 
   /**

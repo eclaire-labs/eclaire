@@ -441,6 +441,7 @@ export interface AdapterRequestParams {
     tools?: ToolDefinition[];
     toolChoice?: ToolChoice;
     responseFormat?: ResponseFormat;
+    enableThinking?: boolean;
   };
   providerOverrides?: ProviderOverrides;
 }
