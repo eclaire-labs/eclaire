@@ -255,19 +255,19 @@ export class BrowserPipeline {
       },
     };
 
-    // Thumbnail (400x400, 85% quality)
+    // Thumbnail (800x800, WebP quality 80)
     const thumbnailBuffer = await sharp(rawPixels, rawInput)
-      .resize(400, 400, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 85 })
+      .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
       .toBuffer();
     const thumbnailKey = buildKey(
       this.userId,
       "bookmarks",
       this.bookmarkId,
-      "thumbnail.jpg",
+      "thumbnail.webp",
     );
     await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
-      contentType: "image/jpeg",
+      contentType: "image/webp",
     });
     artifacts.thumbnailStorageId = thumbnailKey;
 

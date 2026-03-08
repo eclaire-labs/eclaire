@@ -77,6 +77,7 @@ export function PhotoListItem({
           alt={photo.title}
           className="object-cover w-full h-full"
           loading="lazy"
+          decoding="async"
           onError={(e) => {
             const img = e.target as HTMLImageElement;
             const retryCount = parseInt(img.dataset.retryCount || "0", 10);

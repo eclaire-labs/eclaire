@@ -124,6 +124,8 @@ export function DocumentTileItem({
             src={doc.thumbnailUrl}
             alt={`Thumbnail for ${doc.title}`}
             className="w-full h-full object-contain transition-transform group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = "none";

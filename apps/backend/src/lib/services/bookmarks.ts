@@ -105,22 +105,9 @@ interface UpdateBookmarkParams {
   lastModified?: string | null;
 }
 
-/**
- * Helper function to detect MIME type from file extension in storage ID
- */
-export const getMimeTypeFromStorageId = (storageId: string): string => {
-  const lowerStorageId = storageId.toLowerCase();
-
-  if (lowerStorageId.endsWith(".svg")) return "image/svg+xml";
-  if (lowerStorageId.endsWith(".png")) return "image/png";
-  if (lowerStorageId.endsWith(".jpg") || lowerStorageId.endsWith(".jpeg"))
-    return "image/jpeg";
-  if (lowerStorageId.endsWith(".gif")) return "image/gif";
-  if (lowerStorageId.endsWith(".ico")) return "image/x-icon";
-
-  // Default fallback for extensionless files (backward compatibility)
-  return "image/x-icon";
-};
+// Import shared MIME utility and re-export for backwards compatibility
+import { getMimeTypeFromStorageId } from "./mime-utils.js";
+export { getMimeTypeFromStorageId };
 
 const assetTypeToColumnMap = {
   favicon: {
@@ -128,7 +115,7 @@ const assetTypeToColumnMap = {
     mime: "image/x-icon",
     dynamicMime: true,
   },
-  thumbnail: { column: bookmarks.thumbnailStorageId, mime: "image/jpeg" },
+  thumbnail: { column: bookmarks.thumbnailStorageId, mime: "image/webp" },
   screenshot: {
     column: bookmarks.screenshotDesktopStorageId,
     mime: "image/jpeg",

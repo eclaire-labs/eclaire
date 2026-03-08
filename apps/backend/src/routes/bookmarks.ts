@@ -206,8 +206,10 @@ const serveBookmarkAsset = (assetType: BookmarkAssetType) =>
       contentType: needsCharset ? `${mimeType}; charset=utf-8` : mimeType,
       contentLength: metadata.size,
       cacheControl:
-        assetType === "favicon" || assetType === "screenshot"
-          ? "public, max-age=604800, immutable"
+        assetType === "favicon" ||
+        assetType === "screenshot" ||
+        assetType === "thumbnail"
+          ? "public, max-age=604800"
           : "private, max-age=3600",
     });
   }, logger);

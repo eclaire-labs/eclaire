@@ -71,6 +71,8 @@ export function BookmarkTileItem({
             src={thumbnailUrl}
             alt={`Thumbnail of ${entry.title}`}
             className="object-cover w-full h-full"
+            loading="lazy"
+            decoding="async"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = "none";

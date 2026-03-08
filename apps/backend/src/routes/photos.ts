@@ -226,7 +226,7 @@ photosRoutes.get(
       stream,
       contentType: metadata.contentType,
       contentLength: metadata.size,
-      cacheControl: "public, max-age=86400",
+      cacheControl: "public, max-age=604800",
     });
   }, logger),
 );

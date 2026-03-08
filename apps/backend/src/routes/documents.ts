@@ -230,7 +230,7 @@ documentsRoutes.get(
       userId,
       "thumbnail",
     );
-    return serveDocumentAsset("public, max-age=86400")(c, asset);
+    return serveDocumentAsset("public, max-age=604800")(c, asset);
   }, logger),
 );
 

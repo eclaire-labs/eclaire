@@ -79,6 +79,8 @@ export function DocumentListItem({
               src={doc.thumbnailUrl}
               alt={`Thumbnail for ${doc.title}`}
               className="w-8 h-8 object-cover rounded border"
+              loading="lazy"
+              decoding="async"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = "none";

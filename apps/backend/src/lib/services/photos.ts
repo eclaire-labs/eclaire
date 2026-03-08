@@ -2256,9 +2256,9 @@ export async function getThumbnailStream(
       stream,
       metadata: {
         size: metadata.size,
-        contentType: "image/jpeg", // Thumbnails are always JPEG
+        contentType: "image/webp",
       },
-      filename: `${baseFilename}-thumbnail.jpg`,
+      filename: `${baseFilename}-thumbnail.webp`,
     };
   } catch (error: unknown) {
     if (isStorageNotFound(error)) {

@@ -104,27 +104,29 @@ async function generatePdfThumbnailWithPdftocairo(
     // Read the generated PNG file
     const pngBuffer = await fs.readFile(outputPath);
 
-    // Convert to JPG and resize based on scale
+    // Convert and resize based on scale
     const targetWidth = scale === 400 ? 600 : 1920;
     const targetHeight = scale === 400 ? 600 : 1440;
-    const quality = scale === 400 ? 85 : 90; // Use 85 for thumbnails, 90 for screenshots
+    const isThumbnail = scale === 400;
 
-    const jpgBuffer = await sharp(pngBuffer)
+    const outputBuffer = await sharp(pngBuffer)
       .resize(targetWidth, targetHeight, {
         fit: "inside",
         withoutEnlargement: true,
       })
-      .jpeg({ quality })
+      [isThumbnail ? "webp" : "jpeg"](
+        isThumbnail ? { quality: 80 } : { quality: 90 },
+      )
       .toBuffer();
 
     // Clean up temp file
     await fs.unlink(outputPath).catch(() => {});
 
     logger.debug(
-      { scale, quality, targetWidth, targetHeight, renderScale },
+      { scale, isThumbnail, targetWidth, targetHeight, renderScale },
       "pdftocairo thumbnail generation successful",
     );
-    return jpgBuffer;
+    return outputBuffer;
   } catch (error: unknown) {
     logger.warn(
       {
@@ -422,7 +424,7 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
         userId,
         "documents",
         documentId,
-        "thumbnail.jpg",
+        "thumbnail.webp",
       );
       const screenshotKey = buildKey(
         userId,
@@ -432,7 +434,7 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
       );
       await Promise.all([
         storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
-          contentType: "image/jpeg",
+          contentType: "image/webp",
         }),
         storage.writeBuffer(screenshotKey, screenshotBuffer, {
           contentType: "image/jpeg",
@@ -465,10 +467,10 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
           userId,
           "documents",
           documentId,
-          "thumbnail.jpg",
+          "thumbnail.webp",
         );
         await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
-          contentType: "image/jpeg",
+          contentType: "image/webp",
         });
         allArtifacts.thumbnailStorageId = thumbnailKey;
 
@@ -1176,7 +1178,7 @@ async function generateHtmlThumbnailAndScreenshot(
         .toBuffer(),
       sharp(screenshotPng)
         .resize(600, 600, { fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality: 85 })
+        .webp({ quality: 80 })
         .toBuffer(),
     ]);
 

@@ -211,6 +211,7 @@ export function PhotoGalleryView({
             src={imgSrc}
             alt={currentPhoto.title}
             className="max-w-full max-h-full object-contain block"
+            decoding="async"
             onError={(e) => {
               (e.target as HTMLImageElement).src = "/placeholder.svg";
             }}
@@ -282,6 +283,7 @@ export function PhotoGalleryView({
                       alt={`Thumbnail ${idx + 1}`}
                       className="w-full h-full object-cover"
                       loading="lazy"
+                      decoding="async"
                       onError={(e) => {
                         const img = e.target as HTMLImageElement;
                         const retryCount = parseInt(

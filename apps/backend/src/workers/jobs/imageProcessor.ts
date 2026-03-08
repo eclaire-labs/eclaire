@@ -157,15 +157,15 @@ async function executeThumbnailGeneration(
   try {
     const thumbnailBuffer = await sharp(imageBuffer)
       .rotate() // Auto-apply EXIF orientation
-      .resize(400, 400, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 85 })
+      .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
       .toBuffer();
 
     await ctx.updateStageProgress(stageName, 50);
     const storage = getStorage();
-    const thumbnailKey = buildKey(userId, "photos", photoId, "thumbnail.jpg");
+    const thumbnailKey = buildKey(userId, "photos", photoId, "thumbnail.webp");
     await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
-      contentType: "image/jpeg",
+      contentType: "image/webp",
     });
     const artifacts = { thumbnailStorageId: thumbnailKey };
 

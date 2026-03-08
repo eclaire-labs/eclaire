@@ -986,8 +986,8 @@ export async function getDocumentAsset(
       break;
     case "thumbnail":
       storageId = document.thumbnailStorageId;
-      mimeType = "image/jpeg"; // Updated to JPG format
-      filename = `${document.id}-thumbnail.jpg`;
+      mimeType = "image/webp";
+      filename = `${document.id}-thumbnail.webp`;
       break;
     case "screenshot":
       storageId = document.screenshotStorageId;
