@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { MessageFlags, type Message, type TextChannel } from "discord.js";
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
+import { getSession } from "./commands.js";
 import { splitMessage } from "./message-utils.js";
 import { sendStreamingResponse } from "./stream-sender.js";
 import { safeSendTyping } from "./typing-indicator.js";
@@ -87,6 +88,29 @@ export async function handleIncomingMessage(
     const deps = getDeps();
     const requestId = `discord-${channelId}-${Date.now()}`;
 
+    // Get or lazily create session for multi-turn context
+    const sessionState = getSession(channelId);
+    if (!sessionState.sessionId && deps.createSession) {
+      try {
+        const session = await deps.createSession(userId);
+        sessionState.sessionId = session.id;
+      } catch (sessionError) {
+        logger.warn(
+          {
+            channelId,
+            error:
+              sessionError instanceof Error
+                ? sessionError.message
+                : "Unknown error",
+          },
+          "Failed to create session, continuing without session tracking",
+        );
+      }
+    }
+
+    const sessionId = sessionState.sessionId;
+    const enableThinking = sessionState.enableThinking ?? false;
+
     let responseText: string | undefined;
 
     // Handle voice messages
@@ -146,8 +170,8 @@ export async function handleIncomingMessage(
         promptText,
         { agent: "discord-bot", attachments },
         requestId,
-        undefined,
-        false,
+        sessionId,
+        enableThinking,
       );
 
       responseText = await sendStreamingResponse(
@@ -162,8 +186,8 @@ export async function handleIncomingMessage(
         promptText,
         { agent: "discord-bot", attachments },
         requestId,
-        undefined,
-        false,
+        sessionId,
+        enableThinking,
       );
 
       responseText = result.response;

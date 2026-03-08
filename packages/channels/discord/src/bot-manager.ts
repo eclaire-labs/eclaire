@@ -1,8 +1,17 @@
 import { and, eq } from "drizzle-orm";
-import { Client, GatewayIntentBits, type TextChannel } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  type ChatInputCommandInteraction,
+  type TextChannel,
+} from "discord.js";
 import { getDeps } from "./deps.js";
 import { decryptConfig, type DiscordConfig } from "./config.js";
 import { handleIncomingMessage } from "./incoming.js";
+import {
+  handleCommandInteraction,
+  registerApplicationCommands,
+} from "./commands.js";
 import { splitMessage } from "./message-utils.js";
 import { withRetry } from "./retry.js";
 import { resetCircuitBreaker } from "./typing-indicator.js";
@@ -178,6 +187,39 @@ function createClient(
     }
   });
 
+  // Handle slash command interactions
+  client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    // Find which eclaire channel manages this Discord channel
+    let channelMeta: ChannelMeta | undefined;
+    for (const meta of managedChannels.values()) {
+      if (meta.discordChannelId === interaction.channelId) {
+        channelMeta = meta;
+        break;
+      }
+    }
+
+    if (!channelMeta) return;
+
+    try {
+      await handleCommandInteraction(
+        interaction as ChatInputCommandInteraction,
+        channelMeta.channelId,
+        channelMeta.userId,
+      );
+    } catch (error) {
+      logger.error(
+        {
+          channelId: channelMeta.channelId,
+          command: interaction.commandName,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+        "Error handling Discord command interaction",
+      );
+    }
+  });
+
   client.on("error", (error) => {
     logger.error(
       { error: error.message },
@@ -213,7 +255,7 @@ function createClient(
   });
 
   const readyPromise = new Promise<void>((resolve, reject) => {
-    client.once("ready", () => {
+    client.once("ready", async () => {
       logger.info(
         {
           botUser: client.user?.tag,
@@ -221,6 +263,10 @@ function createClient(
         },
         "Discord bot connected and ready",
       );
+
+      // Register slash commands with Discord
+      await registerApplicationCommands(client);
+
       resolve();
     });
 

@@ -16,6 +16,18 @@ import { createChildLogger } from "./logger.js";
 
 export const channelRegistry = new ChannelRegistry();
 
+/** Shared session & model deps for all channel adapters. */
+const sessionAndModelDeps = {
+  createSession,
+  listSessions,
+  deleteSession,
+  getModelInfo: () => {
+    const model = getActiveModelForContext("backend");
+    if (!model) return null;
+    return { name: model.name, provider: model.provider, model: model.providerModel };
+  },
+} as const;
+
 const telegramAdapter = initTelegramAdapter({
   db,
   schema,
@@ -25,14 +37,7 @@ const telegramAdapter = initTelegramAdapter({
   processPromptRequestStream,
   recordHistory,
   logger: createChildLogger("telegram"),
-  createSession,
-  listSessions,
-  deleteSession,
-  getModelInfo: () => {
-    const model = getActiveModelForContext("backend");
-    if (!model) return null;
-    return { name: model.name, provider: model.provider, model: model.providerModel };
-  },
+  ...sessionAndModelDeps,
 });
 
 channelRegistry.register(telegramAdapter);
@@ -46,6 +51,7 @@ const discordAdapter = initDiscordAdapter({
   processPromptRequestStream,
   recordHistory,
   logger: createChildLogger("discord"),
+  ...sessionAndModelDeps,
 });
 
 channelRegistry.register(discordAdapter);
@@ -59,6 +65,7 @@ const slackAdapter = initSlackAdapter({
   processPromptRequestStream,
   recordHistory,
   logger: createChildLogger("slack"),
+  ...sessionAndModelDeps,
 });
 
 channelRegistry.register(slackAdapter);

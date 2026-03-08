@@ -3,6 +3,7 @@ import { App } from "@slack/bolt";
 import { getDeps } from "./deps.js";
 import { decryptConfig, type SlackConfig } from "./config.js";
 import { handleIncomingMessage } from "./incoming.js";
+import { registerCommands } from "./commands.js";
 import { splitMessage, convertMarkdownToMrkdwn } from "./message-utils.js";
 import { withRetry } from "./retry.js";
 import { resetCircuitBreaker } from "./typing-indicator.js";
@@ -233,6 +234,9 @@ function createApp(
   managedChannels.set(initialChannel.channelId, initialChannel);
 
   let botUserId: string | null = null;
+
+  // Register slash command handlers
+  registerCommands(app, managedChannels);
 
   // Handle incoming messages
   app.message(async ({ message, client }) => {
