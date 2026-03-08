@@ -37,14 +37,14 @@ import { useToolExecutionTracker } from "@/components/ui/tool-execution-tracker"
 import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { apiFetch } from "@/lib/api-client";
-import type { PromptRequest } from "@/lib/api-ai";
-import { sendPrompt } from "@/lib/api-ai";
 import {
-  deleteConversation,
-  getConversations,
-  getConversationWithMessages,
-  updateConversation,
-} from "@/lib/api-conversations";
+  abortSession,
+  createSession,
+  deleteSession,
+  getSessionWithMessages,
+  listSessions,
+  updateSession,
+} from "@/lib/api-sessions";
 import type { BackendMessage, ConversationSummary } from "@/types/conversation";
 import {
   getMobileTabFromPathname,
@@ -58,7 +58,6 @@ import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvide
 import type { Bookmark as BookmarkType } from "@/types/bookmark";
 import type { AssetReference, ContentLink, Message } from "@/types/message";
 import { convertToToolCallSummary } from "@/types/message";
-import packageJson from "../../../package.json";
 
 function convertBackendMessage(msg: BackendMessage): Message {
   return {
@@ -119,7 +118,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   // Assistant conversation state
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [attachedAssets, setAttachedAssets] = useState<AssetReference[]>([]);
   const [currentConversation, setCurrentConversation] =
     useState<ConversationSummary | null>(null);
@@ -292,26 +290,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
         }
       }
 
-      // If this was the first message of a new conversation, the backend returns
-      // a new conversationId. We use it to load the conversation details.
-      if (conversationId && !currentConversation) {
-        getConversationWithMessages(conversationId)
-          .then((conversation) => {
-            setCurrentConversation({
-              id: conversation.id,
-              userId: conversation.userId,
-              title: conversation.title,
-              createdAt: conversation.createdAt,
-              updatedAt: conversation.updatedAt,
-              lastMessageAt: conversation.lastMessageAt,
-              messageCount: conversation.messageCount,
-            });
-          })
-          .catch((error) => {
-            console.error("Failed to load new conversation details:", error);
-          });
-      }
-
       // --- Final Cleanup ---
       // Reset all streaming-related state to prepare for the next user message.
       setIsStreaming(false);
@@ -446,7 +424,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const loadConversation = async (conversation: ConversationSummary) => {
     setIsLoadingConversation(true);
     try {
-      const conversationWithMessages = await getConversationWithMessages(
+      const conversationWithMessages = await getSessionWithMessages(
         conversation.id,
       );
 
@@ -471,11 +449,10 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const handleEditConversationTitle = async (newTitle: string) => {
     if (!currentConversation) return;
     try {
-      const updatedConversation = await updateConversation(
-        currentConversation.id,
-        { title: newTitle },
-      );
-      setCurrentConversation(updatedConversation);
+      const updatedSession = await updateSession(currentConversation.id, {
+        title: newTitle,
+      });
+      setCurrentConversation(updatedSession);
     } catch (error) {
       console.error("Failed to update conversation title:", error);
     }
@@ -483,7 +460,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   const handleDeleteConversation = async (id: string) => {
     try {
-      await deleteConversation(id);
+      await deleteSession(id);
       if (currentConversation?.id === id) {
         startNewConversation();
       }
@@ -495,27 +472,14 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   const handleDeleteAllConversations = async () => {
     try {
-      const response = await getConversations(1000, 0);
-      await Promise.all(
-        response.items.map((c) => deleteConversation(c.id)),
-      );
+      const response = await listSessions(1000, 0);
+      await Promise.all(response.items.map((c) => deleteSession(c.id)));
       startNewConversation();
     } catch (error) {
       console.error("Failed to delete all conversations:", error);
       throw error;
     }
   };
-
-  const getDeviceInfo = () => ({
-    userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "",
-    dateTime: new Date().toISOString(),
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    screenWidth:
-      typeof window !== "undefined" ? window.screen.width.toString() : "",
-    screenHeight:
-      typeof window !== "undefined" ? window.screen.height.toString() : "",
-    app: { name: "Eclaire Frontend", version: packageJson.version },
-  });
 
   const detectContentLinks = (text: string): ContentLink[] => {
     const links: ContentLink[] = [];
@@ -709,152 +673,54 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     const currentInput = input;
     setInput("");
 
-    // Check if streaming is enabled in preferences
-    const useStreaming = assistantPreferences.streamingEnabled;
-
     // Set loading state immediately for instant user feedback
-    // Use flushSync to ensure immediate re-render
-    if (useStreaming) {
-      flushSync(() => {
-        setIsStreaming(true);
-        setStreamingThought("");
-        setStreamingText("");
-        finalStreamingTextRef.current = "";
-        resetBatchingState();
-      });
-      clearTools();
-    } else {
-      flushSync(() => {
-        setIsLoading(true);
-      });
-    }
+    flushSync(() => {
+      setIsStreaming(true);
+      setStreamingThought("");
+      setStreamingText("");
+      finalStreamingTextRef.current = "";
+      resetBatchingState();
+    });
+    clearTools();
 
-    if (useStreaming) {
-      // Streaming mode - prepare streaming request
-
-      try {
-        const streamingRequest: StreamingRequest = {
-          prompt: currentInput,
-          deviceInfo: getDeviceInfo(),
-          enableThinking: assistantPreferences.showThinkingTokens,
-        };
-
-        if (currentConversation) {
-          streamingRequest.conversationId = currentConversation.id;
-        }
-
-        if (attachedAssets.length > 0) {
-          streamingRequest.context = {
-            agent: "eclaire",
-            assets: attachedAssets.map((asset) => ({
-              type: asset.type,
-              id: asset.id,
-            })),
-          };
-        }
-
-        await streamingClient.startStream?.(streamingRequest);
-      } catch (error) {
-        console.error("❌ Streaming error:", error);
-        setIsStreaming(false);
-        const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content:
-            "I'm sorry, I encountered an error while processing your request. Please try again.",
-          timestamp: new Date(),
-          isError: true,
-        };
-        setMessages((prev) => [...prev, errorMessage]);
+    try {
+      // Lazy session creation on first message
+      let sessionId = currentConversation?.id;
+      if (!sessionId) {
+        const session = await createSession();
+        sessionId = session.id;
+        setCurrentConversation(session);
       }
-    } else {
-      // Non-streaming mode - use regular API call to /api/prompt endpoint
 
-      try {
-        const promptRequest: PromptRequest = {
-          prompt: currentInput,
-          deviceInfo: getDeviceInfo(),
-          enableThinking: assistantPreferences.showThinkingTokens,
-        };
+      const streamingRequest: StreamingRequest = {
+        sessionId,
+        prompt: currentInput,
+        enableThinking: assistantPreferences.showThinkingTokens,
+        context:
+          attachedAssets.length > 0
+            ? {
+                agent: "eclaire",
+                assets: attachedAssets.map((asset) => ({
+                  type: asset.type,
+                  id: asset.id,
+                })),
+              }
+            : undefined,
+      };
 
-        if (currentConversation) {
-          promptRequest.conversationId = currentConversation.id;
-        }
-
-        if (attachedAssets.length > 0) {
-          promptRequest.context = {
-            agent: "eclaire",
-            assets: attachedAssets.map((asset) => ({
-              type: asset.type,
-              id: asset.id,
-            })),
-          };
-        }
-
-        const response = await sendPrompt(promptRequest);
-
-        // Create assistant message with thinking content
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: response.response,
-          timestamp: new Date(),
-          thinkingContent: response.thinkingContent,
-          toolCalls: response.toolCalls,
-        };
-
-        // Detect content links
-        const detectedLinks = detectContentLinks(response.response);
-        if (detectedLinks.length > 0) {
-          assistantMessage.contentLinks = detectedLinks;
-          setMessages((prev) => [...prev, assistantMessage]);
-          Promise.all(detectedLinks.map(fetchContentMetadata)).then(
-            (enrichedLinks) => {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantMessage.id
-                    ? { ...msg, contentLinks: enrichedLinks }
-                    : msg,
-                ),
-              );
-            },
-          );
-        } else {
-          setMessages((prev) => [...prev, assistantMessage]);
-        }
-
-        // Update conversation if we have an ID
-        if (response.conversationId && !currentConversation) {
-          getConversationWithMessages(response.conversationId)
-            .then((conversation) => {
-              setCurrentConversation({
-                id: conversation.id,
-                userId: conversation.userId,
-                title: conversation.title,
-                createdAt: conversation.createdAt,
-                updatedAt: conversation.updatedAt,
-                lastMessageAt: conversation.lastMessageAt,
-                messageCount: conversation.messageCount,
-              });
-            })
-            .catch((error) => {
-              console.error("Failed to load new conversation:", error);
-            });
-        }
-      } catch (error) {
-        console.error("❌ Non-streaming error:", error);
-        const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content:
-            "I'm sorry, I encountered an error while processing your request. Please try again.",
-          timestamp: new Date(),
-          isError: true,
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-      } finally {
-        setIsLoading(false);
-      }
+      await streamingClient.startStream?.(streamingRequest);
+    } catch (error) {
+      console.error("Streaming error:", error);
+      setIsStreaming(false);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content:
+          "I'm sorry, I encountered an error while processing your request. Please try again.",
+        timestamp: new Date(),
+        isError: true,
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     }
   };
 
@@ -866,6 +732,12 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   };
 
   const startNewConversation = () => {
+    // Abort server-side execution if streaming
+    if (isStreaming && currentConversation?.id) {
+      abortSession(currentConversation.id).catch(() => {});
+    }
+    streamingClient.disconnect?.();
+
     messages.forEach((message) => {
       if (message.imageUrl?.startsWith("blob:")) {
         URL.revokeObjectURL(message.imageUrl);
@@ -889,7 +761,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     finalStreamingTextRef.current = "";
     resetBatchingState();
     clearTools();
-    streamingClient.disconnect?.();
   };
 
   // Make this function available globally
@@ -956,7 +827,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
           return (
             <MobileChatView
               messages={messages}
-              isLoading={isLoading || isLoadingConversation}
+              isLoading={isLoadingConversation}
               messagesEndRef={messagesEndRef}
               attachedAssets={attachedAssets}
               setAttachedAssets={setAttachedAssets}
@@ -1125,7 +996,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               onFullScreenToggle={toggleAssistantFullScreen}
               // Pass all conversation state
               messages={messages}
-              isLoading={isLoading || isLoadingConversation}
+              isLoading={isLoadingConversation}
               messagesEndRef={messagesEndRef}
               attachedAssets={attachedAssets}
               setAttachedAssets={setAttachedAssets}
@@ -1164,7 +1035,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
           onFullScreenToggle={toggleAssistantFullScreen}
           // Pass all conversation state
           messages={messages}
-          isLoading={isLoading || isLoadingConversation}
+          isLoading={isLoadingConversation}
           messagesEndRef={messagesEndRef}
           attachedAssets={attachedAssets}
           setAttachedAssets={setAttachedAssets}

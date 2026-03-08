@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ToolCall } from "@/components/ui/tool-execution-tracker";
-import { getConversations } from "@/lib/api-conversations";
+import { listSessions } from "@/lib/api-sessions";
 import type { BackendMessage, ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
 
@@ -79,7 +79,7 @@ export function MobileChatInterface({
   useEffect(() => {
     if (showHistory) {
       setIsLoadingConversations(true);
-      getConversations(50, 0)
+      listSessions(50, 0)
         .then((response) => {
           setConversations(response.items);
         })

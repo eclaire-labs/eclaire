@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ToolCall } from "@/components/ui/tool-execution-tracker";
-import { getConversations } from "@/lib/api-conversations";
+import { listSessions } from "@/lib/api-sessions";
 import type { BackendMessage, ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
 
@@ -95,7 +95,7 @@ const ConversationHistoryDialog = ({
       const loadConversations = async () => {
         setIsLoading(true);
         try {
-          const response = await getConversations(50, 0);
+          const response = await listSessions(50, 0);
           setConversations(response.items);
         } catch (error) {
           console.error("Failed to load conversations:", error);

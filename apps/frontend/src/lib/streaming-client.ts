@@ -20,8 +20,8 @@ export interface StreamEvent {
 
 // Streaming request interface
 export interface StreamingRequest {
+  sessionId: string;
   prompt: string;
-  conversationId?: string;
   context?: {
     agent?: string;
     assets?: Array<{
@@ -29,15 +29,6 @@ export interface StreamingRequest {
       id: string;
     }>;
   };
-  deviceInfo?: {
-    userAgent?: string;
-    dateTime?: string;
-    timeZone?: string;
-    screenWidth?: string;
-    screenHeight?: string;
-    app?: { name: string; version: string };
-  };
-  trace?: boolean;
   enableThinking?: boolean;
 }
 
@@ -86,13 +77,15 @@ export class StreamingClient {
 
     try {
       // Make the initial request to get the streaming response
-      const response = await fetch("/api/prompt/stream", {
+      const { sessionId, ...body } = request;
+      const response = await fetch(`/api/sessions/${sessionId}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(request),
+        body: JSON.stringify(body),
         signal: this.abortController.signal,
+        credentials: "include",
       });
 
       if (!response.ok) {

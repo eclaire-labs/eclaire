@@ -10,13 +10,11 @@ import {
 
 
 interface AssistantPreferences {
-  streamingEnabled: boolean;
   showThinkingTokens: boolean;
   showAssistantOverlay: boolean;
 }
 
 const DEFAULT_PREFERENCES: AssistantPreferences = {
-  streamingEnabled: true,
   showThinkingTokens: true,
   showAssistantOverlay: true,
 };

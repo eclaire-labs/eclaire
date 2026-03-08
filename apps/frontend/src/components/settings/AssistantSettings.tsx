@@ -1,4 +1,4 @@
-import { Bot, Brain, Info, Zap } from "lucide-react";
+import { Bot, Brain, Info } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -38,8 +38,6 @@ export default function AssistantSettings() {
     );
   }
 
-  // Check if streaming is supported by the model
-  const streamingSupported = modelCapabilities?.capabilities?.stream ?? true;
   // Check if thinking is supported by the model (never means not supported)
   const thinkingSupported =
     modelCapabilities?.capabilities?.thinking?.mode !== "never";
@@ -62,68 +60,6 @@ export default function AssistantSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Response Mode Section */}
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">Response Mode</h4>
-            <p className="text-sm text-muted-foreground">
-              Choose how the AI assistant delivers responses to you.
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between space-x-2">
-            <div className="flex items-center space-x-3">
-              <Zap className="h-4 w-4 text-muted-foreground" />
-              <div className="space-y-0.5">
-                <Label htmlFor="streaming-mode" className="text-sm font-normal">
-                  Streaming responses
-                  {!streamingSupported && (
-                    <span className="text-xs text-muted-foreground ml-1">
-                      (Not supported)
-                    </span>
-                  )}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Show responses as they're generated for faster interaction
-                  {!streamingSupported && (
-                    <span className="block mt-1 text-yellow-600 dark:text-yellow-400">
-                      Current model does not support streaming responses
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="streaming-mode"
-              checked={preferences.streamingEnabled}
-              onCheckedChange={(checked) =>
-                updatePreference("streamingEnabled", checked)
-              }
-              disabled={!streamingSupported}
-            />
-          </div>
-
-          <div className="px-2 py-3 bg-muted/50 rounded-md">
-            <p className="text-xs text-muted-foreground">
-              {preferences.streamingEnabled ? (
-                <>
-                  <strong>Streaming mode:</strong> Responses appear as they're
-                  generated, showing thinking process, tool usage, and live text
-                  generation.
-                </>
-              ) : (
-                <>
-                  <strong>Non-streaming mode:</strong> Complete responses appear
-                  at once after processing, with thinking content displayed
-                  separately.
-                </>
-              )}
-            </p>
-          </div>
-        </div>
-
-        <Separator />
-
         {/* Display Options Section */}
         <div className="space-y-4">
           <div className="space-y-2">
@@ -200,40 +136,6 @@ export default function AssistantSettings() {
           </div>
         </div>
 
-        <Separator />
-
-        {/* Information Section */}
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">About Response Modes</h4>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <h5 className="text-sm font-medium text-primary">
-                Streaming Mode
-              </h5>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• Real-time response generation</li>
-                <li>• Live thinking process display</li>
-                <li>• Interactive tool execution</li>
-                <li>• Faster perceived response time</li>
-              </ul>
-            </div>
-
-            <div className="space-y-2">
-              <h5 className="text-sm font-medium text-primary">
-                Non-Streaming Mode
-              </h5>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• Complete response at once</li>
-                <li>• Thinking content shown separately</li>
-                <li>• Better for complex reasoning</li>
-                <li>• More reliable for long responses</li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );

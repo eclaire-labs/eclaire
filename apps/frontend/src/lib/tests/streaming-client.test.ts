@@ -34,7 +34,7 @@ function sseData(obj: Record<string, unknown>): string {
 
 /** Create a minimal StreamingRequest for tests. */
 function makeRequest(overrides: Partial<StreamingRequest> = {}): StreamingRequest {
-  return { prompt: "hello", ...overrides };
+  return { sessionId: "sess-1", prompt: "hello", ...overrides };
 }
 
 // ---------------------------------------------------------------------------
@@ -93,13 +93,13 @@ describe("StreamingClient", () => {
   // -----------------------------------------------------------------------
 
   describe("startStream – happy path", () => {
-    it("sends POST to /api/prompt/stream with correct headers and JSON body", async () => {
+    it("sends POST to /api/sessions/:id/messages with correct headers and JSON body", async () => {
       const events = [sseData({ type: "done" })];
       fetchMock.mockResolvedValueOnce(createSSEResponse(events));
 
       const request = makeRequest({
+        sessionId: "sess-42",
         prompt: "test prompt",
-        conversationId: "conv-1",
       });
 
       const client = new StreamingClient();
@@ -107,10 +107,11 @@ describe("StreamingClient", () => {
 
       expect(fetchMock).toHaveBeenCalledOnce();
       const [url, options] = fetchMock.mock.calls[0]!;
-      expect(url).toBe("/api/prompt/stream");
+      expect(url).toBe("/api/sessions/sess-42/messages");
       expect(options.method).toBe("POST");
       expect(options.headers).toEqual({ "Content-Type": "application/json" });
-      expect(JSON.parse(options.body)).toEqual(request);
+      // sessionId should NOT be in the body
+      expect(JSON.parse(options.body)).toEqual({ prompt: "test prompt" });
     });
 
     it("calls onConnect when stream starts", async () => {
