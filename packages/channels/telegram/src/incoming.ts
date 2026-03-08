@@ -1,16 +1,18 @@
 import { and, eq } from "drizzle-orm";
-import type { Context } from "telegraf";
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
+import type { BotContext } from "./commands.js";
 import { splitMessage } from "./message-utils.js";
 import { sendStreamingResponse } from "./stream-sender.js";
 import { safeSendChatAction } from "./typing-indicator.js";
 
 /**
  * Handles incoming messages from Telegram for bidirectional channels.
+ * Reads session state (sessionId, enableThinking) from ctx.session and
+ * lazily creates a session on first message if deps.createSession is available.
  */
 export async function handleIncomingMessage(
-  ctx: Context,
+  ctx: BotContext,
   channelId: string,
   userId: string,
 ): Promise<void> {
@@ -76,6 +78,28 @@ export async function handleIncomingMessage(
     const deps = getDeps();
     const requestId = `telegram-${channelId}-${Date.now()}`;
 
+    // Lazily create a session on first message if possible
+    if (!ctx.session.sessionId && deps.createSession) {
+      try {
+        const session = await deps.createSession(userId);
+        ctx.session.sessionId = session.id;
+      } catch (sessionError) {
+        logger.warn(
+          {
+            channelId,
+            error:
+              sessionError instanceof Error
+                ? sessionError.message
+                : "Unknown error",
+          },
+          "Failed to create session, continuing without session tracking",
+        );
+      }
+    }
+
+    const sessionId = ctx.session.sessionId;
+    const enableThinking = ctx.session.enableThinking ?? false;
+
     // Use streaming if available, otherwise fall back to non-streaming
     let responseText: string | undefined;
 
@@ -85,8 +109,8 @@ export async function handleIncomingMessage(
         message,
         { agent: "telegram-bot" },
         requestId,
-        undefined,
-        false,
+        sessionId,
+        enableThinking,
       );
 
       responseText = await sendStreamingResponse(
@@ -102,8 +126,8 @@ export async function handleIncomingMessage(
         message,
         { agent: "telegram-bot" },
         requestId,
-        undefined,
-        false,
+        sessionId,
+        enableThinking,
       );
 
       responseText = result.response;

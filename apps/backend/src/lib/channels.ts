@@ -1,4 +1,5 @@
 import { ChannelRegistry } from "@eclaire/channels-core";
+import { getActiveModelForContext } from "@eclaire/ai";
 import { initTelegramAdapter } from "@eclaire/channels-telegram";
 import { initDiscordAdapter } from "@eclaire/channels-discord";
 import { initSlackAdapter } from "@eclaire/channels-slack";
@@ -6,6 +7,11 @@ import { db, schema } from "../db/index.js";
 import { encrypt, decrypt } from "./encryption.js";
 import { processPromptRequest, processPromptRequestStream } from "./agent/index.js";
 import { recordHistory } from "./services/history.js";
+import {
+  createSession,
+  listSessions,
+  deleteSession,
+} from "./services/sessions.js";
 import { createChildLogger } from "./logger.js";
 
 export const channelRegistry = new ChannelRegistry();
@@ -19,6 +25,14 @@ const telegramAdapter = initTelegramAdapter({
   processPromptRequestStream,
   recordHistory,
   logger: createChildLogger("telegram"),
+  createSession,
+  listSessions,
+  deleteSession,
+  getModelInfo: () => {
+    const model = getActiveModelForContext("backend");
+    if (!model) return null;
+    return { name: model.name, provider: model.provider, model: model.providerModel };
+  },
 });
 
 channelRegistry.register(telegramAdapter);

@@ -3,12 +3,18 @@ import { type Context, session, Telegraf } from "telegraf";
 import { getDeps } from "./deps.js";
 import { decryptConfig, type TelegramConfig } from "./config.js";
 import { handleIncomingMessage } from "./incoming.js";
+import {
+  type BotContext,
+  type TelegramSessionData,
+  registerCommands,
+  getCommandList,
+} from "./commands.js";
 import { splitMessage } from "./message-utils.js";
 import { withRetry } from "./retry.js";
 import { resetCircuitBreaker } from "./typing-indicator.js";
 
 interface TelegramBotInstance {
-  bot: Telegraf;
+  bot: Telegraf<BotContext>;
   config: TelegramConfig;
   channelId: string;
   userId: string;
@@ -29,15 +35,24 @@ async function createBotInstance(
   const { logger } = getDeps();
 
   try {
-    const bot = new Telegraf(config.bot_token);
+    const bot = new Telegraf<BotContext>(config.bot_token);
 
-    // Add session middleware for conversation tracking
-    bot.use(session());
+    // Add session middleware with default session factory
+    bot.use(
+      session({
+        defaultSession: (): TelegramSessionData => ({
+          enableThinking: true,
+        }),
+      }),
+    );
 
-    // Handle incoming messages for bidirectional channels
+    // Register slash commands BEFORE the text handler so Telegraf matches them first
+    registerCommands(bot, channelId, userId);
+
+    // Handle incoming text messages (non-command)
     bot.on("text", async (ctx) => {
       try {
-        await handleIncomingMessage(ctx, channelId, userId);
+        await handleIncomingMessage(ctx as BotContext, channelId, userId);
       } catch (error) {
         logger.error(
           {
@@ -58,33 +73,6 @@ async function createBotInstance(
             "Failed to send error reply to Telegram",
           );
         }
-      }
-    });
-
-    // Handle bot commands
-    bot.command("start", async (ctx) => {
-      try {
-        await ctx.reply(
-          "Hello! I'm your Eclaire assistant. How can I help you today?",
-        );
-      } catch (_error) {
-        logger.error(
-          { channelId, userId },
-          "Failed to send start command reply",
-        );
-      }
-    });
-
-    bot.command("help", async (ctx) => {
-      try {
-        await ctx.reply(
-          "I can help you with various tasks. Just send me a message and I'll do my best to assist you!",
-        );
-      } catch (_error) {
-        logger.error(
-          { channelId, userId },
-          "Failed to send help command reply",
-        );
       }
     });
 
@@ -113,6 +101,20 @@ async function createBotInstance(
         },
         "Bot token validated successfully",
       );
+
+      // Register commands in Telegram's menu
+      try {
+        await bot.telegram.setMyCommands(getCommandList());
+      } catch (cmdError) {
+        logger.warn(
+          {
+            channelId,
+            error:
+              cmdError instanceof Error ? cmdError.message : "Unknown error",
+          },
+          "Failed to register bot commands menu (non-fatal)",
+        );
+      }
     } catch (validationError) {
       logger.error(
         {

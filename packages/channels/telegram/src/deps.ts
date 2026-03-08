@@ -36,6 +36,27 @@ export interface TelegramDeps {
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   recordHistory: (entry: any) => Promise<void>;
   logger: TelegramLogger;
+
+  // Optional session & model deps for slash commands
+  createSession?: (userId: string, title?: string) => Promise<{ id: string; title: string }>;
+  listSessions?: (
+    userId: string,
+    limit?: number,
+    offset?: number,
+  ) => Promise<
+    Array<{
+      id: string;
+      title: string;
+      messageCount: number;
+      updatedAt: Date;
+    }>
+  >;
+  deleteSession?: (sessionId: string, userId: string) => Promise<boolean>;
+  getModelInfo?: () => {
+    name: string;
+    provider: string;
+    model: string;
+  } | null;
 }
 
 let _deps: TelegramDeps | null = null;
