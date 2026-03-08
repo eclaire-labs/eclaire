@@ -92,10 +92,8 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
       dialect: "openai_compatible",
       baseUrl: "https://openrouter.ai/api/v1",
       headers: {
-        // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional config placeholder syntax
-        "HTTP-Referer": "${ENV:OPENROUTER_HTTP_REFERER}",
-        // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional config placeholder syntax
-        "X-Title": "${ENV:OPENROUTER_X_TITLE}",
+        "HTTP-Referer": "https://github.com/eclaire-labs/eclaire",
+        "X-Title": "Eclaire",
       },
       auth: {
         type: "bearer",

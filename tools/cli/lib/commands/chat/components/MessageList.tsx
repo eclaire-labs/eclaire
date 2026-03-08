@@ -1,16 +1,20 @@
 import React from "react";
 import { Box, Text } from "ink";
+import { Markdown } from "./Markdown.js";
+import { ToolCallDisplay } from "./ToolCallDisplay.js";
+import { ThinkingBlock } from "./ThinkingBlock.js";
+import type { DisplayMessage, DisplayOptions } from "../types.js";
 
-interface DisplayMessage {
-  role: "user" | "assistant" | "tool";
-  content: string;
+interface MessageListProps {
+  messages: DisplayMessage[];
+  options: DisplayOptions;
 }
 
-export function MessageList({ messages }: { messages: DisplayMessage[] }) {
+export function MessageList({ messages, options }: MessageListProps) {
   if (messages.length === 0) {
     return (
       <Box marginY={1}>
-        <Text color="gray">
+        <Text dimColor>
           Start a conversation. Type your message and press Enter.
         </Text>
       </Box>
@@ -19,21 +23,36 @@ export function MessageList({ messages }: { messages: DisplayMessage[] }) {
 
   return (
     <Box flexDirection="column">
-      {messages.map((msg, i) => (
-        <Box key={i} marginY={0} flexDirection="column">
-          {msg.role === "tool" ? (
-            <Text color="yellow" dimColor>{msg.content}</Text>
-          ) : (
-            <>
-              <Text bold color={msg.role === "user" ? "blue" : "green"}>
-                {msg.role === "user" ? "You" : "Assistant"}
-              </Text>
-              <Text wrap="wrap">{msg.content}</Text>
-            </>
-          )}
-          {i < messages.length - 1 && msg.role !== "tool" && <Text color="gray">{"─".repeat(40)}</Text>}
-        </Box>
-      ))}
+      {messages.map((msg, i) => {
+        const isFirst = i === 0;
+        const prevMsg = i > 0 ? messages[i - 1] : null;
+        const showSeparator =
+          !isFirst && msg.role !== "tool" && prevMsg?.role !== "tool";
+
+        return (
+          <Box key={i} flexDirection="column">
+            {showSeparator && <Box marginTop={1} />}
+            {msg.role === "tool" ? (
+              msg.toolCall ? (
+                <ToolCallDisplay toolCall={msg.toolCall} options={options} />
+              ) : (
+                <Text dimColor>{msg.content}</Text>
+              )
+            ) : msg.role === "user" ? (
+              <Box width="100%" paddingX={2} paddingY={1} backgroundColor="#333333">
+                <Text wrap="wrap">{msg.content}</Text>
+              </Box>
+            ) : (
+              <Box flexDirection="column">
+                {msg.thinking && (
+                  <ThinkingBlock content={msg.thinking} options={options} />
+                )}
+                <Markdown content={msg.content} />
+              </Box>
+            )}
+          </Box>
+        );
+      })}
     </Box>
   );
 }

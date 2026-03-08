@@ -63,3 +63,98 @@ export async function getModelInfo(): Promise<ModelInfo> {
   }
   return response.json() as Promise<ModelInfo>;
 }
+
+// ============================================================================
+// Session API
+// ============================================================================
+
+export interface Session {
+  id: string;
+  userId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string | null;
+  messageCount: number;
+}
+
+export interface SessionMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  thinkingContent?: string | null;
+  createdAt: string;
+}
+
+export interface SessionWithMessages extends Session {
+  messages: SessionMessage[];
+}
+
+export interface SendOptions {
+  enableThinking?: boolean;
+}
+
+export async function createSession(title?: string): Promise<Session> {
+  const response = await backendFetch("/api/sessions", {
+    method: "POST",
+    body: JSON.stringify(title ? { title } : {}),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to create session: ${response.status}`);
+  }
+  const data = (await response.json()) as { session: Session };
+  return data.session;
+}
+
+export async function listSessions(limit?: number): Promise<Session[]> {
+  const params = limit ? `?limit=${limit}` : "";
+  const response = await backendFetch(`/api/sessions${params}`);
+  if (!response.ok) {
+    throw new Error(`Failed to list sessions: ${response.status}`);
+  }
+  const data = (await response.json()) as { items: Session[] };
+  return data.items;
+}
+
+export async function getSession(id: string): Promise<SessionWithMessages> {
+  const response = await backendFetch(`/api/sessions/${id}`);
+  if (!response.ok) {
+    throw new Error(`Failed to get session: ${response.status}`);
+  }
+  const data = (await response.json()) as { session: SessionWithMessages };
+  return data.session;
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  const response = await backendFetch(`/api/sessions/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete session: ${response.status}`);
+  }
+}
+
+export async function sendMessage(
+  sessionId: string,
+  prompt: string,
+  options?: SendOptions,
+): Promise<Response> {
+  return backendFetch(`/api/sessions/${sessionId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({
+      prompt,
+      enableThinking: options?.enableThinking,
+    }),
+  });
+}
+
+export async function abortSession(sessionId: string): Promise<boolean> {
+  const response = await backendFetch(`/api/sessions/${sessionId}/abort`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    return false;
+  }
+  const data = (await response.json()) as { aborted: boolean };
+  return data.aborted;
+}
