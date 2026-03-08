@@ -1,5 +1,13 @@
 import type { Context } from "hono";
 
+/** Content types that can execute scripts if rendered inline by the browser. */
+const DANGEROUS_CONTENT_TYPES = new Set([
+  "text/html",
+  "image/svg+xml",
+  "application/xhtml+xml",
+  "application/xml",
+]);
+
 interface AssetResponseOptions {
   stream: ReadableStream<Uint8Array>;
   contentType: string;
@@ -37,6 +45,19 @@ export function createAssetResponse(
     headers.set(
       "Content-Disposition",
       `${dispositionType}; filename="${options.disposition.filename}"`,
+    );
+  }
+
+  // Security headers — always set
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Frame-Options", "DENY");
+
+  // Sandbox dangerous content types to prevent script execution
+  const baseType = (options.contentType.split(";")[0] ?? "").trim();
+  if (DANGEROUS_CONTENT_TYPES.has(baseType)) {
+    headers.set(
+      "Content-Security-Policy",
+      "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
     );
   }
 

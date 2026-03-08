@@ -265,7 +265,7 @@ photosRoutes.get(
       contentType: metadata.contentType,
       contentLength: metadata.size,
       cacheControl: "private, max-age=3600",
-      disposition: { type: "inline", filename },
+      disposition: { type: "auto", filename },
     });
   }, logger),
 );

@@ -199,9 +199,23 @@ const serveBookmarkAsset = (assetType: BookmarkAssetType) =>
     const textTypes = ["text/", "application/json", "application/xml"];
     const needsCharset = textTypes.some((type) => mimeType.startsWith(type));
 
+    const contentType = needsCharset
+      ? `${mimeType}; charset=utf-8`
+      : mimeType;
+
+    // Force download for HTML assets (raw, readable) to prevent XSS
+    const isHtml =
+      mimeType === "text/html" || mimeType === "application/xhtml+xml";
+    const disposition = isHtml
+      ? {
+          type: "attachment" as const,
+          filename: `bookmark-${c.req.param("id")}-${assetType}.html`,
+        }
+      : undefined;
+
     return createAssetResponse(c, {
       stream,
-      contentType: needsCharset ? `${mimeType}; charset=utf-8` : mimeType,
+      contentType,
       contentLength: metadata.size,
       cacheControl:
         assetType === "favicon" ||
@@ -209,6 +223,7 @@ const serveBookmarkAsset = (assetType: BookmarkAssetType) =>
         assetType === "thumbnail"
           ? "public, max-age=604800"
           : "private, max-age=3600",
+      disposition,
     });
   }, logger);
 

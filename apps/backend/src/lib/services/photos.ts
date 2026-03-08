@@ -1886,8 +1886,16 @@ async function _getPhotoStreamDetailsForViewing(
     };
   }
 
-  // SVG can be served directly - browser native support
+  // SVG: prefer the rasterized JPEG to avoid serving raw SVG (XSS risk)
   if (originalMimeType === "image/svg+xml") {
+    if (photoMeta.convertedJpgStorageId) {
+      return {
+        storageId: photoMeta.convertedJpgStorageId,
+        mimeType: "image/jpeg",
+        userId: photoMeta.userId,
+      };
+    }
+    // Fallback to raw SVG if not yet processed (CSP sandbox headers protect against XSS)
     if (!photoMeta.storageId) {
       logger.error({ photoId }, "SVG photo is missing its primary storageId");
       throw new Error("File reference missing for SVG photo.");
@@ -2246,9 +2254,11 @@ export async function getViewStream(
   let storageId: string;
   let mimeType: string;
 
-  // If it's HEIC/HEIF and a converted JPG exists, serve the JPG
+  // Prefer converted JPEG for formats that are unsafe or unsupported in browsers
   if (
-    (originalMimeType === "image/heic" || originalMimeType === "image/heif") &&
+    (originalMimeType === "image/heic" ||
+      originalMimeType === "image/heif" ||
+      originalMimeType === "image/svg+xml") &&
     photoMeta.convertedJpgStorageId
   ) {
     storageId = photoMeta.convertedJpgStorageId;

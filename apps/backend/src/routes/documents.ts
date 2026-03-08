@@ -186,6 +186,14 @@ documentsRoutes.patch(
   }, logger),
 );
 
+// Content types that must never be rendered inline (XSS risk)
+const FORCE_ATTACHMENT_TYPES = new Set([
+  "text/html",
+  "image/svg+xml",
+  "application/xhtml+xml",
+  "application/xml",
+]);
+
 // Helper to adapt getDocumentAsset results to createAssetResponse options
 function serveDocumentAsset(cacheControl: string) {
   return (
@@ -196,14 +204,19 @@ function serveDocumentAsset(cacheControl: string) {
       mimeType: string;
       filename: string;
     },
-  ) =>
-    createAssetResponse(c, {
+  ) => {
+    const baseType = (asset.mimeType.split(";")[0] ?? "").trim();
+    const dispositionType = FORCE_ATTACHMENT_TYPES.has(baseType)
+      ? ("attachment" as const)
+      : ("auto" as const);
+    return createAssetResponse(c, {
       stream: asset.stream,
       contentType: asset.mimeType,
       contentLength: asset.contentLength,
       cacheControl,
-      disposition: { type: "auto", filename: asset.filename },
+      disposition: { type: dispositionType, filename: asset.filename },
     });
+  };
 }
 
 // GET /api/documents/:id/file
