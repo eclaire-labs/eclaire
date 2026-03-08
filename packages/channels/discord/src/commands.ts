@@ -14,6 +14,11 @@ export interface DiscordSessionData {
 // In-memory session store keyed by eclaire channelId
 const sessions = new Map<string, DiscordSessionData>();
 
+/** Reset all session state. Used by tests. */
+export function resetSessions(): void {
+  sessions.clear();
+}
+
 export function getSession(channelId: string): DiscordSessionData {
   let session = sessions.get(channelId);
   if (!session) {
