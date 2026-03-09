@@ -43,6 +43,13 @@
       "when": 1772116343137,
       "tag": "0005_skinny_greymalkin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1773020080033,
+      "tag": "0006_silky_cassandra_nova",
+      "breakpoints": true
     }
   ]
 }
