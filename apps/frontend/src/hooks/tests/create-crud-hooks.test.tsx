@@ -59,7 +59,7 @@ describe("useList", () => {
     vi.clearAllMocks();
   });
 
-  it("fetches items from apiPath with limit=10000", async () => {
+  it("fetches items from apiPath", async () => {
     mockApiFetch.mockResolvedValueOnce(
       mockJsonResponse({ items: [{ id: "1", title: "Test" }] }),
     );
@@ -70,7 +70,7 @@ describe("useList", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(mockApiFetch).toHaveBeenCalledWith("/api/test-items?limit=10000");
+    expect(mockApiFetch).toHaveBeenCalledWith("/api/test-items?");
     expect(result.current.items).toEqual([{ id: "1", title: "Test" }]);
   });
 
