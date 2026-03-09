@@ -53,7 +53,7 @@ interface CreateDocumentData {
     dueDate?: string | null;
     tags?: string[];
     originalFilename?: string;
-    enabled?: boolean;
+    processingEnabled?: boolean;
     reviewStatus?: "pending" | "accepted" | "rejected";
     flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
     isPinned?: boolean;
@@ -95,7 +95,7 @@ interface DocumentDetails {
   reviewStatus: "pending" | "accepted" | "rejected";
   flagColor: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned: boolean;
-  enabled: boolean;
+  processingEnabled: boolean;
 }
 
 export { NotFoundError };
@@ -223,7 +223,7 @@ async function getDocumentWithDetails(
     reviewStatus: document.reviewStatus || "pending",
     flagColor: document.flagColor,
     isPinned: document.isPinned || false,
-    enabled: document.enabled || false,
+    processingEnabled: document.processingEnabled || false,
   };
 }
 
@@ -281,7 +281,7 @@ export async function createDocument(
     const verifiedMimeType = fileTypeResult?.mime || originalMimeType;
     const fileSize = content.length;
     const originalFilename = metadata.originalFilename || "untitled";
-    const enabled = metadata.enabled !== false;
+    const processingEnabled = metadata.processingEnabled !== false;
     const dueDateValue = metadata.dueDate ? new Date(metadata.dueDate) : null;
 
     // Save the file to storage first using the pre-generated ID
@@ -323,7 +323,7 @@ export async function createDocument(
         rawMetadata: metadata,
         originalMimeType: originalMimeType,
         userAgent: userAgent,
-        enabled,
+        processingEnabled: processingEnabled,
         reviewStatus: metadata.reviewStatus || "pending",
         flagColor: metadata.flagColor || null,
         isPinned: metadata.isPinned || false,
@@ -356,7 +356,7 @@ export async function createDocument(
 
     const newDocumentDetails = await getDocumentWithDetails(documentId, userId);
 
-    if (enabled) {
+    if (processingEnabled) {
       await createOrUpdateProcessingJob("documents", documentId, userId, [
         "processing",
       ]);
@@ -383,7 +383,7 @@ export async function createDocument(
       }
     } else {
       logger.info(
-        `Skipped queuing background jobs for document ${documentId} (enabled: false)`,
+        `Skipped queuing background jobs for document ${documentId} (processingEnabled: false)`,
       );
     }
 
@@ -609,7 +609,7 @@ export async function getAllDocuments(
         reviewStatus: document.reviewStatus || "pending",
         flagColor: document.flagColor,
         isPinned: document.isPinned || false,
-        enabled: document.enabled || false,
+        processingEnabled: document.processingEnabled || false,
       };
     });
     return results;
@@ -790,7 +790,7 @@ export async function findDocuments({
         reviewStatus: document.reviewStatus || "pending",
         flagColor: document.flagColor,
         isPinned: document.isPinned || false,
-        enabled: document.enabled || false,
+        processingEnabled: document.processingEnabled || false,
       };
     });
 

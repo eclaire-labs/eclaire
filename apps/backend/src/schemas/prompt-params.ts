@@ -95,7 +95,7 @@ export const SearchArgsSchema = z.object({
   fileTypes: z.array(z.string()).optional(), // For documents
   locationCity: z.string().optional(), // For photos
   dateField: z.enum(["created_at", "dateTaken"]).optional(), // For photos
-  status: z.enum(["not-started", "in-progress", "completed"]).optional(), // For tasks
+  status: z.enum(["backlog", "not-started", "in-progress", "completed", "cancelled"]).optional(), // For tasks
 });
 
 // TypeScript types

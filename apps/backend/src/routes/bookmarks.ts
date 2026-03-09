@@ -78,7 +78,7 @@ bookmarksRoutes.post(
   zValidator("json", CreateBookmarkSchema),
   withAuth(async (c, userId) => {
     const body = c.req.valid("json");
-    const { url, title, description, tags, metadata, enabled, reviewStatus, flagColor, isPinned, dueDate } = body;
+    const { url, title, description, tags, metadata, processingEnabled, reviewStatus, flagColor, isPinned, dueDate } = body;
 
     // 1. Basic URL validation and normalization
     const urlValidation = validateAndNormalizeBookmarkUrl(url);
@@ -91,7 +91,7 @@ bookmarksRoutes.post(
       title,
       description,
       tags,
-      enabled,
+      processingEnabled,
       reviewStatus,
       flagColor,
       isPinned,

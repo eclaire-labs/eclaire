@@ -96,7 +96,7 @@ export interface Photo {
   dominantColors: string[] | null; // Array of color names
 
   // Processing control
-  enabled: boolean;
+  processingEnabled: boolean;
 
   // Optional fields from backend service for client-side hints
   isOriginalViewable?: boolean;
@@ -270,7 +270,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
     );
 
     // Check if background processing is enabled (default true if not specified)
-    const enabled = metadata.enabled !== false; // Will be true unless explicitly set to false
+    const processingEnabled = metadata.processingEnabled !== false; // Will be true unless explicitly set to false
 
     // 1. Prepare EXIF and Location data for DB insertion
     const exif = extractedMetadata?.exif || {};
@@ -424,7 +424,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
         flagColor: metadata.flagColor || null,
         isPinned: metadata.isPinned || false,
 
-        enabled: enabled, // Set the enabled flag based on metadata
+        processingEnabled: processingEnabled, // Set the processingEnabled flag based on metadata
         // biome-ignore lint/suspicious/noExplicitAny: Drizzle insert type mismatch with optional columns
       } as any)
       .returning();
@@ -453,7 +453,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
     });
 
     // 6. Initialize processing job status tracking
-    if (enabled) {
+    if (processingEnabled) {
       // Determine processing stages based on image type
       const needsHeicConversion =
         originalMimeType === "image/heic" || originalMimeType === "image/heif";
@@ -480,7 +480,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
     }
 
     // 7. Queue background processing jobs (HEIC conversion and AI analysis) only if enabled
-    if (enabled) {
+    if (processingEnabled) {
       await queuePhotoBackgroundJobs(
         newPhoto, // Use the photo data we already have instead of fetching it again
         userId,
@@ -488,12 +488,12 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
         metadata.originalFilename || "untitled.jpg",
       );
       logger.info(
-        { photoId, userId, enabled: true },
+        { photoId, userId, processingEnabled: true },
         "Queued photo background processing jobs",
       );
     } else {
       logger.info(
-        { photoId, userId, enabled: false },
+        { photoId, userId, processingEnabled: false },
         "Skipped queuing photo background processing jobs",
       );
     }
@@ -831,7 +831,7 @@ async function getPhotoWithDetails(photoId: string, userId: string) {
     reviewStatus: photo.reviewStatus || "pending",
     flagColor: photo.flagColor,
     isPinned: photo.isPinned || false,
-    enabled: photo.enabled || false,
+    processingEnabled: photo.processingEnabled || false,
   };
 }
 
@@ -934,7 +934,7 @@ export async function getAllPhotos(userId: string) {
           reviewStatus: photo.reviewStatus || "pending",
           flagColor: photo.flagColor,
           isPinned: photo.isPinned || false,
-          enabled: photo.enabled || false,
+          processingEnabled: photo.processingEnabled || false,
         };
       });
 
@@ -1248,7 +1248,7 @@ export async function findPhotos({
           reviewStatus: photo.reviewStatus || "pending",
           flagColor: photo.flagColor,
           isPinned: photo.isPinned || false,
-          enabled: photo.enabled || false,
+          processingEnabled: photo.processingEnabled || false,
         };
       });
 

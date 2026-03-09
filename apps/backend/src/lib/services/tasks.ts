@@ -51,6 +51,7 @@ export type FindTasksParams = {
   text?: string;
   tags?: string[];
   status?: TaskStatus;
+  priority?: number;
   startDate?: Date;
   endDate?: Date;
   dueDateStart?: Date;
@@ -159,13 +160,16 @@ interface CreateTaskParams {
   title: string;
   description?: string;
   status?: TaskStatus;
+  priority?: number;
   dueDate?: string;
   assignedToId?: string;
   tags?: string[];
   reviewStatus?: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned?: boolean;
-  enabled?: boolean;
+  processingEnabled?: boolean;
+  sortOrder?: number | null;
+  parentId?: string | null;
   isRecurring?: boolean;
   cronExpression?: string;
   recurrenceEndDate?: string;
@@ -177,13 +181,16 @@ interface UpdateTaskParams {
   title?: string;
   description?: string;
   status?: string;
+  priority?: number;
   dueDate?: string | null;
   assignedToId?: string | null;
   tags?: string[];
   reviewStatus?: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned?: boolean;
-  enabled?: boolean;
+  processingEnabled?: boolean;
+  sortOrder?: number | null;
+  parentId?: string | null;
   isRecurring?: boolean;
   cronExpression?: string;
   recurrenceEndDate?: string | null;
@@ -565,6 +572,9 @@ function cleanTaskForResponse(
     createdAt: createdAt ? formatToISO8601(createdAt) : null,
     updatedAt: updatedAt ? formatToISO8601(updatedAt) : null,
     processingStatus: processingStatus || "pending",
+    priority: task.priority ?? 0,
+    sortOrder: task.sortOrder != null ? Number(task.sortOrder) : null,
+    parentId: task.parentId ?? null,
     tags: tags,
     comments: comments,
     // Recurrence data from scheduler
@@ -630,10 +640,13 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
         dueDate: dueDateValue,
         assignedToId: assignedToUserId,
         completedAt: completedAtValue,
-        enabled: taskData.enabled ?? true,
+        priority: taskData.priority ?? 0,
+        processingEnabled: taskData.processingEnabled ?? true,
         reviewStatus: taskData.reviewStatus || "pending",
         flagColor: taskData.flagColor || null,
         isPinned: taskData.isPinned || false,
+        sortOrder: taskData.sortOrder != null ? String(taskData.sortOrder) : null,
+        parentId: taskData.parentId || null,
         // Note: Recurrence fields (isRecurring, cronExpression, etc.)
         // are stored in queue_schedules, not in the tasks table.
         // createdAt and updatedAt are handled by schema defaults
@@ -1239,7 +1252,7 @@ export async function updateTask(
  */
 export async function updateTaskStatusAsAssistant(
   taskId: string,
-  status: "not-started" | "in-progress" | "completed",
+  status: TaskStatus,
   assignedAssistantId: string,
   completedAt?: string | null,
 ): Promise<void> {
@@ -1822,6 +1835,7 @@ function _buildTaskQueryConditions({
   userId,
   text,
   status,
+  priority,
   startDate,
   endDate,
   dueDateStart,
@@ -1840,6 +1854,10 @@ function _buildTaskQueryConditions({
 
   if (status) {
     definedConditions.push(eq(tasks.status, status));
+  }
+
+  if (priority !== undefined) {
+    definedConditions.push(eq(tasks.priority, priority));
   }
 
   // Filter by dueDate (Date object)
@@ -1889,6 +1907,7 @@ export async function findTasks({
   text,
   tags: tagsList,
   status,
+  priority,
   startDate,
   endDate,
   limit = 50,
@@ -1903,6 +1922,7 @@ export async function findTasks({
       userId,
       text,
       status,
+      priority,
       startDate,
       endDate,
       dueDateStart,
@@ -1916,6 +1936,8 @@ export async function findTasks({
       dueDate: tasks.dueDate,
       status: tasks.status,
       title: tasks.title,
+      priority: tasks.priority,
+      sortOrder: tasks.sortOrder,
     };
     const sortColumn = sortColumnMap[sortBy] || tasks.createdAt;
     const orderDir = sortDir === "asc" ? asc : desc;
@@ -2026,6 +2048,8 @@ export async function findTasks({
       if (sortBy === "title") return item.title;
       if (sortBy === "dueDate") return item.dueDate;
       if (sortBy === "status") return item.status;
+      if (sortBy === "priority") return item.priority;
+      if (sortBy === "sortOrder") return item.sortOrder;
       return item.createdAt; // createdAt formatted as ISO string
     };
     const nextCursor =
@@ -2066,6 +2090,7 @@ export async function countTasks({
   text,
   tags: tagsList,
   status,
+  priority,
   startDate,
   endDate,
   dueDateStart,
@@ -2076,6 +2101,7 @@ export async function countTasks({
       userId,
       text,
       status,
+      priority,
       startDate,
       endDate,
       dueDateStart,

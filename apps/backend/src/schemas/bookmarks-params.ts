@@ -129,7 +129,7 @@ export const BookmarkSchema = z
         examples: ["Tue, 15 Nov 2023 12:00:00 GMT", null],
       }),
 
-    enabled: z
+    processingEnabled: z
       .boolean()
       .optional()
       .default(true)
@@ -235,7 +235,7 @@ export const CreateBookmarkSchema = z
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
 
-    enabled: z
+    processingEnabled: z
       .boolean()
       .optional()
       .default(true)

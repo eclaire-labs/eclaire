@@ -50,6 +50,13 @@
       "when": 1773020076785,
       "tag": "0006_overrated_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1741392000000,
+      "tag": "0007_task_model_improvements",
+      "breakpoints": true
     }
   ]
 }

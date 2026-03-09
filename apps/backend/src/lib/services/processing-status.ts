@@ -609,23 +609,23 @@ export async function getUserProcessingSummary(
           or(
             and(
               sql`${queueJobs.metadata}->>'assetType' = 'photos'`,
-              photos.enabled,
+              photos.processingEnabled,
             ),
             and(
               sql`${queueJobs.metadata}->>'assetType' = 'documents'`,
-              documents.enabled,
+              documents.processingEnabled,
             ),
             and(
               sql`${queueJobs.metadata}->>'assetType' = 'bookmarks'`,
-              bookmarks.enabled,
+              bookmarks.processingEnabled,
             ),
             and(
               sql`${queueJobs.metadata}->>'assetType' = 'notes'`,
-              notes.enabled,
+              notes.processingEnabled,
             ),
             and(
               sql`${queueJobs.metadata}->>'assetType' = 'tasks'`,
-              tasks.enabled,
+              tasks.processingEnabled,
             ),
           ),
         ),
@@ -826,23 +826,23 @@ export async function getUserProcessingJobs(
           or(
             and(
               sql`${queueJobs.metadata}->>'assetType' = 'photos'`,
-              photos.enabled,
+              photos.processingEnabled,
             ),
             and(
               sql`${queueJobs.metadata}->>'assetType' = 'documents'`,
-              documents.enabled,
+              documents.processingEnabled,
             ),
             and(
               sql`${queueJobs.metadata}->>'assetType' = 'bookmarks'`,
-              bookmarks.enabled,
+              bookmarks.processingEnabled,
             ),
             and(
               sql`${queueJobs.metadata}->>'assetType' = 'notes'`,
-              notes.enabled,
+              notes.processingEnabled,
             ),
             and(
               sql`${queueJobs.metadata}->>'assetType' = 'tasks'`,
-              tasks.enabled,
+              tasks.processingEnabled,
             ),
           ),
         ),

@@ -17,6 +17,7 @@ import {
 } from "@eclaire/core/id";
 import { relations, sql } from "drizzle-orm";
 import {
+  foreignKey,
   index,
   integer,
   primaryKey,
@@ -187,7 +188,10 @@ export const tasks = sqliteTable(
     assignedToId: text("assigned_to_id").references(() => users.id, {
       onDelete: "set null",
     }),
-    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    priority: integer("priority").notNull().default(0),
+    processingEnabled: integer("processing_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
     }),
@@ -197,9 +201,11 @@ export const tasks = sqliteTable(
     isPinned: integer("is_pinned", { mode: "boolean" })
       .notNull()
       .default(false),
+    sortOrder: real("sort_order"),
+    parentId: text("parent_id"),
     // Note: Recurrence data (isRecurring, cronExpression, recurrenceEndDate, recurrenceLimit)
     // is now stored in queue_schedules table and fetched via scheduler.get()
-    lastExecutedAt: integer("last_executed_at", { mode: "timestamp_ms" }), // When task was last executed (for display)
+    lastExecutedAt: integer("last_executed_at", { mode: "timestamp_ms" }),
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
@@ -214,6 +220,7 @@ export const tasks = sqliteTable(
     dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
     isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
     completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
+    parentIdx: index("tasks_parent_id_idx").on(table.parentId),
     // Composite indexes for cursor pagination
     userCreatedAtIdx: index("tasks_user_id_created_at_idx").on(
       table.userId,
@@ -228,6 +235,18 @@ export const tasks = sqliteTable(
       table.status,
       table.createdAt,
     ),
+    userPriorityCreatedAtIdx: index(
+      "tasks_user_id_priority_created_at_idx",
+    ).on(table.userId, table.priority, table.createdAt),
+    userSortOrderIdx: index("tasks_user_id_sort_order_idx").on(
+      table.userId,
+      table.sortOrder,
+    ),
+    // Self-referencing FK for sub-tasks (defined here to avoid circular type inference)
+    parentFk: foreignKey({
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+    }),
   }),
 );
 
@@ -308,7 +327,9 @@ export const bookmarks = sqliteTable(
 
     extractedText: text("extracted_text"),
 
-    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    processingEnabled: integer("processing_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
 
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
@@ -359,7 +380,9 @@ export const documents = sqliteTable(
     rawMetadata: text("raw_metadata", { mode: "json" }).$type<RawMetadata>(),
     originalMimeType: text("original_mime_type"),
     userAgent: text("user_agent"),
-    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    processingEnabled: integer("processing_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
     extractedMdStorageId: text("extracted_md_storage_id"),
     extractedTxtStorageId: text("extracted_txt_storage_id"),
 
@@ -448,7 +471,9 @@ export const photos = sqliteTable(
     originalMimeType: text("original_mime_type"),
     userAgent: text("user_agent"),
 
-    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    processingEnabled: integer("processing_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
 
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
@@ -500,7 +525,9 @@ export const notes = sqliteTable(
     rawMetadata: text("raw_metadata", { mode: "json" }).$type<RawMetadata>(),
     originalMimeType: text("original_mime_type"),
     userAgent: text("user_agent"),
-    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    processingEnabled: integer("processing_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
     dueDate: integer("due_date", { mode: "timestamp_ms" }),
 
     reviewStatus: text("review_status", {
@@ -803,6 +830,12 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.assignedToId],
     references: [users.id],
   }),
+  parent: one(tasks, {
+    fields: [tasks.parentId],
+    references: [tasks.id],
+    relationName: "parentChild",
+  }),
+  children: many(tasks, { relationName: "parentChild" }),
   tags: many(tasksTags),
   comments: many(taskComments),
 }));

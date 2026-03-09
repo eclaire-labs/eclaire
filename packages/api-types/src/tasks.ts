@@ -26,12 +26,15 @@ export const TaskResponseSchema = z
     id: z.string(),
     title: z.string(),
     description: z.string().nullable(),
-    status: z.enum(["not-started", "in-progress", "completed"]),
+    status: z.enum(["backlog", "not-started", "in-progress", "completed", "cancelled"]),
+    priority: z.number().int().min(0).max(4),
     dueDate: z.string().nullable(),
     assignedToId: z.string().nullable(),
     reviewStatus: reviewStatusSchema,
     flagColor: z.enum(["red", "yellow", "orange", "green", "blue"]).nullable(),
     isPinned: z.boolean(),
+    sortOrder: z.number().nullable(),
+    parentId: z.string().nullable(),
     tags: z.array(z.string()),
     createdAt: z.string(),
     updatedAt: z.string(),
@@ -49,7 +52,7 @@ export const TaskResponseSchema = z
     completedAt: z.string().nullable(),
     recurrenceLimit: z.number().nullable(),
     runImmediately: z.boolean(),
-    enabled: z.boolean(),
+    processingEnabled: z.boolean(),
   })
   .meta({ ref: "TaskResponse" });
 

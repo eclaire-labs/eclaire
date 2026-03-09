@@ -17,8 +17,18 @@ export type AssetType = (typeof ASSET_TYPES)[number];
 export const JOB_STATUSES = ["pending", "processing", "completed", "failed", "retry_pending"] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
-export const TASK_STATUSES = ["not-started", "in-progress", "completed"] as const;
+export const TASK_STATUSES = ["backlog", "not-started", "in-progress", "completed", "cancelled"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export const TASK_PRIORITIES = [0, 1, 2, 3, 4] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
+  0: "None",
+  1: "Urgent",
+  2: "High",
+  3: "Medium",
+  4: "Low",
+};
 
 export const MESSAGE_ROLES = ["user", "assistant"] as const;
 export type MessageRole = (typeof MESSAGE_ROLES)[number];
@@ -123,7 +133,7 @@ export interface BookmarkInsert {
   rawHtmlStorageId?: string;
   readmeStorageId?: string;
   extractedText?: string;
-  enabled?: boolean;
+  processingEnabled?: boolean;
   reviewStatus?: ReviewStatus;
   flagColor?: FlagColor;
   isPinned?: boolean;
@@ -139,17 +149,13 @@ export interface TaskInsert {
   status?: TaskStatus;
   dueDate?: string;
   assignedToId?: string;
-  enabled?: boolean;
+  priority?: number;
+  processingEnabled?: boolean;
   reviewStatus?: ReviewStatus;
   flagColor?: FlagColor;
   isPinned?: boolean;
-  isRecurring?: boolean;
-  cronExpression?: string;
-  recurrenceEndDate?: string;
-  recurrenceLimit?: number;
-  runImmediately?: boolean;
-  nextRunAt?: string;
-  lastRunAt?: string;
+  sortOrder?: number;
+  parentId?: string;
   completedAt?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -171,7 +177,7 @@ export interface DocumentInsert {
   rawMetadata?: Record<string, unknown>;
   originalMimeType?: string;
   userAgent?: string;
-  enabled?: boolean;
+  processingEnabled?: boolean;
   extractedMdStorageId?: string;
   extractedTxtStorageId?: string;
   extractedText?: string;
@@ -218,7 +224,7 @@ export interface PhotoInsert {
   rawMetadata?: Record<string, unknown>;
   originalMimeType?: string;
   userAgent?: string;
-  enabled?: boolean;
+  processingEnabled?: boolean;
   reviewStatus?: ReviewStatus;
   flagColor?: FlagColor;
   isPinned?: boolean;
@@ -235,7 +241,7 @@ export interface NoteInsert {
   rawMetadata?: Record<string, unknown>;
   originalMimeType?: string;
   userAgent?: string;
-  enabled?: boolean;
+  processingEnabled?: boolean;
   dueDate?: string;
   reviewStatus?: ReviewStatus;
   flagColor?: FlagColor;

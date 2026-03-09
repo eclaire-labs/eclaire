@@ -117,7 +117,7 @@ export async function prepareNoteFromUpload(
     title?: string;
     tags?: string[];
     dueDate?: string | null;
-    enabled?: boolean;
+    processingEnabled?: boolean;
   },
 ): Promise<{
   content: string;
@@ -179,7 +179,7 @@ export async function createNoteEntry(data: CreateNoteData, userId: string) {
     const { metadata } = data;
 
     // Check if background processing is enabled (default true if not specified)
-    const enabled = metadata.enabled !== false; // Will be true unless explicitly set to false
+    const processingEnabled = metadata.processingEnabled !== false; // Will be true unless explicitly set to false
 
     // Convert dueDate string to Date object
     const dueDateValue = metadata.dueDate ? new Date(metadata.dueDate) : null;
@@ -203,7 +203,7 @@ export async function createNoteEntry(data: CreateNoteData, userId: string) {
         rawMetadata: metadata,
         originalMimeType: data.originalMimeType,
         userAgent: data.userAgent,
-        enabled: enabled, // Set the enabled flag based on metadata
+        processingEnabled: processingEnabled, // Set the processingEnabled flag based on metadata
         // New fields for review, flagging, and pinning
         reviewStatus: metadata.reviewStatus || "pending",
         flagColor: metadata.flagColor || null,
@@ -240,7 +240,7 @@ export async function createNoteEntry(data: CreateNoteData, userId: string) {
     });
 
     // Only queue the AI processing job if enabled
-    if (enabled) {
+    if (processingEnabled) {
       try {
         const queueAdapter = await getQueueAdapter();
         await queueAdapter.enqueueNote({
@@ -253,7 +253,7 @@ export async function createNoteEntry(data: CreateNoteData, userId: string) {
           {
             noteId: entryId,
             userId,
-            enabled: true,
+            processingEnabled: true,
           },
           "Queued note processing job",
         );
@@ -272,7 +272,7 @@ export async function createNoteEntry(data: CreateNoteData, userId: string) {
         {
           noteId: entryId,
           userId,
-          enabled: false,
+          processingEnabled: false,
         },
         "Skipped queuing note processing job",
       );
@@ -485,7 +485,7 @@ export async function getAllNoteEntries(userId: string) {
         reviewStatus: entry.reviewStatus || "pending",
         flagColor: entry.flagColor,
         isPinned: entry.isPinned || false,
-        enabled: entry.enabled || false,
+        processingEnabled: entry.processingEnabled || false,
         originalMimeType: entry.originalMimeType,
         fileSize: null, // Not stored in notes table
         metadata: entry.rawMetadata,
@@ -538,7 +538,7 @@ export async function getNoteEntryById(entryId: string, userId: string) {
       reviewStatus: entry.reviewStatus || "pending",
       flagColor: entry.flagColor,
       isPinned: entry.isPinned || false,
-      enabled: entry.enabled || false,
+      processingEnabled: entry.processingEnabled || false,
       tags: entryTagNames,
     };
   } catch (error) {
@@ -615,7 +615,7 @@ async function getNoteEntryWithTags(entryId: string) {
     reviewStatus: entry.reviewStatus || "pending",
     flagColor: entry.flagColor,
     isPinned: entry.isPinned || false,
-    enabled: entry.enabled || false,
+    processingEnabled: entry.processingEnabled || false,
     originalMimeType: entry.originalMimeType,
     fileSize: null, // Not stored in notes table
     metadata: entry.rawMetadata,
@@ -816,7 +816,7 @@ export async function findNotes({
         reviewStatus: entry.reviewStatus || "pending",
         flagColor: entry.flagColor,
         isPinned: entry.isPinned || false,
-        enabled: entry.enabled || false,
+        processingEnabled: entry.processingEnabled || false,
         tags: tagMap.get(entry.id) ?? [],
       };
     });

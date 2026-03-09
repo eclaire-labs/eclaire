@@ -78,7 +78,7 @@ export const DocumentSchema = z
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
 
-    enabled: z
+    processingEnabled: z
       .boolean()
       .optional()
       .default(true)
@@ -145,7 +145,7 @@ export const DocumentMetadataSchema = z
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
 
-    enabled: z
+    processingEnabled: z
       .boolean()
       .optional()
       .default(true)

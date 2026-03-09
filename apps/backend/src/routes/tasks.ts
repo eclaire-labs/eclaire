@@ -77,6 +77,7 @@ tasksRoutes.get(
       text: params.text,
       tags,
       status: params.status,
+      priority: params.priority,
       startDate,
       endDate,
       limit: params.limit,
@@ -202,7 +203,7 @@ tasksRoutes.put(
   zValidator(
     "json",
     z.object({
-      status: z.enum(["not-started", "in-progress", "completed"]).meta({
+      status: z.enum(["backlog", "not-started", "in-progress", "completed", "cancelled"]).meta({
         description: "New task status",
       }),
       assignedAssistantId: z.string().meta({

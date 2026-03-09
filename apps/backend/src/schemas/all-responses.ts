@@ -79,10 +79,10 @@ const BaseItemSchema = z
       .string()
       .nullable()
       .meta({ description: "ID of user assigned to task" }),
-    enabled: z
+    processingEnabled: z
       .boolean()
       .nullable()
-      .meta({ description: "Whether the item is enabled" }),
+      .meta({ description: "Whether background processing is enabled for the item" }),
   })
   .meta({ ref: "BaseItem" });
 
@@ -154,10 +154,10 @@ export const CreatedItemSchema = z
       .string()
       .nullable()
       .meta({ description: "ID of user assigned to task" }),
-    enabled: z
+    processingEnabled: z
       .boolean()
       .nullable()
-      .meta({ description: "Whether the created item is enabled" }),
+      .meta({ description: "Whether background processing is enabled for the created item" }),
   })
   .meta({ ref: "CreatedItem" });
 

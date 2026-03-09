@@ -210,7 +210,7 @@ export async function createBookmarkAndQueueJob(
     const { url, userId, rawMetadata, userAgent } = payload;
 
     // Check if background processing is enabled (default true if not specified)
-    const enabled = rawMetadata.enabled !== false; // Will be true unless explicitly set to false
+    const processingEnabled = rawMetadata.processingEnabled !== false; // Will be true unless explicitly set to false
 
     // Extract core fields from rawMetadata, with URL as fallback for title
     const title = rawMetadata.title || url;
@@ -244,7 +244,7 @@ export async function createBookmarkAndQueueJob(
         dueDate: dueDateValue,
         rawMetadata: rawMetadata,
         userAgent: userAgent,
-        enabled: enabled,
+        processingEnabled: processingEnabled,
       });
 
       // Note: Processing job creation moved outside transaction to avoid race condition.
@@ -269,7 +269,7 @@ export async function createBookmarkAndQueueJob(
     });
 
     // Initialize processing job status tracking
-    if (enabled) {
+    if (processingEnabled) {
       await createOrUpdateProcessingJob("bookmarks", bookmarkId, userId, [
         "validation",
         "content_extraction",
@@ -284,7 +284,7 @@ export async function createBookmarkAndQueueJob(
     }
 
     // Only queue the main processing job if enabled
-    if (enabled) {
+    if (processingEnabled) {
       try {
         const queueAdapter = await getQueueAdapter();
         await queueAdapter.enqueueBookmark({
@@ -296,7 +296,7 @@ export async function createBookmarkAndQueueJob(
           {
             bookmarkId,
             userId,
-            enabled: true,
+            processingEnabled: true,
           },
           "Queued bookmark processing job",
         );
@@ -316,7 +316,7 @@ export async function createBookmarkAndQueueJob(
         {
           bookmarkId,
           userId,
-          enabled: false,
+          processingEnabled: false,
         },
         "Skipped queuing bookmark processing job",
       );
@@ -641,7 +641,7 @@ export async function getAllBookmarks(userId: string) {
         reviewStatus: bookmarks.reviewStatus,
         flagColor: bookmarks.flagColor,
         isPinned: bookmarks.isPinned,
-        enabled: bookmarks.enabled,
+        processingEnabled: bookmarks.processingEnabled,
         status: queueJobs.status,
       })
       .from(bookmarks)
@@ -712,7 +712,7 @@ export async function getBookmarkById(bookmarkId: string, userId: string) {
         reviewStatus: bookmarks.reviewStatus,
         flagColor: bookmarks.flagColor,
         isPinned: bookmarks.isPinned,
-        enabled: bookmarks.enabled,
+        processingEnabled: bookmarks.processingEnabled,
         status: queueJobs.status,
       })
       .from(bookmarks)
@@ -988,7 +988,7 @@ export async function findBookmarks({
         reviewStatus: bookmarks.reviewStatus,
         flagColor: bookmarks.flagColor,
         isPinned: bookmarks.isPinned,
-        enabled: bookmarks.enabled,
+        processingEnabled: bookmarks.processingEnabled,
         status: queueJobs.status,
         thumbnailStorageId: bookmarks.thumbnailStorageId,
         faviconStorageId: bookmarks.faviconStorageId,

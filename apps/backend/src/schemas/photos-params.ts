@@ -80,7 +80,7 @@ export const PhotoSchema = z
         examples: ["iphone-12-pro", "camera-001", null],
       }),
 
-    enabled: z
+    processingEnabled: z
       .boolean()
       .optional()
       .default(true)
@@ -180,7 +180,7 @@ export const PhotoMetadataSchema = z
         examples: [true, false],
       }),
 
-    enabled: z
+    processingEnabled: z
       .boolean()
       .optional()
       .default(true)

@@ -18,7 +18,7 @@ describe("TaskSchema", () => {
     if (result.success) {
       expect(result.data.title).toBe("Buy groceries");
       expect(result.data.status).toBe("not-started");
-      expect(result.data.enabled).toBe(true);
+      expect(result.data.processingEnabled).toBe(true);
       expect(result.data.tags).toEqual([]);
       expect(result.data.reviewStatus).toBe("pending");
       expect(result.data.isPinned).toBe(false);

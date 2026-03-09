@@ -62,7 +62,7 @@ export const NoteSchema = z
         examples: ["iPhone 15 Pro", "MacBook Pro M2", "Samsung Galaxy S24"],
       }),
 
-    enabled: z
+    processingEnabled: z
       .boolean()
       .optional()
       .default(true)
@@ -147,7 +147,7 @@ export const NoteMetadataSchema = z
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
 
-    enabled: z
+    processingEnabled: z
       .boolean()
       .optional()
       .default(true)

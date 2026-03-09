@@ -24,7 +24,7 @@ export const createNoteTool = tool<typeof inputSchema, BackendAgentContext>({
       metadata: {
         title: input.title,
         tags: [], // Empty initially, will be populated by AI background processing
-        enabled: true, // Enable background processing for AI tagging
+        processingEnabled: true, // Enable background processing for AI tagging
       },
       originalMimeType: "text/markdown", // Support both plain text and markdown
       userAgent: "AI Assistant",

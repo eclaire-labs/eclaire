@@ -55,7 +55,7 @@ export const getTasksRouteDescription = {
       required: false,
       schema: {
         type: "string" as const,
-        enum: ["not-started", "in-progress", "completed"],
+        enum: ["backlog", "not-started", "in-progress", "completed", "cancelled"],
       },
       description: "Filter tasks by status",
     },
@@ -499,7 +499,7 @@ export const putTaskAssistantStatusRouteDescription = {
           properties: {
             status: {
               type: "string" as const,
-              enum: ["not-started", "in-progress", "completed"],
+              enum: ["backlog", "not-started", "in-progress", "completed", "cancelled"],
               description: "New task status",
             },
             assignedAssistantId: {

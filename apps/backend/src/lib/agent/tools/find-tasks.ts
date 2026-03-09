@@ -19,7 +19,7 @@ const inputSchema = z.object({
     .describe("Search query for task title/description"),
   tags: z.array(z.string()).optional().describe("Filter by tags"),
   status: z
-    .enum(["not-started", "in-progress", "completed"])
+    .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
     .optional()
     .describe("Filter by task status"),
   startDate: z.string().optional().describe("Start of date range (ISO format)"),
@@ -39,7 +39,7 @@ export const findTasksTool = tool<typeof inputSchema, BackendAgentContext>({
     let validStatus: TaskStatus | undefined;
     if (
       input.status &&
-      ["not-started", "in-progress", "completed"].includes(input.status)
+      ["backlog", "not-started", "in-progress", "completed", "cancelled"].includes(input.status)
     ) {
       validStatus = input.status as TaskStatus;
     }

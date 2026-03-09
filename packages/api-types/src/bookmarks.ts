@@ -34,7 +34,7 @@ export const BookmarkResponseSchema = z
     screenshotUrl: z.string().nullable(),
     readableUrl: z.string().nullable(),
     readmeUrl: z.string().nullable(),
-    enabled: z.boolean(),
+    processingEnabled: z.boolean(),
   })
   .meta({ ref: "BookmarkResponse" });
 

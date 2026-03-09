@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -17,9 +18,11 @@ import {
 
 // Enums
 export const taskStatusEnum = pgEnum("task_status", [
+  "backlog",
   "not-started",
   "in-progress",
   "completed",
+  "cancelled",
 ]);
 
 import {
@@ -190,7 +193,8 @@ export const tasks = pgTable(
     assignedToId: text("assigned_to_id").references(() => users.id, {
       onDelete: "set null",
     }),
-    enabled: boolean("enabled").notNull().default(true),
+    priority: integer("priority").notNull().default(0),
+    processingEnabled: boolean("processing_enabled").notNull().default(true),
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
     }),
@@ -198,9 +202,11 @@ export const tasks = pgTable(
       enum: ["red", "yellow", "orange", "green", "blue"],
     }),
     isPinned: boolean("is_pinned").notNull().default(false),
+    sortOrder: numeric("sort_order"),
+    parentId: text("parent_id"),
     // Note: Recurrence data (isRecurring, cronExpression, recurrenceEndDate, recurrenceLimit)
     // is now stored in queue_schedules table and fetched via scheduler.get()
-    lastExecutedAt: timestamp("last_executed_at", { withTimezone: true }), // When task was last executed (for display)
+    lastExecutedAt: timestamp("last_executed_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -215,10 +221,11 @@ export const tasks = pgTable(
     dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
     isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
     completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
-    // Partial index: most queries filter for enabled records
-    userEnabledIdx: index("tasks_user_id_enabled_idx")
+    parentIdx: index("tasks_parent_id_idx").on(table.parentId),
+    // Partial index: most queries filter for processing-enabled records
+    userProcessingEnabledIdx: index("tasks_user_id_processing_enabled_idx")
       .on(table.userId)
-      .where(sql`enabled = true`),
+      .where(sql`processing_enabled = true`),
     // Composite indexes for cursor pagination
     userCreatedAtIdx: index("tasks_user_id_created_at_idx").on(
       table.userId,
@@ -233,11 +240,23 @@ export const tasks = pgTable(
       table.status,
       table.createdAt,
     ),
+    userPriorityCreatedAtIdx: index(
+      "tasks_user_id_priority_created_at_idx",
+    ).on(table.userId, table.priority, table.createdAt),
+    userSortOrderIdx: index("tasks_user_id_sort_order_idx").on(
+      table.userId,
+      table.sortOrder,
+    ),
     // Trigram index for LIKE '%text%' search
     titleTrgmIdx: index("tasks_title_trgm_idx").using(
       "gin",
       sql`${table.title} gin_trgm_ops`,
     ),
+    // Self-referencing FK for sub-tasks (defined here to avoid circular type inference)
+    parentFk: foreignKey({
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+    }).onDelete("cascade"),
   }),
 );
 
@@ -318,7 +337,7 @@ export const bookmarks = pgTable(
 
     extractedText: text("extracted_text"),
 
-    enabled: boolean("enabled").notNull().default(true),
+    processingEnabled: boolean("processing_enabled").notNull().default(true),
 
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
@@ -335,10 +354,12 @@ export const bookmarks = pgTable(
       table.userId,
       table.normalizedUrl,
     ),
-    // Partial index: most queries filter for enabled records
-    userEnabledIdx: index("bookmarks_user_id_enabled_idx")
+    // Partial index: most queries filter for processing-enabled records
+    userProcessingEnabledIdx: index(
+      "bookmarks_user_id_processing_enabled_idx",
+    )
       .on(table.userId)
-      .where(sql`enabled = true`),
+      .where(sql`processing_enabled = true`),
     // Composite indexes for cursor pagination
     userCreatedAtIdx: index("bookmarks_user_id_created_at_idx").on(
       table.userId,
@@ -378,7 +399,7 @@ export const documents = pgTable(
     rawMetadata: jsonb("raw_metadata"),
     originalMimeType: text("original_mime_type"),
     userAgent: text("user_agent"),
-    enabled: boolean("enabled").notNull().default(true),
+    processingEnabled: boolean("processing_enabled").notNull().default(true),
     extractedMdStorageId: text("extracted_md_storage_id"),
     extractedTxtStorageId: text("extracted_txt_storage_id"),
 
@@ -402,10 +423,12 @@ export const documents = pgTable(
   (table) => ({
     userIdx: index("documents_user_id_idx").on(table.userId),
     isPinnedIdx: index("documents_is_pinned_idx").on(table.isPinned),
-    // Partial index: most queries filter for enabled records
-    userEnabledIdx: index("documents_user_id_enabled_idx")
+    // Partial index: most queries filter for processing-enabled records
+    userProcessingEnabledIdx: index(
+      "documents_user_id_processing_enabled_idx",
+    )
       .on(table.userId)
-      .where(sql`enabled = true`),
+      .where(sql`processing_enabled = true`),
     // Composite indexes for cursor pagination
     userCreatedAtIdx: index("documents_user_id_created_at_idx").on(
       table.userId,
@@ -474,7 +497,7 @@ export const photos = pgTable(
     originalMimeType: text("original_mime_type"),
     userAgent: text("user_agent"),
 
-    enabled: boolean("enabled").notNull().default(true),
+    processingEnabled: boolean("processing_enabled").notNull().default(true),
 
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
@@ -495,10 +518,10 @@ export const photos = pgTable(
     userIdx: index("photos_user_id_idx").on(table.userId),
     isPinnedIdx: index("photos_is_pinned_idx").on(table.isPinned),
     dateTakenIdx: index("photos_date_taken_idx").on(table.dateTaken),
-    // Partial index: most queries filter for enabled records
-    userEnabledIdx: index("photos_user_id_enabled_idx")
+    // Partial index: most queries filter for processing-enabled records
+    userProcessingEnabledIdx: index("photos_user_id_processing_enabled_idx")
       .on(table.userId)
-      .where(sql`enabled = true`),
+      .where(sql`processing_enabled = true`),
     // Composite indexes for cursor pagination
     userCreatedAtIdx: index("photos_user_id_created_at_idx").on(
       table.userId,
@@ -535,7 +558,7 @@ export const notes = pgTable(
     rawMetadata: jsonb("raw_metadata"),
     originalMimeType: text("original_mime_type"),
     userAgent: text("user_agent"),
-    enabled: boolean("enabled").notNull().default(true),
+    processingEnabled: boolean("processing_enabled").notNull().default(true),
     dueDate: timestamp("due_date", { withTimezone: true }),
 
     reviewStatus: text("review_status", {
@@ -556,10 +579,10 @@ export const notes = pgTable(
   (table) => ({
     userIdx: index("notes_user_id_idx").on(table.userId),
     isPinnedIdx: index("notes_is_pinned_idx").on(table.isPinned),
-    // Partial index: most queries filter for enabled records
-    userEnabledIdx: index("notes_user_id_enabled_idx")
+    // Partial index: most queries filter for processing-enabled records
+    userProcessingEnabledIdx: index("notes_user_id_processing_enabled_idx")
       .on(table.userId)
-      .where(sql`enabled = true`),
+      .where(sql`processing_enabled = true`),
     // Composite indexes for cursor pagination
     userCreatedAtIdx: index("notes_user_id_created_at_idx").on(
       table.userId,
@@ -735,6 +758,12 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.assignedToId],
     references: [users.id],
   }),
+  parent: one(tasks, {
+    fields: [tasks.parentId],
+    references: [tasks.id],
+    relationName: "parentChild",
+  }),
+  children: many(tasks, { relationName: "parentChild" }),
   tags: many(tasksTags),
   comments: many(taskComments),
 }));

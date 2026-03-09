@@ -90,7 +90,7 @@ notesRoutes.post(
         tags: validatedData.tags || [],
         deviceName: validatedData.deviceName,
         deviceModel: validatedData.deviceModel,
-        enabled: validatedData.enabled, // Include enabled flag
+        processingEnabled: validatedData.processingEnabled, // Include processingEnabled flag
         dueDate: validatedData.dueDate || undefined,
         reviewStatus: validatedData.reviewStatus,
         flagColor: validatedData.flagColor,

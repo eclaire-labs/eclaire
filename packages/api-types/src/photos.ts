@@ -51,7 +51,7 @@ export const PhotoResponseSchema = z
     thumbnailStorageId: z.string().nullable(),
     convertedJpgStorageId: z.string().nullable(),
     isOriginalViewable: z.boolean(),
-    enabled: z.boolean(),
+    processingEnabled: z.boolean(),
   })
   .meta({ ref: "PhotoResponse" });
 

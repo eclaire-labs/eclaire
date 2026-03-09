@@ -30,12 +30,25 @@ export const TaskSchema = z
       }),
 
     status: z
-      .enum(["not-started", "in-progress", "completed"])
+      .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
       .optional()
       .default("not-started")
       .meta({
         description: "Current status of the task",
-        examples: ["not-started", "in-progress", "completed"],
+        examples: ["backlog", "not-started", "in-progress", "completed", "cancelled"],
+      }),
+
+    priority: z
+      .number()
+      .int()
+      .min(0)
+      .max(4)
+      .optional()
+      .default(0)
+      .meta({
+        description:
+          "Priority level: 0=none, 1=urgent, 2=high, 3=medium, 4=low",
+        examples: [0, 1, 2, 3, 4],
       }),
 
     dueDate: z
@@ -55,7 +68,7 @@ export const TaskSchema = z
         examples: ["user123", "user456"],
       }),
 
-    enabled: z
+    processingEnabled: z
       .boolean()
       .default(true)
       .meta({
@@ -97,6 +110,26 @@ export const TaskSchema = z
       .meta({
         description: "Whether the task is pinned",
         examples: [true, false],
+      }),
+
+    sortOrder: z
+      .number()
+      .optional()
+      .nullable()
+      .meta({
+        description:
+          "Manual sort order (fractional). Null uses default sort.",
+        examples: [1.0, 1.5, 2.0],
+      }),
+
+    parentId: z
+      .string()
+      .optional()
+      .nullable()
+      .meta({
+        description:
+          "ID of the parent task for sub-tasks (single-level nesting only)",
+        examples: ["task_abc123", null],
       }),
 
     isRecurring: z
@@ -175,11 +208,23 @@ export const TaskSearchParamsSchema = z
       }),
 
     status: z
-      .enum(["not-started", "in-progress", "completed"])
+      .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
       .optional()
       .meta({
         description: "Filter tasks by status",
-        examples: ["in-progress", "completed"],
+        examples: ["backlog", "in-progress", "completed", "cancelled"],
+      }),
+
+    priority: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(4)
+      .optional()
+      .meta({
+        description:
+          "Filter tasks by priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low",
+        examples: [1, 2, 3],
       }),
 
     startDate: z
@@ -221,12 +266,12 @@ export const TaskSearchParamsSchema = z
       }),
 
     sortBy: z
-      .enum(["createdAt", "dueDate", "status", "title"])
+      .enum(["createdAt", "dueDate", "status", "title", "priority", "sortOrder"])
       .optional()
       .default("createdAt")
       .meta({
         description: "Field to sort tasks by",
-        examples: ["createdAt", "dueDate", "status", "title"],
+        examples: ["createdAt", "dueDate", "status", "title", "priority", "sortOrder"],
       }),
 
     sortDir: z
