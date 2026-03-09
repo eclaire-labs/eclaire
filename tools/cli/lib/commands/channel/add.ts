@@ -21,6 +21,45 @@ const PLATFORM_CAPABILITIES: Record<string, string[]> = {
   slack: ["notification", "chat", "bidirectional"],
 };
 
+const PLATFORM_GUIDES: Record<string, string> = {
+  telegram: `
+  ${chalk.cyan.bold("Telegram Setup")}
+
+  ${chalk.dim("1.")} Open Telegram and message ${chalk.bold("@BotFather")}
+  ${chalk.dim("2.")} Send ${chalk.bold("/newbot")} and follow the prompts to create your bot
+  ${chalk.dim("3.")} Copy the ${chalk.bold("bot token")} from BotFather's response
+  ${chalk.dim("4.")} Add your bot to the group or channel where it should operate
+  ${chalk.dim("5.")} To find the ${chalk.bold("chat ID")}: forward a message from the chat
+     to ${chalk.bold("@userinfobot")}, or use the Telegram API's getUpdates method
+     ${chalk.gray("(group IDs typically start with -100)")}
+`,
+  discord: `
+  ${chalk.cyan.bold("Discord Setup")}
+
+  ${chalk.dim("1.")} Go to ${chalk.bold("discord.com/developers/applications")} and create an app
+  ${chalk.dim("2.")} Navigate to ${chalk.bold("Bot")} → click ${chalk.bold("Reset Token")} → copy it
+  ${chalk.dim("3.")} Under ${chalk.bold("Privileged Gateway Intents")}, enable:
+     ${chalk.gray("Message Content Intent, Server Members Intent")}
+  ${chalk.dim("4.")} Go to ${chalk.bold("OAuth2 → URL Generator")} → select ${chalk.bold("bot")} scope
+     and required permissions → use the URL to invite the bot to your server
+  ${chalk.dim("5.")} To find a ${chalk.bold("channel ID")}: enable ${chalk.bold("Developer Mode")} in
+     Discord settings → right-click a channel → ${chalk.bold("Copy Channel ID")}
+`,
+  slack: `
+  ${chalk.cyan.bold("Slack Setup")}
+
+  ${chalk.dim("1.")} Go to ${chalk.bold("api.slack.com/apps")} and create a new app
+  ${chalk.dim("2.")} Enable ${chalk.bold("Socket Mode")} → generate an ${chalk.bold("App-Level Token")} (xapp-)
+  ${chalk.dim("3.")} Under ${chalk.bold("OAuth & Permissions")}, add Bot Token Scopes:
+     ${chalk.gray("chat:write, channels:history, channels:read, app_mentions:read")}
+  ${chalk.dim("4.")} Install the app to your workspace → copy the
+     ${chalk.bold("Bot User OAuth Token")} (xoxb-)
+  ${chalk.dim("5.")} Invite the bot to a channel: ${chalk.bold("/invite @yourbot")}
+  ${chalk.dim("6.")} To find the ${chalk.bold("channel ID")}: open channel details → scroll
+     to the bottom to find the ID ${chalk.gray("(starts with C)")}
+`,
+};
+
 export async function addCommand(): Promise<void> {
   try {
     // 1. Select platform
@@ -37,7 +76,11 @@ export async function addCommand(): Promise<void> {
       },
     ]);
 
-    // 2. Channel name
+    // 2. Show platform-specific setup guide
+    const guide = PLATFORM_GUIDES[platform];
+    if (guide) console.log(guide);
+
+    // 3. Channel name
     const { name } = await inquirer.prompt([
       {
         type: "input",
@@ -48,7 +91,7 @@ export async function addCommand(): Promise<void> {
       },
     ]);
 
-    // 3. Collect config fields from schema metadata
+    // 4. Collect config fields from schema metadata
     const schema = PLATFORM_SCHEMAS[platform];
     if (!schema) {
       console.error(colors.error(`Unsupported platform: ${platform}`));
@@ -57,7 +100,7 @@ export async function addCommand(): Promise<void> {
 
     const rawConfig = await promptConfigFromSchema(schema);
 
-    // 4. Select capability
+    // 5. Select capability
     const capabilities = PLATFORM_CAPABILITIES[platform] || ["notification"];
     const { capability } = await inquirer.prompt([
       {
@@ -72,15 +115,15 @@ export async function addCommand(): Promise<void> {
       },
     ]);
 
-    // 5. Validate and encrypt config via adapter
+    // 6. Validate and encrypt config via adapter
     const registry = getChannelRegistry();
     const adapter = registry.get(platform);
     const encryptedConfig = await adapter.validateAndEncryptConfig(rawConfig);
 
-    // 6. Resolve user
+    // 7. Resolve user
     const user = await getDefaultUser();
 
-    // 7. Insert into DB
+    // 8. Insert into DB
     const channel = await createChannel({
       userId: user.id,
       name,
@@ -108,11 +151,12 @@ export async function addCommand(): Promise<void> {
   }
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Introspecting Zod schema internals at runtime
 async function promptConfigFromSchema(
+  // biome-ignore lint/suspicious/noExplicitAny: Introspecting Zod schema internals at runtime
   schema: any,
 ): Promise<Record<string, unknown>> {
   const config: Record<string, unknown> = {};
+  // biome-ignore lint/suspicious/noExplicitAny: Zod shape is untyped at runtime
   const shape = schema.shape as Record<string, any>;
 
   for (const [fieldName, fieldDef] of Object.entries(shape)) {
