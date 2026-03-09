@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
+import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import type { Bookmark } from "@/types/bookmark";
 import { type ListParams, createCrudHooks } from "./create-crud-hooks";
 
@@ -19,21 +19,21 @@ export const transformBookmarkData = (raw: any): Bookmark => ({
   etag: raw.etag,
   lastModified: raw.lastModified,
   tags: raw.tags || [],
-  faviconUrl: raw.faviconUrl ? getAbsoluteApiUrl(raw.faviconUrl) : null,
-  thumbnailUrl: raw.thumbnailUrl ? getAbsoluteApiUrl(raw.thumbnailUrl) : null,
+  faviconUrl: raw.faviconUrl ? normalizeApiUrl(raw.faviconUrl) : null,
+  thumbnailUrl: raw.thumbnailUrl ? normalizeApiUrl(raw.thumbnailUrl) : null,
   screenshotUrl: raw.screenshotUrl
-    ? getAbsoluteApiUrl(raw.screenshotUrl)
+    ? normalizeApiUrl(raw.screenshotUrl)
     : null,
   screenshotMobileUrl: raw.screenshotMobileUrl
-    ? getAbsoluteApiUrl(raw.screenshotMobileUrl)
+    ? normalizeApiUrl(raw.screenshotMobileUrl)
     : null,
   screenshotFullPageUrl: raw.screenshotFullPageUrl
-    ? getAbsoluteApiUrl(raw.screenshotFullPageUrl)
+    ? normalizeApiUrl(raw.screenshotFullPageUrl)
     : null,
-  pdfUrl: raw.pdfUrl ? getAbsoluteApiUrl(raw.pdfUrl) : null,
-  contentUrl: raw.contentUrl ? getAbsoluteApiUrl(raw.contentUrl) : null,
-  readableUrl: raw.readableUrl ? getAbsoluteApiUrl(raw.readableUrl) : null,
-  readmeUrl: raw.readmeUrl ? getAbsoluteApiUrl(raw.readmeUrl) : null,
+  pdfUrl: raw.pdfUrl ? normalizeApiUrl(raw.pdfUrl) : null,
+  contentUrl: raw.contentUrl ? normalizeApiUrl(raw.contentUrl) : null,
+  readableUrl: raw.readableUrl ? normalizeApiUrl(raw.readableUrl) : null,
+  readmeUrl: raw.readmeUrl ? normalizeApiUrl(raw.readmeUrl) : null,
   extractedText: raw.extractedText,
   processingStatus: raw.processingStatus || null,
   createdAt: raw.createdAt || new Date().toISOString(),

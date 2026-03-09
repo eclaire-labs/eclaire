@@ -1,4 +1,4 @@
-import { getAbsoluteApiUrl } from "@/lib/api-client";
+import { normalizeApiUrl } from "@/lib/api-client";
 import type { Photo } from "@/types/photo";
 import { type ListParams, createCrudHooks } from "./create-crud-hooks";
 
@@ -12,8 +12,8 @@ export const transformPhotoData = (raw: any): Photo => ({
   mimeType: raw.mimeType,
   fileSize: raw.fileSize,
   tags: raw.tags || [],
-  imageUrl: raw.imageUrl ? getAbsoluteApiUrl(raw.imageUrl) : "",
-  thumbnailUrl: raw.thumbnailUrl ? getAbsoluteApiUrl(raw.thumbnailUrl) : null,
+  imageUrl: raw.imageUrl ? normalizeApiUrl(raw.imageUrl) : "",
+  thumbnailUrl: raw.thumbnailUrl ? normalizeApiUrl(raw.thumbnailUrl) : null,
   imageWidth: raw.imageWidth,
   imageHeight: raw.imageHeight,
   dateTaken: raw.dateTaken,
@@ -37,9 +37,9 @@ export const transformPhotoData = (raw: any): Photo => ({
   createdAt: raw.createdAt || new Date().toISOString(),
   updatedAt: raw.updatedAt || new Date().toISOString(),
   dueDate: raw.dueDate || null,
-  originalUrl: raw.originalUrl ? getAbsoluteApiUrl(raw.originalUrl) : "",
+  originalUrl: raw.originalUrl ? normalizeApiUrl(raw.originalUrl) : "",
   convertedJpgUrl: raw.convertedJpgUrl
-    ? getAbsoluteApiUrl(raw.convertedJpgUrl)
+    ? normalizeApiUrl(raw.convertedJpgUrl)
     : null,
   isOriginalViewable: raw.isOriginalViewable,
   reviewStatus: raw.reviewStatus || "pending",

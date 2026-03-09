@@ -2,6 +2,7 @@ import { MessageSquare, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { apiPost } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -45,21 +46,10 @@ export function FeedbackDialog({ children, trigger }: FeedbackDialogProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/feedback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          description: description.trim(),
-          sentiment: sentiment,
-        }),
+      await apiPost("/api/feedback", {
+        description: description.trim(),
+        sentiment: sentiment,
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to submit feedback");
-      }
 
       toast.success("Thank you for your feedback!");
       setOpen(false);

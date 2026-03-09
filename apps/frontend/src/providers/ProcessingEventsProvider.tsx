@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { useSession } from "@/lib/auth";
-import { getAbsoluteApiUrl } from "@/lib/api-client";
+import { normalizeApiUrl } from "@/lib/api-client";
 
 // Stable per-tab client ID for SSE deduplication (survives refresh, unique per tab)
 function getClientId(): string {
@@ -114,7 +114,7 @@ export function ProcessingEventsProvider({
       }
 
       try {
-        const sseUrl = getAbsoluteApiUrl(
+        const sseUrl = normalizeApiUrl(
           `/api/processing-events/stream?clientId=${getClientId()}`,
         );
         const eventSource = new EventSource(sseUrl);

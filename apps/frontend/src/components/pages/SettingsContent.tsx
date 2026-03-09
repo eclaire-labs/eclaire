@@ -1,3 +1,4 @@
+import { apiGet } from "@/lib/api-client";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 
@@ -95,7 +96,7 @@ export default function SettingsContent() {
 
   // Fetch health info from health API
   useEffect(() => {
-    fetch("/api/health")
+    apiGet("/api/health")
       .then((res) => res.json())
       .then((data) => {
         setHealthData({

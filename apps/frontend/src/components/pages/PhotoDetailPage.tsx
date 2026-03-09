@@ -46,7 +46,7 @@ import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { usePhotoAnalysis } from "@/hooks/use-photo-analysis";
 import { usePhoto } from "@/hooks/use-photos";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
+import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import { formatDate, formatFileSize } from "@/lib/date-utils";
 
 // Helper function to format camera settings
@@ -328,7 +328,7 @@ export function PhotoDetailClient() {
             </Button>
             <Button variant="outline" asChild>
               <a
-                href={getAbsoluteApiUrl(photo.imageUrl)}
+                href={normalizeApiUrl(photo.imageUrl)}
                 download
                 title="Download photo"
                 aria-label="Download photo"
@@ -419,7 +419,7 @@ export function PhotoDetailClient() {
 
                   <div className="relative h-[70vh] bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
                     <img
-                      src={getAbsoluteApiUrl(photo.imageUrl)}
+                      src={normalizeApiUrl(photo.imageUrl)}
                       alt={photo.title || "Photo"}
                       className="w-full h-full object-contain transition-transform duration-200"
                       style={{
@@ -634,7 +634,7 @@ export function PhotoDetailClient() {
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Button size="sm" variant="outline" asChild>
                     <a
-                      href={getAbsoluteApiUrl(photo.originalUrl)}
+                      href={normalizeApiUrl(photo.originalUrl)}
                       download={photo.originalFilename}
                     >
                       <Camera className="mr-2 h-4 w-4" />
@@ -644,7 +644,7 @@ export function PhotoDetailClient() {
                   {photo.thumbnailUrl && (
                     <Button size="sm" variant="outline" asChild>
                       <a
-                        href={getAbsoluteApiUrl(photo.thumbnailUrl)}
+                        href={normalizeApiUrl(photo.thumbnailUrl)}
                         download={`${photo.title || "photo"}-thumbnail.jpg`}
                       >
                         <Camera className="mr-2 h-4 w-4" />
@@ -655,7 +655,7 @@ export function PhotoDetailClient() {
                   {photo.convertedJpgUrl && (
                     <Button size="sm" variant="outline" asChild>
                       <a
-                        href={getAbsoluteApiUrl(photo.convertedJpgUrl)}
+                        href={normalizeApiUrl(photo.convertedJpgUrl)}
                         download={`${photo.title || "photo"}.jpg`}
                       >
                         <Camera className="mr-2 h-4 w-4" />
@@ -807,7 +807,7 @@ export function PhotoDetailClient() {
             </Button>
             {/* biome-ignore lint/a11y/useKeyWithClickEvents: click handler only stops propagation to backdrop */}
             <img
-              src={getAbsoluteApiUrl(photo.imageUrl)}
+              src={normalizeApiUrl(photo.imageUrl)}
               alt={photo.title || "Full size view"}
               className="max-w-full max-h-full object-contain"
               onClick={(e) => e.stopPropagation()}

@@ -34,7 +34,7 @@ import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation"
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/list-page-utils";
-import { getAbsoluteApiUrl } from "@/lib/api-client";
+import { normalizeApiUrl } from "@/lib/api-client";
 import type { Bookmark } from "@/types/bookmark";
 import { BookmarkListItem } from "./bookmarks/BookmarkListItem";
 import { BookmarkTileItem } from "./bookmarks/BookmarkTileItem";
@@ -453,7 +453,7 @@ export default function BookmarksPage() {
                           {selectedBookmark.screenshotFullPageUrl && (
                             <Button variant="outline" size="sm" asChild>
                               <a
-                                href={getAbsoluteApiUrl(
+                                href={normalizeApiUrl(
                                   selectedBookmark.screenshotFullPageUrl,
                                 )}
                                 target="_blank"
@@ -467,7 +467,7 @@ export default function BookmarksPage() {
                           {selectedBookmark.screenshotMobileUrl && (
                             <Button variant="outline" size="sm" asChild>
                               <a
-                                href={getAbsoluteApiUrl(
+                                href={normalizeApiUrl(
                                   selectedBookmark.screenshotMobileUrl,
                                 )}
                                 target="_blank"
@@ -492,7 +492,7 @@ export default function BookmarksPage() {
                           {selectedBookmark.pdfUrl && (
                             <Button variant="outline" size="sm" asChild>
                               <a
-                                href={getAbsoluteApiUrl(
+                                href={normalizeApiUrl(
                                   selectedBookmark.pdfUrl,
                                 )}
                                 target="_blank"
@@ -506,7 +506,7 @@ export default function BookmarksPage() {
                           {selectedBookmark.contentUrl && (
                             <Button variant="outline" size="sm" asChild>
                               <a
-                                href={getAbsoluteApiUrl(
+                                href={normalizeApiUrl(
                                   selectedBookmark.contentUrl,
                                 )}
                                 target="_blank"

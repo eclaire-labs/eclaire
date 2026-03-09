@@ -1,6 +1,6 @@
 import { Link as LinkIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getAbsoluteApiUrl } from "@/lib/api-client";
+import { normalizeApiUrl } from "@/lib/api-client";
 import type { Bookmark } from "@/types/bookmark";
 
 export function Favicon({
@@ -12,7 +12,7 @@ export function Favicon({
 }) {
   const [error, setError] = useState(false);
   const faviconUrl = bookmark.faviconUrl
-    ? getAbsoluteApiUrl(bookmark.faviconUrl)
+    ? normalizeApiUrl(bookmark.faviconUrl)
     : null;
 
   useEffect(() => {

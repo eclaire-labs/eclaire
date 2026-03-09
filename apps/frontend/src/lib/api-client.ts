@@ -3,16 +3,10 @@
  *
  * Every other `api-*.ts` module imports helpers from here;
  * application code should rarely need to use `apiFetch` directly.
+ *
+ * All endpoints use relative URLs so requests go through the Vite
+ * proxy in development or same-origin routing in production.
  */
-
-/**
- * Get the backend API URL from environment variables.
- * Falls back to empty string (relative URLs) so requests go through
- * the Vite proxy (dev) or same-origin (prod).
- */
-function getBackendUrl(): string {
-  return ""; // Use relative URLs - requests go through Vite proxy (dev) or same-origin (prod)
-}
 
 /**
  * Helper function to handle authentication errors
@@ -33,108 +27,69 @@ function handleAuthError() {
 }
 
 /**
- * Enhanced fetch that automatically uses the correct backend URL.
- * Use this instead of direct fetch() calls to API endpoints.
+ * Central fetch wrapper for all API calls.
+ * Handles auth cookies, Content-Type, 401 redirect, and error parsing.
+ *
+ * Retries are intentionally NOT done here — TanStack Query handles
+ * retry for queries; mutations should not auto-retry.
  */
 export async function apiFetch(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  return apiFetchWithRetry(endpoint, options, 3);
-}
+  // Ensure endpoint starts with /
+  const normalizedEndpoint = endpoint.startsWith("/")
+    ? endpoint
+    : `/${endpoint}`;
 
-/**
- * Internal function that handles retries for network errors
- */
-async function apiFetchWithRetry(
-  endpoint: string,
-  options: RequestInit = {},
-  maxRetries: number = 3,
-): Promise<Response> {
-  let lastError: Error | null = null;
+  // Default headers
+  const defaultHeaders: HeadersInit = {};
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      // Ensure endpoint starts with /
-      const normalizedEndpoint = endpoint.startsWith("/")
-        ? endpoint
-        : `/${endpoint}`;
-
-      // Construct full URL with backend base URL
-      const url = `${getBackendUrl()}${normalizedEndpoint}`;
-
-      // Default headers
-      const defaultHeaders: HeadersInit = {};
-
-      // Only set Content-Type to application/json if body is not FormData
-      if (options.body && !(options.body instanceof FormData)) {
-        defaultHeaders["Content-Type"] = "application/json";
-      }
-
-      // Merge headers
-      const headers = {
-        ...defaultHeaders,
-        ...options.headers,
-      };
-
-      // Make the request with the full URL and include credentials for Better Auth
-      const response = await fetch(url, {
-        ...options,
-        headers,
-        credentials: "include", // Essential for Better Auth session cookies
-      });
-
-      // Handle different HTTP status codes
-      if (response.status === 401) {
-        handleAuthError();
-        throw new Error("Authentication required. Redirecting to login...");
-      }
-
-      // Handle other client errors (4xx) - don't retry these
-      if (response.status >= 400 && response.status < 500) {
-        let errorMessage = `Request failed with status ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch {
-          // If JSON parsing fails, use the status text
-          errorMessage = response.statusText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      // Handle server errors (5xx) - retry these
-      if (response.status >= 500) {
-        throw new Error(
-          `Server error: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      return response;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-
-      // Don't retry on client errors (4xx) or auth errors
-      if (
-        lastError.message.includes("Authentication required") ||
-        lastError.message.includes("Request failed with status 4")
-      ) {
-        throw lastError;
-      }
-
-      // If this was the last attempt, throw the error
-      if (attempt === maxRetries) {
-        throw lastError;
-      }
-
-      // Wait before retrying (exponential backoff)
-      const delay = Math.min(1000 * 2 ** attempt, 5000);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
+  // Only set Content-Type to application/json if body is not FormData
+  if (options.body && !(options.body instanceof FormData)) {
+    defaultHeaders["Content-Type"] = "application/json";
   }
 
-  // This should never be reached, but just in case
-  throw lastError || new Error("Request failed after all retries");
+  // Merge headers
+  const headers = {
+    ...defaultHeaders,
+    ...options.headers,
+  };
+
+  // Make the request and include credentials for Better Auth session cookies
+  const response = await fetch(normalizedEndpoint, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
+
+  // Handle different HTTP status codes
+  if (response.status === 401) {
+    handleAuthError();
+    throw new Error("Authentication required. Redirecting to login...");
+  }
+
+  // Handle other client errors (4xx)
+  if (response.status >= 400 && response.status < 500) {
+    let errorMessage = `Request failed with status ${response.status}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.message || errorData.error || errorMessage;
+    } catch {
+      // If JSON parsing fails, use the status text
+      errorMessage = response.statusText || errorMessage;
+    }
+    throw new Error(errorMessage);
+  }
+
+  // Handle server errors (5xx)
+  if (response.status >= 500) {
+    throw new Error(
+      `Server error: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response;
 }
 
 /**
@@ -176,25 +131,23 @@ export async function apiDelete(endpoint: string): Promise<Response> {
 }
 
 /**
- * Convert a relative API URL to an absolute URL using the backend base URL.
- * Useful for image URLs that need to be used in <img> src attributes.
+ * Normalize an API URL: ensures a leading `/` and passes through
+ * already-absolute URLs unchanged.
  *
- * @param relativeUrl - Relative URL like "/api/photos/123/view"
- * @returns Absolute URL like "http://localhost:3001/api/photos/123/view"
+ * Useful for asset URLs (images, PDFs, etc.) returned by the backend
+ * that need to be placed in `<img src>` or `<a href>` attributes.
+ *
+ * @param url - URL like "/api/photos/123/view" or "api/photos/123/view"
+ * @returns Normalized URL like "/api/photos/123/view"
  */
-export function getAbsoluteApiUrl(relativeUrl: string): string {
-  if (!relativeUrl) return relativeUrl;
+export function normalizeApiUrl(url: string): string {
+  if (!url) return url;
 
   // If it's already an absolute URL, return as is
-  if (relativeUrl.startsWith("http://") || relativeUrl.startsWith("https://")) {
-    return relativeUrl;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
   }
 
   // Ensure the URL starts with /
-  const normalizedUrl = relativeUrl.startsWith("/")
-    ? relativeUrl
-    : `/${relativeUrl}`;
-
-  // Construct absolute URL
-  return `${getBackendUrl()}${normalizedUrl}`;
+  return url.startsWith("/") ? url : `/${url}`;
 }

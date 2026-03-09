@@ -1,4 +1,4 @@
-import { getAbsoluteApiUrl } from "@/lib/api-client";
+import { normalizeApiUrl } from "@/lib/api-client";
 import type { Document } from "@/types/document";
 import { type ListParams, createCrudHooks } from "./create-crud-hooks";
 
@@ -15,13 +15,13 @@ export const transformDocumentData = (raw: any): Document => ({
   rawMetadata: raw.rawMetadata,
   originalMimeType: raw.originalMimeType,
   tags: raw.tags || [],
-  fileUrl: raw.fileUrl ? getAbsoluteApiUrl(raw.fileUrl) : null,
-  thumbnailUrl: raw.thumbnailUrl ? getAbsoluteApiUrl(raw.thumbnailUrl) : null,
+  fileUrl: raw.fileUrl ? normalizeApiUrl(raw.fileUrl) : null,
+  thumbnailUrl: raw.thumbnailUrl ? normalizeApiUrl(raw.thumbnailUrl) : null,
   screenshotUrl: raw.screenshotUrl
-    ? getAbsoluteApiUrl(raw.screenshotUrl)
+    ? normalizeApiUrl(raw.screenshotUrl)
     : null,
-  pdfUrl: raw.pdfUrl ? getAbsoluteApiUrl(raw.pdfUrl) : null,
-  contentUrl: raw.contentUrl ? getAbsoluteApiUrl(raw.contentUrl) : null,
+  pdfUrl: raw.pdfUrl ? normalizeApiUrl(raw.pdfUrl) : null,
+  contentUrl: raw.contentUrl ? normalizeApiUrl(raw.contentUrl) : null,
   extractedText: raw.extractedText,
   processingStatus: raw.processingStatus || null,
   createdAt: raw.createdAt || new Date().toISOString(),

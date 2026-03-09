@@ -34,7 +34,7 @@ import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useDocument } from "@/hooks/use-documents";
 import { useProcessingEvents } from "@/hooks/use-processing-status";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
+import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import { formatDate, formatFileSize } from "@/lib/date-utils";
 import type { Document } from "@/types/document";
 
@@ -355,16 +355,16 @@ export function DocumentDetailClient() {
                       <a
                         href={
                           document.pdfUrl
-                            ? getAbsoluteApiUrl(document.pdfUrl)
+                            ? normalizeApiUrl(document.pdfUrl)
                             : document.screenshotUrl
-                              ? getAbsoluteApiUrl(document.screenshotUrl)
-                              : getAbsoluteApiUrl(document.thumbnailUrl || "")
+                              ? normalizeApiUrl(document.screenshotUrl)
+                              : normalizeApiUrl(document.thumbnailUrl || "")
                         }
                         target="_blank"
                         rel="noopener noreferrer"
                       >
                         <img
-                          src={getAbsoluteApiUrl(
+                          src={normalizeApiUrl(
                             document.screenshotUrl ||
                               document.thumbnailUrl ||
                               "",
@@ -557,7 +557,7 @@ export function DocumentDetailClient() {
                     asChild
                   >
                     <a
-                      href={getAbsoluteApiUrl(document.fileUrl)}
+                      href={normalizeApiUrl(document.fileUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       download={document.originalFilename}
@@ -574,7 +574,7 @@ export function DocumentDetailClient() {
                     asChild
                   >
                     <a
-                      href={getAbsoluteApiUrl(document.thumbnailUrl)}
+                      href={normalizeApiUrl(document.thumbnailUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -590,7 +590,7 @@ export function DocumentDetailClient() {
                     asChild
                   >
                     <a
-                      href={getAbsoluteApiUrl(document.screenshotUrl)}
+                      href={normalizeApiUrl(document.screenshotUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -606,7 +606,7 @@ export function DocumentDetailClient() {
                     asChild
                   >
                     <a
-                      href={getAbsoluteApiUrl(document.pdfUrl)}
+                      href={normalizeApiUrl(document.pdfUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -622,7 +622,7 @@ export function DocumentDetailClient() {
                     asChild
                   >
                     <a
-                      href={getAbsoluteApiUrl(document.contentUrl)}
+                      href={normalizeApiUrl(document.contentUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >

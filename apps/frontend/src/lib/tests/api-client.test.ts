@@ -5,7 +5,7 @@ import {
   apiGet,
   apiPost,
   apiPut,
-  getAbsoluteApiUrl,
+  normalizeApiUrl,
 } from "@/lib/api-client";
 
 // Mock window.location for auth error tests
@@ -213,28 +213,28 @@ describe("apiDelete", () => {
   });
 });
 
-describe("getAbsoluteApiUrl", () => {
+describe("normalizeApiUrl", () => {
   it("returns empty string for empty input", () => {
-    expect(getAbsoluteApiUrl("")).toBe("");
+    expect(normalizeApiUrl("")).toBe("");
   });
 
   it("returns absolute URL as-is (http)", () => {
-    expect(getAbsoluteApiUrl("http://example.com/api/test")).toBe(
+    expect(normalizeApiUrl("http://example.com/api/test")).toBe(
       "http://example.com/api/test",
     );
   });
 
   it("returns absolute URL as-is (https)", () => {
-    expect(getAbsoluteApiUrl("https://example.com/api/test")).toBe(
+    expect(normalizeApiUrl("https://example.com/api/test")).toBe(
       "https://example.com/api/test",
     );
   });
 
   it("prepends / if missing on relative URL", () => {
-    expect(getAbsoluteApiUrl("api/test")).toBe("/api/test");
+    expect(normalizeApiUrl("api/test")).toBe("/api/test");
   });
 
   it("preserves / on relative URL", () => {
-    expect(getAbsoluteApiUrl("/api/test")).toBe("/api/test");
+    expect(normalizeApiUrl("/api/test")).toBe("/api/test");
   });
 });

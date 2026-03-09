@@ -51,7 +51,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useBookmark } from "@/hooks/use-bookmarks";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
+import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import { formatDate } from "@/lib/date-utils";
 import type {
   Bookmark,
@@ -259,7 +259,7 @@ export function BookmarkDetailClient() {
   const mainScreenshotUrl = bookmark.screenshotUrl || bookmark.thumbnailUrl;
 
   const faviconUrl = bookmark.faviconUrl
-    ? getAbsoluteApiUrl(bookmark.faviconUrl)
+    ? normalizeApiUrl(bookmark.faviconUrl)
     : null;
 
   return (
@@ -1131,7 +1131,7 @@ export function BookmarkDetailClient() {
                         asChild
                       >
                         <a
-                          href={getAbsoluteApiUrl(bookmark.screenshotUrl)}
+                          href={normalizeApiUrl(bookmark.screenshotUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -1148,7 +1148,7 @@ export function BookmarkDetailClient() {
                         asChild
                       >
                         <a
-                          href={getAbsoluteApiUrl(bookmark.screenshotMobileUrl)}
+                          href={normalizeApiUrl(bookmark.screenshotMobileUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -1165,7 +1165,7 @@ export function BookmarkDetailClient() {
                         asChild
                       >
                         <a
-                          href={getAbsoluteApiUrl(
+                          href={normalizeApiUrl(
                             bookmark.screenshotFullPageUrl,
                           )}
                           target="_blank"
@@ -1198,7 +1198,7 @@ export function BookmarkDetailClient() {
                         asChild
                       >
                         <a
-                          href={getAbsoluteApiUrl(bookmark.pdfUrl)}
+                          href={normalizeApiUrl(bookmark.pdfUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -1215,7 +1215,7 @@ export function BookmarkDetailClient() {
                         asChild
                       >
                         <a
-                          href={getAbsoluteApiUrl(bookmark.contentUrl)}
+                          href={normalizeApiUrl(bookmark.contentUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -1232,7 +1232,7 @@ export function BookmarkDetailClient() {
                         asChild
                       >
                         <a
-                          href={getAbsoluteApiUrl(bookmark.readableUrl)}
+                          href={normalizeApiUrl(bookmark.readableUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -1249,7 +1249,7 @@ export function BookmarkDetailClient() {
                         asChild
                       >
                         <a
-                          href={getAbsoluteApiUrl(bookmark.readmeUrl)}
+                          href={normalizeApiUrl(bookmark.readmeUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -1322,7 +1322,7 @@ function Favicon({
 }) {
   const [error, setError] = useState(false);
   const faviconUrl = bookmark.faviconUrl
-    ? getAbsoluteApiUrl(bookmark.faviconUrl)
+    ? normalizeApiUrl(bookmark.faviconUrl)
     : null;
 
   useEffect(() => {

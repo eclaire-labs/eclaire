@@ -4,10 +4,10 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock apiFetch and getAbsoluteApiUrl
+// Mock apiFetch and normalizeApiUrl
 vi.mock("@/lib/api-client", () => ({
   apiFetch: vi.fn(),
-  getAbsoluteApiUrl: vi.fn((url: string) => `http://api${url}`),
+  normalizeApiUrl: vi.fn((url: string) => `http://api${url}`),
 }));
 
 // Mock sonner toast
@@ -15,7 +15,7 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
 }));
 
-import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
+import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import { toast } from "sonner";
 import {
   transformBookmarkData,
@@ -24,7 +24,7 @@ import {
 } from "@/hooks/use-bookmarks";
 
 const mockApiFetch = vi.mocked(apiFetch);
-const mockGetAbsoluteApiUrl = vi.mocked(getAbsoluteApiUrl);
+const mockNormalizeApiUrl = vi.mocked(normalizeApiUrl);
 const mockToastError = vi.mocked(toast.error);
 
 function createWrapper() {
@@ -100,7 +100,7 @@ describe("transformBookmarkData", () => {
     expect(withUndefined.tags).toEqual([]);
   });
 
-  it("applies getAbsoluteApiUrl to truthy URL fields and null to falsy ones", () => {
+  it("applies normalizeApiUrl to truthy URL fields and null to falsy ones", () => {
     const urlFields = [
       "faviconUrl",
       "thumbnailUrl",
@@ -118,7 +118,7 @@ describe("transformBookmarkData", () => {
     const resultTruthy = transformBookmarkData(rawTruthy);
 
     for (const field of urlFields) {
-      expect(mockGetAbsoluteApiUrl).toHaveBeenCalledWith(rawTruthy[field]);
+      expect(mockNormalizeApiUrl).toHaveBeenCalledWith(rawTruthy[field]);
       expect(resultTruthy[field]).toBe(
         `http://api${rawTruthy[field] as string}`,
       );
@@ -137,8 +137,8 @@ describe("transformBookmarkData", () => {
     for (const field of urlFields) {
       expect(resultFalsy[field]).toBeNull();
     }
-    // getAbsoluteApiUrl should not be called for falsy values
-    expect(mockGetAbsoluteApiUrl).not.toHaveBeenCalled();
+    // normalizeApiUrl should not be called for falsy values
+    expect(mockNormalizeApiUrl).not.toHaveBeenCalled();
   });
 
   it("preserves enabled: false (uses ?? operator, not ||)", () => {

@@ -1,3 +1,4 @@
+import { apiGet } from "@/lib/api-client";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -134,21 +135,9 @@ export function DashboardClientContent({
     setIsLoadingTimeline(true);
     try {
       const params = new URLSearchParams({ days: days.toString() });
-      const response = await fetch(`/api/user/activity-timeline?${params}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        console.error(
-          "Failed to fetch activity timeline:",
-          response.statusText,
-        );
-        return;
-      }
-
+      const response = await apiGet(
+        `/api/user/activity-timeline?${params}`,
+      );
       const data = await response.json();
       if (Array.isArray(data)) {
         setTimeline(data);

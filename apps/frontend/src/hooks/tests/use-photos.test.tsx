@@ -4,10 +4,10 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock apiFetch and getAbsoluteApiUrl
+// Mock apiFetch and normalizeApiUrl
 vi.mock("@/lib/api-client", () => ({
   apiFetch: vi.fn(),
-  getAbsoluteApiUrl: vi.fn((url: string) => `http://api${url}`),
+  normalizeApiUrl: vi.fn((url: string) => `http://api${url}`),
 }));
 
 // Mock sonner toast
@@ -15,7 +15,7 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
 }));
 
-import { apiFetch, getAbsoluteApiUrl } from "@/lib/api-client";
+import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import {
   transformPhotoData,
   usePhoto,
@@ -23,7 +23,7 @@ import {
 } from "@/hooks/use-photos";
 
 const mockApiFetch = vi.mocked(apiFetch);
-const mockGetAbsoluteApiUrl = vi.mocked(getAbsoluteApiUrl);
+const mockNormalizeApiUrl = vi.mocked(normalizeApiUrl);
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -122,19 +122,19 @@ describe("transformPhotoData", () => {
     expect(result2.originalUrl).toBe("");
   });
 
-  it("applies getAbsoluteApiUrl to truthy thumbnailUrl and convertedJpgUrl, null when falsy", () => {
+  it("applies normalizeApiUrl to truthy thumbnailUrl and convertedJpgUrl, null when falsy", () => {
     // Truthy values
     const rawTruthy = makeRawPhoto();
     const resultTruthy = transformPhotoData(rawTruthy);
 
-    expect(mockGetAbsoluteApiUrl).toHaveBeenCalledWith(
+    expect(mockNormalizeApiUrl).toHaveBeenCalledWith(
       rawTruthy.thumbnailUrl,
     );
     expect(resultTruthy.thumbnailUrl).toBe(
       `http://api${rawTruthy.thumbnailUrl as string}`,
     );
 
-    expect(mockGetAbsoluteApiUrl).toHaveBeenCalledWith(
+    expect(mockNormalizeApiUrl).toHaveBeenCalledWith(
       rawTruthy.convertedJpgUrl,
     );
     expect(resultTruthy.convertedJpgUrl).toBe(
@@ -153,9 +153,9 @@ describe("transformPhotoData", () => {
     expect(resultFalsy.thumbnailUrl).toBeNull();
     expect(resultFalsy.convertedJpgUrl).toBeNull();
 
-    // getAbsoluteApiUrl should still have been called for imageUrl and originalUrl (truthy in base),
+    // normalizeApiUrl should still have been called for imageUrl and originalUrl (truthy in base),
     // but NOT for thumbnailUrl or convertedJpgUrl
-    const calls = mockGetAbsoluteApiUrl.mock.calls.flat();
+    const calls = mockNormalizeApiUrl.mock.calls.flat();
     expect(calls).not.toContain(null);
   });
 
