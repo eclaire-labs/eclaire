@@ -192,7 +192,7 @@ jobs:
             co.eclaire.ci_run_number=${{ github.run_number }}
 
       - name: Build & (optionally) Push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./apps/backend/Dockerfile
