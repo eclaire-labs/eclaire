@@ -17,8 +17,6 @@ import {
   getTaskById,
   reprocessTask,
   updateTask,
-  updateTaskExecutionTrackingWithPermissions,
-  updateTaskStatusAsAssistant,
 } from "../lib/services/tasks.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
@@ -40,9 +38,7 @@ import {
   patchTaskRouteDescription,
   postTaskCommentRouteDescription,
   postTasksRouteDescription,
-  putTaskAssistantStatusRouteDescription,
   putTaskCommentRouteDescription,
-  putTaskExecutionTrackingRouteDescription,
   putTaskRouteDescription,
 } from "../schemas/tasks-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
@@ -168,70 +164,6 @@ registerCommonEndpoints(tasksRoutes, {
   },
   logger,
 });
-
-// PUT /api/tasks/:id/execution-tracking - Update task execution tracking
-// Note: nextRunAt is now managed by the queue scheduler, not stored on the task
-tasksRoutes.put(
-  "/:id/execution-tracking",
-  describeRoute(putTaskExecutionTrackingRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      lastExecutedAt: z.string().optional().meta({
-        description: "ISO 8601 timestamp when task was last executed",
-      }),
-    }),
-  ),
-  withAuth(async (c, userId) => {
-    const taskId = c.req.param("id");
-    const { lastExecutedAt } = c.req.valid("json");
-
-    const result = await updateTaskExecutionTrackingWithPermissions(
-      taskId,
-      userId,
-      lastExecutedAt,
-    );
-
-    return c.json(result);
-  }, logger),
-);
-
-// PUT /api/tasks/:id/assistant-status - Update task status as assigned assistant
-tasksRoutes.put(
-  "/:id/assistant-status",
-  describeRoute(putTaskAssistantStatusRouteDescription),
-  zValidator(
-    "json",
-    z.object({
-      status: z.enum(["backlog", "not-started", "in-progress", "completed", "cancelled"]).meta({
-        description: "New task status",
-      }),
-      assignedAssistantId: z.string().meta({
-        description: "ID of the assistant assigned to this task",
-      }),
-      completedAt: z.string().optional().meta({
-        description:
-          "ISO 8601 timestamp when task was completed (for completed status)",
-      }),
-    }),
-  ),
-  withAuth(async (c, _userId) => {
-    const taskId = c.req.param("id");
-    const { status, assignedAssistantId, completedAt } = c.req.valid("json");
-
-    await updateTaskStatusAsAssistant(
-      taskId,
-      status,
-      assignedAssistantId,
-      completedAt || null,
-    );
-
-    return c.json({
-      success: true,
-      message: `Task status updated to ${status}`,
-    });
-  }, logger),
-);
 
 // GET /api/tasks/:id/comments - Get comments for a task
 tasksRoutes.get(

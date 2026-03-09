@@ -30,8 +30,6 @@ import {
   deleteDocumentRouteDescription,
   getDocumentByIdRouteDescription,
   getDocumentContentRouteDescription,
-  getDocumentExtractedMdRouteDescription,
-  getDocumentExtractedTxtRouteDescription,
   getDocumentFileRouteDescription,
   getDocumentPdfRouteDescription,
   getDocumentScreenshotRouteDescription,
@@ -301,33 +299,5 @@ registerCommonEndpoints(documentsRoutes, {
   },
   logger,
 });
-
-// GET /api/documents/:id/extracted-md
-documentsRoutes.get(
-  "/:id/extracted-md",
-  describeRoute(getDocumentExtractedMdRouteDescription),
-  withAuth(async (c, userId) => {
-    const asset = await getDocumentAsset(
-      c.req.param("id"),
-      userId,
-      "extracted-md",
-    );
-    return serveDocumentAsset("private, max-age=3600")(c, asset);
-  }, logger),
-);
-
-// GET /api/documents/:id/extracted-txt
-documentsRoutes.get(
-  "/:id/extracted-txt",
-  describeRoute(getDocumentExtractedTxtRouteDescription),
-  withAuth(async (c, userId) => {
-    const asset = await getDocumentAsset(
-      c.req.param("id"),
-      userId,
-      "extracted-txt",
-    );
-    return serveDocumentAsset("private, max-age=3600")(c, asset);
-  }, logger),
-);
 
 export default documentsRoutes;

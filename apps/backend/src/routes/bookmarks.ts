@@ -287,24 +287,6 @@ createAssetEndpoint(
   "Get the readable content extract of a bookmark",
   "text/html",
 );
-createAssetEndpoint(
-  "/:id/raw",
-  "raw",
-  "Get the raw HTML content of a bookmark",
-  "text/html",
-);
-createAssetEndpoint(
-  "/:id/extracted-md",
-  "extractedMd",
-  "Get the extracted markdown content of a bookmark",
-  "text/markdown",
-);
-createAssetEndpoint(
-  "/:id/extracted-txt",
-  "extractedTxt",
-  "Get the extracted plain text content of a bookmark",
-  "text/plain",
-);
 // Add content alias for consistency (defaults to markdown if available)
 createAssetEndpoint(
   "/:id/content",

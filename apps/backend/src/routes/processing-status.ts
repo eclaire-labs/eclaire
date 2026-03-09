@@ -9,16 +9,12 @@ import {
 } from "../lib/services/processing-status.js";
 import { withAuth } from "../middleware/with-auth.js";
 import { ASSET_TYPES, assetTypeSchema } from "../schemas/asset-types.js";
-import {
-  AssetRetryBodySchema,
-  RetryBodySchema,
-} from "../schemas/processing-status-params.js";
+import { AssetRetryBodySchema } from "../schemas/processing-status-params.js";
 import {
   getAssetProcessingStatusRouteDescription,
   getProcessingJobsRouteDescription,
   getProcessingStatusSummaryRouteDescription,
   postAssetProcessingRetryRouteDescription,
-  postProcessingRetryRouteDescription,
 } from "../schemas/processing-status-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
@@ -116,25 +112,6 @@ processingStatusRoutes.get(
       estimatedCompletion:
         job.status === "processing" ? estimateCompletion(job) : null,
     });
-  }, logger),
-);
-
-/**
- * POST /api/processing-status/retry
- */
-processingStatusRoutes.post(
-  "/retry",
-  describeRoute(postProcessingRetryRouteDescription),
-  zValidator("json", RetryBodySchema),
-  withAuth(async (c, userId) => {
-    const { assetType, assetId } = c.req.valid("json");
-
-    const result = await retryAssetProcessing(assetType, assetId, userId);
-    if (result.success) {
-      return c.json({ success: true, message: "Processing retry queued" });
-    } else {
-      return c.json({ error: result.error }, 400);
-    }
   }, logger),
 );
 

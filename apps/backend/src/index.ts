@@ -136,34 +136,8 @@ const healthHandler = (c: Context<{ Variables: Variables }>) => {
   });
 };
 
-// Health check endpoints - /health for load balancers, /api/health for frontend
+// Health check endpoint for load balancers / Docker / k8s
 app.get("/health", healthHandler);
-app.get("/api/health", healthHandler);
-
-// Session test endpoint — returns safe fields only (no session token, IP, or user agent)
-app.get("/api/session", async (c) => {
-  const resolveSession = c.get("resolveSession");
-  const result = resolveSession ? await resolveSession() : null;
-
-  if (!result) {
-    return c.json({ session: null, user: null }, 200);
-  }
-
-  return c.json({
-    session: {
-      id: result.session.id,
-      userId: result.session.userId,
-      expiresAt: result.session.expiresAt,
-      createdAt: result.session.createdAt,
-    },
-    user: {
-      id: result.user.id,
-      name: result.user.name,
-      email: result.user.email,
-      userType: result.user.userType,
-    },
-  });
-});
 
 // Register API routes
 app.route("/api/tasks", tasksRoutes);
@@ -221,7 +195,6 @@ const start = async () => {
           queueBackend: QUEUE_BACKEND,
           endpoints: {
             auth: `http://${host}:${port}/api/auth`,
-            session: `http://${host}:${port}/api/session`,
             channels: `http://${host}:${port}/api/channels`,
             notifications: `http://${host}:${port}/api/notifications`,
           },
