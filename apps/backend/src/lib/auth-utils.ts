@@ -1,7 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
+import { config } from "../config/index.js";
 import { db, schema } from "../db/index.js";
 import { parseApiKey, verifyApiKeyHash } from "./api-key-security.js";
+import { createChildLogger } from "./logger.js";
+
+const logger = createChildLogger("auth-utils");
 
 const { apiKeys } = schema;
 
@@ -92,23 +96,26 @@ export async function getAuthenticatedUserId(
     }
   }
 
-  // Allow unauthenticated localhost requests (self-hosted convenience).
+  // Allow unauthenticated localhost requests (self-hosted convenience, non-production only).
   // Only triggers when both API key and session auth fail.
-  const clientIP =
-    c.req.header("x-forwarded-for") ||
-    c.req.header("x-real-ip") ||
-    (c.env as Record<string, unknown>)?.ip;
-  const isLocalhost =
-    !clientIP ||
-    clientIP === "127.0.0.1" ||
-    clientIP === "::1" ||
-    clientIP === "::ffff:127.0.0.1" ||
-    clientIP === "localhost";
+  if (!config.isProduction) {
+    const clientIP =
+      c.req.header("x-forwarded-for") ||
+      c.req.header("x-real-ip") ||
+      (c.env as Record<string, unknown>)?.ip;
+    const isLocalhost =
+      !clientIP ||
+      clientIP === "127.0.0.1" ||
+      clientIP === "::1" ||
+      clientIP === "::ffff:127.0.0.1" ||
+      clientIP === "localhost";
 
-  if (isLocalhost) {
-    const firstUser = await db.query.users.findFirst();
-    if (firstUser) {
-      return firstUser.id;
+    if (isLocalhost) {
+      const firstUser = await db.query.users.findFirst();
+      if (firstUser) {
+        logger.debug("Localhost auth bypass: authenticating as first user (non-production only)");
+        return firstUser.id;
+      }
     }
   }
 

@@ -68,18 +68,11 @@ app.use("*", smartLogger());
 
 // Define allowed origins
 const getAllowedOrigins = () => {
-  return config.isProduction
-    ? [
-        config.services.frontendUrl,
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://frontend:3000",
-      ]
-    : [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://frontend:3000",
-      ];
+  const origins = [config.services.frontendUrl, "http://frontend:3000"];
+  if (!config.isProduction) {
+    origins.push("http://localhost:3000", "http://127.0.0.1:3000");
+  }
+  return origins;
 };
 
 // CORS configuration with explicit allowed origins
@@ -147,7 +140,7 @@ const healthHandler = (c: Context<{ Variables: Variables }>) => {
 app.get("/health", healthHandler);
 app.get("/api/health", healthHandler);
 
-// Session test endpoint
+// Session test endpoint — returns safe fields only (no session token, IP, or user agent)
 app.get("/api/session", async (c) => {
   const resolveSession = c.get("resolveSession");
   const result = resolveSession ? await resolveSession() : null;
@@ -157,8 +150,18 @@ app.get("/api/session", async (c) => {
   }
 
   return c.json({
-    session: result.session,
-    user: result.user,
+    session: {
+      id: result.session.id,
+      userId: result.session.userId,
+      expiresAt: result.session.expiresAt,
+      createdAt: result.session.createdAt,
+    },
+    user: {
+      id: result.user.id,
+      name: result.user.name,
+      email: result.user.email,
+      userType: result.user.userType,
+    },
   });
 });
 

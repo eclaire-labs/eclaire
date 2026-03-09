@@ -47,7 +47,10 @@ export function verifyApiKeyHash(
   if (version !== 1) return false;
   const key = config.security.apiKeyHmacKeyV1;
   if (!key) return false;
-  return hmacBase64(apiKey, key) === hash;
+  const computed = Buffer.from(hmacBase64(apiKey, key));
+  const stored = Buffer.from(hash);
+  if (computed.length !== stored.length) return false;
+  return crypto.timingSafeEqual(computed, stored);
 }
 
 export function formatApiKeyForDisplay(keyId: string, suffix: string) {

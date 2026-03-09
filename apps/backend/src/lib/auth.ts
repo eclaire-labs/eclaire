@@ -85,10 +85,11 @@ export const auth = betterAuth({
   // Secret is provided by config system (auto-generated in dev, required in production)
   secret: config.security.betterAuthSecret,
   trustedOrigins: [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://frontend:3000", // Docker container name
     config.services.frontendUrl,
+    "http://frontend:3000", // Docker container name — not externally routable
+    ...(config.isProduction
+      ? []
+      : ["http://localhost:3000", "http://127.0.0.1:3000"]),
   ],
   advanced: {
     database: {

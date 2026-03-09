@@ -6,14 +6,12 @@ import {
   getUserProcessingJobs,
   getUserProcessingSummary,
   retryAssetProcessing,
-  updateProcessingStatusWithArtifacts,
 } from "../lib/services/processing-status.js";
 import { withAuth } from "../middleware/with-auth.js";
 import { ASSET_TYPES, assetTypeSchema } from "../schemas/asset-types.js";
 import {
   AssetRetryBodySchema,
   RetryBodySchema,
-  UpdateStatusBodySchema,
 } from "../schemas/processing-status-params.js";
 import {
   getAssetProcessingStatusRouteDescription,
@@ -21,7 +19,6 @@ import {
   getProcessingStatusSummaryRouteDescription,
   postAssetProcessingRetryRouteDescription,
   postProcessingRetryRouteDescription,
-  putAssetProcessingStatusUpdateRouteDescription,
 } from "../schemas/processing-status-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
@@ -175,118 +172,6 @@ processingStatusRoutes.post(
       return c.json({ error: result.error }, 400);
     }
   }, logger),
-);
-
-// ================================================================= //
-// =================== UPDATED UNIFIED ENDPOINT ==================== //
-// ================================================================= //
-
-/**
- * PUT /api/processing-status/:assetType/:assetId/update
- * The SINGLE, UNIFIED endpoint for all workers to report status and results.
- *
- * @tags Processing Status
- * @summary Update processing status and artifacts (internal worker endpoint)
- * @description Internal endpoint for workers to report status, progress, and results (artifacts).
- * @param {string} assetType - Type of asset (photos, documents, bookmarks, notes).
- * @param {string} assetId - ID of the asset.
- * @returns {object} Update result.
- */
-processingStatusRoutes.put(
-  "/:assetType/:assetId/update",
-  describeRoute(putAssetProcessingStatusUpdateRouteDescription),
-  zValidator("json", UpdateStatusBodySchema),
-  async (c) => {
-    const requestId = c.get("requestId");
-
-    try {
-      const rawAssetType = c.req.param("assetType");
-      const assetId = c.req.param("assetId");
-
-      // 1. Validate asset type
-      const validationResult = assetTypeSchema.safeParse(rawAssetType);
-      if (!validationResult.success) {
-        logger.warn(
-          { requestId, rawAssetType, assetId },
-          "Invalid asset type in worker update",
-        );
-        return c.json(
-          { error: "Invalid asset type", validTypes: ASSET_TYPES },
-          400,
-        );
-      }
-      const assetType = validationResult.data;
-
-      // 2. Get validated body
-      const {
-        status,
-        stage,
-        progress,
-        error,
-        errorDetails,
-        stages,
-        addStages,
-        artifacts,
-        userId,
-      } = c.req.valid("json");
-
-      // 3. Validate userId for job initialization
-      if (stages && Array.isArray(stages) && !userId) {
-        return c.json({ error: "userId required for job initialization" }, 400);
-      }
-
-      logger.debug(
-        {
-          requestId,
-          assetType,
-          assetId,
-          status,
-          stage,
-          hasArtifacts: !!artifacts,
-        },
-        "Worker update received",
-      );
-
-      // 4. Use the unified service function
-      const job = await updateProcessingStatusWithArtifacts(
-        assetType,
-        assetId,
-        userId ?? "",
-        {
-          status,
-          stage,
-          progress,
-          error,
-          errorDetails,
-          stages,
-          addStages,
-          artifacts,
-        },
-      );
-
-      if (!job) {
-        logger.warn(
-          { requestId, assetType, assetId },
-          "Processing job not found for status update",
-        );
-        return c.json({ error: "Processing job not found" }, 404);
-      }
-
-      return c.json({ success: true, job });
-    } catch (error: unknown) {
-      logger.error(
-        {
-          requestId,
-          assetType: c.req.param("assetType"),
-          assetId: c.req.param("assetId"),
-          error: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "Error updating processing status",
-      );
-      return c.json({ error: "Internal server error" }, 500);
-    }
-  },
 );
 
 /**
