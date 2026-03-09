@@ -11,26 +11,35 @@ import { createNoteEntry } from "../../services/notes.js";
 const inputSchema = z.object({
   title: z.string().describe("Title of the note"),
   content: z.string().describe("Content of the note (plain text or markdown)"),
+  tags: z.array(z.string()).optional().describe("Tags for the note"),
+  dueDate: z
+    .string()
+    .optional()
+    .describe("Due date in ISO format (YYYY-MM-DD)"),
 });
 
 export const createNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "createNote",
   label: "Create Note",
-  description: "Create a new note with text or markdown content.",
+  description: "Create a new note with text or markdown content, optional tags and due date.",
   inputSchema,
+  promptGuidelines: [
+    "Always confirm with the user before creating notes.",
+  ],
   execute: async (_callId, input, ctx) => {
     const servicePayload = {
       content: input.content,
       metadata: {
         title: input.title,
-        tags: [], // Empty initially, will be populated by AI background processing
+        tags: input.tags ?? [],
         processingEnabled: true, // Enable background processing for AI tagging
+        dueDate: input.dueDate,
       },
-      originalMimeType: "text/markdown", // Support both plain text and markdown
+      originalMimeType: "text/markdown",
       userAgent: "AI Assistant",
     };
 
-    const result = await createNoteEntry(servicePayload, ctx.userId);
+    const result = await createNoteEntry(servicePayload, { userId: ctx.userId, actor: "assistant" });
     return textResult(JSON.stringify(result, null, 2));
   },
 };

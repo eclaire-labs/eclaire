@@ -7,6 +7,7 @@
 
 import {
   getAlwaysIncludeSkills,
+  getPromptContributions,
   getSkillSummary,
   loadSkillContent,
   toOpenAITools,
@@ -54,23 +55,34 @@ function getToolSignatures(): string {
 }
 
 /**
- * Append skill content to a system prompt.
- * No-op when no skills are configured or discovered.
+ * Append skill content and tool prompt contributions to a system prompt.
+ * No-op when no skills or contributions are configured.
  */
 function appendSkillContent(prompt: string): string {
   let result = prompt;
 
+  // Skill summary with on-demand loading instruction
   const summary = getSkillSummary();
   if (summary) {
-    result += `\n\n## Skills\n${summary}`;
+    result += `\n\n## Skills\n${summary}\n\nUse the loadSkill tool to load a skill's full instructions when the task matches its description.`;
   }
 
+  // Always-include skills get their full content injected
   const alwaysInclude = getAlwaysIncludeSkills();
   for (const skill of alwaysInclude) {
     const content = loadSkillContent(skill.name);
     if (content) {
       result += `\n\n## ${skill.name}\n${content}`;
     }
+  }
+
+  // Tool prompt contributions (snippets and guidelines from active tools)
+  const { snippets, guidelines } = getPromptContributions();
+  if (snippets.length > 0) {
+    result += `\n\n${snippets.join("\n\n")}`;
+  }
+  if (guidelines.length > 0) {
+    result += `\n\n## Tool Guidelines\n${guidelines.map((g) => `- ${g}`).join("\n")}`;
   }
 
   return result;
