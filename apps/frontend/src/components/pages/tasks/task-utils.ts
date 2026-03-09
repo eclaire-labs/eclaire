@@ -20,37 +20,37 @@ const statusConfigs = {
   backlog: {
     label: "Backlog",
     icon: Inbox,
-    iconClass: "text-gray-400",
+    iconClass: "text-muted-foreground",
     badgeClass:
-      "bg-gray-50 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400 border-gray-300 dark:border-gray-600 border-dashed",
+      "bg-muted text-muted-foreground border-border border-dashed",
   },
   "not-started": {
     label: "Not Started",
     icon: Circle,
     iconClass: "text-muted-foreground",
     badgeClass:
-      "bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300 border-gray-300 dark:border-gray-600",
+      "bg-secondary text-secondary-foreground border-border",
   },
   "in-progress": {
     label: "In Progress",
     icon: Loader2,
-    iconClass: "text-blue-500 animate-spin",
+    iconClass: "text-info animate-spin",
     badgeClass:
-      "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+      "bg-info/10 text-info border-info/30",
   },
   completed: {
     label: "Completed",
     icon: CheckCircle2,
-    iconClass: "text-green-500",
+    iconClass: "text-success",
     badgeClass:
-      "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700",
+      "bg-success/10 text-success border-success/30",
   },
   cancelled: {
     label: "Cancelled",
     icon: XCircle,
-    iconClass: "text-red-400",
+    iconClass: "text-destructive",
     badgeClass:
-      "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border-red-200 dark:border-red-800",
+      "bg-destructive/10 text-destructive border-destructive/30",
   },
 } as const;
 

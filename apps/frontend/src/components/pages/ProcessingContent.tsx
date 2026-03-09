@@ -84,22 +84,19 @@ interface AssetDetails {
 }
 
 const statusIcons = {
-  pending: <Clock className="h-4 w-4 text-yellow-500" />,
-  processing: <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />,
-  completed: <CheckCircle className="h-4 w-4 text-green-500" />,
-  failed: <XCircle className="h-4 w-4 text-red-500" />,
-  retry_pending: <AlertCircle className="h-4 w-4 text-orange-500" />,
+  pending: <Clock className="h-4 w-4 text-warning" />,
+  processing: <Loader2 className="h-4 w-4 text-info animate-spin" />,
+  completed: <CheckCircle className="h-4 w-4 text-success" />,
+  failed: <XCircle className="h-4 w-4 text-destructive" />,
+  retry_pending: <AlertCircle className="h-4 w-4 text-warning" />,
 };
 
 const statusColors = {
-  pending:
-    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  processing: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  completed:
-    "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  failed: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-  retry_pending:
-    "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  pending: "bg-warning/10 text-warning",
+  processing: "bg-info/10 text-info",
+  completed: "bg-success/10 text-success",
+  failed: "bg-destructive/10 text-destructive",
+  retry_pending: "bg-warning/10 text-warning",
 };
 
 // User-friendly stage names
@@ -294,13 +291,13 @@ function JobDetailsDialog({ job }: { job: ProcessingJob }) {
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1">
                       {stage.status === "completed" && (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-4 w-4 text-success" />
                       )}
                       {stage.status === "processing" && (
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                        <Loader2 className="h-4 w-4 animate-spin text-info" />
                       )}
                       {stage.status === "failed" && (
-                        <XCircle className="h-4 w-4 text-red-500" />
+                        <XCircle className="h-4 w-4 text-destructive" />
                       )}
                       {stage.status === "pending" && (
                         <Clock className="h-4 w-4 text-muted-foreground" />

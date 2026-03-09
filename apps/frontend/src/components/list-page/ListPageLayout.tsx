@@ -404,7 +404,7 @@ function EmptyState({
 }) {
   return (
     <div className="text-center py-16 text-muted-foreground">
-      <Icon className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+      <Icon className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
       <p className="mb-4">{message}</p>
     </div>
   );

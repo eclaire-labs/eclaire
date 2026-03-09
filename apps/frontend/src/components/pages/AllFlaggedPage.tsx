@@ -362,7 +362,7 @@ export default function FlaggedItemsPage() {
       case "blue":
         return <Flag className={`${baseClass} text-blue-500`} />;
       default:
-        return <Flag className={`${baseClass} text-gray-500`} />;
+        return <Flag className={`${baseClass} text-muted-foreground`} />;
     }
   };
 

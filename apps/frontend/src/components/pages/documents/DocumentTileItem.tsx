@@ -197,7 +197,7 @@ export function DocumentTileItem({
             }}
             title="Chat about this document"
           >
-            <MessageSquare className="h-3 w-3 text-gray-400" />
+            <MessageSquare className="h-3 w-3 text-muted-foreground" />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

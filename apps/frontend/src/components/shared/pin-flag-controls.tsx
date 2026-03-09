@@ -108,7 +108,7 @@ export function PinFlagControls({
               buttonSize,
               isPinned
                 ? "text-blue-600 hover:text-blue-700"
-                : "text-gray-400 hover:text-gray-600",
+                : "text-muted-foreground hover:text-foreground",
             )}
             onClick={(e) => {
               e.stopPropagation();
@@ -134,7 +134,7 @@ export function PinFlagControls({
                     buttonSize,
                     flagColor
                       ? flagColors[flagColor]
-                      : "text-gray-400 hover:text-gray-600",
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                   onMouseDown={(e) => {
                     e.stopPropagation();

@@ -106,12 +106,12 @@ export function ProcessingSummaryDashboard({
         {/* Completed Status */}
         <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
           <div className="flex items-center gap-3">
-            <CheckCircle className="h-5 w-5 text-green-500" />
+            <CheckCircle className="h-5 w-5 text-success" />
             <div className="text-sm font-medium text-muted-foreground">
               Completed
             </div>
           </div>
-          <div className="text-xl font-bold text-green-600">
+          <div className="text-xl font-bold text-success">
             {summary.completed}
           </div>
         </div>
@@ -176,12 +176,12 @@ export function ProcessingSummaryDashboard({
           {/* Completed Status */}
           <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
             <div className="flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-success" />
               <div className="text-sm font-medium text-muted-foreground">
                 Completed
               </div>
             </div>
-            <div className="text-xl font-bold text-green-600">
+            <div className="text-xl font-bold text-success">
               {summary.completed}
             </div>
           </div>

@@ -68,14 +68,14 @@ export function DueItemsWidget({ dueItems }: DueItemsWidgetProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <CheckSquare className="h-5 w-5 text-green-500" />
+            <CheckSquare className="h-5 w-5 text-success" />
             <span>Due Items</span>
           </CardTitle>
           <CardDescription>All caught up!</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <CheckSquare className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <CheckSquare className="h-12 w-12 text-success mx-auto mb-4" />
             <p className="text-sm text-muted-foreground">
               No items are due. Great work!
             </p>
@@ -102,8 +102,8 @@ export function DueItemsWidget({ dueItems }: DueItemsWidgetProps) {
           {dueItems.overdue.length > 0 && (
             <div>
               <div className="flex items-center space-x-2 mb-3">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
-                <span className="text-sm font-medium text-red-600">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <span className="text-sm font-medium text-destructive">
                   Overdue ({dueItems.overdue.length})
                 </span>
               </div>
@@ -125,8 +125,8 @@ export function DueItemsWidget({ dueItems }: DueItemsWidgetProps) {
               {dueItems.overdue.length > 0 && <Separator />}
               <div>
                 <div className="flex items-center space-x-2 mb-3">
-                  <Clock className="h-4 w-4 text-orange-500" />
-                  <span className="text-sm font-medium text-orange-600">
+                  <Clock className="h-4 w-4 text-warning" />
+                  <span className="text-sm font-medium text-warning">
                     Due Today ({dueItems.dueToday.length})
                   </span>
                 </div>
@@ -150,8 +150,8 @@ export function DueItemsWidget({ dueItems }: DueItemsWidgetProps) {
                 dueItems.dueToday.length > 0) && <Separator />}
               <div>
                 <div className="flex items-center space-x-2 mb-3">
-                  <Calendar className="h-4 w-4 text-yellow-500" />
-                  <span className="text-sm font-medium text-yellow-600">
+                  <Calendar className="h-4 w-4 text-warning" />
+                  <span className="text-sm font-medium text-warning">
                     Due This Week ({dueItems.dueThisWeek.length})
                   </span>
                 </div>

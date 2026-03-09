@@ -99,7 +99,7 @@ export function NoteTileItem({
               }}
               title="Chat about this note"
             >
-              <MessageSquare className="h-3 w-3 text-gray-400" />
+              <MessageSquare className="h-3 w-3 text-muted-foreground" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

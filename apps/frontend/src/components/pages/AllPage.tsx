@@ -273,29 +273,20 @@ export default function AllItemsPage() {
     switch (reviewStatus) {
       case "pending":
         return (
-          <Badge
-            variant="outline"
-            className="bg-orange-100 text-orange-800 border-orange-200"
-          >
+          <Badge variant="warning">
             <Clock className="h-3 w-3 mr-1" />
             Pending
           </Badge>
         );
       case "accepted":
         return (
-          <Badge
-            variant="outline"
-            className="bg-green-100 text-green-800 border-green-200"
-          >
+          <Badge variant="success">
             Accepted
           </Badge>
         );
       case "rejected":
         return (
-          <Badge
-            variant="outline"
-            className="bg-red-100 text-red-800 border-red-200"
-          >
+          <Badge variant="destructive">
             Rejected
           </Badge>
         );

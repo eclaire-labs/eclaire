@@ -238,7 +238,7 @@ export function TaskListItem({
                 : "Chat with AI about this task"
             }
           >
-            <MessageSquare className="h-3.5 w-3.5 text-gray-400" />
+            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

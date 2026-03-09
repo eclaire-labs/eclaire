@@ -242,7 +242,7 @@ export default function AccountSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-gray-500">
+            <div className="text-muted-foreground">
               Please log in to view your account settings.
             </div>
           </CardContent>

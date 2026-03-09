@@ -122,40 +122,40 @@ export function ActivityTimelineChart({
               type="monotone"
               dataKey="bookmarks"
               stackId="1"
-              stroke="#3b82f6"
-              fill="#3b82f6"
+              stroke="hsl(var(--chart-1))"
+              fill="hsl(var(--chart-1))"
               fillOpacity={0.6}
             />
             <Area
               type="monotone"
               dataKey="documents"
               stackId="1"
-              stroke="#8b5cf6"
-              fill="#8b5cf6"
+              stroke="hsl(var(--chart-2))"
+              fill="hsl(var(--chart-2))"
               fillOpacity={0.6}
             />
             <Area
               type="monotone"
               dataKey="photos"
               stackId="1"
-              stroke="#22c55e"
-              fill="#22c55e"
+              stroke="hsl(var(--chart-3))"
+              fill="hsl(var(--chart-3))"
               fillOpacity={0.6}
             />
             <Area
               type="monotone"
               dataKey="notes"
               stackId="1"
-              stroke="#eab308"
-              fill="#eab308"
+              stroke="hsl(var(--chart-4))"
+              fill="hsl(var(--chart-4))"
               fillOpacity={0.6}
             />
             <Area
               type="monotone"
               dataKey="tasks"
               stackId="1"
-              stroke="#ef4444"
-              fill="#ef4444"
+              stroke="hsl(var(--chart-5))"
+              fill="hsl(var(--chart-5))"
               fillOpacity={0.6}
             />
           </AreaChart>

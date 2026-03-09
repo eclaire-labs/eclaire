@@ -191,7 +191,7 @@ export function ProcessingStatusIndicator({
             {getStatusBadge()}
             <div className="flex items-center gap-1">
               {isConnected ? (
-                <Wifi className="h-3 w-3 text-green-500" />
+                <Wifi className="h-3 w-3 text-success" />
               ) : (
                 <WifiOff className="h-3 w-3 text-muted-foreground" />
               )}
@@ -282,7 +282,7 @@ export function ProcessingStatusIndicator({
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
               {isConnected ? (
-                <Wifi className="h-4 w-4 text-green-500" />
+                <Wifi className="h-4 w-4 text-success" />
               ) : (
                 <WifiOff className="h-4 w-4 text-muted-foreground" />
               )}
@@ -360,10 +360,10 @@ export function ProcessingStatusIndicator({
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
                       {stage.status === "completed" && (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-4 w-4 text-success" />
                       )}
                       {stage.status === "processing" && (
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                        <Loader2 className="h-4 w-4 animate-spin text-info" />
                       )}
                       {stage.status === "failed" && (
                         <XCircle className="h-4 w-4 text-destructive" />

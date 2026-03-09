@@ -451,7 +451,7 @@ export function PhotoDetailClient() {
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center space-x-2">
-                  <Camera className="h-4 w-4 text-gray-500" />
+                  <Camera className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <Label className="text-sm font-medium">File Type</Label>
                     <p className="text-sm text-muted-foreground">
@@ -461,7 +461,7 @@ export function PhotoDetailClient() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Camera className="h-4 w-4 text-gray-500" />
+                  <Camera className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <Label className="text-sm font-medium">File Size</Label>
                     <p className="text-sm text-muted-foreground">
@@ -472,7 +472,7 @@ export function PhotoDetailClient() {
 
                 {photo.imageWidth && photo.imageHeight && (
                   <div className="flex items-center space-x-2">
-                    <Camera className="h-4 w-4 text-gray-500" />
+                    <Camera className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <Label className="text-sm font-medium">Dimensions</Label>
                       <p className="text-sm text-muted-foreground">
@@ -485,7 +485,7 @@ export function PhotoDetailClient() {
                 <Separator />
 
                 <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <Label className="text-sm font-medium">Date Taken</Label>
                     <p className="text-sm text-muted-foreground">
@@ -495,7 +495,7 @@ export function PhotoDetailClient() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <Label className="text-sm font-medium">Uploaded</Label>
                     <p className="text-sm text-muted-foreground">
@@ -505,7 +505,7 @@ export function PhotoDetailClient() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <Label className="text-sm font-medium">Updated</Label>
                     <p className="text-sm text-muted-foreground">
@@ -515,7 +515,7 @@ export function PhotoDetailClient() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div className="flex-1">
                     <Label className="text-sm font-medium">Due Date</Label>
                     {isEditing ? (
@@ -741,7 +741,7 @@ export function PhotoDetailClient() {
                 <CardContent className="space-y-3">
                   {photo.locationCity && (
                     <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <Label className="text-sm font-medium">Location</Label>
                         <p className="text-sm text-muted-foreground">

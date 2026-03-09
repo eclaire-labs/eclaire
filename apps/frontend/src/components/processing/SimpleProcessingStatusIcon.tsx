@@ -74,17 +74,17 @@ export function SimpleProcessingStatusIcon({
 
     switch (status) {
       case "pending":
-        return <Clock className={`${iconClass} text-yellow-500`} />;
+        return <Clock className={`${iconClass} text-warning`} />;
       case "processing":
         return (
-          <Loader2 className={`${iconClass} text-blue-500 animate-spin`} />
+          <Loader2 className={`${iconClass} text-info animate-spin`} />
         );
       case "completed":
-        return <CheckCircle className={`${iconClass} text-green-500`} />;
+        return <CheckCircle className={`${iconClass} text-success`} />;
       case "failed":
-        return <XCircle className={`${iconClass} text-red-500`} />;
+        return <XCircle className={`${iconClass} text-destructive`} />;
       case "retry_pending":
-        return <AlertTriangle className={`${iconClass} text-orange-500`} />;
+        return <AlertTriangle className={`${iconClass} text-warning`} />;
       default:
         return null;
     }

@@ -379,7 +379,7 @@ export function DocumentDetailClient() {
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center space-x-2">
-                  <FileText className="h-4 w-4 text-gray-500" />
+                  <FileText className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <Label className="text-sm font-medium">File Type</Label>
                     <p className="text-sm text-muted-foreground">
@@ -389,7 +389,7 @@ export function DocumentDetailClient() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <Label className="text-sm font-medium">Due Date</Label>
                     {isEditing ? (
@@ -408,7 +408,7 @@ export function DocumentDetailClient() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <File className="h-4 w-4 text-gray-500" />
+                  <File className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <Label className="text-sm font-medium">File Size</Label>
                     <p className="text-sm text-muted-foreground">
@@ -420,7 +420,7 @@ export function DocumentDetailClient() {
                 <Separator />
 
                 <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <Label className="text-sm font-medium">Created</Label>
                     <p className="text-sm text-muted-foreground">
@@ -430,7 +430,7 @@ export function DocumentDetailClient() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <Label className="text-sm font-medium">Updated</Label>
                     <p className="text-sm text-muted-foreground">
