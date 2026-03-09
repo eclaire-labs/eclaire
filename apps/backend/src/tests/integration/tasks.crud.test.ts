@@ -66,7 +66,7 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
       expect(Date.parse(data.updatedAt)).not.toBeNaN();
 
       // Validate schema-defined fields
-      expect(data.enabled).toBe(true);
+      expect(data.processingEnabled).toBe(true);
       expect(data.tags).toEqual([]);
       expect(data.reviewStatus).toBe("pending");
       expect(data.isPinned).toBe(false);
@@ -124,8 +124,7 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
       expect(data.items).toBeInstanceOf(Array);
       expect(data.items.length).toBeGreaterThan(0);
       expect(data.totalCount).toBeGreaterThan(0);
-      expect(data.limit).toBeTypeOf("number");
-      expect(data.offset).toBeTypeOf("number");
+      expect(data.hasMore).toBeTypeOf("boolean");
 
       const found = data.items.find((t) => t.id === taskId);
       expect(

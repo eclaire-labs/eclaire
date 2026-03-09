@@ -69,10 +69,62 @@ describe("TaskSchema", () => {
   });
 
   it("should accept all valid status values", () => {
-    for (const status of ["not-started", "in-progress", "completed"]) {
+    for (const status of [
+      "backlog",
+      "not-started",
+      "in-progress",
+      "completed",
+      "cancelled",
+    ]) {
       const result = TaskSchema.safeParse({ title: "Test", status });
       expect(result.success, `status '${status}' should be valid`).toBe(true);
     }
+  });
+
+  it("should accept parentId as string or null", () => {
+    const withString = TaskSchema.safeParse({
+      title: "Test",
+      parentId: "tsk_abc123",
+    });
+    expect(withString.success).toBe(true);
+
+    const withNull = TaskSchema.safeParse({
+      title: "Test",
+      parentId: null,
+    });
+    expect(withNull.success).toBe(true);
+  });
+
+  it("should accept priority values 0-4", () => {
+    for (const priority of [0, 1, 2, 3, 4]) {
+      const result = TaskSchema.safeParse({ title: "Test", priority });
+      expect(result.success, `priority ${priority} should be valid`).toBe(
+        true,
+      );
+    }
+  });
+
+  it("should reject priority values outside 0-4", () => {
+    expect(
+      TaskSchema.safeParse({ title: "Test", priority: -1 }).success,
+    ).toBe(false);
+    expect(
+      TaskSchema.safeParse({ title: "Test", priority: 5 }).success,
+    ).toBe(false);
+  });
+
+  it("should accept sortOrder as number or null", () => {
+    const withNumber = TaskSchema.safeParse({
+      title: "Test",
+      sortOrder: 1.5,
+    });
+    expect(withNumber.success).toBe(true);
+
+    const withNull = TaskSchema.safeParse({
+      title: "Test",
+      sortOrder: null,
+    });
+    expect(withNull.success).toBe(true);
   });
 
   it("should reject invalid reviewStatus", () => {
@@ -271,6 +323,38 @@ describe("TaskSearchParamsSchema", () => {
       limit: "10",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("should accept parentId filter", () => {
+    const result = TaskSearchParamsSchema.safeParse({
+      parentId: "tsk_abc123",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.parentId).toBe("tsk_abc123");
+    }
+  });
+
+  it("should accept topLevelOnly filter", () => {
+    const trueResult = TaskSearchParamsSchema.safeParse({
+      topLevelOnly: "true",
+    });
+    expect(trueResult.success).toBe(true);
+    if (trueResult.success) {
+      expect(trueResult.data.topLevelOnly).toBe("true");
+    }
+
+    const falseResult = TaskSearchParamsSchema.safeParse({
+      topLevelOnly: "false",
+    });
+    expect(falseResult.success).toBe(true);
+  });
+
+  it("should reject invalid topLevelOnly value", () => {
+    const result = TaskSearchParamsSchema.safeParse({
+      topLevelOnly: "yes",
+    });
+    expect(result.success).toBe(false);
   });
 });
 

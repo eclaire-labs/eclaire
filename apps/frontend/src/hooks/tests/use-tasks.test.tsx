@@ -130,11 +130,17 @@ describe("transformTaskData", () => {
     expect(result2.processingEnabled).toBe(true);
   });
 
-  it("defaults priority to 0, parentId to null, sortOrder to null", () => {
+  it("defaults priority to 0, parentId to null, sortOrder to null, childCount to 0", () => {
     const result = transformTaskData({ id: "1" });
     expect(result.priority).toBe(0);
     expect(result.parentId).toBeNull();
     expect(result.sortOrder).toBeNull();
+    expect(result.childCount).toBe(0);
+  });
+
+  it("preserves childCount when present", () => {
+    const result = transformTaskData({ id: "1", childCount: 3 });
+    expect(result.childCount).toBe(3);
   });
 
   it("defaults reviewStatus, flagColor, isPinned, processingStatus, and generates date fallbacks", () => {

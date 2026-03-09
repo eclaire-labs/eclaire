@@ -50,16 +50,26 @@ export interface TaskEntry {
   userId: string;
   title: string;
   description: string | null;
-  status: "not-started" | "in-progress" | "completed";
-  dueDate: string | null; // ISO 8601 format
+  status:
+    | "backlog"
+    | "not-started"
+    | "in-progress"
+    | "completed"
+    | "cancelled";
+  dueDate: string | null;
   assignedToId: string | null;
-  enabled: boolean;
+  processingEnabled: boolean;
+  priority: number;
+  parentId: string | null;
+  sortOrder: number | null;
+  childCount?: number;
   tags: string[];
   reviewStatus: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned: boolean;
-  createdAt: string; // ISO 8601 format
-  updatedAt: string; // ISO 8601 format
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
   processingStatus?: string;
   comments: TaskComment[];
   // Recurrence fields
@@ -82,12 +92,12 @@ export interface CommentDeleteResponse {
   message: string;
 }
 
-// Response interface for list/search operations (matches API: { items, totalCount, limit, offset })
+// Response interface for list/search operations (cursor-based pagination)
 export interface TaskListResponse {
   items: TaskEntry[];
-  totalCount: number;
-  limit: number;
-  offset: number;
+  totalCount?: number;
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 // Global tracking for all recurring tasks (accessible to helpers and tests)

@@ -49,8 +49,7 @@ describe("Task Search and Filtering", { timeout: 30000 }, () => {
 
       expect(data.items).toBeInstanceOf(Array);
       expect(data.totalCount).toBeTypeOf("number");
-      expect(data.limit).toBeTypeOf("number");
-      expect(data.offset).toBeTypeOf("number");
+      expect(data.hasMore).toBeTypeOf("boolean");
       const found = data.items.find((t) => t.id === searchTaskId);
       expect(found).toBeDefined();
       expect(found?.title).toContain("Searchable");
@@ -94,7 +93,6 @@ describe("Task Search and Filtering", { timeout: 30000 }, () => {
 
       expect(data.items).toBeInstanceOf(Array);
       expect(data.items.length).toBe(1);
-      expect(data.limit).toBe(1);
     });
 
     it("DELETE /api/tasks/:id - should delete the search task", async () => {

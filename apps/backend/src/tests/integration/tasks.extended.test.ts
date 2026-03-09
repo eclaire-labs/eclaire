@@ -259,33 +259,33 @@ describe("Tasks — Enabled Field", { timeout: 30000 }, () => {
     const data = (await response.json()) as TaskEntry;
     enabledTaskId = data.id;
 
-    expect(data.enabled).toBe(true);
+    expect(data.processingEnabled).toBe(true);
   });
 
-  it("PATCH /api/tasks/:id — should toggle enabled to false", async () => {
+  it("PATCH /api/tasks/:id — should toggle processingEnabled to false", async () => {
     expect(enabledTaskId).not.toBeNull();
 
     const response = await loggedFetch(`/tasks/${enabledTaskId}`, {
       method: "PATCH",
-      body: JSON.stringify({ enabled: false }),
+      body: JSON.stringify({ processingEnabled: false }),
     });
 
     expect(response.status).toBe(200);
     const data = (await response.json()) as TaskEntry;
-    expect(data.enabled).toBe(false);
+    expect(data.processingEnabled).toBe(false);
   });
 
-  it("PATCH /api/tasks/:id — should toggle enabled back to true", async () => {
+  it("PATCH /api/tasks/:id — should toggle processingEnabled back to true", async () => {
     expect(enabledTaskId).not.toBeNull();
 
     const response = await loggedFetch(`/tasks/${enabledTaskId}`, {
       method: "PATCH",
-      body: JSON.stringify({ enabled: true }),
+      body: JSON.stringify({ processingEnabled: true }),
     });
 
     expect(response.status).toBe(200);
     const data = (await response.json()) as TaskEntry;
-    expect(data.enabled).toBe(true);
+    expect(data.processingEnabled).toBe(true);
   });
 
   afterAll(async () => {
