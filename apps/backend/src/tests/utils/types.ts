@@ -14,6 +14,7 @@ export interface Bookmark {
   flagColor: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned: boolean;
   dueDate: string | null;
+  processingEnabled?: boolean;
 }
 
 export interface BookmarkListResponse {
@@ -102,7 +103,7 @@ export interface Note {
   originalMimeType?: string | null;
   fileSize?: number | null;
   metadata?: Record<string, unknown> | null;
-  enabled?: boolean;
+  processingEnabled?: boolean;
 }
 
 export interface NoteListResponse {
@@ -168,7 +169,7 @@ export interface Photo {
   // Processing Status
   processingStatus: string | null;
   isOriginalViewable: boolean;
-  enabled: boolean;
+  processingEnabled: boolean;
 }
 
 export interface PhotoListResponse {
@@ -195,6 +196,7 @@ export interface Task {
   recurrenceEndDate: string | null;
   nextRunAt: string | null;
   lastRunAt: string | null;
+  processingEnabled?: boolean;
 }
 
 export interface Conversation {

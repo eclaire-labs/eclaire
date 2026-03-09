@@ -34,7 +34,7 @@ describe("TaskSchema", () => {
       status: "in-progress",
       dueDate: "2026-06-15T09:00:00Z",
       assignedToId: "user-123",
-      enabled: false,
+      processingEnabled: false,
       tags: ["urgent", "backend"],
       reviewStatus: "accepted",
       flagColor: "red",

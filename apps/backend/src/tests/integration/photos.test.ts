@@ -27,7 +27,7 @@ async function createTestPhoto(
     dueDate?: string;
     fileContent?: string;
     fileMimeType?: string;
-    enabled?: boolean;
+    processingEnabled?: boolean;
   } = {},
 ): Promise<Photo> {
   const fileContent = overrides.fileContent ?? "dummy image content";
@@ -47,7 +47,7 @@ async function createTestPhoto(
     metadata.reviewStatus = overrides.reviewStatus;
   if (overrides.isPinned !== undefined) metadata.isPinned = overrides.isPinned;
   if (overrides.dueDate !== undefined) metadata.dueDate = overrides.dueDate;
-  if (overrides.enabled !== undefined) metadata.enabled = overrides.enabled;
+  if (overrides.processingEnabled !== undefined) metadata.processingEnabled = overrides.processingEnabled;
 
   formData.append("metadata", JSON.stringify(metadata));
   formData.append("content", dummyFile, originalFilename);

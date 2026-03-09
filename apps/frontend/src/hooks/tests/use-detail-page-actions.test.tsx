@@ -47,7 +47,7 @@ function makeItem(
     processingStatus: null as string | null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    enabled: true,
+    processingEnabled: true,
     ...overrides,
   };
 }

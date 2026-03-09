@@ -128,7 +128,7 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
       content:
         "This is a test note for AI integration testing with specific content.",
       tags: ["ai-test", "findnotes", "integration"],
-      enabled: false,
+      processingEnabled: false,
     };
 
     const noteResponse = await loggedFetch(`${BASE_URL}/notes`, {

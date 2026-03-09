@@ -252,7 +252,7 @@ describe("Better Auth Session Integration Tests", () => {
       title: "Auth Session Test Bookmark",
       description: "A bookmark created during authentication testing",
       tags: ["test", "auth", "session"],
-      enabled: false,
+      processingEnabled: false,
     };
 
     const response = await loggedFetch(`${BASE_URL}/bookmarks`, {
