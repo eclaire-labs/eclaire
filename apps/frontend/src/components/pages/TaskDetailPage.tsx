@@ -676,7 +676,7 @@ export function TaskDetailClient() {
                       onClick={() =>
                         navigate({
                           to: "/tasks/$id",
-                          params: { id: task.parentId },
+                          params: { id: task.parentId ?? "" },
                         })
                       }
                     >

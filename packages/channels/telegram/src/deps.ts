@@ -29,12 +29,12 @@ export interface TelegramDeps {
   schema: any;
   encrypt: (value: string) => string;
   decrypt: (value: string) => string;
-  // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   processPromptRequest: (
+    // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
     ...args: any[]
   ) => Promise<{ response?: string; type?: string; requestId?: string }>;
-  // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   processPromptRequestStream?: (
+    // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
     ...args: any[]
   ) => Promise<ReadableStream<StreamEvent>>;
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version

@@ -18,11 +18,12 @@ const reprocessBodySchema = z.object({
 
 type AppRouter = Hono<{ Variables: RouteVariables }>;
 
-// biome-ignore lint/suspicious/noExplicitAny: update functions have varying return types per resource
 type UpdateFn = (
   id: string,
+  // biome-ignore lint/suspicious/noExplicitAny: update functions have varying return types per resource
   data: Record<string, any>,
   caller: CallerContext,
+  // biome-ignore lint/suspicious/noExplicitAny: update functions have varying return types per resource
 ) => Promise<any>;
 type ReprocessFn = (
   id: string,

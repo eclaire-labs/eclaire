@@ -17,13 +17,21 @@ const mockCreateSession = vi.fn(async () => ({
   id: "session-1",
   title: "New session",
 }));
-const mockListSessions = vi.fn(async () => []);
+type SessionItem = {
+  id: string;
+  title: string;
+  messageCount: number;
+  updatedAt: Date;
+};
+const mockListSessions = vi.fn(async (): Promise<SessionItem[]> => []);
 const mockDeleteSession = vi.fn(async () => true);
-const mockGetModelInfo = vi.fn(() => ({
-  name: "Claude Sonnet",
-  provider: "anthropic",
-  model: "claude-sonnet-4-20250514",
-}));
+const mockGetModelInfo = vi.fn(
+  (): { name: string; provider: string; model: string } | null => ({
+    name: "Claude Sonnet",
+    provider: "anthropic",
+    model: "claude-sonnet-4-20250514",
+  }),
+);
 
 function makeInteraction(commandName: string) {
   return {
@@ -32,7 +40,7 @@ function makeInteraction(commandName: string) {
     deferReply: vi.fn(async function (this: { deferred: boolean }) {
       this.deferred = true;
     }),
-    editReply: vi.fn(async () => ({})),
+    editReply: vi.fn(async (_content: string) => ({})),
   };
 }
 

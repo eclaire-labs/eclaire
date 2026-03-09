@@ -6,6 +6,7 @@ function make429Error(retryAfter?: number): DiscordAPIError {
   const rawData = {
     message: "You are being rate limited.",
     retry_after: retryAfter ?? 0,
+    code: 0,
   };
   const err = new DiscordAPIError(rawData, 429, 429, "GET", "/api/test", {
     body: {},
@@ -80,7 +81,7 @@ describe("getRetryAfterMs", () => {
 
   it("returns 5000 fallback for 429 without retryAfter", () => {
     const err = new DiscordAPIError(
-      { message: "rate limited" },
+      { message: "rate limited", code: 0 },
       429,
       429,
       "GET",
@@ -92,7 +93,7 @@ describe("getRetryAfterMs", () => {
 
   it("returns null for non-429 DiscordAPIError", () => {
     const err = new DiscordAPIError(
-      { message: "forbidden" },
+      { message: "forbidden", code: 50013 },
       50013,
       403,
       "GET",

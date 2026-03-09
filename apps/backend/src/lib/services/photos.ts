@@ -396,9 +396,12 @@ export async function createPhoto(
         cameraModel: exif.Model || null,
         lensModel: exif.LensModel || null,
         iso: typeof exif.ISO === "number" ? exif.ISO : null,
-        fNumber: typeof exif.FNumber === "number" ? exif.FNumber : null,
+        fNumber:
+          typeof exif.FNumber === "number" ? exif.FNumber.toString() : null,
         exposureTime:
-          typeof exif.ExposureTime === "number" ? exif.ExposureTime : null,
+          typeof exif.ExposureTime === "number"
+            ? exif.ExposureTime.toString()
+            : null,
         orientation:
           typeof exif.Orientation === "number" ? exif.Orientation : null,
         imageWidth:
@@ -415,9 +418,12 @@ export async function createPhoto(
               : null,
 
         // --- Location ---
-        latitude: typeof exif.latitude === "number" ? exif.latitude : null,
-        longitude: typeof exif.longitude === "number" ? exif.longitude : null,
-        altitude: typeof exif.altitude === "number" ? exif.altitude : null,
+        latitude:
+          typeof exif.latitude === "number" ? exif.latitude.toString() : null,
+        longitude:
+          typeof exif.longitude === "number" ? exif.longitude.toString() : null,
+        altitude:
+          typeof exif.altitude === "number" ? exif.altitude.toString() : null,
         locationCity: location.cityName || null,
         locationCountryIso2: location.countryIso2 || null,
         locationCountryName: location.countryName || null,
@@ -459,7 +465,7 @@ export async function createPhoto(
           id: photoId,
           title: metadata.title,
           originalFilename: originalFilename,
-          storageId: storageInfo.storageId,
+          storageId: storageKey,
           tags: tags,
         },
         actor: caller.actor,

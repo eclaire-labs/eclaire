@@ -11,7 +11,6 @@ import type {
   ChannelErrorResponse,
   ChannelResponse,
   CreateChannelResponse,
-  DeleteChannelResponse,
   ListChannelsResponse,
   UpdateChannelResponse,
 } from "../../schemas/channels-responses.js";
@@ -177,29 +176,25 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       expect(response.status).toBe(201);
       const data = (await response.json()) as CreateChannelResponse;
 
-      expect(data.channel).toBeDefined();
-      expect(data.channel.id).toBeTypeOf("string");
-      expect(data.channel.id.startsWith("ch-")).toBe(true);
-      expect(data.channel.name).toBe(validTelegramConfig.name);
-      expect(data.channel.platform).toBe(validTelegramConfig.platform);
-      expect(data.channel.capability).toBe(validTelegramConfig.capability);
-      expect(data.channel.isActive).toBe(true); // Default should be true
-      expect(data.channel.userId).toBeTypeOf("string");
+      expect(data.id).toBeTypeOf("string");
+      expect(data.id.startsWith("ch-")).toBe(true);
+      expect(data.name).toBe(validTelegramConfig.name);
+      expect(data.platform).toBe(validTelegramConfig.platform);
+      expect(data.capability).toBe(validTelegramConfig.capability);
+      expect(data.isActive).toBe(true); // Default should be true
+      expect(data.userId).toBeTypeOf("string");
 
       // Validate timestamps
-      expect(data.channel.createdAt).toBeDefined();
-      expect(data.channel.updatedAt).toBeDefined();
-      expect(Date.parse(data.channel.createdAt)).not.toBeNaN();
-      expect(Date.parse(data.channel.updatedAt)).not.toBeNaN();
+      expect(data.createdAt).toBeDefined();
+      expect(data.updatedAt).toBeDefined();
+      expect(Date.parse(data.createdAt)).not.toBeNaN();
+      expect(Date.parse(data.updatedAt)).not.toBeNaN();
 
       // Ensure config is not exposed in response
-      expect((data.channel as any).config).toBeUndefined();
-
-      expect(data.message).toBeDefined();
-      expect(data.message).toBe("Channel created successfully");
+      expect((data as any).config).toBeUndefined();
 
       // Store ID for subsequent tests
-      createdChannelId = data.channel.id;
+      createdChannelId = data.id;
       expect(createdChannelId).not.toBeNull();
     });
 
@@ -247,20 +242,17 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       expect(response.status).toBe(200);
       const data = (await response.json()) as UpdateChannelResponse;
 
-      expect(data.channel).toBeDefined();
-      expect(data.channel.id).toBe(createdChannelId);
-      expect(data.channel.name).toBe(updatedChannelData.name);
-      expect(data.channel.capability).toBe(updatedChannelData.capability);
-      expect(data.channel.platform).toBe("telegram"); // Should remain unchanged
+      expect(data.id).toBe(createdChannelId);
+      expect(data.name).toBe(updatedChannelData.name);
+      expect(data.capability).toBe(updatedChannelData.capability);
+      expect(data.platform).toBe("telegram"); // Should remain unchanged
 
       // Timestamps should be updated
-      expect(data.channel.updatedAt).toBeDefined();
-      expect(Date.parse(data.channel.updatedAt)).not.toBeNaN();
-
-      expect(data.message).toBe("Channel updated successfully");
+      expect(data.updatedAt).toBeDefined();
+      expect(Date.parse(data.updatedAt)).not.toBeNaN();
 
       // Ensure config is not exposed
-      expect((data.channel as any).config).toBeUndefined();
+      expect((data as any).config).toBeUndefined();
     });
 
     it("PUT /api/channels/:id - should allow partial updates", async () => {
@@ -281,9 +273,9 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       expect(response.status).toBe(200);
       const data = (await response.json()) as UpdateChannelResponse;
 
-      expect(data.channel.name).toBe(partialUpdate.name);
-      expect(data.channel.capability).toBe(updatedChannelData.capability); // Should remain from previous update
-      expect(data.channel.platform).toBe("telegram");
+      expect(data.name).toBe(partialUpdate.name);
+      expect(data.capability).toBe(updatedChannelData.capability); // Should remain from previous update
+      expect(data.platform).toBe("telegram");
     });
   });
 
@@ -361,7 +353,7 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
         const data = (await response.json()) as CreateChannelResponse;
 
         // Clean up immediately
-        await apiCall(`/channels/${data.channel.id}`, { method: "DELETE" });
+        await apiCall(`/channels/${data.id}`, { method: "DELETE" });
       }
     });
 
@@ -396,13 +388,13 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
           expect(response.status).toBe(201);
           const data = (await response.json()) as CreateChannelResponse;
           // Clean up
-          await apiCall(`/channels/${data.channel.id}`, { method: "DELETE" });
+          await apiCall(`/channels/${data.id}`, { method: "DELETE" });
         } else {
           // Other platforms might not be fully implemented yet
           expect([201, 400, 500]).toContain(response.status);
           if (response.status === 201) {
             const data = (await response.json()) as CreateChannelResponse;
-            await apiCall(`/channels/${data.channel.id}`, { method: "DELETE" });
+            await apiCall(`/channels/${data.id}`, { method: "DELETE" });
           }
         }
       }
@@ -433,10 +425,10 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
 
         expect(response.status).toBe(201);
         const data = (await response.json()) as CreateChannelResponse;
-        expect(data.channel.capability).toBe(capability);
+        expect(data.capability).toBe(capability);
 
         // Clean up
-        await apiCall(`/channels/${data.channel.id}`, { method: "DELETE" });
+        await apiCall(`/channels/${data.id}`, { method: "DELETE" });
       }
     });
 
@@ -460,10 +452,10 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
 
       expect(response.status).toBe(201);
       const data = (await response.json()) as CreateChannelResponse;
-      expect(data.channel.name).toBe(exactLimitName);
+      expect(data.name).toBe(exactLimitName);
 
       // Clean up
-      await apiCall(`/channels/${data.channel.id}`, { method: "DELETE" });
+      await apiCall(`/channels/${data.id}`, { method: "DELETE" });
     });
 
     it("POST /api/channels - should reject channel name exceeding 255 characters", async () => {
@@ -526,7 +518,7 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       });
       expect(createResponse.status).toBe(201);
       const createData = (await createResponse.json()) as CreateChannelResponse;
-      const testChannelId = createData.channel.id;
+      const testChannelId = createData.id;
 
       // Test name length limit on update
       const tooLongName = "a".repeat(256);
@@ -618,7 +610,7 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       });
       expect(createResponse.status).toBe(201);
       const createData = (await createResponse.json()) as CreateChannelResponse;
-      const testChannelId = createData.channel.id;
+      const testChannelId = createData.id;
 
       const invalidUpdates = [
         { name: "" }, // Empty name
@@ -752,9 +744,9 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
         // Should either accept or provide clear validation error
         if (response.status === 201) {
           const data = (await response.json()) as CreateChannelResponse;
-          expect(data.channel.name).toBe(name);
+          expect(data.name).toBe(name);
           // Clean up
-          await apiCall(`/channels/${data.channel.id}`, { method: "DELETE" });
+          await apiCall(`/channels/${data.id}`, { method: "DELETE" });
         } else {
           expect(response.status).toBe(400);
           const data = await response.json();
@@ -776,11 +768,7 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
         method: "DELETE",
       });
 
-      expect(response.status).toBe(200);
-      const data = (await response.json()) as DeleteChannelResponse;
-
-      expect(data.success).toBe(true);
-      expect(data.message).toBe("Channel deleted successfully");
+      expect(response.status).toBe(204);
     });
 
     it("GET /api/channels - should not list the deleted channel", async () => {
@@ -825,27 +813,23 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       const createData = (await createResponse.json()) as CreateChannelResponse;
 
       // Check that config is not in create response
-      expect((createData.channel as any).config).toBeUndefined();
+      expect((createData as any).config).toBeUndefined();
 
       // Validate complete response structure
-      expect(createData.channel.id).toBeTypeOf("string");
-      expect(createData.channel.userId).toBeTypeOf("string");
-      expect(createData.channel.name).toBe(validTelegramConfig.name);
-      expect(createData.channel.platform).toBe(validTelegramConfig.platform);
-      expect(createData.channel.capability).toBe(
-        validTelegramConfig.capability,
-      );
-      expect(createData.channel.isActive).toBe(true);
-      expect(createData.channel.createdAt).toBeTypeOf("string");
-      expect(createData.channel.updatedAt).toBeTypeOf("string");
-      expect(createData.message).toBe("Channel created successfully");
-
+      expect(createData.id).toBeTypeOf("string");
+      expect(createData.userId).toBeTypeOf("string");
+      expect(createData.name).toBe(validTelegramConfig.name);
+      expect(createData.platform).toBe(validTelegramConfig.platform);
+      expect(createData.capability).toBe(validTelegramConfig.capability);
+      expect(createData.isActive).toBe(true);
+      expect(createData.createdAt).toBeTypeOf("string");
+      expect(createData.updatedAt).toBeTypeOf("string");
       // Check list response
       const listResponse = await apiCall("/channels");
       expect(listResponse.status).toBe(200);
       const listData = (await listResponse.json()) as ListChannelsResponse;
       const listItems = listData.items as ChannelResponse[];
-      const channel = listItems.find((c) => c.id === createData.channel.id);
+      const channel = listItems.find((c) => c.id === createData.id);
       expect((channel as any)?.config).toBeUndefined();
 
       // Validate list response structure
@@ -854,7 +838,7 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       expect(listData.totalCount).toBeTypeOf("number");
 
       // Clean up
-      await apiCall(`/channels/${createData.channel.id}`, { method: "DELETE" });
+      await apiCall(`/channels/${createData.id}`, { method: "DELETE" });
     });
 
     it("Should isolate channels by user", async () => {
@@ -906,7 +890,7 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       );
 
       const createData = (await createResponse.json()) as CreateChannelResponse;
-      const channelId = createData.channel.id;
+      const channelId = createData.id;
 
       // Test GET list response format
       const listResponse = await apiCall("/channels");
@@ -925,18 +909,11 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
         "application/json",
       );
 
-      // Test DELETE response format
+      // Test DELETE response format (204 No Content)
       const deleteResponse = await apiCall(`/channels/${channelId}`, {
         method: "DELETE",
       });
-      expect(deleteResponse.status).toBe(200);
-      expect(deleteResponse.headers.get("content-type")).toContain(
-        "application/json",
-      );
-
-      const deleteData = (await deleteResponse.json()) as DeleteChannelResponse;
-      expect(deleteData.success).toBe(true);
-      expect(deleteData.message).toBe("Channel deleted successfully");
+      expect(deleteResponse.status).toBe(204);
     });
   });
 });

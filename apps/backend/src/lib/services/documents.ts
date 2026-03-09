@@ -330,7 +330,7 @@ export async function createDocument(
         afterData: {
           id: documentId,
           title: metadata.title,
-          storageId: storageInfo.storageId,
+          storageId: storageKey,
           originalFilename,
           mimeType: verifiedMimeType,
           tags: metadata.tags,
