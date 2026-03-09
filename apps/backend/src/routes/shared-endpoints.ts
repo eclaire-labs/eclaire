@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import type { Logger } from "pino";
+import z from "zod/v4";
 import { NotFoundError } from "../lib/errors.js";
 import type { CallerContext } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
@@ -10,6 +11,10 @@ import {
   reviewStatusUpdateSchema,
 } from "../schemas/common.js";
 import type { RouteVariables } from "../types/route-variables.js";
+
+const reprocessBodySchema = z.object({
+  force: z.boolean().optional().default(false),
+});
 
 type AppRouter = Hono<{ Variables: RouteVariables }>;
 
@@ -112,10 +117,10 @@ export function registerReprocessEndpoint(
 ): void {
   router.post(
     "/:id/reprocess",
+    zValidator("json", reprocessBodySchema),
     withAuth(async (c, userId) => {
       const id = c.req.param("id");
-      const body = await c.req.json().catch(() => ({}));
-      const force = body.force === true;
+      const { force } = c.req.valid("json");
 
       const result = await reprocessFn(id, userId, force);
 

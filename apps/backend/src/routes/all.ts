@@ -68,22 +68,18 @@ allRoutes.post(
       throw new ValidationError("The 'content' part is required.");
     }
 
-    // Parse the raw metadata first (keep all fields for database storage)
-    let rawMetadata: Record<string, unknown>;
+    // Parse and validate metadata — passthrough allows type-specific fields
+    // (e.g. deviceId for photos) to flow through to downstream handlers
+    let rawJson: unknown;
     try {
-      rawMetadata = JSON.parse((metadataPart as string) || "{}");
+      rawJson = JSON.parse((metadataPart as string) || "{}");
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new ValidationError("Invalid metadata JSON format");
       }
       throw error;
     }
-
-    // Then validate only the fields we need for our internal logic
-    const validatedMetadata = CreateMetadataSchema.parse(rawMetadata);
-
-    // Merge: use the raw metadata as base, but overlay our validated fields
-    const metadata = { ...rawMetadata, ...validatedMetadata };
+    const metadata = CreateMetadataSchema.passthrough().parse(rawJson);
     const contentBuffer = Buffer.from(await contentPart.arrayBuffer());
     const originalMimeType = contentPart.type;
     const userAgent = c.req.header("User-Agent") || "";

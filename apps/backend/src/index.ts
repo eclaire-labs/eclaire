@@ -25,6 +25,7 @@ import { validateAIConfigOnStartup } from "@eclaire/ai";
 // Now import modules that depend on environment variables
 import { serve } from "@hono/node-server";
 import { type Context, Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { showRoutes } from "hono/dev";
 import { initializeAI } from "./lib/ai-init.js";
@@ -74,6 +75,9 @@ const getAllowedOrigins = () => {
   }
   return origins;
 };
+
+// Global body size limit (50 MB) to prevent memory exhaustion from oversized requests
+app.use("*", bodyLimit({ maxSize: 50 * 1024 * 1024 }));
 
 // CORS configuration with explicit allowed origins
 app.use(

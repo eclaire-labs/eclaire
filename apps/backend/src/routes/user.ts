@@ -172,6 +172,16 @@ userRoutes.post(
       throw new ValidationError("Avatar file is required");
     }
 
+    // Reject non-image MIME types early, before buffering the entire file
+    if (!avatarFile.type.startsWith("image/")) {
+      throw new ValidationError("File must be an image");
+    }
+
+    const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5 MB
+    if (avatarFile.size > MAX_AVATAR_SIZE) {
+      throw new ValidationError("Avatar file too large. Maximum size is 5MB.");
+    }
+
     const buffer = Buffer.from(await avatarFile.arrayBuffer());
     const result = await uploadUserAvatar(userId, buffer, avatarFile.type);
     return c.json(result);

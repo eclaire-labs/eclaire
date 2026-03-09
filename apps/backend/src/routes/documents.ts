@@ -111,9 +111,9 @@ documentsRoutes.post(
       );
     }
 
-    const rawMetadata = parseUploadMetadata(formData.get("metadata"));
-    const validatedMetadata = DocumentMetadataSchema.parse(rawMetadata);
-    const metadata = { ...rawMetadata, ...validatedMetadata };
+    const metadata = DocumentMetadataSchema.parse(
+      parseUploadMetadata(formData.get("metadata")),
+    );
 
     const newDocument = await createDocument(
       {

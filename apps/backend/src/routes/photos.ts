@@ -110,9 +110,9 @@ photosRoutes.post(
       );
     }
 
-    const rawMetadata = parseUploadMetadata(formData.get("metadata"));
-    const validatedMetadata = PhotoMetadataSchema.parse(rawMetadata);
-    const metadata = { ...rawMetadata, ...validatedMetadata };
+    const metadata = PhotoMetadataSchema.parse(
+      parseUploadMetadata(formData.get("metadata")),
+    );
 
     const extractedMetadata = await extractAndGeocode(contentBuffer);
 
