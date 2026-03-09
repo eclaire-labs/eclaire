@@ -23,6 +23,7 @@ import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatus
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
+import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,7 +62,6 @@ export function DocumentDetailClient() {
   const [editDescription, setEditDescription] = useState("");
   const [editDueDate, setEditDueDate] = useState(""); // This will hold ISO string
   const [editTags, setEditTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState("");
 
   // Initialize editing state when document loads
   useEffect(() => {
@@ -131,23 +131,7 @@ export function DocumentDetailClient() {
     setEditDescription(document.description || "");
     setEditDueDate(document.dueDate || "");
     setEditTags(document.tags || []);
-    setNewTag("");
     setIsEditing(false);
-  };
-
-  // Handle add tag
-  const handleAddTag = () => {
-    if (!newTag.trim()) return;
-    const tag = newTag.trim().toLowerCase();
-    if (!editTags.includes(tag)) {
-      setEditTags([...editTags, tag]);
-    }
-    setNewTag("");
-  };
-
-  // Handle remove tag
-  const handleRemoveTag = (tagToRemove: string) => {
-    setEditTags(editTags.filter((tag) => tag !== tagToRemove));
   };
 
   if (isLoading) {
@@ -463,42 +447,13 @@ export function DocumentDetailClient() {
               </CardHeader>
               <CardContent>
                 {isEditing ? (
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      {editTags.map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant="secondary"
-                          className="flex items-center gap-1"
-                        >
-                          {tag}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveTag(tag)}
-                            className="ml-1 hover:text-red-500"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newTag}
-                        onChange={(e) => setNewTag(e.target.value)}
-                        placeholder="Add a tag..."
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddTag();
-                          }
-                        }}
-                      />
-                      <Button size="sm" onClick={handleAddTag}>
-                        Add
-                      </Button>
-                    </div>
-                  </div>
+                  <TagEditor
+                    tags={editTags}
+                    onAddTag={(tag) => setEditTags((prev) => [...prev, tag])}
+                    onRemoveTag={(tag) =>
+                      setEditTags((prev) => prev.filter((t) => t !== tag))
+                    }
+                  />
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {document.tags && document.tags.length > 0 ? (
@@ -634,6 +589,7 @@ export function DocumentDetailClient() {
           open={actions.isDeleteDialogOpen}
           onOpenChange={actions.setIsDeleteDialogOpen}
           label="Document"
+          isDeleting={actions.isDeleting}
           onConfirm={actions.confirmDelete}
         >
           {document && (

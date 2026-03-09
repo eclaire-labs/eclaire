@@ -27,6 +27,7 @@ import { MarkdownDisplayWithAssets } from "@/components/markdown-display-with-as
 import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { RecurrenceToggle } from "@/components/shared/recurrence-toggle";
+import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -93,7 +94,6 @@ export function TaskDetailClient() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [tagInput, setTagInput] = useState("");
   const [users, setUsers] = useState<User[]>([]);
 
   // Comments state
@@ -267,7 +267,6 @@ export function TaskDetailClient() {
       });
     }
     setIsEditing(false);
-    setTagInput("");
   };
 
   const handleSave = async () => {
@@ -303,7 +302,6 @@ export function TaskDetailClient() {
 
       await response.json();
       setIsEditing(false);
-      setTagInput("");
 
       // Refresh to get the latest data from server
       refresh();
@@ -319,24 +317,6 @@ export function TaskDetailClient() {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleAddTag = () => {
-    const tag = tagInput.trim().toLowerCase();
-    if (tag && !editForm.tags.includes(tag)) {
-      setEditForm((prev) => ({
-        ...prev,
-        tags: [...prev.tags, tag],
-      }));
-      setTagInput("");
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setEditForm((prev) => ({
-      ...prev,
-      tags: prev.tags.filter((tag) => tag !== tagToRemove),
-    }));
   };
 
   const handleInputChange = (
@@ -475,9 +455,8 @@ export function TaskDetailClient() {
           ) : (
             <>
               <Button
-                variant="outline"
+                variant="destructive"
                 onClick={actions.openDeleteDialog}
-                className="text-red-600 hover:text-red-700"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
@@ -906,6 +885,21 @@ export function TaskDetailClient() {
                   )}
                 </div>
 
+                {isEditing && (
+                  <TagEditor
+                    tags={editForm.tags}
+                    onAddTag={(tag) =>
+                      handleInputChange("tags", [...editForm.tags, tag])
+                    }
+                    onRemoveTag={(tag) =>
+                      handleInputChange(
+                        "tags",
+                        editForm.tags.filter((t: string) => t !== tag),
+                      )
+                    }
+                  />
+                )}
+
                 {!isEditing && (
                   <>
                     <div>
@@ -944,58 +938,19 @@ export function TaskDetailClient() {
                     {/* Tags Section */}
                     <div>
                       <Label>Tags</Label>
-                      {isEditing ? (
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap gap-2">
-                            {editForm.tags.map((tag) => (
-                              <Badge
-                                key={tag}
-                                variant="secondary"
-                                className="flex items-center gap-1"
-                              >
-                                {tag}
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveTag(tag)}
-                                  className="ml-1 hover:text-destructive"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </Badge>
-                            ))}
-                          </div>
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="Add a tag..."
-                              value={tagInput}
-                              onChange={(e) => setTagInput(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleAddTag();
-                                }
-                              }}
-                            />
-                            <Button type="button" onClick={handleAddTag}>
-                              Add
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {task.tags.length > 0 ? (
-                            task.tags.map((tag) => (
-                              <Badge key={tag} variant="outline">
-                                {tag}
-                              </Badge>
-                            ))
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              No tags
-                            </p>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {task.tags.length > 0 ? (
+                          task.tags.map((tag) => (
+                            <Badge key={tag} variant="outline">
+                              {tag}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No tags
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Sub-tasks Section — only on top-level tasks */}
@@ -1099,6 +1054,7 @@ export function TaskDetailClient() {
         onOpenChange={actions.setIsDeleteDialogOpen}
         label="Task"
         onConfirm={actions.confirmDelete}
+        isDeleting={actions.isDeleting}
       >
         <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
           <CheckCircle2 className="h-6 w-6 flex-shrink-0 mt-0.5" />

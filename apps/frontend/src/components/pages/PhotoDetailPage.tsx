@@ -29,6 +29,7 @@ import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { PhotoAnalysisCard } from "@/components/photo-analysis";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
+import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -114,7 +115,6 @@ export function PhotoDetailClient() {
   const [editDescription, setEditDescription] = useState("");
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editDueDate, setEditDueDate] = useState<string | null>(null);
-  const [newTag, setNewTag] = useState("");
   const [imageScale, setImageScale] = useState(1);
   const [showFullscreen, setShowFullscreen] = useState(false);
 
@@ -186,23 +186,7 @@ export function PhotoDetailClient() {
     setEditDescription(photo.description || "");
     setEditTags(photo.tags || []);
     setEditDueDate(photo.dueDate || null);
-    setNewTag("");
     setIsEditing(false);
-  };
-
-  // Handle add tag
-  const handleAddTag = () => {
-    if (!newTag.trim()) return;
-    const tag = newTag.trim().toLowerCase();
-    if (!editTags.includes(tag)) {
-      setEditTags([...editTags, tag]);
-    }
-    setNewTag("");
-  };
-
-  // Handle remove tag
-  const handleRemoveTag = (tagToRemove: string) => {
-    setEditTags(editTags.filter((tag) => tag !== tagToRemove));
   };
 
   // Handle zoom
@@ -542,42 +526,13 @@ export function PhotoDetailClient() {
               </CardHeader>
               <CardContent>
                 {isEditing ? (
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      {editTags.map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant="secondary"
-                          className="flex items-center gap-1"
-                        >
-                          {tag}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveTag(tag)}
-                            className="ml-1 hover:text-red-500"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newTag}
-                        onChange={(e) => setNewTag(e.target.value)}
-                        placeholder="Add a tag..."
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddTag();
-                          }
-                        }}
-                      />
-                      <Button size="sm" onClick={handleAddTag}>
-                        Add
-                      </Button>
-                    </div>
-                  </div>
+                  <TagEditor
+                    tags={editTags}
+                    onAddTag={(tag) => setEditTags((prev) => [...prev, tag])}
+                    onRemoveTag={(tag) =>
+                      setEditTags((prev) => prev.filter((t) => t !== tag))
+                    }
+                  />
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {photo.tags && photo.tags.length > 0 ? (
@@ -815,6 +770,7 @@ export function PhotoDetailClient() {
           onOpenChange={actions.setIsDeleteDialogOpen}
           label="Photo"
           onConfirm={actions.confirmDelete}
+          isDeleting={actions.isDeleting}
         >
           <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
             <Camera className="h-6 w-6 flex-shrink-0 mt-0.5" />

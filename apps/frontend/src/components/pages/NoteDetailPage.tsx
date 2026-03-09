@@ -21,6 +21,7 @@ import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatus
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
+import { TagEditor } from "@/components/shared/TagEditor";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,6 @@ export function NoteDetailClient() {
   const { id: noteId } = routeApi.useParams();
   const [localNote, setLocalNote] = useState<Note | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [tagInput, setTagInput] = useState("");
 
   const { note, isLoading, error, refresh } = useNote(noteId);
 
@@ -93,25 +93,6 @@ export function NoteDetailClient() {
   const handleCancel = () => {
     setLocalNote(note ?? null);
     setIsEditing(false);
-    setTagInput("");
-  };
-
-  const handleAddTag = () => {
-    if (!tagInput.trim() || !localNote) return;
-    const tag = tagInput.trim().toLowerCase();
-    if (isEditing && !localNote.tags.includes(tag)) {
-      setLocalNote({ ...localNote, tags: [...localNote.tags, tag] });
-    }
-    setTagInput("");
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    if (isEditing && localNote) {
-      setLocalNote({
-        ...localNote,
-        tags: localNote.tags.filter((t) => t !== tag),
-      });
-    }
   };
 
   if (isLoading) {
@@ -237,9 +218,8 @@ export function NoteDetailClient() {
             ) : (
               <>
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   onClick={actions.openDeleteDialog}
-                  className="text-red-600 hover:text-red-700"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
@@ -343,57 +323,40 @@ export function NoteDetailClient() {
                   </div>
                   {/* Tags Section */}
                   <div>
-                    <Label>Tags</Label>
                     {isEditing ? (
-                      <div className="mt-1">
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {(localNote?.tags || []).map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="secondary"
-                              className="flex items-center gap-1"
-                            >
-                              {tag}
-                              <button
-                                type="button"
-                                className="h-4 w-4 ml-1 hover:bg-muted-foreground/20 rounded"
-                                onClick={() => handleRemoveTag(tag)}
-                              >
-                                x
-                              </button>
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Add a tag..."
-                            value={tagInput}
-                            onChange={(e) => setTagInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleAddTag();
-                              }
-                            }}
-                          />
-                          <Button type="button" onClick={handleAddTag}>
-                            Add
-                          </Button>
-                        </div>
-                      </div>
+                      <TagEditor
+                        tags={localNote?.tags || []}
+                        onAddTag={(tag) =>
+                          setLocalNote(
+                            localNote
+                              ? { ...localNote, tags: [...localNote.tags, tag] }
+                              : null,
+                          )
+                        }
+                        onRemoveTag={(tag) =>
+                          setLocalNote(
+                            localNote
+                              ? { ...localNote, tags: localNote.tags.filter((t) => t !== tag) }
+                              : null,
+                          )
+                        }
+                      />
                     ) : (
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {note.tags.length > 0 ? (
-                          note.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary">
-                              {tag}
-                            </Badge>
-                          ))
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No tags
-                          </p>
-                        )}
+                      <div>
+                        <Label>Tags</Label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {note.tags.length > 0 ? (
+                            note.tags.map((tag) => (
+                              <Badge key={tag} variant="secondary">
+                                {tag}
+                              </Badge>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              No tags
+                            </p>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -443,6 +406,7 @@ export function NoteDetailClient() {
           onOpenChange={actions.setIsDeleteDialogOpen}
           label="Note"
           onConfirm={actions.confirmDelete}
+          isDeleting={actions.isDeleting}
         >
           <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
             <FileText className="h-6 w-6 flex-shrink-0 mt-0.5" />

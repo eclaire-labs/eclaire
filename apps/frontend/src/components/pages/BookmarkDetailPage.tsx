@@ -42,6 +42,7 @@ import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatus
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
+import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -116,7 +117,7 @@ export function BookmarkDetailClient() {
   const navigate = useNavigate();
   const [localBookmark, setLocalBookmark] = useState<Bookmark | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [tagInput, setTagInput] = useState("");
+
 
   // Use React Query hook for data fetching
   const { bookmark, isLoading, error, refresh } = useBookmark(bookmarkId);
@@ -169,26 +170,7 @@ export function BookmarkDetailClient() {
     }
   };
 
-  const handleAddTag = () => {
-    if (!tagInput.trim() || !localBookmark) return;
-    const tag = tagInput.trim().toLowerCase();
-    if (isEditMode && !localBookmark.tags.includes(tag)) {
-      setLocalBookmark({
-        ...localBookmark,
-        tags: [...localBookmark.tags, tag],
-      });
-    }
-    setTagInput("");
-  };
 
-  const handleRemoveTag = (tag: string) => {
-    if (isEditMode && localBookmark) {
-      setLocalBookmark({
-        ...localBookmark,
-        tags: localBookmark.tags.filter((t) => t !== tag),
-      });
-    }
-  };
 
   if (isLoading) {
     return (
@@ -317,9 +299,8 @@ export function BookmarkDetailClient() {
             ) : (
               <>
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   onClick={actions.openDeleteDialog}
-                  className="text-red-600 hover:text-red-700"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
@@ -494,42 +475,23 @@ export function BookmarkDetailClient() {
                 <div>
                   <Label>Tags</Label>
                   {isEditMode ? (
-                    <div className="mt-1">
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {(localBookmark?.tags || []).map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="secondary"
-                            className="flex items-center gap-1"
-                          >
-                            {tag}
-                            <button
-                              type="button"
-                              className="h-4 w-4 ml-1 hover:bg-muted-foreground/20 rounded"
-                              onClick={() => handleRemoveTag(tag)}
-                            >
-                              ×
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Add a tag..."
-                          value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddTag();
-                            }
-                          }}
-                        />
-                        <Button type="button" onClick={handleAddTag}>
-                          Add
-                        </Button>
-                      </div>
-                    </div>
+                    <TagEditor
+                      tags={localBookmark?.tags || []}
+                      onAddTag={(tag) =>
+                        setLocalBookmark(
+                          localBookmark
+                            ? { ...localBookmark, tags: [...localBookmark.tags, tag] }
+                            : null,
+                        )
+                      }
+                      onRemoveTag={(tag) =>
+                        setLocalBookmark(
+                          localBookmark
+                            ? { ...localBookmark, tags: localBookmark.tags.filter((t) => t !== tag) }
+                            : null,
+                        )
+                      }
+                    />
                   ) : (
                     <div className="flex flex-wrap gap-2 mt-1">
                       {bookmark.tags.length > 0 ? (
@@ -1271,6 +1233,7 @@ export function BookmarkDetailClient() {
           onOpenChange={actions.setIsDeleteDialogOpen}
           label="Bookmark"
           onConfirm={actions.confirmDelete}
+          isDeleting={actions.isDeleting}
         >
           {bookmark && (
             <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">

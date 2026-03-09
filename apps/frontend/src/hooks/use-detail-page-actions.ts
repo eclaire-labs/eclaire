@@ -45,6 +45,7 @@ export function useDetailPageActions(options: UseDetailPageActionsOptions) {
   const [isReprocessing, setIsReprocessing] = useState(false);
   const [showReprocessDialog, setShowReprocessDialog] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const singular = contentType.replace(/s$/, "");
   const label = singular.charAt(0).toUpperCase() + singular.slice(1);
@@ -161,6 +162,7 @@ export function useDetailPageActions(options: UseDetailPageActionsOptions) {
 
   const confirmDelete = async () => {
     if (!item) return;
+    setIsDeleting(true);
     try {
       await apiFetch(`/api/${contentType}/${item.id}`, { method: "DELETE" });
       setIsDeleteDialogOpen(false);
@@ -172,6 +174,8 @@ export function useDetailPageActions(options: UseDetailPageActionsOptions) {
       toast.error("Error", {
         description: `Failed to delete ${singular}`,
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -192,6 +196,7 @@ export function useDetailPageActions(options: UseDetailPageActionsOptions) {
     confirmDelete,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
+    isDeleting,
     // Utilities
     isJobStuck: item ? isJobStuck(item) : false,
     label,

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
+import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { TagEditor } from "@/components/shared/TagEditor";
 import type { UploadingFile } from "@/components/shared/UploadProgressList";
 import { UploadProgressList } from "@/components/shared/UploadProgressList";
@@ -439,22 +440,12 @@ export default function NotesPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="due-date">Due Date (optional)</Label>
-                        <Input
-                          id="due-date"
-                          type="datetime-local"
-                          value={
-                            selectedEntry.dueDate
-                              ? new Date(selectedEntry.dueDate)
-                                  .toISOString()
-                                  .slice(0, 16)
-                              : ""
-                          }
-                          onChange={(e) =>
+                        <DueDatePicker
+                          value={selectedEntry.dueDate || null}
+                          onChange={(value) =>
                             setSelectedEntry({
                               ...selectedEntry,
-                              dueDate: e.target.value
-                                ? new Date(e.target.value).toISOString()
-                                : null,
+                              dueDate: value,
                             })
                           }
                         />

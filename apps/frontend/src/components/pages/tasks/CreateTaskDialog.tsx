@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { RecurrenceToggle } from "@/components/shared/recurrence-toggle";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Button } from "@/components/ui/button";
@@ -25,22 +26,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { Task, TaskStatus } from "@/types/task";
 import { CREATE_STATUS_OPTIONS, PRIORITY_OPTIONS } from "./task-utils";
-
-/** Format an ISO date string for a datetime-local input. */
-function formatDateForInput(isoString: string | null | undefined): string {
-  if (!isoString) return "";
-  try {
-    const date = new Date(isoString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  } catch {
-    return "";
-  }
-}
 
 const INITIAL_TASK: Omit<Task, "id"> = {
   title: "",
@@ -207,12 +192,10 @@ export function CreateTaskDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-due-date">Due Date</Label>
-                <Input
-                  id="new-due-date"
-                  type="datetime-local"
-                  value={formatDateForInput(task.dueDate)}
-                  onChange={(e) =>
-                    setTask({ ...task, dueDate: e.target.value })
+                <DueDatePicker
+                  value={task.dueDate || null}
+                  onChange={(value) =>
+                    setTask({ ...task, dueDate: value ?? "" })
                   }
                 />
               </div>

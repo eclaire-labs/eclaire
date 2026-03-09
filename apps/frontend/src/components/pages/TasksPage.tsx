@@ -10,6 +10,7 @@ import React, {
 import { toast } from "sonner";
 import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
+import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -61,24 +62,6 @@ import {
 import { tasksConfig } from "./tasks/tasks-config";
 
 const routeApi = getRouteApi("/_authenticated/tasks/");
-
-// ---------------------------------------------------------------------------
-// Helper: format date for <input type="datetime-local">
-// ---------------------------------------------------------------------------
-const formatDateForInput = (isoString: string | null | undefined): string => {
-  if (!isoString) return "";
-  try {
-    const date = new Date(isoString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  } catch {
-    return "";
-  }
-};
 
 // ---------------------------------------------------------------------------
 // Transform backend user data to frontend User type
@@ -676,12 +659,13 @@ export default function TasksPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="edit-due-date">Due Date</Label>
-                      <Input
-                        id="edit-due-date"
-                        name="dueDate"
-                        type="datetime-local"
-                        value={formatDateForInput(editingTask.dueDate)}
-                        onChange={handleEditInputChange}
+                      <DueDatePicker
+                        value={editingTask.dueDate || null}
+                        onChange={(value) =>
+                          setEditingTask((prev) =>
+                            prev ? { ...prev, dueDate: value ?? "" } : null,
+                          )
+                        }
                       />
                     </div>
                   </div>

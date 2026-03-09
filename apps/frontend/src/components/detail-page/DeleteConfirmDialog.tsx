@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +14,7 @@ interface DeleteConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
   label: string;
   onConfirm: () => void;
+  isDeleting?: boolean;
   children?: React.ReactNode;
 }
 
@@ -21,6 +23,7 @@ export function DeleteConfirmDialog({
   onOpenChange,
   label,
   onConfirm,
+  isDeleting,
   children,
 }: DeleteConfirmDialogProps) {
   return (
@@ -38,7 +41,12 @@ export function DeleteConfirmDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={onConfirm}>
+          <Button
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Delete {label}
           </Button>
         </DialogFooter>

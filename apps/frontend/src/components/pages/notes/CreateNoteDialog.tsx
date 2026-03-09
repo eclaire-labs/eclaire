@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,20 +90,12 @@ export function CreateNoteDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="new-due-date">Due Date (optional)</Label>
-            <Input
-              id="new-due-date"
-              type="datetime-local"
-              value={
-                form.dueDate
-                  ? new Date(form.dueDate).toISOString().slice(0, 16)
-                  : ""
-              }
-              onChange={(e) =>
+            <DueDatePicker
+              value={form.dueDate}
+              onChange={(value) =>
                 setForm({
                   ...form,
-                  dueDate: e.target.value
-                    ? new Date(e.target.value).toISOString()
-                    : null,
+                  dueDate: value,
                 })
               }
             />
