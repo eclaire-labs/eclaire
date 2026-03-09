@@ -11,7 +11,6 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
     },
-    setupFiles: ["./src/lib/env-loader.ts"],
     exclude: [
       ...configDefaults.exclude,
       "src/tests/integration/**",

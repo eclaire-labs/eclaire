@@ -11,7 +11,7 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
     },
-    setupFiles: ["./src/lib/env-loader.ts"],
+    setupFiles: ["@eclaire/core/env-loader"],
     include: ["src/tests/integration/**/*.test.ts"],
   },
 });
