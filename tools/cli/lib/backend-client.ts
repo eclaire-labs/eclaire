@@ -102,8 +102,7 @@ export async function createSession(title?: string): Promise<Session> {
   if (!response.ok) {
     throw new Error(`Failed to create session: ${response.status}`);
   }
-  const data = (await response.json()) as { session: Session };
-  return data.session;
+  return response.json() as Promise<Session>;
 }
 
 export async function listSessions(limit?: number): Promise<Session[]> {
@@ -121,8 +120,7 @@ export async function getSession(id: string): Promise<SessionWithMessages> {
   if (!response.ok) {
     throw new Error(`Failed to get session: ${response.status}`);
   }
-  const data = (await response.json()) as { session: SessionWithMessages };
-  return data.session;
+  return response.json() as Promise<SessionWithMessages>;
 }
 
 export async function deleteSession(id: string): Promise<void> {

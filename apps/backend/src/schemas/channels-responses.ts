@@ -25,23 +25,11 @@ export const ListChannelsResponseSchema = paginatedResponseSchema(
   "channels",
 );
 
-// Create channel response
-export const CreateChannelResponseSchema = z.object({
-  channel: ChannelResponseSchema,
-  message: z.string(),
-});
+// Create channel response — bare entity
+export const CreateChannelResponseSchema = ChannelResponseSchema;
 
-// Update channel response
-export const UpdateChannelResponseSchema = z.object({
-  channel: ChannelResponseSchema,
-  message: z.string(),
-});
-
-// Delete channel response
-export const DeleteChannelResponseSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
-});
+// Update channel response — bare entity
+export const UpdateChannelResponseSchema = ChannelResponseSchema;
 
 // Send notification response
 export const SendNotificationResponseSchema = z.object({
@@ -83,7 +71,6 @@ export type ChannelResponse = z.infer<typeof ChannelResponseSchema>;
 export type ListChannelsResponse = z.infer<typeof ListChannelsResponseSchema>;
 export type CreateChannelResponse = z.infer<typeof CreateChannelResponseSchema>;
 export type UpdateChannelResponse = z.infer<typeof UpdateChannelResponseSchema>;
-export type DeleteChannelResponse = z.infer<typeof DeleteChannelResponseSchema>;
 export type SendNotificationResponse = z.infer<
   typeof SendNotificationResponseSchema
 >;

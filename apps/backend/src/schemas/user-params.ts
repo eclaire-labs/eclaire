@@ -66,5 +66,22 @@ export const DeleteAllUserDataSchema = z.object({
   password: z.string().min(1, "Password is required for confirmation"),
 });
 
-// Add the type export
+// Create API key request schema
+export const CreateApiKeySchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+});
+
+// Activity timeline query schema
+export const ActivityTimelineQuerySchema = z.object({
+  days: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .pipe(z.number().min(1).max(365))
+    .optional(),
+});
+
+// TypeScript types
 export type DeleteAllUserData = z.infer<typeof DeleteAllUserDataSchema>;
+export type CreateApiKey = z.infer<typeof CreateApiKeySchema>;
+export type ActivityTimelineQuery = z.infer<typeof ActivityTimelineQuerySchema>;

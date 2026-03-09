@@ -9,7 +9,10 @@ import {
 } from "../lib/services/processing-status.js";
 import { withAuth } from "../middleware/with-auth.js";
 import { ASSET_TYPES, assetTypeSchema } from "../schemas/asset-types.js";
-import { AssetRetryBodySchema } from "../schemas/processing-status-params.js";
+import {
+  AssetRetryBodySchema,
+  ProcessingJobsQuerySchema,
+} from "../schemas/processing-status-params.js";
 import {
   getAssetProcessingStatusRouteDescription,
   getProcessingJobsRouteDescription,
@@ -40,6 +43,7 @@ processingStatusRoutes.get(
 processingStatusRoutes.get(
   "/jobs",
   describeRoute(getProcessingJobsRouteDescription),
+  zValidator("query", ProcessingJobsQuerySchema),
   withAuth(async (c, userId) => {
     const requestId = c.get("requestId");
 
@@ -48,17 +52,14 @@ processingStatusRoutes.get(
       "Processing jobs route called",
     );
 
-    const status = c.req.query("status");
-    const assetType = c.req.query("assetType");
-    const search = c.req.query("search");
-    const limit = parseInt(c.req.query("limit") || "100", 10);
-    const offset = parseInt(c.req.query("offset") || "0", 10);
+    const query = c.req.valid("query");
+    const { status, assetType, search } = query;
+    const limit = query.limit ?? 100;
+    const offset = query.offset ?? 0;
 
     const jobs = await getUserProcessingJobs(userId, {
-      // biome-ignore lint/suspicious/noExplicitAny: query param string to enum type
-      status: status as any,
-      // biome-ignore lint/suspicious/noExplicitAny: query param string to enum type
-      assetType: assetType as any,
+      status,
+      assetType,
       search,
       limit,
       offset,

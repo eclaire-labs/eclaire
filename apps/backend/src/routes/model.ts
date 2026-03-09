@@ -25,13 +25,7 @@ modelRoutes.get(
         { requestId },
         "Failed to retrieve current model configuration",
       );
-      return c.json(
-        {
-          error: "Configuration error",
-          message: "Unable to retrieve current model configuration",
-        },
-        500,
-      );
+      throw new Error("Unable to retrieve current model configuration");
     }
 
     logger.info(

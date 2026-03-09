@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { validator as zValidator } from "hono-openapi";
+import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
   abortExecution,
@@ -15,7 +17,7 @@ import {
   ListSessionsSchema,
   SendMessageSchema,
   UpdateSessionSchema,
-} from "../schemas/session-params.js";
+} from "../schemas/sessions-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("sessions");
@@ -25,31 +27,36 @@ export const sessionsRoutes = new Hono<{ Variables: RouteVariables }>();
 // POST /api/sessions - Create a new session
 sessionsRoutes.post(
   "/",
+  zValidator("json", CreateSessionSchema),
   withAuth(async (c, userId) => {
-    const body = await c.req.json().catch(() => ({}));
-    const parsed = CreateSessionSchema.parse(body);
+    const { title } = c.req.valid("json");
 
-    const session = await createSession(userId, { userId, actor: "user" }, parsed.title);
+    const session = await createSession(
+      userId,
+      { userId, actor: "user" },
+      title,
+    );
 
     logger.info({ userId, sessionId: session.id }, "Created session");
 
-    return c.json({ status: "OK", session });
+    return c.json(session, 201);
   }, logger),
 );
 
 // GET /api/sessions - List sessions
 sessionsRoutes.get(
   "/",
+  zValidator("query", ListSessionsSchema),
   withAuth(async (c, userId) => {
-    const query = ListSessionsSchema.parse(c.req.query());
+    const query = c.req.valid("query");
     const limit = query.limit || 50;
     const offset = query.offset || 0;
 
-    const sessions = await listSessions(userId, limit, offset);
+    const { items, totalCount } = await listSessions(userId, limit, offset);
 
     return c.json({
-      items: sessions,
-      totalCount: sessions.length,
+      items,
+      totalCount,
       limit,
       offset,
     });
@@ -64,27 +71,33 @@ sessionsRoutes.get(
     const session = await getSession(sessionId, userId);
 
     if (!session) {
-      return c.json({ error: "Session not found" }, 404);
+      throw new NotFoundError("Session");
     }
 
-    return c.json({ status: "OK", session });
+    return c.json(session);
   }, logger),
 );
 
 // PUT /api/sessions/:id - Update session
 sessionsRoutes.put(
   "/:id",
+  zValidator("json", UpdateSessionSchema),
   withAuth(async (c, userId) => {
     const sessionId = c.req.param("id");
-    const body = UpdateSessionSchema.parse(await c.req.json());
+    const body = c.req.valid("json");
 
-    const updated = await updateSession(sessionId, userId, { userId, actor: "user" }, body);
+    const updated = await updateSession(
+      sessionId,
+      userId,
+      { userId, actor: "user" },
+      body,
+    );
 
     if (!updated) {
-      return c.json({ error: "Session not found" }, 404);
+      throw new NotFoundError("Session");
     }
 
-    return c.json({ status: "OK", session: updated });
+    return c.json(updated);
   }, logger),
 );
 
@@ -93,23 +106,27 @@ sessionsRoutes.delete(
   "/:id",
   withAuth(async (c, userId) => {
     const sessionId = c.req.param("id");
-    const success = await deleteSession(sessionId, userId, { userId, actor: "user" });
+    const success = await deleteSession(sessionId, userId, {
+      userId,
+      actor: "user",
+    });
 
     if (!success) {
-      return c.json({ error: "Session not found" }, 404);
+      throw new NotFoundError("Session");
     }
 
-    return c.json({ status: "OK", message: "Session deleted" });
+    return new Response(null, { status: 204 });
   }, logger),
 );
 
 // POST /api/sessions/:id/messages - Send message (streaming SSE)
 sessionsRoutes.post(
   "/:id/messages",
+  zValidator("json", SendMessageSchema),
   withAuth(async (c, userId) => {
     const sessionId = c.req.param("id");
     const requestId = c.get("requestId");
-    const body = SendMessageSchema.parse(await c.req.json());
+    const body = c.req.valid("json");
 
     const stream = await sendMessage({
       sessionId,
@@ -166,6 +183,6 @@ sessionsRoutes.post(
     const sessionId = c.req.param("id");
     const aborted = abortExecution(sessionId);
 
-    return c.json({ status: "OK", aborted });
+    return c.json({ aborted });
   }, logger),
 );

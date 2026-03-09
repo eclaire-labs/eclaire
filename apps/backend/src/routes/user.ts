@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
-import z from "zod/v4";
 import { ValidationError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
@@ -25,6 +24,8 @@ import {
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
+  ActivityTimelineQuerySchema,
+  CreateApiKeySchema,
   DeleteAllUserDataSchema,
   UpdateProfileSchema,
 } from "../schemas/user-params.js";
@@ -64,9 +65,9 @@ userRoutes.patch(
   }, logger),
 );
 
-// POST /api/user/delete-all-data - Delete all user data while keeping account
-userRoutes.post(
-  "/delete-all-data",
+// DELETE /api/user/data - Delete all user data while keeping account
+userRoutes.delete(
+  "/data",
   describeRoute(deleteAllUserDataRouteDescription),
   zValidator("json", DeleteAllUserDataSchema),
   withAuth(async (c, userId) => {
@@ -102,17 +103,18 @@ userRoutes.get(
   "/api-keys",
   withAuth(async (c, userId) => {
     const apiKeys = await getUserApiKeys(userId);
-    return c.json({ apiKeys });
+    return c.json({ items: apiKeys });
   }, logger),
 );
 
 // POST /api/user/api-keys - Create a new API key
 userRoutes.post(
   "/api-keys",
+  zValidator("json", CreateApiKeySchema),
   withAuth(async (c, userId) => {
-    const body = await c.req.json();
-    const apiKey = await createApiKey(userId, body.name);
-    return c.json({ apiKey });
+    const { name } = c.req.valid("json");
+    const apiKey = await createApiKey(userId, name);
+    return c.json(apiKey, 201);
   }, logger),
 );
 
@@ -122,19 +124,19 @@ userRoutes.delete(
   withAuth(async (c, userId) => {
     const keyId = c.req.param("id");
     await deleteApiKey(userId, keyId);
-    return c.json({ success: true });
+    return new Response(null, { status: 204 });
   }, logger),
 );
 
 // PATCH /api/user/api-keys/:id - Update API key name
 userRoutes.patch(
   "/api-keys/:id",
-  zValidator("json", z.object({ name: z.string().min(1, "Name is required") })),
+  zValidator("json", CreateApiKeySchema),
   withAuth(async (c, userId) => {
     const keyId = c.req.param("id");
     const { name } = c.req.valid("json");
     const apiKey = await updateApiKeyName(userId, keyId, name);
-    return c.json({ apiKey });
+    return c.json(apiKey);
   }, logger),
 );
 
@@ -192,15 +194,10 @@ userRoutes.delete(
 // GET /api/user/activity-timeline - Get activity timeline for dashboard
 userRoutes.get(
   "/activity-timeline",
+  zValidator("query", ActivityTimelineQuerySchema),
   withAuth(async (c, userId) => {
-    const daysParam = c.req.query("days");
-    const days = daysParam ? parseInt(daysParam, 10) : 30;
-
-    if (Number.isNaN(days) || days < 1 || days > 365) {
-      throw new ValidationError(
-        "Invalid days parameter. Must be between 1 and 365.",
-      );
-    }
+    const query = c.req.valid("query");
+    const days = query.days ?? 30;
 
     const timeline = await getActivityTimeline(userId, days);
 

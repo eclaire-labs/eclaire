@@ -34,7 +34,7 @@ export function useApiKey(): UseApiKeyResult {
   } = useQuery({
     queryKey: ["user-api-key"],
     queryFn: async (): Promise<ApiKeyData | null> => {
-      const res = await apiFetch("/api/user/api-key");
+      const res = await apiFetch("/api/user/api-keys");
       if (!res.ok) {
         if (res.status === 401) {
           throw new Error("Unauthorized");
@@ -42,7 +42,8 @@ export function useApiKey(): UseApiKeyResult {
         throw new Error("Failed to fetch API key");
       }
       const data = await res.json();
-      return data.apiKey;
+      const items = data.items || [];
+      return items[0] || null;
     },
     enabled: !!session?.user && !authLoading,
     retry: (failureCount, error) => {
@@ -57,15 +58,16 @@ export function useApiKey(): UseApiKeyResult {
   // Mutation for generating a new API key
   const generateKeyMutation = useMutation({
     mutationFn: async (): Promise<ApiKeyData> => {
-      const res = await apiFetch("/api/user/api-key", {
+      const res = await apiFetch("/api/user/api-keys", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "API Key" }),
       });
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Failed to generate API key");
       }
-      const data = await res.json();
-      return data.apiKey;
+      return res.json();
     },
     onSuccess: (newApiKey) => {
       // Update the query cache with the new API key

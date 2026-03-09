@@ -150,8 +150,9 @@ export default function AccountSettings() {
 
   const deleteAllDataMutation = useMutation({
     mutationFn: async (values: DeleteAllDataFormValues) => {
-      const res = await apiFetch("/api/user/delete-all-data", {
-        method: "POST",
+      const res = await apiFetch("/api/user/data", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
       return await res.json();

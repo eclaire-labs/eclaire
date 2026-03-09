@@ -1,50 +1,51 @@
 import { Hono } from "hono";
+import { validator as zValidator } from "hono-openapi";
+import z from "zod/v4";
 import { createChildLogger } from "../lib/logger.js";
-import {
-  type EntityType,
-  findPopularTags,
-  findUserTags,
-} from "../lib/services/tags.js";
+import { findPopularTags, findUserTags } from "../lib/services/tags.js";
 import { withAuth } from "../middleware/with-auth.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("tags");
 
-const VALID_TYPES = new Set<EntityType>([
-  "bookmarks",
-  "documents",
-  "notes",
-  "photos",
-  "tasks",
-]);
+const TagsQuerySchema = z.object({
+  type: z
+    .enum(["bookmarks", "documents", "notes", "photos", "tasks"])
+    .optional(),
+});
+
+const PopularTagsQuerySchema = z.object({
+  limit: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .pipe(z.number().min(1).max(50))
+    .optional(),
+});
 
 export const tagsRoutes = new Hono<{ Variables: RouteVariables }>();
 
 // GET /api/tags - Get all tag names for the current user
-// Optional query param: ?type=bookmarks (filter to tags used by entity type)
 tagsRoutes.get(
   "/",
+  zValidator("query", TagsQuerySchema),
   withAuth(async (c, userId) => {
-    const rawType = c.req.query("type");
-    const type =
-      rawType && VALID_TYPES.has(rawType as EntityType)
-        ? (rawType as EntityType)
-        : undefined;
+    const { type } = c.req.valid("query");
 
     const tagNames = await findUserTags(userId, type);
-    return c.json(tagNames);
+    return c.json({ items: tagNames });
   }, logger),
 );
 
 // GET /api/tags/popular - Get the most popular tags by usage count
-// Optional query param: ?limit=10 (default 10, max 50)
 tagsRoutes.get(
   "/popular",
+  zValidator("query", PopularTagsQuerySchema),
   withAuth(async (c, userId) => {
-    const rawLimit = c.req.query("limit");
-    const limit = Math.max(1, Math.min(50, Number(rawLimit) || 10));
+    const query = c.req.valid("query");
+    const limit = query.limit ?? 10;
 
     const popularTags = await findPopularTags(userId, limit);
-    return c.json(popularTags);
+    return c.json({ items: popularTags });
   }, logger),
 );

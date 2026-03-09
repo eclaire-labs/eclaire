@@ -25,6 +25,18 @@ export const UpdateStatusBodySchema = z.object({
   userId: z.string().optional(),
 });
 
+// GET /api/processing-status/jobs query params
+export const ProcessingJobsQuerySchema = z.object({
+  status: z
+    .enum(["pending", "processing", "completed", "failed", "retry_pending"])
+    .optional(),
+  assetType: assetTypeSchema.optional(),
+  search: z.string().optional(),
+  limit: z.string().regex(/^\d+$/).transform(Number).optional(),
+  offset: z.string().regex(/^\d+$/).transform(Number).optional(),
+});
+
 export type RetryBody = z.infer<typeof RetryBodySchema>;
 export type AssetRetryBody = z.infer<typeof AssetRetryBodySchema>;
 export type UpdateStatusBody = z.infer<typeof UpdateStatusBodySchema>;
+export type ProcessingJobsQuery = z.infer<typeof ProcessingJobsQuerySchema>;

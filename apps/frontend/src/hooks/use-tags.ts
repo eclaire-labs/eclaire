@@ -9,7 +9,8 @@ export function useTags(type?: EntityType) {
     queryFn: async () => {
       const url = type ? `/api/tags?type=${type}` : "/api/tags";
       const res = await apiFetch(url);
-      return res.json();
+      const data = await res.json();
+      return data.items;
     },
     staleTime: 2 * 60_000,
   });

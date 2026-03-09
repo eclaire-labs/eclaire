@@ -173,6 +173,17 @@ export async function listConversations(
 }
 
 /**
+ * Count total conversations for a user
+ */
+export async function countConversations(userId: string): Promise<number> {
+  const [result] = await db
+    .select({ count: count() })
+    .from(conversations)
+    .where(eq(conversations.userId, userId));
+  return result?.count ?? 0;
+}
+
+/**
  * Update a conversation
  */
 export async function updateConversation(

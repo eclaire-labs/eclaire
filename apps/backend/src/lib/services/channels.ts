@@ -3,6 +3,7 @@ import { db, schema } from "../../db/index.js";
 
 const { channels } = schema;
 
+import { formatRequiredTimestamp } from "@eclaire/core";
 import type {
   ChannelPlatform,
   CreateChannelRequest,
@@ -10,13 +11,9 @@ import type {
 } from "../../schemas/channels-params.js";
 import type {
   ChannelResponse,
-  CreateChannelResponse,
-  DeleteChannelResponse,
   ListChannelsResponse,
-  UpdateChannelResponse,
 } from "../../schemas/channels-responses.js";
 import { channelRegistry } from "../channels.js";
-import { formatRequiredTimestamp } from "@eclaire/core";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
@@ -99,13 +96,31 @@ export async function getUserChannels(
 }
 
 /**
+ * Get a single channel by ID for a user
+ */
+export async function getChannelById(
+  channelId: string,
+  userId: string,
+): Promise<ChannelResponse> {
+  const channel = await db.query.channels.findFirst({
+    where: and(eq(channels.id, channelId), eq(channels.userId, userId)),
+  });
+
+  if (!channel) {
+    throw new NotFoundError("Channel");
+  }
+
+  return formatChannelForResponse(channel);
+}
+
+/**
  * Create a new channel
  */
 export async function createChannel(
   userId: string,
   caller: CallerContext,
   channelData: CreateChannelRequest,
-): Promise<CreateChannelResponse> {
+): Promise<ChannelResponse> {
   try {
     // Validate and encrypt the platform-specific config
     const encryptedConfig = await validateAndEncryptConfig(
@@ -171,10 +186,7 @@ export async function createChannel(
       "Channel created successfully",
     );
 
-    return {
-      channel: formatChannelForResponse(newChannel),
-      message: "Channel created successfully",
-    };
+    return formatChannelForResponse(newChannel);
   } catch (error) {
     logger.error(
       {
@@ -204,7 +216,7 @@ export async function updateChannel(
   userId: string,
   caller: CallerContext,
   updateData: UpdateChannelRequest,
-): Promise<UpdateChannelResponse> {
+): Promise<ChannelResponse> {
   try {
     // Get existing channel
     const existingChannel = await db.query.channels.findFirst({
@@ -279,10 +291,7 @@ export async function updateChannel(
         try {
           await adapter.start(updatedChannel);
         } catch (_startError) {
-          logger.warn(
-            { channelId },
-            "Failed to restart channel after update",
-          );
+          logger.warn({ channelId }, "Failed to restart channel after update");
         }
       }
     }
@@ -295,10 +304,7 @@ export async function updateChannel(
       "Channel updated successfully",
     );
 
-    return {
-      channel: formatChannelForResponse(updatedChannel),
-      message: "Channel updated successfully",
-    };
+    return formatChannelForResponse(updatedChannel);
   } catch (error) {
     logger.error(
       {
@@ -329,7 +335,7 @@ export async function deleteChannel(
   channelId: string,
   userId: string,
   caller: CallerContext,
-): Promise<DeleteChannelResponse> {
+): Promise<void> {
   try {
     // Get existing channel for history
     const existingChannel = await db.query.channels.findFirst({
@@ -378,11 +384,6 @@ export async function deleteChannel(
       },
       "Channel deleted successfully",
     );
-
-    return {
-      success: true,
-      message: "Channel deleted successfully",
-    };
   } catch (error) {
     logger.error(
       {

@@ -5,7 +5,6 @@ import { CreateChannelSchema, UpdateChannelSchema } from "./channels-params.js";
 import {
   ChannelNotFoundSchema,
   CreateChannelResponseSchema,
-  DeleteChannelResponseSchema,
   ListChannelsResponseSchema,
   UpdateChannelResponseSchema,
 } from "./channels-responses.js";
@@ -95,13 +94,8 @@ export const deleteChannelRouteDescription = {
   description:
     "Delete an existing communication channel for the authenticated user",
   responses: {
-    200: {
+    204: {
       description: "Channel deleted successfully",
-      content: {
-        "application/json": {
-          schema: resolver(DeleteChannelResponseSchema),
-        },
-      },
     },
     ...commonErrors,
     404: notFoundError("Channel", ChannelNotFoundSchema),

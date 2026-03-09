@@ -5,6 +5,7 @@ import { createChildLogger } from "../lib/logger.js";
 import {
   createChannel,
   deleteChannel,
+  getChannelById,
   getUserChannels,
   updateChannel,
 } from "../lib/services/channels.js";
@@ -57,76 +58,123 @@ channelsRoutes.post(
   describeRoute(postChannelsRouteDescription),
   zValidator("json", CreateChannelSchema),
   withAuth(async (c, userId) => {
-    const requestId = c.get("requestId");
-
     const channelData = c.req.valid("json");
 
-    const result = await createChannel(userId, { userId, actor: "user" }, channelData);
+    const channel = await createChannel(
+      userId,
+      { userId, actor: "user" },
+      channelData,
+    );
 
     logger.info(
       {
-        requestId,
+        requestId: c.get("requestId"),
         userId,
-        channelId: result.channel.id,
+        channelId: channel.id,
         platform: channelData.platform,
       },
       "Created new channel",
     );
 
-    return c.json(result, 201);
+    return c.json(channel, 201);
   }, logger),
 );
 
-// PUT /api/channels/{id} - Update a channel
+// GET /api/channels/:id - Get a single channel
+channelsRoutes.get(
+  "/:id",
+  withAuth(async (c, userId) => {
+    const { id: channelId } = ChannelIdParamSchema.parse({
+      id: c.req.param("id"),
+    });
+
+    const channel = await getChannelById(channelId, userId);
+
+    return c.json(channel);
+  }, logger),
+);
+
+// PUT /api/channels/:id - Update a channel (full replace)
 channelsRoutes.put(
   "/:id",
   describeRoute(putChannelRouteDescription),
   zValidator("json", UpdateChannelSchema),
   withAuth(async (c, userId) => {
-    const requestId = c.get("requestId");
-
     const { id: channelId } = ChannelIdParamSchema.parse({
       id: c.req.param("id"),
     });
     const updateData = c.req.valid("json");
 
-    const result = await updateChannel(channelId, userId, { userId, actor: "user" }, updateData);
+    const channel = await updateChannel(
+      channelId,
+      userId,
+      { userId, actor: "user" },
+      updateData,
+    );
 
     logger.info(
       {
-        requestId,
+        requestId: c.get("requestId"),
         userId,
         channelId,
       },
       "Updated channel",
     );
 
-    return c.json(result);
+    return c.json(channel);
   }, logger),
 );
 
-// DELETE /api/channels/{id} - Delete a channel
+// PATCH /api/channels/:id - Partial update a channel
+channelsRoutes.patch(
+  "/:id",
+  zValidator("json", UpdateChannelSchema),
+  withAuth(async (c, userId) => {
+    const { id: channelId } = ChannelIdParamSchema.parse({
+      id: c.req.param("id"),
+    });
+    const updateData = c.req.valid("json");
+
+    const channel = await updateChannel(
+      channelId,
+      userId,
+      { userId, actor: "user" },
+      updateData,
+    );
+
+    logger.info(
+      {
+        requestId: c.get("requestId"),
+        userId,
+        channelId,
+      },
+      "Partially updated channel",
+    );
+
+    return c.json(channel);
+  }, logger),
+);
+
+// DELETE /api/channels/:id - Delete a channel
 channelsRoutes.delete(
   "/:id",
   describeRoute(deleteChannelRouteDescription),
   withAuth(async (c, userId) => {
-    const requestId = c.get("requestId");
-
     const { id: channelId } = ChannelIdParamSchema.parse({
       id: c.req.param("id"),
     });
 
-    const result = await deleteChannel(channelId, userId, { userId, actor: "user" });
+    await deleteChannel(channelId, userId, { userId, actor: "user" });
 
     logger.info(
       {
-        requestId,
+        requestId: c.get("requestId"),
         userId,
         channelId,
       },
       "Deleted channel",
     );
 
-    return c.json(result);
+    return new Response(null, { status: 204 });
   }, logger),
 );

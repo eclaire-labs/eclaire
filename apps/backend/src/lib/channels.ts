@@ -1,19 +1,22 @@
-import { ChannelRegistry } from "@eclaire/channels-core";
 import { getActiveModelForContext } from "@eclaire/ai";
-import { initTelegramAdapter } from "@eclaire/channels-telegram";
+import { ChannelRegistry } from "@eclaire/channels-core";
 import { initDiscordAdapter } from "@eclaire/channels-discord";
 import { initSlackAdapter } from "@eclaire/channels-slack";
+import { initTelegramAdapter } from "@eclaire/channels-telegram";
 import { db, schema } from "../db/index.js";
-import { encrypt, decrypt } from "./encryption.js";
-import { processPromptRequest, processPromptRequestStream } from "./agent/index.js";
+import {
+  processPromptRequest,
+  processPromptRequestStream,
+} from "./agent/index.js";
+import { decrypt, encrypt } from "./encryption.js";
+import { createChildLogger } from "./logger.js";
 import { recordHistory } from "./services/history.js";
 import {
   createSession,
-  listSessions,
   deleteSession,
+  listSessions,
 } from "./services/sessions.js";
 import { systemCaller } from "./services/types.js";
-import { createChildLogger } from "./logger.js";
 
 export const channelRegistry = new ChannelRegistry();
 
@@ -21,13 +24,20 @@ export const channelRegistry = new ChannelRegistry();
 const sessionAndModelDeps = {
   createSession: (userId: string, title?: string) =>
     createSession(userId, systemCaller(userId), title),
-  listSessions,
+  listSessions: async (userId: string, limit?: number, offset?: number) => {
+    const result = await listSessions(userId, limit, offset);
+    return result.items;
+  },
   deleteSession: (sessionId: string, userId: string) =>
     deleteSession(sessionId, userId, systemCaller(userId)),
   getModelInfo: () => {
     const model = getActiveModelForContext("backend");
     if (!model) return null;
-    return { name: model.name, provider: model.provider, model: model.providerModel };
+    return {
+      name: model.name,
+      provider: model.provider,
+      model: model.providerModel,
+    };
   },
 } as const;
 

@@ -51,7 +51,7 @@ export function useApiKeys(): UseApiKeysResult {
         throw new Error("Failed to fetch API keys");
       }
       const data = await res.json();
-      return data.apiKeys || [];
+      return data.items || [];
     },
     enabled: !!session?.user && !authLoading,
     retry: (failureCount, error) => {
@@ -71,14 +71,13 @@ export function useApiKeys(): UseApiKeysResult {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name: name || "API Key" }),
       });
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Failed to create API key");
       }
-      const data = await res.json();
-      return data.apiKey;
+      return res.json();
     },
     onSuccess: () => {
       // Refresh the API keys list

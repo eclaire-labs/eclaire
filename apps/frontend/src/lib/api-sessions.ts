@@ -20,8 +20,7 @@ export type SessionListResponse = ConversationListResponse;
  */
 export async function createSession(title?: string): Promise<Session> {
   const response = await apiPost("/api/sessions", title ? { title } : {});
-  const data = await response.json();
-  return data.session;
+  return response.json();
 }
 
 /**
@@ -44,8 +43,7 @@ export async function getSessionWithMessages(
   id: string,
 ): Promise<SessionWithMessages> {
   const response = await apiGet(`/api/sessions/${id}`);
-  const data = await response.json();
-  return data.session;
+  return response.json();
 }
 
 /**
@@ -56,8 +54,7 @@ export async function updateSession(
   updates: { title?: string },
 ): Promise<Session> {
   const response = await apiPut(`/api/sessions/${id}`, updates);
-  const data = await response.json();
-  return data.session;
+  return response.json();
 }
 
 /**

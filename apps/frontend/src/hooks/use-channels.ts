@@ -48,20 +48,9 @@ interface ListChannelsResponse {
   offset: number;
 }
 
-interface CreateChannelResponse {
-  channel: Channel;
-  message: string;
-}
+type CreateChannelResponse = Channel;
 
-interface UpdateChannelResponse {
-  channel: Channel;
-  message: string;
-}
-
-interface DeleteChannelResponse {
-  success: boolean;
-  message: string;
-}
+type UpdateChannelResponse = Channel;
 
 /**
  * React Query hook for channels data fetching and management
@@ -134,10 +123,9 @@ export function useChannels() {
 
       return response.json() as Promise<CreateChannelResponse>;
     },
-    onSuccess: (data) => {
-      // Invalidate and refetch channels
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
-      toast.success(data.message || "Channel created successfully");
+      toast.success("Channel created successfully");
     },
     onError: (error) => {
       toast.error(`Create failed: ${error.message}`);
@@ -194,9 +182,9 @@ export function useChannels() {
 
       return response.json() as Promise<UpdateChannelResponse>;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
-      toast.success(data.message || "Channel updated successfully");
+      toast.success("Channel updated successfully");
     },
     onError: (error) => {
       toast.error(`Update failed: ${error.message}`);
@@ -216,12 +204,10 @@ export function useChannels() {
           errorData.error || errorData.message || "Failed to delete channel",
         );
       }
-
-      return response.json() as Promise<DeleteChannelResponse>;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
-      toast.success(data.message || "Channel deleted successfully");
+      toast.success("Channel deleted successfully");
     },
     onError: (error) => {
       toast.error(`Delete failed: ${error.message}`);

@@ -11,28 +11,29 @@
 import type { AIMessage } from "@eclaire/ai";
 import { convertFromLlm, createRuntimeContext } from "@eclaire/ai";
 import type { Context } from "../../schemas/prompt-params.js";
-import {
-  createBackendAgent,
-  type StreamEvent,
-  transformRuntimeEvent,
-} from "../agent/index.js";
+import { fetchAssetContents } from "../agent/asset-fetcher.js";
 import {
   ConversationNotFoundError,
   loadConversationMessages,
   saveConversationMessages,
 } from "../agent/conversation-adapter.js";
-import { fetchAssetContents } from "../agent/asset-fetcher.js";
+import {
+  createBackendAgent,
+  type StreamEvent,
+  transformRuntimeEvent,
+} from "../agent/index.js";
 import type { UserContext } from "../agent/types.js";
 import { createChildLogger } from "../logger.js";
 import { getUserContextForPrompt } from "../user.js";
 import {
+  type ConversationSummary,
+  type ConversationWithMessages,
+  countConversations,
   createConversation,
   deleteConversation,
   getConversationWithMessages,
   listConversations,
   updateConversation,
-  type ConversationSummary,
-  type ConversationWithMessages,
 } from "./conversations.js";
 import { recordHistory } from "./history.js";
 import type { CallerContext } from "./types.js";
@@ -111,8 +112,12 @@ export async function listSessions(
   userId: string,
   limit?: number,
   offset?: number,
-): Promise<Session[]> {
-  return listConversations(userId, limit, offset);
+): Promise<{ items: Session[]; totalCount: number }> {
+  const [items, totalCount] = await Promise.all([
+    listConversations(userId, limit, offset),
+    countConversations(userId),
+  ]);
+  return { items, totalCount };
 }
 
 export async function getSession(
@@ -181,14 +186,8 @@ export async function deleteSession(
 export async function sendMessage(
   options: SendMessageOptions,
 ): Promise<ReadableStream<StreamEvent>> {
-  const {
-    sessionId,
-    userId,
-    prompt,
-    context,
-    enableThinking,
-    requestId,
-  } = options;
+  const { sessionId, userId, prompt, context, enableThinking, requestId } =
+    options;
 
   const startTime = Date.now();
 
@@ -210,10 +209,7 @@ export async function sendMessage(
   const abortController = new AbortController();
   runningExecutions.set(sessionId, abortController);
 
-  logger.info(
-    { sessionId, userId, requestId },
-    "Processing session message",
-  );
+  logger.info({ sessionId, userId, requestId }, "Processing session message");
 
   // Get user context for personalization
   const userContext = (await getUserContextForPrompt(userId)) as UserContext;
