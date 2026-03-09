@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "56be64c7-d24f-4ae7-8db5-26aef81d685a",
+  "id": "ad075a8d-b264-4389-a546-d79109e1cf9f",
   "prevId": "7b5ea153-6f63-42fc-ad98-369233ca02ab",
   "tables": {
     "accounts": {
@@ -489,8 +489,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "enabled": {
-          "name": "enabled",
+        "processing_enabled": {
+          "name": "processing_enabled",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -957,8 +957,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "enabled": {
-          "name": "enabled",
+        "processing_enabled": {
+          "name": "processing_enabled",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -1500,8 +1500,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "enabled": {
-          "name": "enabled",
+        "processing_enabled": {
+          "name": "processing_enabled",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -1920,8 +1920,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "enabled": {
-          "name": "enabled",
+        "processing_enabled": {
+          "name": "processing_enabled",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -2407,8 +2407,16 @@
           "notNull": false,
           "autoincrement": false
         },
-        "enabled": {
-          "name": "enabled",
+        "priority": {
+          "name": "priority",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "processing_enabled": {
+          "name": "processing_enabled",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -2436,6 +2444,20 @@
           "notNull": true,
           "autoincrement": false,
           "default": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "last_executed_at": {
           "name": "last_executed_at",
@@ -2504,6 +2526,13 @@
           ],
           "isUnique": false
         },
+        "tasks_parent_id_idx": {
+          "name": "tasks_parent_id_idx",
+          "columns": [
+            "parent_id"
+          ],
+          "isUnique": false
+        },
         "tasks_user_id_created_at_idx": {
           "name": "tasks_user_id_created_at_idx",
           "columns": [
@@ -2526,6 +2555,23 @@
             "user_id",
             "status",
             "created_at"
+          ],
+          "isUnique": false
+        },
+        "tasks_user_id_priority_created_at_idx": {
+          "name": "tasks_user_id_priority_created_at_idx",
+          "columns": [
+            "user_id",
+            "priority",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "tasks_user_id_sort_order_idx": {
+          "name": "tasks_user_id_sort_order_idx",
+          "columns": [
+            "user_id",
+            "sort_order"
           ],
           "isUnique": false
         }
@@ -2555,6 +2601,19 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "tasks_parent_id_tasks_id_fk": {
+          "name": "tasks_parent_id_tasks_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -2738,7 +2797,7 @@
         "users_email_idx": {
           "name": "users_email_idx",
           "columns": [
-            "email"
+            "lower(\"email\")"
           ],
           "isUnique": true
         }
@@ -3166,9 +3225,23 @@
   "_meta": {
     "schemas": {},
     "tables": {},
-    "columns": {}
+    "columns": {
+      "\"bookmarks\".\"enabled\"": "\"bookmarks\".\"processing_enabled\"",
+      "\"documents\".\"enabled\"": "\"documents\".\"processing_enabled\"",
+      "\"notes\".\"enabled\"": "\"notes\".\"processing_enabled\"",
+      "\"photos\".\"enabled\"": "\"photos\".\"processing_enabled\"",
+      "\"tasks\".\"enabled\"": "\"tasks\".\"processing_enabled\""
+    }
   },
   "internal": {
-    "indexes": {}
+    "indexes": {
+      "users_email_idx": {
+        "columns": {
+          "lower(\"email\")": {
+            "isExpression": true
+          }
+        }
+      }
+    }
   }
 }

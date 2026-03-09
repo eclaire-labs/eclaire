@@ -47,15 +47,8 @@
     {
       "idx": 6,
       "version": "6",
-      "when": 1773020080033,
-      "tag": "0006_silky_cassandra_nova",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1741392000000,
-      "tag": "0007_task_model_improvements",
+      "when": 1773042006698,
+      "tag": "0006_blushing_zaladane",
       "breakpoints": true
     }
   ]

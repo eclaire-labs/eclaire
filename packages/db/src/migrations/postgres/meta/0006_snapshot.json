@@ -1,5 +1,5 @@
 {
-  "id": "57bf123b-cf09-4c4a-bd77-538f7ac656e2",
+  "id": "9632cc6a-8dba-4ab9-ba1c-9ea3bb383a62",
   "prevId": "117285c1-7a12-4d45-94a7-a8f8aa2dbf07",
   "version": "7",
   "dialect": "postgresql",
@@ -462,8 +462,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "enabled": {
-          "name": "enabled",
+        "processing_enabled": {
+          "name": "processing_enabled",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -541,8 +541,8 @@
           "method": "btree",
           "with": {}
         },
-        "bookmarks_user_id_enabled_idx": {
-          "name": "bookmarks_user_id_enabled_idx",
+        "bookmarks_user_id_processing_enabled_idx": {
+          "name": "bookmarks_user_id_processing_enabled_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -552,7 +552,7 @@
             }
           ],
           "isUnique": false,
-          "where": "enabled = true",
+          "where": "processing_enabled = true",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1054,8 +1054,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "enabled": {
-          "name": "enabled",
+        "processing_enabled": {
+          "name": "processing_enabled",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -1144,8 +1144,8 @@
           "method": "btree",
           "with": {}
         },
-        "documents_user_id_enabled_idx": {
-          "name": "documents_user_id_enabled_idx",
+        "documents_user_id_processing_enabled_idx": {
+          "name": "documents_user_id_processing_enabled_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -1155,7 +1155,7 @@
             }
           ],
           "isUnique": false,
-          "where": "enabled = true",
+          "where": "processing_enabled = true",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1716,8 +1716,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "enabled": {
-          "name": "enabled",
+        "processing_enabled": {
+          "name": "processing_enabled",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -1794,8 +1794,8 @@
           "method": "btree",
           "with": {}
         },
-        "notes_user_id_enabled_idx": {
-          "name": "notes_user_id_enabled_idx",
+        "notes_user_id_processing_enabled_idx": {
+          "name": "notes_user_id_processing_enabled_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -1805,7 +1805,7 @@
             }
           ],
           "isUnique": false,
-          "where": "enabled = true",
+          "where": "processing_enabled = true",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2179,8 +2179,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "enabled": {
-          "name": "enabled",
+        "processing_enabled": {
+          "name": "processing_enabled",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -2266,8 +2266,8 @@
           "method": "btree",
           "with": {}
         },
-        "photos_user_id_enabled_idx": {
-          "name": "photos_user_id_enabled_idx",
+        "photos_user_id_processing_enabled_idx": {
+          "name": "photos_user_id_processing_enabled_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -2277,7 +2277,7 @@
             }
           ],
           "isUnique": false,
-          "where": "enabled = true",
+          "where": "processing_enabled = true",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2798,8 +2798,15 @@
           "primaryKey": false,
           "notNull": false
         },
-        "enabled": {
-          "name": "enabled",
+        "priority": {
+          "name": "priority",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "processing_enabled": {
+          "name": "processing_enabled",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -2823,6 +2830,18 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "last_executed_at": {
           "name": "last_executed_at",
@@ -2927,8 +2946,23 @@
           "method": "btree",
           "with": {}
         },
-        "tasks_user_id_enabled_idx": {
-          "name": "tasks_user_id_enabled_idx",
+        "tasks_parent_id_idx": {
+          "name": "tasks_parent_id_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "tasks_user_id_processing_enabled_idx": {
+          "name": "tasks_user_id_processing_enabled_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -2938,7 +2972,7 @@
             }
           ],
           "isUnique": false,
-          "where": "enabled = true",
+          "where": "processing_enabled = true",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -3012,6 +3046,54 @@
           "method": "btree",
           "with": {}
         },
+        "tasks_user_id_priority_created_at_idx": {
+          "name": "tasks_user_id_priority_created_at_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "priority",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "tasks_user_id_sort_order_idx": {
+          "name": "tasks_user_id_sort_order_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sort_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "tasks_title_trgm_idx": {
           "name": "tasks_title_trgm_idx",
           "columns": [
@@ -3053,6 +3135,19 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "tasks_parent_id_tasks_id_fk": {
+          "name": "tasks_parent_id_tasks_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -3720,9 +3815,11 @@
       "name": "task_status",
       "schema": "public",
       "values": [
+        "backlog",
         "not-started",
         "in-progress",
-        "completed"
+        "completed",
+        "cancelled"
       ]
     }
   },
