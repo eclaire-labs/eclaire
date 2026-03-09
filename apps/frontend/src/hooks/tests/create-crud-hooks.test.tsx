@@ -16,6 +16,7 @@ vi.mock("sonner", () => ({
 }));
 
 import { apiFetch } from "@/lib/api-client";
+
 const mockApiFetch = vi.mocked(apiFetch);
 
 interface TestItem {
@@ -108,9 +109,7 @@ describe("useList", () => {
 
   it("createItem POSTs to apiPath", async () => {
     // Initial list fetch
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     const { result } = renderHook(() => useList(), {
       wrapper: createWrapper(),
@@ -149,9 +148,7 @@ describe("useList", () => {
     // Delete
     mockApiFetch.mockResolvedValueOnce(mockJsonResponse({}));
     // Refetch
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     await result.current.deleteItem("1");
 

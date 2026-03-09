@@ -13,9 +13,7 @@ function PageLoading() {
 }
 
 export const Route = createFileRoute("/_authenticated/all/")({
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { tag?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { tag?: string } => ({
     tag: typeof search.tag === "string" ? search.tag : undefined,
   }),
   component: () => (

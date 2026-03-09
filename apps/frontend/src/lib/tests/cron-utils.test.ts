@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  parseCronExpression,
-  describeCronExpression,
-  createCronExpression,
-  validateCronExpression,
-  getNextExecutionTime,
-  formatCronForDisplay,
-  getPatternDisplayName,
   COMMON_CRON_PATTERNS,
+  createCronExpression,
+  describeCronExpression,
+  formatCronForDisplay,
+  getNextExecutionTime,
+  getPatternDisplayName,
+  parseCronExpression,
+  validateCronExpression,
 } from "@/lib/cron-utils";
 
 describe("parseCronExpression", () => {
@@ -95,9 +95,9 @@ describe("createCronExpression", () => {
   });
 
   it("creates a monthly cron expression with specified day of month", () => {
-    expect(
-      createCronExpression("monthly", "09:00", { dayOfMonth: 15 }),
-    ).toBe("0 9 15 * *");
+    expect(createCronExpression("monthly", "09:00", { dayOfMonth: 15 })).toBe(
+      "0 9 15 * *",
+    );
   });
 
   it("creates a weekdays cron expression", () => {
@@ -220,9 +220,7 @@ describe("getPatternDisplayName", () => {
     expect(getPatternDisplayName("daily6pm")).toBe("Daily at 6:00 PM");
     expect(getPatternDisplayName("weekdays9am")).toBe("Weekdays at 9:00 AM");
     expect(getPatternDisplayName("weekdays6pm")).toBe("Weekdays at 6:00 PM");
-    expect(getPatternDisplayName("weekly")).toBe(
-      "Weekly (Mondays at 9:00 AM)",
-    );
+    expect(getPatternDisplayName("weekly")).toBe("Weekly (Mondays at 9:00 AM)");
     expect(getPatternDisplayName("monthly")).toBe(
       "Monthly (1st day at 9:00 AM)",
     );

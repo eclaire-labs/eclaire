@@ -94,7 +94,8 @@ function parseCronToPattern(cron: string): RecurrencePattern {
 function parseCronToTime(cron: string): string {
   const parts = cron.split(" ");
   if (parts.length >= 2) {
-    const minutes = parts[0] === "*" ? "00" : (parts[0] ?? "00").padStart(2, "0");
+    const minutes =
+      parts[0] === "*" ? "00" : (parts[0] ?? "00").padStart(2, "0");
     const hours = parts[1] === "*" ? "09" : (parts[1] ?? "09").padStart(2, "0");
     return `${hours}:${minutes}`;
   }

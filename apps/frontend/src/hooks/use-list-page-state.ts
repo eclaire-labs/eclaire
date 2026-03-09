@@ -1,13 +1,13 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   type PageType,
-  type ViewPreferences,
   useViewPreferences,
+  type ViewPreferences,
 } from "@/hooks/use-view-preferences";
 import { setFlagColor, togglePin } from "@/lib/api-content";
-import { useDebouncedValue } from "./use-debounced-value";
 import type { ListParams } from "./create-crud-hooks";
+import { useDebouncedValue } from "./use-debounced-value";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -134,8 +134,6 @@ export function useListPageState<TItem extends ListableItem>(
   config: ListPageConfig<TItem>,
   operations: ListPageOperations,
 ): ListPageState<TItem> {
-  const { toast } = useToast();
-
   // View preferences (persisted in localStorage)
   const [viewPreferences, updateViewPreference] = useViewPreferences(
     config.pageType,
@@ -200,7 +198,14 @@ export function useListPageState<TItem extends ListableItem>(
       }
     }
     return params;
-  }, [sortBy, sortDir, debouncedSearch, filterTag, extraFilterState, config.extraFilters]);
+  }, [
+    sortBy,
+    sortDir,
+    debouncedSearch,
+    filterTag,
+    extraFilterState,
+    config.extraFilters,
+  ]);
 
   // Items from server are already sorted — pass through directly
   const sortedItems = items;
@@ -235,7 +240,10 @@ export function useListPageState<TItem extends ListableItem>(
 
   const handleSortByChange = useCallback(
     (value: string) => {
-      updateViewPreference("sortBy", value as ViewPreferences[keyof ViewPreferences]);
+      updateViewPreference(
+        "sortBy",
+        value as ViewPreferences[keyof ViewPreferences],
+      );
       setFocusedIndex(-1);
     },
     [updateViewPreference],
@@ -249,7 +257,10 @@ export function useListPageState<TItem extends ListableItem>(
   const handleViewModeChange = useCallback(
     (value: string) => {
       if (value) {
-        updateViewPreference("viewMode", value as ViewPreferences[keyof ViewPreferences]);
+        updateViewPreference(
+          "viewMode",
+          value as ViewPreferences[keyof ViewPreferences],
+        );
         setFocusedIndex(-1);
       }
     },
@@ -282,59 +293,53 @@ export function useListPageState<TItem extends ListableItem>(
           );
         }
         operations.refresh();
-        toast({
-          title: newPinned
+        toast.success(
+          newPinned
             ? `${capitalize(config.entityName)} pinned`
             : `${capitalize(config.entityName)} unpinned`,
-          description: `"${item.title ?? "Untitled"}" has been ${newPinned ? "pinned" : "unpinned"}.`,
-        });
+          {
+            description: `"${item.title ?? "Untitled"}" has been ${newPinned ? "pinned" : "unpinned"}.`,
+          },
+        );
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description:
             error instanceof Error
               ? error.message
               : "Failed to update pin status",
-          variant: "destructive",
         });
       }
     },
-    [config.contentType, config.entityName, operations, toast],
+    [config.contentType, config.entityName, operations],
   );
 
   // Flag color change
   const handleFlagColorChange = useCallback(
     async (item: TItem, color: FlagColor) => {
       try {
-        const response = await setFlagColor(
-          config.contentType,
-          item.id,
-          color,
-        );
+        const response = await setFlagColor(config.contentType, item.id, color);
         if (!response.ok) {
           throw new Error("Failed to update flag color");
         }
         operations.refresh();
-        toast({
-          title: color
-            ? `${capitalize(config.entityName)} flagged`
-            : "Flag removed",
-          description: color
-            ? `"${item.title ?? "Untitled"}" has been flagged as ${color}.`
-            : `Flag removed from "${item.title ?? "Untitled"}".`,
-        });
+        toast.success(
+          color ? `${capitalize(config.entityName)} flagged` : "Flag removed",
+          {
+            description: color
+              ? `"${item.title ?? "Untitled"}" has been flagged as ${color}.`
+              : `Flag removed from "${item.title ?? "Untitled"}".`,
+          },
+        );
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description:
             error instanceof Error
               ? error.message
               : "Failed to update flag color",
-          variant: "destructive",
         });
       }
     },
-    [config.contentType, config.entityName, operations, toast],
+    [config.contentType, config.entityName, operations],
   );
 
   // Chat
@@ -374,19 +379,16 @@ export function useListPageState<TItem extends ListableItem>(
     try {
       await operations.deleteItem(itemToDelete.id);
       closeDeleteDialog();
-      toast({
-        title: `${capitalize(config.entityName)} deleted`,
+      toast.success(`${capitalize(config.entityName)} deleted`, {
         description: `"${itemToDelete.title}" has been deleted.`,
       });
     } catch (error) {
       console.error(`Error deleting ${config.entityName}:`, error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: `Failed to delete ${config.entityName}. Please try again.`,
-        variant: "destructive",
       });
     }
-  }, [itemToDelete, operations, closeDeleteDialog, toast, config.entityName]);
+  }, [itemToDelete, operations, closeDeleteDialog, config.entityName]);
 
   return {
     viewMode,

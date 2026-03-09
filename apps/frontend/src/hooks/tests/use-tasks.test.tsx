@@ -12,9 +12,9 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
 }));
 
-import { apiFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 import { transformTaskData, useTask, useTasks } from "@/hooks/use-tasks";
+import { apiFetch } from "@/lib/api-client";
 
 const mockApiFetch = vi.mocked(apiFetch);
 
@@ -62,7 +62,17 @@ const fullRawTask = {
   nextRunAt: "2026-03-09T09:00:00.000Z",
   lastRunAt: "2026-03-02T09:00:00.000Z",
   completedAt: "2026-03-02T09:05:00.000Z",
-  comments: [{ id: "c1", taskId: "task-1", userId: "user-1", content: "done", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z", user: { id: "user-1", displayName: "Alice", userType: "user" } }],
+  comments: [
+    {
+      id: "c1",
+      taskId: "task-1",
+      userId: "user-1",
+      content: "done",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      user: { id: "user-1", displayName: "Alice", userType: "user" },
+    },
+  ],
 };
 
 describe("transformTaskData", () => {
@@ -171,9 +181,7 @@ describe("useTasks", () => {
 
   it("status update failure triggers toast.error", async () => {
     // Initial list fetch
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     const { result } = renderHook(() => useTasks(), {
       wrapper: createWrapper(),

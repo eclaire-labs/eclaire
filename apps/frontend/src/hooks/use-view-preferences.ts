@@ -28,7 +28,13 @@ export interface NotesViewPreferences extends BaseViewPreferences {
 
 export interface DocumentsViewPreferences extends BaseViewPreferences {
   viewMode: "tile" | "list";
-  sortBy: "createdAt" | "title" | "mimeType" | "updatedAt" | "fileSize" | "originalFilename";
+  sortBy:
+    | "createdAt"
+    | "title"
+    | "mimeType"
+    | "updatedAt"
+    | "fileSize"
+    | "originalFilename";
 }
 
 export interface PhotosViewPreferences extends BaseViewPreferences {

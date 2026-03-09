@@ -1,19 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
-import {
-  AlertCircle,
-  FileText,
-  Loader2,
-  Plus,
-  Upload,
-} from "lucide-react";
+import { AlertCircle, FileText, Loader2, Plus, Upload } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
-import { useTags } from "@/hooks/use-tags";
 import { TagEditor } from "@/components/shared/TagEditor";
-import { UploadProgressList } from "@/components/shared/UploadProgressList";
 import type { UploadingFile } from "@/components/shared/UploadProgressList";
+import { UploadProgressList } from "@/components/shared/UploadProgressList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,17 +21,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import type { ListParams } from "@/hooks/create-crud-hooks";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useNotes } from "@/hooks/use-notes";
-import { useToast } from "@/hooks/use-toast";
+import { useTags } from "@/hooks/use-tags";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Note } from "@/types/note";
+import { CreateNoteDialog } from "./notes/CreateNoteDialog";
 import { NoteListItem } from "./notes/NoteListItem";
 import { NoteTileItem } from "./notes/NoteTileItem";
-import { CreateNoteDialog } from "./notes/CreateNoteDialog";
 import { notesConfig } from "./notes/notes-config";
 
 // ---------------------------------------------------------------------------
@@ -61,7 +55,6 @@ const ALLOWED_UPLOAD_TYPES = {
 // ---------------------------------------------------------------------------
 
 export default function NotesPage() {
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [params, setParams] = useState<ListParams>({});
@@ -160,16 +153,13 @@ export default function NotesPage() {
     try {
       await createNote(data);
       setIsNewEntryDialogOpen(false);
-      toast({
-        title: "Note entry created",
+      toast.success("Note entry created", {
         description: "Your note entry has been saved successfully.",
       });
     } catch (error) {
       console.error("Error creating entry:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to create note entry. Please try again.",
-        variant: "destructive",
       });
     }
   };
@@ -184,20 +174,16 @@ export default function NotesPage() {
         tags: selectedEntry.tags,
       });
       setIsEditMode(false);
-      toast({
-        title: "Note entry updated",
+      toast.success("Note entry updated", {
         description: "Your note entry has been updated successfully.",
       });
     } catch (error) {
       console.error("Error updating entry:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update note entry. Please try again.",
-        variant: "destructive",
       });
     }
   };
-
 
   // File upload
   const handleFileUpload = useCallback(
@@ -227,14 +213,10 @@ export default function NotesPage() {
 
         try {
           setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.id === upload.id ? { ...f, progress: 30 } : f,
-            ),
+            prev.map((f) => (f.id === upload.id ? { ...f, progress: 30 } : f)),
           );
           setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.id === upload.id ? { ...f, progress: 70 } : f,
-            ),
+            prev.map((f) => (f.id === upload.id ? { ...f, progress: 70 } : f)),
           );
 
           const createdNote = await uploadNote(formData);
@@ -242,12 +224,16 @@ export default function NotesPage() {
           setUploadingFiles((prev) =>
             prev.map((f) =>
               f.id === upload.id
-                ? { ...f, status: "success", progress: 100, noteId: createdNote.id }
+                ? {
+                    ...f,
+                    status: "success",
+                    progress: 100,
+                    noteId: createdNote.id,
+                  }
                 : f,
             ),
           );
-          toast({
-            title: "Upload Successful",
+          toast.success("Upload Successful", {
             description: `"${createdNote.title}" has been created.`,
           });
         } catch (err) {
@@ -261,10 +247,8 @@ export default function NotesPage() {
                 : f,
             ),
           );
-          toast({
-            title: "Upload Error",
+          toast.error("Upload Error", {
             description: `Failed to upload ${upload.file.name}: ${message}`,
-            variant: "destructive",
           });
         }
       }
@@ -289,10 +273,8 @@ export default function NotesPage() {
             } else if (error.code === "file-invalid-type") {
               message = "Invalid file type. Supported types: TXT, MD, JSON";
             }
-            toast({
-              title: "Upload Rejected",
+            toast.error("Upload Rejected", {
               description: `${file.name}: ${message}`,
-              variant: "destructive",
             });
           });
         });
@@ -318,7 +300,6 @@ export default function NotesPage() {
     [state, handleEntryClick, openEditDialog],
   );
 
-
   return (
     <ListPageLayout
       state={state}
@@ -330,7 +311,9 @@ export default function NotesPage() {
       totalCount={totalCount ?? entries.length}
       filteredCount={state.sortedItems.length}
       isLoading={isLoading}
-      error={error instanceof Error ? error : error ? new Error(String(error)) : null}
+      error={
+        error instanceof Error ? error : error ? new Error(String(error)) : null
+      }
       onRetry={refresh}
       sortOptions={notesConfig.sortOptions.map((o) => ({
         value: o.value,
@@ -345,19 +328,25 @@ export default function NotesPage() {
       dropzoneInputProps={getInputProps()}
       isDragActive={isDragActive}
       dragOverlay={
-        (isDragActive || isUploading) ? (
+        isDragActive || isUploading ? (
           <div className="absolute inset-0 bg-black/10 dark:bg-white/10 flex items-center justify-center z-50 pointer-events-none">
             <div className="text-center p-6 bg-background rounded-lg shadow-xl">
               {isUploading ? (
                 <>
                   <Loader2 className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
-                  <p className="text-xl font-semibold mb-2">Uploading notes...</p>
-                  <p className="text-sm text-muted-foreground">Processing your files</p>
+                  <p className="text-xl font-semibold mb-2">
+                    Uploading notes...
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Processing your files
+                  </p>
                 </>
               ) : isDragReject ? (
                 <>
                   <AlertCircle className="h-16 w-16 mx-auto mb-4 text-red-500" />
-                  <p className="text-xl font-semibold mb-2">Invalid file type</p>
+                  <p className="text-xl font-semibold mb-2">
+                    Invalid file type
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     Please drop TXT, MD, or JSON files only
                   </p>
@@ -365,7 +354,9 @@ export default function NotesPage() {
               ) : (
                 <>
                   <Upload className="h-16 w-16 text-blue-500 mx-auto mb-4" />
-                  <p className="text-xl font-semibold mb-2">Drop files to create notes</p>
+                  <p className="text-xl font-semibold mb-2">
+                    Drop files to create notes
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     Supports TXT, MD, and JSON files
                   </p>
@@ -381,7 +372,9 @@ export default function NotesPage() {
             uploads={uploadingFiles}
             onClearComplete={() =>
               setUploadingFiles((prev) =>
-                prev.filter((f) => f.status !== "success" && f.status !== "error"),
+                prev.filter(
+                  (f) => f.status !== "success" && f.status !== "error",
+                ),
               )
             }
           />
@@ -423,7 +416,10 @@ export default function NotesPage() {
                           id="title"
                           value={selectedEntry.title}
                           onChange={(e) =>
-                            setSelectedEntry({ ...selectedEntry, title: e.target.value })
+                            setSelectedEntry({
+                              ...selectedEntry,
+                              title: e.target.value,
+                            })
                           }
                         />
                       </div>
@@ -434,7 +430,10 @@ export default function NotesPage() {
                           rows={8}
                           value={selectedEntry.content || ""}
                           onChange={(e) =>
-                            setSelectedEntry({ ...selectedEntry, content: e.target.value })
+                            setSelectedEntry({
+                              ...selectedEntry,
+                              content: e.target.value,
+                            })
                           }
                         />
                       </div>
@@ -445,7 +444,9 @@ export default function NotesPage() {
                           type="datetime-local"
                           value={
                             selectedEntry.dueDate
-                              ? new Date(selectedEntry.dueDate).toISOString().slice(0, 16)
+                              ? new Date(selectedEntry.dueDate)
+                                  .toISOString()
+                                  .slice(0, 16)
                               : ""
                           }
                           onChange={(e) =>
@@ -461,7 +462,10 @@ export default function NotesPage() {
                       <TagEditor
                         tags={selectedEntry.tags}
                         onAddTag={(tag) =>
-                          setSelectedEntry({ ...selectedEntry, tags: [...selectedEntry.tags, tag] })
+                          setSelectedEntry({
+                            ...selectedEntry,
+                            tags: [...selectedEntry.tags, tag],
+                          })
                         }
                         onRemoveTag={(tag) =>
                           setSelectedEntry({
@@ -482,7 +486,9 @@ export default function NotesPage() {
                         </p>
                       </div>
                       <div className="pt-2">
-                        <p className="whitespace-pre-line">{selectedEntry.content}</p>
+                        <p className="whitespace-pre-line">
+                          {selectedEntry.content}
+                        </p>
                       </div>
                       {selectedEntry.tags.length > 0 && (
                         <div className="flex flex-wrap gap-2 pt-4">
@@ -500,7 +506,10 @@ export default function NotesPage() {
               <DialogFooter className="flex items-center justify-between">
                 {isEditMode ? (
                   <>
-                    <Button variant="ghost" onClick={() => setIsEditMode(false)}>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setIsEditMode(false)}
+                    >
                       Cancel
                     </Button>
                     <Button onClick={handleUpdateEntry}>Save Changes</Button>
@@ -512,7 +521,10 @@ export default function NotesPage() {
                       onClick={() => {
                         if (selectedEntry) {
                           setIsEntryDialogOpen(false);
-                          state.openDeleteDialog(selectedEntry.id, selectedEntry.title);
+                          state.openDeleteDialog(
+                            selectedEntry.id,
+                            selectedEntry.title,
+                          );
                         }
                       }}
                     >

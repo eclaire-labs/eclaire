@@ -1,11 +1,11 @@
 // components/chat/message-item.tsx
 
 import { User } from "lucide-react";
+import { AIAvatar } from "@/components/assistant/ai-avatar";
+import { ToolExecutionTracker } from "@/components/assistant/tool-execution-tracker";
 import { MarkdownDisplay } from "@/components/markdown-display";
-import { AIAvatar } from "@/components/ui/ai-avatar";
+import { UserAvatar } from "@/components/shared/user-avatar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ToolExecutionTracker } from "@/components/ui/tool-execution-tracker";
-import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/message";

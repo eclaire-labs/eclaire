@@ -1,17 +1,18 @@
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   type RecurrenceConfig,
   RecurrenceDialog,
-} from "@/components/ui/recurrence-dialog";
+} from "@/components/shared/recurrence-dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 interface RecurrenceToggleProps {
   value: RecurrenceConfig;
@@ -65,7 +66,7 @@ export function RecurrenceToggle({
 
   return (
     <TooltipProvider>
-      <div className={`space-y-2 ${className}`}>
+      <div className={cn("space-y-2", className)}>
         <Label className="flex items-center gap-2">
           <RefreshCw className="h-4 w-4" />
           Recurrence
@@ -82,7 +83,7 @@ export function RecurrenceToggle({
                 className="flex items-center gap-2"
               >
                 <RefreshCw
-                  className={`h-4 w-4 ${isRecurring ? "animate-spin" : ""}`}
+                  className={cn("h-4 w-4", isRecurring && "animate-spin")}
                 />
                 {getRecurrenceText()}
               </Button>

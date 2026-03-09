@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { StreamingRequest } from "@/lib/streaming-client";
 import { StreamingClient } from "@/lib/streaming-client";
-import type {
-  StreamingRequest,
-} from "@/lib/streaming-client";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,7 +31,9 @@ function sseData(obj: Record<string, unknown>): string {
 }
 
 /** Create a minimal StreamingRequest for tests. */
-function makeRequest(overrides: Partial<StreamingRequest> = {}): StreamingRequest {
+function makeRequest(
+  overrides: Partial<StreamingRequest> = {},
+): StreamingRequest {
   return { sessionId: "sess-1", prompt: "hello", ...overrides };
 }
 
@@ -128,7 +128,11 @@ describe("StreamingClient", () => {
     it('routes "thought" events to onThought handler', async () => {
       const onThought = vi.fn();
       const events = [
-        sseData({ type: "thought", content: "Let me think...", timestamp: "2025-01-01T00:00:00Z" }),
+        sseData({
+          type: "thought",
+          content: "Let me think...",
+          timestamp: "2025-01-01T00:00:00Z",
+        }),
         sseData({ type: "done" }),
       ];
       fetchMock.mockResolvedValueOnce(createSSEResponse(events));
@@ -137,7 +141,10 @@ describe("StreamingClient", () => {
       await client.startStream(makeRequest());
 
       expect(onThought).toHaveBeenCalledOnce();
-      expect(onThought).toHaveBeenCalledWith("Let me think...", "2025-01-01T00:00:00Z");
+      expect(onThought).toHaveBeenCalledWith(
+        "Let me think...",
+        "2025-01-01T00:00:00Z",
+      );
     });
 
     it('routes "tool-call" events to onToolCall handler', async () => {

@@ -45,9 +45,7 @@ export function ProcessingStatusBadge({
       <Badge
         variant={variant}
         className={
-          !disabled
-            ? "cursor-pointer hover:opacity-80 transition-opacity"
-            : ""
+          !disabled ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
         }
         onClick={
           !disabled

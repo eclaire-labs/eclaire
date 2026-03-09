@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { togglePin, setFlagColor, updateReviewStatus } from "@/lib/api-content";
+import { setFlagColor, togglePin, updateReviewStatus } from "@/lib/api-content";
 
 vi.mock("@/lib/api-client", () => ({
   apiFetch: vi.fn(),

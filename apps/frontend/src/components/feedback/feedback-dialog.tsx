@@ -2,7 +2,6 @@ import { MessageSquare, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { apiPost } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { apiPost } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 interface FeedbackDialogProps {

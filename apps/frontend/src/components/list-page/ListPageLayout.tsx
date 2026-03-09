@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   AlertCircle,
   ArrowDown,
@@ -8,15 +9,10 @@ import {
   Search,
   X,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -27,11 +23,11 @@ import {
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import type { ListPageState, ListableItem } from "@/hooks/use-list-page-state";
+import type { ListableItem, ListPageState } from "@/hooks/use-list-page-state";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import {
-  FilterSortDialog,
   type ExtraFilterDef as ExtraFilterProps,
+  FilterSortDialog,
   type SortOptionDef,
   type ViewModeDef,
 } from "./FilterSortDialog";
@@ -239,10 +235,7 @@ export function ListPageLayout<TItem extends ListableItem>({
           ))}
 
           {/* Sort by */}
-          <Select
-            value={state.sortBy}
-            onValueChange={state.handleSortByChange}
-          >
+          <Select value={state.sortBy} onValueChange={state.handleSortByChange}>
             <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -391,10 +384,7 @@ function LoadingSkeleton() {
   );
 }
 
-function ErrorCard({
-  error,
-  onRetry,
-}: { error: Error; onRetry: () => void }) {
+function ErrorCard({ error, onRetry }: { error: Error; onRetry: () => void }) {
   return (
     <div className="text-center py-16">
       <AlertCircle className="h-16 w-16 mx-auto mb-4 text-destructive" />
@@ -408,7 +398,10 @@ function ErrorCard({
 function EmptyState({
   icon: Icon,
   message,
-}: { icon: LucideIcon; message: string }) {
+}: {
+  icon: LucideIcon;
+  message: string;
+}) {
   return (
     <div className="text-center py-16 text-muted-foreground">
       <Icon className="h-16 w-16 mx-auto mb-4 text-gray-400" />

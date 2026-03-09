@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, Clock, Filter, Search, User, X } from "lucide-react";
 import { useState } from "react";
+import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
-import { AIAvatar } from "@/components/ui/ai-avatar";
+import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { apiFetch } from "@/lib/api-client";

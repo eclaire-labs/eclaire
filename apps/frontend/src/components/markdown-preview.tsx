@@ -10,7 +10,11 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
   let lastIndex = 0;
   let key = 0;
 
-  for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
+  for (
+    let match = pattern.exec(text);
+    match !== null;
+    match = pattern.exec(text)
+  ) {
     if (match.index > lastIndex) {
       elements.push(text.slice(lastIndex, match.index));
     }

@@ -1,7 +1,7 @@
 // components/assistant/chat-panel.tsx
 
+import type { ToolCall } from "@/components/assistant/tool-execution-tracker";
 import { Card } from "@/components/ui/card";
-import type { ToolCall } from "@/components/ui/tool-execution-tracker";
 import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
 import { MessageInput } from "./message-input";

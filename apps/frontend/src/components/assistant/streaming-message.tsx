@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownDisplay } from "@/components/markdown-display";
+import { cn } from "@/lib/utils";
 
 interface StreamingMessageProps {
   content: string;
@@ -24,16 +25,6 @@ export function StreamingMessage({
   const [showTypingCursor, setShowTypingCursor] = useState(false);
   const contentRef = useRef(content);
   const typewriterTimeoutRef = useRef<NodeJS.Timeout>(undefined);
-
-  // Debug logging for content updates
-  console.log("💬 StreamingMessage render:", {
-    contentLength: content.length,
-    contentPreview: content.substring(0, 50),
-    displayedContentLength: displayedContent.length,
-    isComplete,
-    enableTypewriter,
-    showCursor,
-  });
 
   // Update content reference
   useEffect(() => {
@@ -110,7 +101,7 @@ export function StreamingMessage({
   }, []);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={cn("relative", className)}>
       <MarkdownDisplay
         content={displayedContent}
         className="text-sm prose-sm"
@@ -177,13 +168,18 @@ export function StreamingMessageContainer({
   onContentUpdate,
 }: StreamingMessageContainerProps) {
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div className={cn("space-y-3", className)}>
       {/* Thinking content (if any) */}
       {(thinkingContent || isThinking) && (
         <div className="p-3 bg-muted/30 rounded-lg border border-dashed">
           <div className="flex items-center gap-2 mb-2">
             <div
-              className={`w-2 h-2 rounded-full ${isThinking ? "bg-blue-500 animate-pulse" : "bg-gray-400"}`}
+              className={cn(
+                "w-2 h-2 rounded-full",
+                isThinking
+                  ? "bg-primary animate-pulse"
+                  : "bg-muted-foreground/40",
+              )}
             />
             <span className="text-xs font-medium text-muted-foreground">
               {isThinking ? "Thinking..." : "Thought Process"}
@@ -199,16 +195,16 @@ export function StreamingMessageContainer({
 
       {/* Tool execution (if any) */}
       {toolCalls.length > 0 && (
-        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-xs font-medium text-blue-700">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-xs font-medium text-primary">
               Executing Tools...
             </span>
           </div>
           <div className="space-y-1">
             {toolCalls.map((tool) => (
-              <div key={tool.name} className="text-sm text-blue-600">
+              <div key={tool.name} className="text-sm text-primary/80">
                 {tool.name} - {tool.status}
               </div>
             ))}
@@ -226,77 +222,5 @@ export function StreamingMessageContainer({
         />
       )}
     </div>
-  );
-}
-
-// Real-time streaming message component that handles all stream events
-interface RealTimeStreamingMessageProps {
-  className?: string;
-  enableTypewriter?: boolean;
-  onFinalContent?: (content: string) => void;
-}
-
-export function RealTimeStreamingMessage({
-  className = "",
-  enableTypewriter = true,
-  onFinalContent,
-}: RealTimeStreamingMessageProps) {
-  const [thinkingContent, setThinkingContent] = useState("");
-  const [isThinking, setIsThinking] = useState(false);
-  const [textContent, setTextContent] = useState("");
-  const [isTextComplete, setIsTextComplete] = useState(false);
-  const [toolCalls, setToolCalls] = useState<
-    Array<{ name: string; status: string }>
-  >([]);
-
-  // Methods to be called from parent via ref
-  const _addThinkingContent = useCallback((content: string) => {
-    setThinkingContent((prev) => prev + content);
-    setIsThinking(true);
-  }, []);
-
-  const _completeThinking = useCallback(() => {
-    setIsThinking(false);
-  }, []);
-
-  const _addTextContent = useCallback((content: string) => {
-    setTextContent((prev) => prev + content);
-  }, []);
-
-  const _completeText = useCallback(() => {
-    setIsTextComplete(true);
-    onFinalContent?.(textContent);
-  }, [textContent, onFinalContent]);
-
-  const _addToolCall = useCallback((name: string, status: string) => {
-    setToolCalls((prev) => {
-      const existing = prev.find((t) => t.name === name);
-      if (existing) {
-        return prev.map((t) => (t.name === name ? { ...t, status } : t));
-      } else {
-        return [...prev, { name, status }];
-      }
-    });
-  }, []);
-
-  const _reset = useCallback(() => {
-    setThinkingContent("");
-    setIsThinking(false);
-    setTextContent("");
-    setIsTextComplete(false);
-    setToolCalls([]);
-  }, []);
-
-  return (
-    <StreamingMessageContainer
-      thinkingContent={thinkingContent}
-      isThinking={isThinking}
-      textContent={textContent}
-      isTextComplete={isTextComplete}
-      toolCalls={toolCalls}
-      enableTypewriter={enableTypewriter}
-      className={className}
-      onContentUpdate={onFinalContent}
-    />
   );
 }

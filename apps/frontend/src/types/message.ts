@@ -56,7 +56,7 @@ export type AssistantResponse = TextResponse;
 export function convertToToolCall(
   summary: ToolCallSummary,
   index: number,
-): import("@/components/ui/tool-execution-tracker").ToolCall {
+): import("@/components/assistant/tool-execution-tracker").ToolCall {
   return {
     id: `${summary.functionName}-${index}`,
     name: summary.functionName,
@@ -75,7 +75,7 @@ export function convertToToolCall(
  * Convert streaming ToolCall[] to ToolCallSummary[] for message storage
  */
 export function convertToToolCallSummary(
-  toolCall: import("@/components/ui/tool-execution-tracker").ToolCall,
+  toolCall: import("@/components/assistant/tool-execution-tracker").ToolCall,
 ): ToolCallSummary {
   const executionTimeMs =
     toolCall.startTime && toolCall.endTime

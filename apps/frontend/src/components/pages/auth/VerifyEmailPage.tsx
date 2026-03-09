@@ -1,13 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Mail } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isResending, setIsResending] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -18,8 +17,7 @@ export default function VerifyEmailPage() {
     // Simulate API call
     setTimeout(() => {
       setIsResending(false);
-      toast({
-        title: "Verification email sent",
+      toast.success("Verification email sent", {
         description: "Please check your inbox for the verification link.",
       });
     }, 1500);
@@ -33,8 +31,7 @@ export default function VerifyEmailPage() {
     // Simulate API call
     setTimeout(() => {
       setIsVerifying(false);
-      toast({
-        title: "Email verified",
+      toast.success("Email verified", {
         description: "Your email has been successfully verified.",
       });
       navigate({ to: "/dashboard" });

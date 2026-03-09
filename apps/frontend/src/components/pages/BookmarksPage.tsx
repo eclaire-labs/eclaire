@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
-import { useTags } from "@/hooks/use-tags";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,22 +32,21 @@ import { useBookmarks } from "@/hooks/use-bookmarks";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
-import { useToast } from "@/hooks/use-toast";
-import { formatDate } from "@/lib/list-page-utils";
+import { useTags } from "@/hooks/use-tags";
 import { normalizeApiUrl } from "@/lib/api-client";
+import { formatDate } from "@/lib/list-page-utils";
 import type { Bookmark } from "@/types/bookmark";
 import { BookmarkListItem } from "./bookmarks/BookmarkListItem";
 import { BookmarkTileItem } from "./bookmarks/BookmarkTileItem";
+import { bookmarksConfig } from "./bookmarks/bookmarks-config";
 import { CreateBookmarkDialog } from "./bookmarks/CreateBookmarkDialog";
 import { Favicon } from "./bookmarks/Favicon";
-import { bookmarksConfig } from "./bookmarks/bookmarks-config";
 
 // ---------------------------------------------------------------------------
 // Page Component
 // ---------------------------------------------------------------------------
 
 export default function BookmarksPage() {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [params, setParams] = useState<ListParams>({});
 
@@ -141,8 +140,7 @@ export default function BookmarksPage() {
     try {
       await createBookmark({ url });
       setIsNewBookmarkDialogOpen(false);
-      toast({
-        title: "Bookmark Added",
+      toast.success("Bookmark Added", {
         description: "We've started processing your bookmark.",
       });
     } catch (err) {
@@ -159,15 +157,13 @@ export default function BookmarksPage() {
         tags: selectedBookmark.tags,
       });
       setIsEditMode(false);
-      toast({
-        title: "Bookmark updated",
+      toast.success("Bookmark updated", {
         description: "Your bookmark has been updated successfully.",
       });
     } catch (err) {
       console.error("Update bookmark error:", err);
     }
   };
-
 
   // File upload (bookmark import)
   const handleFileUpload = useCallback(
@@ -177,10 +173,8 @@ export default function BookmarksPage() {
 
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
-        toast({
-          title: "File too large",
+        toast.error("File too large", {
           description: "Please upload a file smaller than 5MB.",
-          variant: "destructive",
         });
         return;
       }
@@ -190,8 +184,7 @@ export default function BookmarksPage() {
         formData.append("file", file);
 
         const result = await importBookmarks(formData);
-        toast({
-          title: "Import successful",
+        toast.success("Import successful", {
           description: `Imported ${result.imported} bookmarks. ${result.queued} queued for processing.`,
         });
       } catch (err) {
@@ -211,10 +204,8 @@ export default function BookmarksPage() {
       onDropRejected: (rejectedFiles) => {
         const file = rejectedFiles[0];
         if (file?.errors.some((e) => e.code === "file-too-large")) {
-          toast({
-            title: "File too large",
+          toast.error("File too large", {
             description: "Please upload a file smaller than 5MB.",
-            variant: "destructive",
           });
         }
       },
@@ -261,7 +252,9 @@ export default function BookmarksPage() {
         ) : undefined
       }
       isLoading={isLoading}
-      error={error instanceof Error ? error : error ? new Error(String(error)) : null}
+      error={
+        error instanceof Error ? error : error ? new Error(String(error)) : null
+      }
       onRetry={refresh}
       sortOptions={bookmarksConfig.sortOptions.map((o) => ({
         value: o.value,
@@ -317,7 +310,9 @@ export default function BookmarksPage() {
       deleteDialogExtra={
         state.itemToDelete ? (
           <DeleteDialogBookmarkPreview
-            bookmark={bookmarks.find((b) => b.id === state.itemToDelete?.id) ?? null}
+            bookmark={
+              bookmarks.find((b) => b.id === state.itemToDelete?.id) ?? null
+            }
           />
         ) : undefined
       }
@@ -394,7 +389,9 @@ export default function BookmarksPage() {
                         onRemoveTag={(tag) =>
                           setSelectedBookmark({
                             ...selectedBookmark,
-                            tags: selectedBookmark.tags.filter((t) => t !== tag),
+                            tags: selectedBookmark.tags.filter(
+                              (t) => t !== tag,
+                            ),
                           })
                         }
                       />
@@ -492,9 +489,7 @@ export default function BookmarksPage() {
                           {selectedBookmark.pdfUrl && (
                             <Button variant="outline" size="sm" asChild>
                               <a
-                                href={normalizeApiUrl(
-                                  selectedBookmark.pdfUrl,
-                                )}
+                                href={normalizeApiUrl(selectedBookmark.pdfUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
@@ -574,7 +569,9 @@ export default function BookmarksPage() {
             bookmarksConfig.getGroupDate(item, state.sortBy)
           }
           className="grid gap-4 md:gap-6"
-          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}
+          style={{
+            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          }}
           containerRef={containerRef}
           onKeyDown={handleKeyDown}
           renderItem={renderTileItem}
@@ -622,17 +619,14 @@ export default function BookmarksPage() {
 
 function DeleteDialogBookmarkPreview({
   bookmark,
-}: { bookmark: Bookmark | null }) {
+}: {
+  bookmark: Bookmark | null;
+}) {
   if (!bookmark) return null;
   return (
     <div className="flex items-center gap-2 px-3 pb-2">
-      <Favicon
-        bookmark={bookmark}
-        className="h-4 w-4 flex-shrink-0"
-      />
-      <p className="text-sm text-muted-foreground truncate">
-        {bookmark.url}
-      </p>
+      <Favicon bookmark={bookmark} className="h-4 w-4 flex-shrink-0" />
+      <p className="text-sm text-muted-foreground truncate">{bookmark.url}</p>
     </div>
   );
 }

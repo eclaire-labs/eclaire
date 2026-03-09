@@ -11,9 +11,11 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import type React from "react";
+import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
-import { AIAvatar } from "@/components/ui/ai-avatar";
+import { PinFlagControls } from "@/components/shared/pin-flag-controls";
+import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,10 +25,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { UserAvatar } from "@/components/ui/user-avatar";
 import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Task, TaskStatus, User } from "@/types/task";

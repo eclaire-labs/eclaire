@@ -176,8 +176,7 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
     const createMutation = useMutation({
       // biome-ignore lint/suspicious/noExplicitAny: create input varies per entity
       mutationFn: async (input: any) => {
-        const body =
-          input instanceof FormData ? input : JSON.stringify(input);
+        const body = input instanceof FormData ? input : JSON.stringify(input);
         const response = await apiFetch(apiPath, {
           method: "POST",
           body,
@@ -186,15 +185,17 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
       },
       onSuccess: () =>
         queryClient.invalidateQueries({ queryKey: invalidationKey }),
-      onError: (error: Error) =>
-        toast.error(`Create failed: ${error.message}`),
+      onError: (error: Error) => toast.error(`Create failed: ${error.message}`),
     });
 
     const updateMutation = useMutation({
       mutationFn: async ({
         id,
         updates,
-      }: { id: string; updates: Partial<TItem> }) => {
+      }: {
+        id: string;
+        updates: Partial<TItem>;
+      }) => {
         const response = await apiFetch(`${apiPath}/${id}`, {
           method: updateMethod,
           body: JSON.stringify(updates),
@@ -203,8 +204,7 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
       },
       onSuccess: () =>
         queryClient.invalidateQueries({ queryKey: invalidationKey }),
-      onError: (error: Error) =>
-        toast.error(`Update failed: ${error.message}`),
+      onError: (error: Error) => toast.error(`Update failed: ${error.message}`),
     });
 
     const deleteMutation = useMutation({
@@ -213,8 +213,7 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
       },
       onSuccess: () =>
         queryClient.invalidateQueries({ queryKey: invalidationKey }),
-      onError: (error: Error) =>
-        toast.error(`Delete failed: ${error.message}`),
+      onError: (error: Error) => toast.error(`Delete failed: ${error.message}`),
     });
 
     return {

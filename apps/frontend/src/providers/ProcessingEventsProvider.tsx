@@ -9,8 +9,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { useSession } from "@/lib/auth";
 import { normalizeApiUrl } from "@/lib/api-client";
+import { useSession } from "@/lib/auth";
 
 // Stable per-tab client ID for SSE deduplication (survives refresh, unique per tab)
 function getClientId(): string {

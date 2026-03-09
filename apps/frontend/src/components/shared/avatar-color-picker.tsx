@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
+import { AVATAR_COLORS } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
-import { AVATAR_COLORS } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 
 interface AvatarColorPickerProps {

@@ -15,13 +15,13 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
 }));
 
-import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import { toast } from "sonner";
 import {
   transformBookmarkData,
   useBookmark,
   useBookmarks,
 } from "@/hooks/use-bookmarks";
+import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 
 const mockApiFetch = vi.mocked(apiFetch);
 const mockNormalizeApiUrl = vi.mocked(normalizeApiUrl);
@@ -211,9 +211,7 @@ describe("useBookmarks", () => {
 
   it("createBookmark sends POST to /api/bookmarks with the correct body", async () => {
     // Initial list fetch
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     const { result } = renderHook(() => useBookmarks(), {
       wrapper: createWrapper(),
@@ -240,9 +238,7 @@ describe("useBookmarks", () => {
 
   it("importBookmarks sends POST to /api/bookmarks/import with FormData", async () => {
     // Initial list fetch
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     const { result } = renderHook(() => useBookmarks(), {
       wrapper: createWrapper(),
@@ -254,13 +250,9 @@ describe("useBookmarks", () => {
     formData.append("file", new Blob(["test"]), "bookmarks.html");
 
     // Import mutation
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ imported: 5 }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ imported: 5 }));
     // Refetch after cache invalidation
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     await result.current.importBookmarks(formData);
 
@@ -272,9 +264,7 @@ describe("useBookmarks", () => {
 
   it("import failure triggers toast.error with the error message", async () => {
     // Initial list fetch
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     const { result } = renderHook(() => useBookmarks(), {
       wrapper: createWrapper(),
@@ -299,9 +289,7 @@ describe("useBookmarks", () => {
 
   it("isImporting reflects the pending state of the import mutation", async () => {
     // Initial list fetch
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     const { result } = renderHook(() => useBookmarks(), {
       wrapper: createWrapper(),
@@ -328,9 +316,7 @@ describe("useBookmarks", () => {
     // Resolve the import
     resolveImport(mockJsonResponse({ imported: 1 }));
     // Refetch after invalidation
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     await importPromise;
 

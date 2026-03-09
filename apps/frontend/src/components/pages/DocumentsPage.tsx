@@ -12,11 +12,11 @@ import { nanoid } from "nanoid";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
-import { useTags } from "@/hooks/use-tags";
 import { TagEditor } from "@/components/shared/TagEditor";
-import { UploadProgressList } from "@/components/shared/UploadProgressList";
 import type { UploadingFile } from "@/components/shared/UploadProgressList";
+import { UploadProgressList } from "@/components/shared/UploadProgressList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +36,7 @@ import { useDocuments } from "@/hooks/use-documents";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
-import { useToast } from "@/hooks/use-toast";
+import { useTags } from "@/hooks/use-tags";
 import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Document } from "@/types/document";
@@ -98,7 +98,6 @@ const ALLOWED_UPLOAD_TYPES = {
 // ---------------------------------------------------------------------------
 
 export default function DocumentsPage() {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [params, setParams] = useState<ListParams>({});
 
@@ -146,7 +145,9 @@ export default function DocumentsPage() {
     useState(false);
   const [editingDocument, setEditingDocument] =
     useState<EditDocumentState | null>(null);
-  const [uploadingFiles, setUploadingFiles] = useState<DocumentUploadingFile[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<DocumentUploadingFile[]>(
+    [],
+  );
 
   const containerRef = useRef<HTMLElement | null>(null);
 
@@ -212,7 +213,6 @@ export default function DocumentsPage() {
     );
   };
 
-
   // --- API Action Handlers ---
 
   const handleUpdateDocument = async (event: React.FormEvent) => {
@@ -232,8 +232,7 @@ export default function DocumentsPage() {
       setIsEditDocumentDialogOpen(false);
       setEditingDocument(null);
       setSelectedDocument(null);
-      toast({
-        title: "Document Updated",
+      toast.success("Document Updated", {
         description: `"${editingDocument.title}" updated.`,
       });
     } catch (err) {
@@ -272,9 +271,7 @@ export default function DocumentsPage() {
 
         try {
           setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.id === upload.id ? { ...f, progress: 30 } : f,
-            ),
+            prev.map((f) => (f.id === upload.id ? { ...f, progress: 30 } : f)),
           );
 
           const response = await apiFetch("/api/documents", {
@@ -284,9 +281,7 @@ export default function DocumentsPage() {
           });
 
           setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.id === upload.id ? { ...f, progress: 70 } : f,
-            ),
+            prev.map((f) => (f.id === upload.id ? { ...f, progress: 70 } : f)),
           );
 
           if (!response.ok) {
@@ -315,8 +310,7 @@ export default function DocumentsPage() {
             ),
           );
 
-          toast({
-            title: "Upload Successful",
+          toast.success("Upload Successful", {
             description: `"${createdDocument.title}" added.`,
           });
         } catch (err) {
@@ -330,10 +324,8 @@ export default function DocumentsPage() {
                 : f,
             ),
           );
-          toast({
-            title: "Upload Error",
+          toast.error("Upload Error", {
             description: `Failed to upload ${upload.file.name}: ${message}`,
-            variant: "destructive",
           });
         }
       }
@@ -362,10 +354,8 @@ export default function DocumentsPage() {
           } else if (error.code === "file-invalid-type") {
             message = `Invalid file type. Allowed types: ${Object.values(ALLOWED_UPLOAD_TYPES).flat().join(", ")}`;
           }
-          toast({
-            title: "Upload Rejected",
+          toast.error("Upload Rejected", {
             description: `${file.name}: ${message}`,
-            variant: "destructive",
           });
         });
       });
@@ -402,7 +392,9 @@ export default function DocumentsPage() {
       totalCount={totalCount ?? entries.length}
       filteredCount={state.sortedItems.length}
       isLoading={isLoading}
-      error={error instanceof Error ? error : error ? new Error(String(error)) : null}
+      error={
+        error instanceof Error ? error : error ? new Error(String(error)) : null
+      }
       onRetry={refresh}
       sortOptions={documentsConfig.sortOptions.map((o) => ({
         value: o.value,

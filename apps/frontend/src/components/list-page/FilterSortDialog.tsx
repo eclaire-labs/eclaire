@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import React from "react";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type { LucideIcon } from "lucide-react";
 
 export interface SortOptionDef {
   value: string;
@@ -82,7 +82,8 @@ export const FilterSortDialog = React.memo(function FilterSortDialog({
         <DialogHeader>
           <DialogTitle>Filter & Sort {entityNamePlural}</DialogTitle>
           <DialogDescription>
-            Customize how you view and organize your {entityNamePlural.toLowerCase()}.
+            Customize how you view and organize your{" "}
+            {entityNamePlural.toLowerCase()}.
           </DialogDescription>
         </DialogHeader>
 
@@ -98,7 +99,10 @@ export const FilterSortDialog = React.memo(function FilterSortDialog({
               <label className="text-sm font-medium" htmlFor="filter-tag">
                 Tag
               </label>
-              <Select value={tagFilter.value} onValueChange={tagFilter.onChange}>
+              <Select
+                value={tagFilter.value}
+                onValueChange={tagFilter.onChange}
+              >
                 <SelectTrigger className="w-full" id="filter-tag">
                   <SelectValue placeholder="Filter by Tag" />
                 </SelectTrigger>

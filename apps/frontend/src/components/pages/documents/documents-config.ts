@@ -4,9 +4,7 @@ import type { Document } from "@/types/document";
 // --- Helper Functions ---
 
 /** Format byte size to a human-readable string. */
-export function formatFileSize(
-  bytes: number | null | undefined,
-): string {
+export function formatFileSize(bytes: number | null | undefined): string {
   if (bytes === null || bytes === undefined || Number.isNaN(bytes) || bytes < 0)
     return "N/A";
   if (bytes === 0) return "0 Bytes";

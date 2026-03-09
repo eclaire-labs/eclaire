@@ -1,3 +1,5 @@
+"use client";
+
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import * as React from "react";
 

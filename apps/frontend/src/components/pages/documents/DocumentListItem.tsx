@@ -6,7 +6,9 @@ import {
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
+import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,16 +18,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import type { FlagColor } from "@/hooks/use-list-page-state";
-import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Document } from "@/types/document";
-import {
-  formatFileSize,
-  getDocumentTypeLabel,
-} from "./documents-config";
 import { getFileIcon } from "./DocumentTileItem";
+import { formatFileSize, getDocumentTypeLabel } from "./documents-config";
 
 interface DocumentListItemProps {
   entry: Document;
@@ -50,7 +47,6 @@ export function DocumentListItem({
   onFlagColorChange,
   onChatClick,
 }: DocumentListItemProps) {
-  const { toast } = useToast();
   const doc = entry;
   const docTypeLabel = getDocumentTypeLabel(doc.mimeType);
 
@@ -84,16 +80,13 @@ export function DocumentListItem({
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = "none";
-                const iconContainer =
-                  target.nextElementSibling as HTMLElement;
+                const iconContainer = target.nextElementSibling as HTMLElement;
                 if (iconContainer) {
                   iconContainer.style.display = "block";
                 }
               }}
             />
-            <div className="hidden">
-              {getFileIcon(doc.mimeType, "h-8 w-8")}
-            </div>
+            <div className="hidden">{getFileIcon(doc.mimeType, "h-8 w-8")}</div>
             {/* Processing Status Icon */}
             <div className="absolute top-0 right-0">
               <SimpleProcessingStatusIcon
@@ -158,17 +151,12 @@ export function DocumentListItem({
           </Badge>
         ))}
         {doc.tags.length > 2 && (
-          <Badge
-            variant="outline"
-            className="text-xs px-1 py-0 font-normal"
-          >
+          <Badge variant="outline" className="text-xs px-1 py-0 font-normal">
             +{doc.tags.length - 2}
           </Badge>
         )}
         {doc.tags.length === 0 && (
-          <span className="text-xs text-muted-foreground italic">
-            No tags
-          </span>
+          <span className="text-xs text-muted-foreground italic">No tags</span>
         )}
       </div>
       {/* Pin/Flag Controls & Actions */}
@@ -201,18 +189,12 @@ export function DocumentListItem({
           <MessageSquare className="h-3 w-3 text-gray-400" />
         </Button>
         <DropdownMenu>
-          <DropdownMenuTrigger
-            asChild
-            onClick={(e) => e.stopPropagation()}
-          >
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuItem onClick={() => onClick()}>
               <FileText className="mr-2 h-4 w-4" /> View Details
             </DropdownMenuItem>
@@ -231,7 +213,7 @@ export function DocumentListItem({
                   {...(doc.originalFilename && {
                     download: doc.originalFilename as string,
                   })}
-                  onClick={() => toast({ title: "Download Started" })}
+                  onClick={() => toast.success("Download Started")}
                 >
                   <Download className="mr-2 h-4 w-4" /> Download File
                 </a>

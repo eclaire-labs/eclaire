@@ -1,6 +1,6 @@
-import { apiGet } from "@/lib/api-client";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
+import { apiGet } from "@/lib/api-client";
 
 const routeApi = getRouteApi("/_authenticated/settings");
 

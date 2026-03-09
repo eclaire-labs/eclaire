@@ -15,22 +15,22 @@ import {
 const routeApi = getRouteApi("/_authenticated/notes/$id");
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { MarkdownDisplay } from "@/components/markdown-display";
+import { DueDatePicker } from "@/components/shared/due-date-picker";
+import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { DueDatePicker } from "@/components/ui/due-date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useNote } from "@/hooks/use-notes";
-import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/date-utils";
 import type { Note } from "@/types/note";
@@ -38,7 +38,6 @@ import type { Note } from "@/types/note";
 export function NoteDetailClient() {
   const navigate = useNavigate();
   const { id: noteId } = routeApi.useParams();
-  const { toast } = useToast();
   const [localNote, setLocalNote] = useState<Note | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [tagInput, setTagInput] = useState("");
@@ -76,22 +75,17 @@ export function NoteDetailClient() {
       if (response.ok) {
         setIsEditing(false);
         refresh();
-        toast({
-          title: "Note updated",
+        toast.success("Note updated", {
           description: "Your note has been saved successfully.",
         });
       } else {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to update note",
-          variant: "destructive",
         });
       }
     } catch {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update note",
-        variant: "destructive",
       });
     }
   };

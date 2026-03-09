@@ -15,12 +15,12 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
 }));
 
-import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import {
   transformDocumentData,
   useDocument,
   useDocuments,
 } from "@/hooks/use-documents";
+import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 
 const mockApiFetch = vi.mocked(apiFetch);
 const mockNormalizeApiUrl = vi.mocked(normalizeApiUrl);
@@ -96,9 +96,9 @@ describe("transformDocumentData", () => {
   });
 
   it("defaults tags to empty array when null or missing", () => {
-    expect(
-      transformDocumentData(makeRawDocument({ tags: null })).tags,
-    ).toEqual([]);
+    expect(transformDocumentData(makeRawDocument({ tags: null })).tags).toEqual(
+      [],
+    );
     expect(
       transformDocumentData(makeRawDocument({ tags: undefined })).tags,
     ).toEqual([]);

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,12 +9,12 @@ import {
 } from "@/components/ui/dialog";
 import {
   type Channel,
-  type TelegramConfig,
   type SlackConfig,
+  type TelegramConfig,
   useChannels,
 } from "@/hooks/use-channels";
-import TelegramChannelForm from "./TelegramChannelForm";
 import SlackChannelForm from "./SlackChannelForm";
+import TelegramChannelForm from "./TelegramChannelForm";
 
 interface EditChannelDialogProps {
   channel: Channel | null;
@@ -28,7 +28,9 @@ export default function EditChannelDialog({
   onOpenChange,
 }: EditChannelDialogProps) {
   const { updateChannel, isUpdating } = useChannels();
-  const [config, setConfig] = useState<TelegramConfig | SlackConfig | null>(null);
+  const [config, setConfig] = useState<TelegramConfig | SlackConfig | null>(
+    null,
+  );
 
   // Fetch current config when dialog opens (we need to get the decrypted config)
   useEffect(() => {
@@ -50,7 +52,11 @@ export default function EditChannelDialog({
   const handleUpdateChannel = async (data: {
     name: string;
     capability: Channel["capability"];
-    config: TelegramConfig | Partial<TelegramConfig> | SlackConfig | Partial<SlackConfig>;
+    config:
+      | TelegramConfig
+      | Partial<TelegramConfig>
+      | SlackConfig
+      | Partial<SlackConfig>;
   }) => {
     if (!channel) return;
 
@@ -121,7 +127,8 @@ export default function EditChannelDialog({
             Edit {platform.displayName} Channel
           </DialogTitle>
           <DialogDescription>
-            Update your {platform.displayName} channel configuration and settings.
+            Update your {platform.displayName} channel configuration and
+            settings.
           </DialogDescription>
         </DialogHeader>
 

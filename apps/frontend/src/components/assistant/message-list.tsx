@@ -2,13 +2,13 @@
 
 import { Bot } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { StreamingMessage } from "@/components/ui/streaming-message";
-import { ThinkingIndicator } from "@/components/ui/thinking-indicator";
+import { StreamingMessage } from "@/components/assistant/streaming-message";
+import { ThinkingIndicator } from "@/components/assistant/thinking-indicator";
 import {
   type ToolCall,
   ToolExecutionTracker,
-} from "@/components/ui/tool-execution-tracker";
+} from "@/components/assistant/tool-execution-tracker";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { Message } from "@/types/message";
 import { MessageItem } from "./message-item";
 import { TypingIndicator } from "./typing-indicator";

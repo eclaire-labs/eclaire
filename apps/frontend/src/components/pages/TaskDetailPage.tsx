@@ -19,10 +19,14 @@ import {
 const routeApi = getRouteApi("/_authenticated/tasks/$id");
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { MarkdownDisplayWithAssets } from "@/components/markdown-display-with-assets";
+import { DueDatePicker } from "@/components/shared/due-date-picker";
+import { PinFlagControls } from "@/components/shared/pin-flag-controls";
+import { RecurrenceToggle } from "@/components/shared/recurrence-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,11 +36,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DueDatePicker } from "@/components/ui/due-date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PinFlagControls } from "@/components/ui/pin-flag-controls";
-import { RecurrenceToggle } from "@/components/ui/recurrence-toggle";
 import {
   Select,
   SelectContent,
@@ -48,7 +49,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useTask } from "@/hooks/use-tasks";
-import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api-client";
 import {
   createTaskComment,
@@ -62,8 +62,6 @@ import type { TaskComment, TaskStatus, User } from "@/types/task";
 export function TaskDetailClient() {
   const { id: taskId } = routeApi.useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
   // Use React Query hook for data fetching
   const { task, isLoading, error, refresh } = useTask(taskId);
 
@@ -153,16 +151,13 @@ export function TaskDetailClient() {
       setComments((prev) => [comment, ...prev]); // Add to top
       setNewComment("");
 
-      toast({
-        title: "Comment added",
+      toast.success("Comment added", {
         description: "Your comment has been added successfully.",
       });
     } catch (error) {
       console.error("Error adding comment:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to add comment. Please try again.",
-        variant: "destructive",
       });
     } finally {
       setIsAddingComment(false);
@@ -184,16 +179,13 @@ export function TaskDetailClient() {
       setEditingCommentId(null);
       setEditingCommentContent("");
 
-      toast({
-        title: "Comment updated",
+      toast.success("Comment updated", {
         description: "Your comment has been updated successfully.",
       });
     } catch (error) {
       console.error("Error updating comment:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update comment. Please try again.",
-        variant: "destructive",
       });
     }
   };
@@ -205,16 +197,13 @@ export function TaskDetailClient() {
       await deleteTaskComment(task.id, commentId);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
 
-      toast({
-        title: "Comment deleted",
+      toast.success("Comment deleted", {
         description: "Comment has been deleted successfully.",
       });
     } catch (error) {
       console.error("Error deleting comment:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to delete comment. Please try again.",
-        variant: "destructive",
       });
     }
   };
@@ -312,16 +301,13 @@ export function TaskDetailClient() {
       // Refresh to get the latest data from server
       refresh();
 
-      toast({
-        title: "Task updated",
+      toast.success("Task updated", {
         description: "Your task has been updated successfully.",
       });
     } catch (error) {
       console.error("Error updating task:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update task. Please try again.",
-        variant: "destructive",
       });
     } finally {
       setIsSaving(false);

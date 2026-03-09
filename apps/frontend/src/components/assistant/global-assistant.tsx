@@ -11,6 +11,7 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { ChatPanel } from "@/components/assistant/chat-panel";
+import type { ToolCall } from "@/components/assistant/tool-execution-tracker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,7 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ToolCall } from "@/components/ui/tool-execution-tracker";
 import { listSessions } from "@/lib/api-sessions";
 import type { BackendMessage, ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";

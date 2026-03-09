@@ -1,5 +1,6 @@
 import { Copy, Eye, EyeOff, Info } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -7,7 +8,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useToast } from "@/hooks/use-toast";
 import { getApiBaseUrl } from "@/lib/utils";
 
 interface ApiKeyDisplayProps {
@@ -15,7 +15,6 @@ interface ApiKeyDisplayProps {
 }
 
 export function ApiKeyDisplay({ apiKey }: ApiKeyDisplayProps) {
-  const { toast } = useToast();
   const [isVisible, setIsVisible] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [exampleContent, setExampleContent] = useState<string>("");
@@ -32,8 +31,7 @@ export function ApiKeyDisplay({ apiKey }: ApiKeyDisplayProps) {
 
   const copyApiKey = () => {
     navigator.clipboard.writeText(apiKey);
-    toast({
-      title: "API key copied",
+    toast.success("API key copied", {
       description: "Your API key has been copied to the clipboard.",
     });
   };
@@ -44,8 +42,7 @@ export function ApiKeyDisplay({ apiKey }: ApiKeyDisplayProps) {
 
   const copyCurlExample = () => {
     navigator.clipboard.writeText(exampleContent);
-    toast({
-      title: "cURL example copied",
+    toast.success("cURL example copied", {
       description: "The example API call has been copied to the clipboard.",
     });
   };

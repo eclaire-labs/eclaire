@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import type { Note } from "@/types/note";
-import { type ListParams, createCrudHooks } from "./create-crud-hooks";
+import { createCrudHooks, type ListParams } from "./create-crud-hooks";
 
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 export const transformNoteData = (raw: any): Note => ({
@@ -52,8 +52,7 @@ export function useNotes(params: ListParams = {}) {
       return response.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-    onError: (error: Error) =>
-      toast.error(`Upload failed: ${error.message}`),
+    onError: (error: Error) => toast.error(`Upload failed: ${error.message}`),
   });
 
   return {

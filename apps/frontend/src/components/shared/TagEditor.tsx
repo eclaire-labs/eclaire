@@ -11,7 +11,12 @@ interface TagEditorProps {
   className?: string;
 }
 
-export function TagEditor({ tags, onAddTag, onRemoveTag, className }: TagEditorProps) {
+export function TagEditor({
+  tags,
+  onAddTag,
+  onRemoveTag,
+  className,
+}: TagEditorProps) {
   const [tagInput, setTagInput] = useState("");
 
   const handleAdd = () => {
@@ -28,7 +33,11 @@ export function TagEditor({ tags, onAddTag, onRemoveTag, className }: TagEditorP
       <Label>Tags</Label>
       <div className="flex flex-wrap gap-2 mb-2 min-h-[24px]">
         {tags.map((tag) => (
-          <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+          <Badge
+            key={tag}
+            variant="secondary"
+            className="flex items-center gap-1"
+          >
             {tag}
             <button
               type="button"

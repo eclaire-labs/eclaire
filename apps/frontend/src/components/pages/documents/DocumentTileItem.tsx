@@ -9,7 +9,9 @@ import {
   Trash2,
 } from "lucide-react";
 import type React from "react";
+import { toast } from "sonner";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
+import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,15 +28,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import type { FlagColor } from "@/hooks/use-list-page-state";
-import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Document } from "@/types/document";
-import {
-  formatFileSize,
-  getDocumentTypeLabel,
-} from "./documents-config";
+import { formatFileSize, getDocumentTypeLabel } from "./documents-config";
 
 // --- File Icon Helper ---
 
@@ -105,7 +102,6 @@ export function DocumentTileItem({
   onFlagColorChange,
   onChatClick,
 }: DocumentTileItemProps) {
-  const { toast } = useToast();
   const doc = entry;
   const docTypeLabel = getDocumentTypeLabel(doc.mimeType);
 
@@ -233,8 +229,7 @@ export function DocumentTileItem({
                     rel="noopener noreferrer"
                     download={doc.originalFilename}
                     onClick={() =>
-                      toast({
-                        title: "Download Started",
+                      toast.success("Download Started", {
                         description: `Downloading ${doc.originalFilename}`,
                       })
                     }

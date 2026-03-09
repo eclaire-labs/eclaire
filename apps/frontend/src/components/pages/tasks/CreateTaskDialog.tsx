@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { RecurrenceToggle } from "@/components/shared/recurrence-toggle";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RecurrenceToggle } from "@/components/ui/recurrence-toggle";
 import {
   Select,
   SelectContent,
@@ -244,9 +244,7 @@ export function CreateTaskDialog({
               </Button>
             </DialogClose>
             <Button type="submit" disabled={isCreating || !task.title}>
-              {isCreating && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Task
             </Button>
           </DialogFooter>

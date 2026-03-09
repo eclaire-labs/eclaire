@@ -1,6 +1,6 @@
 import { normalizeApiUrl } from "@/lib/api-client";
 import type { Document } from "@/types/document";
-import { type ListParams, createCrudHooks } from "./create-crud-hooks";
+import { createCrudHooks, type ListParams } from "./create-crud-hooks";
 
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 export const transformDocumentData = (raw: any): Document => ({
@@ -17,9 +17,7 @@ export const transformDocumentData = (raw: any): Document => ({
   tags: raw.tags || [],
   fileUrl: raw.fileUrl ? normalizeApiUrl(raw.fileUrl) : null,
   thumbnailUrl: raw.thumbnailUrl ? normalizeApiUrl(raw.thumbnailUrl) : null,
-  screenshotUrl: raw.screenshotUrl
-    ? normalizeApiUrl(raw.screenshotUrl)
-    : null,
+  screenshotUrl: raw.screenshotUrl ? normalizeApiUrl(raw.screenshotUrl) : null,
   pdfUrl: raw.pdfUrl ? normalizeApiUrl(raw.pdfUrl) : null,
   contentUrl: raw.contentUrl ? normalizeApiUrl(raw.contentUrl) : null,
   extractedText: raw.extractedText,
@@ -39,8 +37,13 @@ const { useList, useSingle } = createCrudHooks<Document>({
 });
 
 export function useDocuments(params: ListParams = {}) {
-  const { items: documents, createItem, updateItem, deleteItem, ...rest } =
-    useList(params);
+  const {
+    items: documents,
+    createItem,
+    updateItem,
+    deleteItem,
+    ...rest
+  } = useList(params);
 
   return {
     documents,

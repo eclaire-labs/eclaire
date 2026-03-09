@@ -12,7 +12,9 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
+import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +26,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import {
   Select,
   SelectContent,
@@ -34,7 +35,6 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { apiFetch } from "@/lib/api-client";
 import { setFlagColor, togglePin } from "@/lib/api-content";
@@ -78,18 +78,13 @@ export default function FlaggedItemsPage() {
             i.id === item.id ? { ...i, isPinned: updatedItem.isPinned } : i,
           ),
         );
-        toast({
-          title: updatedItem.isPinned ? "Pinned" : "Unpinned",
+        toast.success(updatedItem.isPinned ? "Pinned" : "Unpinned", {
           description: `${item.title} has been ${updatedItem.isPinned ? "pinned" : "unpinned"}.`,
         });
       }
     } catch (error) {
       console.error("Error toggling pin:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update pin status",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to update pin status" });
     }
   };
 
@@ -108,18 +103,13 @@ export default function FlaggedItemsPage() {
             i.id === item.id ? { ...i, flagColor: updatedItem.flagColor } : i,
           ),
         );
-        toast({
-          title: newColor ? "Flagged" : "Unflagged",
+        toast.success(newColor ? "Flagged" : "Unflagged", {
           description: `${item.title} has been ${newColor ? "flagged" : "unflagged"}.`,
         });
       }
     } catch (error) {
       console.error("Error toggling flag:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update flag",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to update flag" });
     }
   };
 
@@ -140,18 +130,13 @@ export default function FlaggedItemsPage() {
             i.id === item.id ? { ...i, flagColor: updatedItem.flagColor } : i,
           ),
         );
-        toast({
-          title: "Flag Updated",
+        toast.success("Flag Updated", {
           description: `${item.title} flag changed to ${color}.`,
         });
       }
     } catch (error) {
       console.error("Error changing flag color:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update flag color",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to update flag color" });
     }
   };
 
@@ -189,18 +174,14 @@ export default function FlaggedItemsPage() {
           );
           setItems(flaggedItems);
         } else {
-          toast({
-            title: "Error",
+          toast.error("Error", {
             description: "Failed to load flagged items",
-            variant: "destructive",
           });
         }
       } catch (error) {
         console.error("Error fetching flagged items:", error);
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to load flagged items",
-          variant: "destructive",
         });
       } finally {
         setIsLoading(false);

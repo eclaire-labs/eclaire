@@ -12,9 +12,9 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
 }));
 
-import { apiFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 import { transformNoteData, useNotes } from "@/hooks/use-notes";
+import { apiFetch } from "@/lib/api-client";
 
 const mockApiFetch = vi.mocked(apiFetch);
 
@@ -47,7 +47,9 @@ describe("transformNoteData", () => {
 
   it("defaults description to null via ||", () => {
     expect(transformNoteData(minimal).description).toBeNull();
-    expect(transformNoteData({ ...minimal, description: "" }).description).toBeNull();
+    expect(
+      transformNoteData({ ...minimal, description: "" }).description,
+    ).toBeNull();
   });
 
   it("defaults userId to empty string", () => {
@@ -115,7 +117,13 @@ describe("useNotes", () => {
 
     // Update mutation call
     mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ id: "n1", title: "New", content: "body", dueDate: null, tags: [] }),
+      mockJsonResponse({
+        id: "n1",
+        title: "New",
+        content: "body",
+        dueDate: null,
+        tags: [],
+      }),
     );
     // Refetch after invalidation
     mockApiFetch.mockResolvedValueOnce(
@@ -147,9 +155,7 @@ describe("useNotes", () => {
 
   it("uploadNote sends POST to /api/notes/upload with FormData", async () => {
     // Initial list fetch
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     const { result } = renderHook(() => useNotes(), {
       wrapper: createWrapper(),
@@ -165,9 +171,7 @@ describe("useNotes", () => {
       mockJsonResponse({ id: "n2", title: "note.md" }),
     );
     // Refetch after invalidation
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     await result.current.uploadNote(formData);
 
@@ -182,9 +186,7 @@ describe("useNotes", () => {
 
   it("upload failure triggers toast.error", async () => {
     // Initial list fetch
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [] }),
-    );
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
 
     const { result } = renderHook(() => useNotes(), {
       wrapper: createWrapper(),

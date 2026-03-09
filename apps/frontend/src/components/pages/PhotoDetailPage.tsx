@@ -22,10 +22,13 @@ import {
 const routeApi = getRouteApi("/_authenticated/photos/$id");
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { PhotoAnalysisCard } from "@/components/photo-analysis";
+import { DueDatePicker } from "@/components/shared/due-date-picker";
+import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,17 +38,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DueDatePicker } from "@/components/ui/due-date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { usePhotoAnalysis } from "@/hooks/use-photo-analysis";
 import { usePhoto } from "@/hooks/use-photos";
-import { useToast } from "@/hooks/use-toast";
 import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import { formatDate, formatFileSize } from "@/lib/date-utils";
 
@@ -82,7 +82,6 @@ const formatCoordinate = (
 export function PhotoDetailClient() {
   const { id: photoId } = routeApi.useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Use React Query hook for data fetching
@@ -132,19 +131,17 @@ export function PhotoDetailClient() {
   // Handle errors
   useEffect(() => {
     if (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description:
           error instanceof Error
             ? error.message
             : "Failed to load photo details.",
-        variant: "destructive",
       });
       if (error.message.includes("not found")) {
         navigate({ to: "/photos" });
       }
     }
-  }, [error, toast, navigate]);
+  }, [error, navigate]);
 
   // Handle save changes
   const handleSave = async () => {
@@ -166,8 +163,7 @@ export function PhotoDetailClient() {
         setIsEditing(false);
         // Refresh to get the latest data from server
         refresh();
-        toast({
-          title: "Photo updated",
+        toast.success("Photo updated", {
           description: "Your changes have been saved successfully.",
         });
       } else {
@@ -175,10 +171,8 @@ export function PhotoDetailClient() {
       }
     } catch (error) {
       console.error("Error updating photo:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to save changes.",
-        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);

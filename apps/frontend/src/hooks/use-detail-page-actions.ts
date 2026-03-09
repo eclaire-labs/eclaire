@@ -6,7 +6,7 @@
  */
 
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import { setFlagColor, togglePin } from "@/lib/api-content";
 import { isJobStuck } from "@/lib/date-utils";
@@ -42,8 +42,6 @@ interface UseDetailPageActionsOptions {
 
 export function useDetailPageActions(options: UseDetailPageActionsOptions) {
   const { contentType, item, refresh, onDeleted, onReprocessed } = options;
-  const { toast } = useToast();
-
   const [isReprocessing, setIsReprocessing] = useState(false);
   const [showReprocessDialog, setShowReprocessDialog] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -59,22 +57,17 @@ export function useDetailPageActions(options: UseDetailPageActionsOptions) {
       const response = await togglePin(contentType, item.id, !item.isPinned);
       if (response.ok) {
         refresh();
-        toast({
-          title: item.isPinned ? "Unpinned" : "Pinned",
+        toast.success(item.isPinned ? "Unpinned" : "Pinned", {
           description: `${label} has been ${item.isPinned ? "unpinned" : "pinned"}.`,
         });
       } else {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to update pin status",
-          variant: "destructive",
         });
       }
     } catch {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update pin status",
-        variant: "destructive",
       });
     }
   };
@@ -87,24 +80,19 @@ export function useDetailPageActions(options: UseDetailPageActionsOptions) {
       const response = await setFlagColor(contentType, item.id, color);
       if (response.ok) {
         refresh();
-        toast({
-          title: color ? "Flag Updated" : "Flag Removed",
+        toast.success(color ? "Flag Updated" : "Flag Removed", {
           description: color
             ? `${label} flag changed to ${color}.`
             : `Flag removed from ${singular}.`,
         });
       } else {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to update flag color",
-          variant: "destructive",
         });
       }
     } catch {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update flag color",
-        variant: "destructive",
       });
     }
   };
@@ -148,24 +136,19 @@ export function useDetailPageActions(options: UseDetailPageActionsOptions) {
       );
 
       if (response.ok) {
-        toast({
-          title: "Reprocessing Started",
+        toast.success("Reprocessing Started", {
           description: `Your ${singular} has been queued for reprocessing. This may take a few minutes.`,
         });
         onReprocessed?.();
       } else {
         const errorData = await response.json();
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: errorData.error || `Failed to reprocess ${singular}`,
-          variant: "destructive",
         });
       }
     } catch {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: `Failed to reprocess ${singular}`,
-        variant: "destructive",
       });
     } finally {
       setIsReprocessing(false);
@@ -181,16 +164,13 @@ export function useDetailPageActions(options: UseDetailPageActionsOptions) {
     try {
       await apiFetch(`/api/${contentType}/${item.id}`, { method: "DELETE" });
       setIsDeleteDialogOpen(false);
-      toast({
-        title: `${label} deleted`,
+      toast.success(`${label} deleted`, {
         description: `The ${singular} has been deleted.`,
       });
       onDeleted();
     } catch {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: `Failed to delete ${singular}`,
-        variant: "destructive",
       });
     }
   };

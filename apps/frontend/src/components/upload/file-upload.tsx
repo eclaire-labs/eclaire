@@ -13,11 +13,11 @@ import {
   XCircle,
 } from "lucide-react";
 import React, { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
@@ -38,8 +38,6 @@ export function FileUpload() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const uploadAreaRef = useRef<HTMLDivElement>(null);
-
-  const { toast } = useToast();
 
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith("image/")) return <Image className="h-4 w-4" />;
@@ -97,13 +95,12 @@ export function FileUpload() {
       const droppedFiles = Array.from(e.dataTransfer.files);
       if (droppedFiles.length > 0) {
         addFiles(droppedFiles);
-        toast({
-          title: "Files Added",
+        toast.success("Files Added", {
           description: `Added ${droppedFiles.length} file(s) for upload`,
         });
       }
     },
-    [addFiles, toast],
+    [addFiles],
   );
 
   const handleFileSelect = useCallback(
@@ -179,10 +176,8 @@ export function FileUpload() {
           ),
         );
 
-        toast({
-          title: "Upload Failed",
+        toast.error("Upload Failed", {
           description: `Failed to upload ${fileItem.file.name}`,
-          variant: "destructive",
         });
       }
 
@@ -190,8 +185,7 @@ export function FileUpload() {
     }
 
     setUploading(false);
-    toast({
-      title: "Upload Complete",
+    toast.success("Upload Complete", {
       description: `Successfully uploaded ${uploadedCount} files`,
     });
   };
@@ -259,8 +253,7 @@ export function FileUpload() {
         const droppedFiles = Array.from(e.dataTransfer?.files || []);
         if (droppedFiles.length > 0) {
           addFiles(droppedFiles);
-          toast({
-            title: "Files Added",
+          toast.success("Files Added", {
             description: `Added ${droppedFiles.length} file(s) for upload`,
           });
         }
@@ -278,7 +271,7 @@ export function FileUpload() {
       document.removeEventListener("dragenter", handleDocumentDragEnter);
       document.removeEventListener("drop", handleDocumentDrop);
     };
-  }, [handlePaste, addFiles, toast]);
+  }, [handlePaste, addFiles]);
 
   const totalSize = files.reduce((sum, item) => sum + item.file.size, 0);
   const successCount = files.filter((item) => item.status === "success").length;

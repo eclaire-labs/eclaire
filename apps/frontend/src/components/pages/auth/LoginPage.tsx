@@ -3,7 +3,9 @@ import { Link, useSearch } from "@tanstack/react-router";
 import { Github, Globe, Twitter } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import { Logo } from "@/components/shared/logo";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -14,8 +16,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Logo } from "@/components/ui/logo";
-import { useToast } from "@/hooks/use-toast";
 import { signIn } from "@/lib/auth";
 
 const formSchema = z.object({
@@ -28,7 +28,6 @@ const formSchema = z.object({
 });
 
 export default function LoginPage() {
-  const { toast } = useToast();
   const { callbackUrl } = useSearch({ from: "/auth/login" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,8 +50,7 @@ export default function LoginPage() {
         password: values.password,
         fetchOptions: {
           onSuccess: () => {
-            toast({
-              title: "Login successful!",
+            toast.success("Login successful!", {
               description: "Welcome back to Eclaire.",
             });
             // Use direct navigation for clean page load with session
@@ -60,20 +58,16 @@ export default function LoginPage() {
           },
           onError: () => {
             setError("Invalid email or password. Please try again.");
-            toast({
-              title: "Login failed",
+            toast.error("Login failed", {
               description: "Invalid email or password. Please try again.",
-              variant: "destructive",
             });
           },
         },
       });
     } catch (_error) {
       setError("An unexpected error occurred. Please try again.");
-      toast({
-        title: "Login failed",
+      toast.error("Login failed", {
         description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

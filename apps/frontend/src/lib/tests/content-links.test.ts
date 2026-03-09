@@ -1,4 +1,4 @@
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { ContentLink } from "@/types/message";
 
 vi.mock("@/lib/api-client", () => ({
@@ -305,7 +305,12 @@ describe("fetchContentMetadataBatch", () => {
       .mockResolvedValueOnce(okResponse(taskPayload));
 
     const links: ContentLink[] = [
-      { type: "bookmark", id: "b1", url: "/bookmarks/b1", title: "bookmark b1" },
+      {
+        type: "bookmark",
+        id: "b1",
+        url: "/bookmarks/b1",
+        title: "bookmark b1",
+      },
       { type: "task", id: "t1", url: "/tasks/t1", title: "task t1" },
     ];
 
@@ -331,7 +336,12 @@ describe("fetchContentMetadataBatch", () => {
       );
 
     const links: ContentLink[] = [
-      { type: "bookmark", id: "b2", url: "/bookmarks/b2", title: "bookmark b2" },
+      {
+        type: "bookmark",
+        id: "b2",
+        url: "/bookmarks/b2",
+        title: "bookmark b2",
+      },
       { type: "note", id: "n2", url: "/notes/n2", title: "note n2" },
     ];
 

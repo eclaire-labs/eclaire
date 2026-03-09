@@ -11,6 +11,8 @@ import {
   User,
 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
+import { Logo } from "@/components/shared/logo";
+import { UserAvatar } from "@/components/shared/user-avatar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,8 +23,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Logo } from "@/components/ui/logo";
-import { UserAvatar } from "@/components/ui/user-avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { useDueNowCount } from "@/hooks/use-due-now-count";
 import { useIsMobile } from "@/hooks/use-mobile";

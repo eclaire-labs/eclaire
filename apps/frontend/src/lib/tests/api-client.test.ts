@@ -88,9 +88,7 @@ describe("apiFetch", () => {
   });
 
   it("throws on 401 without retry", async () => {
-    fetchMock.mockResolvedValue(
-      new Response("unauthorized", { status: 401 }),
-    );
+    fetchMock.mockResolvedValue(new Response("unauthorized", { status: 401 }));
     await expect(apiFetch("/api/test")).rejects.toThrow(
       "Authentication required",
     );
@@ -114,9 +112,7 @@ describe("apiGet", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    fetchMock = vi
-      .fn()
-      .mockResolvedValue(new Response("ok", { status: 200 }));
+    fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
     globalThis.fetch = fetchMock as typeof fetch;
   });
 
@@ -135,9 +131,7 @@ describe("apiPost", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    fetchMock = vi
-      .fn()
-      .mockResolvedValue(new Response("ok", { status: 200 }));
+    fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
     globalThis.fetch = fetchMock as typeof fetch;
   });
 
@@ -172,9 +166,7 @@ describe("apiPut", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    fetchMock = vi
-      .fn()
-      .mockResolvedValue(new Response("ok", { status: 200 }));
+    fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
     globalThis.fetch = fetchMock as typeof fetch;
   });
 
@@ -196,9 +188,7 @@ describe("apiDelete", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    fetchMock = vi
-      .fn()
-      .mockResolvedValue(new Response("ok", { status: 200 }));
+    fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
     globalThis.fetch = fetchMock as typeof fetch;
   });
 

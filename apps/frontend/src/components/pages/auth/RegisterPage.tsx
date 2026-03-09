@@ -3,7 +3,9 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Github, Globe, Twitter } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import { Logo } from "@/components/shared/logo";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -14,8 +16,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Logo } from "@/components/ui/logo";
-import { useToast } from "@/hooks/use-toast";
 import { signUp } from "@/lib/auth";
 
 const formSchema = z
@@ -38,7 +38,6 @@ const formSchema = z
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -65,17 +64,14 @@ export default function RegisterPage() {
         throw new Error(error.message || "Registration failed");
       }
 
-      toast({
-        title: "Account created!",
+      toast.success("Account created!", {
         description: "Welcome to Eclaire! You're now signed in.",
       });
       navigate({ to: "/dashboard" });
     } catch (error) {
-      toast({
-        title: "Registration failed",
+      toast.error("Registration failed", {
         description:
           error instanceof Error ? error.message : "Something went wrong",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

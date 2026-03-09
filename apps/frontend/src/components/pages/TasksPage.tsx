@@ -7,10 +7,11 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
+import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
-import { useTags } from "@/hooks/use-tags";
-import { AIAvatar } from "@/components/ui/ai-avatar";
 import { TagEditor } from "@/components/shared/TagEditor";
+import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -40,19 +41,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { UserAvatar } from "@/components/ui/user-avatar";
+import type { ListParams } from "@/hooks/create-crud-hooks";
 import { useAuth } from "@/hooks/use-auth";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
-import type { ListParams } from "@/hooks/create-crud-hooks";
-import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { useTags } from "@/hooks/use-tags";
 import { useTasks } from "@/hooks/use-tasks";
-import { useToast } from "@/hooks/use-toast";
 import { getUsers } from "@/lib/api-users";
 import type { Task, TaskStatus, User } from "@/types/task";
+import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
 import { TaskListItem } from "./tasks/TaskListItem";
 import { TaskTileItem } from "./tasks/TaskTileItem";
-import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
 import { tasksConfig } from "./tasks/tasks-config";
 
 const routeApi = getRouteApi("/_authenticated/tasks/");
@@ -111,7 +111,6 @@ const transformAuthUserForAvatar = (authUser: any) => ({
 // ---------------------------------------------------------------------------
 
 export default function TasksPage() {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { openDialog } = routeApi.useSearch();
   const { data: auth } = useAuth();
@@ -225,14 +224,12 @@ export default function TasksPage() {
   // Error toast
   useEffect(() => {
     if (error) {
-      toast({
-        title: "Error Loading Tasks",
+      toast.error("Error Loading Tasks", {
         description:
           error instanceof Error ? error.message : "Failed to load tasks",
-        variant: "destructive",
       });
     }
-  }, [error, toast]);
+  }, [error]);
 
   // Handle URL parameter to open dialog with AI Assistant
   useEffect(() => {
@@ -322,10 +319,8 @@ export default function TasksPage() {
   // Create task
   const handleCreateTask = async (taskData: Omit<Task, "id">) => {
     if (!taskData.title) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Task title is required.",
-        variant: "destructive",
       });
       return;
     }
@@ -367,8 +362,7 @@ export default function TasksPage() {
 
       await createTask(taskToSend);
       setIsNewTaskDialogOpen(false);
-      toast({
-        title: "Task Created",
+      toast.success("Task Created", {
         description: `"${taskToSend.title}" added.`,
       });
     } catch (err) {
@@ -381,10 +375,8 @@ export default function TasksPage() {
     if (!editingTask) return;
 
     if (!editingTask.title) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Task title cannot be empty.",
-        variant: "destructive",
       });
       return;
     }
@@ -424,15 +416,13 @@ export default function TasksPage() {
       setIsTaskDialogOpen(false);
       setEditingTask(null);
 
-      toast({
-        title: "Task Updated",
+      toast.success("Task Updated", {
         description: `"${editingTask.title}" saved.`,
       });
     } catch (err) {
       console.error("Error updating task:", err);
     }
   };
-
 
   // Current user for avatars
   const currentUser = auth?.user ? transformBackendUser(auth.user) : undefined;
@@ -558,7 +548,6 @@ export default function TasksPage() {
     </SelectContent>
   );
 
-
   return (
     <ListPageLayout
       state={state}
@@ -609,7 +598,6 @@ export default function TasksPage() {
               setIsTaskDialogOpen(open);
               if (!open) {
                 setEditingTask(null);
-          
               }
             }}
           >
@@ -715,7 +703,10 @@ export default function TasksPage() {
                     onRemoveTag={(tag) =>
                       setEditingTask((prev) =>
                         prev
-                          ? { ...prev, tags: prev.tags.filter((t) => t !== tag) }
+                          ? {
+                              ...prev,
+                              tags: prev.tags.filter((t) => t !== tag),
+                            }
                           : null,
                       )
                     }

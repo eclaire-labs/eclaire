@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Database, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,9 +33,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
-import { authClient } from "@/lib/auth";
 import { apiFetch } from "@/lib/api-client";
+import { authClient } from "@/lib/auth";
 
 const passwordFormSchema = z
   .object({
@@ -65,7 +65,6 @@ type DeleteAllDataFormValues = z.infer<typeof deleteAllDataFormSchema>;
 
 export default function AccountSettings() {
   const { data: session, isPending: isLoading, error } = useAuth();
-  const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleteAllDataDialogOpen, setIsDeleteAllDataDialogOpen] =
     useState(false);
@@ -112,17 +111,14 @@ export default function AccountSettings() {
       return data;
     },
     onSuccess: () => {
-      toast({
-        title: "Password updated",
+      toast.success("Password updated", {
         description: "Your password has been updated successfully.",
       });
       passwordForm.reset();
     },
     onError: (error) => {
-      toast({
-        title: "Failed to update password",
+      toast.error("Failed to update password", {
         description: error.message,
-        variant: "destructive",
       });
     },
   });
@@ -136,8 +132,7 @@ export default function AccountSettings() {
       return data;
     },
     onSuccess: () => {
-      toast({
-        title: "Account deleted",
+      toast.success("Account deleted", {
         description: "Your account has been deleted. Redirecting to login...",
       });
       setIsDeleteDialogOpen(false);
@@ -147,10 +142,8 @@ export default function AccountSettings() {
       }, 1500);
     },
     onError: (error) => {
-      toast({
-        title: "Failed to delete account",
+      toast.error("Failed to delete account", {
         description: error.message,
-        variant: "destructive",
       });
     },
   });
@@ -164,8 +157,7 @@ export default function AccountSettings() {
       return await res.json();
     },
     onSuccess: (data) => {
-      toast({
-        title: "All data deleted",
+      toast.success("All data deleted", {
         description:
           data.message ||
           "All your data has been successfully deleted. Your account remains active.",
@@ -178,10 +170,8 @@ export default function AccountSettings() {
       }, 1500);
     },
     onError: (error) => {
-      toast({
-        title: "Failed to delete data",
+      toast.error("Failed to delete data", {
         description: error.message,
-        variant: "destructive",
       });
     },
   });

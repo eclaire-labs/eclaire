@@ -1,3 +1,4 @@
+import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,15 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import {
   type Channel,
-  type TelegramConfig,
   type SlackConfig,
+  type TelegramConfig,
   useChannels,
 } from "@/hooks/use-channels";
-import TelegramChannelForm from "./TelegramChannelForm";
 import SlackChannelForm from "./SlackChannelForm";
+import TelegramChannelForm from "./TelegramChannelForm";
 
 interface AddChannelDialogProps {
   trigger?: React.ReactNode;
@@ -41,7 +41,11 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
   const handleCreateChannel = async (data: {
     name: string;
     capability: Channel["capability"];
-    config: TelegramConfig | Partial<TelegramConfig> | SlackConfig | Partial<SlackConfig>;
+    config:
+      | TelegramConfig
+      | Partial<TelegramConfig>
+      | SlackConfig
+      | Partial<SlackConfig>;
   }) => {
     if (!selectedPlatform) return;
 

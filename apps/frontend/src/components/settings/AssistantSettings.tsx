@@ -135,7 +135,6 @@ export default function AssistantSettings() {
             />
           </div>
         </div>
-
       </CardContent>
     </Card>
   );

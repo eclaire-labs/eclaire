@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useSession } from "@/lib/auth";
 import { apiFetch } from "@/lib/api-client";
+import { useSession } from "@/lib/auth";
 
 export interface User {
   id: string;

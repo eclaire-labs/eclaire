@@ -6,6 +6,7 @@ import {
   TrashIcon,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +29,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
 import { useApiKeys } from "@/hooks/use-api-keys";
 
 export default function ApiKeyManager() {
@@ -51,24 +51,19 @@ export default function ApiKeyManager() {
     displayKey: string;
     name: string;
   } | null>(null);
-  const { toast } = useToast();
-
   const handleCopyKey = (key: string) => {
     navigator.clipboard
       .writeText(key)
       .then(() => {
         setCopied(key);
-        toast({
-          title: "API Key copied",
+        toast.success("API Key copied", {
           description: "The API key has been copied to your clipboard.",
         });
         setTimeout(() => setCopied(null), 2000);
       })
       .catch((err) => {
         console.error("Failed to copy API key:", err);
-        toast({
-          variant: "destructive",
-          title: "Failed to copy",
+        toast.error("Failed to copy", {
           description: "Could not copy the API key to clipboard.",
         });
       });
@@ -81,15 +76,12 @@ export default function ApiKeyManager() {
       setCreatedKey(result);
       setNewKeyName("");
       setShowCreateDialog(false);
-      toast({
-        title: "API Key created",
+      toast.success("API Key created", {
         description:
           "Your new API key has been created. Make sure to copy it now.",
       });
     } else {
-      toast({
-        variant: "destructive",
-        title: "Failed to create API key",
+      toast.error("Failed to create API key", {
         description: "Could not create the API key. Please try again.",
       });
     }
@@ -98,14 +90,11 @@ export default function ApiKeyManager() {
   const handleDeleteKey = async (id: string) => {
     const success = await deleteApiKey(id);
     if (success) {
-      toast({
-        title: "API Key deleted",
+      toast.success("API Key deleted", {
         description: "The API key has been deleted successfully.",
       });
     } else {
-      toast({
-        variant: "destructive",
-        title: "Failed to delete API key",
+      toast.error("Failed to delete API key", {
         description: "Could not delete the API key. Please try again.",
       });
     }
@@ -114,9 +103,7 @@ export default function ApiKeyManager() {
 
   const handleUpdateKey = async (id: string) => {
     if (!editKeyName.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Invalid name",
+      toast.error("Invalid name", {
         description: "API key name cannot be empty.",
       });
       return;
@@ -124,16 +111,13 @@ export default function ApiKeyManager() {
 
     const success = await updateApiKey(id, editKeyName.trim());
     if (success) {
-      toast({
-        title: "API Key updated",
+      toast.success("API Key updated", {
         description: "The API key name has been updated successfully.",
       });
       setShowEditDialog(null);
       setEditKeyName("");
     } else {
-      toast({
-        variant: "destructive",
-        title: "Failed to update API key",
+      toast.error("Failed to update API key", {
         description: "Could not update the API key name. Please try again.",
       });
     }

@@ -8,7 +8,6 @@ import {
   useState,
 } from "react";
 
-
 interface AssistantPreferences {
   showThinkingTokens: boolean;
   showAssistantOverlay: boolean;

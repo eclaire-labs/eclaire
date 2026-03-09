@@ -2,12 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Mail } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
 
 export default function ForgotPasswordPage() {
-  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -22,8 +21,7 @@ export default function ForgotPasswordPage() {
     setTimeout(() => {
       setIsSubmitting(false);
       setIsSubmitted(true);
-      toast({
-        title: "Reset email sent",
+      toast.success("Reset email sent", {
         description:
           "If an account exists with this email, you will receive a password reset link.",
       });

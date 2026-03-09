@@ -84,9 +84,7 @@ export async function apiFetch(
 
   // Handle server errors (5xx)
   if (response.status >= 500) {
-    throw new Error(
-      `Server error: ${response.status} ${response.statusText}`,
-    );
+    throw new Error(`Server error: ${response.status} ${response.statusText}`);
   }
 
   return response;

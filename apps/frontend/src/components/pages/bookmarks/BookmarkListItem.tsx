@@ -7,6 +7,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
+import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +17,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Bookmark } from "@/types/bookmark";
@@ -77,16 +77,10 @@ export function BookmarkListItem({
       </div>
       {/* Title & URL */}
       <div className="flex-1 min-w-0 mr-4">
-        <p
-          className="text-sm font-medium truncate"
-          title={entry.title || ""}
-        >
+        <p className="text-sm font-medium truncate" title={entry.title || ""}>
           {entry.title || "Untitled"}
         </p>
-        <p
-          className="text-xs text-muted-foreground truncate"
-          title={entry.url}
-        >
+        <p className="text-xs text-muted-foreground truncate" title={entry.url}>
           {entry.url}
         </p>
       </div>
@@ -110,10 +104,7 @@ export function BookmarkListItem({
           </Badge>
         ))}
         {entry.tags.length > 2 && (
-          <Badge
-            variant="outline"
-            className="text-xs px-1 py-0 font-normal"
-          >
+          <Badge variant="outline" className="text-xs px-1 py-0 font-normal">
             +{entry.tags.length - 2}
           </Badge>
         )}
@@ -160,9 +151,7 @@ export function BookmarkListItem({
             <DropdownMenuItem onClick={() => onClick()}>
               <FileText className="mr-2 h-4 w-4" /> View Details
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => window.open(entry.url, "_blank")}
-            >
+            <DropdownMenuItem onClick={() => window.open(entry.url, "_blank")}>
               <ExternalLink className="mr-2 h-4 w-4" /> Open Link
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onEditClick(entry)}>

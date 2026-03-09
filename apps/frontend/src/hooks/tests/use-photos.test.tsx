@@ -15,12 +15,8 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
 }));
 
+import { transformPhotoData, usePhoto, usePhotos } from "@/hooks/use-photos";
 import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
-import {
-  transformPhotoData,
-  usePhoto,
-  usePhotos,
-} from "@/hooks/use-photos";
 
 const mockApiFetch = vi.mocked(apiFetch);
 const mockNormalizeApiUrl = vi.mocked(normalizeApiUrl);
@@ -127,16 +123,12 @@ describe("transformPhotoData", () => {
     const rawTruthy = makeRawPhoto();
     const resultTruthy = transformPhotoData(rawTruthy);
 
-    expect(mockNormalizeApiUrl).toHaveBeenCalledWith(
-      rawTruthy.thumbnailUrl,
-    );
+    expect(mockNormalizeApiUrl).toHaveBeenCalledWith(rawTruthy.thumbnailUrl);
     expect(resultTruthy.thumbnailUrl).toBe(
       `http://api${rawTruthy.thumbnailUrl as string}`,
     );
 
-    expect(mockNormalizeApiUrl).toHaveBeenCalledWith(
-      rawTruthy.convertedJpgUrl,
-    );
+    expect(mockNormalizeApiUrl).toHaveBeenCalledWith(rawTruthy.convertedJpgUrl);
     expect(resultTruthy.convertedJpgUrl).toBe(
       `http://api${rawTruthy.convertedJpgUrl as string}`,
     );
@@ -205,12 +197,10 @@ describe("transformPhotoData", () => {
 
   it("defaults tags to [] and preserves enabled: false via ??", () => {
     // Tags
-    expect(
-      transformPhotoData(makeRawPhoto({ tags: null })).tags,
-    ).toEqual([]);
-    expect(
-      transformPhotoData(makeRawPhoto({ tags: undefined })).tags,
-    ).toEqual([]);
+    expect(transformPhotoData(makeRawPhoto({ tags: null })).tags).toEqual([]);
+    expect(transformPhotoData(makeRawPhoto({ tags: undefined })).tags).toEqual(
+      [],
+    );
 
     // enabled: false preserved
     const result = transformPhotoData(makeRawPhoto({ enabled: false }));

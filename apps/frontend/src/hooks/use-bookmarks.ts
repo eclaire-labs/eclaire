@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import type { Bookmark } from "@/types/bookmark";
-import { type ListParams, createCrudHooks } from "./create-crud-hooks";
+import { createCrudHooks, type ListParams } from "./create-crud-hooks";
 
 // biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 export const transformBookmarkData = (raw: any): Bookmark => ({
@@ -21,9 +21,7 @@ export const transformBookmarkData = (raw: any): Bookmark => ({
   tags: raw.tags || [],
   faviconUrl: raw.faviconUrl ? normalizeApiUrl(raw.faviconUrl) : null,
   thumbnailUrl: raw.thumbnailUrl ? normalizeApiUrl(raw.thumbnailUrl) : null,
-  screenshotUrl: raw.screenshotUrl
-    ? normalizeApiUrl(raw.screenshotUrl)
-    : null,
+  screenshotUrl: raw.screenshotUrl ? normalizeApiUrl(raw.screenshotUrl) : null,
   screenshotMobileUrl: raw.screenshotMobileUrl
     ? normalizeApiUrl(raw.screenshotMobileUrl)
     : null,
@@ -71,8 +69,7 @@ export function useBookmarks(params: ListParams = {}) {
       return response.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-    onError: (error: Error) =>
-      toast.error(`Import failed: ${error.message}`),
+    onError: (error: Error) => toast.error(`Import failed: ${error.message}`),
   });
 
   return {

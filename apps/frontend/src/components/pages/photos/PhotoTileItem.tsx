@@ -9,7 +9,9 @@ import {
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
+import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,9 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import type { FlagColor } from "@/hooks/use-list-page-state";
-import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Photo } from "@/types/photo";
 import { formatLocation } from "./photo-utils";
@@ -56,7 +56,6 @@ export function PhotoTileItem({
   onFlagColorChange,
   onChatClick,
 }: PhotoTileItemProps) {
-  const { toast } = useToast();
   const locationString = formatLocation(
     photo.locationCity,
     photo.locationCountryName,
@@ -180,8 +179,7 @@ export function PhotoTileItem({
                 <DropdownMenuItem
                   onClick={() => {
                     window.open(photo.imageUrl, "_blank");
-                    toast({
-                      title: "Opening Image",
+                    toast.success("Opening Image", {
                       description: `Opening ${photo.originalFilename} in a new tab. You can save it from there.`,
                     });
                   }}

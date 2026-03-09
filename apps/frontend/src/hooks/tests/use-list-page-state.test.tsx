@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { renderHook, act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  type ListableItem,
   type ListPageConfig,
   type ListPageOperations,
-  type ListableItem,
   useListPageState,
 } from "@/hooks/use-list-page-state";
 
@@ -15,13 +15,20 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-let mockPreferences: { viewMode: string; sortBy: string; sortDir: "asc" | "desc" } = {
+let mockPreferences: {
+  viewMode: string;
+  sortBy: string;
+  sortDir: "asc" | "desc";
+} = {
   viewMode: "tile",
   sortBy: "createdAt",
   sortDir: "desc",
 };
 const mockUpdatePreference = vi.fn((key: string, value: string) => {
-  mockPreferences = { ...mockPreferences, [key]: value } as typeof mockPreferences;
+  mockPreferences = {
+    ...mockPreferences,
+    [key]: value,
+  } as typeof mockPreferences;
 });
 vi.mock("@/hooks/use-view-preferences", () => ({
   useViewPreferences: () => [mockPreferences, mockUpdatePreference],
@@ -32,7 +39,8 @@ vi.mock("@/lib/api-content", () => ({
   setFlagColor: vi.fn(),
 }));
 
-import { togglePin, setFlagColor } from "@/lib/api-content";
+import { setFlagColor, togglePin } from "@/lib/api-content";
+
 const mockTogglePin = vi.mocked(togglePin);
 const mockSetFlagColor = vi.mocked(setFlagColor);
 
@@ -122,9 +130,7 @@ describe("serverParams", () => {
   it("includes extra filter values that differ from initial", () => {
     const configWithExtra: ListPageConfig<TestItem> = {
       ...testConfig,
-      extraFilters: [
-        { key: "status", label: "Status", initialValue: "all" },
-      ],
+      extraFilters: [{ key: "status", label: "Status", initialValue: "all" }],
     };
 
     const { result } = renderState([], defaultTags, configWithExtra);
@@ -175,9 +181,7 @@ describe("computed state", () => {
   it("activeFilterCount counts extra filters", () => {
     const configWithExtra: ListPageConfig<TestItem> = {
       ...testConfig,
-      extraFilters: [
-        { key: "status", label: "Status", initialValue: "all" },
-      ],
+      extraFilters: [{ key: "status", label: "Status", initialValue: "all" }],
     };
 
     const { result } = renderState([], defaultTags, configWithExtra);
@@ -190,7 +194,11 @@ describe("computed state", () => {
   });
 
   it("isGrouped is true when sortBy is in groupableSortKeys", () => {
-    mockPreferences = { viewMode: "tile", sortBy: "createdAt", sortDir: "desc" };
+    mockPreferences = {
+      viewMode: "tile",
+      sortBy: "createdAt",
+      sortDir: "desc",
+    };
     const { result } = renderState();
     expect(result.current.isGrouped).toBe(true);
   });
@@ -222,12 +230,14 @@ describe("handlers", () => {
   it("clearAllFilters resets tag and extra filters", () => {
     const configWithExtra: ListPageConfig<TestItem> = {
       ...testConfig,
-      extraFilters: [
-        { key: "status", label: "Status", initialValue: "all" },
-      ],
+      extraFilters: [{ key: "status", label: "Status", initialValue: "all" }],
     };
 
-    const { result } = renderState([makeItem("1", { tags: ["work"] })], defaultTags, configWithExtra);
+    const { result } = renderState(
+      [makeItem("1", { tags: ["work"] })],
+      defaultTags,
+      configWithExtra,
+    );
 
     act(() => {
       result.current.handleTagFilterChange("work");
@@ -254,7 +264,11 @@ describe("handlers", () => {
   });
 
   it("toggleSortDir flips direction", () => {
-    mockPreferences = { viewMode: "tile", sortBy: "createdAt", sortDir: "desc" };
+    mockPreferences = {
+      viewMode: "tile",
+      sortBy: "createdAt",
+      sortDir: "desc",
+    };
     const { result } = renderState();
 
     act(() => {
@@ -273,7 +287,12 @@ describe("pin/flag actions", () => {
   it("handlePinToggle calls togglePin and refreshes", async () => {
     mockTogglePin.mockResolvedValueOnce(okResponse());
     const ops = makeOperations();
-    const { result } = renderState([makeItem("1")], defaultTags, testConfig, ops);
+    const { result } = renderState(
+      [makeItem("1")],
+      defaultTags,
+      testConfig,
+      ops,
+    );
 
     const item = result.current.sortedItems[0]!;
     await act(() => result.current.handlePinToggle(item));
@@ -285,7 +304,12 @@ describe("pin/flag actions", () => {
   it("handleFlagColorChange calls setFlagColor and refreshes", async () => {
     mockSetFlagColor.mockResolvedValueOnce(okResponse());
     const ops = makeOperations();
-    const { result } = renderState([makeItem("1")], defaultTags, testConfig, ops);
+    const { result } = renderState(
+      [makeItem("1")],
+      defaultTags,
+      testConfig,
+      ops,
+    );
 
     const item = result.current.sortedItems[0]!;
     await act(() => result.current.handleFlagColorChange(item, "red"));
@@ -298,7 +322,12 @@ describe("pin/flag actions", () => {
 describe("delete flow", () => {
   it("openDeleteDialog → handleDeleteConfirmed calls deleteItem and closes", async () => {
     const ops = makeOperations();
-    const { result } = renderState([makeItem("1")], defaultTags, testConfig, ops);
+    const { result } = renderState(
+      [makeItem("1")],
+      defaultTags,
+      testConfig,
+      ops,
+    );
 
     act(() => {
       result.current.openDeleteDialog("1", "Item 1");

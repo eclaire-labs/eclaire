@@ -25,7 +25,9 @@ import {
   useTransition,
 } from "react";
 import { flushSync } from "react-dom";
+import { AssistantOverlay } from "@/components/assistant/assistant-overlay";
 import { GlobalAssistant } from "@/components/assistant/global-assistant";
+import { useToolExecutionTracker } from "@/components/assistant/tool-execution-tracker";
 import { PopularTagsSection } from "@/components/dashboard/popular-tags-section";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
@@ -33,8 +35,6 @@ import { MobileChatView } from "@/components/mobile/mobile-chat-view";
 import { MobileFoldersView } from "@/components/mobile/mobile-folders-view";
 import { MobileLayout } from "@/components/mobile/mobile-layout";
 import type { MobileTab } from "@/components/mobile/mobile-tab-bar";
-import { AssistantOverlay } from "@/components/ui/assistant-overlay";
-import { useToolExecutionTracker } from "@/components/ui/tool-execution-tracker";
 import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { apiFetch } from "@/lib/api-client";
@@ -46,7 +46,6 @@ import {
   listSessions,
   updateSession,
 } from "@/lib/api-sessions";
-import type { BackendMessage, ConversationSummary } from "@/types/conversation";
 import {
   getMobileTabFromPathname,
   getRouteForMobileTab,
@@ -57,6 +56,7 @@ import {
 } from "@/lib/streaming-client";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 import type { Bookmark as BookmarkType } from "@/types/bookmark";
+import type { BackendMessage, ConversationSummary } from "@/types/conversation";
 import type { AssetReference, ContentLink, Message } from "@/types/message";
 import { convertToToolCallSummary } from "@/types/message";
 
@@ -838,7 +838,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               handleKeyDown={handleKeyDown}
               handleSend={handleSend}
               startNewConversation={startNewConversation}
-
               currentConversation={currentConversation}
               onEditConversationTitle={handleEditConversationTitle}
               onSelectConversation={handleSelectConversation}
@@ -1008,7 +1007,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               handleKeyDown={handleKeyDown}
               handleSend={handleSend}
               startNewConversation={startNewConversation}
-
               currentConversation={currentConversation}
               onEditConversationTitle={handleEditConversationTitle}
               onShowHistory={() => setShowHistory(true)}

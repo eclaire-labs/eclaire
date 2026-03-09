@@ -87,9 +87,7 @@ export function CreateBookmarkDialog({
                 }
               }}
             />
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         </div>
         <DialogFooter>

@@ -3,7 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import { AvatarColorPicker } from "@/components/shared/avatar-color-picker";
+import { UserAvatar } from "@/components/shared/user-avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +17,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AvatarColorPicker } from "@/components/ui/avatar-color-picker";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -41,8 +43,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { UserAvatar } from "@/components/ui/user-avatar";
-import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api-client";
 import { COUNTRIES, getUserTimezone, TIMEZONES } from "@/lib/location-data";
 import type { User } from "@/types/user";
@@ -66,7 +66,6 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export default function ProfileSettings() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -165,16 +164,13 @@ export default function ProfileSettings() {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-      toast({
-        title: "Avatar updated",
+      toast.success("Avatar updated", {
         description: "Your profile picture has been updated successfully.",
       });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to update avatar",
+      toast.error("Failed to update avatar", {
         description: error.message,
-        variant: "destructive",
       });
     },
   });
@@ -196,16 +192,13 @@ export default function ProfileSettings() {
     onSuccess: () => {
       // Refresh user profile data to remove avatar
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-      toast({
-        title: "Avatar removed",
+      toast.success("Avatar removed", {
         description: "Your profile picture has been removed successfully.",
       });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to remove avatar",
+      toast.error("Failed to remove avatar", {
         description: error.message,
-        variant: "destructive",
       });
     },
   });
@@ -226,53 +219,43 @@ export default function ProfileSettings() {
     onSuccess: (updatedUser) => {
       // Update the user profile cache with the updated user data
       queryClient.setQueryData(["user-profile"], updatedUser);
-      toast({
-        title: "Profile updated",
+      toast.success("Profile updated", {
         description: "Your profile has been updated successfully.",
       });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to update profile",
+      toast.error("Failed to update profile", {
         description: error.message,
-        variant: "destructive",
       });
     },
   });
 
   // Handle file selection
-  const handleFileSelect = useCallback(
-    (file: File) => {
-      if (!file.type.startsWith("image/")) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select an image file.",
-          variant: "destructive",
-        });
-        return;
-      }
+  const handleFileSelect = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Invalid file type", {
+        description: "Please select an image file.",
+      });
+      return;
+    }
 
-      if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
-        toast({
-          title: "File too large",
-          description: "Please select an image smaller than 5MB.",
-          variant: "destructive",
-        });
-        return;
-      }
+    if (file.size > 5 * 1024 * 1024) {
+      // 5MB limit
+      toast.error("File too large", {
+        description: "Please select an image smaller than 5MB.",
+      });
+      return;
+    }
 
-      setAvatarFile(file);
+    setAvatarFile(file);
 
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setAvatarPreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    },
-    [toast],
-  );
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setAvatarPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   // Handle drag and drop
   const handleDrop = useCallback(

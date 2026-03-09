@@ -12,12 +12,11 @@ import { nanoid } from "nanoid";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
 import type { ViewModeDef } from "@/components/list-page";
-import type { ListParams } from "@/hooks/create-crud-hooks";
-import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
-import { useTags } from "@/hooks/use-tags";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
+import type { UploadingFile } from "@/components/shared/UploadProgressList";
 import { UploadProgressList } from "@/components/shared/UploadProgressList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,14 +32,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { ListParams } from "@/hooks/create-crud-hooks";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { usePhotos } from "@/hooks/use-photos";
-import { useToast } from "@/hooks/use-toast";
+import { useTags } from "@/hooks/use-tags";
 import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/list-page-utils";
 import type { EditPhotoState, Photo } from "@/types/photo";
-import type { UploadingFile } from "@/components/shared/UploadProgressList";
 import { PhotoGalleryView } from "./photos/PhotoGalleryView";
 import { PhotoListItem } from "./photos/PhotoListItem";
 import { PhotoTileItem } from "./photos/PhotoTileItem";
@@ -87,7 +87,6 @@ const photosViewModes: ViewModeDef[] = [
 // ---------------------------------------------------------------------------
 
 export default function PhotosPage() {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [params, setParams] = useState<ListParams>({});
 
@@ -241,7 +240,6 @@ export default function PhotosPage() {
     );
   };
 
-
   // --- API Action Handlers ---
 
   const handleUpdatePhoto = async (event: React.FormEvent) => {
@@ -261,8 +259,7 @@ export default function PhotosPage() {
       setIsEditPhotoDialogOpen(false);
       setEditingPhoto(null);
       setSelectedPhoto(null);
-      toast({
-        title: "Photo Updated",
+      toast.success("Photo Updated", {
         description: `"${editingPhoto.title}" updated.`,
       });
     } catch (err) {
@@ -334,8 +331,7 @@ export default function PhotosPage() {
             ),
           );
 
-          toast({
-            title: "Upload Successful",
+          toast.success("Upload Successful", {
             description: `"${createdPhoto.title}" added.`,
           });
         } catch (err) {
@@ -349,10 +345,8 @@ export default function PhotosPage() {
                 : f,
             ),
           );
-          toast({
-            title: "Upload Error",
+          toast.error("Upload Error", {
             description: `Failed to upload ${upload.file.name}: ${message}`,
-            variant: "destructive",
           });
         }
       }
@@ -382,10 +376,8 @@ export default function PhotosPage() {
           } else if (error.code === "file-invalid-type") {
             message = `Invalid file type. Allowed: ${Object.values(ALLOWED_UPLOAD_TYPES).flat().join(", ")}`;
           }
-          toast({
-            title: "Upload Rejected",
+          toast.error("Upload Rejected", {
             description: `${file.name}: ${message}`,
-            variant: "destructive",
           });
         });
       });

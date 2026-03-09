@@ -36,21 +36,21 @@ import {
 const routeApi = getRouteApi("/_authenticated/bookmarks/$id");
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
+import { DueDatePicker } from "@/components/shared/due-date-picker";
+import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DueDatePicker } from "@/components/ui/due-date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PinFlagControls } from "@/components/ui/pin-flag-controls";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useBookmark } from "@/hooks/use-bookmarks";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
-import { useToast } from "@/hooks/use-toast";
 import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import { formatDate } from "@/lib/date-utils";
 import type {
@@ -114,7 +114,6 @@ const isRedditBookmark = (
 export function BookmarkDetailClient() {
   const { id: bookmarkId } = routeApi.useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [localBookmark, setLocalBookmark] = useState<Bookmark | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [tagInput, setTagInput] = useState("");
@@ -154,23 +153,18 @@ export function BookmarkDetailClient() {
         setIsEditMode(false);
         // Refresh to get the latest data from server
         refresh();
-        toast({
-          title: "Bookmark updated",
+        toast.success("Bookmark updated", {
           description: "Your bookmark has been updated successfully.",
         });
       } else {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to update bookmark",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error updating bookmark:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update bookmark",
-        variant: "destructive",
       });
     }
   };
@@ -1165,9 +1159,7 @@ export function BookmarkDetailClient() {
                         asChild
                       >
                         <a
-                          href={normalizeApiUrl(
-                            bookmark.screenshotFullPageUrl,
-                          )}
+                          href={normalizeApiUrl(bookmark.screenshotFullPageUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

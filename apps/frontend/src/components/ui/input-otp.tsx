@@ -1,3 +1,5 @@
+"use client";
+
 import { OTPInput, OTPInputContext } from "input-otp";
 import { Dot } from "lucide-react";
 import * as React from "react";
@@ -33,9 +35,7 @@ const InputOTPSlot = React.forwardRef<
   React.ComponentPropsWithoutRef<"div"> & { index: number }
 >(({ index, className, ...props }, ref) => {
   const inputOTPContext = React.useContext(OTPInputContext);
-  const slot = inputOTPContext.slots[index];
-  if (!slot) return null;
-  const { char, hasFakeCaret, isActive } = slot;
+  const { char, hasFakeCaret, isActive } = inputOTPContext.slots[index];
 
   return (
     <div
@@ -62,9 +62,9 @@ const InputOTPSeparator = React.forwardRef<
   React.ElementRef<"div">,
   React.ComponentPropsWithoutRef<"div">
 >(({ ...props }, ref) => (
-  // biome-ignore lint/a11y/useSemanticElements: visual dot separator between OTP input slots, not a content divider
-  // biome-ignore lint/a11y/useFocusableInteractive: decorative separator, not an interactive element
-  // biome-ignore lint/a11y/useAriaPropsForRole: decorative separator, aria-orientation not needed
+  // biome-ignore lint/a11y/useFocusableInteractive: shadcn input-otp separator pattern
+  // biome-ignore lint/a11y/useSemanticElements: shadcn input-otp separator pattern
+  // biome-ignore lint/a11y/useAriaPropsForRole: shadcn input-otp separator pattern
   <div ref={ref} role="separator" {...props}>
     <Dot />
   </div>

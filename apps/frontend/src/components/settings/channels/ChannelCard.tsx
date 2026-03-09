@@ -1,3 +1,4 @@
+import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import {
   ArrowLeftRight,
   Bell,
@@ -9,7 +10,6 @@ import {
   Zap,
 } from "lucide-react";
 import { useState } from "react";
-import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -147,7 +147,8 @@ export default function ChannelCard({ channel, onEdit }: ChannelCardProps) {
                   {channel.name}
                 </CardTitle>
                 <CardDescription className="text-sm">
-                  {platformInfo.displayName} • Created {formatDate(channel.createdAt)}
+                  {platformInfo.displayName} • Created{" "}
+                  {formatDate(channel.createdAt)}
                 </CardDescription>
               </div>
             </div>
