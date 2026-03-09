@@ -233,6 +233,11 @@ export const tasks = pgTable(
       table.status,
       table.createdAt,
     ),
+    // Trigram index for LIKE '%text%' search
+    titleTrgmIdx: index("tasks_title_trgm_idx").using(
+      "gin",
+      sql`${table.title} gin_trgm_ops`,
+    ),
   }),
 );
 
@@ -343,6 +348,11 @@ export const bookmarks = pgTable(
       table.userId,
       table.title,
     ),
+    // Trigram index for LIKE '%text%' search
+    titleTrgmIdx: index("bookmarks_title_trgm_idx").using(
+      "gin",
+      sql`${table.title} gin_trgm_ops`,
+    ),
   }),
 );
 
@@ -404,6 +414,11 @@ export const documents = pgTable(
     userTitleIdx: index("documents_user_id_title_idx").on(
       table.userId,
       table.title,
+    ),
+    // Trigram index for LIKE '%text%' search
+    titleTrgmIdx: index("documents_title_trgm_idx").using(
+      "gin",
+      sql`${table.title} gin_trgm_ops`,
     ),
     userUpdatedAtIdx: index("documents_user_id_updated_at_idx").on(
       table.userId,
@@ -497,6 +512,11 @@ export const photos = pgTable(
       table.userId,
       table.title,
     ),
+    // Trigram index for LIKE '%text%' search
+    titleTrgmIdx: index("photos_title_trgm_idx").using(
+      "gin",
+      sql`${table.title} gin_trgm_ops`,
+    ),
   }),
 );
 
@@ -548,6 +568,11 @@ export const notes = pgTable(
     userTitleIdx: index("notes_user_id_title_idx").on(
       table.userId,
       table.title,
+    ),
+    // Trigram index for LIKE '%text%' search
+    titleTrgmIdx: index("notes_title_trgm_idx").using(
+      "gin",
+      sql`${table.title} gin_trgm_ops`,
     ),
   }),
 );
