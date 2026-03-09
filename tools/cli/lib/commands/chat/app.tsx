@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { render, Box, Text, useInput, useApp } from "ink";
 import {
   getModelInfo,
@@ -186,10 +186,14 @@ function updateToolMessage(
     ];
   }
   const updated = [...prev];
+  const existing = updated[idx];
+  if (!existing) return updated;
+  const toolCall = existing.toolCall;
+  if (!toolCall) return updated;
   updated[idx] = {
-    ...updated[idx]!,
+    ...existing,
     toolCall: {
-      ...updated[idx]!.toolCall!,
+      ...toolCall,
       ...update,
     },
   };
@@ -203,7 +207,7 @@ function ChatApp({ options }: { options: ChatOptions }) {
   const [currentThinking, setCurrentThinking] = useState("");
   const [currentResponse, setCurrentResponse] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+  const [, setSessionId] = useState<string | undefined>(undefined);
   const [modelName, setModelName] = useState("Loading...");
   const [isInitializing, setIsInitializing] = useState(true);
   const sessionIdRef = useRef<string | undefined>(undefined);
@@ -262,7 +266,7 @@ function ChatApp({ options }: { options: ChatOptions }) {
       }
     };
     init();
-  }, [options.conversation]);
+  }, [options]);
 
   useInput((_input, key) => {
     if (key.ctrl && _input === "c") {

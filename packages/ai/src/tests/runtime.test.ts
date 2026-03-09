@@ -5,7 +5,7 @@
  * and skill system.
  */
 
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { z } from "zod";

@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, Text } from "ink";
 import { Spinner } from "./Spinner.js";
 import type { ToolCallInfo, DisplayOptions } from "../types.js";

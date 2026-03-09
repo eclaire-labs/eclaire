@@ -109,15 +109,14 @@ async function generatePdfThumbnailWithPdftocairo(
     const targetHeight = scale === 400 ? 600 : 1440;
     const isThumbnail = scale === 400;
 
-    const outputBuffer = await sharp(pngBuffer)
-      .resize(targetWidth, targetHeight, {
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      [isThumbnail ? "webp" : "jpeg"](
-        isThumbnail ? { quality: 80 } : { quality: 90 },
-      )
-      .toBuffer();
+    const resized = sharp(pngBuffer).resize(targetWidth, targetHeight, {
+      fit: "inside",
+      withoutEnlargement: true,
+    });
+    const encoded = isThumbnail
+      ? resized.webp({ quality: 80 })
+      : resized.jpeg({ quality: 90 });
+    const outputBuffer = await encoded.toBuffer();
 
     // Clean up temp file
     await fs.unlink(outputPath).catch(() => {});

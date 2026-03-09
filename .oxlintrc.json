@@ -73,6 +73,8 @@
     "react-perf/jsx-no-jsx-as-prop": "off",
 
     // ── Unicorn ────────────────────────────────────────────────────
+    // False positive: fires on Slack SDK chat.postMessage(), not window.postMessage()
+    "unicorn/require-post-message-target-origin": "off",
     "unicorn/no-useless-spread": "warn",
     "unicorn/no-useless-fallback-in-spread": "warn",
     "unicorn/prefer-array-flat-map": "warn",
@@ -124,7 +126,6 @@
     "jsx-a11y/no-autofocus": "off",
     "jsx-a11y/no-static-element-interactions": "off",
     "jsx-a11y/click-events-have-key-events": "off",
-
     // ── Node ───────────────────────────────────────────────────────
     "node/no-unmodified-loop-condition": "off"
   },

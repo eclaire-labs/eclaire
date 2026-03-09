@@ -2,7 +2,7 @@
  * Chat TUI command registration
  */
 
-import { Command } from "commander";
+import type { Command } from "commander";
 
 export function registerChatCommand(program: Command): void {
   program

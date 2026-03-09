@@ -17,21 +17,22 @@ function splitUnfinishedCodeBlock(
   let inCode = false;
   let openFence: { index: number; marker: string; lang: string } | null = null;
 
-  let match: RegExpExecArray | null;
-  while ((match = fencePattern.exec(content)) !== null) {
+  let match: RegExpExecArray | null = fencePattern.exec(content);
+  while (match !== null) {
     if (!inCode) {
       // Opening fence
       inCode = true;
       openFence = {
         index: match.index,
-        marker: match[1]!,
+        marker: match[1] ?? "",
         lang: match[2] || "",
       };
-    } else if (match[1]!.length >= openFence!.marker.length) {
+    } else if ((match[1]?.length ?? 0) >= (openFence?.marker.length ?? 0)) {
       // Closing fence (must have >= same number of backticks)
       inCode = false;
       openFence = null;
     }
+    match = fencePattern.exec(content);
   }
 
   // If we ended outside a code block, everything is properly closed
@@ -122,7 +123,8 @@ function renderListItem(
   const parts: React.ReactNode[] = [];
 
   for (let i = 0; i < item.tokens.length; i++) {
-    const child = item.tokens[i]!;
+    const child = item.tokens[i];
+    if (!child) continue;
     if (child.type === "list") {
       parts.push(
         renderList(child as Tokens.List, depth + 1, `${index}-${i}`),
@@ -197,7 +199,7 @@ function renderBlock(token: Token, index: number): React.ReactNode {
     case "heading": {
       const heading = token as Tokens.Heading;
       const prefix =
-        heading.depth >= 3 ? "#".repeat(heading.depth) + " " : "";
+        heading.depth >= 3 ? `${"#".repeat(heading.depth)} ` : "";
       return (
         <Box key={index} marginTop={index > 0 ? 1 : 0}>
           <Text bold color="cyan" underline={heading.depth === 1}>
@@ -247,7 +249,8 @@ function renderBlock(token: Token, index: number): React.ReactNode {
         }
         if ("text" in t) {
           return (
-            <Text key={`bq-${index}-${i}`}>
+            // biome-ignore lint/suspicious/noArrayIndexKey: blockquote tokens have no natural ID
+            <Text key={`bq-text-${index}-${i}`}>
               {(t as { text: string }).text}
             </Text>
           );
@@ -318,7 +321,7 @@ function renderBlock(token: Token, index: number): React.ReactNode {
         text + " ".repeat(Math.max(0, width - text.length));
 
       const headerLine = headers
-        .map((h, i) => padCell(h, colWidths[i]!))
+        .map((h, i) => padCell(h, colWidths[i] ?? 0))
         .join(" │ ");
       const separator = colWidths.map((w) => "─".repeat(w)).join("─┼─");
 
@@ -327,9 +330,10 @@ function renderBlock(token: Token, index: number): React.ReactNode {
           <Text>{headerLine}</Text>
           <Text dimColor>{separator}</Text>
           {rows.map((row, ri) => (
-            <Text key={ri}>
+            // biome-ignore lint/suspicious/noArrayIndexKey: table rows have no natural ID
+            <Text key={`row-${ri}`}>
               {row
-                .map((cell, ci) => padCell(cell, colWidths[ci]!))
+                .map((cell, ci) => padCell(cell, colWidths[ci] ?? 0))
                 .join(" │ ")}
             </Text>
           ))}

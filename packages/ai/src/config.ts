@@ -21,7 +21,6 @@ import type {
   ProviderAuth,
   ProviderConfig,
   ProvidersConfiguration,
-  ResolvedProvider,
   SelectionConfiguration,
   ValidatedAIConfig,
 } from "./types.js";

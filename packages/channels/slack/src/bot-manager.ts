@@ -101,9 +101,8 @@ function debounceKey(slackChannel: string, slackUser: string, threadTs: string |
  * Schedules a reconnection attempt for all channels managed by a bot token.
  * Uses exponential backoff with jitter and up to 10 attempts.
  */
-function scheduleReconnect(
+function _scheduleReconnect(
   botToken: string,
-  appToken: string,
   managedChannels: Map<string, ChannelMeta>,
   logger: ReturnType<typeof getDeps>["logger"],
   attempt = 1,
@@ -141,7 +140,7 @@ function scheduleReconnect(
     if (!firstId) return;
     const success = await startBot(firstId);
     if (!success) {
-      scheduleReconnect(botToken, appToken, managedChannels, logger, attempt + 1);
+      _scheduleReconnect(botToken, managedChannels, logger, attempt + 1);
       return;
     }
 
@@ -518,7 +517,7 @@ export async function sendMessage(
     const mrkdwn = convertMarkdownToMrkdwn(message);
     const chunks = splitMessage(mrkdwn);
     for (let i = 0; i < chunks.length; i++) {
-      const chunkText = chunks[i]!;
+      const chunkText = chunks[i] ?? "";
       await withRetry(
         () =>
           instance.app.client.chat.postMessage({
@@ -611,7 +610,8 @@ export async function startAllBots(): Promise<void> {
     for (const [botToken, group] of tokenGroups) {
       try {
         // Create app with the first channel
-        const first = group[0]!;
+        const first = group[0];
+        if (!first) continue;
         const firstMeta: ChannelMeta = {
           channelId: first.channel.id,
           userId: first.channel.userId,
@@ -625,7 +625,8 @@ export async function startAllBots(): Promise<void> {
 
         // Register remaining channels on the same app
         for (let i = 1; i < group.length; i++) {
-          const entry = group[i]!;
+          const entry = group[i];
+          if (!entry) continue;
           const meta: ChannelMeta = {
             channelId: entry.channel.id,
             userId: entry.channel.userId,

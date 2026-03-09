@@ -8,19 +8,15 @@
 
 import type {
   AIMessage,
-  MessageContent,
   TextContentPart,
   ImageContentPart,
   ToolCallResult,
 } from "../../types.js";
 import type {
   RuntimeMessage,
-  SystemMessage,
-  AnyRuntimeMessage,
   UserMessage,
   AssistantMessage,
   ToolResultMessage,
-  UserContentBlock,
   AssistantContentBlock,
 } from "../messages.js";
 

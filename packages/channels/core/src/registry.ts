@@ -42,7 +42,7 @@ export class ChannelRegistry {
   async stopAll(): Promise<void> {
     const stops = Array.from(this.adapters.values())
       .filter((a) => a.stopAll)
-      .map((a) => a.stopAll!());
+      .map((a) => a.stopAll?.());
     await Promise.all(stops);
   }
 }

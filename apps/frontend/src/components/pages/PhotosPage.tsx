@@ -351,7 +351,7 @@ export default function PhotosPage() {
         }
       }
     },
-    [toast, refresh],
+    [refresh],
   );
 
   const {

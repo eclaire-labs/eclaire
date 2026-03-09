@@ -30,7 +30,6 @@ function makeTelegram() {
 
 /** Get the text argument (4th positional) from the last editMessageText call. */
 function lastEditText(tg: ReturnType<typeof makeTelegram>): unknown {
-  // biome-ignore lint/suspicious/noExplicitAny: accessing mock call args by index
   const calls = tg.editMessageText.mock.calls as any[];
   // editMessageText(chatId, messageId, inlineMessageId, text, opts)
   return calls[calls.length - 1]?.[3];
@@ -49,8 +48,7 @@ describe("sendStreamingResponse", () => {
       { type: "done" },
     ]);
 
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    const result = await sendStreamingResponse(tg as any, 123, stream, {
+const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -66,8 +64,7 @@ describe("sendStreamingResponse", () => {
     const tg = makeTelegram();
     const stream = createStream([{ type: "done" }]);
 
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    const result = await sendStreamingResponse(tg as any, 123, stream, {
+const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -84,8 +81,7 @@ describe("sendStreamingResponse", () => {
       { type: "error", error: "Something went wrong" },
     ]);
 
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    const result = await sendStreamingResponse(tg as any, 123, stream, {
+const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -103,8 +99,7 @@ describe("sendStreamingResponse", () => {
       { type: "done" },
     ]);
 
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    const result = await sendStreamingResponse(tg as any, 123, stream, {
+const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -123,8 +118,7 @@ describe("sendStreamingResponse", () => {
       { type: "done" },
     ]);
 
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    await sendStreamingResponse(tg as any, 123, stream, {
+await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -141,8 +135,7 @@ describe("sendStreamingResponse", () => {
       { type: "done" },
     ]);
 
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    const result = await sendStreamingResponse(tg as any, 123, stream, {
+const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -157,8 +150,7 @@ describe("sendStreamingResponse", () => {
       { type: "done" },
     ]);
 
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    await sendStreamingResponse(tg as any, 123, stream, {
+await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -180,8 +172,7 @@ describe("sendStreamingResponse", () => {
       },
     });
 
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    const result = await sendStreamingResponse(tg as any, 123, stream, {
+const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 

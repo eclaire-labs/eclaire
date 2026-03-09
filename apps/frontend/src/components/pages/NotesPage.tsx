@@ -253,7 +253,7 @@ export default function NotesPage() {
         }
       }
     },
-    [toast, uploadNote],
+    [uploadNote],
   );
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } =

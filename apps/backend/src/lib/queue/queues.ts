@@ -9,7 +9,6 @@ import {
   createQueueManager,
   type QueueManager,
   type QueueName,
-  QueueNames,
 } from "@eclaire/queue/app";
 import type { Queue } from "bullmq";
 import { config } from "../../config/index.js";
@@ -52,7 +51,7 @@ if (queueBackend === "redis") {
 
 /**
  * Gets a BullMQ Queue instance for the given name.
- * @param name The name of the queue (use constants from QueueNames).
+ * @param name The name of the queue.
  * @returns The Queue instance, or null if not in redis mode or initialization fails.
  */
 export function getQueue(name: QueueName): Queue | null {

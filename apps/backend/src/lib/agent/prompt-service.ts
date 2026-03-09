@@ -295,7 +295,6 @@ export function transformRuntimeEvent(
     case "text_end":
     case "thinking_start":
     case "thinking_end":
-    case "tool_call_start":
     case "tool_call_delta":
     case "message_complete":
     case "turn_complete":

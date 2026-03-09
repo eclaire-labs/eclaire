@@ -232,7 +232,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     },
     onDone: (
       requestId?: string,
-      conversationId?: string,
+      _conversationId?: string,
       _totalTokens?: number,
       _executionTimeMs?: number,
     ) => {

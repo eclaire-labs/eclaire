@@ -534,7 +534,7 @@ export async function sendMessage(
     const chunks = splitMessage(message);
     for (let i = 0; i < chunks.length; i++) {
       await withRetry(
-        () => targetChannel.send(chunks[i]!),
+        () => targetChannel.send(chunks[i] ?? ""),
         {
           onRetry: (error, attempt) => {
             logger.warn(
@@ -703,7 +703,8 @@ export async function startAllBots(): Promise<void> {
     for (const [botToken, group] of tokenGroups) {
       try {
         // Create client with the first channel
-        const first = group[0]!;
+        const first = group[0];
+        if (!first) continue;
         const firstMeta: ChannelMeta = {
           channelId: first.channel.id,
           userId: first.channel.userId,
@@ -720,7 +721,8 @@ export async function startAllBots(): Promise<void> {
 
         // Register remaining channels on the same client
         for (let i = 1; i < group.length; i++) {
-          const entry = group[i]!;
+          const entry = group[i];
+          if (!entry) continue;
           const meta: ChannelMeta = {
             channelId: entry.channel.id,
             userId: entry.channel.userId,

@@ -330,7 +330,7 @@ export default function DocumentsPage() {
         }
       }
     },
-    [toast, refresh],
+    [refresh],
   );
 
   const {

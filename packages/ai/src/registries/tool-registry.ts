@@ -45,7 +45,7 @@ export function getToolDefinition(
  */
 export function getActiveTools(): RuntimeToolDefinition[] {
   if (!activeToolNames) return Array.from(tools.values());
-  return Array.from(tools.values()).filter((t) => activeToolNames!.has(t.name));
+  return Array.from(tools.values()).filter((t) => activeToolNames?.has(t.name));
 }
 
 /**

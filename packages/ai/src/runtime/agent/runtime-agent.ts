@@ -12,7 +12,7 @@
  * - Resolves tools from the tool map directly (no separate execution map bug)
  */
 
-import { z } from "zod";
+import type { z } from "zod";
 import { callAI, callAIStream } from "../../client.js";
 import { createLazyLogger, getErrorMessage } from "../../logger.js";
 import { LLMStreamParser } from "../../stream-parser.js";
@@ -24,8 +24,6 @@ import {
 import { createToolCallSummary } from "../../tools/native.js";
 import type { ToolCallSummaryOutput } from "../../tools/types.js";
 import type {
-  AICallOptions,
-  AIMessage,
   ToolCallResult,
   ToolCallingMode,
   ToolDefinition,
@@ -389,7 +387,8 @@ export class RuntimeAgent {
       }
       const extracted = extractToolCalls(parseResult);
       for (let i = 0; i < extracted.length; i++) {
-        const tc = extracted[i]!;
+        const tc = extracted[i];
+        if (!tc) continue;
         contentBlocks.push({
           type: "tool_call",
           id: `call_${stepNumber}_${i}`,
@@ -747,7 +746,7 @@ export class RuntimeAgent {
    */
   private _makeTerminalStep(
     stepNumber: number,
-    messages: RuntimeMessage[],
+    _messages: RuntimeMessage[],
     reason: RuntimeAgentStep["stopReason"],
   ): RuntimeAgentStep {
     return {
@@ -777,7 +776,8 @@ export class RuntimeAgent {
     let thinking: string | undefined;
 
     if (steps.length > 0) {
-      const lastStep = steps[steps.length - 1]!;
+      const lastStep = steps[steps.length - 1];
+      if (!lastStep) throw new Error("Expected at least one step");
       finalText = getTextContent(lastStep.assistantMessage);
       const thinkingText = getThinkingContent(lastStep.assistantMessage);
       if (thinkingText) thinking = thinkingText;

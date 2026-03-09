@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { useState, useCallback } from "react";
+import { Box, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { getCommands } from "../app.js";
 import { CommandMenu } from "./CommandMenu.js";
@@ -37,7 +37,8 @@ export function ChatInput({ onSubmit, isDisabled }: ChatInputProps) {
 
   const completeSelection = useCallback(() => {
     if (!menuVisible || !menuItems[selectedIndex]) return;
-    const cmd = menuItems[selectedIndex]!;
+    const cmd = menuItems[selectedIndex];
+    if (!cmd) return;
     setValue(`/${cmd.name}`);
     setMenuDismissed(true);
   }, [menuVisible, menuItems, selectedIndex]);
@@ -46,8 +47,8 @@ export function ChatInput({ onSubmit, isDisabled }: ChatInputProps) {
     (input: string) => {
       if (!input.trim() || isDisabled) return;
       // If menu is visible, execute the selected command directly
-      if (menuVisible && menuItems[selectedIndex]) {
-        const cmd = menuItems[selectedIndex]!;
+      const cmd = menuVisible ? menuItems[selectedIndex] : undefined;
+      if (cmd) {
         onSubmit(`/${cmd.name}`);
         setValue("");
         setSelectedIndex(0);
@@ -59,11 +60,11 @@ export function ChatInput({ onSubmit, isDisabled }: ChatInputProps) {
       setSelectedIndex(0);
       setMenuDismissed(false);
     },
-    [isDisabled, menuVisible, completeSelection, onSubmit],
+    [isDisabled, menuVisible, menuItems, selectedIndex, onSubmit],
   );
 
   useInput(
-    (input, key) => {
+    (_input, key) => {
       if (!menuVisible) return;
 
       if (key.downArrow) {

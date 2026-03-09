@@ -37,7 +37,7 @@ export async function safeSendTyping(
   try {
     await channel.sendTyping();
     state.consecutiveFailures = 0;
-  } catch (err) {
+  } catch (_err) {
     state.consecutiveFailures++;
     if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
       state.suspended = true;

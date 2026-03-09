@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import type { DisplayOptions } from "../types.js";
 
@@ -80,13 +80,13 @@ export function SettingsPanel({
         prev > 0 ? prev - 1 : SETTINGS.length - 1,
       );
     } else if (key.return || _input === " ") {
-      const setting = SETTINGS[selectedIndex]!;
-      setting.toggle(onChangeDisplay, onChangeThinking);
+      const setting = SETTINGS[selectedIndex];
+      setting?.toggle(onChangeDisplay, onChangeThinking);
     }
   });
 
   const maxLabelLen = Math.max(...SETTINGS.map((s) => s.label.length));
-  const selected = SETTINGS[selectedIndex]!;
+  const selected = SETTINGS[selectedIndex];
 
   return (
     <Box
@@ -125,7 +125,7 @@ export function SettingsPanel({
       })}
 
       <Box marginTop={1}>
-        <Text dimColor>{selected.description}</Text>
+        <Text dimColor>{selected?.description}</Text>
       </Box>
     </Box>
   );

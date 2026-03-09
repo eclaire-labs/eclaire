@@ -364,7 +364,7 @@ export async function sendMessage(
       : {};
 
     for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i]!;
+      const chunk = chunks[i] ?? "";
       await withRetry(
         () =>
           instance.bot.telegram.sendMessage(

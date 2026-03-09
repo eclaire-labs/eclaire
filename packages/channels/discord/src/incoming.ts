@@ -194,7 +194,7 @@ export async function handleIncomingMessage(
       if (responseText) {
         const chunks = splitMessage(responseText);
         for (let i = 0; i < chunks.length; i++) {
-          await message.reply(chunks[i]!);
+          await message.reply(chunks[i] ?? "");
           if (i < chunks.length - 1) {
             await new Promise((resolve) => setTimeout(resolve, 100));
           }

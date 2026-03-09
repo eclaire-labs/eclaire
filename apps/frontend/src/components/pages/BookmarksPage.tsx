@@ -191,7 +191,7 @@ export default function BookmarksPage() {
         console.error("Import bookmarks error:", err);
       }
     },
-    [toast, importBookmarks],
+    [importBookmarks],
   );
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } =

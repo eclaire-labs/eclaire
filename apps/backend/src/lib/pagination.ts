@@ -5,7 +5,7 @@
  * The cursor encodes the last item's sort column value + ID for keyset pagination.
  */
 
-import { and, gt, lt, type SQL, sql } from "drizzle-orm";
+import { gt, lt, type SQL, sql } from "drizzle-orm";
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------

@@ -29,7 +29,6 @@ import {
   createConversation,
   deleteConversation,
   getConversationWithMessages,
-  generateConversationTitle,
   listConversations,
   updateConversation,
   type ConversationSummary,

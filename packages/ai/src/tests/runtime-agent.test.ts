@@ -9,9 +9,8 @@ import { z } from "zod";
 
 import { RuntimeAgent } from "../runtime/agent/runtime-agent.js";
 import { createRuntimeContext } from "../runtime/agent/types.js";
-import type { RuntimeAgentConfig, RuntimeAgentContext } from "../runtime/agent/types.js";
 import type { RuntimeToolDefinition } from "../runtime/tools/types.js";
-import { textResult, errorResult } from "../runtime/tools/types.js";
+import { textResult } from "../runtime/tools/types.js";
 import type { RuntimeMessage, RuntimeStreamEvent } from "../runtime/messages.js";
 
 import { initAI, resetAI } from "../index.js";
@@ -68,25 +67,6 @@ const searchTool: RuntimeToolDefinition = {
   },
 };
 
-const createNoteTool: RuntimeToolDefinition = {
-  name: "createNote",
-  label: "Create Note",
-  description: "Create a new note",
-  inputSchema: z.object({ title: z.string(), body: z.string() }),
-  execute: async (_callId, input) => {
-    return textResult(`Note created: ${input.title}`);
-  },
-};
-
-const failingTool: RuntimeToolDefinition = {
-  name: "failing",
-  label: "Failing Tool",
-  description: "A tool that always fails",
-  inputSchema: z.object({ input: z.string() }),
-  execute: async () => {
-    return errorResult("Something went wrong");
-  },
-};
 
 // =============================================================================
 // TESTS
@@ -246,7 +226,7 @@ describe("RuntimeAgent", () => {
       ];
 
       const context = createRuntimeContext({ userId: "user_1" });
-      const result = await agent.generate({
+      await agent.generate({
         prompt: "What's my name?",
         context,
         messages: previousMessages,

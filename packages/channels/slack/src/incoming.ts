@@ -130,8 +130,8 @@ export async function handleIncomingMessage(
         const mrkdwn = convertMarkdownToMrkdwn(responseText);
         const chunks = splitMessage(mrkdwn);
         for (let i = 0; i < chunks.length; i++) {
-          const chunkText = chunks[i]!;
-          await client.chat.postMessage({
+          const chunkText = chunks[i] ?? "";
+              await client.chat.postMessage({
             channel: slackChannelId,
             text: chunkText,
           });

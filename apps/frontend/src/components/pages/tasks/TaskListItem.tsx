@@ -8,7 +8,6 @@ import {
   Trash2,
   User as UserIcon,
 } from "lucide-react";
-import type React from "react";
 import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";

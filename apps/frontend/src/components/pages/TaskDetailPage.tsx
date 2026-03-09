@@ -57,7 +57,7 @@ import {
 } from "@/lib/api-comments";
 import { getUsers } from "@/lib/api-users";
 import { formatDate } from "@/lib/date-utils";
-import type { Task, TaskComment, TaskStatus, User } from "@/types/task";
+import type { TaskComment, TaskStatus, User } from "@/types/task";
 import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
 import {
   PRIORITY_OPTIONS,
@@ -700,7 +700,7 @@ export function TaskDetailClient() {
                       onClick={() =>
                         navigate({
                           to: "/tasks/$id",
-                          params: { id: task.parentId! },
+                          params: { id: task.parentId },
                         })
                       }
                     >
@@ -1027,9 +1027,10 @@ export function TaskDetailClient() {
                             {subTasks.map((sub) => {
                               const statusCfg = getStatusConfig(sub.status);
                               return (
-                                <div
+                                <button
+                                  type="button"
                                   key={sub.id}
-                                  className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 cursor-pointer group"
+                                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 cursor-pointer group text-left"
                                   onClick={() =>
                                     navigate({
                                       to: "/tasks/$id",
@@ -1060,7 +1061,7 @@ export function TaskDetailClient() {
                                       {getPriorityIcon(sub.priority)}
                                     </span>
                                   )}
-                                </div>
+                                </button>
                               );
                             })}
                           </div>

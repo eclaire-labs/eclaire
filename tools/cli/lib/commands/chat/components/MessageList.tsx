@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, Text } from "ink";
 import { Markdown } from "./Markdown.js";
 import { ToolCallDisplay } from "./ToolCallDisplay.js";
@@ -30,7 +29,8 @@ export function MessageList({ messages, options }: MessageListProps) {
           !isFirst && msg.role !== "tool" && prevMsg?.role !== "tool";
 
         return (
-          <Box key={i} flexDirection="column">
+          // biome-ignore lint/suspicious/noArrayIndexKey: messages have no natural ID
+          <Box key={`msg-${i}`} flexDirection="column">
             {showSeparator && <Box marginTop={1} />}
             {msg.role === "tool" ? (
               msg.toolCall ? (

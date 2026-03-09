@@ -43,6 +43,7 @@ const PaginationLink = ({
   size = "icon",
   ...props
 }: PaginationLinkProps) => (
+  // eslint-disable-next-line jsx-a11y/anchor-has-content -- content provided via {...props} spread
   <a
     aria-current={isActive ? "page" : undefined}
     className={cn(

@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, Text } from "ink";
 import { Spinner } from "./Spinner.js";
 import type { DisplayOptions } from "../types.js";
@@ -13,10 +12,6 @@ function lastNLines(text: string, n: number): string {
   const lines = text.split("\n");
   if (lines.length <= n) return text;
   return `…\n${lines.slice(-n).join("\n")}`;
-}
-
-function countLines(text: string): number {
-  return text.split("\n").length;
 }
 
 export function ThinkingBlock({

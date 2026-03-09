@@ -154,7 +154,7 @@ export async function createChannel(
     if (adapter.start) {
       try {
         await adapter.start(newChannel);
-      } catch (startError) {
+      } catch (_startError) {
         logger.warn(
           { channelId: newChannel.id },
           "Failed to start channel after creation",
@@ -278,7 +278,7 @@ export async function updateChannel(
       if (updatedChannel.isActive && adapter.start) {
         try {
           await adapter.start(updatedChannel);
-        } catch (startError) {
+        } catch (_startError) {
           logger.warn(
             { channelId },
             "Failed to restart channel after update",

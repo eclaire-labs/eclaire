@@ -35,16 +35,14 @@ beforeEach(() => {
 describe("safeSendChatAction", () => {
   it("calls sendChatAction on success", async () => {
     const tg = makeTelegram("success");
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    await safeSendChatAction(tg as any, 123, "typing", mockLogger);
+await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     expect(tg.sendChatAction).toHaveBeenCalledWith(123, "typing");
   });
 
   it("does not throw on error", async () => {
     const tg = makeTelegram("other-error");
     await expect(
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
-      safeSendChatAction(tg as any, 123, "typing", mockLogger),
+    safeSendChatAction(tg as any, 123, "typing", mockLogger),
     ).resolves.toBeUndefined();
   });
 
@@ -52,8 +50,7 @@ describe("safeSendChatAction", () => {
     const tg = makeTelegram("401");
 
     for (let i = 0; i < 10; i++) {
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
-      await safeSendChatAction(tg as any, 123, "typing", mockLogger);
+    await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     }
 
     expect(mockLogger.error).toHaveBeenCalledWith(
@@ -63,8 +60,7 @@ describe("safeSendChatAction", () => {
 
     // After suspension, sendChatAction should not be called
     tg.sendChatAction.mockClear();
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    await safeSendChatAction(tg as any, 123, "typing", mockLogger);
+await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     expect(tg.sendChatAction).not.toHaveBeenCalled();
   });
 
@@ -76,24 +72,20 @@ describe("safeSendChatAction", () => {
 
     // 5 failures
     for (let i = 0; i < 5; i++) {
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
-      await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
+    await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
     }
 
     // 1 success resets
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    await safeSendChatAction(successTg as any, 123, "typing", mockLogger);
+await safeSendChatAction(successTg as any, 123, "typing", mockLogger);
 
     // 9 more failures should NOT trigger suspension (counter was reset)
     for (let i = 0; i < 9; i++) {
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
-      await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
+    await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
     }
 
     // Should not have been suspended (only 9 consecutive after reset)
     failTg.sendChatAction.mockClear();
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
+await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
     expect(failTg.sendChatAction).toHaveBeenCalled();
   });
 
@@ -101,14 +93,12 @@ describe("safeSendChatAction", () => {
     const tg = makeTelegram("other-error");
 
     for (let i = 0; i < 20; i++) {
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
-      await safeSendChatAction(tg as any, 123, "typing", mockLogger);
+    await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     }
 
     // Should still be calling sendChatAction (not suspended)
     tg.sendChatAction.mockClear();
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
-    await safeSendChatAction(tg as any, 123, "typing", mockLogger);
+await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     expect(tg.sendChatAction).toHaveBeenCalled();
   });
 });

@@ -71,8 +71,8 @@ function convertUserMessage(msg: AIMessage): UserMessage {
       if (dataUriMatch) {
         return {
           type: "image" as const,
-          mimeType: dataUriMatch[1]!,
-          data: dataUriMatch[2]!,
+          mimeType: dataUriMatch[1] ?? "application/octet-stream",
+          data: dataUriMatch[2] ?? "",
         };
       }
       // Fallback for non-data URIs — store URL as data with a generic mime type

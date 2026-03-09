@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, Text } from "ink";
 import { Markdown } from "./Markdown.js";
 import { ThinkingBlock } from "./ThinkingBlock.js";
