@@ -68,6 +68,7 @@ export const TaskSchema = z
 
     assignedToId: z
       .string()
+      .nullable()
       .optional()
       .meta({
         description: "User ID of the person assigned to this task",
@@ -104,6 +105,7 @@ export const TaskSchema = z
 
     flagColor: z
       .enum(["red", "yellow", "orange", "green", "blue"])
+      .nullable()
       .optional()
       .meta({
         description: "Flag color for the task (optional)",
@@ -168,6 +170,7 @@ export const TaskSchema = z
       .number()
       .int()
       .positive()
+      .nullable()
       .optional()
       .meta({
         description: "Maximum number of executions for recurring tasks",
