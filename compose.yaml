@@ -64,7 +64,7 @@ services:
   # Document Processing
   # ===========================================================================
   docling:
-    image: ghcr.io/docling-project/docling-serve:latest
+    image: ghcr.io/docling-project/docling-serve:1.14.3
     ports:
       - "5001:5001"
     # CPU mode by default (no GPU passthrough needed)
@@ -79,7 +79,7 @@ services:
   # PostgreSQL Database
   # ===========================================================================
   postgres:
-    image: postgres:17.5-bookworm
+    image: postgres:17.9-bookworm
     environment:
       POSTGRES_USER: ${DATABASE_USER:-eclaire}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-eclaire}

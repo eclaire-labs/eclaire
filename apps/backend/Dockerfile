@@ -2,7 +2,7 @@
 # --- Base runtime kept minimal; build tools live in builder only
 
 # Patchright version for browser installation (keep in sync with package.json)
-ARG PATCHRIGHT_VERSION=1.57.0
+ARG PATCHRIGHT_VERSION=1.58.2
 
 FROM node:24-bookworm-slim AS base
 WORKDIR /app
@@ -33,7 +33,7 @@ FROM node:24-bookworm-slim AS frontend-builder
 WORKDIR /app
 
 # Enable pnpm via corepack
-RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
 # Copy workspace root files and frontend package.json
 COPY pnpm-lock.yaml package.json pnpm-workspace.yaml tsconfig.base.json ./
@@ -60,7 +60,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 # Enable pnpm via corepack
-RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
 # ===== Backend Builder Stage =====
 # Source code compilation - busted by --no-cache-filter=builder for fresh builds
