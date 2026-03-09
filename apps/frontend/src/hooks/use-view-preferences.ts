@@ -79,9 +79,35 @@ const DEFAULT_PREFERENCES: Record<PageType, ViewPreferences> = {
   } as PhotosViewPreferences,
 };
 
+// Valid sortBy values per page type, used to discard stale localStorage entries
+const VALID_SORT_KEYS: Record<PageType, string[]> = {
+  bookmarks: ["createdAt", "title"],
+  tasks: ["dueDate", "status", "title"],
+  notes: ["createdAt", "title"],
+  documents: [
+    "createdAt",
+    "title",
+    "mimeType",
+    "updatedAt",
+    "fileSize",
+    "originalFilename",
+  ],
+  photos: ["dateTaken", "createdAt", "title"],
+};
+
 // Generate storage key for a page type
 const getStorageKey = (pageType: PageType): string =>
   `view-preferences-${pageType}`;
+
+function sanitizePreferences(
+  merged: ViewPreferences,
+  pageType: PageType,
+): ViewPreferences {
+  if (!VALID_SORT_KEYS[pageType].includes(merged.sortBy)) {
+    return { ...merged, sortBy: DEFAULT_PREFERENCES[pageType].sortBy };
+  }
+  return merged;
+}
 
 // Read initial preferences from localStorage synchronously to avoid double-render
 function readStoredPreferences(
@@ -92,7 +118,11 @@ function readStoredPreferences(
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
-        return { ...DEFAULT_PREFERENCES[pageType], ...JSON.parse(stored) };
+        const merged = {
+          ...DEFAULT_PREFERENCES[pageType],
+          ...JSON.parse(stored),
+        };
+        return sanitizePreferences(merged, pageType);
       }
     } catch {
       // Fall through to defaults
@@ -123,7 +153,8 @@ export function useViewPreferences(
         if (e.key === storageKey && e.newValue) {
           try {
             const parsed = JSON.parse(e.newValue);
-            setPreferences({ ...DEFAULT_PREFERENCES[pageType], ...parsed });
+            const merged = { ...DEFAULT_PREFERENCES[pageType], ...parsed };
+            setPreferences(sanitizePreferences(merged, pageType));
           } catch {
             // Ignore malformed data
           }
