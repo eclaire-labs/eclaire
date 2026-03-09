@@ -140,13 +140,19 @@ export function initializeDatabase(
   config?: DatabaseConfig,
 ): DatabaseInitResult {
   if (dbInstance && txManagerInstance && capabilitiesInstance) {
-    const dbType = config?.type ?? getDatabaseType();
+    const requestedType = config?.type ?? getDatabaseType();
+    if (requestedType !== currentDbType) {
+      throw new Error(
+        `Database already initialized as "${currentDbType}", cannot reinitialize as "${requestedType}". ` +
+          `Call closeDatabase() first if you need to switch database types.`,
+      );
+    }
     return {
       db: dbInstance,
       txManager: txManagerInstance,
       capabilities: capabilitiesInstance,
-      schema: dbType === "sqlite" ? sqliteSchema : pgSchema,
-      dbType,
+      schema: currentDbType === "sqlite" ? sqliteSchema : pgSchema,
+      dbType: currentDbType,
     };
   }
 

@@ -579,7 +579,7 @@ function cleanTaskForResponse(
     updatedAt: updatedAt ? formatToISO8601(updatedAt) : null,
     processingStatus: processingStatus || "pending",
     priority: task.priority ?? 0,
-    sortOrder: task.sortOrder != null ? Number(task.sortOrder) : null,
+    sortOrder: task.sortOrder ?? null,
     parentId: task.parentId ?? null,
     childCount: childCount ?? 0,
     tags: tags,
@@ -674,7 +674,7 @@ export async function createTask(
         reviewStatus: taskData.reviewStatus || "pending",
         flagColor: taskData.flagColor || null,
         isPinned: taskData.isPinned || false,
-        sortOrder: taskData.sortOrder != null ? String(taskData.sortOrder) : null,
+        sortOrder: taskData.sortOrder ?? null,
         parentId: taskData.parentId || null,
         // Note: Recurrence fields (isRecurring, cronExpression, etc.)
         // are stored in queue_schedules, not in the tasks table.

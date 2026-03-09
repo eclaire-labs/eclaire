@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  doublePrecision,
   foreignKey,
   index,
   integer,
@@ -202,7 +203,7 @@ export const tasks = pgTable(
       enum: ["red", "yellow", "orange", "green", "blue"],
     }),
     isPinned: boolean("is_pinned").notNull().default(false),
-    sortOrder: numeric("sort_order"),
+    sortOrder: doublePrecision("sort_order"),
     parentId: text("parent_id"),
     // Note: Recurrence data (isRecurring, cronExpression, recurrenceEndDate, recurrenceLimit)
     // is now stored in queue_schedules table and fetched via scheduler.get()
@@ -732,7 +733,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
   apiKeys: many(apiKeys),
-  tasks: many(tasks),
+  tasks: many(tasks, { relationName: "taskOwner" }),
+  assignedTasks: many(tasks, { relationName: "taskAssignee" }),
   bookmarks: many(bookmarks),
   documents: many(documents),
   photos: many(photos),
@@ -753,10 +755,15 @@ export const accountsRelations = relations(accounts, ({ one }) => ({
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
-  user: one(users, { fields: [tasks.userId], references: [users.id] }),
+  user: one(users, {
+    fields: [tasks.userId],
+    references: [users.id],
+    relationName: "taskOwner",
+  }),
   assignedTo: one(users, {
     fields: [tasks.assignedToId],
     references: [users.id],
+    relationName: "taskAssignee",
   }),
   parent: one(tasks, {
     fields: [tasks.parentId],

@@ -68,7 +68,7 @@ export const users = sqliteTable(
   },
   (table) => ({
     // Case-insensitive email uniqueness to match PostgreSQL's lower(email) index
-    emailIdx: uniqueIndex("users_email_idx").on(table.email),
+    emailIdx: uniqueIndex("users_email_idx").on(sql`lower(${table.email})`),
   }),
 );
 
@@ -246,7 +246,7 @@ export const tasks = sqliteTable(
     parentFk: foreignKey({
       columns: [table.parentId],
       foreignColumns: [table.id],
-    }),
+    }).onDelete("cascade"),
   }),
 );
 
@@ -804,7 +804,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
   apiKeys: many(apiKeys),
-  tasks: many(tasks),
+  tasks: many(tasks, { relationName: "taskOwner" }),
+  assignedTasks: many(tasks, { relationName: "taskAssignee" }),
   bookmarks: many(bookmarks),
   documents: many(documents),
   photos: many(photos),
@@ -825,10 +826,15 @@ export const accountsRelations = relations(accounts, ({ one }) => ({
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
-  user: one(users, { fields: [tasks.userId], references: [users.id] }),
+  user: one(users, {
+    fields: [tasks.userId],
+    references: [users.id],
+    relationName: "taskOwner",
+  }),
   assignedTo: one(users, {
     fields: [tasks.assignedToId],
     references: [users.id],
+    relationName: "taskAssignee",
   }),
   parent: one(tasks, {
     fields: [tasks.parentId],

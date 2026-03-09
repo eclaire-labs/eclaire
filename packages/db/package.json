@@ -67,7 +67,7 @@
     "fix": "biome check --write ./",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:migrate:status": "tsx src/scripts/migrate.ts --status",
-    "db:generate": "drizzle-kit generate",
+    "db:generate": "echo 'Specify dialect: use db:generate:pg or db:generate:sqlite' && exit 1",
     "db:generate:pg": "DATABASE_TYPE=postgresql drizzle-kit generate",
     "db:generate:sqlite": "DATABASE_TYPE=sqlite drizzle-kit generate",
     "db:studio": "drizzle-kit studio"
