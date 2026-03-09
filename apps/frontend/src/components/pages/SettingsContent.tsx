@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { MobileSettingsMenu } from "@/components/mobile/mobile-settings-menu";
 import AccountSettings from "@/components/settings/AccountSettings";
 import ApiKeyManager from "@/components/settings/ApiKeyManager";
+import AppearanceSettings from "@/components/settings/AppearanceSettings";
 import AssistantSettings from "@/components/settings/AssistantSettings";
 import NotificationSettings from "@/components/settings/NotificationSettings";
 import ProfileSettings from "@/components/settings/ProfileSettings";
@@ -51,6 +52,7 @@ function formatBuildDate(isoString: string): string {
 type SettingsTab =
   | "profile"
   | "account"
+  | "appearance"
   | "assistant"
   | "notifications"
   | "api-keys"
@@ -80,6 +82,7 @@ export default function SettingsContent() {
       [
         "profile",
         "account",
+        "appearance",
         "assistant",
         "notifications",
         "api-keys",
@@ -117,6 +120,8 @@ export default function SettingsContent() {
         return <ProfileSettings />;
       case "account":
         return <AccountSettings />;
+      case "appearance":
+        return <AppearanceSettings />;
       case "assistant":
         return <AssistantSettings />;
       case "notifications":
@@ -261,15 +266,17 @@ export default function SettingsContent() {
             <h1 className="text-lg md:text-3xl font-bold md:tracking-tight">
               {tabParam === "account"
                 ? "Account"
-                : tabParam === "assistant"
-                  ? "Assistant"
-                  : tabParam === "notifications"
-                    ? "Notifications"
-                    : tabParam === "api-keys"
-                      ? "API Keys"
-                      : tabParam === "about"
-                        ? "About"
-                        : "Profile"}
+                : tabParam === "appearance"
+                  ? "Appearance"
+                  : tabParam === "assistant"
+                    ? "Assistant"
+                    : tabParam === "notifications"
+                      ? "Notifications"
+                      : tabParam === "api-keys"
+                        ? "API Keys"
+                        : tabParam === "about"
+                          ? "About"
+                          : "Profile"}
             </h1>
             <p className="text-muted-foreground mt-1 hidden md:block">
               Manage your {tabParam === "api-keys" ? "API keys" : tabParam}{" "}
@@ -304,12 +311,15 @@ export default function SettingsContent() {
         }}
         className="space-y-4"
       >
-        <TabsList className="grid w-full md:w-auto md:inline-flex grid-cols-6 h-auto p-1">
+        <TabsList className="grid w-full md:w-auto md:inline-flex grid-cols-7 h-auto p-1">
           <TabsTrigger value="profile" className="py-2.5">
             Profile
           </TabsTrigger>
           <TabsTrigger value="account" className="py-2.5">
             Account
+          </TabsTrigger>
+          <TabsTrigger value="appearance" className="py-2.5">
+            Appearance
           </TabsTrigger>
           <TabsTrigger value="assistant" className="py-2.5">
             Assistant
@@ -331,6 +341,10 @@ export default function SettingsContent() {
 
         <TabsContent value="account">
           <AccountSettings />
+        </TabsContent>
+
+        <TabsContent value="appearance">
+          <AppearanceSettings />
         </TabsContent>
 
         <TabsContent value="assistant">

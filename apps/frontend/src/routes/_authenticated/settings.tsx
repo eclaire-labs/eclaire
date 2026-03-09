@@ -7,6 +7,7 @@ const SettingsPage = lazy(() => import("@/components/pages/SettingsPage"));
 const validTabs = [
   "profile",
   "account",
+  "appearance",
   "assistant",
   "notifications",
   "api-keys",

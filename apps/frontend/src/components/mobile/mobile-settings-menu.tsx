@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Info,
   Key,
+  LayoutDashboard,
   Settings,
   User,
 } from "lucide-react";
@@ -35,6 +36,13 @@ const settingsMenuItems: SettingsMenuItem[] = [
     description: "Account settings and preferences",
     icon: Settings,
     href: "/settings?tab=account",
+  },
+  {
+    id: "appearance",
+    label: "Appearance",
+    description: "Customize sidebar and display options",
+    icon: LayoutDashboard,
+    href: "/settings?tab=appearance",
   },
   {
     id: "notifications",

@@ -26,6 +26,7 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { GlobalAssistant } from "@/components/assistant/global-assistant";
+import { PopularTagsSection } from "@/components/dashboard/popular-tags-section";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
 import { MobileChatView } from "@/components/mobile/mobile-chat-view";
@@ -957,6 +958,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
                 </li>
               ))}
             </ul>
+            <PopularTagsSection />
           </nav>
         </div>
 

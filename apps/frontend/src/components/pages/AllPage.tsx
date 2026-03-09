@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import {
   BookMarked,
   Calendar,
@@ -56,14 +56,22 @@ interface Item {
   ocrText?: string | null;
 }
 
+const routeApi = getRouteApi("/_authenticated/all/");
+
 export default function AllItemsPage() {
   const isMobile = useIsMobile();
+  const { tag: tagParam } = routeApi.useSearch();
   const [items, setItems] = useState<Item[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
-  const [filterTag, setFilterTag] = useState<string>("all");
+  const [filterTag, setFilterTag] = useState<string>(tagParam || "all");
   const [isLoading, setIsLoading] = useState(true);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+
+  // Sync filterTag when the URL search param changes (e.g. sidebar tag click)
+  useEffect(() => {
+    setFilterTag(tagParam || "all");
+  }, [tagParam]);
 
   // Fetch all items from API
   useEffect(() => {
