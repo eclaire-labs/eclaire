@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
+import { useTags } from "@/hooks/use-tags";
 import { AIAvatar } from "@/components/ui/ai-avatar";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Button } from "@/components/ui/button";
@@ -135,10 +136,7 @@ export default function TasksPage() {
     isFetchingNextPage,
   } = useTasks(params);
 
-  const allTags = useMemo(
-    () => [...new Set(tasks.flatMap((t) => t.tags))].sort(),
-    [tasks],
-  );
+  const { data: allTags = [] } = useTags("tasks");
 
   // Users for assignee dropdown
   const [users, setUsers] = useState<User[]>([]);

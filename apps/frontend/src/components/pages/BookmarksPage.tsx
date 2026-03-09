@@ -10,9 +10,10 @@ import {
   Smartphone,
   Upload,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
+import { useTags } from "@/hooks/use-tags";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,10 +71,7 @@ export default function BookmarksPage() {
     isFetchingNextPage,
   } = useBookmarks(params);
 
-  const allTags = useMemo(
-    () => [...new Set(bookmarks.flatMap((b) => b.tags))].sort(),
-    [bookmarks],
-  );
+  const { data: allTags = [] } = useTags("bookmarks");
 
   // Shared list page state
   const state = useListPageState(bookmarks, allTags, bookmarksConfig, {

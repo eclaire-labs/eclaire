@@ -10,9 +10,10 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
+import { useTags } from "@/hooks/use-tags";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { UploadProgressList } from "@/components/shared/UploadProgressList";
 import type { UploadingFile } from "@/components/shared/UploadProgressList";
@@ -117,10 +118,7 @@ export default function DocumentsPage() {
     isFetchingNextPage,
   } = useDocuments(params);
 
-  const allTags = useMemo(
-    () => [...new Set(entries.flatMap((d) => d.tags))].sort(),
-    [entries],
-  );
+  const { data: allTags = [] } = useTags("documents");
 
   // Shared list page state
   const state = useListPageState(entries, allTags, documentsConfig, {

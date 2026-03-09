@@ -53,6 +53,7 @@ import { photosRoutes } from "./routes/photos.js";
 import { processingEventsRoutes } from "./routes/processing-events.js";
 import { processingStatusRoutes } from "./routes/processing-status.js";
 import { sessionsRoutes } from "./routes/sessions.js";
+import { tagsRoutes } from "./routes/tags.js";
 import { tasksRoutes } from "./routes/tasks.js";
 import { userRoutes } from "./routes/user.js";
 
@@ -177,6 +178,7 @@ app.route("/api/model", modelRoutes);
 app.route("/api/sessions", sessionsRoutes);
 app.route("/api/processing-status", processingStatusRoutes);
 app.route("/api/processing-events", processingEventsRoutes);
+app.route("/api/tags", tagsRoutes);
 
 // SPA middleware - serves frontend static files and falls back to index.html
 // Must be registered AFTER all API routes

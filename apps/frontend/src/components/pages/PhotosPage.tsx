@@ -10,11 +10,12 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import type { ViewModeDef } from "@/components/list-page";
 import type { ListParams } from "@/hooks/create-crud-hooks";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { useTags } from "@/hooks/use-tags";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { UploadProgressList } from "@/components/shared/UploadProgressList";
@@ -106,10 +107,7 @@ export default function PhotosPage() {
     isFetchingNextPage,
   } = usePhotos(params);
 
-  const allTags = useMemo(
-    () => [...new Set(photos.flatMap((p) => p.tags))].sort(),
-    [photos],
-  );
+  const { data: allTags = [] } = useTags("photos");
 
   // Shared list page state
   const state = useListPageState(photos, allTags, photosConfig, {
