@@ -1,6 +1,7 @@
 import path from "node:path";
 import { pgSchema, sqliteSchema } from "@eclaire/db";
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import Database from "better-sqlite3";
 import { sql } from "drizzle-orm";
 import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
@@ -27,7 +28,8 @@ describe.each(DB_TEST_CONFIGS)("$label - Migration Tests", ({
       db = drizzleSqlite(client, { schema: sqliteSchema });
     } else {
       // In-memory PGlite
-      client = new PGlite();
+      client = new PGlite({ extensions: { pg_trgm } });
+      await client.exec("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
       db = drizzlePglite(client, { schema: pgSchema });
     }
   });

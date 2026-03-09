@@ -124,6 +124,8 @@ async function runPgliteMigrations(statusFlag: boolean, forceFlag: boolean) {
       console.log("Running database migrations on PGlite...");
       console.log(`   Migrations folder: ${POSTGRES_MIGRATIONS}`);
 
+      // Activate pg_trgm extension (bundled via createPgliteClient) before migrations
+      await client.exec("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
       await migratePglite(db, { migrationsFolder: POSTGRES_MIGRATIONS });
       console.log("Database migrations completed successfully!");
     }

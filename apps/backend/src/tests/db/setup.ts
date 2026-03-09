@@ -7,6 +7,7 @@ import {
   type TransactionManager,
 } from "@eclaire/db";
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import Database from "better-sqlite3";
 import { sql } from "drizzle-orm";
 import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
@@ -60,7 +61,8 @@ export async function initTestDatabase(
     };
   } else {
     // In-memory PGlite database
-    const client = new PGlite();
+    const client = new PGlite({ extensions: { pg_trgm } });
+    await client.exec("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
 
     const db = drizzlePglite(client, { schema: pgSchema });
     const txManager = createPgTransactionManager(db);

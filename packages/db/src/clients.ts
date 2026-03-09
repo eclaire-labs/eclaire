@@ -8,6 +8,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import Database from "better-sqlite3";
 import postgres from "postgres";
 
@@ -45,7 +46,7 @@ export function createPgliteClient(path: string): PGlite {
   const dir = dirname(path);
   mkdirSync(dir, { recursive: true });
 
-  return new PGlite(path);
+  return new PGlite(path, { extensions: { pg_trgm } });
 }
 
 /**
