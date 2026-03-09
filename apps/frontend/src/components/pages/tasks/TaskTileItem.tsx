@@ -2,6 +2,7 @@ import {
   Calendar,
   Edit,
   FileText,
+  GitBranch,
   MessageSquare,
   MoreHorizontal,
   RefreshCw,
@@ -103,6 +104,15 @@ export function TaskTileItem({
                 {task.title}
                 {task.isRecurring && (
                   <RefreshCw className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                )}
+                {(task.childCount ?? 0) > 0 && (
+                  <span
+                    className="flex items-center gap-0.5 text-xs text-muted-foreground flex-shrink-0 font-normal"
+                    title={`${task.childCount} sub-task${task.childCount === 1 ? "" : "s"}`}
+                  >
+                    <GitBranch className="h-3 w-3" />
+                    {task.childCount}
+                  </span>
                 )}
               </CardTitle>
               {assignee?.userType === "assistant" && (

@@ -111,7 +111,7 @@ export default function TasksPage() {
   const { openDialog } = routeApi.useSearch();
   const { data: auth } = useAuth();
 
-  const [params, setParams] = useState<ListParams>({});
+  const [params, setParams] = useState<ListParams>({ topLevelOnly: "true" });
 
   // Data
   const {

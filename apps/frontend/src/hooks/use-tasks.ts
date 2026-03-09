@@ -23,6 +23,7 @@ export const transformTaskData = (raw: any): Task => ({
   processingEnabled: raw.processingEnabled ?? true,
   priority: raw.priority ?? 0,
   parentId: raw.parentId ?? null,
+  childCount: raw.childCount ?? 0,
   sortOrder: raw.sortOrder ?? null,
   isRecurring: raw.isRecurring || false,
   cronExpression: raw.cronExpression || null,

@@ -300,6 +300,23 @@ export const TaskSearchParamsSchema = z
           "Filter tasks with due dates on or before this date (YYYY-MM-DD format)",
         examples: ["2025-06-30", "2025-12-31"],
       }),
+
+    parentId: z
+      .string()
+      .optional()
+      .meta({
+        description: "Filter tasks by parent task ID (returns sub-tasks of the specified parent)",
+        examples: ["tsk_abc123"],
+      }),
+
+    topLevelOnly: z
+      .enum(["true", "false"])
+      .optional()
+      .meta({
+        description:
+          "When 'true', only return top-level tasks (exclude sub-tasks). Ignored if parentId is set.",
+        examples: ["true"],
+      }),
   })
   .meta({
     ref: "TaskSearchParams",

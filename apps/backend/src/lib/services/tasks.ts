@@ -13,6 +13,7 @@ import {
   gte,
   inArray,
   isNotNull,
+  isNull,
   like,
   lte,
   or,
@@ -57,6 +58,8 @@ export type FindTasksParams = {
   endDate?: Date;
   dueDateStart?: Date;
   dueDateEnd?: Date;
+  parentId?: string;
+  topLevelOnly?: boolean;
   offset?: number;
   cursor?: string;
   sortBy?: string;
@@ -547,6 +550,7 @@ function cleanTaskForResponse(
   // biome-ignore lint/suspicious/noExplicitAny: raw DB row formatter
   comments: any[] = [],
   scheduleData?: TaskScheduleData | null,
+  childCount?: number,
 ) {
   const dueDate = task.dueDate != null ? formatToISO8601(task.dueDate) : null;
   const lastExecutedAt =
@@ -576,6 +580,7 @@ function cleanTaskForResponse(
     priority: task.priority ?? 0,
     sortOrder: task.sortOrder != null ? Number(task.sortOrder) : null,
     parentId: task.parentId ?? null,
+    childCount: childCount ?? 0,
     tags: tags,
     comments: comments,
     // Recurrence data from scheduler
@@ -625,6 +630,24 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
       userId,
       true, // Allow fallback for create operations
     );
+
+    // Validate parentId if provided (single-level nesting, same user)
+    if (taskData.parentId) {
+      const parentTask = await db.query.tasks.findFirst({
+        where: and(eq(tasks.id, taskData.parentId), eq(tasks.userId, userId)),
+        columns: { id: true, parentId: true },
+      });
+      if (!parentTask) {
+        throw new ValidationError(
+          "Parent task not found or belongs to another user",
+        );
+      }
+      if (parentTask.parentId !== null) {
+        throw new ValidationError(
+          "Cannot nest sub-tasks: parent is already a sub-task (single-level nesting only)",
+        );
+      }
+    }
 
     // Pre-generate task ID before transaction
     const taskId = generateTaskId();
@@ -830,6 +853,30 @@ export async function updateTask(
         false, // No fallback for update operations - strict validation
       );
       taskUpdateData.assignedToId = validatedAssignedToId;
+    }
+
+    // Validate parentId if being changed (single-level nesting, same user)
+    if ("parentId" in taskUpdateData && taskUpdateData.parentId) {
+      const parentTask = await db.query.tasks.findFirst({
+        where: and(
+          eq(tasks.id, taskUpdateData.parentId),
+          eq(tasks.userId, userId),
+        ),
+        columns: { id: true, parentId: true },
+      });
+      if (!parentTask) {
+        throw new ValidationError(
+          "Parent task not found or belongs to another user",
+        );
+      }
+      if (parentTask.parentId !== null) {
+        throw new ValidationError(
+          "Cannot nest sub-tasks: parent is already a sub-task (single-level nesting only)",
+        );
+      }
+      if (taskUpdateData.parentId === id) {
+        throw new ValidationError("A task cannot be its own parent");
+      }
     }
 
     // Convert dueDate string to Date object
@@ -1722,11 +1769,16 @@ export async function getTaskById(taskId: string, userId: string) {
     const task = result.task;
 
     // Fetch data in parallel
-    const [taskTagNames, taskCommentsData, scheduleData] = await Promise.all([
-      getTaskTags(taskId),
-      getTaskCommentsWithUsers(taskId),
-      getTaskScheduleData(taskId),
-    ]);
+    const [taskTagNames, taskCommentsData, scheduleData, childCountResult] =
+      await Promise.all([
+        getTaskTags(taskId),
+        getTaskCommentsWithUsers(taskId),
+        getTaskScheduleData(taskId),
+        db
+          .select({ value: count() })
+          .from(tasks)
+          .where(eq(tasks.parentId, taskId)),
+      ]);
 
     return cleanTaskForResponse(
       task,
@@ -1734,6 +1786,7 @@ export async function getTaskById(taskId: string, userId: string) {
       result.status,
       taskCommentsData,
       scheduleData,
+      childCountResult[0]?.value ?? 0,
     );
   } catch (error) {
     logger.error(
@@ -1841,6 +1894,8 @@ function _buildTaskQueryConditions({
   endDate,
   dueDateStart,
   dueDateEnd,
+  parentId,
+  topLevelOnly,
 }: FindTasksParams): (SQL | undefined)[] {
   // Return type allowing undefined for clarity before filtering/spreading
   // Explicitly type the array elements
@@ -1892,6 +1947,13 @@ function _buildTaskQueryConditions({
     );
   }
 
+  // Filter by parent task
+  if (parentId) {
+    definedConditions.push(eq(tasks.parentId, parentId));
+  } else if (topLevelOnly) {
+    definedConditions.push(isNull(tasks.parentId));
+  }
+
   // Return the array including potential undefined values.
   // The `and(...conditions)` spread in the calling functions handles filtering undefined.
   return definedConditions;
@@ -1914,6 +1976,8 @@ export async function findTasks({
   limit = 50,
   dueDateStart,
   dueDateEnd,
+  parentId,
+  topLevelOnly,
   cursor,
   sortBy = "createdAt",
   sortDir = "desc",
@@ -1928,6 +1992,8 @@ export async function findTasks({
       endDate,
       dueDateStart,
       dueDateEnd,
+      parentId,
+      topLevelOnly,
     });
 
     // Resolve sort column
@@ -2004,8 +2070,8 @@ export async function findTasks({
     const hasMore = finalIds.length > limit;
     if (hasMore) finalIds = finalIds.slice(0, limit);
 
-    // Fetch full data for the final page of IDs, schedule data, and tags in parallel
-    const [entriesList, schedulesMap, tagMap] = await Promise.all([
+    // Fetch full data for the final page of IDs, schedule data, tags, and child counts in parallel
+    const [entriesList, schedulesMap, tagMap, childCounts] = await Promise.all([
       db
         .select({
           task: tasks,
@@ -2028,7 +2094,21 @@ export async function findTasks({
         tasksTags.tagId,
         finalIds,
       ),
+      db
+        .select({
+          parentId: tasks.parentId,
+          count: count(),
+        })
+        .from(tasks)
+        .where(inArray(tasks.parentId, finalIds))
+        .groupBy(tasks.parentId),
     ]);
+
+    // Build child count map
+    const childCountMap = new Map<string, number>();
+    for (const row of childCounts) {
+      if (row.parentId) childCountMap.set(row.parentId, row.count);
+    }
 
     const items = entriesList.map((result) => {
       const task = result.task;
@@ -2039,6 +2119,7 @@ export async function findTasks({
         result.status,
         [],
         scheduleData,
+        childCountMap.get(task.id) ?? 0,
       );
     });
 
@@ -2096,6 +2177,8 @@ export async function countTasks({
   endDate,
   dueDateStart,
   dueDateEnd,
+  parentId,
+  topLevelOnly,
 }: FindTasksParams): Promise<number> {
   try {
     const conditions = _buildTaskQueryConditions({
@@ -2107,6 +2190,8 @@ export async function countTasks({
       endDate,
       dueDateStart,
       dueDateEnd,
+      parentId,
+      topLevelOnly,
     });
 
     const baseQuery = db

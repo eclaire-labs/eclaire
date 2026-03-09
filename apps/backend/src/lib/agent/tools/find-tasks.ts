@@ -23,6 +23,14 @@ const inputSchema = z.object({
     .describe("Filter by task status"),
   startDate: z.string().optional().describe("Start of date range (ISO format)"),
   endDate: z.string().optional().describe("End of date range (ISO format)"),
+  parentId: z
+    .string()
+    .optional()
+    .describe("Filter by parent task ID to get sub-tasks"),
+  topLevelOnly: z
+    .boolean()
+    .optional()
+    .describe("When true, only return top-level tasks (exclude sub-tasks)"),
   limit: z
     .number()
     .optional()
@@ -51,6 +59,8 @@ export const findTasksTool: RuntimeToolDefinition<typeof inputSchema> = {
       status: validStatus,
       startDate: input.startDate ? new Date(input.startDate) : undefined,
       endDate: input.endDate ? new Date(input.endDate) : undefined,
+      parentId: input.parentId,
+      topLevelOnly: input.topLevelOnly,
       limit: input.limit,
     });
     return textResult(JSON.stringify(results.items, null, 2));

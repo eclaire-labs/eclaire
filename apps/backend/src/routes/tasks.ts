@@ -82,6 +82,8 @@ tasksRoutes.get(
       sortDir: params.sortDir,
       dueDateStart,
       dueDateEnd,
+      parentId: params.parentId,
+      topLevelOnly: params.topLevelOnly === "true",
     });
 
     return c.json(result);

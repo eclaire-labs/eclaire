@@ -76,6 +76,8 @@ interface CreateTaskDialogProps {
   onCreateTask: (data: Omit<Task, "id">) => Promise<void>;
   isCreating: boolean;
   defaultAssigneeId?: string;
+  /** Pre-fill parentId when creating a sub-task */
+  parentId?: string | null;
   /** Render the assignee SelectContent (shared with edit dialog) */
   renderAssigneeSelectContent: () => ReactNode;
 }
@@ -86,12 +88,14 @@ export function CreateTaskDialog({
   onCreateTask,
   isCreating,
   defaultAssigneeId,
+  parentId,
   renderAssigneeSelectContent,
 }: CreateTaskDialogProps) {
   const [task, setTask] = useState<Omit<Task, "id">>({
     ...INITIAL_TASK,
     assignedToId: defaultAssigneeId ?? null,
     userId: defaultAssigneeId ?? "",
+    parentId: parentId ?? null,
   });
 
   const reset = (assigneeId?: string) =>
@@ -99,6 +103,7 @@ export function CreateTaskDialog({
       ...INITIAL_TASK,
       assignedToId: assigneeId ?? defaultAssigneeId ?? null,
       userId: assigneeId ?? defaultAssigneeId ?? "",
+      parentId: parentId ?? null,
     });
 
   const handleSubmit = async () => {
@@ -116,8 +121,14 @@ export function CreateTaskDialog({
     >
       <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
-          <DialogTitle>Create New Task</DialogTitle>
-          <DialogDescription>Add a new task to your list.</DialogDescription>
+          <DialogTitle>
+            {parentId ? "Create Sub-task" : "Create New Task"}
+          </DialogTitle>
+          <DialogDescription>
+            {parentId
+              ? "Add a sub-task to the parent task."
+              : "Add a new task to your list."}
+          </DialogDescription>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -206,29 +217,31 @@ export function CreateTaskDialog({
                 />
               </div>
 
-              {/* Recurrence */}
-              <div className="space-y-2">
-                <RecurrenceToggle
-                  value={{
-                    isRecurring: task.isRecurring,
-                    cronExpression: task.cronExpression,
-                    recurrenceEndDate: task.recurrenceEndDate,
-                    recurrenceLimit: task.recurrenceLimit,
-                    runImmediately: task.runImmediately,
-                  }}
-                  onChange={(config) =>
-                    setTask({
-                      ...task,
-                      isRecurring: config.isRecurring,
-                      cronExpression: config.cronExpression,
-                      recurrenceEndDate: config.recurrenceEndDate,
-                      recurrenceLimit: config.recurrenceLimit,
-                      runImmediately: config.runImmediately,
-                    })
-                  }
-                  dueDate={task.dueDate}
-                />
-              </div>
+              {/* Recurrence — hidden for sub-tasks */}
+              {!parentId && (
+                <div className="space-y-2">
+                  <RecurrenceToggle
+                    value={{
+                      isRecurring: task.isRecurring,
+                      cronExpression: task.cronExpression,
+                      recurrenceEndDate: task.recurrenceEndDate,
+                      recurrenceLimit: task.recurrenceLimit,
+                      runImmediately: task.runImmediately,
+                    }}
+                    onChange={(config) =>
+                      setTask({
+                        ...task,
+                        isRecurring: config.isRecurring,
+                        cronExpression: config.cronExpression,
+                        recurrenceEndDate: config.recurrenceEndDate,
+                        recurrenceLimit: config.recurrenceLimit,
+                        runImmediately: config.runImmediately,
+                      })
+                    }
+                    dueDate={task.dueDate}
+                  />
+                </div>
+              )}
             </div>
             {/* Assignee */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -272,7 +285,7 @@ export function CreateTaskDialog({
             </DialogClose>
             <Button type="submit" disabled={isCreating || !task.title}>
               {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Task
+              {parentId ? "Create Sub-task" : "Create Task"}
             </Button>
           </DialogFooter>
         </form>

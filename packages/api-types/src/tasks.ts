@@ -35,6 +35,7 @@ export const TaskResponseSchema = z
     isPinned: z.boolean(),
     sortOrder: z.number().nullable(),
     parentId: z.string().nullable(),
+    childCount: z.number().int().optional(),
     tags: z.array(z.string()),
     createdAt: z.string(),
     updatedAt: z.string(),
