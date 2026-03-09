@@ -241,6 +241,7 @@ export async function createNoteEntry(
         tags: tagNames,
       },
       actor: caller.actor,
+      actorId: caller.userId,
       userId: userId,
     });
 
@@ -377,6 +378,7 @@ export async function updateNoteEntry(
         beforeData: existingEntry,
         afterData: { ...existingEntry, ...noteData },
         actor: caller.actor,
+        actorId: caller.userId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -401,7 +403,7 @@ export async function updateNoteEntry(
 }
 
 // Delete note entry function
-export async function deleteNoteEntry(id: string, userId: string) {
+export async function deleteNoteEntry(id: string, userId: string, caller: CallerContext) {
   try {
     // Get existing entry for history
     const existingEntry = await getNoteEntryById(id, userId);
@@ -430,7 +432,8 @@ export async function deleteNoteEntry(id: string, userId: string) {
         itemName: existingEntry.title,
         beforeData: existingEntry,
         afterData: null,
-        actor: "user",
+        actor: caller.actor,
+        actorId: caller.userId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),

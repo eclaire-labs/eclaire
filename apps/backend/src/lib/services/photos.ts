@@ -246,7 +246,7 @@ async function queuePhotoBackgroundJobs(
  * @param userId - The ID of the user creating the photo.
  * @returns The newly created photo details including its access URL.
  */
-export async function createPhoto(data: CreatePhotoData, userId: string) {
+export async function createPhoto(data: CreatePhotoData, userId: string, caller: CallerContext) {
   // Generate photo ID first so we can use it for storage
   const photoId = generatePhotoId();
   const { metadata, content, originalMimeType, userAgent, extractedMetadata } =
@@ -446,7 +446,8 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
         storageId: storageInfo.storageId,
         tags: tags,
       },
-      actor: "user",
+      actor: caller.actor,
+      actorId: caller.userId,
       userId: userId,
     });
 
@@ -617,6 +618,7 @@ export async function updatePhotoMetadata(
           tags: tagNames ?? currentPhotoTags,
         },
         actor: caller.actor,
+        actorId: caller.userId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -641,6 +643,7 @@ export async function updatePhotoMetadata(
 export async function deletePhoto(
   id: string,
   userId: string,
+  caller: CallerContext,
   deleteStorage: boolean = true,
 ) {
   try {
@@ -686,7 +689,8 @@ export async function deletePhoto(
         itemName: existingPhoto.title || "Untitled Photo",
         beforeData: { ...existingPhoto, tags: photoTags },
         afterData: null,
-        actor: "user",
+        actor: caller.actor,
+        actorId: caller.userId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),

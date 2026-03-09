@@ -6,6 +6,7 @@ const { feedback } = schema;
 
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 
 const logger = createChildLogger("services:feedback");
 
@@ -29,6 +30,7 @@ interface FeedbackEntry {
 export async function createFeedback(
   data: CreateFeedbackData,
   userId: string,
+  caller: CallerContext,
 ): Promise<FeedbackEntry> {
   try {
     logger.info({ userId, data }, "Creating feedback entry");
@@ -59,7 +61,8 @@ export async function createFeedback(
         description: data.description,
         sentiment: data.sentiment,
       },
-      actor: "user",
+      actor: caller.actor,
+      actorId: caller.userId,
       userId: userId,
       metadata: { userId },
     });

@@ -707,6 +707,7 @@ export async function createTask(
         assignedToId: assignedToUserId,
       },
       actor: caller.actor,
+      actorId: caller.userId,
       userId: userId,
     });
 
@@ -1085,6 +1086,7 @@ export async function updateTask(
           tags: tagNames ?? currentTaskTags,
         },
         actor: caller.actor,
+        actorId: caller.userId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -1307,12 +1309,12 @@ export async function updateTask(
 export async function updateTaskStatusAsAssistant(
   taskId: string,
   status: TaskStatus,
-  assignedAssistantId: string,
+  caller: CallerContext,
   completedAt?: string | null,
 ): Promise<void> {
   try {
     logger.info(
-      { taskId, status, assignedAssistantId, completedAt },
+      { taskId, status, assignedAssistantId: caller.userId, completedAt },
       "Updating task status as assistant",
     );
 
@@ -1333,9 +1335,9 @@ export async function updateTaskStatusAsAssistant(
     }
 
     // Verify the assistant is actually assigned to this task
-    if (task.assignedToId !== assignedAssistantId) {
+    if (task.assignedToId !== caller.userId) {
       throw new Error(
-        `Assistant ${assignedAssistantId} is not assigned to task ${taskId}`,
+        `Assistant ${caller.userId} is not assigned to task ${taskId}`,
       );
     }
 
@@ -1380,11 +1382,12 @@ export async function updateTaskStatusAsAssistant(
       beforeData,
       afterData,
       userId: task.userId, // The task owner
-      actor: "assistant", // Important: shows this was done by assistant
+      actor: caller.actor,
+      actorId: caller.userId,
       metadata: {
         updatedFields: ["status", ...(completedAt ? ["completedAt"] : [])],
         statusChange: `${beforeData.status} → ${status}`,
-        assistantId: assignedAssistantId, // Store assistant ID in metadata instead
+        assistantId: caller.userId, // Store assistant ID in metadata instead
       },
     });
 
@@ -1392,7 +1395,7 @@ export async function updateTaskStatusAsAssistant(
       {
         taskId,
         status,
-        assignedAssistantId,
+        assignedAssistantId: caller.userId,
         taskOwner: task.userId,
       },
       "Task status updated successfully by assistant",
@@ -1402,7 +1405,7 @@ export async function updateTaskStatusAsAssistant(
       {
         taskId,
         status,
-        assignedAssistantId,
+        assignedAssistantId: caller.userId,
         completedAt,
         error: error instanceof Error ? error.message : "Unknown error",
       },
@@ -1602,7 +1605,7 @@ export async function updateTaskArtifacts(
 }
 
 // Delete task function
-export async function deleteTask(id: string, userId: string) {
+export async function deleteTask(id: string, userId: string, caller: CallerContext) {
   try {
     logger.info({ taskId: id, userId }, "Starting task deletion process");
 
@@ -1671,7 +1674,8 @@ export async function deleteTask(id: string, userId: string) {
         itemName: existingTask.title,
         beforeData: { ...existingTask, tags: taskTags },
         afterData: null,
-        actor: "user",
+        actor: caller.actor,
+        actorId: caller.userId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),

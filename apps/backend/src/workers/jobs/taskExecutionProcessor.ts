@@ -7,6 +7,7 @@ import {
   updateTaskExecutionTracking,
   updateTaskStatusAsAssistant,
 } from "../../lib/services/tasks.js";
+import { assistantCaller } from "../../lib/services/types.js";
 
 const logger = createChildLogger("task-execution-processor");
 
@@ -32,7 +33,7 @@ async function updateTaskStatus(
   );
 
   try {
-    await updateTaskStatusAsAssistant(taskId, status, assistantId, completedAt);
+    await updateTaskStatusAsAssistant(taskId, status, assistantCaller(assistantId), completedAt);
     logger.info({ taskId, status }, "Task status updated successfully");
   } catch (error) {
     // If task was deleted during execution, log a warning but don't fail the job
@@ -224,8 +225,7 @@ async function createTaskComment(
   try {
     await createTaskCommentService(
       { taskId, content },
-      assistantUserId,
-      "assistant", // explicit actor override
+      assistantCaller(assistantUserId),
     );
 
     logger.info({ taskId }, "AI assistant comment created successfully");

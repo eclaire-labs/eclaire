@@ -20,6 +20,7 @@ import { formatRequiredTimestamp } from "@eclaire/core";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 
 const logger = createChildLogger("channels");
 
@@ -102,6 +103,7 @@ export async function getUserChannels(
  */
 export async function createChannel(
   userId: string,
+  caller: CallerContext,
   channelData: CreateChannelRequest,
 ): Promise<CreateChannelResponse> {
   try {
@@ -142,7 +144,8 @@ export async function createChannel(
         platform: channelData.platform,
         capability: channelData.capability,
       },
-      actor: "user",
+      actor: caller.actor,
+      actorId: caller.userId,
       userId: userId,
     });
 
@@ -199,6 +202,7 @@ export async function createChannel(
 export async function updateChannel(
   channelId: string,
   userId: string,
+  caller: CallerContext,
   updateData: UpdateChannelRequest,
 ): Promise<UpdateChannelResponse> {
   try {
@@ -260,7 +264,8 @@ export async function updateChannel(
       itemName: updatedChannel.name,
       beforeData: formatChannelForResponse(existingChannel),
       afterData: formatChannelForResponse(updatedChannel),
-      actor: "user",
+      actor: caller.actor,
+      actorId: caller.userId,
       userId: userId,
     });
 
@@ -323,6 +328,7 @@ export async function updateChannel(
 export async function deleteChannel(
   channelId: string,
   userId: string,
+  caller: CallerContext,
 ): Promise<DeleteChannelResponse> {
   try {
     // Get existing channel for history
@@ -359,7 +365,8 @@ export async function deleteChannel(
       itemId: channelId,
       itemName: existingChannel.name,
       beforeData: formatChannelForResponse(existingChannel),
-      actor: "user",
+      actor: caller.actor,
+      actorId: caller.userId,
       userId: userId,
     });
 

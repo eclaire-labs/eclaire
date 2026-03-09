@@ -7,6 +7,7 @@ const { taskComments, tasks, users } = schema;
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 
 const logger = createChildLogger("services:taskComments");
 
@@ -32,8 +33,7 @@ function cleanTaskCommentForResponse(comment: any) {
 
 export async function createTaskComment(
   commentData: CreateTaskCommentParams,
-  userId: string,
-  actorOverride?: "user" | "assistant" | "system",
+  caller: CallerContext,
 ) {
   try {
     // Verify the task exists
@@ -45,26 +45,20 @@ export async function createTaskComment(
       throw new NotFoundError("Task");
     }
 
-    // Get user info to determine actor type (optional if actorOverride provided)
+    // Get user info for display name in metadata
     const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
+      where: eq(users.id, caller.userId),
       columns: {
         id: true,
-        userType: true,
         displayName: true,
       },
     });
-
-    // User lookup is required unless actorOverride is provided
-    if (!user && !actorOverride) {
-      throw new NotFoundError("User");
-    }
 
     const [newComment] = await db
       .insert(taskComments)
       .values({
         taskId: commentData.taskId,
-        userId: userId,
+        userId: caller.userId,
         content: commentData.content,
       })
       .returning();
@@ -91,14 +85,6 @@ export async function createTaskComment(
       throw new Error("Failed to retrieve created comment");
     }
 
-    // Record history - use actorOverride if provided, otherwise determine from user type
-    const actor =
-      actorOverride ??
-      (user?.userType === "assistant"
-        ? "assistant"
-        : user?.userType === "worker"
-          ? "system"
-          : "user");
     await recordHistory({
       action: "create",
       itemType: "task_comment",
@@ -109,12 +95,13 @@ export async function createTaskComment(
         taskId: commentData.taskId,
         taskTitle: task.title,
       },
-      actor,
+      actor: caller.actor,
+      actorId: caller.userId,
       userId: task.userId,
       metadata: {
-        commentCreatedBy: userId,
-        commentCreatedByName: user?.displayName ?? "AI Assistant",
-        commentCreatedByType: user?.userType ?? "assistant",
+        commentCreatedBy: caller.userId,
+        commentCreatedByName: user?.displayName ?? "System",
+        commentCreatedByType: caller.actor,
       },
     });
 
@@ -122,7 +109,7 @@ export async function createTaskComment(
       {
         taskId: commentData.taskId,
         commentId: newComment.id,
-        userId,
+        userId: caller.userId,
       },
       "Task comment created successfully",
     );
@@ -132,7 +119,7 @@ export async function createTaskComment(
     logger.error(
       {
         taskId: commentData.taskId,
-        userId,
+        userId: caller.userId,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Error creating task comment",
@@ -183,14 +170,14 @@ export async function getTaskComments(taskId: string, userId: string) {
 export async function updateTaskComment(
   commentId: string,
   commentData: UpdateTaskCommentParams,
-  userId: string,
+  caller: CallerContext,
 ) {
   try {
-    // Verify the comment exists and user owns it
+    // Verify the comment exists and caller owns it
     const existingComment = await db.query.taskComments.findFirst({
       where: and(
         eq(taskComments.id, commentId),
-        eq(taskComments.userId, userId),
+        eq(taskComments.userId, caller.userId),
       ),
     });
 
@@ -198,12 +185,11 @@ export async function updateTaskComment(
       throw new NotFoundError("Comment");
     }
 
-    // Get user and task info for history recording
+    // Get user info for display name in metadata
     const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
+      where: eq(users.id, caller.userId),
       columns: {
         id: true,
-        userType: true,
         displayName: true,
       },
     });
@@ -217,7 +203,7 @@ export async function updateTaskComment(
       },
     });
 
-    if (!user || !task) {
+    if (!task) {
       throw new NotFoundError("Task");
     }
 
@@ -248,13 +234,6 @@ export async function updateTaskComment(
       throw new Error("Failed to retrieve updated comment");
     }
 
-    // Record history
-    const actor =
-      user.userType === "assistant"
-        ? "assistant"
-        : user.userType === "worker"
-          ? "system"
-          : "user";
     await recordHistory({
       action: "update",
       itemType: "task_comment",
@@ -268,19 +247,20 @@ export async function updateTaskComment(
         taskId: existingComment.taskId,
         taskTitle: task.title,
       },
-      actor,
+      actor: caller.actor,
+      actorId: caller.userId,
       userId: task.userId,
       metadata: {
-        commentUpdatedBy: userId,
-        commentUpdatedByName: user.displayName,
-        commentUpdatedByType: user.userType,
+        commentUpdatedBy: caller.userId,
+        commentUpdatedByName: user?.displayName ?? "System",
+        commentUpdatedByType: caller.actor,
       },
     });
 
     logger.info(
       {
         commentId,
-        userId,
+        userId: caller.userId,
       },
       "Task comment updated successfully",
     );
@@ -290,7 +270,7 @@ export async function updateTaskComment(
     logger.error(
       {
         commentId,
-        userId,
+        userId: caller.userId,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Error updating task comment",
@@ -299,13 +279,16 @@ export async function updateTaskComment(
   }
 }
 
-export async function deleteTaskComment(commentId: string, userId: string) {
+export async function deleteTaskComment(
+  commentId: string,
+  caller: CallerContext,
+) {
   try {
-    // Verify the comment exists and user owns it
+    // Verify the comment exists and caller owns it
     const existingComment = await db.query.taskComments.findFirst({
       where: and(
         eq(taskComments.id, commentId),
-        eq(taskComments.userId, userId),
+        eq(taskComments.userId, caller.userId),
       ),
     });
 
@@ -313,12 +296,11 @@ export async function deleteTaskComment(commentId: string, userId: string) {
       throw new NotFoundError("Comment");
     }
 
-    // Get user and task info for history recording
+    // Get user info for display name in metadata
     const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
+      where: eq(users.id, caller.userId),
       columns: {
         id: true,
-        userType: true,
         displayName: true,
       },
     });
@@ -332,19 +314,12 @@ export async function deleteTaskComment(commentId: string, userId: string) {
       },
     });
 
-    if (!user || !task) {
+    if (!task) {
       throw new NotFoundError("Task");
     }
 
     await db.delete(taskComments).where(eq(taskComments.id, commentId));
 
-    // Record history
-    const actor =
-      user.userType === "assistant"
-        ? "assistant"
-        : user.userType === "worker"
-          ? "system"
-          : "user";
     await recordHistory({
       action: "delete",
       itemType: "task_comment",
@@ -355,19 +330,20 @@ export async function deleteTaskComment(commentId: string, userId: string) {
         taskId: existingComment.taskId,
         taskTitle: task.title,
       },
-      actor,
+      actor: caller.actor,
+      actorId: caller.userId,
       userId: task.userId,
       metadata: {
-        commentDeletedBy: userId,
-        commentDeletedByName: user.displayName,
-        commentDeletedByType: user.userType,
+        commentDeletedBy: caller.userId,
+        commentDeletedByName: user?.displayName ?? "System",
+        commentDeletedByType: caller.actor,
       },
     });
 
     logger.info(
       {
         commentId,
-        userId,
+        userId: caller.userId,
       },
       "Task comment deleted successfully",
     );
@@ -377,7 +353,7 @@ export async function deleteTaskComment(commentId: string, userId: string) {
     logger.error(
       {
         commentId,
-        userId,
+        userId: caller.userId,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Error deleting task comment",

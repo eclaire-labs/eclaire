@@ -715,6 +715,7 @@ export const history = pgTable(
     beforeData: jsonb("before_data"),
     afterData: jsonb("after_data"),
     actor: text("actor").notNull(),
+    actorId: text("actor_id"),
     metadata: jsonb("metadata"),
     timestamp: timestamp("timestamp", { withTimezone: true })
       .notNull()
@@ -726,6 +727,7 @@ export const history = pgTable(
   (table) => ({
     itemIdx: index("history_item_idx").on(table.itemType, table.itemId),
     userIdx: index("history_user_id_idx").on(table.userId),
+    actorIdx: index("history_actor_id_idx").on(table.actorId),
   }),
 );
 

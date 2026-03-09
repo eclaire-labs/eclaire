@@ -194,7 +194,7 @@ notesRoutes.delete(
   describeRoute(deleteNoteRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    await deleteNoteEntry(id, userId);
+    await deleteNoteEntry(id, userId, { userId, actor: "user" });
     return new Response(null, { status: 204 });
   }, logger),
 );

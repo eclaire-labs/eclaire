@@ -12,15 +12,18 @@ import {
   listSessions,
   deleteSession,
 } from "./services/sessions.js";
+import { systemCaller } from "./services/types.js";
 import { createChildLogger } from "./logger.js";
 
 export const channelRegistry = new ChannelRegistry();
 
 /** Shared session & model deps for all channel adapters. */
 const sessionAndModelDeps = {
-  createSession,
+  createSession: (userId: string, title?: string) =>
+    createSession(userId, systemCaller(userId), title),
   listSessions,
-  deleteSession,
+  deleteSession: (sessionId: string, userId: string) =>
+    deleteSession(sessionId, userId, systemCaller(userId)),
   getModelInfo: () => {
     const model = getActiveModelForContext("backend");
     if (!model) return null;

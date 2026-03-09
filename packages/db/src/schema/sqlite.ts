@@ -673,6 +673,7 @@ export const history = sqliteTable(
     }).$type<HistoryBeforeData>(),
     afterData: text("after_data", { mode: "json" }).$type<HistoryAfterData>(),
     actor: text("actor").notNull(),
+    actorId: text("actor_id"),
     metadata: text("metadata", { mode: "json" }).$type<HistoryMetadata>(),
     timestamp: integer("timestamp", { mode: "timestamp_ms" })
       .notNull()
@@ -684,6 +685,7 @@ export const history = sqliteTable(
   (table) => ({
     itemIdx: index("history_item_idx").on(table.itemType, table.itemId),
     userIdx: index("history_user_id_idx").on(table.userId),
+    actorIdx: index("history_actor_id_idx").on(table.actorId),
   }),
 );
 

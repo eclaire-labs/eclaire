@@ -29,7 +29,7 @@ sessionsRoutes.post(
     const body = await c.req.json().catch(() => ({}));
     const parsed = CreateSessionSchema.parse(body);
 
-    const session = await createSession(userId, parsed.title);
+    const session = await createSession(userId, { userId, actor: "user" }, parsed.title);
 
     logger.info({ userId, sessionId: session.id }, "Created session");
 
@@ -78,7 +78,7 @@ sessionsRoutes.put(
     const sessionId = c.req.param("id");
     const body = UpdateSessionSchema.parse(await c.req.json());
 
-    const updated = await updateSession(sessionId, userId, body);
+    const updated = await updateSession(sessionId, userId, { userId, actor: "user" }, body);
 
     if (!updated) {
       return c.json({ error: "Session not found" }, 404);
@@ -93,7 +93,7 @@ sessionsRoutes.delete(
   "/:id",
   withAuth(async (c, userId) => {
     const sessionId = c.req.param("id");
-    const success = await deleteSession(sessionId, userId);
+    const success = await deleteSession(sessionId, userId, { userId, actor: "user" });
 
     if (!success) {
       return c.json({ error: "Session not found" }, 404);
@@ -118,6 +118,7 @@ sessionsRoutes.post(
       context: body.context,
       enableThinking: body.enableThinking,
       requestId,
+      caller: { userId, actor: "user" },
     });
 
     // Convert StreamEvent stream to SSE-formatted bytes

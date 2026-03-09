@@ -59,7 +59,8 @@ export interface RecordHistoryParams {
   // biome-ignore lint/suspicious/noExplicitAny: JSON blob for audit trail
   afterData?: Record<string, any> | null; // More specific type for JSON objects
   actor: HistoryActor;
-  userId?: string; // To associate history with a user
+  actorId?: string; // The specific user/agent who performed the action
+  userId?: string; // The resource owner (whose data was affected)
   // biome-ignore lint/suspicious/noExplicitAny: JSON blob for audit trail
   metadata?: Record<string, any> | null; // Additional metadata for events
   // biome-ignore lint/suspicious/noExplicitAny: optional transaction parameter
@@ -74,6 +75,7 @@ export async function recordHistory({
   beforeData,
   afterData,
   actor,
+  actorId,
   userId,
   metadata,
   tx,
@@ -91,6 +93,7 @@ export async function recordHistory({
       beforeData: beforeData || null, // No JSON.stringify needed - Drizzle handles it
       afterData: afterData || null, // No JSON.stringify needed - Drizzle handles it
       actor,
+      actorId: actorId || null,
       userId: userId || null,
       metadata: metadata || null, // No JSON.stringify needed - Drizzle handles it
       // timestamp is handled by .$defaultFn in schema
@@ -278,6 +281,7 @@ export async function recordLoginHistory({
     itemId: sessionId,
     itemName: success ? "Successful login" : "Failed login attempt",
     actor: "user",
+    actorId: userId,
     userId: userId,
     metadata: {
       ...metadata,
@@ -301,6 +305,7 @@ export async function recordLogoutHistory({
     itemId: sessionId,
     itemName: "User logout",
     actor: "user",
+    actorId: userId,
     userId: userId,
     metadata,
   });

@@ -24,8 +24,7 @@ export const addTaskCommentTool: RuntimeToolDefinition<typeof inputSchema> = {
   execute: async (_callId, input, ctx) => {
     const result = await createTaskComment(
       { taskId: input.taskId, content: input.content },
-      ctx.userId,
-      "assistant",
+      { userId: ctx.userId, actor: "assistant" },
     );
     return textResult(JSON.stringify(result, null, 2));
   },

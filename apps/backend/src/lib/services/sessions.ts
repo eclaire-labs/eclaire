@@ -36,6 +36,7 @@ import {
   type ConversationWithMessages,
 } from "./conversations.js";
 import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 
 const logger = createChildLogger("services:sessions");
 
@@ -57,6 +58,7 @@ export interface SendMessageOptions {
   context?: Context;
   enableThinking?: boolean;
   requestId?: string;
+  caller?: CallerContext;
 }
 
 // ============================================================================
@@ -83,6 +85,7 @@ export function abortExecution(sessionId: string): boolean {
 
 export async function createSession(
   userId: string,
+  caller: CallerContext,
   title?: string,
 ): Promise<Session> {
   const session = await createConversation({
@@ -97,7 +100,8 @@ export async function createSession(
     itemName: session.title,
     beforeData: null,
     afterData: session,
-    actor: "user",
+    actor: caller.actor,
+    actorId: caller.userId,
     userId,
   });
 
@@ -122,6 +126,7 @@ export async function getSession(
 export async function updateSession(
   sessionId: string,
   userId: string,
+  caller: CallerContext,
   updates: { title?: string },
 ): Promise<Session | null> {
   const updated = await updateConversation(sessionId, userId, updates);
@@ -134,7 +139,8 @@ export async function updateSession(
       itemName: updated.title,
       beforeData: { updates },
       afterData: updated,
-      actor: "user",
+      actor: caller.actor,
+      actorId: caller.userId,
       userId,
     });
   }
@@ -145,6 +151,7 @@ export async function updateSession(
 export async function deleteSession(
   sessionId: string,
   userId: string,
+  caller: CallerContext,
 ): Promise<boolean> {
   const success = await deleteConversation(sessionId, userId);
 
@@ -159,7 +166,8 @@ export async function deleteSession(
       itemName: "Deleted Session",
       beforeData: { sessionId },
       afterData: null,
-      actor: "user",
+      actor: caller.actor,
+      actorId: caller.userId,
       userId,
     });
   }
@@ -252,7 +260,8 @@ export async function sendMessage(
     itemName: "AI Session Message",
     beforeData: { prompt },
     afterData: { streaming: true, sessionId },
-    actor: "assistant",
+    actor: options.caller?.actor ?? "assistant",
+    actorId: options.caller?.userId,
     userId,
   }).catch((err) => {
     logger.error({ err }, "Failed to record session message history");

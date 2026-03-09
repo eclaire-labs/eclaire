@@ -178,7 +178,7 @@ bookmarksRoutes.delete(
   describeRoute(deleteBookmarkRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    await deleteBookmark(id, userId, parseDeleteStorage(c));
+    await deleteBookmark(id, userId, { userId, actor: "user" }, parseDeleteStorage(c));
     return new Response(null, { status: 204 });
   }, logger),
 );
@@ -353,7 +353,7 @@ bookmarksRoutes.post(
 
     // Import bookmarks using the service
     const { importBookmarkFile } = await import("../lib/services/bookmarks.js");
-    const result = await importBookmarkFile(userId, bookmarkData);
+    const result = await importBookmarkFile(userId, bookmarkData, { userId, actor: "user" });
 
     return c.json({
       message: "Bookmarks imported successfully",

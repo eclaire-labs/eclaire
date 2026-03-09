@@ -147,7 +147,7 @@ tasksRoutes.delete(
   describeRoute(deleteTaskRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    const success = await deleteTask(id, userId);
+    const success = await deleteTask(id, userId, { userId, actor: "user" });
     if (!success) throw new NotFoundError("Task");
     return new Response(null, { status: 204 });
   }, logger),
@@ -194,7 +194,7 @@ tasksRoutes.post(
   withAuth(async (c, userId) => {
     const taskId = c.req.param("id");
     const { content } = c.req.valid("json");
-    const newComment = await createTaskComment({ taskId, content }, userId);
+    const newComment = await createTaskComment({ taskId, content }, { userId, actor: "user" });
     return c.json(newComment, 201);
   }, logger),
 );
@@ -218,7 +218,7 @@ tasksRoutes.put(
     const updatedComment = await updateTaskComment(
       commentId,
       { content },
-      userId,
+      { userId, actor: "user" },
     );
     return c.json(updatedComment);
   }, logger),
@@ -230,7 +230,7 @@ tasksRoutes.delete(
   describeRoute(deleteTaskCommentRouteDescription),
   withAuth(async (c, userId) => {
     const commentId = c.req.param("commentId");
-    await deleteTaskComment(commentId, userId);
+    await deleteTaskComment(commentId, { userId, actor: "user" });
     return new Response(null, { status: 204 });
   }, logger),
 );

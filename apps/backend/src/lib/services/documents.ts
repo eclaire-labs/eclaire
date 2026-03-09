@@ -271,6 +271,7 @@ function _buildDocumentQueryConditions({
 export async function createDocument(
   data: CreateDocumentData,
   userId: string,
+  caller: CallerContext,
 ): Promise<DocumentDetails> {
   // Generate document ID first so we can use it for storage
   const documentId = generateDocumentId();
@@ -348,7 +349,8 @@ export async function createDocument(
         mimeType: verifiedMimeType,
         tags: metadata.tags,
       },
-      actor: "user",
+      actor: caller.actor,
+      actorId: caller.userId,
       userId,
     }).catch((err) =>
       logger.error({ err }, "Failed to record history for document creation"),
@@ -472,6 +474,7 @@ export async function updateDocument(
         beforeData: existingDocument,
         afterData: { ...existingDocument, ...documentData },
         actor: caller.actor,
+        actorId: caller.userId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -489,6 +492,7 @@ export async function updateDocument(
 export async function deleteDocument(
   id: string,
   userId: string,
+  caller: CallerContext,
   deleteStorage: boolean = true,
 ): Promise<{ success: boolean }> {
   try {
@@ -506,11 +510,30 @@ export async function deleteDocument(
       return { success: true };
     }
 
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
+
     await txManager.withTransaction(async (tx) => {
       await tx.documentsTags.delete(eq(documentsTags.documentId, id));
       await tx.documents.delete(
         and(eq(schemaDocuments.id, id), eq(schemaDocuments.userId, userId)),
       );
+
+      // Record history for document deletion - atomic with the delete
+      await tx.history.insert({
+        id: historyId,
+        action: "delete",
+        itemType: "document",
+        itemId: id,
+        itemName: existingDocument.title,
+        beforeData: existingDocument,
+        afterData: null,
+        actor: caller.actor,
+        actorId: caller.userId,
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
     });
 
     // Delete queue job outside transaction (non-critical, like storage)

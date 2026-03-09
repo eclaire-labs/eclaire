@@ -129,6 +129,7 @@ photosRoutes.post(
         extractedMetadata,
       },
       userId,
+      { userId, actor: "user" },
     );
     return c.json(newPhoto, 201);
   }, logger),
@@ -194,7 +195,7 @@ photosRoutes.delete(
   describeRoute(deletePhotoRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    await deletePhoto(id, userId, parseDeleteStorage(c));
+    await deletePhoto(id, userId, { userId, actor: "user" }, parseDeleteStorage(c));
     return new Response(null, { status: 204 });
   }, logger),
 );

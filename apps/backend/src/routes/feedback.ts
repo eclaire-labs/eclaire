@@ -36,7 +36,7 @@ feedbackRoutes.post(
 
     logger.info({ userId, data }, "Creating feedback");
 
-    const feedback = await createFeedback(data, userId);
+    const feedback = await createFeedback(data, userId, { userId, actor: "user" });
 
     return c.json(
       {

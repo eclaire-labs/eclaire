@@ -269,6 +269,7 @@ export async function createBookmarkAndQueueJob(
       itemId: bookmarkId,
       itemName: title || url,
       actor: caller.actor,
+      actorId: caller.userId,
       userId: userId,
     });
 
@@ -401,6 +402,7 @@ export async function updateBookmark(
         beforeData: existingBookmark,
         afterData: { ...existingBookmark, ...bookmarkData },
         actor: caller.actor,
+        actorId: caller.userId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -432,6 +434,7 @@ export async function updateBookmark(
 export async function deleteBookmark(
   id: string,
   userId: string,
+  caller: CallerContext,
   deleteStorage: boolean = true,
 ) {
   try {
@@ -460,7 +463,8 @@ export async function deleteBookmark(
         itemName: existingBookmark.title || existingBookmark.url,
         beforeData: existingBookmark,
         afterData: null,
-        actor: "user",
+        actor: caller.actor,
+        actorId: caller.userId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -1266,6 +1270,7 @@ export async function importBookmarkFile(
   userId: string,
   // biome-ignore lint/suspicious/noExplicitAny: Chrome/Brave bookmark JSON import data
   bookmarkData: any,
+  caller: CallerContext,
 ): Promise<BookmarkImportResult> {
   const result: BookmarkImportResult = {
     imported: 0,
@@ -1333,7 +1338,7 @@ export async function importBookmarkFile(
           userId,
           rawMetadata: metadata,
           userAgent: "bookmark-import",
-        }, { userId, actor: "user" });
+        }, caller);
 
         if (createResult.success) {
           result.imported++;

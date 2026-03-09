@@ -50,6 +50,13 @@
       "when": 1773042006698,
       "tag": "0006_blushing_zaladane",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1773042207760,
+      "tag": "0007_regular_madelyne_pryor",
+      "breakpoints": true
     }
   ]
 }

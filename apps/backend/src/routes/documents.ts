@@ -127,6 +127,7 @@ documentsRoutes.post(
         userAgent: c.req.header("User-Agent") || "",
       },
       userId,
+      { userId, actor: "user" },
     );
     return c.json(newDocument, 201);
   }, logger),
@@ -281,7 +282,7 @@ documentsRoutes.delete(
   describeRoute(deleteDocumentRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    await deleteDocument(id, userId, parseDeleteStorage(c));
+    await deleteDocument(id, userId, { userId, actor: "user" }, parseDeleteStorage(c));
     return new Response(null, { status: 204 });
   }, logger),
 );

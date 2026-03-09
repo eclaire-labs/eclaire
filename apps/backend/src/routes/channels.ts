@@ -61,7 +61,7 @@ channelsRoutes.post(
 
     const channelData = c.req.valid("json");
 
-    const result = await createChannel(userId, channelData);
+    const result = await createChannel(userId, { userId, actor: "user" }, channelData);
 
     logger.info(
       {
@@ -90,7 +90,7 @@ channelsRoutes.put(
     });
     const updateData = c.req.valid("json");
 
-    const result = await updateChannel(channelId, userId, updateData);
+    const result = await updateChannel(channelId, userId, { userId, actor: "user" }, updateData);
 
     logger.info(
       {
@@ -116,7 +116,7 @@ channelsRoutes.delete(
       id: c.req.param("id"),
     });
 
-    const result = await deleteChannel(channelId, userId);
+    const result = await deleteChannel(channelId, userId, { userId, actor: "user" });
 
     logger.info(
       {

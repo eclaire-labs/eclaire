@@ -192,6 +192,7 @@ export async function classifyAndCreateContent(
             },
           },
           userId,
+          caller,
         );
         logger.info(
           {
@@ -214,6 +215,7 @@ export async function classifyAndCreateContent(
             },
           },
           userId,
+          caller,
         );
         logger.info(
           {
@@ -318,6 +320,7 @@ export async function classifyAndCreateContent(
         },
       },
       userId,
+      caller,
     );
     logger.info(
       { requestId, photoId: result.id, rule: "Rule 5 (MIME-based)" },
@@ -341,6 +344,7 @@ export async function classifyAndCreateContent(
         },
       },
       userId,
+      caller,
     );
     logger.info(
       { requestId, documentId: result.id, rule: "Rule 6 (MIME-based)" },

@@ -139,6 +139,7 @@ notificationsRoutes.post(
         results: processedResults,
       },
       actor: "user",
+      actorId: userId,
       userId: userId,
       metadata: {
         requestId,
