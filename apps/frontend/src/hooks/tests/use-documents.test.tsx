@@ -71,7 +71,7 @@ function makeRawDocument(overrides: Record<string, unknown> = {}) {
     reviewStatus: "approved",
     flagColor: "blue",
     isPinned: true,
-    enabled: true,
+    processingEnabled: true,
     ...overrides,
   };
 }
@@ -141,15 +141,15 @@ describe("transformDocumentData", () => {
     expect(mockNormalizeApiUrl).not.toHaveBeenCalled();
   });
 
-  it("preserves enabled: false via ?? (not ||)", () => {
-    const result = transformDocumentData(makeRawDocument({ enabled: false }));
-    expect(result.enabled).toBe(false);
+  it("preserves processingEnabled: false via ?? (not ||)", () => {
+    const result = transformDocumentData(makeRawDocument({ processingEnabled: false }));
+    expect(result.processingEnabled).toBe(false);
 
     // When missing, defaults to true
     const result2 = transformDocumentData(
-      makeRawDocument({ enabled: undefined }),
+      makeRawDocument({ processingEnabled: undefined }),
     );
-    expect(result2.enabled).toBe(true);
+    expect(result2.processingEnabled).toBe(true);
   });
 
   it("defaults reviewStatus, flagColor, isPinned, processingStatus, and generates date fallbacks", () => {

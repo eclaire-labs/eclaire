@@ -23,7 +23,7 @@ export interface ListableItem {
   isPinned: boolean;
   flagColor: "red" | "yellow" | "orange" | "green" | "blue" | null;
   processingStatus: string | null;
-  enabled: boolean;
+  processingEnabled: boolean;
 }
 
 export type FlagColor = "red" | "yellow" | "orange" | "green" | "blue" | null;

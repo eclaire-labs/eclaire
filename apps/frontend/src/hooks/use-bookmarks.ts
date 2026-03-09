@@ -39,7 +39,7 @@ export const transformBookmarkData = (raw: any): Bookmark => ({
   reviewStatus: raw.reviewStatus || "pending",
   flagColor: raw.flagColor || null,
   isPinned: raw.isPinned || false,
-  enabled: raw.enabled ?? true,
+  processingEnabled: raw.processingEnabled ?? true,
   rawMetadata: raw.rawMetadata,
 });
 

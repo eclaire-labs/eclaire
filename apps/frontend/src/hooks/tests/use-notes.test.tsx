@@ -68,9 +68,9 @@ describe("transformNoteData", () => {
     expect(transformNoteData({ ...minimal, tags: null }).tags).toEqual([]);
   });
 
-  it("preserves enabled: false via ?? (not ||)", () => {
-    const note = transformNoteData({ ...minimal, enabled: false });
-    expect(note.enabled).toBe(false);
+  it("preserves processingEnabled: false via ?? (not ||)", () => {
+    const note = transformNoteData({ ...minimal, processingEnabled: false });
+    expect(note.processingEnabled).toBe(false);
   });
 
   it("applies common defaults for dates, reviewStatus, flagColor, isPinned", () => {

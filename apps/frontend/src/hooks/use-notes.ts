@@ -22,7 +22,7 @@ export const transformNoteData = (raw: any): Note => ({
   reviewStatus: raw.reviewStatus || "pending",
   flagColor: raw.flagColor || null,
   isPinned: raw.isPinned || false,
-  enabled: raw.enabled ?? true,
+  processingEnabled: raw.processingEnabled ?? true,
 });
 
 const { useList, useSingle } = createCrudHooks<Note>({

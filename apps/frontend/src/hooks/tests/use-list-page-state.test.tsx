@@ -60,7 +60,7 @@ function makeItem(id: string, overrides: Partial<TestItem> = {}): TestItem {
     isPinned: false,
     flagColor: null,
     processingStatus: null,
-    enabled: true,
+    processingEnabled: true,
     ...overrides,
   };
 }

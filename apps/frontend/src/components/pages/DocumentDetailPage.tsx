@@ -526,7 +526,7 @@ export function DocumentDetailClient() {
                     contentType="documents"
                     itemId={document.id}
                     processingStatus={document.processingStatus}
-                    enabled={document.enabled}
+                    processingEnabled={document.processingEnabled}
                     isJobStuck={actions.isJobStuck}
                     isReprocessing={actions.isReprocessing}
                     onReprocessClick={() =>

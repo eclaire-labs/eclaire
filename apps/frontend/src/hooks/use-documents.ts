@@ -27,7 +27,7 @@ export const transformDocumentData = (raw: any): Document => ({
   reviewStatus: raw.reviewStatus || "pending",
   flagColor: raw.flagColor || null,
   isPinned: raw.isPinned || false,
-  enabled: raw.enabled ?? true,
+  processingEnabled: raw.processingEnabled ?? true,
 });
 
 const { useList, useSingle } = createCrudHooks<Document>({

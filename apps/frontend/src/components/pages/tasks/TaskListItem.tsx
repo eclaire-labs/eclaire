@@ -1,9 +1,6 @@
 import {
-  CheckCircle2,
-  Circle,
   Edit,
   FileText,
-  Loader2,
   MessageSquare,
   MoreHorizontal,
   RefreshCw,
@@ -30,42 +27,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Task, TaskStatus, User } from "@/types/task";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case "completed":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700 whitespace-nowrap"
-        >
-          Completed
-        </Badge>
-      );
-    case "in-progress":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700 whitespace-nowrap"
-        >
-          In Progress
-        </Badge>
-      );
-    default:
-      return (
-        <Badge
-          variant="outline"
-          className="bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300 border-gray-300 dark:border-gray-600 whitespace-nowrap"
-        >
-          Not Started
-        </Badge>
-      );
-  }
-};
+import {
+  getNextStatus,
+  getPriorityIcon,
+  getPriorityLabel,
+  getStatusConfig,
+  getStatusIcon,
+} from "./task-utils";
 
 // Transform User to match UserAvatar expected format
 const transformUserForAvatar = (user: User) => ({
@@ -114,15 +82,7 @@ export function TaskListItem({
 }: TaskListItemProps) {
   const assignee = allAssignees.find((a) => a.id === task.assignedToId);
 
-  // Status icon
-  let statusIcon: React.JSX.Element;
-  if (task.status === "completed") {
-    statusIcon = <CheckCircle2 className="h-4 w-4 text-green-500" />;
-  } else if (task.status === "in-progress") {
-    statusIcon = <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
-  } else {
-    statusIcon = <Circle className="h-4 w-4 text-muted-foreground" />;
-  }
+  const statusConfig = getStatusConfig(task.status);
 
   return (
     <TableRow
@@ -144,12 +104,12 @@ export function TaskListItem({
               onStatusChange(task.id, task.status as TaskStatus);
             }}
           >
-            {statusIcon}
+            {getStatusIcon(task.status)}
           </Button>
           <div className="absolute -top-1 -right-1">
             <SimpleProcessingStatusIcon
               status={task.processingStatus}
-              enabled={task.enabled}
+              processingEnabled={task.processingEnabled}
               className="bg-white/90 dark:bg-black/90 rounded-full p-0.5"
             />
           </div>
@@ -179,7 +139,19 @@ export function TaskListItem({
         ) : null}
       </TableCell>
       <TableCell className="hidden md:table-cell align-middle">
-        {getStatusBadge(task.status)}
+        <Badge
+          variant="outline"
+          className={`${statusConfig.badgeClass} whitespace-nowrap`}
+        >
+          {statusConfig.label}
+        </Badge>
+      </TableCell>
+      <TableCell className="hidden md:table-cell align-middle">
+        {getPriorityIcon(task.priority) && (
+          <div className="flex items-center gap-1" title={getPriorityIcon(task.priority) ? `Priority: ${getPriorityLabel(task.priority)}` : undefined}>
+            {getPriorityIcon(task.priority)}
+          </div>
+        )}
       </TableCell>
       <TableCell className="hidden lg:table-cell align-middle">
         <div className="flex items-center text-sm text-muted-foreground truncate">
@@ -281,22 +253,8 @@ export function TaskListItem({
                   onStatusChange(task.id, task.status as TaskStatus)
                 }
               >
-                {task.status === "completed" ? (
-                  <>
-                    <Circle className="mr-2 h-4 w-4" />
-                    Mark Not Started
-                  </>
-                ) : task.status === "in-progress" ? (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Mark Completed
-                  </>
-                ) : (
-                  <>
-                    <Circle className="mr-2 h-4 w-4" />
-                    Mark In Progress
-                  </>
-                )}
+                {getStatusIcon(getNextStatus(task.status as TaskStatus), "mr-2 h-4 w-4")}
+                Mark {getStatusConfig(getNextStatus(task.status as TaskStatus)).label}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

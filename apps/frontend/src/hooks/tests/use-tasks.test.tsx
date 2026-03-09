@@ -53,7 +53,10 @@ const fullRawTask = {
   reviewStatus: "approved",
   flagColor: "red",
   isPinned: true,
-  enabled: true,
+  processingEnabled: true,
+  priority: "medium",
+  parentId: null,
+  sortOrder: 0,
   isRecurring: true,
   cronExpression: "0 9 * * 1",
   recurrenceEndDate: "2026-12-31",
@@ -118,13 +121,20 @@ describe("transformTaskData", () => {
     expect(result3.comments).toBeUndefined();
   });
 
-  it("preserves enabled: false via ?? (not ||)", () => {
-    const result = transformTaskData({ id: "1", enabled: false });
-    expect(result.enabled).toBe(false);
+  it("preserves processingEnabled: false via ?? (not ||)", () => {
+    const result = transformTaskData({ id: "1", processingEnabled: false });
+    expect(result.processingEnabled).toBe(false);
 
     // When missing, defaults to true
     const result2 = transformTaskData({ id: "1" });
-    expect(result2.enabled).toBe(true);
+    expect(result2.processingEnabled).toBe(true);
+  });
+
+  it("defaults priority to 0, parentId to null, sortOrder to null", () => {
+    const result = transformTaskData({ id: "1" });
+    expect(result.priority).toBe(0);
+    expect(result.parentId).toBeNull();
+    expect(result.sortOrder).toBeNull();
   });
 
   it("defaults reviewStatus, flagColor, isPinned, processingStatus, and generates date fallbacks", () => {

@@ -91,7 +91,7 @@ export function DocumentListItem({
             <div className="absolute top-0 right-0">
               <SimpleProcessingStatusIcon
                 status={doc.processingStatus}
-                enabled={doc.enabled}
+                processingEnabled={doc.processingEnabled}
                 className="bg-white/90 dark:bg-black/90 rounded-full p-0.5"
               />
             </div>
@@ -103,7 +103,7 @@ export function DocumentListItem({
             <div className="absolute -top-1 -right-1">
               <SimpleProcessingStatusIcon
                 status={doc.processingStatus}
-                enabled={doc.enabled}
+                processingEnabled={doc.processingEnabled}
                 className="bg-white/90 dark:bg-black/90 rounded-full p-0.5"
               />
             </div>

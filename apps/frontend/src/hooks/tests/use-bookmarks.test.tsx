@@ -79,7 +79,7 @@ function makeRawBookmark(overrides: Record<string, unknown> = {}) {
     reviewStatus: "approved",
     flagColor: "green",
     isPinned: true,
-    enabled: true,
+    processingEnabled: true,
     rawMetadata: { github: { stars: 100 } },
     ...overrides,
   };
@@ -141,16 +141,16 @@ describe("transformBookmarkData", () => {
     expect(mockNormalizeApiUrl).not.toHaveBeenCalled();
   });
 
-  it("preserves enabled: false (uses ?? operator, not ||)", () => {
-    const result = transformBookmarkData(makeRawBookmark({ enabled: false }));
-    expect(result.enabled).toBe(false);
+  it("preserves processingEnabled: false (uses ?? operator, not ||)", () => {
+    const result = transformBookmarkData(makeRawBookmark({ processingEnabled: false }));
+    expect(result.processingEnabled).toBe(false);
   });
 
-  it("defaults enabled to true when undefined", () => {
+  it("defaults processingEnabled to true when undefined", () => {
     const result = transformBookmarkData(
-      makeRawBookmark({ enabled: undefined }),
+      makeRawBookmark({ processingEnabled: undefined }),
     );
-    expect(result.enabled).toBe(true);
+    expect(result.processingEnabled).toBe(true);
   });
 
   it("provides date fallbacks for missing createdAt and updatedAt", () => {

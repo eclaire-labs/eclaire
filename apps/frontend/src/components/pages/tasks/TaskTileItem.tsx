@@ -1,7 +1,5 @@
 import {
   Calendar,
-  CheckCircle2,
-  Circle,
   Edit,
   FileText,
   MessageSquare,
@@ -35,42 +33,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Task, TaskStatus, User } from "@/types/task";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case "completed":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700 whitespace-nowrap"
-        >
-          Completed
-        </Badge>
-      );
-    case "in-progress":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-300 dark:border-blue-700 whitespace-nowrap"
-        >
-          In Progress
-        </Badge>
-      );
-    default:
-      return (
-        <Badge
-          variant="outline"
-          className="bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300 border-gray-300 dark:border-gray-600 whitespace-nowrap"
-        >
-          Not Started
-        </Badge>
-      );
-  }
-};
+import {
+  getNextStatus,
+  getPriorityIcon,
+  getStatusConfig,
+  getStatusIcon,
+} from "./task-utils";
 
 // Transform User to match UserAvatar expected format
 const transformUserForAvatar = (user: User) => ({
@@ -161,7 +129,7 @@ export function TaskTileItem({
               <div className="ml-2">
                 <SimpleProcessingStatusIcon
                   status={task.processingStatus}
-                  enabled={task.enabled}
+                  processingEnabled={task.processingEnabled}
                 />
               </div>
             </CardDescription>
@@ -223,22 +191,8 @@ export function TaskTileItem({
                     onStatusChange(task.id, task.status as TaskStatus)
                   }
                 >
-                  {task.status === "completed" ? (
-                    <>
-                      <Circle className="mr-2 h-4 w-4" />
-                      Mark Not Started
-                    </>
-                  ) : task.status === "in-progress" ? (
-                    <>
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Mark Completed
-                    </>
-                  ) : (
-                    <>
-                      <Circle className="mr-2 h-4 w-4" />
-                      Mark In Progress
-                    </>
-                  )}
+                  {getStatusIcon(getNextStatus(task.status as TaskStatus), "mr-2 h-4 w-4")}
+                  Mark {getStatusConfig(getNextStatus(task.status as TaskStatus)).label}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -284,7 +238,17 @@ export function TaskTileItem({
         {/* Status and Assignee pushed to bottom */}
         <div className="flex items-center justify-between text-xs mt-auto pt-2">
           <div className="flex items-center gap-2">
-            {getStatusBadge(task.status)}
+            <Badge
+              variant="outline"
+              className={`${getStatusConfig(task.status).badgeClass} whitespace-nowrap`}
+            >
+              {getStatusConfig(task.status).label}
+            </Badge>
+            {getPriorityIcon(task.priority) && (
+              <span className="flex items-center">
+                {getPriorityIcon(task.priority)}
+              </span>
+            )}
           </div>
           <div
             className="flex items-center text-muted-foreground"

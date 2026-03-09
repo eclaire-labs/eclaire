@@ -139,7 +139,7 @@ export function DocumentTileItem({
           <div className="absolute top-2 left-2">
             <SimpleProcessingStatusIcon
               status={doc.processingStatus}
-              enabled={doc.enabled}
+              processingEnabled={doc.processingEnabled}
               className="bg-white/90 dark:bg-black/90 rounded-full p-1"
             />
           </div>
@@ -151,7 +151,7 @@ export function DocumentTileItem({
           <div className="absolute top-2 left-2">
             <SimpleProcessingStatusIcon
               status={doc.processingStatus}
-              enabled={doc.enabled}
+              processingEnabled={doc.processingEnabled}
               className="bg-white/90 dark:bg-black/90 rounded-full p-1"
             />
           </div>

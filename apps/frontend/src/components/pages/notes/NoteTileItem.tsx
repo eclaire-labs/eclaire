@@ -72,7 +72,7 @@ export function NoteTileItem({
               <div className="ml-2">
                 <SimpleProcessingStatusIcon
                   status={entry.processingStatus}
-                  enabled={entry.enabled}
+                  processingEnabled={entry.processingEnabled}
                   className=""
                 />
               </div>
@@ -163,7 +163,7 @@ export function NoteTileItem({
               )}
             </>
           )}
-          {entry.enabled === false ? (
+          {entry.processingEnabled === false ? (
             <Badge variant="outline" className="text-xs">
               disabled
             </Badge>

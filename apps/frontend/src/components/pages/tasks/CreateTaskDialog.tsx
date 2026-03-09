@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Task, TaskStatus } from "@/types/task";
+import { CREATE_STATUS_OPTIONS, PRIORITY_OPTIONS } from "./task-utils";
 
 /** Format an ISO date string for a datetime-local input. */
 function formatDateForInput(isoString: string | null | undefined): string {
@@ -54,7 +55,10 @@ const INITIAL_TASK: Omit<Task, "id"> = {
   reviewStatus: "pending",
   flagColor: null,
   isPinned: false,
-  enabled: true,
+  processingEnabled: true,
+  priority: 0,
+  parentId: null,
+  sortOrder: null,
   processingStatus: null,
   isRecurring: false,
   cronExpression: null,
@@ -162,8 +166,31 @@ export function CreateTaskDialog({
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="not-started">Not Started</SelectItem>
-                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    {CREATE_STATUS_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-priority">Priority</Label>
+                <Select
+                  value={String(task.priority)}
+                  onValueChange={(value) =>
+                    setTask({ ...task, priority: Number(value) })
+                  }
+                >
+                  <SelectTrigger id="new-priority">
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRIORITY_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -14,6 +14,11 @@ export const tasksConfig: ListPageConfig<Task> = {
       initialValue: "all",
     },
     {
+      key: "priority",
+      label: "Priority",
+      initialValue: "all",
+    },
+    {
       key: "assignee",
       label: "Assignee",
       initialValue: "all",
@@ -23,6 +28,7 @@ export const tasksConfig: ListPageConfig<Task> = {
   sortOptions: [
     { value: "dueDate", label: "Due Date" },
     { value: "status", label: "Status" },
+    { value: "priority", label: "Priority" },
     { value: "title", label: "Title" },
   ],
 

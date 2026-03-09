@@ -24,13 +24,13 @@ type ProcessingStatus =
 
 interface SimpleProcessingStatusIconProps {
   status: ProcessingStatus;
-  enabled?: boolean; // Whether processing is enabled
+  processingEnabled?: boolean; // Whether processing is enabled
   className?: string;
 }
 
 export function SimpleProcessingStatusIcon({
   status,
-  enabled = true,
+  processingEnabled = true,
   className = "",
 }: SimpleProcessingStatusIconProps) {
   const navigate = useNavigate();
@@ -57,7 +57,7 @@ export function SimpleProcessingStatusIcon({
   if (
     !status ||
     (status === "completed" && !showCompleted) ||
-    enabled === false
+    processingEnabled === false
   ) {
     return null;
   }

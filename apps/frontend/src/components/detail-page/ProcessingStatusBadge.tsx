@@ -7,7 +7,7 @@ interface ProcessingStatusBadgeProps {
   contentType: string;
   itemId: string;
   processingStatus: string | null;
-  enabled?: boolean;
+  processingEnabled?: boolean;
   isJobStuck: boolean;
   isReprocessing: boolean;
   onReprocessClick: () => void;
@@ -17,14 +17,14 @@ export function ProcessingStatusBadge({
   contentType,
   itemId,
   processingStatus,
-  enabled = true,
+  processingEnabled = true,
   isJobStuck,
   isReprocessing,
   onReprocessClick,
 }: ProcessingStatusBadgeProps) {
   const navigate = useNavigate();
 
-  const disabled = enabled === false;
+  const disabled = processingEnabled === false;
 
   const variant = disabled
     ? "outline"

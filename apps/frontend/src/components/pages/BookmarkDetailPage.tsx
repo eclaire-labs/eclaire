@@ -564,7 +564,7 @@ export function BookmarkDetailClient() {
                       contentType="bookmarks"
                       itemId={bookmark.id}
                       processingStatus={bookmark.processingStatus}
-                      enabled={bookmark.enabled}
+                      processingEnabled={bookmark.processingEnabled}
                       isJobStuck={actions.isJobStuck}
                       isReprocessing={actions.isReprocessing}
                       onReprocessClick={() =>

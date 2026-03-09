@@ -413,7 +413,7 @@ export function NoteDetailClient() {
                             contentType="notes"
                             itemId={note.id}
                             processingStatus={note.processingStatus}
-                            enabled={note.enabled}
+                            processingEnabled={note.processingEnabled}
                             isJobStuck={actions.isJobStuck}
                             isReprocessing={actions.isReprocessing}
                             onReprocessClick={() =>

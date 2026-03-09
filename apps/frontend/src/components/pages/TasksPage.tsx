@@ -53,18 +53,14 @@ import type { Task, TaskStatus, User } from "@/types/task";
 import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
 import { TaskListItem } from "./tasks/TaskListItem";
 import { TaskTileItem } from "./tasks/TaskTileItem";
+import {
+  PRIORITY_OPTIONS,
+  STATUS_OPTIONS,
+  getNextStatus,
+} from "./tasks/task-utils";
 import { tasksConfig } from "./tasks/tasks-config";
 
 const routeApi = getRouteApi("/_authenticated/tasks/");
-
-// ---------------------------------------------------------------------------
-// Allowed statuses
-// ---------------------------------------------------------------------------
-const ALLOWED_STATUSES = new Set<TaskStatus>([
-  "not-started",
-  "in-progress",
-  "completed",
-]);
 
 // ---------------------------------------------------------------------------
 // Helper: format date for <input type="datetime-local">
@@ -298,15 +294,7 @@ export default function TasksPage() {
   // Status cycling
   const handleStatusChange = useCallback(
     async (taskId: string, currentStatus: TaskStatus) => {
-      let nextStatus: TaskStatus;
-      if (currentStatus === "not-started") {
-        nextStatus = "in-progress";
-      } else if (currentStatus === "in-progress") {
-        nextStatus = "completed";
-      } else {
-        nextStatus = "not-started";
-      }
-
+      const nextStatus = getNextStatus(currentStatus);
       try {
         await updateTaskStatus(taskId, nextStatus);
       } catch (err) {
@@ -387,9 +375,7 @@ export default function TasksPage() {
         ...(editingTask.dueDate && {
           dueDate: new Date(editingTask.dueDate).toISOString(),
         }),
-        status: ALLOWED_STATUSES.has(editingTask.status as TaskStatus)
-          ? editingTask.status
-          : "not-started",
+        status: editingTask.status || "not-started",
         ...(editingTask.assignedToId && {
           assignedToId: editingTask.assignedToId,
         }),
@@ -447,9 +433,17 @@ export default function TasksPage() {
         onChange: (v: string) => state.setExtraFilter("status", v),
         options: [
           { value: "all", label: "All Statuses" },
-          { value: "not-started", label: "Not Started" },
-          { value: "in-progress", label: "In Progress" },
-          { value: "completed", label: "Completed" },
+          ...STATUS_OPTIONS,
+        ],
+      },
+      {
+        key: "priority",
+        label: "Priority",
+        value: state.extraFilters.priority ?? "all",
+        onChange: (v: string) => state.setExtraFilter("priority", v),
+        options: [
+          { value: "all", label: "All Priorities" },
+          ...PRIORITY_OPTIONS,
         ],
       },
       {
@@ -649,13 +643,34 @@ export default function TasksPage() {
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="not-started">
-                            Not Started
-                          </SelectItem>
-                          <SelectItem value="in-progress">
-                            In Progress
-                          </SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
+                          {STATUS_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-priority">Priority</Label>
+                      <Select
+                        name="priority"
+                        value={String(editingTask.priority ?? 0)}
+                        onValueChange={(value) =>
+                          setEditingTask((prev) =>
+                            prev ? { ...prev, priority: Number(value) } : null,
+                          )
+                        }
+                      >
+                        <SelectTrigger id="edit-priority">
+                          <SelectValue placeholder="Priority" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PRIORITY_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -783,6 +798,9 @@ export default function TasksPage() {
                 <TableHead className="w-[120px] hidden md:table-cell">
                   Status
                 </TableHead>
+                <TableHead className="w-[80px] hidden md:table-cell">
+                  Priority
+                </TableHead>
                 <TableHead className="w-[140px] hidden lg:table-cell">
                   Assignee
                 </TableHead>
@@ -822,7 +840,7 @@ export default function TasksPage() {
                     {showGroupHeader && (
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
                         <TableCell
-                          colSpan={7}
+                          colSpan={8}
                           className="py-2 px-4 text-sm font-semibold text-muted-foreground tracking-wide uppercase"
                         >
                           {(() => {

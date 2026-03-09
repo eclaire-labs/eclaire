@@ -90,7 +90,7 @@ export function PhotoListItem({
         <div className="absolute top-1 right-1">
           <SimpleProcessingStatusIcon
             status={photo.processingStatus}
-            enabled={photo.enabled}
+            processingEnabled={photo.processingEnabled}
             className="bg-white/90 dark:bg-black/90 rounded-full p-0.5"
           />
         </div>

@@ -100,7 +100,7 @@ export function PhotoTileItem({
           <div className="absolute top-2 left-2">
             <SimpleProcessingStatusIcon
               status={photo.processingStatus}
-              enabled={photo.enabled}
+              processingEnabled={photo.processingEnabled}
               className="bg-white/90 dark:bg-black/90 rounded-full p-1"
             />
           </div>

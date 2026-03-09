@@ -83,7 +83,7 @@ function makeRawPhoto(overrides: Record<string, unknown> = {}) {
     reviewStatus: "approved",
     flagColor: "green",
     isPinned: true,
-    enabled: true,
+    processingEnabled: true,
     ...overrides,
   };
 }
@@ -195,20 +195,20 @@ describe("transformPhotoData", () => {
     expect(result2.dueDate).toBeNull();
   });
 
-  it("defaults tags to [] and preserves enabled: false via ??", () => {
+  it("defaults tags to [] and preserves processingEnabled: false via ??", () => {
     // Tags
     expect(transformPhotoData(makeRawPhoto({ tags: null })).tags).toEqual([]);
     expect(transformPhotoData(makeRawPhoto({ tags: undefined })).tags).toEqual(
       [],
     );
 
-    // enabled: false preserved
-    const result = transformPhotoData(makeRawPhoto({ enabled: false }));
-    expect(result.enabled).toBe(false);
+    // processingEnabled: false preserved
+    const result = transformPhotoData(makeRawPhoto({ processingEnabled: false }));
+    expect(result.processingEnabled).toBe(false);
 
-    // enabled: undefined defaults to true
-    const result2 = transformPhotoData(makeRawPhoto({ enabled: undefined }));
-    expect(result2.enabled).toBe(true);
+    // processingEnabled: undefined defaults to true
+    const result2 = transformPhotoData(makeRawPhoto({ processingEnabled: undefined }));
+    expect(result2.processingEnabled).toBe(true);
   });
 
   it("defaults reviewStatus, flagColor, isPinned, processingStatus, and generates date fallbacks", () => {

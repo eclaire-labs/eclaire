@@ -45,7 +45,7 @@ export const transformPhotoData = (raw: any): Photo => ({
   reviewStatus: raw.reviewStatus || "pending",
   flagColor: raw.flagColor || null,
   isPinned: raw.isPinned || false,
-  enabled: raw.enabled ?? true,
+  processingEnabled: raw.processingEnabled ?? true,
 });
 
 const { useList, useSingle } = createCrudHooks<Photo>({

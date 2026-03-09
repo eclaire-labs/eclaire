@@ -605,7 +605,7 @@ export function PhotoDetailClient() {
                     contentType="photos"
                     itemId={photo.id}
                     processingStatus={photo.processingStatus}
-                    enabled={photo.enabled}
+                    processingEnabled={photo.processingEnabled}
                     isJobStuck={actions.isJobStuck}
                     isReprocessing={actions.isReprocessing}
                     onReprocessClick={() =>

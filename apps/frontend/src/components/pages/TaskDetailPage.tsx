@@ -4,12 +4,10 @@ import {
   ArrowLeft,
   Calendar,
   CheckCircle2,
-  Circle,
   Edit3,
   Loader2,
   MessageSquare,
   MoreHorizontal,
-  PlayCircle,
   RefreshCw,
   Save,
   Trash2,
@@ -58,6 +56,14 @@ import {
 import { getUsers } from "@/lib/api-users";
 import { formatDate } from "@/lib/date-utils";
 import type { TaskComment, TaskStatus, User } from "@/types/task";
+import {
+  PRIORITY_OPTIONS,
+  STATUS_OPTIONS,
+  getPriorityIcon,
+  getPriorityLabel,
+  getStatusConfig,
+  getStatusIcon,
+} from "./tasks/task-utils";
 
 export function TaskDetailClient() {
   const { id: taskId } = routeApi.useParams();
@@ -89,6 +95,7 @@ export function TaskDetailClient() {
     title: "",
     description: "",
     status: "not-started" as TaskStatus,
+    priority: 0,
     dueDate: "",
     assignedToId: "",
     tags: [] as string[],
@@ -108,6 +115,7 @@ export function TaskDetailClient() {
         title: task.title,
         description: task.description || "",
         status: task.status,
+        priority: task.priority ?? 0,
         dueDate: task.dueDate || "",
         assignedToId: task.assignedToId || "",
         tags: [...task.tags],
@@ -208,29 +216,13 @@ export function TaskDetailClient() {
     }
   };
 
-  const getStatusIcon = (status: TaskStatus) => {
-    switch (status) {
-      case "not-started":
-        return <Circle className="h-4 w-4" />;
-      case "in-progress":
-        return <PlayCircle className="h-4 w-4" />;
-      case "completed":
-        return <CheckCircle2 className="h-4 w-4" />;
-      default:
-        return <Circle className="h-4 w-4" />;
-    }
-  };
-
-  const getStatusBadge = (status: TaskStatus) => {
-    const configs = {
-      "not-started": { variant: "secondary" as const, label: "Not Started" },
-      "in-progress": { variant: "default" as const, label: "In Progress" },
-      completed: { variant: "outline" as const, label: "Completed" },
-    };
-    const config = configs[status] || configs["not-started"];
-
+  const renderStatusBadge = (status: TaskStatus) => {
+    const config = getStatusConfig(status);
     return (
-      <Badge variant={config.variant} className="flex items-center gap-1">
+      <Badge
+        variant="outline"
+        className={`flex items-center gap-1 ${config.badgeClass}`}
+      >
         {getStatusIcon(status)}
         {config.label}
       </Badge>
@@ -248,6 +240,7 @@ export function TaskDetailClient() {
         title: task.title,
         description: task.description || "",
         status: task.status,
+        priority: task.priority ?? 0,
         dueDate: task.dueDate || "",
         assignedToId: task.assignedToId || "",
         tags: [...task.tags],
@@ -273,6 +266,7 @@ export function TaskDetailClient() {
         title: editForm.title.trim(),
         description: editForm.description.trim() || null,
         status: editForm.status,
+        priority: editForm.priority,
         dueDate: editForm.dueDate
           ? new Date(editForm.dueDate).toISOString()
           : null,
@@ -694,13 +688,46 @@ export function TaskDetailClient() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="not-started">Not Started</SelectItem>
-                        <SelectItem value="in-progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
+                        {STATUS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   ) : (
-                    getStatusBadge(task.status)
+                    renderStatusBadge(task.status)
+                  )}
+                </div>
+
+                {/* Priority */}
+                <div>
+                  <Label>Priority</Label>
+                  {isEditing ? (
+                    <Select
+                      value={String(editForm.priority)}
+                      onValueChange={(value) =>
+                        handleInputChange("priority", Number(value))
+                      }
+                    >
+                      <SelectTrigger className="w-fit min-w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {getPriorityIcon(task.priority)}
+                      <span className="text-muted-foreground">
+                        {getPriorityLabel(task.priority)}
+                      </span>
+                    </div>
                   )}
                 </div>
 
@@ -943,7 +970,7 @@ export function TaskDetailClient() {
                           contentType="tasks"
                           itemId={task.id}
                           processingStatus={task.processingStatus}
-                          enabled={task.enabled}
+                          processingEnabled={task.processingEnabled}
                           isJobStuck={actions.isJobStuck}
                           isReprocessing={actions.isReprocessing}
                           onReprocessClick={() =>

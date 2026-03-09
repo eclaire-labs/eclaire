@@ -28,7 +28,7 @@ interface DetailItem {
   processingStatus: string | null;
   createdAt: string;
   updatedAt: string;
-  enabled?: boolean;
+  processingEnabled?: boolean;
 }
 
 interface UseDetailPageActionsOptions {
