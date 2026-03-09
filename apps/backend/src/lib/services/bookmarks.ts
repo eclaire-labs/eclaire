@@ -35,6 +35,7 @@ import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { recordHistory } from "./history.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
+import type { CallerContext } from "./types.js";
 
 const logger = createChildLogger("services:bookmarks");
 
@@ -207,6 +208,7 @@ export async function getBookmarkAssetDetails(
  */
 export async function createBookmarkAndQueueJob(
   payload: CreateBookmarkPayload,
+  caller: CallerContext,
 ) {
   try {
     const { url, userId, rawMetadata, userAgent } = payload;
@@ -266,7 +268,7 @@ export async function createBookmarkAndQueueJob(
       itemType: "bookmark",
       itemId: bookmarkId,
       itemName: title || url,
-      actor: "user",
+      actor: caller.actor,
       userId: userId,
     });
 
@@ -346,8 +348,9 @@ export async function createBookmarkAndQueueJob(
 export async function updateBookmark(
   id: string,
   bookmarkData: UpdateBookmarkParams,
-  userId: string,
+  caller: CallerContext,
 ) {
+  const { userId } = caller;
   try {
     const existingBookmark = await getBookmarkById(id, userId);
     if (!existingBookmark) throw new NotFoundError("Bookmark");
@@ -397,7 +400,7 @@ export async function updateBookmark(
           bookmarkData.title || existingBookmark.title || existingBookmark.url,
         beforeData: existingBookmark,
         afterData: { ...existingBookmark, ...bookmarkData },
-        actor: "user",
+        actor: caller.actor,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -1330,7 +1333,7 @@ export async function importBookmarkFile(
           userId,
           rawMetadata: metadata,
           userAgent: "bookmark-import",
-        });
+        }, { userId, actor: "user" });
 
         if (createResult.success) {
           result.imported++;

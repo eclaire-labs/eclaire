@@ -106,7 +106,7 @@ bookmarksRoutes.post(
       userId: userId,
       rawMetadata: enrichedMetadata,
       userAgent: c.req.header("User-Agent") || "",
-    });
+    }, { userId, actor: "user" });
 
     if (!result.success) {
       return c.json(
@@ -144,7 +144,7 @@ bookmarksRoutes.put(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedBookmark = await updateBookmark(id, validatedData, userId);
+    const updatedBookmark = await updateBookmark(id, validatedData, { userId, actor: "user" });
 
     if (!updatedBookmark) {
       throw new NotFoundError("Bookmark");
@@ -162,7 +162,7 @@ bookmarksRoutes.patch(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedBookmark = await updateBookmark(id, validatedData, userId);
+    const updatedBookmark = await updateBookmark(id, validatedData, { userId, actor: "user" });
 
     if (!updatedBookmark) {
       throw new NotFoundError("Bookmark");

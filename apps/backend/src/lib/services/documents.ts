@@ -39,6 +39,7 @@ import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
 import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:documents");
@@ -407,8 +408,9 @@ export async function createDocument(
 export async function updateDocument(
   id: string,
   documentData: UpdateDocumentParams,
-  userId: string,
+  caller: CallerContext,
 ): Promise<DocumentDetails> {
+  const { userId } = caller;
   try {
     const existingDocument = await db.query.documents.findFirst({
       columns: { title: true, description: true },
@@ -469,7 +471,7 @@ export async function updateDocument(
         itemName: documentData.title || existingDocument.title,
         beforeData: existingDocument,
         afterData: { ...existingDocument, ...documentData },
-        actor: "user",
+        actor: caller.actor,
         userId: userId,
         metadata: null,
         timestamp: new Date(),

@@ -44,6 +44,7 @@ import {
   RECURRING_TASK_KEY_PREFIX,
 } from "../queue/index.js";
 import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 
 const logger = createChildLogger("services:tasks");
 
@@ -593,7 +594,11 @@ function cleanTaskForResponse(
   };
 }
 
-export async function createTask(taskData: CreateTaskParams, userId: string) {
+export async function createTask(
+  taskData: CreateTaskParams,
+  caller: CallerContext,
+) {
+  const { userId } = caller;
   try {
     // Validate recurrence parameters first
     const recurrenceValidation = validateRecurrenceParams(
@@ -701,7 +706,7 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
         tags: taskData.tags,
         assignedToId: assignedToUserId,
       },
-      actor: "user",
+      actor: caller.actor,
       userId: userId,
     });
 
@@ -790,8 +795,9 @@ export async function createTask(taskData: CreateTaskParams, userId: string) {
 export async function updateTask(
   id: string,
   taskData: UpdateTaskParams,
-  userId: string,
+  caller: CallerContext,
 ) {
+  const { userId } = caller;
   try {
     // Get existing task first to check current recurrence status
     const existingTask = await db.query.tasks.findFirst({
@@ -1078,7 +1084,7 @@ export async function updateTask(
           ...taskData,
           tags: tagNames ?? currentTaskTags,
         },
-        actor: "user",
+        actor: caller.actor,
         userId: userId,
         metadata: null,
         timestamp: new Date(),

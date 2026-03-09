@@ -127,7 +127,7 @@ allRoutes.post(
       userId,
       userAgent,
       requestId,
-    });
+    }, { userId, actor: "user" });
 
     if (result.success) {
       return c.json(result.result, 201);

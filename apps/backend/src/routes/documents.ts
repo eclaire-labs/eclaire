@@ -156,7 +156,7 @@ documentsRoutes.put(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedDocument = await updateDocument(id, validatedData, userId);
+    const updatedDocument = await updateDocument(id, validatedData, { userId, actor: "user" });
 
     if (!updatedDocument) {
       throw new NotFoundError("Document");
@@ -174,7 +174,7 @@ documentsRoutes.patch(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedDocument = await updateDocument(id, validatedData, userId);
+    const updatedDocument = await updateDocument(id, validatedData, { userId, actor: "user" });
 
     if (!updatedDocument) {
       throw new NotFoundError("Document");

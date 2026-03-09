@@ -159,7 +159,7 @@ photosRoutes.put(
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
 
-    const updatedPhoto = await updatePhotoMetadata(id, validatedData, userId);
+    const updatedPhoto = await updatePhotoMetadata(id, validatedData, { userId, actor: "user" });
 
     if (!updatedPhoto) {
       throw new NotFoundError("Photo");
@@ -178,7 +178,7 @@ photosRoutes.patch(
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
 
-    const updatedPhoto = await updatePhotoMetadata(id, validatedData, userId);
+    const updatedPhoto = await updatePhotoMetadata(id, validatedData, { userId, actor: "user" });
 
     if (!updatedPhoto) {
       throw new NotFoundError("Photo");

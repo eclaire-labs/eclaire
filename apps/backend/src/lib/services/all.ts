@@ -23,6 +23,7 @@ import {
   findPhotos,
 } from "./photos.js";
 import { countTasks, createTask, findTasks } from "./tasks.js";
+import type { CallerContext } from "./types.js";
 
 const logger = createChildLogger("services:all");
 
@@ -101,6 +102,7 @@ type CreateContentResult =
  */
 export async function classifyAndCreateContent(
   payload: CreateContentPayload,
+  caller: CallerContext,
 ): Promise<CreateContentResult> {
   const {
     contentBuffer,
@@ -137,7 +139,7 @@ export async function classifyAndCreateContent(
           userId: userId,
           rawMetadata: metadata,
           userAgent: userAgent,
-        });
+        }, caller);
         if (!result.success) {
           return {
             success: false,
@@ -162,7 +164,7 @@ export async function classifyAndCreateContent(
       case ASSET_TYPE.NOTE: {
         const result = await createNoteEntry(
           { ...servicePayload, content: contentString },
-          userId,
+          caller,
         );
         logger.info(
           { requestId, noteId: result.id, rule: "Rule 1 (explicit assetType)" },
@@ -232,7 +234,7 @@ export async function classifyAndCreateContent(
             statusCode: 400,
           };
         }
-        const result = await createTask(taskData, userId);
+        const result = await createTask(taskData, caller);
         logger.info(
           { requestId, taskId: result.id, rule: "Rule 1 (explicit assetType)" },
           "Task created",
@@ -249,7 +251,7 @@ export async function classifyAndCreateContent(
       userId: userId,
       rawMetadata: metadata,
       userAgent: userAgent,
-    });
+    }, caller);
     if (!result.success) {
       return {
         success: false,
@@ -274,7 +276,7 @@ export async function classifyAndCreateContent(
       userId: userId,
       rawMetadata: metadata,
       userAgent: userAgent,
-    });
+    }, caller);
     if (!result.success) {
       return {
         success: false,
@@ -293,7 +295,7 @@ export async function classifyAndCreateContent(
   if (NOTE_MIMES.includes(mimeType)) {
     const result = await createNoteEntry(
       { ...servicePayload, content: contentString },
-      userId,
+      caller,
     );
     logger.info(
       { requestId, noteId: result.id, rule: "Rule 4 (MIME-based)" },

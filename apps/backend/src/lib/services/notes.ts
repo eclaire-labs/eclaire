@@ -28,6 +28,7 @@ import {
 } from "../pagination.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 
 const logger = createChildLogger("services:notes");
 
@@ -174,7 +175,11 @@ interface UpdateNoteParams {
 }
 
 // Create note entry function
-export async function createNoteEntry(data: CreateNoteData, userId: string) {
+export async function createNoteEntry(
+  data: CreateNoteData,
+  caller: CallerContext,
+) {
+  const { userId } = caller;
   try {
     const { metadata } = data;
 
@@ -235,7 +240,7 @@ export async function createNoteEntry(data: CreateNoteData, userId: string) {
         content: data.content,
         tags: tagNames,
       },
-      actor: "user",
+      actor: caller.actor,
       userId: userId,
     });
 
@@ -298,8 +303,9 @@ export async function createNoteEntry(data: CreateNoteData, userId: string) {
 export async function updateNoteEntry(
   id: string,
   noteData: UpdateNoteParams,
-  userId: string,
+  caller: CallerContext,
 ) {
+  const { userId } = caller;
   try {
     // Get existing entry for history
     const existingEntry = await getNoteEntryById(id, userId);
@@ -370,7 +376,7 @@ export async function updateNoteEntry(
         itemName: noteData.title || existingEntry.title,
         beforeData: existingEntry,
         afterData: { ...existingEntry, ...noteData },
-        actor: "user",
+        actor: caller.actor,
         userId: userId,
         metadata: null,
         timestamp: new Date(),

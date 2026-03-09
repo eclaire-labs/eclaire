@@ -97,7 +97,7 @@ tasksRoutes.post(
   zValidator("json", TaskSchema),
   withAuth(async (c, userId) => {
     const validatedData = c.req.valid("json");
-    const newTask = await createTask(toTaskServiceData(validatedData), userId);
+    const newTask = await createTask(toTaskServiceData(validatedData), { userId, actor: "user" });
     return c.json(newTask, 201);
   }, logger),
 );
@@ -121,7 +121,7 @@ tasksRoutes.put(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), userId);
+    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), { userId, actor: "user" });
     if (!updatedTask) throw new NotFoundError("Task");
     return c.json(updatedTask);
   }, logger),
@@ -135,7 +135,7 @@ tasksRoutes.patch(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), userId);
+    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), { userId, actor: "user" });
     if (!updatedTask) throw new NotFoundError("Task");
     return c.json(updatedTask);
   }, logger),

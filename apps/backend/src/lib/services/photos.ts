@@ -31,6 +31,7 @@ import {
 import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
 import { recordHistory } from "./history.js"; // Assuming this service exists and is configured
+import type { CallerContext } from "./types.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:photos");
@@ -541,8 +542,9 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
 export async function updatePhotoMetadata(
   id: string,
   photoData: UpdatePhotoParams,
-  userId: string,
+  caller: CallerContext,
 ) {
+  const { userId } = caller;
   try {
     // 1. Fetch existing photo for authorization and history
     // Fetch all relevant fields for history comparison
@@ -614,7 +616,7 @@ export async function updatePhotoMetadata(
           ...photoData,
           tags: tagNames ?? currentPhotoTags,
         },
-        actor: "user",
+        actor: caller.actor,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
