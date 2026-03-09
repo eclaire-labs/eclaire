@@ -1,4 +1,4 @@
-import { generateHistoryId, generateNoteId } from "@eclaire/core";
+import { formatToISO8601, generateHistoryId, generateNoteId } from "@eclaire/core";
 import {
   and,
   asc,
@@ -18,7 +18,7 @@ import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { notes, notesTags, tags } = schema;
 
-import { batchGetTags, formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {

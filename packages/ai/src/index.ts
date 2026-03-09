@@ -191,7 +191,6 @@ export {
   // Config accessors
   getActiveModelIdForContext,
   getActiveModelsAsObjects,
-  getAIProviderInfo,
   getConfigPath,
   getCurrentModelConfig,
   getEngineConfig,

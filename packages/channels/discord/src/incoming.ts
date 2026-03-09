@@ -165,14 +165,14 @@ export async function handleIncomingMessage(
       : text;
 
     if (deps.processPromptRequestStream) {
-      const stream = await deps.processPromptRequestStream(
+      const stream = await deps.processPromptRequestStream({
         userId,
-        promptText,
-        { agent: "discord-bot", attachments },
+        prompt: promptText,
+        context: { agent: "discord-bot", attachments },
         requestId,
-        sessionId,
+        conversationId: sessionId,
         enableThinking,
-      );
+      });
 
       responseText = await sendStreamingResponse(
         textChannel,
@@ -181,14 +181,14 @@ export async function handleIncomingMessage(
       );
     } else {
       // Non-streaming fallback
-      const result = await processPromptRequest(
+      const result = await processPromptRequest({
         userId,
-        promptText,
-        { agent: "discord-bot", attachments },
+        prompt: promptText,
+        context: { agent: "discord-bot", attachments },
         requestId,
-        sessionId,
+        conversationId: sessionId,
         enableThinking,
-      );
+      });
 
       responseText = result.response;
       if (responseText) {

@@ -9,11 +9,6 @@ export const TEST_API_KEY_2 =
   "sk-DEVONLYUSER0002-DEVONLY3333333333333333333333333";
 export const TEST_EMAIL = process.env.ECLAIRE_TEST_EMAIL ?? "demo@example.com";
 export const TEST_PASSWORD = process.env.ECLAIRE_TEST_PASSWORD ?? "Demo@123";
-// Alias for backwards compatibility
-export const DEMO_EMAIL = TEST_EMAIL;
-export const DEMO_PASSWORD = TEST_PASSWORD;
-export const DEMO_API_KEY = TEST_API_KEY;
-
 export const VERBOSE = process.env.VERBOSE === "true" || false;
 
 export const delay = (ms: number) =>

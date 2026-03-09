@@ -24,9 +24,6 @@ const logger = createChildLogger("queues");
 // - "sqlite" → SQLite database queue (single process only)
 const queueBackend = config.queueBackend;
 
-// Re-export QueueNames for backwards compatibility
-export { QueueNames };
-
 // --- Queue Manager ---
 let queueManager: QueueManager | null = null;
 

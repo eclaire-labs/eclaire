@@ -1,6 +1,10 @@
 // lib/services/bookmarks.ts
 
-import { generateBookmarkId, generateHistoryId } from "@eclaire/core";
+import {
+  formatToISO8601,
+  generateBookmarkId,
+  generateHistoryId,
+} from "@eclaire/core";
 import {
   and,
   asc,
@@ -20,7 +24,7 @@ import { db, queueJobs, schema, txManager } from "../../db/index.js";
 const { bookmarks, bookmarksTags, tags } = schema;
 
 import isUrl from "is-url";
-import { batchGetTags, formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
 import {
   buildCursorCondition,
   encodeCursor,
@@ -115,9 +119,7 @@ interface UpdateBookmarkParams {
   lastModified?: string | null;
 }
 
-// Import shared MIME utility and re-export for backwards compatibility
 import { getMimeTypeFromStorageId } from "./mime-utils.js";
-export { getMimeTypeFromStorageId };
 
 const assetTypeToColumnMap = {
   favicon: {

@@ -719,15 +719,6 @@ export function validateAIConfig(context: AIContext): ValidatedAIConfig {
 }
 
 /**
- * Get resolved AI provider info for a context
- * @deprecated Use validateAIConfig instead for full info
- */
-export function getAIProviderInfo(context: AIContext): ResolvedProvider {
-  const { provider } = validateAIConfig(context);
-  return provider;
-}
-
-/**
  * Validate AI configuration on startup (call from main entry points)
  */
 export function validateAIConfigOnStartup(): void {

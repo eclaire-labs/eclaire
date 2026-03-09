@@ -148,37 +148,6 @@ export function resolveSelectionEngine(): ManagedEngineResolution {
   };
 }
 
-// ============================================================================
-// Validation (Legacy - kept for compatibility)
-// ============================================================================
-
-/**
- * Validate that a provider can be managed by the engine commands.
- * Returns an error message if invalid, null if valid.
- * @deprecated Use resolveSelectionEngine() instead
- */
-export function validateManagedProvider(providerId: string): string | null {
-  const provider = getProviderConfig(providerId);
-
-  if (!provider) {
-    return `Provider '${providerId}' not found in providers.json`;
-  }
-
-  if (!provider.engine) {
-    return `Provider '${providerId}' has no engine configuration`;
-  }
-
-  if (!provider.engine.managed) {
-    return `Provider '${providerId}' is not managed (managed: false)`;
-  }
-
-  if (provider.engine.name !== "llama-cpp") {
-    return `Provider '${providerId}' uses engine '${provider.engine.name}' which is not yet supported. Only 'llama-cpp' is currently supported.`;
-  }
-
-  return null;
-}
-
 /**
  * Get engine configuration from a provider
  * Returns undefined for unset values - llama-server has smart defaults:

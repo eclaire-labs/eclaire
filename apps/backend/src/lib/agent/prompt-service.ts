@@ -27,9 +27,6 @@ import type { UserContext } from "./types.js";
 
 const logger = createChildLogger("prompt-service");
 
-// Re-export for backwards compatibility
-export { ConversationNotFoundError };
-
 export interface ProcessPromptOptions {
   userId: string;
   prompt: string;
@@ -90,38 +87,12 @@ export function createBackendAgent(options: {
 
 /**
  * Process a prompt request (non-streaming)
- *
- * Supports both options object and positional arguments for backwards compatibility.
  */
 export async function processPromptRequest(
-  userIdOrOptions: string | ProcessPromptOptions,
-  promptArg?: string,
-  contextArg?: Context,
-  requestIdArg?: string,
-  conversationIdArg?: string,
-  enableThinkingArg?: boolean,
+  options: ProcessPromptOptions,
 ): Promise<PromptResponse> {
-  // Support both call styles
-  let userId: string;
-  let prompt: string;
-  let context: Context | undefined;
-  let requestId: string | undefined;
-  let conversationId: string | undefined;
-  let enableThinking: boolean | undefined;
-
-  if (typeof userIdOrOptions === "string") {
-    // Positional arguments (legacy)
-    userId = userIdOrOptions;
-    prompt = promptArg as string;
-    context = contextArg;
-    requestId = requestIdArg;
-    conversationId = conversationIdArg;
-    enableThinking = enableThinkingArg;
-  } else {
-    // Options object (new style)
-    ({ userId, prompt, context, requestId, conversationId, enableThinking } =
-      userIdOrOptions);
-  }
+  const { userId, prompt, context, requestId, conversationId, enableThinking } =
+    options;
 
   const startTime = Date.now();
   logger.info(
@@ -338,38 +309,12 @@ export function transformRuntimeEvent(
 
 /**
  * Process a prompt request with streaming response
- *
- * Supports both options object and positional arguments for backwards compatibility.
  */
 export async function processPromptRequestStream(
-  userIdOrOptions: string | ProcessPromptOptions,
-  promptArg?: string,
-  contextArg?: Context,
-  requestIdArg?: string,
-  conversationIdArg?: string,
-  enableThinkingArg?: boolean,
+  options: ProcessPromptOptions,
 ): Promise<ReadableStream<StreamEvent>> {
-  // Support both call styles
-  let userId: string;
-  let prompt: string;
-  let context: Context | undefined;
-  let requestId: string | undefined;
-  let conversationId: string | undefined;
-  let enableThinking: boolean | undefined;
-
-  if (typeof userIdOrOptions === "string") {
-    // Positional arguments (legacy)
-    userId = userIdOrOptions;
-    prompt = promptArg as string;
-    context = contextArg;
-    requestId = requestIdArg;
-    conversationId = conversationIdArg;
-    enableThinking = enableThinkingArg;
-  } else {
-    // Options object (new style)
-    ({ userId, prompt, context, requestId, conversationId, enableThinking } =
-      userIdOrOptions);
-  }
+  const { userId, prompt, context, requestId, conversationId, enableThinking } =
+    options;
 
   const startTime = Date.now();
   logger.info(

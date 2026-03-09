@@ -1,7 +1,7 @@
 /**
  * @eclaire/queue/driver-db - Database schema for the queue system
  *
- * This file re-exports from the schema/ directory for backwards compatibility.
+ * Barrel export for the schema/ directory.
  * The schema is split into separate files for PostgreSQL and SQLite to support
  * drizzle-kit migrations.
  *

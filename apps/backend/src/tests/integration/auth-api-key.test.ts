@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   BASE_URL,
-  DEMO_API_KEY,
+  TEST_API_KEY,
   delay,
   logger,
 } from "../utils/test-helpers.js";
@@ -80,7 +80,7 @@ describe("API Key Authentication Integration Tests", () => {
     const response = await loggedFetch(`${BASE_URL}/bookmarks`, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${DEMO_API_KEY}`,
+        Authorization: `Bearer ${TEST_API_KEY}`,
       },
     });
 
@@ -122,7 +122,7 @@ describe("API Key Authentication Integration Tests", () => {
     const response = await loggedFetch(`${BASE_URL}/bookmarks`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${DEMO_API_KEY}`,
+        Authorization: `Bearer ${TEST_API_KEY}`,
       },
       body: JSON.stringify(newBookmark),
     });
@@ -240,7 +240,7 @@ describe("API Key Authentication Integration Tests", () => {
     const response = await loggedFetch(`${BASE_URL}/bookmarks`, {
       method: "GET",
       headers: {
-        "X-API-Key": DEMO_API_KEY, // Alternative header format
+        "X-API-Key": TEST_API_KEY, // Alternative header format
       },
     });
 
@@ -257,7 +257,7 @@ describe("API Key Authentication Integration Tests", () => {
     const response = await loggedFetch(`${BASE_URL}/bookmarks`, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${DEMO_API_KEY}`,
+        Authorization: `Bearer ${TEST_API_KEY}`,
       },
     });
 

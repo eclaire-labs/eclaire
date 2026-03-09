@@ -11,6 +11,7 @@ export {
 } from "./asset-fetcher.js";
 // Conversation handling
 export {
+  ConversationNotFoundError,
   loadConversation,
   loadConversationMessages,
   type SaveConversationOptions,
@@ -18,7 +19,6 @@ export {
 } from "./conversation-adapter.js";
 // Main service functions
 export {
-  ConversationNotFoundError,
   createBackendAgent,
   type ProcessPromptOptions,
   type PromptResponse,

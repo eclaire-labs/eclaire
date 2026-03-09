@@ -90,9 +90,6 @@ export interface TaskListResponse {
   offset: number;
 }
 
-/** @deprecated Use TaskListResponse instead — the API returns `items`, not `tasks` */
-export type TaskSearchResponse = TaskListResponse;
-
 // Global tracking for all recurring tasks (accessible to helpers and tests)
 export let allRecurringTaskIds: string[] = [];
 

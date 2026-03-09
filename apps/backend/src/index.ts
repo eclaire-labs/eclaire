@@ -11,7 +11,7 @@ process.on("uncaughtException", (error) => {
 });
 
 // CRITICAL: Load environment variables FIRST, before any other imports
-import "./lib/env-loader.js";
+import "@eclaire/core";
 // Config system initializes immediately on import, auto-generating secrets if needed
 import { config, initConfig } from "./config/index.js";
 

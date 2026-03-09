@@ -4,19 +4,9 @@
  * This module provides a single source of truth for:
  * - Worker option factories for different task durations
  * - Queue-to-worker-category mapping
- *
- * BullMQ-specific job options (attempts, backoff, removal policies) are in
- * `driver-bullmq/job-options.ts` and re-exported here for backward compatibility.
  */
 
 import { type QueueName, QueueNames } from "./queue-names.js";
-
-// Re-export BullMQ-specific job options for backward compatibility
-export {
-  bookmarkJobOptions,
-  getDefaultJobOptions,
-  standardJobOptions,
-} from "../driver-bullmq/job-options.js";
 
 // --- Worker Timeout Constants ---
 

@@ -4,9 +4,6 @@ import { db, schema, txManager } from "../db/index.js";
 
 const { tags } = schema;
 
-// Re-export for backward compatibility
-export { formatRequiredTimestamp, formatToISO8601 } from "@eclaire/core";
-
 /**
  * Efficiently finds or creates multiple tags using an atomic transaction.
  * Tags are scoped per user - each user has their own namespace for tag names.

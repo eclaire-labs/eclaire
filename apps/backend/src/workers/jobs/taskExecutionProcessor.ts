@@ -174,14 +174,13 @@ async function generatePromptAIResponse(
 
   try {
     const requestId = `task-exec-${taskId}-${Date.now()}`;
-    const result = await processPromptRequest(
+    const result = await processPromptRequest({
       userId,
       prompt,
       context,
       requestId,
-      undefined, // conversationId
-      false, // enableThinking
-    );
+      enableThinking: false,
+    });
 
     logger.info(
       {

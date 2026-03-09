@@ -14,7 +14,6 @@ const key = masterKey ? parseEncryptionKey(masterKey) : null;
 // Create encryption service using @eclaire/core package (or null if no key)
 const encryptionService = key ? createEncryption(key, { logger }) : null;
 
-// Export functions for backward compatibility
 // These will throw if encryption is not configured (no MASTER_ENCRYPTION_KEY)
 export const encrypt = (plaintext: string): string => {
   if (!encryptionService) {

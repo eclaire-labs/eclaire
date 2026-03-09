@@ -21,14 +21,14 @@ import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { documentsTags, documents: schemaDocuments, tags } = schema;
 
-import { generateDocumentId, generateHistoryId } from "@eclaire/core";
-import type { ProcessingStatus } from "../../types/assets.js";
 import {
-  batchGetTags,
   formatRequiredTimestamp,
   formatToISO8601,
-  getOrCreateTags,
-} from "../db-helpers.js";
+  generateDocumentId,
+  generateHistoryId,
+} from "@eclaire/core";
+import type { ProcessingStatus } from "../../types/assets.js";
+import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
 import {
   buildCursorCondition,
   encodeCursor,

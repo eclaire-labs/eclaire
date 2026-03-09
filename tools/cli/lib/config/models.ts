@@ -126,14 +126,6 @@ export function isModelSuitableForContext(
   return false;
 }
 
-// Also provide a getActiveModels helper for backward compatibility
-export function getActiveModels(): { backend?: string; workers?: string } {
-  return {
-    backend: getActiveModelIdForContext("backend") || undefined,
-    workers: getActiveModelIdForContext("workers") || undefined,
-  };
-}
-
 // Provide getActiveModel helper
 export function getActiveModel(
   context: "backend" | "workers",

@@ -3,12 +3,12 @@ import {
   type ChromeBookmarkItem,
   convertChromeTimestamp,
   extractBookmarksFromFolder,
-  getMimeTypeFromStorageId,
   mapApiRequestToDbFields,
   mapBookmarkToApiResponse,
   normalizeBookmarkUrl,
   validateAndNormalizeBookmarkUrl,
 } from "../../lib/services/bookmarks.js";
+import { getMimeTypeFromStorageId } from "../../lib/services/mime-utils.js";
 
 // --- normalizeBookmarkUrl ---
 

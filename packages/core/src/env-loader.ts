@@ -20,8 +20,6 @@ const isContainer = process.env.ECLAIRE_RUNTIME === "container";
 export const envLoadInfo = {
   isContainer,
   envLoaded: false,
-  /** @deprecated .env.local is no longer supported - use .env */
-  envLocalLoaded: false,
 };
 
 // Track if we've already loaded to make this idempotent

@@ -104,14 +104,14 @@ export async function handleIncomingMessage(
     let responseText: string | undefined;
 
     if (deps.processPromptRequestStream && ctx.chat) {
-      const stream = await deps.processPromptRequestStream(
+      const stream = await deps.processPromptRequestStream({
         userId,
-        message,
-        { agent: "telegram-bot" },
+        prompt: message,
+        context: { agent: "telegram-bot" },
         requestId,
-        sessionId,
+        conversationId: sessionId,
         enableThinking,
-      );
+      });
 
       responseText = await sendStreamingResponse(
         ctx.telegram,
@@ -121,14 +121,14 @@ export async function handleIncomingMessage(
       );
     } else {
       // Non-streaming fallback
-      const result = await processPromptRequest(
+      const result = await processPromptRequest({
         userId,
-        message,
-        { agent: "telegram-bot" },
+        prompt: message,
+        context: { agent: "telegram-bot" },
         requestId,
-        sessionId,
+        conversationId: sessionId,
         enableThinking,
-      );
+      });
 
       responseText = result.response;
       if (responseText) {

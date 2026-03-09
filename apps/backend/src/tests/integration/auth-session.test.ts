@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   BASE_URL,
-  DEMO_EMAIL,
-  DEMO_PASSWORD,
+  TEST_EMAIL,
+  TEST_PASSWORD,
   delay,
   logger,
 } from "../utils/test-helpers.js";
@@ -127,8 +127,8 @@ describe("Better Auth Session Integration Tests", () => {
     const response = await loggedFetch(`${BASE_URL}/auth/sign-in/email`, {
       method: "POST",
       body: JSON.stringify({
-        email: DEMO_EMAIL,
-        password: DEMO_PASSWORD,
+        email: TEST_EMAIL,
+        password: TEST_PASSWORD,
       }),
     });
 
@@ -139,7 +139,7 @@ describe("Better Auth Session Integration Tests", () => {
 
     // Better Auth sign-in returns: {redirect, token, user} - no session object
     expect(data.user).toBeDefined();
-    expect(data.user.email).toBe(DEMO_EMAIL);
+    expect(data.user.email).toBe(TEST_EMAIL);
     expect(data.user.id).toBeTypeOf("string");
     expect(data.token).toBeTypeOf("string");
     expect(data.redirect).toBe(false);
@@ -167,7 +167,7 @@ describe("Better Auth Session Integration Tests", () => {
     expect(data.session).toBeDefined();
 
     // Verify user data
-    expect(data.user.email).toBe(DEMO_EMAIL);
+    expect(data.user.email).toBe(TEST_EMAIL);
     expect(data.user.id).toBeTypeOf("string");
     expect(data.user.emailVerified).toBeDefined();
 
@@ -293,7 +293,7 @@ describe("Better Auth Session Integration Tests", () => {
     expect(data).toBeDefined();
     expect(data.user).toBeDefined();
     expect(data.session).toBeDefined();
-    expect(data.user.email).toBe(DEMO_EMAIL);
+    expect(data.user.email).toBe(TEST_EMAIL);
 
     console.log("✅ Session remains valid after authenticated API calls");
   });
@@ -384,7 +384,7 @@ describe("Better Auth Session Integration Tests", () => {
         {
           method: "POST",
           body: JSON.stringify({
-            email: DEMO_EMAIL,
+            email: TEST_EMAIL,
             password: "wrongpassword",
           }),
         },
@@ -420,8 +420,8 @@ describe("Better Auth Session Integration Tests", () => {
           Origin: "https://malicious-site.com",
         },
         body: JSON.stringify({
-          email: DEMO_EMAIL,
-          password: DEMO_PASSWORD,
+          email: TEST_EMAIL,
+          password: TEST_PASSWORD,
         }),
       });
 
@@ -453,8 +453,8 @@ describe("Better Auth Session Integration Tests", () => {
           Origin: "http://localhost:3000",
         },
         body: JSON.stringify({
-          email: DEMO_EMAIL,
-          password: DEMO_PASSWORD,
+          email: TEST_EMAIL,
+          password: TEST_PASSWORD,
         }),
       });
 
@@ -463,7 +463,7 @@ describe("Better Auth Session Integration Tests", () => {
 
       const data = (await response.json()) as any;
       expect(data.user).toBeDefined();
-      expect(data.user.email).toBe(DEMO_EMAIL);
+      expect(data.user.email).toBe(TEST_EMAIL);
 
       console.log("✅ CSRF protection verified - trusted origin accepted");
     });
@@ -574,7 +574,7 @@ describe("Better Auth Session Integration Tests", () => {
         {
           method: "POST",
           body: JSON.stringify({
-            email: DEMO_EMAIL,
+            email: TEST_EMAIL,
           }),
         },
       );

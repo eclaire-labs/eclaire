@@ -16,7 +16,7 @@ import type {
   UpdateChannelResponse,
 } from "../../schemas/channels-responses.js";
 import { channelRegistry } from "../channels.js";
-import { formatRequiredTimestamp } from "../db-helpers.js";
+import { formatRequiredTimestamp } from "@eclaire/core";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";

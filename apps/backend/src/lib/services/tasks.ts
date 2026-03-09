@@ -1,4 +1,5 @@
 import {
+  formatToISO8601,
   generateHistoryId,
   generateTaskId,
   type TaskStatus,
@@ -23,7 +24,7 @@ import { db, queueJobs, schema, txManager } from "../../db/index.js";
 const { tags, taskComments, tasks, tasksTags, users } = schema;
 
 import { config } from "../../config/index.js";
-import { batchGetTags, formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {

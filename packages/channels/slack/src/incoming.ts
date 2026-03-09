@@ -99,14 +99,14 @@ export async function handleIncomingMessage(
     let responseText: string | undefined;
 
     if (deps.processPromptRequestStream) {
-      const stream = await deps.processPromptRequestStream(
+      const stream = await deps.processPromptRequestStream({
         userId,
-        text,
-        { agent: "slack-bot" },
+        prompt: text,
+        context: { agent: "slack-bot" },
         requestId,
-        sessionId,
+        conversationId: sessionId,
         enableThinking,
-      );
+      });
 
       responseText = await sendStreamingResponse(
         client,
@@ -116,14 +116,14 @@ export async function handleIncomingMessage(
       );
     } else {
       // Non-streaming fallback
-      const result = await processPromptRequest(
+      const result = await processPromptRequest({
         userId,
-        text,
-        { agent: "slack-bot" },
+        prompt: text,
+        context: { agent: "slack-bot" },
         requestId,
-        sessionId,
+        conversationId: sessionId,
         enableThinking,
-      );
+      });
 
       responseText = result.response;
       if (responseText) {

@@ -11,7 +11,7 @@
  */
 
 import type { LogLevel } from "@eclaire/logger";
-import { envLoadInfo } from "../lib/env-loader.js";
+import { envLoadInfo } from "@eclaire/core";
 
 export type EclaireRuntime = "local" | "container";
 export type SecretsSource = "env" | "environment";

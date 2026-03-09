@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
-import { formatToISO8601 } from "../db-helpers.js";
+import { formatToISO8601 } from "@eclaire/core";
 
 const { taskComments, tasks, users } = schema;
 

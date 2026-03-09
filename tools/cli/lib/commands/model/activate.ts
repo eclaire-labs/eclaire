@@ -1,7 +1,7 @@
 import inquirer from "inquirer";
 import {
   findModelById,
-  getActiveModels,
+  getActiveModelIdForContext,
   getActiveModelsAsObjects,
   getModels,
   isModelSuitableForBackend,
@@ -231,7 +231,10 @@ async function setActiveForContext(
 
 export async function deactivateCommand(context?: string): Promise<void> {
   try {
-    const activeModels = getActiveModels();
+    const activeModels = {
+      backend: getActiveModelIdForContext("backend") || undefined,
+      workers: getActiveModelIdForContext("workers") || undefined,
+    };
 
     // If no context provided, show interactive selection
     if (!context) {

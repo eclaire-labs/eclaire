@@ -16,11 +16,11 @@ import exifr from "exifr"; // <-- Import exifr
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
-import { batchGetTags, formatToISO8601, getOrCreateTags } from "../db-helpers.js";
+import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
 
 const { photos, photosTags, tags } = schema;
 
-import { generateHistoryId, generatePhotoId } from "@eclaire/core";
+import { formatToISO8601, generateHistoryId, generatePhotoId } from "@eclaire/core";
 import { ForbiddenError, NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {

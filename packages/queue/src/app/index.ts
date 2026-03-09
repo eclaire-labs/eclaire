@@ -41,18 +41,21 @@ export {
 export * from "./helpers.js";
 // Re-export queue names
 export * from "./queue-names.js";
-// Re-export queue options (now local)
+// Re-export BullMQ job options
+export {
+  bookmarkJobOptions,
+  getDefaultJobOptions,
+  standardJobOptions,
+} from "../driver-bullmq/job-options.js";
+// Re-export queue options (worker timeouts, categories)
 export {
   type BaseWorkerOptions,
-  bookmarkJobOptions,
   getBaseWorkerOptions,
-  getDefaultJobOptions,
   getLongTaskWorkerOptions,
   getMediumTaskWorkerOptions,
   getShortTaskWorkerOptions,
   JOB_TIMEOUT,
   queueWorkerCategory,
-  standardJobOptions,
   type TimedWorkerOptions,
   type WorkerCategory,
 } from "./queue-options.js";
