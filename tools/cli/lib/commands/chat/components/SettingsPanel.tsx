@@ -43,17 +43,14 @@ const SETTINGS: SettingItem[] = [
     label: "Show tool calls",
     description: "Display tool call details and results",
     getValue: (d) => d.showTools,
-    toggle: (setD) =>
-      setD((prev) => ({ ...prev, showTools: !prev.showTools })),
+    toggle: (setD) => setD((prev) => ({ ...prev, showTools: !prev.showTools })),
   },
   {
     key: "verbose",
     label: "Verbose mode",
-    description:
-      "Show full tool results and thinking content (no truncation)",
+    description: "Show full tool results and thinking content (no truncation)",
     getValue: (d) => d.verbose,
-    toggle: (setD) =>
-      setD((prev) => ({ ...prev, verbose: !prev.verbose })),
+    toggle: (setD) => setD((prev) => ({ ...prev, verbose: !prev.verbose })),
   },
 ];
 
@@ -72,13 +69,9 @@ export function SettingsPanel({
       return;
     }
     if (key.downArrow) {
-      setSelectedIndex((prev) =>
-        prev < SETTINGS.length - 1 ? prev + 1 : 0,
-      );
+      setSelectedIndex((prev) => (prev < SETTINGS.length - 1 ? prev + 1 : 0));
     } else if (key.upArrow) {
-      setSelectedIndex((prev) =>
-        prev > 0 ? prev - 1 : SETTINGS.length - 1,
-      );
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : SETTINGS.length - 1));
     } else if (key.return || _input === " ") {
       const setting = SETTINGS[selectedIndex];
       setting?.toggle(onChangeDisplay, onChangeThinking);
@@ -99,9 +92,7 @@ export function SettingsPanel({
         <Text bold color="cyan">
           Settings
         </Text>
-        <Text dimColor>
-          {"  "}↑↓ navigate · Enter/Space toggle · Esc close
-        </Text>
+        <Text dimColor>{"  "}↑↓ navigate · Enter/Space toggle · Esc close</Text>
       </Box>
 
       {SETTINGS.map((setting, i) => {
@@ -114,12 +105,8 @@ export function SettingsPanel({
             <Text color={isSelected ? "cyan" : undefined}>
               {isSelected ? "→ " : "  "}
             </Text>
-            <Text color={isSelected ? "cyan" : undefined}>
-              {paddedLabel}
-            </Text>
-            <Text color={value ? "green" : "red"}>
-              {value ? "on" : "off"}
-            </Text>
+            <Text color={isSelected ? "cyan" : undefined}>{paddedLabel}</Text>
+            <Text color={value ? "green" : "red"}>{value ? "on" : "off"}</Text>
           </Text>
         );
       })}

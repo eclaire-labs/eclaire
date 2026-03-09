@@ -22,14 +22,21 @@ export async function convertToOggOpus(
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const args = [
-      "-i", "pipe:0",
+      "-i",
+      "pipe:0",
       ...(inputFormat ? ["-f", inputFormat] : []),
-      "-c:a", "libopus",
-      "-b:a", "64k",
-      "-ar", "48000",
-      "-ac", "1",
-      "-application", "voip",
-      "-f", "ogg",
+      "-c:a",
+      "libopus",
+      "-b:a",
+      "64k",
+      "-ar",
+      "48000",
+      "-ac",
+      "1",
+      "-application",
+      "voip",
+      "-f",
+      "ogg",
       "pipe:1",
     ];
 
@@ -52,7 +59,9 @@ export async function convertToOggOpus(
     // Feed input
     const inputStream = Readable.from(input);
     inputStream.pipe(proc.stdin);
-    proc.stdin.on("error", () => { /* ignore broken pipe */ });
+    proc.stdin.on("error", () => {
+      /* ignore broken pipe */
+    });
   });
 }
 
@@ -61,15 +70,25 @@ export async function convertToOggOpus(
  */
 export async function getAudioDuration(input: Buffer): Promise<number> {
   return new Promise((resolve, reject) => {
-    const proc = spawn("ffprobe", [
-      "-i", "pipe:0",
-      "-show_entries", "format=duration",
-      "-v", "quiet",
-      "-of", "csv=p=0",
-    ], { stdio: ["pipe", "pipe", "pipe"] });
+    const proc = spawn(
+      "ffprobe",
+      [
+        "-i",
+        "pipe:0",
+        "-show_entries",
+        "format=duration",
+        "-v",
+        "quiet",
+        "-of",
+        "csv=p=0",
+      ],
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
 
     let output = "";
-    proc.stdout.on("data", (chunk: Buffer) => { output += chunk.toString(); });
+    proc.stdout.on("data", (chunk: Buffer) => {
+      output += chunk.toString();
+    });
     proc.on("close", (code) => {
       if (code === 0) {
         const duration = Number.parseFloat(output.trim());
@@ -82,7 +101,9 @@ export async function getAudioDuration(input: Buffer): Promise<number> {
 
     const inputStream = Readable.from(input);
     inputStream.pipe(proc.stdin);
-    proc.stdin.on("error", () => { /* ignore broken pipe */ });
+    proc.stdin.on("error", () => {
+      /* ignore broken pipe */
+    });
   });
 }
 
@@ -93,13 +114,11 @@ export async function getAudioDuration(input: Buffer): Promise<number> {
 export async function generateWaveform(input: Buffer): Promise<string> {
   return new Promise((resolve) => {
     // Convert to raw PCM (signed 16-bit little-endian, mono, 8kHz for efficiency)
-    const proc = spawn("ffmpeg", [
-      "-i", "pipe:0",
-      "-f", "s16le",
-      "-ac", "1",
-      "-ar", "8000",
-      "pipe:1",
-    ], { stdio: ["pipe", "pipe", "pipe"] });
+    const proc = spawn(
+      "ffmpeg",
+      ["-i", "pipe:0", "-f", "s16le", "-ac", "1", "-ar", "8000", "pipe:1"],
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
 
     const chunks: Buffer[] = [];
     proc.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -125,7 +144,10 @@ export async function generateWaveform(input: Buffer): Promise<string> {
         return;
       }
 
-      const samplesPerBin = Math.max(1, Math.floor(samples.length / waveformSize));
+      const samplesPerBin = Math.max(
+        1,
+        Math.floor(samples.length / waveformSize),
+      );
 
       for (let i = 0; i < waveformSize; i++) {
         const start = i * samplesPerBin;
@@ -148,7 +170,9 @@ export async function generateWaveform(input: Buffer): Promise<string> {
 
     const inputStream = Readable.from(input);
     inputStream.pipe(proc.stdin);
-    proc.stdin.on("error", () => { /* ignore broken pipe */ });
+    proc.stdin.on("error", () => {
+      /* ignore broken pipe */
+    });
   });
 }
 
@@ -158,7 +182,9 @@ export async function generateWaveform(input: Buffer): Promise<string> {
 export async function downloadFile(url: string): Promise<Buffer> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to download file: ${response.status} ${response.statusText}`,
+    );
   }
   return Buffer.from(await response.arrayBuffer());
 }

@@ -57,7 +57,11 @@ function parseFrontmatter(content: string): {
     else if (value === "false") value = false;
 
     // Handle simple arrays (tags: [a, b, c])
-    if (typeof value === "string" && value.startsWith("[") && value.endsWith("]")) {
+    if (
+      typeof value === "string" &&
+      value.startsWith("[") &&
+      value.endsWith("]")
+    ) {
       value = value
         .slice(1, -1)
         .split(",")
@@ -130,7 +134,8 @@ function loadSkillFile(filePath: string, source: SkillSource): Skill | null {
     const { frontmatter } = parseFrontmatter(content);
     const parentDir = basename(dirname(filePath));
 
-    const name = typeof frontmatter.name === "string" ? frontmatter.name : parentDir;
+    const name =
+      typeof frontmatter.name === "string" ? frontmatter.name : parentDir;
 
     // Validate
     if (name.length > MAX_NAME_LENGTH) return null;
@@ -172,9 +177,7 @@ export function getSkillSummary(): string {
   const skills = discoverSkills();
   if (skills.length === 0) return "";
 
-  const lines = skills.map(
-    (s) => `- ${s.name}: ${s.description}`,
-  );
+  const lines = skills.map((s) => `- ${s.name}: ${s.description}`);
   return `Available skills:\n${lines.join("\n")}`;
 }
 

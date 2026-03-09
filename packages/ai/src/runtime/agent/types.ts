@@ -43,7 +43,9 @@ export function createRuntimeContext(
 ): RuntimeAgentContext {
   return {
     userId: opts.userId,
-    requestId: opts.requestId ?? `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    requestId:
+      opts.requestId ??
+      `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     sessionId: opts.sessionId ?? opts.conversationId,
     conversationId: opts.conversationId,
     startTime: Date.now(),
@@ -62,7 +64,9 @@ export interface RuntimeAgentConfig {
   aiContext: AIContext;
 
   /** System prompt — static string or dynamic function */
-  instructions: string | ((ctx: RuntimeAgentContext) => string | Promise<string>);
+  instructions:
+    | string
+    | ((ctx: RuntimeAgentContext) => string | Promise<string>);
 
   /** Available tools (keyed by name) */
   tools: Record<string, RuntimeToolDefinition<AnyZodType>>;

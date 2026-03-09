@@ -126,9 +126,7 @@ function renderListItem(
     const child = item.tokens[i];
     if (!child) continue;
     if (child.type === "list") {
-      parts.push(
-        renderList(child as Tokens.List, depth + 1, `${index}-${i}`),
-      );
+      parts.push(renderList(child as Tokens.List, depth + 1, `${index}-${i}`));
     } else if (child.type === "text" || child.type === "paragraph") {
       const inlineTokens =
         "tokens" in child ? (child as Tokens.Paragraph).tokens : undefined;
@@ -176,10 +174,7 @@ function renderList(
 /**
  * Render an in-progress code block (unclosed fence during streaming).
  */
-function renderStreamingCodeBlock(
-  lang: string,
-  code: string,
-): React.ReactNode {
+function renderStreamingCodeBlock(lang: string, code: string): React.ReactNode {
   return (
     <Box flexDirection="column" marginTop={1}>
       <Text dimColor>{`\`\`\`${lang}`}</Text>
@@ -198,8 +193,7 @@ function renderBlock(token: Token, index: number): React.ReactNode {
   switch (token.type) {
     case "heading": {
       const heading = token as Tokens.Heading;
-      const prefix =
-        heading.depth >= 3 ? `${"#".repeat(heading.depth)} ` : "";
+      const prefix = heading.depth >= 3 ? `${"#".repeat(heading.depth)} ` : "";
       return (
         <Box key={index} marginTop={index > 0 ? 1 : 0}>
           <Text bold color="cyan" underline={heading.depth === 1}>
@@ -223,12 +217,7 @@ function renderBlock(token: Token, index: number): React.ReactNode {
       const code = token as Tokens.Code;
       const langLabel = code.lang || "";
       return (
-        <Box
-          key={index}
-          flexDirection="column"
-          marginTop={1}
-          marginBottom={1}
-        >
+        <Box key={index} flexDirection="column" marginTop={1} marginBottom={1}>
           <Text dimColor>{`\`\`\`${langLabel}`}</Text>
           <Box marginLeft={2}>
             <Text color="green">{code.text}</Text>
@@ -277,7 +266,11 @@ function renderBlock(token: Token, index: number): React.ReactNode {
       );
 
     case "space":
-      return <Box key={index} marginY={0}><Text>{""}</Text></Box>;
+      return (
+        <Box key={index} marginY={0}>
+          <Text>{""}</Text>
+        </Box>
+      );
 
     case "html":
       return (
@@ -291,9 +284,7 @@ function renderBlock(token: Token, index: number): React.ReactNode {
       const headers = table.header.map((h) =>
         h.tokens
           ? h.tokens
-              .map((t) =>
-                "text" in t ? (t as { text: string }).text : "",
-              )
+              .map((t) => ("text" in t ? (t as { text: string }).text : ""))
               .join("")
           : "",
       );
@@ -301,9 +292,7 @@ function renderBlock(token: Token, index: number): React.ReactNode {
         row.map((cell) =>
           cell.tokens
             ? cell.tokens
-                .map((t) =>
-                  "text" in t ? (t as { text: string }).text : "",
-                )
+                .map((t) => ("text" in t ? (t as { text: string }).text : ""))
                 .join("")
             : "",
         ),
@@ -364,13 +353,9 @@ export function Markdown({ content }: MarkdownProps) {
         const parts: React.ReactNode[] = [];
         if (unfinished.before.trim()) {
           const tokens = new Lexer().lex(unfinished.before);
-          parts.push(
-            ...tokens.map((token, i) => renderBlock(token, i)),
-          );
+          parts.push(...tokens.map((token, i) => renderBlock(token, i)));
         }
-        parts.push(
-          renderStreamingCodeBlock(unfinished.lang, unfinished.code),
-        );
+        parts.push(renderStreamingCodeBlock(unfinished.lang, unfinished.code));
         return parts;
       }
 

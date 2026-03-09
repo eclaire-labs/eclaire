@@ -47,8 +47,14 @@ export function getRetryAfterMs(err: unknown): number | null {
   if (!(err instanceof Error)) return null;
 
   // Slack Web API errors include retryAfter in the error data
-  const slackError = err as Error & { data?: { retry_after?: number }; code?: string };
-  if (slackError.code === "slack_webapi_rate_limited_error" || slackError.code === "rate_limited") {
+  const slackError = err as Error & {
+    data?: { retry_after?: number };
+    code?: string;
+  };
+  if (
+    slackError.code === "slack_webapi_rate_limited_error" ||
+    slackError.code === "rate_limited"
+  ) {
     const retryAfter = slackError.data?.retry_after;
     if (typeof retryAfter === "number" && retryAfter > 0) {
       return retryAfter * 1000;
@@ -57,7 +63,10 @@ export function getRetryAfterMs(err: unknown): number | null {
   }
 
   // Check error message for rate limiting
-  if (err.message.toLowerCase().includes("rate_limited") || err.message.toLowerCase().includes("ratelimited")) {
+  if (
+    err.message.toLowerCase().includes("rate_limited") ||
+    err.message.toLowerCase().includes("ratelimited")
+  ) {
     return 5000;
   }
 
@@ -123,7 +132,8 @@ export async function withRetry<T>(
 
       // Use retry_after from Slack 429 if available, otherwise exponential backoff
       const retryAfter = getRetryAfterMs(err);
-      const backoff = retryAfter ?? Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
+      const backoff =
+        retryAfter ?? Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
       const jitter = backoff * 0.1 * Math.random();
       const delay = backoff + jitter;
 

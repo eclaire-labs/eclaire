@@ -160,7 +160,10 @@ photosRoutes.put(
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
 
-    const updatedPhoto = await updatePhotoMetadata(id, validatedData, { userId, actor: "user" });
+    const updatedPhoto = await updatePhotoMetadata(id, validatedData, {
+      userId,
+      actor: "user",
+    });
 
     if (!updatedPhoto) {
       throw new NotFoundError("Photo");
@@ -179,7 +182,10 @@ photosRoutes.patch(
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
 
-    const updatedPhoto = await updatePhotoMetadata(id, validatedData, { userId, actor: "user" });
+    const updatedPhoto = await updatePhotoMetadata(id, validatedData, {
+      userId,
+      actor: "user",
+    });
 
     if (!updatedPhoto) {
       throw new NotFoundError("Photo");
@@ -195,7 +201,12 @@ photosRoutes.delete(
   describeRoute(deletePhotoRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    await deletePhoto(id, userId, { userId, actor: "user" }, parseDeleteStorage(c));
+    await deletePhoto(
+      id,
+      userId,
+      { userId, actor: "user" },
+      parseDeleteStorage(c),
+    );
     return new Response(null, { status: 204 });
   }, logger),
 );

@@ -33,7 +33,10 @@ describe("splitMessage", () => {
   });
 
   it("splits at line boundaries when no paragraphs", () => {
-    const lines = Array.from({ length: 100 }, (_, i) => `Line ${i}: ${"x".repeat(50)}`);
+    const lines = Array.from(
+      { length: 100 },
+      (_, i) => `Line ${i}: ${"x".repeat(50)}`,
+    );
     const msg = lines.join("\n");
 
     const chunks = splitMessage(msg);
@@ -48,7 +51,10 @@ describe("splitMessage", () => {
 
   it("splits at sentence boundaries as fallback", () => {
     // One long paragraph with sentences
-    const sentences = Array.from({ length: 80 }, (_, i) => `Sentence ${i} with some content here`);
+    const sentences = Array.from(
+      { length: 80 },
+      (_, i) => `Sentence ${i} with some content here`,
+    );
     const msg = sentences.join(". ");
 
     const chunks = splitMessage(msg);

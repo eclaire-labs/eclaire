@@ -86,7 +86,10 @@ export async function sendStreamingResponse(
       return accumulatedText;
     }
     // Split the text and return the last chunk
-    const chunks = splitMessage(accumulatedText, MAX_MESSAGE_LENGTH - CURSOR.length - 1);
+    const chunks = splitMessage(
+      accumulatedText,
+      MAX_MESSAGE_LENGTH - CURSOR.length - 1,
+    );
     return chunks[chunks.length - 1] ?? accumulatedText;
   }
 
@@ -101,7 +104,10 @@ export async function sendStreamingResponse(
     if (messageId === null) return;
 
     const currentText = getTextForCurrentMessage();
-    if (currentText.length < MIN_CHARS_BEFORE_FIRST_EDIT && lastEditedText === "") {
+    if (
+      currentText.length < MIN_CHARS_BEFORE_FIRST_EDIT &&
+      lastEditedText === ""
+    ) {
       return;
     }
 
@@ -153,7 +159,8 @@ export async function sendStreamingResponse(
         }
 
         case "error": {
-          const errorText = value.error ?? "An error occurred while generating the response.";
+          const errorText =
+            value.error ?? "An error occurred while generating the response.";
           if (messageId !== null) {
             clearEditTimer();
             await editMessage(errorText, messageId);
@@ -201,7 +208,8 @@ export async function sendStreamingResponse(
     // Try to update the message with an error indication
     if (messageId !== null) {
       try {
-        const fallback = accumulatedText || "An error occurred while generating the response.";
+        const fallback =
+          accumulatedText || "An error occurred while generating the response.";
         await editMessage(fallback, messageId);
       } catch {
         // Best effort — already logged above

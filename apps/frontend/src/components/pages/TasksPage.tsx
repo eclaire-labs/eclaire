@@ -414,10 +414,7 @@ export default function TasksPage() {
         label: "Status",
         value: state.extraFilters.status ?? "all",
         onChange: (v: string) => state.setExtraFilter("status", v),
-        options: [
-          { value: "all", label: "All Statuses" },
-          ...STATUS_OPTIONS,
-        ],
+        options: [{ value: "all", label: "All Statuses" }, ...STATUS_OPTIONS],
       },
       {
         key: "priority",

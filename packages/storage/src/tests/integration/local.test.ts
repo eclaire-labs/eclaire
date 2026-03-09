@@ -140,10 +140,7 @@ describe("LocalStorage — adapter-specific", () => {
       );
 
       // Corrupt the sidecar
-      const sidecarPath = join(
-        tempDir,
-        "user-1/docs/doc-1/file.txt.meta.json",
-      );
+      const sidecarPath = join(tempDir, "user-1/docs/doc-1/file.txt.meta.json");
       await writeFile(sidecarPath, "not valid json {{{");
 
       // Reading metadata should throw (JSON.parse error propagates)

@@ -203,11 +203,15 @@ describe("transformPhotoData", () => {
     );
 
     // processingEnabled: false preserved
-    const result = transformPhotoData(makeRawPhoto({ processingEnabled: false }));
+    const result = transformPhotoData(
+      makeRawPhoto({ processingEnabled: false }),
+    );
     expect(result.processingEnabled).toBe(false);
 
     // processingEnabled: undefined defaults to true
-    const result2 = transformPhotoData(makeRawPhoto({ processingEnabled: undefined }));
+    const result2 = transformPhotoData(
+      makeRawPhoto({ processingEnabled: undefined }),
+    );
     expect(result2.processingEnabled).toBe(true);
   });
 

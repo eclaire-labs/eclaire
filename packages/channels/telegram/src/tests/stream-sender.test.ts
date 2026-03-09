@@ -44,27 +44,34 @@ describe("sendStreamingResponse", () => {
     const tg = makeTelegram();
     const stream = createStream([
       // Enough text to pass minimum threshold
-      { type: "text-chunk", content: "Hello, this is a test response from the AI assistant." },
+      {
+        type: "text-chunk",
+        content: "Hello, this is a test response from the AI assistant.",
+      },
       { type: "done" },
     ]);
 
-const result = await sendStreamingResponse(tg as any, 123, stream, {
+    const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
-    expect(result).toBe("Hello, this is a test response from the AI assistant.");
+    expect(result).toBe(
+      "Hello, this is a test response from the AI assistant.",
+    );
     expect(tg.sendMessage).toHaveBeenCalledTimes(1);
     expect(tg.sendMessage).toHaveBeenCalledWith(123, "▍", {});
 
     // Should have at least a final edit (without cursor)
-    expect(lastEditText(tg)).toBe("Hello, this is a test response from the AI assistant.");
+    expect(lastEditText(tg)).toBe(
+      "Hello, this is a test response from the AI assistant.",
+    );
   });
 
   it("returns empty text and edits with fallback for empty stream", async () => {
     const tg = makeTelegram();
     const stream = createStream([{ type: "done" }]);
 
-const result = await sendStreamingResponse(tg as any, 123, stream, {
+    const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -81,7 +88,7 @@ const result = await sendStreamingResponse(tg as any, 123, stream, {
       { type: "error", error: "Something went wrong" },
     ]);
 
-const result = await sendStreamingResponse(tg as any, 123, stream, {
+    const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -99,7 +106,7 @@ const result = await sendStreamingResponse(tg as any, 123, stream, {
       { type: "done" },
     ]);
 
-const result = await sendStreamingResponse(tg as any, 123, stream, {
+    const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -118,7 +125,7 @@ const result = await sendStreamingResponse(tg as any, 123, stream, {
       { type: "done" },
     ]);
 
-await sendStreamingResponse(tg as any, 123, stream, {
+    await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -135,7 +142,7 @@ await sendStreamingResponse(tg as any, 123, stream, {
       { type: "done" },
     ]);
 
-const result = await sendStreamingResponse(tg as any, 123, stream, {
+    const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -150,7 +157,7 @@ const result = await sendStreamingResponse(tg as any, 123, stream, {
       { type: "done" },
     ]);
 
-await sendStreamingResponse(tg as any, 123, stream, {
+    await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 
@@ -165,14 +172,17 @@ await sendStreamingResponse(tg as any, 123, stream, {
       pull(controller) {
         if (enqueueCount === 0) {
           enqueueCount++;
-          controller.enqueue({ type: "text-chunk", content: "Partial response before error happens" });
+          controller.enqueue({
+            type: "text-chunk",
+            content: "Partial response before error happens",
+          });
         } else {
           controller.error(new Error("Stream broke"));
         }
       },
     });
 
-const result = await sendStreamingResponse(tg as any, 123, stream, {
+    const result = await sendStreamingResponse(tg as any, 123, stream, {
       logger: mockLogger,
     });
 

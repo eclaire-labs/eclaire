@@ -1,5 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { safeSendChatAction, resetCircuitBreaker } from "../typing-indicator.js";
+import {
+  safeSendChatAction,
+  resetCircuitBreaker,
+} from "../typing-indicator.js";
 
 const mockLogger = {
   info: vi.fn(),
@@ -35,14 +38,14 @@ beforeEach(() => {
 describe("safeSendChatAction", () => {
   it("calls sendChatAction on success", async () => {
     const tg = makeTelegram("success");
-await safeSendChatAction(tg as any, 123, "typing", mockLogger);
+    await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     expect(tg.sendChatAction).toHaveBeenCalledWith(123, "typing");
   });
 
   it("does not throw on error", async () => {
     const tg = makeTelegram("other-error");
     await expect(
-    safeSendChatAction(tg as any, 123, "typing", mockLogger),
+      safeSendChatAction(tg as any, 123, "typing", mockLogger),
     ).resolves.toBeUndefined();
   });
 
@@ -50,7 +53,7 @@ await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     const tg = makeTelegram("401");
 
     for (let i = 0; i < 10; i++) {
-    await safeSendChatAction(tg as any, 123, "typing", mockLogger);
+      await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     }
 
     expect(mockLogger.error).toHaveBeenCalledWith(
@@ -60,7 +63,7 @@ await safeSendChatAction(tg as any, 123, "typing", mockLogger);
 
     // After suspension, sendChatAction should not be called
     tg.sendChatAction.mockClear();
-await safeSendChatAction(tg as any, 123, "typing", mockLogger);
+    await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     expect(tg.sendChatAction).not.toHaveBeenCalled();
   });
 
@@ -72,20 +75,20 @@ await safeSendChatAction(tg as any, 123, "typing", mockLogger);
 
     // 5 failures
     for (let i = 0; i < 5; i++) {
-    await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
+      await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
     }
 
     // 1 success resets
-await safeSendChatAction(successTg as any, 123, "typing", mockLogger);
+    await safeSendChatAction(successTg as any, 123, "typing", mockLogger);
 
     // 9 more failures should NOT trigger suspension (counter was reset)
     for (let i = 0; i < 9; i++) {
-    await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
+      await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
     }
 
     // Should not have been suspended (only 9 consecutive after reset)
     failTg.sendChatAction.mockClear();
-await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
+    await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
     expect(failTg.sendChatAction).toHaveBeenCalled();
   });
 
@@ -93,12 +96,12 @@ await safeSendChatAction(failTg as any, 123, "typing", mockLogger);
     const tg = makeTelegram("other-error");
 
     for (let i = 0; i < 20; i++) {
-    await safeSendChatAction(tg as any, 123, "typing", mockLogger);
+      await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     }
 
     // Should still be calling sendChatAction (not suspended)
     tg.sendChatAction.mockClear();
-await safeSendChatAction(tg as any, 123, "typing", mockLogger);
+    await safeSendChatAction(tg as any, 123, "typing", mockLogger);
     expect(tg.sendChatAction).toHaveBeenCalled();
   });
 });

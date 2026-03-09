@@ -95,7 +95,13 @@ app.use("*", async (c, next) => {
   c.set("session", null);
 
   // Lazy resolver: caches the result so the DB is hit at most once per request
-  let cached: { user: typeof auth.$Infer.Session.user; session: typeof auth.$Infer.Session.session } | null | undefined;
+  let cached:
+    | {
+        user: typeof auth.$Infer.Session.user;
+        session: typeof auth.$Infer.Session.session;
+      }
+    | null
+    | undefined;
   c.set("resolveSession", async () => {
     if (cached !== undefined) return cached;
     const result = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -222,9 +228,7 @@ const start = async () => {
         logger.info("Starting channel adapters...");
         await channelRegistry.startAll();
       } else {
-        logger.info(
-          "Skipping channel startup - encryption not configured",
-        );
+        logger.info("Skipping channel startup - encryption not configured");
       }
 
       // In 'all' mode, start the scheduler for recurring tasks

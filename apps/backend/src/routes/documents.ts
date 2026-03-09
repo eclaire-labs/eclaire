@@ -157,7 +157,10 @@ documentsRoutes.put(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedDocument = await updateDocument(id, validatedData, { userId, actor: "user" });
+    const updatedDocument = await updateDocument(id, validatedData, {
+      userId,
+      actor: "user",
+    });
 
     if (!updatedDocument) {
       throw new NotFoundError("Document");
@@ -175,7 +178,10 @@ documentsRoutes.patch(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedDocument = await updateDocument(id, validatedData, { userId, actor: "user" });
+    const updatedDocument = await updateDocument(id, validatedData, {
+      userId,
+      actor: "user",
+    });
 
     if (!updatedDocument) {
       throw new NotFoundError("Document");
@@ -282,7 +288,12 @@ documentsRoutes.delete(
   describeRoute(deleteDocumentRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    await deleteDocument(id, userId, { userId, actor: "user" }, parseDeleteStorage(c));
+    await deleteDocument(
+      id,
+      userId,
+      { userId, actor: "user" },
+      parseDeleteStorage(c),
+    );
     return new Response(null, { status: 204 });
   }, logger),
 );

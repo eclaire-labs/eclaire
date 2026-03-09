@@ -30,9 +30,13 @@ export interface DiscordDeps {
   encrypt: (value: string) => string;
   decrypt: (value: string) => string;
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
-  processPromptRequest: (...args: any[]) => Promise<{ response?: string; type?: string; requestId?: string }>;
+  processPromptRequest: (
+    ...args: any[]
+  ) => Promise<{ response?: string; type?: string; requestId?: string }>;
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
-  processPromptRequestStream?: (...args: any[]) => Promise<ReadableStream<StreamEvent>>;
+  processPromptRequestStream?: (
+    ...args: any[]
+  ) => Promise<ReadableStream<StreamEvent>>;
   /** Optional handler for audio/voice messages. If not provided, voice messages are handled as attachments. */
   processAudioMessage?: (
     userId: string,
@@ -44,7 +48,10 @@ export interface DiscordDeps {
   logger: DiscordLogger;
 
   // Optional session & model deps for slash commands
-  createSession?: (userId: string, title?: string) => Promise<{ id: string; title: string }>;
+  createSession?: (
+    userId: string,
+    title?: string,
+  ) => Promise<{ id: string; title: string }>;
   listSessions?: (
     userId: string,
     limit?: number,

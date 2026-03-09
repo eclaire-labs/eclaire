@@ -78,7 +78,18 @@ bookmarksRoutes.post(
   zValidator("json", CreateBookmarkSchema),
   withAuth(async (c, userId) => {
     const body = c.req.valid("json");
-    const { url, title, description, tags, metadata, processingEnabled, reviewStatus, flagColor, isPinned, dueDate } = body;
+    const {
+      url,
+      title,
+      description,
+      tags,
+      metadata,
+      processingEnabled,
+      reviewStatus,
+      flagColor,
+      isPinned,
+      dueDate,
+    } = body;
 
     // 1. Basic URL validation and normalization
     const urlValidation = validateAndNormalizeBookmarkUrl(url);
@@ -100,13 +111,16 @@ bookmarksRoutes.post(
     };
 
     // 3. Call the service to create the DB entries and queue the job
-    const result = await createBookmarkAndQueueJob({
-      // biome-ignore lint/style/noNonNullAssertion: guarded by validation check above
-      url: urlValidation.normalizedUrl!,
-      userId: userId,
-      rawMetadata: enrichedMetadata,
-      userAgent: c.req.header("User-Agent") || "",
-    }, { userId, actor: "user" });
+    const result = await createBookmarkAndQueueJob(
+      {
+        // biome-ignore lint/style/noNonNullAssertion: guarded by validation check above
+        url: urlValidation.normalizedUrl!,
+        userId: userId,
+        rawMetadata: enrichedMetadata,
+        userAgent: c.req.header("User-Agent") || "",
+      },
+      { userId, actor: "user" },
+    );
 
     if (!result.success) {
       return c.json(
@@ -144,7 +158,10 @@ bookmarksRoutes.put(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedBookmark = await updateBookmark(id, validatedData, { userId, actor: "user" });
+    const updatedBookmark = await updateBookmark(id, validatedData, {
+      userId,
+      actor: "user",
+    });
 
     if (!updatedBookmark) {
       throw new NotFoundError("Bookmark");
@@ -162,7 +179,10 @@ bookmarksRoutes.patch(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedBookmark = await updateBookmark(id, validatedData, { userId, actor: "user" });
+    const updatedBookmark = await updateBookmark(id, validatedData, {
+      userId,
+      actor: "user",
+    });
 
     if (!updatedBookmark) {
       throw new NotFoundError("Bookmark");
@@ -178,7 +198,12 @@ bookmarksRoutes.delete(
   describeRoute(deleteBookmarkRouteDescription),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    await deleteBookmark(id, userId, { userId, actor: "user" }, parseDeleteStorage(c));
+    await deleteBookmark(
+      id,
+      userId,
+      { userId, actor: "user" },
+      parseDeleteStorage(c),
+    );
     return new Response(null, { status: 204 });
   }, logger),
 );
@@ -199,9 +224,7 @@ const serveBookmarkAsset = (assetType: BookmarkAssetType) =>
     const textTypes = ["text/", "application/json", "application/xml"];
     const needsCharset = textTypes.some((type) => mimeType.startsWith(type));
 
-    const contentType = needsCharset
-      ? `${mimeType}; charset=utf-8`
-      : mimeType;
+    const contentType = needsCharset ? `${mimeType}; charset=utf-8` : mimeType;
 
     // Force download for HTML assets (raw, readable) to prevent XSS
     const isHtml =
@@ -353,7 +376,10 @@ bookmarksRoutes.post(
 
     // Import bookmarks using the service
     const { importBookmarkFile } = await import("../lib/services/bookmarks.js");
-    const result = await importBookmarkFile(userId, bookmarkData, { userId, actor: "user" });
+    const result = await importBookmarkFile(userId, bookmarkData, {
+      userId,
+      actor: "user",
+    });
 
     return c.json({
       message: "Bookmarks imported successfully",

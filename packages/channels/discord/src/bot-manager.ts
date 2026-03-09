@@ -51,24 +51,22 @@ function scheduleReconnect(
 ): void {
   const maxAttempts = 3;
   if (attempt > maxAttempts) {
-    logger.error(
-      { attempt },
-      "Discord reconnect failed after max attempts",
-    );
+    logger.error({ attempt }, "Discord reconnect failed after max attempts");
     return;
   }
 
   const delay = Math.min(5000 * 2 ** (attempt - 1), 30_000);
-  logger.info(
-    { attempt, delayMs: delay },
-    "Scheduling Discord reconnect",
-  );
+  logger.info({ attempt, delayMs: delay }, "Scheduling Discord reconnect");
 
   setTimeout(async () => {
     // Clean up old client
     const oldInstance = clientPool.get(botToken);
     if (oldInstance) {
-      try { oldInstance.client.destroy(); } catch { /* already destroyed */ }
+      try {
+        oldInstance.client.destroy();
+      } catch {
+        /* already destroyed */
+      }
       clientPool.delete(botToken);
     }
 
@@ -163,7 +161,11 @@ function createClient(
     }
 
     try {
-      await handleIncomingMessage(message, channelMeta.channelId, channelMeta.userId);
+      await handleIncomingMessage(
+        message,
+        channelMeta.channelId,
+        channelMeta.userId,
+      );
     } catch (error) {
       logger.error(
         {
@@ -221,17 +223,11 @@ function createClient(
   });
 
   client.on("error", (error) => {
-    logger.error(
-      { error: error.message },
-      "Discord client error",
-    );
+    logger.error({ error: error.message }, "Discord client error");
   });
 
   client.on("warn", (warning) => {
-    logger.warn(
-      { warning },
-      "Discord client warning",
-    );
+    logger.warn({ warning }, "Discord client warning");
   });
 
   // Reconnection: if the session is invalidated, attempt to re-login
@@ -241,10 +237,7 @@ function createClient(
   });
 
   client.on("shardDisconnect", (event, shardId) => {
-    logger.warn(
-      { shardId, code: event.code },
-      "Discord shard disconnected",
-    );
+    logger.warn({ shardId, code: event.code }, "Discord shard disconnected");
     // discord.js auto-reconnects for most codes; only intervene on fatal codes
     if (event.code === 4004 || event.code === 4014) {
       logger.error(
@@ -322,12 +315,18 @@ export async function stopBot(channelId: string): Promise<void> {
     if (instance.managedChannels.size === 0) {
       try {
         instance.client.destroy();
-        logger.info({ channelId }, "Discord client destroyed (no remaining channels)");
+        logger.info(
+          { channelId },
+          "Discord client destroyed (no remaining channels)",
+        );
       } catch (destroyError) {
         logger.warn(
           {
             channelId,
-            error: destroyError instanceof Error ? destroyError.message : "Unknown error",
+            error:
+              destroyError instanceof Error
+                ? destroyError.message
+                : "Unknown error",
           },
           "Error during Discord client destroy",
         );
@@ -409,14 +408,18 @@ export async function startBot(channelId: string): Promise<boolean> {
       await Promise.race([
         instance.readyPromise,
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Discord client ready timeout")), 30_000),
+          setTimeout(
+            () => reject(new Error("Discord client ready timeout")),
+            30_000,
+          ),
         ),
       ]);
     } catch (readyError) {
       logger.error(
         {
           channelId,
-          error: readyError instanceof Error ? readyError.message : "Unknown error",
+          error:
+            readyError instanceof Error ? readyError.message : "Unknown error",
         },
         "Discord client failed to become ready",
       );
@@ -427,20 +430,33 @@ export async function startBot(channelId: string): Promise<boolean> {
 
     // Check permissions in the target channel
     try {
-      const targetCh = instance.client.channels.cache.get(config.channel_id) as TextChannel | undefined
-        ?? await instance.client.channels.fetch(config.channel_id) as TextChannel | null;
+      const targetCh =
+        (instance.client.channels.cache.get(config.channel_id) as
+          | TextChannel
+          | undefined) ??
+        ((await instance.client.channels.fetch(
+          config.channel_id,
+        )) as TextChannel | null);
       if (targetCh && "guild" in targetCh) {
         const permCheck = checkBotPermissions(targetCh, instance.client);
         if (!permCheck.ok) {
           logger.warn(
-            { channelId, discordChannelId: config.channel_id, missing: permCheck.missing },
+            {
+              channelId,
+              discordChannelId: config.channel_id,
+              missing: permCheck.missing,
+            },
             "Discord bot missing permissions in target channel",
           );
         }
       }
     } catch (permError) {
       logger.debug(
-        { channelId, error: permError instanceof Error ? permError.message : "Unknown error" },
+        {
+          channelId,
+          error:
+            permError instanceof Error ? permError.message : "Unknown error",
+        },
         "Could not verify Discord channel permissions",
       );
     }
@@ -453,7 +469,12 @@ export async function startBot(channelId: string): Promise<boolean> {
           g.channels.cache.has(voiceChId),
         );
         if (guild) {
-          await joinChannel(instance.client, guild.id, config.voice_channel_id, logger);
+          await joinChannel(
+            instance.client,
+            guild.id,
+            config.voice_channel_id,
+            logger,
+          );
         } else {
           logger.warn(
             { channelId, voiceChannelId: config.voice_channel_id },
@@ -462,7 +483,13 @@ export async function startBot(channelId: string): Promise<boolean> {
         }
       } catch (voiceError) {
         logger.warn(
-          { channelId, error: voiceError instanceof Error ? voiceError.message : "Unknown error" },
+          {
+            channelId,
+            error:
+              voiceError instanceof Error
+                ? voiceError.message
+                : "Unknown error",
+          },
           "Failed to join voice channel on startup",
         );
       }
@@ -511,43 +538,56 @@ export async function sendMessage(
       return false;
     }
 
-    const textChannel = instance.client.channels.cache.get(meta.discordChannelId) as TextChannel | undefined;
+    const textChannel = instance.client.channels.cache.get(
+      meta.discordChannelId,
+    ) as TextChannel | undefined;
     if (!textChannel) {
       // Try fetching the channel if not in cache
       try {
-        const fetched = await instance.client.channels.fetch(meta.discordChannelId);
+        const fetched = await instance.client.channels.fetch(
+          meta.discordChannelId,
+        );
         if (!fetched || !fetched.isTextBased()) {
-          logger.error({ channelId, discordChannelId: meta.discordChannelId }, "Discord channel not found or not text-based");
+          logger.error(
+            { channelId, discordChannelId: meta.discordChannelId },
+            "Discord channel not found or not text-based",
+          );
           return false;
         }
       } catch (fetchError) {
         logger.error(
-          { channelId, error: fetchError instanceof Error ? fetchError.message : "Unknown error" },
+          {
+            channelId,
+            error:
+              fetchError instanceof Error
+                ? fetchError.message
+                : "Unknown error",
+          },
           "Failed to fetch Discord channel",
         );
         return false;
       }
     }
 
-    const targetChannel = (textChannel ?? await instance.client.channels.fetch(meta.discordChannelId)) as TextChannel;
+    const targetChannel = (textChannel ??
+      (await instance.client.channels.fetch(
+        meta.discordChannelId,
+      ))) as TextChannel;
 
     const chunks = splitMessage(message);
     for (let i = 0; i < chunks.length; i++) {
-      await withRetry(
-        () => targetChannel.send(chunks[i] ?? ""),
-        {
-          onRetry: (error, attempt) => {
-            logger.warn(
-              {
-                channelId,
-                attempt,
-                error: error instanceof Error ? error.message : "Unknown error",
-              },
-              "Retrying Discord sendMessage",
-            );
-          },
+      await withRetry(() => targetChannel.send(chunks[i] ?? ""), {
+        onRetry: (error, attempt) => {
+          logger.warn(
+            {
+              channelId,
+              attempt,
+              error: error instanceof Error ? error.message : "Unknown error",
+            },
+            "Retrying Discord sendMessage",
+          );
         },
-      );
+      });
 
       if (i < chunks.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -604,13 +644,18 @@ export async function sendVoiceMessage(
       return false;
     }
 
-    const targetChannel = (
-      instance.client.channels.cache.get(meta.discordChannelId) ??
-      await instance.client.channels.fetch(meta.discordChannelId)
-    ) as TextChannel;
+    const targetChannel = (instance.client.channels.cache.get(
+      meta.discordChannelId,
+    ) ??
+      (await instance.client.channels.fetch(
+        meta.discordChannelId,
+      ))) as TextChannel;
 
     if (!targetChannel) {
-      logger.error({ channelId }, "Discord channel not found for voice message");
+      logger.error(
+        { channelId },
+        "Discord channel not found for voice message",
+      );
       return false;
     }
 
@@ -631,7 +676,11 @@ export async function sendVoiceMessage(
       {
         onRetry: (error, attempt) => {
           logger.warn(
-            { channelId, attempt, error: error instanceof Error ? error.message : "Unknown error" },
+            {
+              channelId,
+              attempt,
+              error: error instanceof Error ? error.message : "Unknown error",
+            },
             "Retrying Discord sendVoiceMessage",
           );
         },
@@ -683,7 +732,10 @@ export async function startAllBots(): Promise<void> {
     );
 
     // Group by bot token to create one client per token
-    const tokenGroups = new Map<string, { channel: typeof discordChannels[number]; config: DiscordConfig }[]>();
+    const tokenGroups = new Map<
+      string,
+      { channel: (typeof discordChannels)[number]; config: DiscordConfig }[]
+    >();
 
     for (const channel of discordChannels) {
       const config = decryptConfig(channel.config);
@@ -741,13 +793,19 @@ export async function startAllBots(): Promise<void> {
           await Promise.race([
             instance.readyPromise,
             new Promise((_, reject) =>
-              setTimeout(() => reject(new Error("Discord client ready timeout")), 30_000),
+              setTimeout(
+                () => reject(new Error("Discord client ready timeout")),
+                30_000,
+              ),
             ),
           ]);
         } catch (readyError) {
           logger.error(
             {
-              error: readyError instanceof Error ? readyError.message : "Unknown error",
+              error:
+                readyError instanceof Error
+                  ? readyError.message
+                  : "Unknown error",
               channelCount: group.length,
             },
             "Discord client failed to become ready during startup",
@@ -776,8 +834,10 @@ export async function startAllBots(): Promise<void> {
       }
     }
 
-    const totalChannels = Array.from(clientPool.values())
-      .reduce((sum, inst) => sum + inst.managedChannels.size, 0);
+    const totalChannels = Array.from(clientPool.values()).reduce(
+      (sum, inst) => sum + inst.managedChannels.size,
+      0,
+    );
     logger.info(
       { activeClients: clientPool.size, activeChannels: totalChannels },
       "Discord bot startup completed",

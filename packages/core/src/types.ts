@@ -8,16 +8,40 @@ export type UserType = (typeof USER_TYPES)[number];
 export const REVIEW_STATUSES = ["pending", "accepted", "rejected"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
-export const FLAG_COLORS = ["red", "yellow", "orange", "green", "blue"] as const;
+export const FLAG_COLORS = [
+  "red",
+  "yellow",
+  "orange",
+  "green",
+  "blue",
+] as const;
 export type FlagColor = (typeof FLAG_COLORS)[number];
 
-export const ASSET_TYPES = ["photos", "documents", "bookmarks", "notes", "tasks"] as const;
+export const ASSET_TYPES = [
+  "photos",
+  "documents",
+  "bookmarks",
+  "notes",
+  "tasks",
+] as const;
 export type AssetType = (typeof ASSET_TYPES)[number];
 
-export const JOB_STATUSES = ["pending", "processing", "completed", "failed", "retry_pending"] as const;
+export const JOB_STATUSES = [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+  "retry_pending",
+] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
-export const TASK_STATUSES = ["backlog", "not-started", "in-progress", "completed", "cancelled"] as const;
+export const TASK_STATUSES = [
+  "backlog",
+  "not-started",
+  "in-progress",
+  "completed",
+  "cancelled",
+] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 export const TASK_PRIORITIES = [0, 1, 2, 3, 4] as const;
@@ -33,10 +57,20 @@ export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
 export const MESSAGE_ROLES = ["user", "assistant"] as const;
 export type MessageRole = (typeof MESSAGE_ROLES)[number];
 
-export const CHANNEL_PLATFORMS = ["telegram", "slack", "whatsapp", "email", "discord"] as const;
+export const CHANNEL_PLATFORMS = [
+  "telegram",
+  "slack",
+  "whatsapp",
+  "email",
+  "discord",
+] as const;
 export type ChannelPlatform = (typeof CHANNEL_PLATFORMS)[number];
 
-export const CHANNEL_CAPABILITIES = ["notification", "chat", "bidirectional"] as const;
+export const CHANNEL_CAPABILITIES = [
+  "notification",
+  "chat",
+  "bidirectional",
+] as const;
 export type ChannelCapability = (typeof CHANNEL_CAPABILITIES)[number];
 
 export const FEEDBACK_SENTIMENTS = ["positive", "negative"] as const;

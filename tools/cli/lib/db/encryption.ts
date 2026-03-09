@@ -24,7 +24,9 @@ function init() {
   _decrypt = (text: string) => {
     const result = service.decrypt(text);
     if (result === null) {
-      throw new Error("Decryption failed - invalid ciphertext or corrupted data");
+      throw new Error(
+        "Decryption failed - invalid ciphertext or corrupted data",
+      );
     }
     return result;
   };

@@ -59,7 +59,9 @@ export class BrowserPipeline {
   /** Access the underlying page for handler-specific operations (e.g. page.evaluate) */
   get page(): Page {
     if (!this._page) {
-      throw new Error("BrowserPipeline: page not available. Call launch() first.");
+      throw new Error(
+        "BrowserPipeline: page not available. Call launch() first.",
+      );
     }
     return this._page;
   }
@@ -93,7 +95,10 @@ export class BrowserPipeline {
     }
 
     this._page = await this.context.newPage();
-    this.logger.debug({ bookmarkId: this.bookmarkId }, "Browser launched successfully");
+    this.logger.debug(
+      { bookmarkId: this.bookmarkId },
+      "Browser launched successfully",
+    );
   }
 
   /**
@@ -123,7 +128,8 @@ export class BrowserPipeline {
         {
           bookmarkId: this.bookmarkId,
           url,
-          error: navError instanceof Error ? navError.message : String(navError),
+          error:
+            navError instanceof Error ? navError.message : String(navError),
         },
         "Navigation failed, attempting with reduced timeout",
       );
@@ -229,7 +235,10 @@ export class BrowserPipeline {
     await this.waitForPageReady();
 
     // Desktop screenshot (fatal if it fails)
-    this.logger.debug({ bookmarkId: this.bookmarkId }, "Taking desktop screenshot...");
+    this.logger.debug(
+      { bookmarkId: this.bookmarkId },
+      "Taking desktop screenshot...",
+    );
     await page.setViewportSize({ width: 1920, height: 1080 });
 
     const ssDesktopBuffer: Buffer = await withTimeout(
@@ -403,7 +412,10 @@ export class BrowserPipeline {
       });
 
       if (!faviconHref) {
-        this.logger.debug({ bookmarkId: this.bookmarkId }, "No favicon link found");
+        this.logger.debug(
+          { bookmarkId: this.bookmarkId },
+          "No favicon link found",
+        );
         return null;
       }
 
@@ -484,7 +496,11 @@ export class BrowserPipeline {
 
     try {
       if (this.context) {
-        await withTimeout(this.context.close(), CLEANUP_TIMEOUT, "Context close");
+        await withTimeout(
+          this.context.close(),
+          CLEANUP_TIMEOUT,
+          "Context close",
+        );
       }
     } catch (err: unknown) {
       this.logger.warn(
@@ -498,7 +514,11 @@ export class BrowserPipeline {
 
     try {
       if (this.browser) {
-        await withTimeout(this.browser.close(), CLEANUP_TIMEOUT, "Browser close");
+        await withTimeout(
+          this.browser.close(),
+          CLEANUP_TIMEOUT,
+          "Browser close",
+        );
       }
     } catch (err: unknown) {
       this.logger.warn(

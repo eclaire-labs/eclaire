@@ -24,7 +24,9 @@ export async function listCommand(options: {
       return;
     }
 
-    console.log(colors.header(`\n  ${icons.plug} Channels (${channels.length})\n`));
+    console.log(
+      colors.header(`\n  ${icons.plug} Channels (${channels.length})\n`),
+    );
     console.log(createChannelsTable(channels));
   } catch (error) {
     console.error(

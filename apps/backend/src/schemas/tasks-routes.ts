@@ -55,7 +55,13 @@ export const getTasksRouteDescription = {
       required: false,
       schema: {
         type: "string" as const,
-        enum: ["backlog", "not-started", "in-progress", "completed", "cancelled"],
+        enum: [
+          "backlog",
+          "not-started",
+          "in-progress",
+          "completed",
+          "cancelled",
+        ],
       },
       description: "Filter tasks by status",
     },
@@ -228,9 +234,18 @@ export const TaskDeleteSuccessSchema = z
   .meta({ ref: "TaskDeleteSuccess" });
 
 // Request schemas for review/flag/pin status updates
-export const TaskReviewUpdateSchema = reviewStatusUpdateSchema("task", "TaskReviewUpdate");
-export const TaskFlagUpdateSchema = flagColorUpdateSchema("task", "TaskFlagUpdate");
-export const TaskPinUpdateSchema = isPinnedUpdateSchema("task", "TaskPinUpdate");
+export const TaskReviewUpdateSchema = reviewStatusUpdateSchema(
+  "task",
+  "TaskReviewUpdate",
+);
+export const TaskFlagUpdateSchema = flagColorUpdateSchema(
+  "task",
+  "TaskFlagUpdate",
+);
+export const TaskPinUpdateSchema = isPinnedUpdateSchema(
+  "task",
+  "TaskPinUpdate",
+);
 
 // DELETE /api/tasks/:id - Delete a task
 export const deleteTaskRouteDescription = {
@@ -499,7 +514,13 @@ export const putTaskAssistantStatusRouteDescription = {
           properties: {
             status: {
               type: "string" as const,
-              enum: ["backlog", "not-started", "in-progress", "completed", "cancelled"],
+              enum: [
+                "backlog",
+                "not-started",
+                "in-progress",
+                "completed",
+                "cancelled",
+              ],
               description: "New task status",
             },
             assignedAssistantId: {

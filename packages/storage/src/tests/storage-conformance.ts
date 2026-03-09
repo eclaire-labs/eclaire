@@ -169,9 +169,9 @@ export function runStorageConformanceTests(opts: ConformanceOptions): void {
       });
 
       it("returns false for non-existing key", async () => {
-        expect(
-          await storage.exists("user-1/docs/doc-1/nonexistent.txt"),
-        ).toBe(false);
+        expect(await storage.exists("user-1/docs/doc-1/nonexistent.txt")).toBe(
+          false,
+        );
       });
 
       it("throws StorageInvalidKeyError for path traversal", async () => {
@@ -245,21 +245,15 @@ export function runStorageConformanceTests(opts: ConformanceOptions): void {
 
     describe("deletePrefix", () => {
       it("deletes all keys with prefix", async () => {
-        await storage.writeBuffer(
-          "user-1/docs/doc-1/a.txt",
-          Buffer.from("a"),
-          { contentType: "text/plain" },
-        );
-        await storage.writeBuffer(
-          "user-1/docs/doc-1/b.txt",
-          Buffer.from("b"),
-          { contentType: "text/plain" },
-        );
-        await storage.writeBuffer(
-          "user-1/docs/doc-2/c.txt",
-          Buffer.from("c"),
-          { contentType: "text/plain" },
-        );
+        await storage.writeBuffer("user-1/docs/doc-1/a.txt", Buffer.from("a"), {
+          contentType: "text/plain",
+        });
+        await storage.writeBuffer("user-1/docs/doc-1/b.txt", Buffer.from("b"), {
+          contentType: "text/plain",
+        });
+        await storage.writeBuffer("user-1/docs/doc-2/c.txt", Buffer.from("c"), {
+          contentType: "text/plain",
+        });
 
         const deleted = await storage.deletePrefix("user-1/docs/doc-1/");
 
@@ -287,16 +281,12 @@ export function runStorageConformanceTests(opts: ConformanceOptions): void {
 
     describe("list", () => {
       it("lists all keys", async () => {
-        await storage.writeBuffer(
-          "user-1/docs/doc-1/a.txt",
-          Buffer.from("a"),
-          { contentType: "text/plain" },
-        );
-        await storage.writeBuffer(
-          "user-1/docs/doc-2/b.txt",
-          Buffer.from("b"),
-          { contentType: "text/plain" },
-        );
+        await storage.writeBuffer("user-1/docs/doc-1/a.txt", Buffer.from("a"), {
+          contentType: "text/plain",
+        });
+        await storage.writeBuffer("user-1/docs/doc-2/b.txt", Buffer.from("b"), {
+          contentType: "text/plain",
+        });
 
         const result = await storage.list();
 
@@ -306,11 +296,9 @@ export function runStorageConformanceTests(opts: ConformanceOptions): void {
       });
 
       it("filters by prefix", async () => {
-        await storage.writeBuffer(
-          "user-1/docs/doc-1/a.txt",
-          Buffer.from("a"),
-          { contentType: "text/plain" },
-        );
+        await storage.writeBuffer("user-1/docs/doc-1/a.txt", Buffer.from("a"), {
+          contentType: "text/plain",
+        });
         await storage.writeBuffer(
           "user-1/photos/photo-1/b.jpg",
           Buffer.from("b"),
@@ -324,21 +312,15 @@ export function runStorageConformanceTests(opts: ConformanceOptions): void {
       });
 
       it("supports pagination with limit and cursor", async () => {
-        await storage.writeBuffer(
-          "user-1/docs/doc-1/a.txt",
-          Buffer.from("a"),
-          { contentType: "text/plain" },
-        );
-        await storage.writeBuffer(
-          "user-1/docs/doc-2/b.txt",
-          Buffer.from("b"),
-          { contentType: "text/plain" },
-        );
-        await storage.writeBuffer(
-          "user-1/docs/doc-3/c.txt",
-          Buffer.from("c"),
-          { contentType: "text/plain" },
-        );
+        await storage.writeBuffer("user-1/docs/doc-1/a.txt", Buffer.from("a"), {
+          contentType: "text/plain",
+        });
+        await storage.writeBuffer("user-1/docs/doc-2/b.txt", Buffer.from("b"), {
+          contentType: "text/plain",
+        });
+        await storage.writeBuffer("user-1/docs/doc-3/c.txt", Buffer.from("c"), {
+          contentType: "text/plain",
+        });
 
         const page1 = await storage.list({ limit: 2 });
         expect(page1.keys).toHaveLength(2);
@@ -360,11 +342,9 @@ export function runStorageConformanceTests(opts: ConformanceOptions): void {
       });
 
       it("returns empty result for non-matching prefix", async () => {
-        await storage.writeBuffer(
-          "user-1/docs/doc-1/a.txt",
-          Buffer.from("a"),
-          { contentType: "text/plain" },
-        );
+        await storage.writeBuffer("user-1/docs/doc-1/a.txt", Buffer.from("a"), {
+          contentType: "text/plain",
+        });
 
         const result = await storage.list({ prefix: "user-2/" });
         expect(result.keys).toHaveLength(0);
@@ -372,9 +352,9 @@ export function runStorageConformanceTests(opts: ConformanceOptions): void {
       });
 
       it("throws StorageInvalidKeyError for path traversal in prefix", async () => {
-        await expect(
-          storage.list({ prefix: "../evil/" }),
-        ).rejects.toThrow(StorageInvalidKeyError);
+        await expect(storage.list({ prefix: "../evil/" })).rejects.toThrow(
+          StorageInvalidKeyError,
+        );
       });
     });
 

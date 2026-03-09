@@ -46,9 +46,7 @@ const COMMANDS: CommandDef[] = [
       const lines = COMMANDS.map(
         (cmd) => `/${cmd.builder.name} — ${cmd.builder.description}`,
       );
-      await interaction.editReply(
-        `Available commands:\n\n${lines.join("\n")}`,
-      );
+      await interaction.editReply(`Available commands:\n\n${lines.join("\n")}`);
     },
   },
   {
@@ -118,9 +116,7 @@ const COMMANDS: CommandDef[] = [
           `Recent conversations:\n\n${lines.join("\n")}`,
         );
       } catch {
-        await interaction.editReply(
-          "Failed to retrieve conversation history.",
-        );
+        await interaction.editReply("Failed to retrieve conversation history.");
       }
     },
   },
@@ -198,9 +194,7 @@ export async function handleCommandInteraction(
   userId: string,
 ): Promise<boolean> {
   const { logger } = getDeps();
-  const cmd = COMMANDS.find(
-    (c) => c.builder.name === interaction.commandName,
-  );
+  const cmd = COMMANDS.find((c) => c.builder.name === interaction.commandName);
   if (!cmd) return false;
 
   try {

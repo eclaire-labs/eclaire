@@ -11,7 +11,9 @@ import { downloadFile } from "./voice-utils.js";
 /**
  * Extracts attachment metadata from a Discord message.
  */
-function extractAttachments(message: Message): { url: string; name: string; contentType: string | null; size: number }[] {
+function extractAttachments(
+  message: Message,
+): { url: string; name: string; contentType: string | null; size: number }[] {
   return message.attachments.map((a) => ({
     url: a.url,
     name: a.name,
@@ -28,8 +30,7 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const { db, schema, logger, processPromptRequest, recordHistory } =
-    getDeps();
+  const { db, schema, logger, processPromptRequest, recordHistory } = getDeps();
   const { channels } = schema;
 
   const text = message.content;
@@ -116,17 +117,18 @@ export async function handleIncomingMessage(
     // Handle voice messages
     const isVoiceMessage = message.flags.has(MessageFlags.IsVoiceMessage);
     if (isVoiceMessage && deps.processAudioMessage) {
-      const voiceAttachment = attachments.find((a) =>
-        a.contentType?.includes("ogg") || a.name.endsWith(".ogg"),
+      const voiceAttachment = attachments.find(
+        (a) => a.contentType?.includes("ogg") || a.name.endsWith(".ogg"),
       );
       if (voiceAttachment) {
         try {
           const audioBuffer = await downloadFile(voiceAttachment.url);
-          const result = await deps.processAudioMessage(
-            userId,
-            audioBuffer,
-            { agent: "discord-bot", channelId, discordUserId, format: "ogg" },
-          );
+          const result = await deps.processAudioMessage(userId, audioBuffer, {
+            agent: "discord-bot",
+            channelId,
+            discordUserId,
+            format: "ogg",
+          });
           responseText = result.response;
           if (responseText) {
             const chunks = splitMessage(responseText);
@@ -143,8 +145,17 @@ export async function handleIncomingMessage(
             itemType: "discord_voice",
             itemId: `discord-voice-${discordUserId}-${Date.now()}`,
             itemName: "Discord Voice Message",
-            beforeData: { discordUserId, discordUsername, channelId, voiceMessage: true },
-            afterData: { response: responseText, platform: "discord", channelId },
+            beforeData: {
+              discordUserId,
+              discordUsername,
+              channelId,
+              voiceMessage: true,
+            },
+            afterData: {
+              response: responseText,
+              platform: "discord",
+              channelId,
+            },
             actor: "user",
             userId,
             metadata: { platform: "discord", channelId },
@@ -152,7 +163,12 @@ export async function handleIncomingMessage(
           return;
         } catch (audioError) {
           logger.warn(
-            { error: audioError instanceof Error ? audioError.message : "Unknown error" },
+            {
+              error:
+                audioError instanceof Error
+                  ? audioError.message
+                  : "Unknown error",
+            },
             "Failed to process voice message, falling back to text",
           );
         }
@@ -160,9 +176,10 @@ export async function handleIncomingMessage(
     }
 
     // Build prompt text: include attachment URLs if present
-    const promptText = attachments.length > 0
-      ? `${text || ""}${text ? "\n" : ""}[Attachments: ${attachments.map((a) => `${a.name} (${a.contentType ?? "unknown"}): ${a.url}`).join(", ")}]`
-      : text;
+    const promptText =
+      attachments.length > 0
+        ? `${text || ""}${text ? "\n" : ""}[Attachments: ${attachments.map((a) => `${a.name} (${a.contentType ?? "unknown"}): ${a.url}`).join(", ")}]`
+        : text;
 
     if (deps.processPromptRequestStream) {
       const stream = await deps.processPromptRequestStream({
@@ -174,11 +191,9 @@ export async function handleIncomingMessage(
         enableThinking,
       });
 
-      responseText = await sendStreamingResponse(
-        textChannel,
-        stream,
-        { logger },
-      );
+      responseText = await sendStreamingResponse(textChannel, stream, {
+        logger,
+      });
     } else {
       // Non-streaming fallback
       const result = await processPromptRequest({

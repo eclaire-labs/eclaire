@@ -39,9 +39,7 @@ export function paginatedResponseSchema(
       limit: z
         .number()
         .meta({ description: "Maximum number of results returned" }),
-      offset: z
-        .number()
-        .meta({ description: "Number of results skipped" }),
+      offset: z.number().meta({ description: "Number of results skipped" }),
     })
     .meta({ ref });
 }

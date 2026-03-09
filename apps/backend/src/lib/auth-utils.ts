@@ -113,7 +113,9 @@ export async function getAuthenticatedUserId(
     if (isLocalhost) {
       const firstUser = await db.query.users.findFirst();
       if (firstUser) {
-        logger.debug("Localhost auth bypass: authenticating as first user (non-production only)");
+        logger.debug(
+          "Localhost auth bypass: authenticating as first user (non-production only)",
+        );
         return firstUser.id;
       }
     }

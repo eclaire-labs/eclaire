@@ -150,7 +150,9 @@ describe("Tasks — CompletedAt Auto-Setting", { timeout: 30000 }, () => {
     expect(completedAt).not.toBeNull();
     if (completedAt) {
       const completedAtDate = new Date(completedAt);
-      const timeDiff = Math.abs(completedAtDate.getTime() - beforeUpdate.getTime());
+      const timeDiff = Math.abs(
+        completedAtDate.getTime() - beforeUpdate.getTime(),
+      );
       expect(timeDiff).toBeLessThan(5000); // Within 5 seconds
     }
   });

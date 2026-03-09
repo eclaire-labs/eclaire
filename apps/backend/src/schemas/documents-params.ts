@@ -216,7 +216,9 @@ export const DocumentSearchParamsSchema = z
       .meta({
         description:
           "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
-        examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6ImRvY18xMjMifQ"],
+        examples: [
+          "eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6ImRvY18xMjMifQ",
+        ],
       }),
 
     dueDateStart: z
@@ -277,9 +279,18 @@ export const DocumentSearchParamsSchema = z
   });
 
 // Request schemas for review/flag/pin status updates
-export const DocumentReviewUpdateSchema = reviewStatusUpdateSchema("document", "DocumentReviewUpdate");
-export const DocumentFlagUpdateSchema = flagColorUpdateSchema("document", "DocumentFlagUpdate");
-export const DocumentPinUpdateSchema = isPinnedUpdateSchema("document", "DocumentPinUpdate");
+export const DocumentReviewUpdateSchema = reviewStatusUpdateSchema(
+  "document",
+  "DocumentReviewUpdate",
+);
+export const DocumentFlagUpdateSchema = flagColorUpdateSchema(
+  "document",
+  "DocumentFlagUpdate",
+);
+export const DocumentPinUpdateSchema = isPinnedUpdateSchema(
+  "document",
+  "DocumentPinUpdate",
+);
 
 // Path parameters
 export const DocumentIdParam = z

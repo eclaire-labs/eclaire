@@ -21,45 +21,38 @@ const statusConfigs = {
     label: "Backlog",
     icon: Inbox,
     iconClass: "text-muted-foreground",
-    badgeClass:
-      "bg-muted text-muted-foreground border-border border-dashed",
+    badgeClass: "bg-muted text-muted-foreground border-border border-dashed",
   },
   "not-started": {
     label: "Not Started",
     icon: Circle,
     iconClass: "text-muted-foreground",
-    badgeClass:
-      "bg-secondary text-secondary-foreground border-border",
+    badgeClass: "bg-secondary text-secondary-foreground border-border",
   },
   "in-progress": {
     label: "In Progress",
     icon: Loader2,
     iconClass: "text-info animate-spin",
-    badgeClass:
-      "bg-info/10 text-info border-info/30",
+    badgeClass: "bg-info/10 text-info border-info/30",
   },
   completed: {
     label: "Completed",
     icon: CheckCircle2,
     iconClass: "text-success",
-    badgeClass:
-      "bg-success/10 text-success border-success/30",
+    badgeClass: "bg-success/10 text-success border-success/30",
   },
   cancelled: {
     label: "Cancelled",
     icon: XCircle,
     iconClass: "text-destructive",
-    badgeClass:
-      "bg-destructive/10 text-destructive border-destructive/30",
+    badgeClass: "bg-destructive/10 text-destructive border-destructive/30",
   },
 } as const;
 
 const defaultStatus = statusConfigs["not-started"];
 
 export function getStatusConfig(status: string) {
-  return (
-    statusConfigs[status as keyof typeof statusConfigs] ?? defaultStatus
-  );
+  return statusConfigs[status as keyof typeof statusConfigs] ?? defaultStatus;
 }
 
 export function getStatusIcon(

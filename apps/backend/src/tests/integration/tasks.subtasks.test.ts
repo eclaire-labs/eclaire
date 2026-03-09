@@ -153,10 +153,9 @@ describe("Sub-task Operations", { timeout: 30000 }, () => {
 
   describe("Query filters", () => {
     it("GET /api/tasks?parentId=<id> should return only children", async () => {
-      const response = await loggedFetch(
-        `/tasks?parentId=${parentTaskId}`,
-        { method: "GET" },
-      );
+      const response = await loggedFetch(`/tasks?parentId=${parentTaskId}`, {
+        method: "GET",
+      });
       expect(response.status).toBe(200);
       const data = (await response.json()) as TaskListResponse;
       expect(data.items.length).toBeGreaterThanOrEqual(1);

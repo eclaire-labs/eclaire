@@ -142,7 +142,9 @@ describe("transformDocumentData", () => {
   });
 
   it("preserves processingEnabled: false via ?? (not ||)", () => {
-    const result = transformDocumentData(makeRawDocument({ processingEnabled: false }));
+    const result = transformDocumentData(
+      makeRawDocument({ processingEnabled: false }),
+    );
     expect(result.processingEnabled).toBe(false);
 
     // When missing, defaults to true

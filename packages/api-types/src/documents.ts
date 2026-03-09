@@ -37,6 +37,4 @@ export const DocumentsListResponseSchema = paginatedResponseSchema(
 );
 
 export type Document = z.infer<typeof DocumentResponseSchema>;
-export type DocumentsListResponse = z.infer<
-  typeof DocumentsListResponseSchema
->;
+export type DocumentsListResponse = z.infer<typeof DocumentsListResponseSchema>;

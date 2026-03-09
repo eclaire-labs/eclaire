@@ -53,9 +53,7 @@ const COMMANDS: SlackCommand[] = [
         state.sessionId = session.id;
         await respond("New conversation started.");
       } catch {
-        await respond(
-          "Failed to start a new conversation. Please try again.",
-        );
+        await respond("Failed to start a new conversation. Please try again.");
       }
     },
   },
@@ -146,7 +144,10 @@ const COMMANDS: SlackCommand[] = [
  */
 export function registerCommands(
   app: App,
-  managedChannels: Map<string, { channelId: string; userId: string; slackChannelId: string }>,
+  managedChannels: Map<
+    string,
+    { channelId: string; userId: string; slackChannelId: string }
+  >,
 ): void {
   const { logger } = getDeps();
 

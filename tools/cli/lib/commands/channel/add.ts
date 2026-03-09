@@ -139,7 +139,9 @@ export async function addCommand(): Promise<void> {
     );
   } catch (error) {
     if (error instanceof Error && error.message.includes("validation")) {
-      console.error(colors.error(`\n  ${icons.error} Validation error: ${error.message}\n`));
+      console.error(
+        colors.error(`\n  ${icons.error} Validation error: ${error.message}\n`),
+      );
     } else {
       console.error(
         colors.error(
@@ -162,11 +164,16 @@ async function promptConfigFromSchema(
   for (const [fieldName, fieldDef] of Object.entries(shape)) {
     // biome-ignore lint/suspicious/noExplicitAny: Zod internal structure
     const fd = fieldDef as any;
-    const meta = fd?._zod?.bag?.meta as { description?: string; examples?: unknown[] } | undefined;
+    const meta = fd?._zod?.bag?.meta as
+      | { description?: string; examples?: unknown[] }
+      | undefined;
     const def = fd?._zod?.def;
     const description = meta?.description || fieldName;
     const examples = meta?.examples as string[] | undefined;
-    const isSecret = fieldName.includes("token") || fieldName.includes("key") || fieldName.includes("secret");
+    const isSecret =
+      fieldName.includes("token") ||
+      fieldName.includes("key") ||
+      fieldName.includes("secret");
     const isOptional = def?.type === "optional";
     const hasDefault = def?.defaultValue !== undefined;
 
@@ -201,7 +208,9 @@ async function promptConfigFromSchema(
     }
 
     // String field (regular or secret)
-    const hint = examples?.length ? ` ${colors.dim(`(e.g. ${examples[0]})`)}` : "";
+    const hint = examples?.length
+      ? ` ${colors.dim(`(e.g. ${examples[0]})`)}`
+      : "";
     const { value } = await inquirer.prompt([
       {
         type: isSecret ? "password" : "input",

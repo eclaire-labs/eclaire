@@ -118,7 +118,6 @@ export function BookmarkDetailClient() {
   const [localBookmark, setLocalBookmark] = useState<Bookmark | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
-
   // Use React Query hook for data fetching
   const { bookmark, isLoading, error, refresh } = useBookmark(bookmarkId);
 
@@ -169,8 +168,6 @@ export function BookmarkDetailClient() {
       });
     }
   };
-
-
 
   if (isLoading) {
     return (
@@ -480,14 +477,22 @@ export function BookmarkDetailClient() {
                       onAddTag={(tag) =>
                         setLocalBookmark(
                           localBookmark
-                            ? { ...localBookmark, tags: [...localBookmark.tags, tag] }
+                            ? {
+                                ...localBookmark,
+                                tags: [...localBookmark.tags, tag],
+                              }
                             : null,
                         )
                       }
                       onRemoveTag={(tag) =>
                         setLocalBookmark(
                           localBookmark
-                            ? { ...localBookmark, tags: localBookmark.tags.filter((t) => t !== tag) }
+                            ? {
+                                ...localBookmark,
+                                tags: localBookmark.tags.filter(
+                                  (t) => t !== tag,
+                                ),
+                              }
                             : null,
                         )
                       }

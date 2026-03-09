@@ -14,7 +14,11 @@ import type { RouteVariables } from "../types/route-variables.js";
 type AppRouter = Hono<{ Variables: RouteVariables }>;
 
 // biome-ignore lint/suspicious/noExplicitAny: update functions have varying return types per resource
-type UpdateFn = (id: string, data: Record<string, any>, caller: CallerContext) => Promise<any>;
+type UpdateFn = (
+  id: string,
+  data: Record<string, any>,
+  caller: CallerContext,
+) => Promise<any>;
 type ReprocessFn = (
   id: string,
   userId: string,
@@ -38,7 +42,11 @@ export function registerReviewEndpoint(
     withAuth(async (c, userId) => {
       const id = c.req.param("id");
       const { reviewStatus } = c.req.valid("json");
-      const updated = await updateFn(id, { reviewStatus }, { userId, actor: "user" });
+      const updated = await updateFn(
+        id,
+        { reviewStatus },
+        { userId, actor: "user" },
+      );
       if (!updated) throw new NotFoundError(resourceName);
       return c.json(updated);
     }, logger),
@@ -59,7 +67,11 @@ export function registerFlagEndpoint(
     withAuth(async (c, userId) => {
       const id = c.req.param("id");
       const { flagColor } = c.req.valid("json");
-      const updated = await updateFn(id, { flagColor }, { userId, actor: "user" });
+      const updated = await updateFn(
+        id,
+        { flagColor },
+        { userId, actor: "user" },
+      );
       if (!updated) throw new NotFoundError(resourceName);
       return c.json(updated);
     }, logger),
@@ -80,7 +92,11 @@ export function registerPinEndpoint(
     withAuth(async (c, userId) => {
       const id = c.req.param("id");
       const { isPinned } = c.req.valid("json");
-      const updated = await updateFn(id, { isPinned }, { userId, actor: "user" });
+      const updated = await updateFn(
+        id,
+        { isPinned },
+        { userId, actor: "user" },
+      );
       if (!updated) throw new NotFoundError(resourceName);
       return c.json(updated);
     }, logger),

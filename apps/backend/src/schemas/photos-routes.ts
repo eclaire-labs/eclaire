@@ -11,9 +11,18 @@ import {
 } from "./common.js";
 
 // Request schemas for review/flag/pin status updates
-export const PhotoReviewUpdateSchema = reviewStatusUpdateSchema("photo", "PhotoReviewUpdate");
-export const PhotoFlagUpdateSchema = flagColorUpdateSchema("photo", "PhotoFlagUpdate");
-export const PhotoPinUpdateSchema = isPinnedUpdateSchema("photo", "PhotoPinUpdate");
+export const PhotoReviewUpdateSchema = reviewStatusUpdateSchema(
+  "photo",
+  "PhotoReviewUpdate",
+);
+export const PhotoFlagUpdateSchema = flagColorUpdateSchema(
+  "photo",
+  "PhotoFlagUpdate",
+);
+export const PhotoPinUpdateSchema = isPinnedUpdateSchema(
+  "photo",
+  "PhotoPinUpdate",
+);
 import { PartialPhotoSchema, PhotoSchema } from "./photos-params.js";
 import {
   CreatedPhotoResponseSchema,

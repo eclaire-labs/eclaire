@@ -279,17 +279,9 @@ export default function AllItemsPage() {
           </Badge>
         );
       case "accepted":
-        return (
-          <Badge variant="success">
-            Accepted
-          </Badge>
-        );
+        return <Badge variant="success">Accepted</Badge>;
       case "rejected":
-        return (
-          <Badge variant="destructive">
-            Rejected
-          </Badge>
-        );
+        return <Badge variant="destructive">Rejected</Badge>;
       default:
         return null;
     }

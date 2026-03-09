@@ -4,7 +4,11 @@
  * Get full details of a single task by ID, including comments and sub-task info.
  */
 
-import { errorResult, textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import {
+  errorResult,
+  textResult,
+  type RuntimeToolDefinition,
+} from "@eclaire/ai";
 import z from "zod/v4";
 import { getTaskById } from "../../services/tasks.js";
 

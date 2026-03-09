@@ -43,9 +43,7 @@ export function registerProvider(
 /**
  * Get a registered provider by name.
  */
-export function getProvider(
-  name: string,
-): ProviderRegistration | undefined {
+export function getProvider(name: string): ProviderRegistration | undefined {
   return providers.get(name);
 }
 

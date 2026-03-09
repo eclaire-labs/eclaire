@@ -48,7 +48,9 @@ export async function executeRuntimeTool(
   const parseResult = toolDef.inputSchema.safeParse(rawInput);
   if (!parseResult.success) {
     return {
-      content: [{ type: "text", text: `Invalid input: ${parseResult.error.message}` }],
+      content: [
+        { type: "text", text: `Invalid input: ${parseResult.error.message}` },
+      ],
       isError: true,
     };
   }

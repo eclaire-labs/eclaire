@@ -21,11 +21,10 @@ const inputSchema = z.object({
 export const createNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "createNote",
   label: "Create Note",
-  description: "Create a new note with text or markdown content, optional tags and due date.",
+  description:
+    "Create a new note with text or markdown content, optional tags and due date.",
   inputSchema,
-  promptGuidelines: [
-    "Always confirm with the user before creating notes.",
-  ],
+  promptGuidelines: ["Always confirm with the user before creating notes."],
   execute: async (_callId, input, ctx) => {
     const servicePayload = {
       content: input.content,
@@ -39,7 +38,10 @@ export const createNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
       userAgent: "AI Assistant",
     };
 
-    const result = await createNoteEntry(servicePayload, { userId: ctx.userId, actor: "assistant" });
+    const result = await createNoteEntry(servicePayload, {
+      userId: ctx.userId,
+      actor: "assistant",
+    });
     return textResult(JSON.stringify(result, null, 2));
   },
 };

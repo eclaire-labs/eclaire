@@ -5,7 +5,10 @@ import { stopBot } from "./bot-manager.js";
 import { getSession } from "./commands.js";
 import { splitMessage, convertMarkdownToMrkdwn } from "./message-utils.js";
 import { sendStreamingResponse } from "./stream-sender.js";
-import { addThinkingReaction, removeThinkingReaction } from "./typing-indicator.js";
+import {
+  addThinkingReaction,
+  removeThinkingReaction,
+} from "./typing-indicator.js";
 
 /**
  * Handles incoming messages from Slack for bidirectional channels.
@@ -19,8 +22,7 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const { db, schema, logger, processPromptRequest, recordHistory } =
-    getDeps();
+  const { db, schema, logger, processPromptRequest, recordHistory } = getDeps();
   const { channels } = schema;
 
   // Drop messages with no text
@@ -131,7 +133,7 @@ export async function handleIncomingMessage(
         const chunks = splitMessage(mrkdwn);
         for (let i = 0; i < chunks.length; i++) {
           const chunkText = chunks[i] ?? "";
-              await client.chat.postMessage({
+          await client.chat.postMessage({
             channel: slackChannelId,
             text: chunkText,
           });

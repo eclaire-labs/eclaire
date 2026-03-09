@@ -98,19 +98,17 @@ describe("TaskSchema", () => {
   it("should accept priority values 0-4", () => {
     for (const priority of [0, 1, 2, 3, 4]) {
       const result = TaskSchema.safeParse({ title: "Test", priority });
-      expect(result.success, `priority ${priority} should be valid`).toBe(
-        true,
-      );
+      expect(result.success, `priority ${priority} should be valid`).toBe(true);
     }
   });
 
   it("should reject priority values outside 0-4", () => {
-    expect(
-      TaskSchema.safeParse({ title: "Test", priority: -1 }).success,
-    ).toBe(false);
-    expect(
-      TaskSchema.safeParse({ title: "Test", priority: 5 }).success,
-    ).toBe(false);
+    expect(TaskSchema.safeParse({ title: "Test", priority: -1 }).success).toBe(
+      false,
+    );
+    expect(TaskSchema.safeParse({ title: "Test", priority: 5 }).success).toBe(
+      false,
+    );
   });
 
   it("should accept sortOrder as number or null", () => {
@@ -138,7 +136,10 @@ describe("TaskSchema", () => {
   it("should accept all valid reviewStatus values", () => {
     for (const reviewStatus of ["pending", "accepted", "rejected"]) {
       const result = TaskSchema.safeParse({ title: "Test", reviewStatus });
-      expect(result.success, `reviewStatus '${reviewStatus}' should be valid`).toBe(true);
+      expect(
+        result.success,
+        `reviewStatus '${reviewStatus}' should be valid`,
+      ).toBe(true);
     }
   });
 
@@ -153,7 +154,9 @@ describe("TaskSchema", () => {
   it("should accept all valid flagColor values", () => {
     for (const flagColor of ["red", "yellow", "orange", "green", "blue"]) {
       const result = TaskSchema.safeParse({ title: "Test", flagColor });
-      expect(result.success, `flagColor '${flagColor}' should be valid`).toBe(true);
+      expect(result.success, `flagColor '${flagColor}' should be valid`).toBe(
+        true,
+      );
     }
   });
 

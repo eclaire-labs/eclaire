@@ -50,12 +50,7 @@ export interface TaskEntry {
   userId: string;
   title: string;
   description: string | null;
-  status:
-    | "backlog"
-    | "not-started"
-    | "in-progress"
-    | "completed"
-    | "cancelled";
+  status: "backlog" | "not-started" | "in-progress" | "completed" | "cancelled";
   dueDate: string | null;
   assignedToId: string | null;
   processingEnabled: boolean;

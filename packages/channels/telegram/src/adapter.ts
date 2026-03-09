@@ -1,8 +1,9 @@
-import type { ChannelAdapter, ChannelRecord, SendResult } from "@eclaire/channels-core";
-import {
-  validateAndEncryptConfig,
-  decryptConfig,
-} from "./config.js";
+import type {
+  ChannelAdapter,
+  ChannelRecord,
+  SendResult,
+} from "@eclaire/channels-core";
+import { validateAndEncryptConfig, decryptConfig } from "./config.js";
 import {
   startAllBots,
   startBot,

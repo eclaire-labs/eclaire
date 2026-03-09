@@ -237,7 +237,9 @@ export const NoteSearchSchema = z
       .meta({
         description:
           "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
-        examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6Im50ZV8xMjMifQ"],
+        examples: [
+          "eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6Im50ZV8xMjMifQ",
+        ],
       }),
 
     sortBy: z
@@ -277,6 +279,15 @@ export const NoteIdParam = z
   });
 
 // Request schemas for review/flag/pin status updates
-export const NoteReviewUpdateSchema = reviewStatusUpdateSchema("note", "NoteReviewUpdate");
-export const NoteFlagUpdateSchema = flagColorUpdateSchema("note", "NoteFlagUpdate");
-export const NotePinUpdateSchema = isPinnedUpdateSchema("note", "NotePinUpdate");
+export const NoteReviewUpdateSchema = reviewStatusUpdateSchema(
+  "note",
+  "NoteReviewUpdate",
+);
+export const NoteFlagUpdateSchema = flagColorUpdateSchema(
+  "note",
+  "NoteFlagUpdate",
+);
+export const NotePinUpdateSchema = isPinnedUpdateSchema(
+  "note",
+  "NotePinUpdate",
+);

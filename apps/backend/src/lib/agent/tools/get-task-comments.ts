@@ -4,7 +4,11 @@
  * Get all comments on a task.
  */
 
-import { errorResult, textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import {
+  errorResult,
+  textResult,
+  type RuntimeToolDefinition,
+} from "@eclaire/ai";
 import z from "zod/v4";
 import { getTaskComments } from "../../services/taskComments.js";
 

@@ -16,7 +16,9 @@ export function encodeCursor(
   sortValue: string | number | null,
   id: string,
 ): string {
-  return Buffer.from(JSON.stringify({ s: sortValue, id })).toString("base64url");
+  return Buffer.from(JSON.stringify({ s: sortValue, id })).toString(
+    "base64url",
+  );
 }
 
 export function decodeCursor(cursor: string): {
@@ -106,9 +108,10 @@ export function buildPageResult<T extends { id: string }>(
   const hasMore = rows.length > limit;
   const items = hasMore ? rows.slice(0, limit) : rows;
   const lastItem = items[items.length - 1];
-  const nextCursor = hasMore && lastItem
-    ? encodeCursor(getSortValue(lastItem), lastItem.id)
-    : null;
+  const nextCursor =
+    hasMore && lastItem
+      ? encodeCursor(getSortValue(lastItem), lastItem.id)
+      : null;
 
   return {
     items,

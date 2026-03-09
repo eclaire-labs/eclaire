@@ -75,11 +75,7 @@ interface ToolExecutionCallbacks {
     result: ToolExecutionResult,
     durationMs: number,
   ): void;
-  onToolCallError(
-    toolName: string,
-    toolCallId: string,
-    error: string,
-  ): void;
+  onToolCallError(toolName: string, toolCallId: string, error: string): void;
 }
 
 /** Initialized loop state */
@@ -96,7 +92,10 @@ interface PreparedStep {
   aiContext: AIContext;
   tools: ToolDefinition[] | undefined;
   /** Execution tool map — only set when prepareStep overrides tools */
-  executionTools?: Record<string, AgentToolDefinition<AnyZodType, AgentContext>>;
+  executionTools?: Record<
+    string,
+    AgentToolDefinition<AnyZodType, AgentContext>
+  >;
   messages: AIMessage[];
   aiOptions: Partial<AICallOptions>;
 }
@@ -344,13 +343,8 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
           );
 
           const loopState = await this._initLoop(options);
-          const {
-            messages,
-            tools,
-            hasTools,
-            toolCallingMode,
-            openAITools,
-          } = loopState;
+          const { messages, tools, hasTools, toolCallingMode, openAITools } =
+            loopState;
 
           // Tracking
           const steps: AgentStep[] = [];
@@ -783,7 +777,12 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
 
       // Emit completion/error event (streaming only)
       if (result.success) {
-        callbacks?.onToolCallComplete(toolName, toolCall.id, result, durationMs);
+        callbacks?.onToolCallComplete(
+          toolName,
+          toolCall.id,
+          result,
+          durationMs,
+        );
       } else {
         callbacks?.onToolCallError(
           toolName,
@@ -925,7 +924,13 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
       }
     }
 
-    return { content: fullContent, toolCalls, thinking, promptTokens, completionTokens };
+    return {
+      content: fullContent,
+      toolCalls,
+      thinking,
+      promptTokens,
+      completionTokens,
+    };
   }
 
   /**
@@ -949,10 +954,7 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
     if (shouldStop) {
       step.isTerminal = true;
       step.stopReason = reason;
-      logger.info(
-        { requestId, stepNumber, reason },
-        "Agent loop stopped",
-      );
+      logger.info({ requestId, stepNumber, reason }, "Agent loop stopped");
       return true;
     }
 

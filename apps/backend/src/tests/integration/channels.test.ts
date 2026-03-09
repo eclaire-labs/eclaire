@@ -845,9 +845,7 @@ describe("Channels Integration Tests", { timeout: 30000 }, () => {
       expect(listResponse.status).toBe(200);
       const listData = (await listResponse.json()) as ListChannelsResponse;
       const listItems = listData.items as ChannelResponse[];
-      const channel = listItems.find(
-        (c) => c.id === createData.channel.id,
-      );
+      const channel = listItems.find((c) => c.id === createData.channel.id);
       expect((channel as any)?.config).toBeUndefined();
 
       // Validate list response structure

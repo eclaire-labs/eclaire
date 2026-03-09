@@ -157,7 +157,14 @@ export function TaskListItem({
       </TableCell>
       <TableCell className="hidden md:table-cell align-middle">
         {getPriorityIcon(task.priority) && (
-          <div className="flex items-center gap-1" title={getPriorityIcon(task.priority) ? `Priority: ${getPriorityLabel(task.priority)}` : undefined}>
+          <div
+            className="flex items-center gap-1"
+            title={
+              getPriorityIcon(task.priority)
+                ? `Priority: ${getPriorityLabel(task.priority)}`
+                : undefined
+            }
+          >
             {getPriorityIcon(task.priority)}
           </div>
         )}
@@ -262,8 +269,15 @@ export function TaskListItem({
                   onStatusChange(task.id, task.status as TaskStatus)
                 }
               >
-                {getStatusIcon(getNextStatus(task.status as TaskStatus), "mr-2 h-4 w-4")}
-                Mark {getStatusConfig(getNextStatus(task.status as TaskStatus)).label}
+                {getStatusIcon(
+                  getNextStatus(task.status as TaskStatus),
+                  "mr-2 h-4 w-4",
+                )}
+                Mark{" "}
+                {
+                  getStatusConfig(getNextStatus(task.status as TaskStatus))
+                    .label
+                }
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

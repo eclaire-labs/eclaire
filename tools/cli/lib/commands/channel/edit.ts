@@ -8,16 +8,24 @@ export async function editCommand(id: string): Promise<void> {
   try {
     const channel = await getChannel(id);
     if (!channel) {
-      console.error(colors.error(`\n  ${icons.error} Channel not found: ${id}\n`));
+      console.error(
+        colors.error(`\n  ${icons.error} Channel not found: ${id}\n`),
+      );
       process.exit(1);
     }
 
     // Decrypt current config for display
     const registry = getChannelRegistry();
-    const adapter = registry.get(channel.platform as "telegram" | "discord" | "slack");
+    const adapter = registry.get(
+      channel.platform as "telegram" | "discord" | "slack",
+    );
     const decrypted = adapter.decryptConfig(channel.config);
 
-    console.log(colors.header(`\n  Editing channel: ${channel.name} (${channel.platform})\n`));
+    console.log(
+      colors.header(
+        `\n  Editing channel: ${channel.name} (${channel.platform})\n`,
+      ),
+    );
 
     // Prompt for fields to edit
     const { fieldsToEdit } = await inquirer.prompt([
@@ -76,7 +84,10 @@ export async function editCommand(id: string): Promise<void> {
         const configUpdates: Record<string, unknown> = { ...decrypted };
 
         for (const [key, currentValue] of Object.entries(decrypted)) {
-          const isSecret = key.includes("token") || key.includes("key") || key.includes("secret");
+          const isSecret =
+            key.includes("token") ||
+            key.includes("key") ||
+            key.includes("secret");
           const displayValue = isSecret
             ? `${String(currentValue).substring(0, 8)}...`
             : String(currentValue);
@@ -97,7 +108,8 @@ export async function editCommand(id: string): Promise<void> {
         }
 
         // Re-encrypt the updated config
-        const encryptedConfig = await adapter.validateAndEncryptConfig(configUpdates);
+        const encryptedConfig =
+          await adapter.validateAndEncryptConfig(configUpdates);
         updates.config = encryptedConfig;
       }
     }

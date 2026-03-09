@@ -11,10 +11,7 @@ import { updateTask as updateTaskService } from "../../services/tasks.js";
 const inputSchema = z.object({
   id: z.string().describe("ID of the task to update"),
   title: z.string().optional().describe("New title for the task"),
-  description: z
-    .string()
-    .optional()
-    .describe("New description for the task"),
+  description: z.string().optional().describe("New description for the task"),
   status: z
     .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
     .optional()
@@ -40,16 +37,13 @@ export const updateTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   description:
     "Update a task's title, description, status, priority, tags, or due date.",
   inputSchema,
-  promptGuidelines: [
-    "Always confirm with the user before modifying tasks.",
-  ],
+  promptGuidelines: ["Always confirm with the user before modifying tasks."],
   execute: async (_callId, input, ctx) => {
     const { id, ...updateData } = input;
-    const result = await updateTaskService(
-      id,
-      updateData,
-      { userId: ctx.userId, actor: "assistant" },
-    );
+    const result = await updateTaskService(id, updateData, {
+      userId: ctx.userId,
+      actor: "assistant",
+    });
     return textResult(JSON.stringify(result, null, 2));
   },
 };

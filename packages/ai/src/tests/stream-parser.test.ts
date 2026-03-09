@@ -20,7 +20,8 @@ import {
 // Mock the logger module
 vi.mock("../logger.js", () => ({
   createAILogger: () => createMockLoggerFactory().factory("stream-parser"),
-  createLazyLogger: () => () => createMockLoggerFactory().factory("stream-parser"),
+  createLazyLogger: () => () =>
+    createMockLoggerFactory().factory("stream-parser"),
   getErrorMessage: (error: unknown) =>
     error instanceof Error ? error.message : String(error ?? "Unknown error"),
 }));

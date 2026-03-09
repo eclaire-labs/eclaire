@@ -137,7 +137,9 @@ const SLASH_COMMANDS: SlashCommand[] = [
   },
 ];
 
-function findCommand(input: string): { command: SlashCommand; args: string } | null {
+function findCommand(
+  input: string,
+): { command: SlashCommand; args: string } | null {
   if (!input.startsWith("/")) return null;
   const spaceIdx = input.indexOf(" ");
   const name = spaceIdx === -1 ? input.slice(1) : input.slice(1, spaceIdx);
@@ -148,7 +150,10 @@ function findCommand(input: string): { command: SlashCommand; args: string } | n
 }
 
 export function getCommands(): { name: string; description: string }[] {
-  return SLASH_COMMANDS.map((c) => ({ name: c.name, description: c.description }));
+  return SLASH_COMMANDS.map((c) => ({
+    name: c.name,
+    description: c.description,
+  }));
 }
 
 function findToolMessageIndex(
@@ -425,9 +430,7 @@ function ChatApp({ options }: { options: ChatOptions }) {
           setCurrentThinking("");
         }
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to get response",
-        );
+        setError(err instanceof Error ? err.message : "Failed to get response");
       } finally {
         setIsStreaming(false);
       }
@@ -447,17 +450,15 @@ function ChatApp({ options }: { options: ChatOptions }) {
       <Box flexDirection="column" paddingX={1} flexGrow={1}>
         <MessageList messages={messages} options={displayOptions} />
 
-        {isStreaming &&
-          currentThinking &&
-          displayOptions.showThinking && (
-            <Box marginTop={1}>
-              <StreamingMessage
-                content={currentThinking}
-                isThinking
-                options={displayOptions}
-              />
-            </Box>
-          )}
+        {isStreaming && currentThinking && displayOptions.showThinking && (
+          <Box marginTop={1}>
+            <StreamingMessage
+              content={currentThinking}
+              isThinking
+              options={displayOptions}
+            />
+          </Box>
+        )}
 
         {isStreaming && currentResponse && (
           <Box marginTop={1}>

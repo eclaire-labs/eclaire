@@ -378,8 +378,7 @@ export async function sendMessage(
               {
                 channelId,
                 attempt,
-                error:
-                  error instanceof Error ? error.message : "Unknown error",
+                error: error instanceof Error ? error.message : "Unknown error",
               },
               "Retrying Telegram sendMessage",
             );

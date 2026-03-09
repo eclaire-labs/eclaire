@@ -47,7 +47,14 @@ import { registerCommonEndpoints } from "./shared-endpoints.js";
 const logger = createChildLogger("tasks");
 
 /** Converts nullable fields to undefined for service layer compatibility. */
-function toTaskServiceData<T extends { description?: string | null; dueDate?: string | null; cronExpression?: string | null; recurrenceEndDate?: string | null }>(data: T) {
+function toTaskServiceData<
+  T extends {
+    description?: string | null;
+    dueDate?: string | null;
+    cronExpression?: string | null;
+    recurrenceEndDate?: string | null;
+  },
+>(data: T) {
   return {
     ...data,
     description: data.description || undefined,
@@ -97,7 +104,10 @@ tasksRoutes.post(
   zValidator("json", TaskSchema),
   withAuth(async (c, userId) => {
     const validatedData = c.req.valid("json");
-    const newTask = await createTask(toTaskServiceData(validatedData), { userId, actor: "user" });
+    const newTask = await createTask(toTaskServiceData(validatedData), {
+      userId,
+      actor: "user",
+    });
     return c.json(newTask, 201);
   }, logger),
 );
@@ -121,7 +131,10 @@ tasksRoutes.put(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), { userId, actor: "user" });
+    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), {
+      userId,
+      actor: "user",
+    });
     if (!updatedTask) throw new NotFoundError("Task");
     return c.json(updatedTask);
   }, logger),
@@ -135,7 +148,10 @@ tasksRoutes.patch(
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), { userId, actor: "user" });
+    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), {
+      userId,
+      actor: "user",
+    });
     if (!updatedTask) throw new NotFoundError("Task");
     return c.json(updatedTask);
   }, logger),
@@ -194,7 +210,10 @@ tasksRoutes.post(
   withAuth(async (c, userId) => {
     const taskId = c.req.param("id");
     const { content } = c.req.valid("json");
-    const newComment = await createTaskComment({ taskId, content }, { userId, actor: "user" });
+    const newComment = await createTaskComment(
+      { taskId, content },
+      { userId, actor: "user" },
+    );
     return c.json(newComment, 201);
   }, logger),
 );

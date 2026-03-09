@@ -60,9 +60,7 @@ export function createBackendAgent(options: {
     toolCallingMode,
 
     instructions: (context) => {
-      const userContext = context.extra?.userContext as
-        | UserContext
-        | undefined;
+      const userContext = context.extra?.userContext as UserContext | undefined;
       return buildSystemPrompt({
         userContext,
         assetContents: options.assetContents,

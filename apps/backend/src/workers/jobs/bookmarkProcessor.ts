@@ -82,13 +82,19 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       if (ct.includes("application/pdf")) {
         // Browser already rendered the PDF; use the navigation URL as the source
         // The PDF is the content itself, so skip Readability and just note the content type
-        allArtifacts.title = allArtifacts.title || new URL(processUrl).pathname.split("/").pop() || "PDF Document";
+        allArtifacts.title =
+          allArtifacts.title ||
+          new URL(processUrl).pathname.split("/").pop() ||
+          "PDF Document";
         allArtifacts.description = `PDF document from ${new URL(processUrl).hostname}`;
         allArtifacts.extractedText = "";
         allArtifacts.author = null;
         allArtifacts.lang = "en";
       } else if (ct.startsWith("image/")) {
-        allArtifacts.title = allArtifacts.title || new URL(processUrl).pathname.split("/").pop() || "Image";
+        allArtifacts.title =
+          allArtifacts.title ||
+          new URL(processUrl).pathname.split("/").pop() ||
+          "Image";
         allArtifacts.description = `Image from ${new URL(processUrl).hostname}`;
         allArtifacts.extractedText = "";
         allArtifacts.author = null;

@@ -24,13 +24,13 @@ export function registerChannelCommands(program: Command): void {
     .alias("ls")
     .description("List all configured channels")
     .option("--json", "Output as JSON")
-    .option("--platform <platform>", "Filter by platform (telegram, discord, slack)")
+    .option(
+      "--platform <platform>",
+      "Filter by platform (telegram, discord, slack)",
+    )
     .action(listCommand);
 
-  channel
-    .command("add")
-    .description("Add a new channel")
-    .action(addCommand);
+  channel.command("add").description("Add a new channel").action(addCommand);
 
   channel
     .command("edit <id>")

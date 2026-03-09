@@ -11,9 +11,6 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
     },
-    exclude: [
-      ...configDefaults.exclude,
-      "src/tests/integration/**",
-    ],
+    exclude: [...configDefaults.exclude, "src/tests/integration/**"],
   },
 });

@@ -28,11 +28,10 @@ export const updateBookmarkTool: RuntimeToolDefinition<typeof inputSchema> = {
   ],
   execute: async (_callId, input, ctx) => {
     const { id, ...updateData } = input;
-    const result = await updateBookmark(
-      id,
-      updateData,
-      { userId: ctx.userId, actor: "assistant" },
-    );
+    const result = await updateBookmark(id, updateData, {
+      userId: ctx.userId,
+      actor: "assistant",
+    });
     return textResult(JSON.stringify(result, null, 2));
   },
 };

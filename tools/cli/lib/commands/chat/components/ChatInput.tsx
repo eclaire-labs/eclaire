@@ -23,17 +23,14 @@ export function ChatInput({ onSubmit, isDisabled }: ChatInputProps) {
 
   const menuVisible = menuItems.length > 0;
 
-  const handleChange = useCallback(
-    (newValue: string) => {
-      setValue(newValue);
-      setSelectedIndex(0);
-      // Re-show menu when user types
-      if (newValue.startsWith("/")) {
-        setMenuDismissed(false);
-      }
-    },
-    [],
-  );
+  const handleChange = useCallback((newValue: string) => {
+    setValue(newValue);
+    setSelectedIndex(0);
+    // Re-show menu when user types
+    if (newValue.startsWith("/")) {
+      setMenuDismissed(false);
+    }
+  }, []);
 
   const completeSelection = useCallback(() => {
     if (!menuVisible || !menuItems[selectedIndex]) return;
@@ -87,11 +84,7 @@ export function ChatInput({ onSubmit, isDisabled }: ChatInputProps) {
 
   return (
     <Box flexDirection="column">
-      <Box
-        borderStyle="single"
-        borderColor="gray"
-        paddingX={1}
-      >
+      <Box borderStyle="single" borderColor="gray" paddingX={1}>
         <TextInput
           value={value}
           onChange={handleChange}

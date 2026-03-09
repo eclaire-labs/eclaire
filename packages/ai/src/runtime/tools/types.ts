@@ -67,9 +67,7 @@ export interface ToolProgressInfo {
 // =============================================================================
 
 /** Full runtime tool definition with execution, prompt contributions, and metadata */
-export interface RuntimeToolDefinition<
-  TInput extends AnyZodType = AnyZodType,
-> {
+export interface RuntimeToolDefinition<TInput extends AnyZodType = AnyZodType> {
   /** Unique tool name (used in API calls) */
   name: string;
 
@@ -109,7 +107,10 @@ export interface RuntimeToolDefinition<
   /** Whether this tool requires human approval before execution */
   needsApproval?:
     | boolean
-    | ((input: z.infer<TInput>, ctx: ToolContext) => boolean | Promise<boolean>);
+    | ((
+        input: z.infer<TInput>,
+        ctx: ToolContext,
+      ) => boolean | Promise<boolean>);
 }
 
 // =============================================================================

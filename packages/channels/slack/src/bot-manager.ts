@@ -93,7 +93,11 @@ interface DebouncedMessage {
 }
 const debounceMap = new Map<string, DebouncedMessage>();
 
-function debounceKey(slackChannel: string, slackUser: string, threadTs: string | null): string {
+function debounceKey(
+  slackChannel: string,
+  slackUser: string,
+  threadTs: string | null,
+): string {
   return `${slackChannel}:${slackUser}:${threadTs ?? "main"}`;
 }
 
@@ -109,26 +113,24 @@ function _scheduleReconnect(
 ): void {
   const maxAttempts = 10;
   if (attempt > maxAttempts) {
-    logger.error(
-      { attempt },
-      "Slack reconnect failed after max attempts",
-    );
+    logger.error({ attempt }, "Slack reconnect failed after max attempts");
     return;
   }
 
   const baseDelay = Math.min(2000 * 1.8 ** (attempt - 1), 30_000);
   const jitter = baseDelay * 0.25 * Math.random();
   const delay = Math.round(baseDelay + jitter);
-  logger.info(
-    { attempt, delayMs: delay },
-    "Scheduling Slack reconnect",
-  );
+  logger.info({ attempt, delayMs: delay }, "Scheduling Slack reconnect");
 
   setTimeout(async () => {
     // Clean up old app
     const oldInstance = appPool.get(botToken);
     if (oldInstance) {
-      try { await oldInstance.app.stop(); } catch { /* already stopped */ }
+      try {
+        await oldInstance.app.stop();
+      } catch {
+        /* already stopped */
+      }
       appPool.delete(botToken);
     }
 
@@ -241,7 +243,8 @@ function createApp(
   app.message(async ({ message, client }) => {
     // Only handle regular user messages (not bot messages, edits, etc.)
     if (message.subtype !== undefined) return;
-    if (!("user" in message) || !("text" in message) || !("ts" in message)) return;
+    if (!("user" in message) || !("text" in message) || !("ts" in message))
+      return;
     if (!message.user || !message.text) return;
 
     // Deduplicate: skip if we've already seen this message timestamp
@@ -260,21 +263,24 @@ function createApp(
 
     // Mention filtering
     let messageText = message.text;
-    const threadTs = "thread_ts" in message ? (message.thread_ts as string) : null;
+    const threadTs =
+      "thread_ts" in message ? (message.thread_ts as string) : null;
     const threadKey = threadTs ? `${message.channel}:${threadTs}` : null;
 
     if (channelMeta.mentionMode !== "all") {
-      const isMentioned = botUserId ? messageText.includes(`<@${botUserId}>`) : false;
+      const isMentioned = botUserId
+        ? messageText.includes(`<@${botUserId}>`)
+        : false;
 
       // In mention_or_reply mode, respond if:
       // - The message is any reply in a thread (original behavior), OR
       // - The bot has previously participated in this thread (auto-continue)
       const isThreadReply =
-        channelMeta.mentionMode === "mention_or_reply" &&
-        threadTs != null;
+        channelMeta.mentionMode === "mention_or_reply" && threadTs != null;
 
       const isReplyInParticipatedThread =
-        isThreadReply || (threadKey != null && hasParticipatedInThread(threadKey));
+        isThreadReply ||
+        (threadKey != null && hasParticipatedInThread(threadKey));
 
       if (!isMentioned && !isReplyInParticipatedThread) return;
 
@@ -294,12 +300,27 @@ function createApp(
     if (existing) {
       clearTimeout(existing.timer);
       existing.texts.push(messageText);
-      existing.lastArgs = { client, channel: message.channel, user: message.user, ts: message.ts, channelMeta };
-      existing.timer = setTimeout(() => dispatchDebounced(dKey, logger), DEBOUNCE_MS);
+      existing.lastArgs = {
+        client,
+        channel: message.channel,
+        user: message.user,
+        ts: message.ts,
+        channelMeta,
+      };
+      existing.timer = setTimeout(
+        () => dispatchDebounced(dKey, logger),
+        DEBOUNCE_MS,
+      );
     } else {
       const entry: DebouncedMessage = {
         texts: [messageText],
-        lastArgs: { client, channel: message.channel, user: message.user, ts: message.ts, channelMeta },
+        lastArgs: {
+          client,
+          channel: message.channel,
+          user: message.user,
+          ts: message.ts,
+          channelMeta,
+        },
         timer: setTimeout(() => dispatchDebounced(dKey, logger), DEBOUNCE_MS),
       };
       debounceMap.set(dKey, entry);
@@ -328,7 +349,10 @@ function createApp(
       );
     } catch (authError) {
       logger.warn(
-        { error: authError instanceof Error ? authError.message : "Unknown error" },
+        {
+          error:
+            authError instanceof Error ? authError.message : "Unknown error",
+        },
         "Failed to get Slack bot user ID",
       );
     }
@@ -376,7 +400,8 @@ export async function stopBot(channelId: string): Promise<void> {
         logger.warn(
           {
             channelId,
-            error: stopError instanceof Error ? stopError.message : "Unknown error",
+            error:
+              stopError instanceof Error ? stopError.message : "Unknown error",
           },
           "Error during Slack app stop",
         );
@@ -455,14 +480,18 @@ export async function startBot(channelId: string): Promise<boolean> {
       await Promise.race([
         instance.readyPromise,
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Slack app ready timeout")), 30_000),
+          setTimeout(
+            () => reject(new Error("Slack app ready timeout")),
+            30_000,
+          ),
         ),
       ]);
     } catch (readyError) {
       logger.error(
         {
           channelId,
-          error: readyError instanceof Error ? readyError.message : "Unknown error",
+          error:
+            readyError instanceof Error ? readyError.message : "Unknown error",
         },
         "Slack app failed to become ready",
       );
@@ -584,13 +613,13 @@ export async function startAllBots(): Promise<void> {
       },
     });
 
-    logger.info(
-      { count: slackChannels.length },
-      "Found active Slack channels",
-    );
+    logger.info({ count: slackChannels.length }, "Found active Slack channels");
 
     // Group by bot token to create one app per token
-    const tokenGroups = new Map<string, { channel: typeof slackChannels[number]; config: SlackConfig }[]>();
+    const tokenGroups = new Map<
+      string,
+      { channel: (typeof slackChannels)[number]; config: SlackConfig }[]
+    >();
 
     for (const channel of slackChannels) {
       const config = decryptConfig(channel.config);
@@ -642,13 +671,19 @@ export async function startAllBots(): Promise<void> {
           await Promise.race([
             instance.readyPromise,
             new Promise((_, reject) =>
-              setTimeout(() => reject(new Error("Slack app ready timeout")), 30_000),
+              setTimeout(
+                () => reject(new Error("Slack app ready timeout")),
+                30_000,
+              ),
             ),
           ]);
         } catch (readyError) {
           logger.error(
             {
-              error: readyError instanceof Error ? readyError.message : "Unknown error",
+              error:
+                readyError instanceof Error
+                  ? readyError.message
+                  : "Unknown error",
               channelCount: group.length,
             },
             "Slack app failed to become ready during startup",
@@ -677,8 +712,10 @@ export async function startAllBots(): Promise<void> {
       }
     }
 
-    const totalChannels = Array.from(appPool.values())
-      .reduce((sum, inst) => sum + inst.managedChannels.size, 0);
+    const totalChannels = Array.from(appPool.values()).reduce(
+      (sum, inst) => sum + inst.managedChannels.size,
+      0,
+    );
     logger.info(
       { activeApps: appPool.size, activeChannels: totalChannels },
       "Slack bot startup completed",

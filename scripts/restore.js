@@ -1,30 +1,30 @@
 #!/usr/bin/env node
 
-const fs = require('node:fs');
-const path = require('node:path');
-const readline = require('node:readline');
-const { execSync } = require('node:child_process');
+const fs = require("node:fs");
+const path = require("node:path");
+const readline = require("node:readline");
+const { execSync } = require("node:child_process");
 
 // Colors for console output
 const colors = {
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  magenta: '\x1b[35m',
-  cyan: '\x1b[36m',
-  white: '\x1b[37m',
-  reset: '\x1b[0m',
-  bright: '\x1b[1m'
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  magenta: "\x1b[35m",
+  cyan: "\x1b[36m",
+  white: "\x1b[37m",
+  reset: "\x1b[0m",
+  bright: "\x1b[1m",
 };
 
 // Project root directory
-const PROJECT_ROOT = path.join(__dirname, '..');
+const PROJECT_ROOT = path.join(__dirname, "..");
 
 // Create readline interface for user prompts
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
 
 // Promisify readline question
@@ -38,18 +38,19 @@ function askQuestion(question) {
 
 // Find the most recent backup directory
 function getMostRecentBackup() {
-  const backupsDir = path.join(PROJECT_ROOT, 'backups');
+  const backupsDir = path.join(PROJECT_ROOT, "backups");
   if (!fs.existsSync(backupsDir)) {
     return null;
   }
 
-  const backupDirs = fs.readdirSync(backupsDir)
-    .map(dir => ({
+  const backupDirs = fs
+    .readdirSync(backupsDir)
+    .map((dir) => ({
       name: dir,
       path: path.join(backupsDir, dir),
-      mtime: fs.statSync(path.join(backupsDir, dir)).mtime
+      mtime: fs.statSync(path.join(backupsDir, dir)).mtime,
     }))
-    .filter(item => fs.statSync(item.path).isDirectory())
+    .filter((item) => fs.statSync(item.path).isDirectory())
     .sort((a, b) => b.mtime - a.mtime);
 
   return backupDirs.length > 0 ? backupDirs[0].path : null;
@@ -63,7 +64,7 @@ function getFileStats(filePath) {
   const stats = fs.statSync(filePath);
   return {
     size: stats.size,
-    modified: stats.mtime.toISOString().split('T')[0] // Just the date part
+    modified: stats.mtime.toISOString().split("T")[0], // Just the date part
   };
 }
 
@@ -74,10 +75,15 @@ function getDirectoryStats(dirPath) {
   }
 
   try {
-    const sizeResult = execSync(`du -sk "${dirPath}" | awk '{print $1 * 1024}'`, { encoding: 'utf-8' });
+    const sizeResult = execSync(
+      `du -sk "${dirPath}" | awk '{print $1 * 1024}'`,
+      { encoding: "utf-8" },
+    );
     const size = parseInt(sizeResult.trim(), 10);
 
-    const countResult = execSync(`find "${dirPath}" -type f | wc -l`, { encoding: 'utf-8' });
+    const countResult = execSync(`find "${dirPath}" -type f | wc -l`, {
+      encoding: "utf-8",
+    });
     const fileCount = parseInt(countResult.trim(), 10);
 
     return { size, fileCount };
@@ -88,33 +94,37 @@ function getDirectoryStats(dirPath) {
 
 // Restore PostgreSQL database
 async function restoreDatabase(backupDir, dryRun = false) {
-  console.log(`${colors.bright}${colors.magenta}📦 Database Restoration${colors.reset}`);
+  console.log(
+    `${colors.bright}${colors.magenta}📦 Database Restoration${colors.reset}`,
+  );
 
-  const dbBackupPath = path.join(backupDir, 'eclaire_backup.sql');
+  const dbBackupPath = path.join(backupDir, "eclaire_backup.sql");
 
   if (!fs.existsSync(dbBackupPath)) {
-    console.error(`${colors.red}✗${colors.reset} Database backup not found: ${path.basename(dbBackupPath)}`);
+    console.error(
+      `${colors.red}✗${colors.reset} Database backup not found: ${path.basename(dbBackupPath)}`,
+    );
     return false;
   }
 
   if (dryRun) {
-    console.log(`${colors.cyan}→${colors.reset} Would restore database from: ${path.basename(dbBackupPath)}`);
+    console.log(
+      `${colors.cyan}→${colors.reset} Would restore database from: ${path.basename(dbBackupPath)}`,
+    );
     return true;
   }
 
   try {
     // Get database connection info (same logic as backup script)
-    let dbUrl = 'postgresql://eclaire:eclaire@localhost:5432/eclaire';
-    const envPaths = [
-      path.join(PROJECT_ROOT, '.env')
-    ];
+    let dbUrl = "postgresql://eclaire:eclaire@localhost:5432/eclaire";
+    const envPaths = [path.join(PROJECT_ROOT, ".env")];
 
     for (const envPath of envPaths) {
       if (fs.existsSync(envPath)) {
-        const envContent = fs.readFileSync(envPath, 'utf-8');
+        const envContent = fs.readFileSync(envPath, "utf-8");
         const match = envContent.match(/DATABASE_URL=(.+)/);
         if (match) {
-          dbUrl = match[1].replace(/["']/g, '');
+          dbUrl = match[1].replace(/["']/g, "");
           break;
         }
       }
@@ -129,15 +139,17 @@ async function restoreDatabase(backupDir, dryRun = false) {
     const password = url.password;
 
     // Resolve Docker hostnames to localhost when running from host machine
-    const dockerHosts = ['eclaire-postgres', 'eclaire-redis'];
+    const dockerHosts = ["eclaire-postgres", "eclaire-redis"];
     if (dockerHosts.includes(host)) {
       // Try to resolve the hostname, if it fails, we're likely on the host machine
       try {
-        execSync(`nslookup ${host}`, { stdio: 'pipe' });
+        execSync(`nslookup ${host}`, { stdio: "pipe" });
       } catch (_error) {
         // Hostname doesn't resolve, use localhost instead
-        host = 'localhost';
-        console.log(`${colors.cyan}ℹ️${colors.reset}  Resolved Docker hostname ${url.hostname} to localhost`);
+        host = "localhost";
+        console.log(
+          `${colors.cyan}ℹ️${colors.reset}  Resolved Docker hostname ${url.hostname} to localhost`,
+        );
       }
     }
 
@@ -151,36 +163,51 @@ async function restoreDatabase(backupDir, dryRun = false) {
 
     // First, terminate any active connections to the database
     try {
-      execSync(`psql -h ${host} -p ${port} -U ${username} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbName}' AND pid <> pg_backend_pid();"`, {
-        env,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+      execSync(
+        `psql -h ${host} -p ${port} -U ${username} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbName}' AND pid <> pg_backend_pid();"`,
+        {
+          env,
+          stdio: ["pipe", "pipe", "pipe"],
+        },
+      );
     } catch (_error) {
       // Ignore errors if there are no active connections or database doesn't exist
     }
 
     // Drop and recreate database - connect to postgres database to avoid "cannot drop currently open database" error
-    execSync(`psql -h ${host} -p ${port} -U ${username} -d postgres -c "DROP DATABASE IF EXISTS ${dbName};"`, {
-      env,
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
+    execSync(
+      `psql -h ${host} -p ${port} -U ${username} -d postgres -c "DROP DATABASE IF EXISTS ${dbName};"`,
+      {
+        env,
+        stdio: ["pipe", "pipe", "pipe"],
+      },
+    );
 
-    execSync(`psql -h ${host} -p ${port} -U ${username} -d postgres -c "CREATE DATABASE ${dbName};"`, {
-      env,
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
+    execSync(
+      `psql -h ${host} -p ${port} -U ${username} -d postgres -c "CREATE DATABASE ${dbName};"`,
+      {
+        env,
+        stdio: ["pipe", "pipe", "pipe"],
+      },
+    );
 
     // Restore from backup
-    execSync(`psql -h ${host} -p ${port} -U ${username} -d ${dbName} -f "${dbBackupPath}"`, {
-      env,
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
+    execSync(
+      `psql -h ${host} -p ${port} -U ${username} -d ${dbName} -f "${dbBackupPath}"`,
+      {
+        env,
+        stdio: ["pipe", "pipe", "pipe"],
+      },
+    );
 
-    console.log(`${colors.green}✓${colors.reset} Database restored successfully`);
+    console.log(
+      `${colors.green}✓${colors.reset} Database restored successfully`,
+    );
     return true;
-
   } catch (error) {
-    console.error(`${colors.red}✗${colors.reset} Database restoration failed: ${error.message}`);
+    console.error(
+      `${colors.red}✗${colors.reset} Database restoration failed: ${error.message}`,
+    );
     return false;
   }
 }
@@ -209,61 +236,91 @@ function copyDirectory(src, dest) {
 
 // Restore data/users directory
 async function restoreDataUsers(backupDir, dryRun = false) {
-  console.log(`\n${colors.bright}${colors.magenta}📁 Data Directory Restoration${colors.reset}`);
+  console.log(
+    `\n${colors.bright}${colors.magenta}📁 Data Directory Restoration${colors.reset}`,
+  );
 
-  const srcDir = path.join(backupDir, 'data/users');
-  const destDir = path.join(PROJECT_ROOT, 'data/users');
+  const srcDir = path.join(backupDir, "data/users");
+  const destDir = path.join(PROJECT_ROOT, "data/users");
 
   if (!fs.existsSync(srcDir)) {
-    console.log(`${colors.yellow}⚠${colors.reset} No data/users directory found in backup`);
+    console.log(
+      `${colors.yellow}⚠${colors.reset} No data/users directory found in backup`,
+    );
     return true;
   }
 
   const srcStats = getDirectoryStats(srcDir);
   const destStats = getDirectoryStats(destDir);
 
-  console.log(`${colors.cyan}Source:${colors.reset} ${srcStats.fileCount} files (${(srcStats.size / 1024 / 1024).toFixed(1)}MB)`);
-  console.log(`${colors.cyan}Current:${colors.reset} ${destStats.fileCount} files (${(destStats.size / 1024 / 1024).toFixed(1)}MB)`);
+  console.log(
+    `${colors.cyan}Source:${colors.reset} ${srcStats.fileCount} files (${(srcStats.size / 1024 / 1024).toFixed(1)}MB)`,
+  );
+  console.log(
+    `${colors.cyan}Current:${colors.reset} ${destStats.fileCount} files (${(destStats.size / 1024 / 1024).toFixed(1)}MB)`,
+  );
 
   if (dryRun) {
-    console.log(`${colors.cyan}→${colors.reset} Would restore data/users directory`);
+    console.log(
+      `${colors.cyan}→${colors.reset} Would restore data/users directory`,
+    );
     return true;
   }
 
-  const answer = await askQuestion(`${colors.yellow}?${colors.reset} Restore data/users directory? This will replace ALL user data files (y/N): `);
-  if (!answer.toLowerCase().startsWith('y')) {
-    console.log(`${colors.yellow}↷${colors.reset} Skipped data/users restoration`);
+  const answer = await askQuestion(
+    `${colors.yellow}?${colors.reset} Restore data/users directory? This will replace ALL user data files (y/N): `,
+  );
+  if (!answer.toLowerCase().startsWith("y")) {
+    console.log(
+      `${colors.yellow}↷${colors.reset} Skipped data/users restoration`,
+    );
     return true;
   }
 
   try {
-    console.log(`${colors.cyan}→${colors.reset} Restoring data/users directory...`);
+    console.log(
+      `${colors.cyan}→${colors.reset} Restoring data/users directory...`,
+    );
     copyDirectory(srcDir, destDir);
-    console.log(`${colors.green}✓${colors.reset} data/users restored successfully`);
+    console.log(
+      `${colors.green}✓${colors.reset} data/users restored successfully`,
+    );
     return true;
   } catch (error) {
-    console.error(`${colors.red}✗${colors.reset} Failed to restore data/users: ${error.message}`);
+    console.error(
+      `${colors.red}✗${colors.reset} Failed to restore data/users: ${error.message}`,
+    );
     return false;
   }
 }
 
 // Restore individual file with prompt
-async function restoreFileWithPrompt(backupPath, destPath, filename, dryRun = false) {
+async function restoreFileWithPrompt(
+  backupPath,
+  destPath,
+  filename,
+  dryRun = false,
+) {
   if (!fs.existsSync(backupPath)) {
-    console.log(`${colors.yellow}⚠${colors.reset} ${filename}: Not found in backup`);
+    console.log(
+      `${colors.yellow}⚠${colors.reset} ${filename}: Not found in backup`,
+    );
     return true;
   }
 
   const backupStats = getFileStats(backupPath);
   const currentStats = getFileStats(destPath);
 
-  let statusText = '';
+  let statusText = "";
   if (!currentStats) {
-    statusText = 'New file';
-  } else if (backupStats.size !== currentStats.size || backupStats.modified !== currentStats.modified) {
+    statusText = "New file";
+  } else if (
+    backupStats.size !== currentStats.size ||
+    backupStats.modified !== currentStats.modified
+  ) {
     statusText = `Current: ${(currentStats.size / 1024).toFixed(1)}KB (${currentStats.modified}) → Backup: ${(backupStats.size / 1024).toFixed(1)}KB (${backupStats.modified})`;
   } else {
-    statusText = 'No changes';
+    statusText = "No changes";
   }
 
   if (dryRun) {
@@ -271,10 +328,16 @@ async function restoreFileWithPrompt(backupPath, destPath, filename, dryRun = fa
     return true;
   }
 
-  if (currentStats && (backupStats.size !== currentStats.size || backupStats.modified !== currentStats.modified)) {
+  if (
+    currentStats &&
+    (backupStats.size !== currentStats.size ||
+      backupStats.modified !== currentStats.modified)
+  ) {
     console.log(`${colors.cyan}${filename}:${colors.reset} ${statusText}`);
-    const answer = await askQuestion(`${colors.yellow}?${colors.reset} Restore this file? (y/N): `);
-    if (!answer.toLowerCase().startsWith('y')) {
+    const answer = await askQuestion(
+      `${colors.yellow}?${colors.reset} Restore this file? (y/N): `,
+    );
+    if (!answer.toLowerCase().startsWith("y")) {
       console.log(`${colors.yellow}↷${colors.reset} Skipped ${filename}`);
       return true;
     }
@@ -291,14 +354,18 @@ async function restoreFileWithPrompt(backupPath, destPath, filename, dryRun = fa
     console.log(`${colors.green}✓${colors.reset} ${filename} restored`);
     return true;
   } catch (error) {
-    console.error(`${colors.red}✗${colors.reset} Failed to restore ${filename}: ${error.message}`);
+    console.error(
+      `${colors.red}✗${colors.reset} Failed to restore ${filename}: ${error.message}`,
+    );
     return false;
   }
 }
 
 // Show what will be restored
 function showRestorePreview(backupDir) {
-  console.log(`${colors.bright}${colors.yellow}⚠️  RESTORE PREVIEW${colors.reset}`);
+  console.log(
+    `${colors.bright}${colors.yellow}⚠️  RESTORE PREVIEW${colors.reset}`,
+  );
 
   // Show backup info
   const backupName = path.basename(backupDir);
@@ -306,9 +373,16 @@ function showRestorePreview(backupDir) {
 
   if (isTimestamp) {
     // Parse timestamp
-    const _timestamp = backupName.replace(/T/, ' ').replace(/-/g, ':').replace('Z', '');
-    const backupDate = new Date(backupName.replace(/-/g, ':').replace('T', 'T').replace('Z', 'Z'));
-    console.log(`${colors.cyan}Backup:${colors.reset} ${backupName} (${backupDate.toLocaleString()})`);
+    const _timestamp = backupName
+      .replace(/T/, " ")
+      .replace(/-/g, ":")
+      .replace("Z", "");
+    const backupDate = new Date(
+      backupName.replace(/-/g, ":").replace("T", "T").replace("Z", "Z"),
+    );
+    console.log(
+      `${colors.cyan}Backup:${colors.reset} ${backupName} (${backupDate.toLocaleString()})`,
+    );
   } else {
     console.log(`${colors.cyan}Backup:${colors.reset} ${backupName}`);
   }
@@ -316,48 +390,66 @@ function showRestorePreview(backupDir) {
   // Check if this is the most recent backup
   const mostRecentBackup = getMostRecentBackup();
   if (mostRecentBackup && path.basename(mostRecentBackup) === backupName) {
-    console.log(`${colors.green}✓${colors.reset} This is the most recent backup`);
+    console.log(
+      `${colors.green}✓${colors.reset} This is the most recent backup`,
+    );
   } else if (mostRecentBackup) {
     const mostRecentName = path.basename(mostRecentBackup);
-    console.log(`${colors.yellow}⚠${colors.reset} This is NOT the most recent backup (latest: ${mostRecentName})`);
+    console.log(
+      `${colors.yellow}⚠${colors.reset} This is NOT the most recent backup (latest: ${mostRecentName})`,
+    );
   }
 
-  console.log(`\n${colors.yellow}The following will be RESTORED (OVERWRITING current data):${colors.reset}\n`);
+  console.log(
+    `\n${colors.yellow}The following will be RESTORED (OVERWRITING current data):${colors.reset}\n`,
+  );
 
   // 1. Database
-  console.log(`${colors.bright}${colors.magenta}1. PostgreSQL Database${colors.reset}`);
-  const dbBackupPath = path.join(backupDir, 'eclaire_backup.sql');
+  console.log(
+    `${colors.bright}${colors.magenta}1. PostgreSQL Database${colors.reset}`,
+  );
+  const dbBackupPath = path.join(backupDir, "eclaire_backup.sql");
   if (fs.existsSync(dbBackupPath)) {
     const stats = fs.statSync(dbBackupPath);
-    console.log(`${colors.red}   ✗${colors.reset} eclaire database (will be DROPPED and recreated from backup: ${(stats.size / 1024 / 1024).toFixed(1)}MB)`);
+    console.log(
+      `${colors.red}   ✗${colors.reset} eclaire database (will be DROPPED and recreated from backup: ${(stats.size / 1024 / 1024).toFixed(1)}MB)`,
+    );
   } else {
     console.log(`${colors.yellow}   -${colors.reset} No database backup found`);
   }
 
   // 2. Data directories
-  console.log(`\n${colors.bright}${colors.magenta}2. Data Directories${colors.reset}`);
-  const dataDir = path.join(backupDir, 'data/users');
-  const currentDataDir = path.join(PROJECT_ROOT, 'data/users');
+  console.log(
+    `\n${colors.bright}${colors.magenta}2. Data Directories${colors.reset}`,
+  );
+  const dataDir = path.join(backupDir, "data/users");
+  const currentDataDir = path.join(PROJECT_ROOT, "data/users");
 
   const backupStats = getDirectoryStats(dataDir);
   const currentStats = getDirectoryStats(currentDataDir);
 
   if (backupStats.fileCount > 0) {
-    console.log(`${colors.red}   ✗${colors.reset} data/users/ directory will be REPLACED`);
-    console.log(`${colors.cyan}     Current:${colors.reset} ${currentStats.fileCount} files (${(currentStats.size / 1024 / 1024).toFixed(1)}MB)`);
-    console.log(`${colors.cyan}     Backup:${colors.reset} ${backupStats.fileCount} files (${(backupStats.size / 1024 / 1024).toFixed(1)}MB)`);
+    console.log(
+      `${colors.red}   ✗${colors.reset} data/users/ directory will be REPLACED`,
+    );
+    console.log(
+      `${colors.cyan}     Current:${colors.reset} ${currentStats.fileCount} files (${(currentStats.size / 1024 / 1024).toFixed(1)}MB)`,
+    );
+    console.log(
+      `${colors.cyan}     Backup:${colors.reset} ${backupStats.fileCount} files (${(backupStats.size / 1024 / 1024).toFixed(1)}MB)`,
+    );
   } else {
-    console.log(`${colors.yellow}   -${colors.reset} No data/users directory in backup`);
+    console.log(
+      `${colors.yellow}   -${colors.reset} No data/users directory in backup`,
+    );
   }
 
   // 3. Configuration files
-  console.log(`\n${colors.bright}${colors.magenta}3. Configuration Files${colors.reset}`);
-  const configFiles = [
-    'compose.yaml'
-  ];
-  const configDirs = [
-    'config/ai'
-  ];
+  console.log(
+    `\n${colors.bright}${colors.magenta}3. Configuration Files${colors.reset}`,
+  );
+  const configFiles = ["compose.yaml"];
+  const configDirs = ["config/ai"];
 
   for (const configFile of configFiles) {
     const backupPath = path.join(backupDir, configFile);
@@ -368,16 +460,31 @@ function showRestorePreview(backupDir) {
       const currentStats = getFileStats(currentPath);
 
       if (!currentStats) {
-        console.log(`${colors.green}   ✓${colors.reset} ${configFile} (new file from backup)`);
-      } else if (backupStats.size !== currentStats.size || backupStats.modified !== currentStats.modified) {
-        console.log(`${colors.red}   ✗${colors.reset} ${configFile} will be OVERWRITTEN`);
-        console.log(`${colors.cyan}     Current:${colors.reset} ${(currentStats.size / 1024).toFixed(1)}KB (${currentStats.modified})`);
-        console.log(`${colors.cyan}     Backup:${colors.reset} ${(backupStats.size / 1024).toFixed(1)}KB (${backupStats.modified})`);
+        console.log(
+          `${colors.green}   ✓${colors.reset} ${configFile} (new file from backup)`,
+        );
+      } else if (
+        backupStats.size !== currentStats.size ||
+        backupStats.modified !== currentStats.modified
+      ) {
+        console.log(
+          `${colors.red}   ✗${colors.reset} ${configFile} will be OVERWRITTEN`,
+        );
+        console.log(
+          `${colors.cyan}     Current:${colors.reset} ${(currentStats.size / 1024).toFixed(1)}KB (${currentStats.modified})`,
+        );
+        console.log(
+          `${colors.cyan}     Backup:${colors.reset} ${(backupStats.size / 1024).toFixed(1)}KB (${backupStats.modified})`,
+        );
       } else {
-        console.log(`${colors.yellow}   =${colors.reset} ${configFile} (no changes)`);
+        console.log(
+          `${colors.yellow}   =${colors.reset} ${configFile} (no changes)`,
+        );
       }
     } else {
-      console.log(`${colors.yellow}   -${colors.reset} ${configFile} (not in backup)`);
+      console.log(
+        `${colors.yellow}   -${colors.reset} ${configFile} (not in backup)`,
+      );
     }
   }
 
@@ -390,22 +497,32 @@ function showRestorePreview(backupDir) {
 
     if (backupStats.fileCount > 0) {
       if (currentStats.fileCount === 0) {
-        console.log(`${colors.green}   ✓${colors.reset} ${configDir}/ (new directory from backup, ${backupStats.fileCount} files)`);
+        console.log(
+          `${colors.green}   ✓${colors.reset} ${configDir}/ (new directory from backup, ${backupStats.fileCount} files)`,
+        );
       } else {
-        console.log(`${colors.red}   ✗${colors.reset} ${configDir}/ directory will be REPLACED`);
-        console.log(`${colors.cyan}     Current:${colors.reset} ${currentStats.fileCount} files (${(currentStats.size / 1024 / 1024).toFixed(1)}MB)`);
-        console.log(`${colors.cyan}     Backup:${colors.reset} ${backupStats.fileCount} files (${(backupStats.size / 1024 / 1024).toFixed(1)}MB)`);
+        console.log(
+          `${colors.red}   ✗${colors.reset} ${configDir}/ directory will be REPLACED`,
+        );
+        console.log(
+          `${colors.cyan}     Current:${colors.reset} ${currentStats.fileCount} files (${(currentStats.size / 1024 / 1024).toFixed(1)}MB)`,
+        );
+        console.log(
+          `${colors.cyan}     Backup:${colors.reset} ${backupStats.fileCount} files (${(backupStats.size / 1024 / 1024).toFixed(1)}MB)`,
+        );
       }
     } else {
-      console.log(`${colors.yellow}   -${colors.reset} ${configDir}/ (not in backup)`);
+      console.log(
+        `${colors.yellow}   -${colors.reset} ${configDir}/ (not in backup)`,
+      );
     }
   }
 
   // 4. Environment files
-  console.log(`\n${colors.bright}${colors.magenta}4. Environment Files${colors.reset}`);
-  const envFiles = [
-    '.env'
-  ];
+  console.log(
+    `\n${colors.bright}${colors.magenta}4. Environment Files${colors.reset}`,
+  );
+  const envFiles = [".env"];
 
   for (const envFile of envFiles) {
     const backupPath = path.join(backupDir, envFile);
@@ -416,56 +533,87 @@ function showRestorePreview(backupDir) {
       const currentStats = getFileStats(currentPath);
 
       if (!currentStats) {
-        console.log(`${colors.green}   ✓${colors.reset} ${envFile} (new file from backup)`);
-      } else if (backupStats.size !== currentStats.size || backupStats.modified !== currentStats.modified) {
-        console.log(`${colors.red}   ✗${colors.reset} ${envFile} will be OVERWRITTEN`);
+        console.log(
+          `${colors.green}   ✓${colors.reset} ${envFile} (new file from backup)`,
+        );
+      } else if (
+        backupStats.size !== currentStats.size ||
+        backupStats.modified !== currentStats.modified
+      ) {
+        console.log(
+          `${colors.red}   ✗${colors.reset} ${envFile} will be OVERWRITTEN`,
+        );
       } else {
-        console.log(`${colors.yellow}   =${colors.reset} ${envFile} (no changes)`);
+        console.log(
+          `${colors.yellow}   =${colors.reset} ${envFile} (no changes)`,
+        );
       }
     } else {
-      console.log(`${colors.yellow}   -${colors.reset} ${envFile} (not in backup)`);
+      console.log(
+        `${colors.yellow}   -${colors.reset} ${envFile} (not in backup)`,
+      );
     }
   }
 
-  console.log(`\n${colors.bright}${colors.red}⚠️  WARNING: This will permanently overwrite current data!${colors.reset}`);
+  console.log(
+    `\n${colors.bright}${colors.red}⚠️  WARNING: This will permanently overwrite current data!${colors.reset}`,
+  );
 }
 
 // Main restore function
 async function restoreBackup(backupDir, options = {}) {
   const { dryRun = false } = options;
 
-  console.log(`${colors.bright}${colors.cyan}🔄 Restoring Eclaire System${colors.reset}`);
-  console.log(`Backup Directory: ${colors.yellow}${path.relative(PROJECT_ROOT, backupDir)}${colors.reset}`);
+  console.log(
+    `${colors.bright}${colors.cyan}🔄 Restoring Eclaire System${colors.reset}`,
+  );
+  console.log(
+    `Backup Directory: ${colors.yellow}${path.relative(PROJECT_ROOT, backupDir)}${colors.reset}`,
+  );
 
   if (dryRun) {
-    console.log(`${colors.bright}${colors.blue}🔍 DRY RUN MODE - No changes will be made${colors.reset}`);
+    console.log(
+      `${colors.bright}${colors.blue}🔍 DRY RUN MODE - No changes will be made${colors.reset}`,
+    );
   }
-  console.log('');
+  console.log("");
 
   // Show what will be restored
   showRestorePreview(backupDir);
-  console.log('');
+  console.log("");
 
   // First confirmation
   if (!dryRun) {
-    const proceed = await askQuestion(`${colors.bright}${colors.yellow}Do you want to proceed with this restoration? (y/N): ${colors.reset}`);
-    if (!proceed.toLowerCase().startsWith('y')) {
+    const proceed = await askQuestion(
+      `${colors.bright}${colors.yellow}Do you want to proceed with this restoration? (y/N): ${colors.reset}`,
+    );
+    if (!proceed.toLowerCase().startsWith("y")) {
       console.log(`${colors.yellow}Restoration cancelled${colors.reset}`);
       return false;
     }
 
     // Second confirmation - require exact text
-    console.log(`\n${colors.bright}${colors.red}⚠️  FINAL WARNING ⚠️${colors.reset}`);
-    console.log(`${colors.red}This will PERMANENTLY OVERWRITE current data with backup data!${colors.reset}`);
-    const confirmation = await askQuestion(`${colors.bright}Type "I AGREE" to confirm restoration: ${colors.reset}`);
+    console.log(
+      `\n${colors.bright}${colors.red}⚠️  FINAL WARNING ⚠️${colors.reset}`,
+    );
+    console.log(
+      `${colors.red}This will PERMANENTLY OVERWRITE current data with backup data!${colors.reset}`,
+    );
+    const confirmation = await askQuestion(
+      `${colors.bright}Type "I AGREE" to confirm restoration: ${colors.reset}`,
+    );
 
-    if (confirmation !== 'I AGREE') {
-      console.log(`${colors.yellow}Restoration cancelled (confirmation text did not match)${colors.reset}`);
+    if (confirmation !== "I AGREE") {
+      console.log(
+        `${colors.yellow}Restoration cancelled (confirmation text did not match)${colors.reset}`,
+      );
       return false;
     }
   }
 
-  console.log(`\n${colors.bright}${colors.cyan}🚀 Starting restoration process...${colors.reset}\n`);
+  console.log(
+    `\n${colors.bright}${colors.cyan}🚀 Starting restoration process...${colors.reset}\n`,
+  );
 
   let successCount = 0;
   let totalOperations = 0;
@@ -475,7 +623,9 @@ async function restoreBackup(backupDir, options = {}) {
   if (await restoreDatabase(backupDir, dryRun)) {
     successCount++;
   } else {
-    console.error(`${colors.red}💥 Database restoration failed - aborting restore process${colors.reset}`);
+    console.error(
+      `${colors.red}💥 Database restoration failed - aborting restore process${colors.reset}`,
+    );
     rl.close();
     return false;
   }
@@ -485,16 +635,18 @@ async function restoreBackup(backupDir, options = {}) {
   if (await restoreDataUsers(backupDir, dryRun)) {
     successCount++;
   } else {
-    console.error(`${colors.red}💥 Data/users restoration failed - aborting restore process${colors.reset}`);
+    console.error(
+      `${colors.red}💥 Data/users restoration failed - aborting restore process${colors.reset}`,
+    );
     rl.close();
     return false;
   }
 
   // 3. Restore configuration files
-  console.log(`\n${colors.bright}${colors.magenta}⚙️ Configuration Files${colors.reset}`);
-  const configFiles = [
-    { src: 'compose.yaml', dest: 'compose.yaml' }
-  ];
+  console.log(
+    `\n${colors.bright}${colors.magenta}⚙️ Configuration Files${colors.reset}`,
+  );
+  const configFiles = [{ src: "compose.yaml", dest: "compose.yaml" }];
 
   for (const { src, dest } of configFiles) {
     totalOperations++;
@@ -505,16 +657,16 @@ async function restoreBackup(backupDir, options = {}) {
     if (await restoreFileWithPrompt(backupPath, destPath, filename, dryRun)) {
       successCount++;
     } else {
-      console.error(`${colors.red}💥 Configuration file restoration failed - aborting restore process${colors.reset}`);
+      console.error(
+        `${colors.red}💥 Configuration file restoration failed - aborting restore process${colors.reset}`,
+      );
       rl.close();
       return false;
     }
   }
 
   // Restore config directories
-  const configDirs = [
-    { src: 'config/ai', dest: 'config/ai' }
-  ];
+  const configDirs = [{ src: "config/ai", dest: "config/ai" }];
 
   for (const { src, dest } of configDirs) {
     totalOperations++;
@@ -522,7 +674,9 @@ async function restoreBackup(backupDir, options = {}) {
     const destPath = path.join(PROJECT_ROOT, dest);
 
     if (!fs.existsSync(backupPath)) {
-      console.log(`${colors.yellow}⚠${colors.reset} ${src}/: Not found in backup`);
+      console.log(
+        `${colors.yellow}⚠${colors.reset} ${src}/: Not found in backup`,
+      );
       successCount++;
       continue;
     }
@@ -531,15 +685,21 @@ async function restoreBackup(backupDir, options = {}) {
     const currentStats = getDirectoryStats(destPath);
 
     if (dryRun) {
-      console.log(`${colors.cyan}→${colors.reset} Would restore ${src}/ (${backupStats.fileCount} files)`);
+      console.log(
+        `${colors.cyan}→${colors.reset} Would restore ${src}/ (${backupStats.fileCount} files)`,
+      );
       successCount++;
       continue;
     }
 
     if (currentStats.fileCount > 0) {
-      console.log(`${colors.cyan}${src}/:${colors.reset} Current: ${currentStats.fileCount} files → Backup: ${backupStats.fileCount} files`);
-      const answer = await askQuestion(`${colors.yellow}?${colors.reset} Restore this directory? (y/N): `);
-      if (!answer.toLowerCase().startsWith('y')) {
+      console.log(
+        `${colors.cyan}${src}/:${colors.reset} Current: ${currentStats.fileCount} files → Backup: ${backupStats.fileCount} files`,
+      );
+      const answer = await askQuestion(
+        `${colors.yellow}?${colors.reset} Restore this directory? (y/N): `,
+      );
+      if (!answer.toLowerCase().startsWith("y")) {
         console.log(`${colors.yellow}↷${colors.reset} Skipped ${src}/`);
         successCount++;
         continue;
@@ -551,17 +711,19 @@ async function restoreBackup(backupDir, options = {}) {
       console.log(`${colors.green}✓${colors.reset} ${src}/ restored`);
       successCount++;
     } catch (error) {
-      console.error(`${colors.red}✗${colors.reset} Failed to restore ${src}/: ${error.message}`);
+      console.error(
+        `${colors.red}✗${colors.reset} Failed to restore ${src}/: ${error.message}`,
+      );
       rl.close();
       return false;
     }
   }
 
   // 4. Restore environment files
-  console.log(`\n${colors.bright}${colors.magenta}🔐 Environment Files${colors.reset}`);
-  const envFiles = [
-    { src: '.env', dest: '.env' }
-  ];
+  console.log(
+    `\n${colors.bright}${colors.magenta}🔐 Environment Files${colors.reset}`,
+  );
+  const envFiles = [{ src: ".env", dest: ".env" }];
 
   for (const { src, dest } of envFiles) {
     totalOperations++;
@@ -572,22 +734,36 @@ async function restoreBackup(backupDir, options = {}) {
     if (await restoreFileWithPrompt(backupPath, destPath, filename, dryRun)) {
       successCount++;
     } else {
-      console.error(`${colors.red}💥 Environment file restoration failed - aborting restore process${colors.reset}`);
+      console.error(
+        `${colors.red}💥 Environment file restoration failed - aborting restore process${colors.reset}`,
+      );
       rl.close();
       return false;
     }
   }
 
   // Summary
-  console.log(`\n${colors.bright}${colors.cyan}📊 Restoration Summary${colors.reset}`);
+  console.log(
+    `\n${colors.bright}${colors.cyan}📊 Restoration Summary${colors.reset}`,
+  );
   if (dryRun) {
-    console.log(`${colors.blue}🔍 Dry run completed - no changes were made${colors.reset}`);
+    console.log(
+      `${colors.blue}🔍 Dry run completed - no changes were made${colors.reset}`,
+    );
   } else if (successCount === totalOperations) {
-    console.log(`${colors.bright}${colors.green}✅ Restoration completed successfully!${colors.reset}`);
-    console.log(`${colors.green}${successCount}/${totalOperations}${colors.reset} operations successful`);
+    console.log(
+      `${colors.bright}${colors.green}✅ Restoration completed successfully!${colors.reset}`,
+    );
+    console.log(
+      `${colors.green}${successCount}/${totalOperations}${colors.reset} operations successful`,
+    );
   } else {
-    console.log(`${colors.bright}${colors.yellow}⚠️  Restoration completed with some issues${colors.reset}`);
-    console.log(`${colors.yellow}${successCount}/${totalOperations}${colors.reset} operations successful`);
+    console.log(
+      `${colors.bright}${colors.yellow}⚠️  Restoration completed with some issues${colors.reset}`,
+    );
+    console.log(
+      `${colors.yellow}${successCount}/${totalOperations}${colors.reset} operations successful`,
+    );
   }
 }
 
@@ -597,31 +773,37 @@ module.exports = { restoreBackup, getMostRecentBackup };
 if (require.main === module) {
   // Parse command line arguments
   const args = process.argv.slice(2);
-  const showHelp = args.includes('--help') || args.includes('-h');
-  const dryRun = args.includes('--dry-run');
-  const latest = args.includes('--latest');
+  const showHelp = args.includes("--help") || args.includes("-h");
+  const dryRun = args.includes("--dry-run");
+  const latest = args.includes("--latest");
 
-  const backupIndex = args.indexOf('--backup');
+  const backupIndex = args.indexOf("--backup");
   const backupPath = backupIndex !== -1 ? args[backupIndex + 1] : null;
 
   if (showHelp) {
     console.log(`${colors.bright}Eclaire Restore Script${colors.reset}`);
-    console.log('');
-    console.log('Restores the Eclaire system from a backup including:');
-    console.log('  • PostgreSQL database');
-    console.log('  • Data/users directory');
-    console.log('  • Configuration files');
-    console.log('  • Environment files');
-    console.log('');
-    console.log('Usage: node scripts/restore.js [options]');
-    console.log('');
-    console.log('Options:');
-    console.log('  -h, --help            Show this help message');
-    console.log('  --backup <path>       Restore from specific backup directory');
-    console.log('  --latest              Restore from the most recent backup');
-    console.log('  --dry-run             Preview what would be restored without making changes');
-    console.log('');
-    console.log(`${colors.yellow}⚠️  Warning: This will overwrite current data!${colors.reset}`);
+    console.log("");
+    console.log("Restores the Eclaire system from a backup including:");
+    console.log("  • PostgreSQL database");
+    console.log("  • Data/users directory");
+    console.log("  • Configuration files");
+    console.log("  • Environment files");
+    console.log("");
+    console.log("Usage: node scripts/restore.js [options]");
+    console.log("");
+    console.log("Options:");
+    console.log("  -h, --help            Show this help message");
+    console.log(
+      "  --backup <path>       Restore from specific backup directory",
+    );
+    console.log("  --latest              Restore from the most recent backup");
+    console.log(
+      "  --dry-run             Preview what would be restored without making changes",
+    );
+    console.log("");
+    console.log(
+      `${colors.yellow}⚠️  Warning: This will overwrite current data!${colors.reset}`,
+    );
     rl.close();
     process.exit(0);
   }
@@ -633,14 +815,18 @@ if (require.main === module) {
       if (backupPath) {
         targetBackup = path.resolve(backupPath);
         if (!fs.existsSync(targetBackup)) {
-          console.error(`${colors.red}❌ Backup directory not found: ${targetBackup}${colors.reset}`);
+          console.error(
+            `${colors.red}❌ Backup directory not found: ${targetBackup}${colors.reset}`,
+          );
           rl.close();
           process.exit(1);
         }
       } else if (latest) {
         targetBackup = getMostRecentBackup();
         if (!targetBackup) {
-          console.error(`${colors.red}❌ No backups found in backups/ directory${colors.reset}`);
+          console.error(
+            `${colors.red}❌ No backups found in backups/ directory${colors.reset}`,
+          );
           rl.close();
           process.exit(1);
         }
@@ -648,7 +834,9 @@ if (require.main === module) {
         // Default to latest backup when no arguments provided
         targetBackup = getMostRecentBackup();
         if (!targetBackup) {
-          console.error(`${colors.red}❌ No backups found in backups/ directory${colors.reset}`);
+          console.error(
+            `${colors.red}❌ No backups found in backups/ directory${colors.reset}`,
+          );
           rl.close();
           process.exit(1);
         }
@@ -656,9 +844,10 @@ if (require.main === module) {
 
       await restoreBackup(targetBackup, { dryRun });
       rl.close();
-
     } catch (error) {
-      console.error(`${colors.red}💥 Restoration failed: ${error.message}${colors.reset}`);
+      console.error(
+        `${colors.red}💥 Restoration failed: ${error.message}${colors.reset}`,
+      );
       rl.close();
       process.exit(1);
     }

@@ -20,7 +20,11 @@ import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
 
 const { photos, photosTags, tags } = schema;
 
-import { formatToISO8601, generateHistoryId, generatePhotoId } from "@eclaire/core";
+import {
+  formatToISO8601,
+  generateHistoryId,
+  generatePhotoId,
+} from "@eclaire/core";
 import { ForbiddenError, NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
@@ -45,7 +49,11 @@ function isStorageNotFound(error: unknown): boolean {
 }
 
 // Backward-compatible re-exports for route files
-export { NotFoundError as PhotoNotFoundError, NotFoundError as PhotoFileNotFoundError, ForbiddenError as PhotoForbiddenError };
+export {
+  NotFoundError as PhotoNotFoundError,
+  NotFoundError as PhotoFileNotFoundError,
+  ForbiddenError as PhotoForbiddenError,
+};
 
 // ============================================================================
 // Interfaces
@@ -246,7 +254,11 @@ async function queuePhotoBackgroundJobs(
  * @param userId - The ID of the user creating the photo.
  * @returns The newly created photo details including its access URL.
  */
-export async function createPhoto(data: CreatePhotoData, userId: string, caller: CallerContext) {
+export async function createPhoto(
+  data: CreatePhotoData,
+  userId: string,
+  caller: CallerContext,
+) {
   // Generate photo ID first so we can use it for storage
   const photoId = generatePhotoId();
   const { metadata, content, originalMimeType, userAgent, extractedMetadata } =
@@ -867,79 +879,79 @@ export async function getAllPhotos(userId: string) {
 
     // Process results to include tags and processing status
     const entriesWithTags = entriesList.map((result) => {
-        const photo = result.photo;
+      const photo = result.photo;
 
-        // The main `imageUrl` will now always point to the smart `/view` endpoint.
-        const imageUrl = `/api/photos/${photo.id}/view`; // Simplified
+      // The main `imageUrl` will now always point to the smart `/view` endpoint.
+      const imageUrl = `/api/photos/${photo.id}/view`; // Simplified
 
-        const thumbnailUrl = photo.thumbnailStorageId
-          ? `/api/photos/${photo.id}/thumbnail`
-          : null;
+      const thumbnailUrl = photo.thumbnailStorageId
+        ? `/api/photos/${photo.id}/thumbnail`
+        : null;
 
-        // URL for direct access to the original file
-        const originalUrl = `/api/photos/${photo.id}/original`;
+      // URL for direct access to the original file
+      const originalUrl = `/api/photos/${photo.id}/original`;
 
-        // URL for converted JPG (when applicable, like for HEIC files)
-        const convertedJpgUrl = photo.convertedJpgStorageId
-          ? `/api/photos/${photo.id}/converted`
-          : null;
+      // URL for converted JPG (when applicable, like for HEIC files)
+      const convertedJpgUrl = photo.convertedJpgStorageId
+        ? `/api/photos/${photo.id}/converted`
+        : null;
 
-        return {
-          id: photo.id,
-          title: photo.title,
-          description: photo.description,
-          dueDate: photo.dueDate ? formatToISO8601(photo.dueDate) : null,
-          imageUrl: imageUrl, // This is the primary URL for display (smart serving)
-          thumbnailUrl: thumbnailUrl,
-          originalUrl: originalUrl, // Direct access to original file
-          convertedJpgUrl: convertedJpgUrl, // Access to converted JPG when available
-          originalFilename: photo.originalFilename || "",
-          mimeType: photo.mimeType || "", // Original MIME type
-          fileSize: photo.fileSize || 0,
-          createdAt: formatToISO8601(photo.createdAt),
-          updatedAt: formatToISO8601(photo.updatedAt),
-          dateTaken: photo.dateTaken ? formatToISO8601(photo.dateTaken) : null,
-          deviceId: photo.deviceId,
-          tags: tagMap.get(photo.id) ?? [],
-          // EXIF Data
-          cameraMake: photo.cameraMake,
-          cameraModel: photo.cameraModel,
-          lensModel: photo.lensModel,
-          iso: photo.iso,
-          fNumber: photo.fNumber,
-          exposureTime: photo.exposureTime,
-          orientation: photo.orientation,
-          imageWidth: photo.imageWidth,
-          imageHeight: photo.imageHeight,
-          // Location Data
-          latitude: photo.latitude,
-          longitude: photo.longitude,
-          altitude: photo.altitude,
-          locationCity: photo.locationCity,
-          locationCountryIso2: photo.locationCountryIso2,
-          locationCountryName: photo.locationCountryName,
+      return {
+        id: photo.id,
+        title: photo.title,
+        description: photo.description,
+        dueDate: photo.dueDate ? formatToISO8601(photo.dueDate) : null,
+        imageUrl: imageUrl, // This is the primary URL for display (smart serving)
+        thumbnailUrl: thumbnailUrl,
+        originalUrl: originalUrl, // Direct access to original file
+        convertedJpgUrl: convertedJpgUrl, // Access to converted JPG when available
+        originalFilename: photo.originalFilename || "",
+        mimeType: photo.mimeType || "", // Original MIME type
+        fileSize: photo.fileSize || 0,
+        createdAt: formatToISO8601(photo.createdAt),
+        updatedAt: formatToISO8601(photo.updatedAt),
+        dateTaken: photo.dateTaken ? formatToISO8601(photo.dateTaken) : null,
+        deviceId: photo.deviceId,
+        tags: tagMap.get(photo.id) ?? [],
+        // EXIF Data
+        cameraMake: photo.cameraMake,
+        cameraModel: photo.cameraModel,
+        lensModel: photo.lensModel,
+        iso: photo.iso,
+        fNumber: photo.fNumber,
+        exposureTime: photo.exposureTime,
+        orientation: photo.orientation,
+        imageWidth: photo.imageWidth,
+        imageHeight: photo.imageHeight,
+        // Location Data
+        latitude: photo.latitude,
+        longitude: photo.longitude,
+        altitude: photo.altitude,
+        locationCity: photo.locationCity,
+        locationCountryIso2: photo.locationCountryIso2,
+        locationCountryName: photo.locationCountryName,
 
-          // --- AI Generated Data ---
-          photoType: photo.photoType,
-          ocrText: photo.ocrText,
-          dominantColors: photo.dominantColors,
+        // --- AI Generated Data ---
+        photoType: photo.photoType,
+        ocrText: photo.ocrText,
+        dominantColors: photo.dominantColors,
 
-          // For client-side logic, it might be useful to know if a conversion *should* exist
-          // or if the original is directly viewable.
-          isOriginalViewable: !["image/heic", "image/heif"].includes(
-            photo.mimeType || "",
-          ),
+        // For client-side logic, it might be useful to know if a conversion *should* exist
+        // or if the original is directly viewable.
+        isOriginalViewable: !["image/heic", "image/heif"].includes(
+          photo.mimeType || "",
+        ),
 
-          // Processing status
-          processingStatus: result.status || null,
+        // Processing status
+        processingStatus: result.status || null,
 
-          // Review, flagging, and pinning
-          reviewStatus: photo.reviewStatus || "pending",
-          flagColor: photo.flagColor,
-          isPinned: photo.isPinned || false,
-          processingEnabled: photo.processingEnabled || false,
-        };
-      });
+        // Review, flagging, and pinning
+        reviewStatus: photo.reviewStatus || "pending",
+        flagColor: photo.flagColor,
+        isPinned: photo.isPinned || false,
+        processingEnabled: photo.processingEnabled || false,
+      };
+    });
 
     return entriesWithTags;
   } catch (error) {
@@ -1114,7 +1126,8 @@ export async function findPhotos({
         .where(and(...conditions));
 
       const basePhotoIds = baseMatchedPhotos.map((p) => p.id);
-      if (basePhotoIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+      if (basePhotoIds.length === 0)
+        return { items: [], nextCursor: null, hasMore: false };
 
       // Find which of those photos have ALL the required tags
       const photosWithAllTags = await db
@@ -1134,7 +1147,8 @@ export async function findPhotos({
       const taggedPhotoIds = photosWithAllTags.map((p) => p.photoId);
 
       // Need to re-query to apply ordering and limit *after* tag filtering
-      if (taggedPhotoIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+      if (taggedPhotoIds.length === 0)
+        return { items: [], nextCursor: null, hasMore: false };
       const finalPhotos = await db
         .select({ id: photos.id })
         .from(photos)
@@ -1153,7 +1167,8 @@ export async function findPhotos({
       finalPhotoIds = matchedPhotos.map((p) => p.id);
     }
 
-    if (finalPhotoIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+    if (finalPhotoIds.length === 0)
+      return { items: [], nextCursor: null, hasMore: false };
 
     // Check hasMore before trimming
     const hasMore = finalPhotoIds.length > limit;
@@ -1181,79 +1196,79 @@ export async function findPhotos({
 
     // Process results to include tags and processing status
     const items = entriesList.map((result) => {
-        const photo = result.photo;
+      const photo = result.photo;
 
-        // The main `imageUrl` will now always point to the smart `/view` endpoint.
-        const imageUrl = `/api/photos/${photo.id}/view`; // Simplified
+      // The main `imageUrl` will now always point to the smart `/view` endpoint.
+      const imageUrl = `/api/photos/${photo.id}/view`; // Simplified
 
-        const thumbnailUrl = photo.thumbnailStorageId
-          ? `/api/photos/${photo.id}/thumbnail`
-          : null;
+      const thumbnailUrl = photo.thumbnailStorageId
+        ? `/api/photos/${photo.id}/thumbnail`
+        : null;
 
-        // URL for direct access to the original file
-        const originalUrl = `/api/photos/${photo.id}/original`;
+      // URL for direct access to the original file
+      const originalUrl = `/api/photos/${photo.id}/original`;
 
-        // URL for converted JPG (when applicable, like for HEIC files)
-        const convertedJpgUrl = photo.convertedJpgStorageId
-          ? `/api/photos/${photo.id}/converted`
-          : null;
+      // URL for converted JPG (when applicable, like for HEIC files)
+      const convertedJpgUrl = photo.convertedJpgStorageId
+        ? `/api/photos/${photo.id}/converted`
+        : null;
 
-        return {
-          id: photo.id,
-          title: photo.title,
-          description: photo.description,
-          dueDate: photo.dueDate ? formatToISO8601(photo.dueDate) : null,
-          imageUrl: imageUrl, // This is the primary URL for display (smart serving)
-          thumbnailUrl: thumbnailUrl,
-          originalUrl: originalUrl, // Direct access to original file
-          convertedJpgUrl: convertedJpgUrl, // Access to converted JPG when available
-          originalFilename: photo.originalFilename || "",
-          mimeType: photo.mimeType || "", // Original MIME type
-          fileSize: photo.fileSize || 0,
-          createdAt: formatToISO8601(photo.createdAt),
-          updatedAt: formatToISO8601(photo.updatedAt),
-          dateTaken: photo.dateTaken ? formatToISO8601(photo.dateTaken) : null,
-          deviceId: photo.deviceId,
-          tags: tagMap.get(photo.id) ?? [],
-          // EXIF Data
-          cameraMake: photo.cameraMake,
-          cameraModel: photo.cameraModel,
-          lensModel: photo.lensModel,
-          iso: photo.iso,
-          fNumber: photo.fNumber,
-          exposureTime: photo.exposureTime,
-          orientation: photo.orientation,
-          imageWidth: photo.imageWidth,
-          imageHeight: photo.imageHeight,
-          // Location Data
-          latitude: photo.latitude,
-          longitude: photo.longitude,
-          altitude: photo.altitude,
-          locationCity: photo.locationCity,
-          locationCountryIso2: photo.locationCountryIso2,
-          locationCountryName: photo.locationCountryName,
+      return {
+        id: photo.id,
+        title: photo.title,
+        description: photo.description,
+        dueDate: photo.dueDate ? formatToISO8601(photo.dueDate) : null,
+        imageUrl: imageUrl, // This is the primary URL for display (smart serving)
+        thumbnailUrl: thumbnailUrl,
+        originalUrl: originalUrl, // Direct access to original file
+        convertedJpgUrl: convertedJpgUrl, // Access to converted JPG when available
+        originalFilename: photo.originalFilename || "",
+        mimeType: photo.mimeType || "", // Original MIME type
+        fileSize: photo.fileSize || 0,
+        createdAt: formatToISO8601(photo.createdAt),
+        updatedAt: formatToISO8601(photo.updatedAt),
+        dateTaken: photo.dateTaken ? formatToISO8601(photo.dateTaken) : null,
+        deviceId: photo.deviceId,
+        tags: tagMap.get(photo.id) ?? [],
+        // EXIF Data
+        cameraMake: photo.cameraMake,
+        cameraModel: photo.cameraModel,
+        lensModel: photo.lensModel,
+        iso: photo.iso,
+        fNumber: photo.fNumber,
+        exposureTime: photo.exposureTime,
+        orientation: photo.orientation,
+        imageWidth: photo.imageWidth,
+        imageHeight: photo.imageHeight,
+        // Location Data
+        latitude: photo.latitude,
+        longitude: photo.longitude,
+        altitude: photo.altitude,
+        locationCity: photo.locationCity,
+        locationCountryIso2: photo.locationCountryIso2,
+        locationCountryName: photo.locationCountryName,
 
-          // --- AI Generated Data ---
-          photoType: photo.photoType,
-          ocrText: photo.ocrText,
-          dominantColors: photo.dominantColors,
+        // --- AI Generated Data ---
+        photoType: photo.photoType,
+        ocrText: photo.ocrText,
+        dominantColors: photo.dominantColors,
 
-          // For client-side logic, it might be useful to know if a conversion *should* exist
-          // or if the original is directly viewable.
-          isOriginalViewable: !["image/heic", "image/heif"].includes(
-            photo.mimeType || "",
-          ),
+        // For client-side logic, it might be useful to know if a conversion *should* exist
+        // or if the original is directly viewable.
+        isOriginalViewable: !["image/heic", "image/heif"].includes(
+          photo.mimeType || "",
+        ),
 
-          // Processing status
-          processingStatus: result.status || null,
+        // Processing status
+        processingStatus: result.status || null,
 
-          // Review, flagging, and pinning
-          reviewStatus: photo.reviewStatus || "pending",
-          flagColor: photo.flagColor,
-          isPinned: photo.isPinned || false,
-          processingEnabled: photo.processingEnabled || false,
-        };
-      });
+        // Review, flagging, and pinning
+        reviewStatus: photo.reviewStatus || "pending",
+        flagColor: photo.flagColor,
+        isPinned: photo.isPinned || false,
+        processingEnabled: photo.processingEnabled || false,
+      };
+    });
 
     // Build cursor from the last item
     const lastItem = items[items.length - 1];
@@ -1345,7 +1360,11 @@ export async function countPhotos({
  */
 export async function findPhotosPaginated(
   params: FindPhotosParams,
-): Promise<CursorPaginatedResponse<Awaited<ReturnType<typeof findPhotos>>["items"][number]>> {
+): Promise<
+  CursorPaginatedResponse<
+    Awaited<ReturnType<typeof findPhotos>>["items"][number]
+  >
+> {
   const isFirstPage = !params.cursor;
 
   if (isFirstPage) {
@@ -1430,10 +1449,7 @@ async function addTagsToPhoto(
 
 /** Standardizes error handling for service functions */
 function handleServiceError(error: unknown, defaultMessage: string): never {
-  if (
-    error instanceof NotFoundError ||
-    error instanceof ForbiddenError
-  ) {
+  if (error instanceof NotFoundError || error instanceof ForbiddenError) {
     throw error;
   }
   logger.error(

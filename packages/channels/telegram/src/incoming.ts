@@ -16,8 +16,7 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const { db, schema, logger, processPromptRequest, recordHistory } =
-    getDeps();
+  const { db, schema, logger, processPromptRequest, recordHistory } = getDeps();
   const { channels } = schema;
 
   // biome-ignore lint/style/noNonNullAssertion: Telegraf text handler guarantees message

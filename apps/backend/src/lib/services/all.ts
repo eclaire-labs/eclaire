@@ -134,12 +134,15 @@ export async function classifyAndCreateContent(
             statusCode: 400,
           };
         }
-        const result = await createBookmarkAndQueueJob({
-          url: url,
-          userId: userId,
-          rawMetadata: metadata,
-          userAgent: userAgent,
-        }, caller);
+        const result = await createBookmarkAndQueueJob(
+          {
+            url: url,
+            userId: userId,
+            rawMetadata: metadata,
+            userAgent: userAgent,
+          },
+          caller,
+        );
         if (!result.success) {
           return {
             success: false,
@@ -248,12 +251,15 @@ export async function classifyAndCreateContent(
 
   // Rule 2: URI list MIME types -> Bookmarks
   if (BOOKMARK_MIMES.URI_LIST.includes(mimeType)) {
-    const result = await createBookmarkAndQueueJob({
-      url: contentString,
-      userId: userId,
-      rawMetadata: metadata,
-      userAgent: userAgent,
-    }, caller);
+    const result = await createBookmarkAndQueueJob(
+      {
+        url: contentString,
+        userId: userId,
+        rawMetadata: metadata,
+        userAgent: userAgent,
+      },
+      caller,
+    );
     if (!result.success) {
       return {
         success: false,
@@ -273,12 +279,15 @@ export async function classifyAndCreateContent(
     BOOKMARK_MIMES.URL_IN_TEXT.includes(mimeType) &&
     isLaxUrl(contentString)
   ) {
-    const result = await createBookmarkAndQueueJob({
-      url: contentString,
-      userId: userId,
-      rawMetadata: metadata,
-      userAgent: userAgent,
-    }, caller);
+    const result = await createBookmarkAndQueueJob(
+      {
+        url: contentString,
+        userId: userId,
+        rawMetadata: metadata,
+        userAgent: userAgent,
+      },
+      caller,
+    );
     if (!result.success) {
       return {
         success: false,
@@ -440,7 +449,9 @@ export async function findAllEntries(
         limit,
         dueDateStart,
         dueDateEnd,
-      }).then((result) => result.items.map((item) => ({ ...item, type: "bookmark" }))),
+      }).then((result) =>
+        result.items.map((item) => ({ ...item, type: "bookmark" })),
+      ),
       findDocuments({
         userId,
         text,
@@ -450,7 +461,9 @@ export async function findAllEntries(
         limit,
         dueDateStart,
         dueDateEnd,
-      }).then((result) => result.items.map((item) => ({ ...item, type: "document" }))),
+      }).then((result) =>
+        result.items.map((item) => ({ ...item, type: "document" })),
+      ),
       findNotes({
         userId,
         text,
@@ -460,7 +473,9 @@ export async function findAllEntries(
         limit,
         dueDateStart,
         dueDateEnd,
-      }).then((result) => result.items.map((item) => ({ ...item, type: "note" }))),
+      }).then((result) =>
+        result.items.map((item) => ({ ...item, type: "note" })),
+      ),
       findPhotos({
         userId,
         tags: tagsList,
@@ -469,7 +484,9 @@ export async function findAllEntries(
         limit,
         dueDateStart,
         dueDateEnd,
-      }).then((result) => result.items.map((item) => ({ ...item, type: "photo" }))),
+      }).then((result) =>
+        result.items.map((item) => ({ ...item, type: "photo" })),
+      ),
       findTasks({
         userId,
         text,
@@ -480,7 +497,9 @@ export async function findAllEntries(
         limit,
         dueDateStart,
         dueDateEnd,
-      }).then((result) => result.items.map((item) => ({ ...item, type: "task" }))),
+      }).then((result) =>
+        result.items.map((item) => ({ ...item, type: "task" })),
+      ),
     ];
 
     const results = await Promise.all(promises);
@@ -627,10 +646,30 @@ export async function findAllEntriesWithCount(
   types?: string[],
   limit = 50,
   dueStatus?: string,
-): Promise<{ items: Awaited<ReturnType<typeof findAllEntries>>; totalCount: number }> {
+): Promise<{
+  items: Awaited<ReturnType<typeof findAllEntries>>;
+  totalCount: number;
+}> {
   const [items, totalCount] = await Promise.all([
-    findAllEntries(userId, text, tagsList, startDate, endDate, types, limit, dueStatus),
-    countAllEntries(userId, text, tagsList, startDate, endDate, types, dueStatus),
+    findAllEntries(
+      userId,
+      text,
+      tagsList,
+      startDate,
+      endDate,
+      types,
+      limit,
+      dueStatus,
+    ),
+    countAllEntries(
+      userId,
+      text,
+      tagsList,
+      startDate,
+      endDate,
+      types,
+      dueStatus,
+    ),
   ]);
   return { items, totalCount };
 }

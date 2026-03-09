@@ -100,9 +100,6 @@ export async function updateChannel(
 
 export async function deleteChannel(id: string): Promise<boolean> {
   const { db, channels } = query();
-  const rows = await db
-    .delete(channels)
-    .where(eq(channels.id, id))
-    .returning();
+  const rows = await db.delete(channels).where(eq(channels.id, id)).returning();
   return rows.length > 0;
 }

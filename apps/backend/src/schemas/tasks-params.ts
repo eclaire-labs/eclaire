@@ -35,7 +35,13 @@ export const TaskSchema = z
       .default("not-started")
       .meta({
         description: "Current status of the task",
-        examples: ["backlog", "not-started", "in-progress", "completed", "cancelled"],
+        examples: [
+          "backlog",
+          "not-started",
+          "in-progress",
+          "completed",
+          "cancelled",
+        ],
       }),
 
     priority: z
@@ -117,8 +123,7 @@ export const TaskSchema = z
       .optional()
       .nullable()
       .meta({
-        description:
-          "Manual sort order (fractional). Null uses default sort.",
+        description: "Manual sort order (fractional). Null uses default sort.",
         examples: [1.0, 1.5, 2.0],
       }),
 
@@ -262,16 +267,32 @@ export const TaskSearchParamsSchema = z
       .meta({
         description:
           "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
-        examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6InRza18xMjMifQ"],
+        examples: [
+          "eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6InRza18xMjMifQ",
+        ],
       }),
 
     sortBy: z
-      .enum(["createdAt", "dueDate", "status", "title", "priority", "sortOrder"])
+      .enum([
+        "createdAt",
+        "dueDate",
+        "status",
+        "title",
+        "priority",
+        "sortOrder",
+      ])
       .optional()
       .default("createdAt")
       .meta({
         description: "Field to sort tasks by",
-        examples: ["createdAt", "dueDate", "status", "title", "priority", "sortOrder"],
+        examples: [
+          "createdAt",
+          "dueDate",
+          "status",
+          "title",
+          "priority",
+          "sortOrder",
+        ],
       }),
 
     sortDir: z
@@ -305,7 +326,8 @@ export const TaskSearchParamsSchema = z
       .string()
       .optional()
       .meta({
-        description: "Filter tasks by parent task ID (returns sub-tasks of the specified parent)",
+        description:
+          "Filter tasks by parent task ID (returns sub-tasks of the specified parent)",
         examples: ["tsk_abc123"],
       }),
 

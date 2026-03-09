@@ -31,7 +31,8 @@ const RECOVERABLE_MESSAGE_PATTERNS = [
 export function getRetryAfterMs(err: unknown): number | null {
   if (err instanceof DiscordAPIError && err.status === 429) {
     // DiscordAPIError exposes retryAfter in seconds
-    const retryAfter = (err as DiscordAPIError & { retryAfter?: number }).retryAfter;
+    const retryAfter = (err as DiscordAPIError & { retryAfter?: number })
+      .retryAfter;
     if (typeof retryAfter === "number" && retryAfter > 0) {
       return retryAfter * 1000;
     }
@@ -97,7 +98,8 @@ export async function withRetry<T>(
 
       // Use retry_after from Discord 429 if available, otherwise exponential backoff
       const retryAfter = getRetryAfterMs(err);
-      const backoff = retryAfter ?? Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
+      const backoff =
+        retryAfter ?? Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
       const jitter = backoff * 0.1 * Math.random();
       const delay = backoff + jitter;
 

@@ -1,5 +1,9 @@
 // schemas/history-params.ts
-import { HISTORY_ACTIONS, HISTORY_ACTORS, HISTORY_ITEM_TYPES } from "@eclaire/core/types";
+import {
+  HISTORY_ACTIONS,
+  HISTORY_ACTORS,
+  HISTORY_ITEM_TYPES,
+} from "@eclaire/core/types";
 import z from "zod/v4";
 
 // Define action types for history records

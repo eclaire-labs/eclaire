@@ -1,7 +1,4 @@
-import type {
-  ChannelCapability,
-  ChannelPlatform,
-} from "@eclaire/core/types";
+import type { ChannelCapability, ChannelPlatform } from "@eclaire/core/types";
 
 export interface PlatformMetadata {
   platform: ChannelPlatform;

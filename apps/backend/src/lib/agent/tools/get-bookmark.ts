@@ -4,7 +4,11 @@
  * Get full details of a single bookmark by ID, including extracted content.
  */
 
-import { errorResult, textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import {
+  errorResult,
+  textResult,
+  type RuntimeToolDefinition,
+} from "@eclaire/ai";
 import z from "zod/v4";
 import { getBookmarkById } from "../../services/bookmarks.js";
 

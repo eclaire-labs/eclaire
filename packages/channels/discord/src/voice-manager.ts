@@ -34,7 +34,10 @@ export async function joinChannel(
 ): Promise<VoiceSession | null> {
   const existingSession = activeSessions.get(guildId);
   if (existingSession) {
-    logger.info({ guildId, channelId: voiceChannelId }, "Already in voice channel");
+    logger.info(
+      { guildId, channelId: voiceChannelId },
+      "Already in voice channel",
+    );
     return existingSession;
   }
 
@@ -45,9 +48,14 @@ export async function joinChannel(
       return null;
     }
 
-    const channel = guild.channels.cache.get(voiceChannelId) as VoiceBasedChannel | undefined;
+    const channel = guild.channels.cache.get(voiceChannelId) as
+      | VoiceBasedChannel
+      | undefined;
     if (!channel || !channel.isVoiceBased()) {
-      logger.error({ voiceChannelId }, "Voice channel not found or not voice-based");
+      logger.error(
+        { voiceChannelId },
+        "Voice channel not found or not voice-based",
+      );
       return null;
     }
 
@@ -67,7 +75,10 @@ export async function joinChannel(
 
     // Handle disconnection
     connection.on(VoiceConnectionStatus.Disconnected, async () => {
-      logger.warn({ guildId, channelId: voiceChannelId }, "Voice connection disconnected");
+      logger.warn(
+        { guildId, channelId: voiceChannelId },
+        "Voice connection disconnected",
+      );
       try {
         // Try to reconnect (discord.js/voice handles most reconnects)
         await Promise.race([
@@ -77,7 +88,10 @@ export async function joinChannel(
         // Reconnecting automatically
       } catch {
         // Could not reconnect — destroy
-        logger.error({ guildId }, "Voice reconnect failed, destroying connection");
+        logger.error(
+          { guildId },
+          "Voice reconnect failed, destroying connection",
+        );
         connection.destroy();
         activeSessions.delete(guildId);
       }
@@ -88,7 +102,12 @@ export async function joinChannel(
       activeSessions.delete(guildId);
     });
 
-    const session: VoiceSession = { connection, player, guildId, channelId: voiceChannelId };
+    const session: VoiceSession = {
+      connection,
+      player,
+      guildId,
+      channelId: voiceChannelId,
+    };
     activeSessions.set(guildId, session);
 
     logger.info(
@@ -127,7 +146,10 @@ export function leaveChannel(guildId: string, logger: DiscordLogger): void {
     logger.info({ guildId }, "Left voice channel");
   } catch (error) {
     logger.error(
-      { guildId, error: error instanceof Error ? error.message : "Unknown error" },
+      {
+        guildId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
       "Error leaving voice channel",
     );
   }
@@ -153,11 +175,12 @@ export async function playAudio(
   try {
     const stream = Readable.from(audioBuffer);
     const resource = createAudioResource(stream, {
-      inputType: inputType === "ogg/opus"
-        ? StreamType.OggOpus
-        : inputType === "webm/opus"
-          ? StreamType.WebmOpus
-          : StreamType.Arbitrary,
+      inputType:
+        inputType === "ogg/opus"
+          ? StreamType.OggOpus
+          : inputType === "webm/opus"
+            ? StreamType.WebmOpus
+            : StreamType.Arbitrary,
     });
 
     session.player.play(resource);
@@ -167,7 +190,10 @@ export async function playAudio(
     return true;
   } catch (error) {
     logger.error(
-      { guildId, error: error instanceof Error ? error.message : "Unknown error" },
+      {
+        guildId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
       "Failed to play audio in voice channel",
     );
     return false;
@@ -200,7 +226,11 @@ export function listenToUser(
     return stream;
   } catch (error) {
     logger.error(
-      { guildId, discordUserId, error: error instanceof Error ? error.message : "Unknown error" },
+      {
+        guildId,
+        discordUserId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
       "Failed to subscribe to user audio",
     );
     return null;

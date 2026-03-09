@@ -47,7 +47,11 @@ describe("calculateBackoff", () => {
     });
 
     it("caps at maxDelay", () => {
-      const capped = { type: "exponential" as const, delay: 1000, maxDelay: 5000 };
+      const capped = {
+        type: "exponential" as const,
+        delay: 1000,
+        maxDelay: 5000,
+      };
       expect(calculateBackoff(10, capped)).toBe(5000);
     });
   });
@@ -137,14 +141,18 @@ describe("calculateBackoffWithJitter", () => {
   it("returns at least the base backoff", () => {
     const strategy = { type: "fixed" as const, delay: 1000 };
     for (let i = 0; i < 20; i++) {
-      expect(calculateBackoffWithJitter(1, strategy, 0.1)).toBeGreaterThanOrEqual(1000);
+      expect(
+        calculateBackoffWithJitter(1, strategy, 0.1),
+      ).toBeGreaterThanOrEqual(1000);
     }
   });
 
   it("returns within expected jitter range", () => {
     const strategy = { type: "fixed" as const, delay: 1000 };
     for (let i = 0; i < 20; i++) {
-      expect(calculateBackoffWithJitter(1, strategy, 0.5)).toBeLessThanOrEqual(1500);
+      expect(calculateBackoffWithJitter(1, strategy, 0.5)).toBeLessThanOrEqual(
+        1500,
+      );
     }
   });
 
@@ -175,7 +183,9 @@ describe("generateScheduleId", () => {
   });
 
   it("generates unique IDs", () => {
-    const ids = new Set(Array.from({ length: 100 }, () => generateScheduleId()));
+    const ids = new Set(
+      Array.from({ length: 100 }, () => generateScheduleId()),
+    );
     expect(ids.size).toBe(100);
   });
 });
@@ -365,18 +375,24 @@ describe("timeout", () => {
   });
 
   it("uses custom error message", async () => {
-    await expect(timeout(10, "Custom timeout")).rejects.toThrow("Custom timeout");
+    await expect(timeout(10, "Custom timeout")).rejects.toThrow(
+      "Custom timeout",
+    );
   });
 });
 
 describe("withTimeout", () => {
   it("returns result if promise resolves in time", async () => {
-    const fast = new Promise<number>((resolve) => setTimeout(() => resolve(42), 10));
+    const fast = new Promise<number>((resolve) =>
+      setTimeout(() => resolve(42), 10),
+    );
     await expect(withTimeout(fast, 1000)).resolves.toBe(42);
   });
 
   it("rejects if promise exceeds timeout", async () => {
-    const slow = new Promise<number>((resolve) => setTimeout(() => resolve(42), 5000));
+    const slow = new Promise<number>((resolve) =>
+      setTimeout(() => resolve(42), 5000),
+    );
     await expect(withTimeout(slow, 10, "Too slow")).rejects.toThrow("Too slow");
   });
 });

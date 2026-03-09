@@ -35,10 +35,20 @@ import type {
   RuntimeStreamEvent,
   ToolResultMessage,
 } from "../messages.js";
-import { getTextContent, getThinkingContent, getToolCalls } from "../messages.js";
-import type { RuntimeToolDefinition, RuntimeToolResult } from "../tools/types.js";
+import {
+  getTextContent,
+  getThinkingContent,
+  getToolCalls,
+} from "../messages.js";
+import type {
+  RuntimeToolDefinition,
+  RuntimeToolResult,
+} from "../tools/types.js";
 import { convertToLlm } from "./convert-to-llm.js";
-import { runtimeToolToOpenAI, executeRuntimeTool } from "./runtime-tool-helpers.js";
+import {
+  runtimeToolToOpenAI,
+  executeRuntimeTool,
+} from "./runtime-tool-helpers.js";
 import type {
   RuntimeAgentConfig,
   RuntimeAgentContext,
@@ -81,7 +91,13 @@ export class RuntimeAgent {
     );
 
     const loopState = await this._initLoop(options);
-    const { systemPrompt, runtimeMessages, tools, toolCallingMode, openAITools } = loopState;
+    const {
+      systemPrompt,
+      runtimeMessages,
+      tools,
+      toolCallingMode,
+      openAITools,
+    } = loopState;
 
     const steps: RuntimeAgentStep[] = [];
     const toolCallSummaries: ToolCallSummaryOutput[] = [];
@@ -93,12 +109,19 @@ export class RuntimeAgent {
       stepNumber++;
 
       if (context.abortSignal?.aborted) {
-        logger.info({ requestId: context.requestId }, "Agent execution aborted");
+        logger.info(
+          { requestId: context.requestId },
+          "Agent execution aborted",
+        );
         break;
       }
 
       if (stepNumber > this.maxSteps) {
-        const step = this._makeTerminalStep(stepNumber, runtimeMessages, "max_steps");
+        const step = this._makeTerminalStep(
+          stepNumber,
+          runtimeMessages,
+          "max_steps",
+        );
         steps.push(step);
         break;
       }
@@ -126,7 +149,11 @@ export class RuntimeAgent {
       }
 
       // Parse response into RuntimeMessage
-      const assistantMsg = this._parseAssistantResponse(aiResponse, toolCallingMode, stepNumber);
+      const assistantMsg = this._parseAssistantResponse(
+        aiResponse,
+        toolCallingMode,
+        stepNumber,
+      );
       runtimeMessages.push(assistantMsg);
 
       const toolCalls = getToolCalls(assistantMsg);
@@ -160,7 +187,13 @@ export class RuntimeAgent {
       if (step.isTerminal) break;
     }
 
-    const result = this._buildResult(steps, runtimeMessages, totalPromptTokens, totalCompletionTokens, toolCallSummaries);
+    const result = this._buildResult(
+      steps,
+      runtimeMessages,
+      totalPromptTokens,
+      totalCompletionTokens,
+      toolCallSummaries,
+    );
 
     logger.info(
       {
@@ -199,7 +232,13 @@ export class RuntimeAgent {
           );
 
           const loopState = await this._initLoop(options);
-          const { systemPrompt, runtimeMessages, tools, toolCallingMode, openAITools } = loopState;
+          const {
+            systemPrompt,
+            runtimeMessages,
+            tools,
+            toolCallingMode,
+            openAITools,
+          } = loopState;
 
           const steps: RuntimeAgentStep[] = [];
           const toolCallSummaries: ToolCallSummaryOutput[] = [];
@@ -211,12 +250,19 @@ export class RuntimeAgent {
             stepNumber++;
 
             if (context.abortSignal?.aborted) {
-              controller.enqueue({ type: "error", error: "Agent execution aborted" });
+              controller.enqueue({
+                type: "error",
+                error: "Agent execution aborted",
+              });
               break;
             }
 
             if (stepNumber > this.maxSteps) {
-              const step = this._makeTerminalStep(stepNumber, runtimeMessages, "max_steps");
+              const step = this._makeTerminalStep(
+                stepNumber,
+                runtimeMessages,
+                "max_steps",
+              );
               steps.push(step);
               break;
             }
@@ -225,17 +271,22 @@ export class RuntimeAgent {
             const llmMessages = convertToLlm(systemPrompt, runtimeMessages);
 
             // Stream AI call
-            const { stream } = await callAIStream(llmMessages, this.config.aiContext, {
-              ...this.config.aiOptions,
-              ...aiOptions,
-              tools: toolCallingMode !== "off" ? openAITools : undefined,
-              toolChoice: openAITools && openAITools.length > 0 ? "auto" : undefined,
-              debugContext: {
-                requestId: context.requestId,
-                userId: context.userId,
-                stepNumber,
+            const { stream } = await callAIStream(
+              llmMessages,
+              this.config.aiContext,
+              {
+                ...this.config.aiOptions,
+                ...aiOptions,
+                tools: toolCallingMode !== "off" ? openAITools : undefined,
+                toolChoice:
+                  openAITools && openAITools.length > 0 ? "auto" : undefined,
+                debugContext: {
+                  requestId: context.requestId,
+                  userId: context.userId,
+                  stepNumber,
+                },
               },
-            });
+            );
 
             // Process stream, emitting events
             const streamResult = await this._processStream(
@@ -252,7 +303,10 @@ export class RuntimeAgent {
             const assistantMsg = streamResult.assistantMessage;
             runtimeMessages.push(assistantMsg);
 
-            controller.enqueue({ type: "message_complete", message: assistantMsg });
+            controller.enqueue({
+              type: "message_complete",
+              message: assistantMsg,
+            });
 
             const toolCalls = getToolCalls(assistantMsg);
 
@@ -312,7 +366,9 @@ export class RuntimeAgent {
           const errorMessage = getErrorMessage(error);
           controller.enqueue({ type: "error", error: errorMessage });
           controller.close();
-          rejectResult(error instanceof Error ? error : new Error(errorMessage));
+          rejectResult(
+            error instanceof Error ? error : new Error(errorMessage),
+          );
 
           logger.error(
             { requestId: context.requestId, error: errorMessage },
@@ -352,7 +408,8 @@ export class RuntimeAgent {
 
     // Build tool configs
     const tools = this.config.tools;
-    const toolCallingMode: ToolCallingMode = this.config.toolCallingMode ?? "native";
+    const toolCallingMode: ToolCallingMode =
+      this.config.toolCallingMode ?? "native";
     const toolEntries = Object.values(tools);
 
     const openAITools: ToolDefinition[] | undefined =
@@ -360,14 +417,26 @@ export class RuntimeAgent {
         ? toolEntries.map(runtimeToolToOpenAI)
         : undefined;
 
-    return { systemPrompt, runtimeMessages, tools, toolCallingMode, openAITools };
+    return {
+      systemPrompt,
+      runtimeMessages,
+      tools,
+      toolCallingMode,
+      openAITools,
+    };
   }
 
   /**
    * Parse an AI response (non-streaming) into an AssistantMessage.
    */
   private _parseAssistantResponse(
-    aiResponse: { content: string; reasoning?: string; toolCalls?: ToolCallResult[]; usage?: TokenUsage; finishReason?: string },
+    aiResponse: {
+      content: string;
+      reasoning?: string;
+      toolCalls?: ToolCallResult[];
+      usage?: TokenUsage;
+      finishReason?: string;
+    },
     toolCallingMode: ToolCallingMode,
     stepNumber: number,
   ): AssistantMessage {
@@ -380,7 +449,10 @@ export class RuntimeAgent {
 
     // For text mode, extract tool calls from content
     if (toolCallingMode === "text") {
-      const parseResult = parseTextToolContent(aiResponse.content, aiResponse.reasoning);
+      const parseResult = parseTextToolContent(
+        aiResponse.content,
+        aiResponse.reasoning,
+      );
       const finalText = extractFinalResponse(parseResult) || aiResponse.content;
       if (finalText) {
         contentBlocks.push({ type: "text", text: finalText });
@@ -432,7 +504,11 @@ export class RuntimeAgent {
    * Execute tools (non-streaming path).
    */
   private async _executeTools(
-    toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }>,
+    toolCalls: Array<{
+      id: string;
+      name: string;
+      arguments: Record<string, unknown>;
+    }>,
     tools: Record<string, RuntimeToolDefinition<AnyZodType>>,
     context: RuntimeAgentContext,
     runtimeMessages: RuntimeMessage[],
@@ -446,7 +522,10 @@ export class RuntimeAgent {
       const startTime = Date.now();
 
       if (!toolDef) {
-        logger.warn({ requestId: context.requestId, toolName: tc.name }, "Tool not found");
+        logger.warn(
+          { requestId: context.requestId, toolName: tc.name },
+          "Tool not found",
+        );
         const errorResult: RuntimeToolResult = {
           content: [{ type: "text", text: `Tool '${tc.name}' not found` }],
           isError: true,
@@ -462,11 +541,21 @@ export class RuntimeAgent {
         continue;
       }
 
-      const result = await executeRuntimeTool(toolDef, tc.id, tc.arguments, context);
+      const result = await executeRuntimeTool(
+        toolDef,
+        tc.id,
+        tc.arguments,
+        context,
+      );
       const durationMs = Date.now() - startTime;
 
       logger.debug(
-        { requestId: context.requestId, toolName: tc.name, durationMs, isError: result.isError },
+        {
+          requestId: context.requestId,
+          toolName: tc.name,
+          durationMs,
+          isError: result.isError,
+        },
         "Tool executed",
       );
 
@@ -483,10 +572,18 @@ export class RuntimeAgent {
         createToolCallSummary({
           functionName: tc.name,
           arguments: tc.arguments,
-          result: result.isError ? null : result.content.map((c) => (c.type === "text" ? c.text : `[${c.type}]`)).join("\n"),
+          result: result.isError
+            ? null
+            : result.content
+                .map((c) => (c.type === "text" ? c.text : `[${c.type}]`))
+                .join("\n"),
           executionTimeMs: durationMs,
           success: !result.isError,
-          error: result.isError ? result.content.map((c) => (c.type === "text" ? c.text : "")).join("") : undefined,
+          error: result.isError
+            ? result.content
+                .map((c) => (c.type === "text" ? c.text : ""))
+                .join("")
+            : undefined,
         }),
       );
     }
@@ -498,7 +595,11 @@ export class RuntimeAgent {
    * Execute tools with streaming events.
    */
   private async _executeToolsStreaming(
-    toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }>,
+    toolCalls: Array<{
+      id: string;
+      name: string;
+      arguments: Record<string, unknown>;
+    }>,
     tools: Record<string, RuntimeToolDefinition<AnyZodType>>,
     context: RuntimeAgentContext,
     runtimeMessages: RuntimeMessage[],
@@ -519,7 +620,10 @@ export class RuntimeAgent {
       });
 
       if (!toolDef) {
-        logger.warn({ requestId: context.requestId, toolName: tc.name }, "Tool not found");
+        logger.warn(
+          { requestId: context.requestId, toolName: tc.name },
+          "Tool not found",
+        );
         const errorResult: RuntimeToolResult = {
           content: [{ type: "text", text: `Tool '${tc.name}' not found` }],
           isError: true,
@@ -543,23 +647,34 @@ export class RuntimeAgent {
       }
 
       // Execute with progress callback
-      const result = await executeRuntimeTool(toolDef, tc.id, tc.arguments, context, (update) => {
-        controller.enqueue({
-          type: "tool_progress",
-          id: tc.id,
-          name: tc.name,
-          progress: {
-            status: update.status,
-            progress: update.progress,
-            preview: update.preview,
-          },
-        });
-      });
+      const result = await executeRuntimeTool(
+        toolDef,
+        tc.id,
+        tc.arguments,
+        context,
+        (update) => {
+          controller.enqueue({
+            type: "tool_progress",
+            id: tc.id,
+            name: tc.name,
+            progress: {
+              status: update.status,
+              progress: update.progress,
+              preview: update.preview,
+            },
+          });
+        },
+      );
 
       const durationMs = Date.now() - startTime;
 
       logger.debug(
-        { requestId: context.requestId, toolName: tc.name, durationMs, isError: result.isError },
+        {
+          requestId: context.requestId,
+          toolName: tc.name,
+          durationMs,
+          isError: result.isError,
+        },
         "Tool executed",
       );
 
@@ -584,10 +699,18 @@ export class RuntimeAgent {
         createToolCallSummary({
           functionName: tc.name,
           arguments: tc.arguments,
-          result: result.isError ? null : result.content.map((c) => (c.type === "text" ? c.text : `[${c.type}]`)).join("\n"),
+          result: result.isError
+            ? null
+            : result.content
+                .map((c) => (c.type === "text" ? c.text : `[${c.type}]`))
+                .join("\n"),
           executionTimeMs: durationMs,
           success: !result.isError,
-          error: result.isError ? result.content.map((c) => (c.type === "text" ? c.text : "")).join("") : undefined,
+          error: result.isError
+            ? result.content
+                .map((c) => (c.type === "text" ? c.text : ""))
+                .join("")
+            : undefined,
         }),
       );
     }
@@ -630,7 +753,10 @@ export class RuntimeAgent {
           case "think_content":
             if (value.content) {
               currentThinking += value.content;
-              controller.enqueue({ type: "thinking_delta", text: value.content });
+              controller.enqueue({
+                type: "thinking_delta",
+                text: value.content,
+              });
             }
             break;
 

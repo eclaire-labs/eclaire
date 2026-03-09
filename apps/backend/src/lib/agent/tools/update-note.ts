@@ -28,16 +28,13 @@ export const updateNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Update Note",
   description: "Update a note's title, content, tags, or due date.",
   inputSchema,
-  promptGuidelines: [
-    "Always confirm with the user before modifying notes.",
-  ],
+  promptGuidelines: ["Always confirm with the user before modifying notes."],
   execute: async (_callId, input, ctx) => {
     const { id, ...updateData } = input;
-    const result = await updateNoteEntry(
-      id,
-      updateData,
-      { userId: ctx.userId, actor: "assistant" },
-    );
+    const result = await updateNoteEntry(id, updateData, {
+      userId: ctx.userId,
+      actor: "assistant",
+    });
     return textResult(JSON.stringify(result, null, 2));
   },
 };

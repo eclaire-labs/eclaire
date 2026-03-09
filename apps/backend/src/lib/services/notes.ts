@@ -1,4 +1,8 @@
-import { formatToISO8601, generateHistoryId, generateNoteId } from "@eclaire/core";
+import {
+  formatToISO8601,
+  generateHistoryId,
+  generateNoteId,
+} from "@eclaire/core";
 import {
   and,
   asc,
@@ -34,7 +38,11 @@ const logger = createChildLogger("services:notes");
 
 // --- FILE UPLOAD HELPERS ---
 
-const NOTE_ALLOWED_TYPES = new Set(["text/plain", "text/markdown", "application/json"]);
+const NOTE_ALLOWED_TYPES = new Set([
+  "text/plain",
+  "text/markdown",
+  "application/json",
+]);
 const NOTE_MAX_FILE_SIZE = 1024 * 1024; // 1MB
 
 /**
@@ -403,7 +411,11 @@ export async function updateNoteEntry(
 }
 
 // Delete note entry function
-export async function deleteNoteEntry(id: string, userId: string, caller: CallerContext) {
+export async function deleteNoteEntry(
+  id: string,
+  userId: string,
+  caller: CallerContext,
+) {
   try {
     // Get existing entry for history
     const existingEntry = await getNoteEntryById(id, userId);
@@ -748,7 +760,8 @@ export async function findNotes({
         .from(notes)
         .where(and(...baseConditions));
       const baseIds = baseMatched.map((e) => e.id);
-      if (baseIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+      if (baseIds.length === 0)
+        return { items: [], nextCursor: null, hasMore: false };
 
       // Filter to IDs that have ALL required tags
       const withAllTags = await db
@@ -765,7 +778,8 @@ export async function findNotes({
         .groupBy(notesTags.noteId)
         .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
       const taggedIds = withAllTags.map((e) => e.noteId);
-      if (taggedIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+      if (taggedIds.length === 0)
+        return { items: [], nextCursor: null, hasMore: false };
 
       // Apply sort + limit on the filtered set
       const sorted = await db
@@ -785,7 +799,8 @@ export async function findNotes({
       finalIds = matched.map((e) => e.id);
     }
 
-    if (finalIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+    if (finalIds.length === 0)
+      return { items: [], nextCursor: null, hasMore: false };
 
     // Check hasMore before trimming
     const hasMore = finalIds.length > limit;
@@ -946,7 +961,11 @@ export async function countNotes({
  */
 export async function findNotesPaginated(
   params: FindNotesParams,
-): Promise<CursorPaginatedResponse<Awaited<ReturnType<typeof findNotes>>["items"][number]>> {
+): Promise<
+  CursorPaginatedResponse<
+    Awaited<ReturnType<typeof findNotes>>["items"][number]
+  >
+> {
   const isFirstPage = !params.cursor;
 
   if (isFirstPage) {

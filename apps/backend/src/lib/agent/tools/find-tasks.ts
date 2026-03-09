@@ -47,7 +47,13 @@ export const findTasksTool: RuntimeToolDefinition<typeof inputSchema> = {
     let validStatus: TaskStatus | undefined;
     if (
       input.status &&
-      ["backlog", "not-started", "in-progress", "completed", "cancelled"].includes(input.status)
+      [
+        "backlog",
+        "not-started",
+        "in-progress",
+        "completed",
+        "cancelled",
+      ].includes(input.status)
     ) {
       validStatus = input.status as TaskStatus;
     }

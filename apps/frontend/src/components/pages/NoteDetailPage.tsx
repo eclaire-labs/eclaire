@@ -336,7 +336,10 @@ export function NoteDetailClient() {
                         onRemoveTag={(tag) =>
                           setLocalNote(
                             localNote
-                              ? { ...localNote, tags: localNote.tags.filter((t) => t !== tag) }
+                              ? {
+                                  ...localNote,
+                                  tags: localNote.tags.filter((t) => t !== tag),
+                                }
                               : null,
                           )
                         }

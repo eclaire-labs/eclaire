@@ -63,10 +63,7 @@ describe("withRetry", () => {
     const err = new Error("fail");
     (err as NodeJS.ErrnoException).code = "ECONNRESET";
 
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(err)
-      .mockResolvedValueOnce("ok");
+    const fn = vi.fn().mockRejectedValueOnce(err).mockResolvedValueOnce("ok");
 
     const result = await withRetry(fn, { baseDelayMs: 1 });
     expect(result).toBe("ok");
@@ -99,10 +96,7 @@ describe("withRetry", () => {
     (err as NodeJS.ErrnoException).code = "ECONNRESET";
 
     const onRetry = vi.fn();
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(err)
-      .mockResolvedValueOnce("ok");
+    const fn = vi.fn().mockRejectedValueOnce(err).mockResolvedValueOnce("ok");
 
     await withRetry(fn, { baseDelayMs: 1, onRetry });
     expect(onRetry).toHaveBeenCalledWith(err, 1);
@@ -116,10 +110,7 @@ describe("withRetry", () => {
       },
     });
 
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(err)
-      .mockResolvedValueOnce("ok");
+    const fn = vi.fn().mockRejectedValueOnce(err).mockResolvedValueOnce("ok");
 
     const start = Date.now();
     await withRetry(fn, { baseDelayMs: 5000 });

@@ -14,7 +14,9 @@ import {
 import z from "zod/v4";
 
 const inputSchema = z.object({
-  name: z.string().describe("Name of the skill to load (from the available skills list)"),
+  name: z
+    .string()
+    .describe("Name of the skill to load (from the available skills list)"),
 });
 
 export const loadSkillTool: RuntimeToolDefinition<typeof inputSchema> = {

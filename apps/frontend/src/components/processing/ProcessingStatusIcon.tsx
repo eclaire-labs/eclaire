@@ -74,9 +74,7 @@ export function ProcessingStatusIcon({
       case "pending":
         return <Clock className={`${iconClass} text-warning`} />;
       case "processing":
-        return (
-          <Loader2 className={`${iconClass} text-info animate-spin`} />
-        );
+        return <Loader2 className={`${iconClass} text-info animate-spin`} />;
       case "completed":
         return <CheckCircle className={`${iconClass} text-success`} />;
       case "failed":

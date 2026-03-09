@@ -1605,7 +1605,11 @@ export async function updateTaskArtifacts(
 }
 
 // Delete task function
-export async function deleteTask(id: string, userId: string, caller: CallerContext) {
+export async function deleteTask(
+  id: string,
+  userId: string,
+  caller: CallerContext,
+) {
   try {
     logger.info({ taskId: id, userId }, "Starting task deletion process");
 
@@ -2037,7 +2041,8 @@ export async function findTasks({
         .from(tasks)
         .where(and(...conditions));
       const baseIds = baseMatched.map((e) => e.id);
-      if (baseIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+      if (baseIds.length === 0)
+        return { items: [], nextCursor: null, hasMore: false };
 
       // Filter to IDs that have ALL required tags
       const withAllTags = await db
@@ -2054,7 +2059,8 @@ export async function findTasks({
         .groupBy(tasksTags.taskId)
         .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
       const taggedIds = withAllTags.map((e) => e.taskId);
-      if (taggedIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+      if (taggedIds.length === 0)
+        return { items: [], nextCursor: null, hasMore: false };
 
       // Apply sort + limit on the filtered set
       const sorted = await db
@@ -2074,7 +2080,8 @@ export async function findTasks({
       finalIds = matched.map((e) => e.id);
     }
 
-    if (finalIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+    if (finalIds.length === 0)
+      return { items: [], nextCursor: null, hasMore: false };
 
     // Check hasMore before trimming
     const hasMore = finalIds.length > limit;
@@ -2098,12 +2105,7 @@ export async function findTasks({
         .where(inArray(tasks.id, finalIds))
         .orderBy(orderDir(sortColumn), orderDir(tasks.id)),
       getTaskSchedulesMap(),
-      batchGetTags(
-        tasksTags,
-        tasksTags.taskId,
-        tasksTags.tagId,
-        finalIds,
-      ),
+      batchGetTags(tasksTags, tasksTags.taskId, tasksTags.tagId, finalIds),
       db
         .select({
           parentId: tasks.parentId,
@@ -2262,7 +2264,11 @@ export async function countTasks({
  */
 export async function findTasksPaginated(
   params: FindTasksParams & { limit?: number },
-): Promise<CursorPaginatedResponse<Awaited<ReturnType<typeof findTasks>>["items"][number]>> {
+): Promise<
+  CursorPaginatedResponse<
+    Awaited<ReturnType<typeof findTasks>>["items"][number]
+  >
+> {
   const isFirstPage = !params.cursor;
 
   if (isFirstPage) {

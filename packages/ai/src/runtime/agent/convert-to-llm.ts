@@ -28,9 +28,7 @@ export function convertToLlm(
   systemPrompt: string,
   messages: RuntimeMessage[],
 ): AIMessage[] {
-  const result: AIMessage[] = [
-    { role: "system", content: systemPrompt },
-  ];
+  const result: AIMessage[] = [{ role: "system", content: systemPrompt }];
 
   for (const msg of messages) {
     const converted = convertMessage(msg);

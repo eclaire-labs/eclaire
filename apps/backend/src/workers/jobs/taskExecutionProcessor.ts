@@ -33,7 +33,12 @@ async function updateTaskStatus(
   );
 
   try {
-    await updateTaskStatusAsAssistant(taskId, status, assistantCaller(assistantId), completedAt);
+    await updateTaskStatusAsAssistant(
+      taskId,
+      status,
+      assistantCaller(assistantId),
+      completedAt,
+    );
     logger.info({ taskId, status }, "Task status updated successfully");
   } catch (error) {
     // If task was deleted during execution, log a warning but don't fail the job

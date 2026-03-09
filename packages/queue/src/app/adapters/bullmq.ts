@@ -65,28 +65,66 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
       { jobId },
     );
 
-    logger.info({ assetId, userId, queue: queueName, jobId }, `${jobName} enqueued to Redis`);
+    logger.info(
+      { assetId, userId, queue: queueName, jobId },
+      `${jobName} enqueued to Redis`,
+    );
   }
 
   return {
     async enqueueBookmark(data: BookmarkJobData): Promise<void> {
-      await enqueueToRedis(QueueNames.BOOKMARK_PROCESSING, "process-bookmark", "bookmark", data.bookmarkId, data.userId, data);
+      await enqueueToRedis(
+        QueueNames.BOOKMARK_PROCESSING,
+        "process-bookmark",
+        "bookmark",
+        data.bookmarkId,
+        data.userId,
+        data,
+      );
     },
 
     async enqueueImage(data: ImageJobData): Promise<void> {
-      await enqueueToRedis(QueueNames.IMAGE_PROCESSING, "process-image", "image", data.imageId, data.userId, data);
+      await enqueueToRedis(
+        QueueNames.IMAGE_PROCESSING,
+        "process-image",
+        "image",
+        data.imageId,
+        data.userId,
+        data,
+      );
     },
 
     async enqueueDocument(data: DocumentJobData): Promise<void> {
-      await enqueueToRedis(QueueNames.DOCUMENT_PROCESSING, "process-document", "document", data.documentId, data.userId, data);
+      await enqueueToRedis(
+        QueueNames.DOCUMENT_PROCESSING,
+        "process-document",
+        "document",
+        data.documentId,
+        data.userId,
+        data,
+      );
     },
 
     async enqueueNote(data: NoteJobData): Promise<void> {
-      await enqueueToRedis(QueueNames.NOTE_PROCESSING, "process-note", "note", data.noteId, data.userId, data);
+      await enqueueToRedis(
+        QueueNames.NOTE_PROCESSING,
+        "process-note",
+        "note",
+        data.noteId,
+        data.userId,
+        data,
+      );
     },
 
     async enqueueTask(data: TaskJobData): Promise<void> {
-      await enqueueToRedis(QueueNames.TASK_PROCESSING, "process-task", "task", data.taskId, data.userId, data);
+      await enqueueToRedis(
+        QueueNames.TASK_PROCESSING,
+        "process-task",
+        "task",
+        data.taskId,
+        data.userId,
+        data,
+      );
     },
 
     async close(): Promise<void> {

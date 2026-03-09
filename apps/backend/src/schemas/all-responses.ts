@@ -47,9 +47,7 @@ const BaseItemSchema = z
       .enum(["red", "yellow", "orange", "green", "blue"])
       .nullable()
       .meta({ description: "Color flag for the item" }),
-    isPinned: z
-      .boolean()
-      .meta({ description: "Whether the item is pinned" }),
+    isPinned: z.boolean().meta({ description: "Whether the item is pinned" }),
     content: z
       .string()
       .nullable()
@@ -82,7 +80,9 @@ const BaseItemSchema = z
     processingEnabled: z
       .boolean()
       .nullable()
-      .meta({ description: "Whether background processing is enabled for the item" }),
+      .meta({
+        description: "Whether background processing is enabled for the item",
+      }),
   })
   .meta({ ref: "BaseItem" });
 
@@ -157,7 +157,10 @@ export const CreatedItemSchema = z
     processingEnabled: z
       .boolean()
       .nullable()
-      .meta({ description: "Whether background processing is enabled for the created item" }),
+      .meta({
+        description:
+          "Whether background processing is enabled for the created item",
+      }),
   })
   .meta({ ref: "CreatedItem" });
 

@@ -235,9 +235,11 @@ export const tasks = sqliteTable(
       table.status,
       table.createdAt,
     ),
-    userPriorityCreatedAtIdx: index(
-      "tasks_user_id_priority_created_at_idx",
-    ).on(table.userId, table.priority, table.createdAt),
+    userPriorityCreatedAtIdx: index("tasks_user_id_priority_created_at_idx").on(
+      table.userId,
+      table.priority,
+      table.createdAt,
+    ),
     userSortOrderIdx: index("tasks_user_id_sort_order_idx").on(
       table.userId,
       table.sortOrder,

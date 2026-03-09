@@ -14,7 +14,8 @@ export const SlackConfigSchema = z
       .string()
       .min(1, "App token is required")
       .meta({
-        description: "Slack App-Level Token for Socket Mode (starts with xapp-)",
+        description:
+          "Slack App-Level Token for Socket Mode (starts with xapp-)",
         examples: ["xapp-your-slack-app-token"],
       }),
     channel_id: z
@@ -59,9 +60,7 @@ export function validateAndEncryptConfig(
  * Decrypts stored config for runtime use.
  * Returns null on failure.
  */
-export function decryptConfig(
-  storedConfig: unknown,
-): SlackConfig | null {
+export function decryptConfig(storedConfig: unknown): SlackConfig | null {
   const { decrypt, logger } = getDeps();
 
   try {

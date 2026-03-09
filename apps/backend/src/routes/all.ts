@@ -119,15 +119,18 @@ allRoutes.post(
     );
 
     // Classify and create content using service
-    const result = await classifyAndCreateContent({
-      contentBuffer,
-      mimeType: verifiedMimeType,
-      metadata,
-      filename: contentPart.name,
-      userId,
-      userAgent,
-      requestId,
-    }, { userId, actor: "user" });
+    const result = await classifyAndCreateContent(
+      {
+        contentBuffer,
+        mimeType: verifiedMimeType,
+        metadata,
+        filename: contentPart.name,
+        userId,
+        userAgent,
+        requestId,
+      },
+      { userId, actor: "user" },
+    );
 
     if (result.success) {
       return c.json(result.result, 201);

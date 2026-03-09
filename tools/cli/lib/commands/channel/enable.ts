@@ -6,12 +6,16 @@ export async function enableCommand(id: string): Promise<void> {
   try {
     const channel = await getChannel(id);
     if (!channel) {
-      console.error(colors.error(`\n  ${icons.error} Channel not found: ${id}\n`));
+      console.error(
+        colors.error(`\n  ${icons.error} Channel not found: ${id}\n`),
+      );
       process.exit(1);
     }
 
     if (channel.isActive) {
-      console.log(colors.dim(`\n  Channel "${channel.name}" is already enabled.\n`));
+      console.log(
+        colors.dim(`\n  Channel "${channel.name}" is already enabled.\n`),
+      );
       return;
     }
 

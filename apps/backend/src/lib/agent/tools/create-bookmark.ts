@@ -4,7 +4,11 @@
  * Save a URL as a bookmark with optional title, description, and tags.
  */
 
-import { errorResult, textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import {
+  errorResult,
+  textResult,
+  type RuntimeToolDefinition,
+} from "@eclaire/ai";
 import z from "zod/v4";
 import {
   createBookmarkAndQueueJob,
@@ -14,21 +18,17 @@ import {
 const inputSchema = z.object({
   url: z.string().describe("URL to bookmark"),
   title: z.string().optional().describe("Title for the bookmark"),
-  description: z
-    .string()
-    .optional()
-    .describe("Description of the bookmark"),
+  description: z.string().optional().describe("Description of the bookmark"),
   tags: z.array(z.string()).optional().describe("Tags for the bookmark"),
 });
 
 export const createBookmarkTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "createBookmark",
   label: "Create Bookmark",
-  description: "Save a URL as a bookmark with optional title, description, and tags.",
+  description:
+    "Save a URL as a bookmark with optional title, description, and tags.",
   inputSchema,
-  promptGuidelines: [
-    "Always confirm with the user before creating bookmarks.",
-  ],
+  promptGuidelines: ["Always confirm with the user before creating bookmarks."],
   execute: async (_callId, input, ctx) => {
     const urlValidation = validateAndNormalizeBookmarkUrl(input.url);
     if (!urlValidation.valid) {

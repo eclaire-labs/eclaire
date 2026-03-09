@@ -12,9 +12,7 @@ export function parseSearchFields(params: {
   dueDateEnd?: string;
 }) {
   return {
-    tags: params.tags
-      ? params.tags.split(",").map((t) => t.trim())
-      : undefined,
+    tags: params.tags ? params.tags.split(",").map((t) => t.trim()) : undefined,
     startDate: params.startDate ? new Date(params.startDate) : undefined,
     endDate: params.endDate ? new Date(params.endDate) : undefined,
     dueDateStart: params.dueDateStart

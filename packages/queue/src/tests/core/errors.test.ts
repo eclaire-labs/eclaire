@@ -224,7 +224,9 @@ describe("isQueueError", () => {
 
 describe("isJobAlreadyActiveError", () => {
   it("returns true for JobAlreadyActiveError", () => {
-    expect(isJobAlreadyActiveError(new JobAlreadyActiveError("q", "k", "id"))).toBe(true);
+    expect(
+      isJobAlreadyActiveError(new JobAlreadyActiveError("q", "k", "id")),
+    ).toBe(true);
   });
 
   it("returns false for other errors", () => {

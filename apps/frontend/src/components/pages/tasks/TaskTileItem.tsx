@@ -201,8 +201,15 @@ export function TaskTileItem({
                     onStatusChange(task.id, task.status as TaskStatus)
                   }
                 >
-                  {getStatusIcon(getNextStatus(task.status as TaskStatus), "mr-2 h-4 w-4")}
-                  Mark {getStatusConfig(getNextStatus(task.status as TaskStatus)).label}
+                  {getStatusIcon(
+                    getNextStatus(task.status as TaskStatus),
+                    "mr-2 h-4 w-4",
+                  )}
+                  Mark{" "}
+                  {
+                    getStatusConfig(getNextStatus(task.status as TaskStatus))
+                      .label
+                  }
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

@@ -39,7 +39,12 @@ export function MessageList({ messages, options }: MessageListProps) {
                 <Text dimColor>{msg.content}</Text>
               )
             ) : msg.role === "user" ? (
-              <Box width="100%" paddingX={2} paddingY={1} backgroundColor="#333333">
+              <Box
+                width="100%"
+                paddingX={2}
+                paddingY={1}
+                backgroundColor="#333333"
+              >
                 <Text wrap="wrap">{msg.content}</Text>
               </Box>
             ) : (

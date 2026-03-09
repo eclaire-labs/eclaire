@@ -15,7 +15,11 @@ export interface BotContext extends Context {
 interface TelegramCommand {
   name: string;
   description: string;
-  handler: (ctx: BotContext, channelId: string, userId: string) => Promise<void>;
+  handler: (
+    ctx: BotContext,
+    channelId: string,
+    userId: string,
+  ) => Promise<void>;
 }
 
 const COMMANDS: TelegramCommand[] = [
@@ -46,7 +50,9 @@ const COMMANDS: TelegramCommand[] = [
     handler: async (ctx) => {
       const { logger } = getDeps();
       try {
-        const lines = COMMANDS.map((cmd) => `/${cmd.name} — ${cmd.description}`);
+        const lines = COMMANDS.map(
+          (cmd) => `/${cmd.name} — ${cmd.description}`,
+        );
         await ctx.reply(`Available commands:\n\n${lines.join("\n")}`);
       } catch (error) {
         logger.error(
@@ -74,7 +80,9 @@ const COMMANDS: TelegramCommand[] = [
           { error: error instanceof Error ? error.message : "Unknown error" },
           "Failed to handle /new command",
         );
-        await ctx.reply("Failed to start a new conversation. Please try again.");
+        await ctx.reply(
+          "Failed to start a new conversation. Please try again.",
+        );
       }
     },
   },
@@ -122,7 +130,8 @@ const COMMANDS: TelegramCommand[] = [
         }
 
         const lines = sessions.map((s, i) => {
-          const title = s.title.length > 40 ? `${s.title.slice(0, 37)}...` : s.title;
+          const title =
+            s.title.length > 40 ? `${s.title.slice(0, 37)}...` : s.title;
           return `${i + 1}. ${title} (${s.messageCount} msgs)`;
         });
         await ctx.reply(`Recent conversations:\n\n${lines.join("\n")}`);
@@ -192,12 +201,17 @@ export function registerCommands(
   userId: string,
 ): void {
   for (const cmd of COMMANDS) {
-    bot.command(cmd.name, (ctx) => cmd.handler(ctx as BotContext, channelId, userId));
+    bot.command(cmd.name, (ctx) =>
+      cmd.handler(ctx as BotContext, channelId, userId),
+    );
   }
 }
 
 /** Command list for Telegram's setMyCommands API. */
-export function getCommandList(): Array<{ command: string; description: string }> {
+export function getCommandList(): Array<{
+  command: string;
+  description: string;
+}> {
   return COMMANDS.map((cmd) => ({
     command: cmd.name,
     description: cmd.description,

@@ -211,10 +211,7 @@ export function createJobWaitlist(
       for (const [queue, waitersForQueue] of waiters.entries()) {
         const count = waitersForQueue.length;
         if (count > 0) {
-          logger.debug(
-            { queue, count },
-            "Resolving pending waiters on close",
-          );
+          logger.debug({ queue, count }, "Resolving pending waiters on close");
           for (const waiter of waitersForQueue) {
             waiter.resolve(null);
           }

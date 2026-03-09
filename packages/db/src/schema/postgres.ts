@@ -241,9 +241,11 @@ export const tasks = pgTable(
       table.status,
       table.createdAt,
     ),
-    userPriorityCreatedAtIdx: index(
-      "tasks_user_id_priority_created_at_idx",
-    ).on(table.userId, table.priority, table.createdAt),
+    userPriorityCreatedAtIdx: index("tasks_user_id_priority_created_at_idx").on(
+      table.userId,
+      table.priority,
+      table.createdAt,
+    ),
     userSortOrderIdx: index("tasks_user_id_sort_order_idx").on(
       table.userId,
       table.sortOrder,
@@ -356,9 +358,7 @@ export const bookmarks = pgTable(
       table.normalizedUrl,
     ),
     // Partial index: most queries filter for processing-enabled records
-    userProcessingEnabledIdx: index(
-      "bookmarks_user_id_processing_enabled_idx",
-    )
+    userProcessingEnabledIdx: index("bookmarks_user_id_processing_enabled_idx")
       .on(table.userId)
       .where(sql`processing_enabled = true`),
     // Composite indexes for cursor pagination
@@ -425,9 +425,7 @@ export const documents = pgTable(
     userIdx: index("documents_user_id_idx").on(table.userId),
     isPinnedIdx: index("documents_is_pinned_idx").on(table.isPinned),
     // Partial index: most queries filter for processing-enabled records
-    userProcessingEnabledIdx: index(
-      "documents_user_id_processing_enabled_idx",
-    )
+    userProcessingEnabledIdx: index("documents_user_id_processing_enabled_idx")
       .on(table.userId)
       .where(sql`processing_enabled = true`),
     // Composite indexes for cursor pagination

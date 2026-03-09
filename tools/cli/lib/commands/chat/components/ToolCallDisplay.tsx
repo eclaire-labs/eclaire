@@ -23,9 +23,7 @@ export function ToolCallDisplay({ toolCall, options }: ToolCallDisplayProps) {
   const { name, status, arguments: args, result, error } = toolCall;
 
   if (status === "starting" || status === "executing") {
-    const label = options.showTools
-      ? `${name}${formatArgs(args)}`
-      : name;
+    const label = options.showTools ? `${name}${formatArgs(args)}` : name;
     return <Spinner label={label} color="yellow" />;
   }
 

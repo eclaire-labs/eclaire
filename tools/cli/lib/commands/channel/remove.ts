@@ -10,7 +10,9 @@ export async function removeCommand(
   try {
     const channel = await getChannel(id);
     if (!channel) {
-      console.error(colors.error(`\n  ${icons.error} Channel not found: ${id}\n`));
+      console.error(
+        colors.error(`\n  ${icons.error} Channel not found: ${id}\n`),
+      );
       process.exit(1);
     }
 
@@ -30,7 +32,9 @@ export async function removeCommand(
         chalk.green(`\n  ${icons.success} Channel removed: ${channel.name}\n`),
       );
     } else {
-      console.error(colors.error(`\n  ${icons.error} Failed to remove channel\n`));
+      console.error(
+        colors.error(`\n  ${icons.error} Failed to remove channel\n`),
+      );
       process.exit(1);
     }
   } catch (error) {

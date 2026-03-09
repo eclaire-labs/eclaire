@@ -18,7 +18,10 @@ const ToggleGroup = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root> &
     VariantProps<typeof toggleVariants>
 >(({ className, variant, size, children, ...props }, ref) => {
-  const contextValue = React.useMemo(() => ({ variant, size }), [variant, size]);
+  const contextValue = React.useMemo(
+    () => ({ variant, size }),
+    [variant, size],
+  );
   return (
     <ToggleGroupPrimitive.Root
       ref={ref}

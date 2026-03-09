@@ -235,7 +235,10 @@ function _buildDocumentQueryConditions({
   endDate,
   dueDateStart,
   dueDateEnd,
-}: Pick<FindDocumentsParams, "userId" | "text" | "startDate" | "endDate" | "dueDateStart" | "dueDateEnd">): SQL<unknown>[] {
+}: Pick<
+  FindDocumentsParams,
+  "userId" | "text" | "startDate" | "endDate" | "dueDateStart" | "dueDateEnd"
+>): SQL<unknown>[] {
   const conditions: SQL<unknown>[] = [eq(schemaDocuments.userId, userId)];
   if (text?.trim()) {
     const searchTerm = `%${text.trim()}%`;
@@ -707,7 +710,8 @@ export async function findDocuments({
         .from(schemaDocuments)
         .where(and(...conditions));
       const baseDocIds = baseMatchedDocs.map((d) => d.id);
-      if (baseDocIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+      if (baseDocIds.length === 0)
+        return { items: [], nextCursor: null, hasMore: false };
 
       const docsWithAllTags = await db
         .select({ documentId: documentsTags.documentId })
@@ -723,7 +727,8 @@ export async function findDocuments({
         .groupBy(documentsTags.documentId)
         .having(sql`COUNT(DISTINCT ${tags.name}) = ${filterTags.length}`);
       const taggedDocIds = docsWithAllTags.map((d) => d.documentId);
-      if (taggedDocIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+      if (taggedDocIds.length === 0)
+        return { items: [], nextCursor: null, hasMore: false };
 
       const finalDocs = await db
         .select({ id: schemaDocuments.id })
@@ -742,7 +747,8 @@ export async function findDocuments({
       finalDocIds = matchedDocs.map((d) => d.id);
     }
 
-    if (finalDocIds.length === 0) return { items: [], nextCursor: null, hasMore: false };
+    if (finalDocIds.length === 0)
+      return { items: [], nextCursor: null, hasMore: false };
 
     // Check hasMore before trimming
     const hasMore = finalDocIds.length > limit;
@@ -899,7 +905,11 @@ export async function countDocuments({
  */
 export async function findDocumentsPaginated(
   params: FindDocumentsParams,
-): Promise<CursorPaginatedResponse<Awaited<ReturnType<typeof findDocuments>>["items"][number]>> {
+): Promise<
+  CursorPaginatedResponse<
+    Awaited<ReturnType<typeof findDocuments>>["items"][number]
+  >
+> {
   const isFirstPage = !params.cursor;
 
   if (isFirstPage) {

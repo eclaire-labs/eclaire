@@ -111,10 +111,9 @@ describe("Tasks — Multi-user Isolation", { timeout: 30000 }, () => {
   it("should not allow user 2 to GET user 1's task comments", async () => {
     expect(user1TaskId).not.toBeNull();
 
-    const response = await loggedFetch2(
-      `/tasks/${user1TaskId}/comments`,
-      { method: "GET" },
-    );
+    const response = await loggedFetch2(`/tasks/${user1TaskId}/comments`, {
+      method: "GET",
+    });
 
     expect(response.status).toBe(404);
   });
@@ -122,13 +121,10 @@ describe("Tasks — Multi-user Isolation", { timeout: 30000 }, () => {
   it("should not allow user 2 to POST a comment on user 1's task", async () => {
     expect(user1TaskId).not.toBeNull();
 
-    const response = await loggedFetch2(
-      `/tasks/${user1TaskId}/comments`,
-      {
-        method: "POST",
-        body: JSON.stringify({ content: "Unauthorized comment" }),
-      },
-    );
+    const response = await loggedFetch2(`/tasks/${user1TaskId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content: "Unauthorized comment" }),
+    });
 
     expect(response.status).toBe(404);
   });
@@ -136,13 +132,10 @@ describe("Tasks — Multi-user Isolation", { timeout: 30000 }, () => {
   it("should not allow user 2 to update user 1's review status", async () => {
     expect(user1TaskId).not.toBeNull();
 
-    const response = await loggedFetch2(
-      `/tasks/${user1TaskId}/review`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ reviewStatus: "accepted" }),
-      },
-    );
+    const response = await loggedFetch2(`/tasks/${user1TaskId}/review`, {
+      method: "PATCH",
+      body: JSON.stringify({ reviewStatus: "accepted" }),
+    });
 
     expect(response.status).toBe(404);
   });
@@ -150,13 +143,10 @@ describe("Tasks — Multi-user Isolation", { timeout: 30000 }, () => {
   it("should not allow user 2 to update user 1's flag", async () => {
     expect(user1TaskId).not.toBeNull();
 
-    const response = await loggedFetch2(
-      `/tasks/${user1TaskId}/flag`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ flagColor: "red" }),
-      },
-    );
+    const response = await loggedFetch2(`/tasks/${user1TaskId}/flag`, {
+      method: "PATCH",
+      body: JSON.stringify({ flagColor: "red" }),
+    });
 
     expect(response.status).toBe(404);
   });
@@ -164,13 +154,10 @@ describe("Tasks — Multi-user Isolation", { timeout: 30000 }, () => {
   it("should not allow user 2 to update user 1's pin status", async () => {
     expect(user1TaskId).not.toBeNull();
 
-    const response = await loggedFetch2(
-      `/tasks/${user1TaskId}/pin`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ isPinned: true }),
-      },
-    );
+    const response = await loggedFetch2(`/tasks/${user1TaskId}/pin`, {
+      method: "PATCH",
+      body: JSON.stringify({ isPinned: true }),
+    });
 
     expect(response.status).toBe(404);
   });

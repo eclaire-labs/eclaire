@@ -142,7 +142,9 @@ describe("transformBookmarkData", () => {
   });
 
   it("preserves processingEnabled: false (uses ?? operator, not ||)", () => {
-    const result = transformBookmarkData(makeRawBookmark({ processingEnabled: false }));
+    const result = transformBookmarkData(
+      makeRawBookmark({ processingEnabled: false }),
+    );
     expect(result.processingEnabled).toBe(false);
   });
 

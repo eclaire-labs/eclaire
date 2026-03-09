@@ -277,8 +277,8 @@ describe("Provider Registry", () => {
 
   const mockAdapter = {
     dialect: "openai_compatible" as const,
-    buildRequest: () => ({} as any),
-    parseResponse: () => ({} as any),
+    buildRequest: () => ({}) as any,
+    parseResponse: () => ({}) as any,
     transformStream: (s: any) => s,
   };
 
@@ -526,11 +526,7 @@ describe("Skill Registry", () => {
   });
 
   it("rejects skills without description", () => {
-    createSkillDir(
-      "no-desc",
-      { name: "no-desc" },
-      "Content",
-    );
+    createSkillDir("no-desc", { name: "no-desc" }, "Content");
 
     registerSkillSource(tempDir, "workspace");
     const skills = discoverSkills();
@@ -555,9 +551,7 @@ describe("Skill Registry", () => {
 
 describe("convertFromLlm", () => {
   it("converts user message with string content", () => {
-    const messages: AIMessage[] = [
-      { role: "user", content: "hello" },
-    ];
+    const messages: AIMessage[] = [{ role: "user", content: "hello" }];
     const result = convertFromLlm(messages);
     expect(result).toHaveLength(1);
     expect(result[0]!.role).toBe("user");
@@ -570,7 +564,10 @@ describe("convertFromLlm", () => {
         role: "user",
         content: [
           { type: "text", text: "What is this?" },
-          { type: "image_url", image_url: { url: "data:image/png;base64,abc123" } },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,abc123" },
+          },
         ],
       },
     ];
@@ -582,13 +579,15 @@ describe("convertFromLlm", () => {
     const blocks = user.content as Array<{ type: string }>;
     expect(blocks).toHaveLength(2);
     expect(blocks[0]).toEqual({ type: "text", text: "What is this?" });
-    expect(blocks[1]).toEqual({ type: "image", mimeType: "image/png", data: "abc123" });
+    expect(blocks[1]).toEqual({
+      type: "image",
+      mimeType: "image/png",
+      data: "abc123",
+    });
   });
 
   it("converts assistant message with text only", () => {
-    const messages: AIMessage[] = [
-      { role: "assistant", content: "Hi there" },
-    ];
+    const messages: AIMessage[] = [{ role: "assistant", content: "Hi there" }];
     const result = convertFromLlm(messages);
     expect(result).toHaveLength(1);
     const msg = result[0]!;
@@ -603,7 +602,9 @@ describe("convertFromLlm", () => {
       { role: "assistant", content: "answer", reasoning: "thinking..." },
     ];
     const result = convertFromLlm(messages);
-    const content = (result[0]! as { content: Array<{ type: string; text: string }> }).content;
+    const content = (
+      result[0]! as { content: Array<{ type: string; text: string }> }
+    ).content;
     expect(content).toHaveLength(2);
     expect(content[0]).toEqual({ type: "thinking", text: "thinking..." });
     expect(content[1]).toEqual({ type: "text", text: "answer" });
@@ -624,7 +625,8 @@ describe("convertFromLlm", () => {
       },
     ];
     const result = convertFromLlm(messages);
-    const content = (result[0]! as { content: Array<{ type: string }> }).content;
+    const content = (result[0]! as { content: Array<{ type: string }> })
+      .content;
     expect(content).toHaveLength(1);
     expect(content[0]).toEqual({
       type: "tool_call",
@@ -636,7 +638,12 @@ describe("convertFromLlm", () => {
 
   it("converts tool result message", () => {
     const messages: AIMessage[] = [
-      { role: "tool", content: "result text", tool_call_id: "call_1", name: "findNotes" },
+      {
+        role: "tool",
+        content: "result text",
+        tool_call_id: "call_1",
+        name: "findNotes",
+      },
     ];
     const result = convertFromLlm(messages);
     expect(result).toHaveLength(1);
@@ -649,12 +656,18 @@ describe("convertFromLlm", () => {
 
   it("converts tool error result", () => {
     const messages: AIMessage[] = [
-      { role: "tool", content: "Error: something failed", tool_call_id: "call_2", name: "search" },
+      {
+        role: "tool",
+        content: "Error: something failed",
+        tool_call_id: "call_2",
+        name: "search",
+      },
     ];
     const result = convertFromLlm(messages);
     const msg = result[0]!;
     expect(msg).toHaveProperty("isError", true);
-    const content = (msg as { content: Array<{ type: string; text: string }> }).content;
+    const content = (msg as { content: Array<{ type: string; text: string }> })
+      .content;
     expect(content[0]!.text).toBe("something failed");
   });
 
@@ -687,7 +700,12 @@ describe("convertFromLlm", () => {
           },
         ],
       },
-      { role: "tool", content: '[{"title":"Recipe"}]', tool_call_id: "call_1", name: "findNotes" },
+      {
+        role: "tool",
+        content: '[{"title":"Recipe"}]',
+        tool_call_id: "call_1",
+        name: "findNotes",
+      },
       { role: "assistant", content: "I found a recipe note." },
     ];
 

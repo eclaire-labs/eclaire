@@ -9,7 +9,10 @@ export {
   TasksListResponseSchema,
 } from "@eclaire/api-types/tasks";
 
-import { TaskCommentSchema, TaskResponseSchema } from "@eclaire/api-types/tasks";
+import {
+  TaskCommentSchema,
+  TaskResponseSchema,
+} from "@eclaire/api-types/tasks";
 
 // Array of task comments
 export const TaskCommentsListSchema = z.array(TaskCommentSchema).meta({
@@ -39,4 +42,3 @@ export const CommentNotFoundSchema = z
     }),
   })
   .meta({ ref: "CommentNotFound" });
-

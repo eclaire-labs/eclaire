@@ -8,25 +8,33 @@ export async function testCommand(id: string): Promise<void> {
   try {
     const channel = await getChannel(id);
     if (!channel) {
-      console.error(colors.error(`\n  ${icons.error} Channel not found: ${id}\n`));
+      console.error(
+        colors.error(`\n  ${icons.error} Channel not found: ${id}\n`),
+      );
       process.exit(1);
     }
 
     if (!channel.isActive) {
       console.error(
-        colors.warning(`\n  ${icons.warning} Channel is disabled. Enable it first with: eclaire channel enable ${id}\n`),
+        colors.warning(
+          `\n  ${icons.warning} Channel is disabled. Enable it first with: eclaire channel enable ${id}\n`,
+        ),
       );
       process.exit(1);
     }
 
     const registry = getChannelRegistry();
-    const adapter = registry.get(channel.platform as "telegram" | "discord" | "slack");
+    const adapter = registry.get(
+      channel.platform as "telegram" | "discord" | "slack",
+    );
 
     // Verify config decrypts properly
     const decrypted = adapter.decryptConfig(channel.config);
     if (!decrypted) {
       console.error(
-        colors.error(`\n  ${icons.error} Failed to decrypt channel config. Check your MASTER_ENCRYPTION_KEY.\n`),
+        colors.error(
+          `\n  ${icons.error} Failed to decrypt channel config. Check your MASTER_ENCRYPTION_KEY.\n`,
+        ),
       );
       process.exit(1);
     }
@@ -39,7 +47,10 @@ export async function testCommand(id: string): Promise<void> {
         userId: channel.userId,
         name: channel.name,
         platform: channel.platform as "telegram" | "discord" | "slack",
-        capability: channel.capability as "notification" | "chat" | "bidirectional",
+        capability: channel.capability as
+          | "notification"
+          | "chat"
+          | "bidirectional",
         config: channel.config,
         isActive: channel.isActive,
       },
@@ -49,7 +60,9 @@ export async function testCommand(id: string): Promise<void> {
     if (result.success) {
       spinner.succeed(chalk.green("Test message sent successfully!"));
     } else {
-      spinner.fail(chalk.red(`Failed to send: ${result.error || "Unknown error"}`));
+      spinner.fail(
+        chalk.red(`Failed to send: ${result.error || "Unknown error"}`),
+      );
       process.exit(1);
     }
   } catch (error) {

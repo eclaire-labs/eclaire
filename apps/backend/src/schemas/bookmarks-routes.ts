@@ -23,9 +23,18 @@ import {
 } from "./common.js";
 
 // Request schemas for review/flag/pin status updates
-export const BookmarkReviewUpdateSchema = reviewStatusUpdateSchema("bookmark", "BookmarkReviewUpdate");
-export const BookmarkFlagUpdateSchema = flagColorUpdateSchema("bookmark", "BookmarkFlagUpdate");
-export const BookmarkPinUpdateSchema = isPinnedUpdateSchema("bookmark", "BookmarkPinUpdate");
+export const BookmarkReviewUpdateSchema = reviewStatusUpdateSchema(
+  "bookmark",
+  "BookmarkReviewUpdate",
+);
+export const BookmarkFlagUpdateSchema = flagColorUpdateSchema(
+  "bookmark",
+  "BookmarkFlagUpdate",
+);
+export const BookmarkPinUpdateSchema = isPinnedUpdateSchema(
+  "bookmark",
+  "BookmarkPinUpdate",
+);
 
 // GET /api/bookmarks - Get all bookmarks
 export const getBookmarksRouteDescription = {

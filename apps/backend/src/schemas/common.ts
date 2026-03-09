@@ -42,10 +42,12 @@ export const reviewStatusFieldSchema = z.enum(REVIEW_STATUSES).meta({
 /**
  * Task status schema with OpenAPI metadata.
  */
-export const taskStatusFieldSchema = z.enum(["backlog", "not-started", "in-progress", "completed", "cancelled"]).meta({
-  description: "Current status of the task",
-  example: "not-started",
-});
+export const taskStatusFieldSchema = z
+  .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
+  .meta({
+    description: "Current status of the task",
+    example: "not-started",
+  });
 
 // =============================================================================
 // SHARED FIELD UPDATE SCHEMAS (for review/flag/pin endpoints)

@@ -324,7 +324,9 @@ export const BookmarkSearchParamsSchema = z
       .meta({
         description:
           "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
-        examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6ImJrbV8xMjMifQ"],
+        examples: [
+          "eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6ImJrbV8xMjMifQ",
+        ],
       }),
 
     sortBy: z

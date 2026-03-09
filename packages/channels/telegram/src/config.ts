@@ -43,9 +43,7 @@ export function validateAndEncryptConfig(
  * Decrypts stored config for runtime use.
  * Returns null on failure.
  */
-export function decryptConfig(
-  storedConfig: unknown,
-): TelegramConfig | null {
+export function decryptConfig(storedConfig: unknown): TelegramConfig | null {
   const { decrypt, logger } = getDeps();
 
   try {

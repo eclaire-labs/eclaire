@@ -22,16 +22,12 @@ describe("MemoryStorage — adapter-specific", () => {
     });
 
     it("reflects the number of stored objects", async () => {
-      await storage.writeBuffer(
-        "user-1/docs/doc-1/a.txt",
-        Buffer.from("a"),
-        { contentType: "text/plain" },
-      );
-      await storage.writeBuffer(
-        "user-1/docs/doc-2/b.txt",
-        Buffer.from("b"),
-        { contentType: "text/plain" },
-      );
+      await storage.writeBuffer("user-1/docs/doc-1/a.txt", Buffer.from("a"), {
+        contentType: "text/plain",
+      });
+      await storage.writeBuffer("user-1/docs/doc-2/b.txt", Buffer.from("b"), {
+        contentType: "text/plain",
+      });
 
       expect(storage.size).toBe(2);
     });

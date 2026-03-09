@@ -109,6 +109,8 @@ describe("decryptConfig", () => {
 
   it("returns null for missing required fields", () => {
     expect(decryptConfig({ channel_id: "C123" })).toBeNull();
-    expect(decryptConfig({ channel_id: "C123", bot_token: "enc:tok" })).toBeNull();
+    expect(
+      decryptConfig({ channel_id: "C123", bot_token: "enc:tok" }),
+    ).toBeNull();
   });
 });

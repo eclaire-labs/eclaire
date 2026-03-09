@@ -1,8 +1,4 @@
-import {
-  PermissionFlagsBits,
-  type Client,
-  type TextChannel,
-} from "discord.js";
+import { PermissionFlagsBits, type Client, type TextChannel } from "discord.js";
 
 const REQUIRED_PERMISSIONS = [
   { flag: PermissionFlagsBits.ViewChannel, name: "ViewChannel" },

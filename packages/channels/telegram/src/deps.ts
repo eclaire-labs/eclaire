@@ -30,15 +30,22 @@ export interface TelegramDeps {
   encrypt: (value: string) => string;
   decrypt: (value: string) => string;
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
-  processPromptRequest: (...args: any[]) => Promise<{ response?: string; type?: string; requestId?: string }>;
+  processPromptRequest: (
+    ...args: any[]
+  ) => Promise<{ response?: string; type?: string; requestId?: string }>;
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
-  processPromptRequestStream?: (...args: any[]) => Promise<ReadableStream<StreamEvent>>;
+  processPromptRequestStream?: (
+    ...args: any[]
+  ) => Promise<ReadableStream<StreamEvent>>;
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   recordHistory: (entry: any) => Promise<void>;
   logger: TelegramLogger;
 
   // Optional session & model deps for slash commands
-  createSession?: (userId: string, title?: string) => Promise<{ id: string; title: string }>;
+  createSession?: (
+    userId: string,
+    title?: string,
+  ) => Promise<{ id: string; title: string }>;
   listSessions?: (
     userId: string,
     limit?: number,

@@ -41,11 +41,10 @@ const inputSchema = z.object({
 export const createTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "createTask",
   label: "Create Task",
-  description: "Create a new task with title, description, status, priority, tags, and due date.",
+  description:
+    "Create a new task with title, description, status, priority, tags, and due date.",
   inputSchema,
-  promptGuidelines: [
-    "Always confirm with the user before creating tasks.",
-  ],
+  promptGuidelines: ["Always confirm with the user before creating tasks."],
   execute: async (_callId, input, ctx) => {
     const result = await createTaskService(
       {

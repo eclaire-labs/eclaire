@@ -28,7 +28,9 @@ export interface ChannelAdapter {
    * Throws on validation failure.
    * Returns config ready for DB storage.
    */
-  validateAndEncryptConfig(rawConfig: unknown): Promise<Record<string, unknown>>;
+  validateAndEncryptConfig(
+    rawConfig: unknown,
+  ): Promise<Record<string, unknown>>;
 
   /**
    * Decrypt stored config for runtime use.

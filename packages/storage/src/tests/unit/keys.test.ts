@@ -23,9 +23,9 @@ describe("buildKey", () => {
   });
 
   it("handles nested file names", () => {
-    expect(
-      buildKey("user-123", "bookmarks", "bm-789", "images/img1.jpg"),
-    ).toBe("user-123/bookmarks/bm-789/images/img1.jpg");
+    expect(buildKey("user-123", "bookmarks", "bm-789", "images/img1.jpg")).toBe(
+      "user-123/bookmarks/bm-789/images/img1.jpg",
+    );
   });
 });
 
@@ -65,9 +65,7 @@ describe("prefix builders", () => {
   });
 
   it("builds category prefix", () => {
-    expect(categoryPrefix("user-123", "documents")).toBe(
-      "user-123/documents/",
-    );
+    expect(categoryPrefix("user-123", "documents")).toBe("user-123/documents/");
   });
 
   it("builds user prefix", () => {

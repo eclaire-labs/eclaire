@@ -494,9 +494,7 @@ describe.each(DB_TEST_CONFIGS)("A8-A10: Error Handling ($label)", ({
       const [row] = await testDb.db
         .select()
         .from(queueJobs)
-        .where(
-          or(eq(queueJobs.id, jobId), eq(queueJobs.key, jobId)),
-        )
+        .where(or(eq(queueJobs.id, jobId), eq(queueJobs.key, jobId)))
         .limit(1);
       return row;
     }

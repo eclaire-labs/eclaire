@@ -26,7 +26,8 @@ async function createTestDocument(
   const description = overrides.description ?? "Test document description";
   const tags = overrides.tags ?? ["test"];
   const filename = overrides.filename ?? "test-document.txt";
-  const content = overrides.content ?? "Dummy file content for integration test.";
+  const content =
+    overrides.content ?? "Dummy file content for integration test.";
   const mimeType = overrides.mimeType ?? "text/plain";
 
   const formData = new FormData();
@@ -90,7 +91,10 @@ describe("Documents API Integration Tests", () => {
   it("POST /api/documents - should create a new document entry using FormData", async () => {
     await delay(100);
 
-    const data = await createTestDocument(authenticatedFetch, initialDocumentData);
+    const data = await createTestDocument(
+      authenticatedFetch,
+      initialDocumentData,
+    );
 
     // Save ID first
     createdDocumentId = data.id;
@@ -104,7 +108,9 @@ describe("Documents API Integration Tests", () => {
     expect(data.originalFilename).toBe(initialDocumentData.filename);
     expect(data.mimeType).toBe(initialDocumentData.mimeType);
     expect(data.fileSize).toBe(Buffer.from(initialDocumentData.content).length);
-    expect(data.fileUrl).toMatch(new RegExp(`^/api/documents/${data.id}/file$`));
+    expect(data.fileUrl).toMatch(
+      new RegExp(`^/api/documents/${data.id}/file$`),
+    );
     expect(data.createdAt).toBeTypeOf("string");
     expect(data.updatedAt).toBeTypeOf("string");
     expect(Array.isArray(data.tags)).toBe(true);
@@ -428,7 +434,9 @@ describe("Documents API Integration Tests", () => {
 
     try {
       // Set due date
-      const newDueDate = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString();
+      const newDueDate = new Date(
+        Date.now() + 21 * 24 * 60 * 60 * 1000,
+      ).toISOString();
       const setResponse = await authenticatedFetch(
         `${BASE_URL}/documents/${doc.id}`,
         {
@@ -479,7 +487,10 @@ describe("Documents API Integration Tests", () => {
       expect([202, 400]).toContain(response.status);
 
       if (response.status === 202) {
-        const data = (await response.json()) as { message: string; documentId: string };
+        const data = (await response.json()) as {
+          message: string;
+          documentId: string;
+        };
         expect(data.documentId).toBe(doc.id);
       }
     } finally {

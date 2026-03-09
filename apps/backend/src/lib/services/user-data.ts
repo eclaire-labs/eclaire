@@ -32,7 +32,12 @@ const {
 import { categoryPrefix, getStorage, userPrefix } from "../storage/index.js";
 
 // Backward-compatible re-exports for route files
-export { NotFoundError as UserNotFoundError, NotFoundError as ApiKeyNotFoundError, NotFoundError as AvatarNotFoundError, ValidationError as InvalidImageError };
+export {
+  NotFoundError as UserNotFoundError,
+  NotFoundError as ApiKeyNotFoundError,
+  NotFoundError as AvatarNotFoundError,
+  ValidationError as InvalidImageError,
+};
 
 // Individual delete services are no longer needed for bulk deletion
 // We use bulk transactions instead for better performance and SQLite safety

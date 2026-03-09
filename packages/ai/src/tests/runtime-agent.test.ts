@@ -11,7 +11,10 @@ import { RuntimeAgent } from "../runtime/agent/runtime-agent.js";
 import { createRuntimeContext } from "../runtime/agent/types.js";
 import type { RuntimeToolDefinition } from "../runtime/tools/types.js";
 import { textResult } from "../runtime/tools/types.js";
-import type { RuntimeMessage, RuntimeStreamEvent } from "../runtime/messages.js";
+import type {
+  RuntimeMessage,
+  RuntimeStreamEvent,
+} from "../runtime/messages.js";
 
 import { initAI, resetAI } from "../index.js";
 import {
@@ -66,7 +69,6 @@ const searchTool: RuntimeToolDefinition = {
     return textResult(`Found results for: ${input.query}`, { count: 3 });
   },
 };
-
 
 // =============================================================================
 // TESTS
@@ -146,7 +148,9 @@ describe("RuntimeAgent", () => {
       expect(result.steps).toHaveLength(2);
       expect(result.steps[0]!.toolExecutions).toHaveLength(1);
       expect(result.steps[0]!.toolExecutions![0]!.toolName).toBe("search");
-      expect(result.steps[0]!.toolExecutions![0]!.result.isError).toBeUndefined();
+      expect(
+        result.steps[0]!.toolExecutions![0]!.result.isError,
+      ).toBeUndefined();
       expect(result.toolCallSummaries).toHaveLength(1);
     });
 
@@ -154,9 +158,7 @@ describe("RuntimeAgent", () => {
       mockFetch.queueJsonResponse(
         createOpenAIResponse({
           content: "",
-          toolCalls: [
-            { id: "call_1", name: "unknownTool", arguments: {} },
-          ],
+          toolCalls: [{ id: "call_1", name: "unknownTool", arguments: {} }],
           finishReason: "tool_calls",
         }),
       );
@@ -186,7 +188,11 @@ describe("RuntimeAgent", () => {
           createOpenAIResponse({
             content: `Step ${i}`,
             toolCalls: [
-              { id: `call_${i}`, name: "search", arguments: { query: `q${i}` } },
+              {
+                id: `call_${i}`,
+                name: "search",
+                arguments: { query: `q${i}` },
+              },
             ],
             finishReason: "tool_calls",
           }),
@@ -222,7 +228,10 @@ describe("RuntimeAgent", () => {
 
       const previousMessages: RuntimeMessage[] = [
         { role: "user", content: "My name is Alice", timestamp: Date.now() },
-        { role: "assistant", content: [{ type: "text", text: "Nice to meet you Alice!" }] },
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "Nice to meet you Alice!" }],
+        },
       ];
 
       const context = createRuntimeContext({ userId: "user_1" });
@@ -256,7 +265,9 @@ describe("RuntimeAgent", () => {
       await agent.generate({ prompt: "Hello", context });
 
       const requestBody = JSON.parse(mockFetch.calls[0]!.init?.body as string);
-      expect(requestBody.messages[0].content).toBe("You are helping user alice");
+      expect(requestBody.messages[0].content).toBe(
+        "You are helping user alice",
+      );
     });
   });
 
