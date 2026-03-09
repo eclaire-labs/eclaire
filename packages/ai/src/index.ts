@@ -408,9 +408,6 @@ export {
   createRuntimeContext,
   runtimeToolToOpenAI,
   executeRuntimeTool,
-  // Compatibility bridge
-  wrapLegacyTool,
-  wrapLegacyTools,
 } from "./runtime/index.js";
 
 // Registries

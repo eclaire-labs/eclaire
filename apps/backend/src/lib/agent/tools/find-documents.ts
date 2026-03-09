@@ -4,10 +4,9 @@
  * Search documents by text, tags, file types, and date range.
  */
 
-import { tool } from "@eclaire/ai";
+import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { findDocuments as findDocumentsService } from "../../services/documents.js";
-import type { BackendAgentContext } from "../types.js";
 
 const inputSchema = z.object({
   text: z.string().optional().describe("Full-text search query"),
@@ -25,14 +24,15 @@ const inputSchema = z.object({
     .describe("Maximum number of results"),
 });
 
-export const findDocumentsTool = tool<typeof inputSchema, BackendAgentContext>({
+export const findDocumentsTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "findDocuments",
+  label: "Find Documents",
   description:
     "Search documents by full-text, tags, file types, and date range.",
   inputSchema,
-  execute: async (input, context) => {
+  execute: async (_callId, input, ctx) => {
     const results = await findDocumentsService({
-      userId: context.userId,
+      userId: ctx.userId,
       text: input.text,
       tags: input.tags,
       fileTypes: input.fileTypes,
@@ -40,9 +40,6 @@ export const findDocumentsTool = tool<typeof inputSchema, BackendAgentContext>({
       endDate: input.endDate ? new Date(input.endDate) : undefined,
       limit: input.limit,
     });
-    return {
-      success: true,
-      content: JSON.stringify(results, null, 2),
-    };
+    return textResult(JSON.stringify(results, null, 2));
   },
-});
+};

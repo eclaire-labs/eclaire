@@ -4,10 +4,9 @@
  * Count documents matching criteria.
  */
 
-import { tool } from "@eclaire/ai";
+import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { countDocuments as countDocumentsService } from "../../services/documents.js";
-import type { BackendAgentContext } from "../types.js";
 
 const inputSchema = z.object({
   text: z.string().optional().describe("Full-text search query"),
@@ -20,24 +19,20 @@ const inputSchema = z.object({
   endDate: z.string().optional().describe("End of date range (ISO format)"),
 });
 
-export const countDocumentsTool = tool<typeof inputSchema, BackendAgentContext>(
-  {
-    name: "countDocuments",
-    description: "Count documents matching criteria.",
-    inputSchema,
-    execute: async (input, context) => {
-      const count = await countDocumentsService({
-        userId: context.userId,
-        text: input.text,
-        tags: input.tags,
-        fileTypes: input.fileTypes,
-        startDate: input.startDate ? new Date(input.startDate) : undefined,
-        endDate: input.endDate ? new Date(input.endDate) : undefined,
-      });
-      return {
-        success: true,
-        content: JSON.stringify({ count }),
-      };
-    },
+export const countDocumentsTool: RuntimeToolDefinition<typeof inputSchema> = {
+  name: "countDocuments",
+  label: "Count Documents",
+  description: "Count documents matching criteria.",
+  inputSchema,
+  execute: async (_callId, input, ctx) => {
+    const count = await countDocumentsService({
+      userId: ctx.userId,
+      text: input.text,
+      tags: input.tags,
+      fileTypes: input.fileTypes,
+      startDate: input.startDate ? new Date(input.startDate) : undefined,
+      endDate: input.endDate ? new Date(input.endDate) : undefined,
+    });
+    return textResult(JSON.stringify({ count }));
   },
-);
+};

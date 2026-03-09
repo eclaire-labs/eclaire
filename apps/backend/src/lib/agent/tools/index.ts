@@ -1,9 +1,10 @@
 /**
  * Backend Agent Tools
  *
- * All available tools for the backend ToolLoopAgent.
+ * All available tools for the RuntimeAgent.
  */
 
+import type { RuntimeToolDefinition } from "@eclaire/ai";
 import { countBookmarksTool } from "./count-bookmarks.js";
 import { countDocumentsTool } from "./count-documents.js";
 // Count tools
@@ -20,9 +21,9 @@ import { findPhotosTool } from "./find-photos.js";
 import { findTasksTool } from "./find-tasks.js";
 
 /**
- * All backend tools as a record for ToolLoopAgent.
+ * All backend tools as a record for RuntimeAgent.
  */
-export const backendTools = {
+export const backendTools: Record<string, RuntimeToolDefinition> = {
   // Find tools
   findNotes: findNotesTool,
   findBookmarks: findBookmarksTool,

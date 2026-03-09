@@ -354,10 +354,7 @@ export async function createPhoto(data: CreatePhotoData, userId: string) {
       },
     );
 
-    // Create storageInfo for backward compatibility
-    storageInfo = {
-      storageId: storageKey,
-    };
+    storageInfo = { storageId: storageKey };
 
     // 3. Now create the photo record with the actual storage ID in a single operation
     const [newPhoto] = await db

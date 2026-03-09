@@ -4,10 +4,9 @@
  * Count note entries matching criteria.
  */
 
-import { tool } from "@eclaire/ai";
+import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { countNotes as countNotesService } from "../../services/notes.js";
-import type { BackendAgentContext } from "../types.js";
 
 const inputSchema = z.object({
   text: z.string().optional().describe("Full-text search query"),
@@ -16,21 +15,19 @@ const inputSchema = z.object({
   endDate: z.string().optional().describe("End of date range (ISO format)"),
 });
 
-export const countNotesTool = tool<typeof inputSchema, BackendAgentContext>({
+export const countNotesTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "countNotes",
+  label: "Count Notes",
   description: "Count note entries matching criteria.",
   inputSchema,
-  execute: async (input, context) => {
+  execute: async (_callId, input, ctx) => {
     const count = await countNotesService({
-      userId: context.userId,
+      userId: ctx.userId,
       text: input.text,
       tags: input.tags,
       startDate: input.startDate ? new Date(input.startDate) : undefined,
       endDate: input.endDate ? new Date(input.endDate) : undefined,
     });
-    return {
-      success: true,
-      content: JSON.stringify({ count }),
-    };
+    return textResult(JSON.stringify({ count }));
   },
-});
+};

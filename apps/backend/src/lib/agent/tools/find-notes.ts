@@ -4,10 +4,9 @@
  * Search note entries by text, tags, and date range.
  */
 
-import { tool } from "@eclaire/ai";
+import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { findNotes as findNotesService } from "../../services/notes.js";
-import type { BackendAgentContext } from "../types.js";
 
 const inputSchema = z.object({
   text: z.string().optional().describe("Full-text search query"),
@@ -21,22 +20,20 @@ const inputSchema = z.object({
     .describe("Maximum number of results"),
 });
 
-export const findNotesTool = tool<typeof inputSchema, BackendAgentContext>({
+export const findNotesTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "findNotes",
+  label: "Find Notes",
   description: "Search note entries by full-text, tags, and date range.",
   inputSchema,
-  execute: async (input, context) => {
+  execute: async (_callId, input, ctx) => {
     const results = await findNotesService({
-      userId: context.userId,
+      userId: ctx.userId,
       text: input.text,
       tags: input.tags,
       startDate: input.startDate ? new Date(input.startDate) : undefined,
       endDate: input.endDate ? new Date(input.endDate) : undefined,
       limit: input.limit,
     });
-    return {
-      success: true,
-      content: JSON.stringify(results.items, null, 2),
-    };
+    return textResult(JSON.stringify(results.items, null, 2));
   },
-});
+};

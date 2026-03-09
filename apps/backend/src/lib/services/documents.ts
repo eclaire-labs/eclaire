@@ -304,7 +304,6 @@ export async function createDocument(
       },
     );
 
-    // Create storageInfo for backward compatibility
     storageInfo = { storageId: storageKey };
 
     // Now create the document record with the actual storage ID in a single operation

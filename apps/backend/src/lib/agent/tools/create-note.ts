@@ -4,21 +4,21 @@
  * Create a new note with text or markdown content.
  */
 
-import { tool } from "@eclaire/ai";
+import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { createNoteEntry } from "../../services/notes.js";
-import type { BackendAgentContext } from "../types.js";
 
 const inputSchema = z.object({
   title: z.string().describe("Title of the note"),
   content: z.string().describe("Content of the note (plain text or markdown)"),
 });
 
-export const createNoteTool = tool<typeof inputSchema, BackendAgentContext>({
+export const createNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "createNote",
+  label: "Create Note",
   description: "Create a new note with text or markdown content.",
   inputSchema,
-  execute: async (input, context) => {
+  execute: async (_callId, input, ctx) => {
     const servicePayload = {
       content: input.content,
       metadata: {
@@ -30,10 +30,7 @@ export const createNoteTool = tool<typeof inputSchema, BackendAgentContext>({
       userAgent: "AI Assistant",
     };
 
-    const result = await createNoteEntry(servicePayload, context.userId);
-    return {
-      success: true,
-      content: JSON.stringify(result, null, 2),
-    };
+    const result = await createNoteEntry(servicePayload, ctx.userId);
+    return textResult(JSON.stringify(result, null, 2));
   },
-});
+};

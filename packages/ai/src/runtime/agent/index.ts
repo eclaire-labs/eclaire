@@ -6,7 +6,6 @@ export { RuntimeAgent } from "./runtime-agent.js";
 export { convertToLlm } from "./convert-to-llm.js";
 export { convertFromLlm } from "./convert-from-llm.js";
 export { runtimeToolToOpenAI, executeRuntimeTool } from "./runtime-tool-helpers.js";
-export { wrapLegacyTool, wrapLegacyTools } from "./compat.js";
 
 export type {
   RuntimeAgentConfig,

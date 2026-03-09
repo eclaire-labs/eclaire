@@ -4,10 +4,9 @@
  * Count photos matching criteria.
  */
 
-import { tool } from "@eclaire/ai";
+import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { countPhotos as countPhotosService } from "../../services/photos.js";
-import type { BackendAgentContext } from "../types.js";
 
 const inputSchema = z.object({
   tags: z.array(z.string()).optional().describe("Filter by tags"),
@@ -15,20 +14,18 @@ const inputSchema = z.object({
   endDate: z.string().optional().describe("End of date range (ISO format)"),
 });
 
-export const countPhotosTool = tool<typeof inputSchema, BackendAgentContext>({
+export const countPhotosTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "countPhotos",
+  label: "Count Photos",
   description: "Count photos matching criteria.",
   inputSchema,
-  execute: async (input, context) => {
+  execute: async (_callId, input, ctx) => {
     const count = await countPhotosService({
-      userId: context.userId,
+      userId: ctx.userId,
       tags: input.tags,
       startDate: input.startDate ? new Date(input.startDate) : undefined,
       endDate: input.endDate ? new Date(input.endDate) : undefined,
     });
-    return {
-      success: true,
-      content: JSON.stringify({ count }),
-    };
+    return textResult(JSON.stringify({ count }));
   },
-});
+};

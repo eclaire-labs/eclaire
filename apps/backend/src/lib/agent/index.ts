@@ -37,4 +37,4 @@ export {
 export { backendTools } from "./tools/index.js";
 
 // Types
-export type { BackendAgentContext, UserContext } from "./types.js";
+export type { UserContext } from "./types.js";

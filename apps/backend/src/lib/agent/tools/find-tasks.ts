@@ -4,13 +4,12 @@
  * Search tasks by text, tags, status, and date range.
  */
 
-import { tool } from "@eclaire/ai";
+import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import {
   findTasks as findTasksService,
   type TaskStatus,
 } from "../../services/tasks.js";
-import type { BackendAgentContext } from "../types.js";
 
 const inputSchema = z.object({
   text: z
@@ -31,11 +30,12 @@ const inputSchema = z.object({
     .describe("Maximum number of results"),
 });
 
-export const findTasksTool = tool<typeof inputSchema, BackendAgentContext>({
+export const findTasksTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "findTasks",
+  label: "Find Tasks",
   description: "Search tasks by keywords, tags, status, and date range.",
   inputSchema,
-  execute: async (input, context) => {
+  execute: async (_callId, input, ctx) => {
     let validStatus: TaskStatus | undefined;
     if (
       input.status &&
@@ -45,7 +45,7 @@ export const findTasksTool = tool<typeof inputSchema, BackendAgentContext>({
     }
 
     const results = await findTasksService({
-      userId: context.userId,
+      userId: ctx.userId,
       text: input.text,
       tags: input.tags,
       status: validStatus,
@@ -53,9 +53,6 @@ export const findTasksTool = tool<typeof inputSchema, BackendAgentContext>({
       endDate: input.endDate ? new Date(input.endDate) : undefined,
       limit: input.limit,
     });
-    return {
-      success: true,
-      content: JSON.stringify(results.items, null, 2),
-    };
+    return textResult(JSON.stringify(results.items, null, 2));
   },
-});
+};

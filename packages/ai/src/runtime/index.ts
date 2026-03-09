@@ -58,7 +58,6 @@ export { RuntimeAgent } from "./agent/index.js";
 export { convertToLlm, convertFromLlm } from "./agent/index.js";
 export { runtimeToolToOpenAI, executeRuntimeTool } from "./agent/index.js";
 export { createRuntimeContext } from "./agent/index.js";
-export { wrapLegacyTool, wrapLegacyTools } from "./agent/index.js";
 
 export type {
   RuntimeAgentConfig,

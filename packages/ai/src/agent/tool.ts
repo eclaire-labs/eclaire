@@ -46,31 +46,37 @@ export function tool<
   return definition;
 }
 
+/** Common shape shared by AgentToolDefinition and RuntimeToolDefinition */
+interface ToolLike {
+  name: string;
+  description: string;
+  inputSchema: AnyZodType;
+}
+
 /**
- * Convert an AgentToolDefinition to OpenAI ToolDefinition format.
+ * Convert a tool definition to OpenAI ToolDefinition format.
+ * Works with both AgentToolDefinition and RuntimeToolDefinition.
  * Uses Zod 4's built-in JSON Schema conversion.
  */
 export function toOpenAIToolDefinition(
-  // biome-ignore lint/suspicious/noExplicitAny: context type erased — only schema/name/description used for OpenAI conversion
-  agentTool: AgentToolDefinition<AnyZodType, any>,
+  tool: ToolLike,
 ): import("../types.js").ToolDefinition {
   return {
     type: "function",
     function: {
-      name: agentTool.name,
-      description: agentTool.description,
-      parameters: z.toJSONSchema(agentTool.inputSchema),
+      name: tool.name,
+      description: tool.description,
+      parameters: z.toJSONSchema(tool.inputSchema),
     },
   };
 }
 
 /**
- * Convert multiple AgentToolDefinitions to OpenAI format.
- * Context type doesn't matter for conversion since we only use name, description, and schema.
+ * Convert multiple tool definitions to OpenAI format.
+ * Works with both AgentToolDefinition and RuntimeToolDefinition.
  */
 export function toOpenAITools(
-  // biome-ignore lint/suspicious/noExplicitAny: context type erased — only schema/name/description used for OpenAI conversion
-  tools: Record<string, AgentToolDefinition<AnyZodType, any>>,
+  tools: Record<string, ToolLike>,
 ): import("../types.js").ToolDefinition[] {
   return Object.values(tools).map(toOpenAIToolDefinition);
 }

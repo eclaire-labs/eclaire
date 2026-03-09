@@ -10,7 +10,6 @@ import {
   createRuntimeContext,
   RuntimeAgent,
   type RuntimeStreamEvent,
-  wrapLegacyTools,
 } from "@eclaire/ai";
 import type { Context } from "../../schemas/prompt-params.js";
 import { createChildLogger } from "../logger.js";
@@ -72,7 +71,7 @@ export function createBackendAgent(options: {
       });
     },
 
-    tools: options.includeTools ? wrapLegacyTools(backendTools) : {},
+    tools: options.includeTools ? backendTools : {},
 
     maxSteps: 10,
 

@@ -4,10 +4,9 @@
  * Search photos by tags, date range, and location.
  */
 
-import { tool } from "@eclaire/ai";
+import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { findPhotos as findPhotosService } from "../../services/photos.js";
-import type { BackendAgentContext } from "../types.js";
 
 const inputSchema = z.object({
   tags: z.array(z.string()).optional().describe("Filter by tags"),
@@ -26,13 +25,14 @@ const inputSchema = z.object({
     .describe("Maximum number of results"),
 });
 
-export const findPhotosTool = tool<typeof inputSchema, BackendAgentContext>({
+export const findPhotosTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "findPhotos",
+  label: "Find Photos",
   description: "Search photos by tags, date range, and location.",
   inputSchema,
-  execute: async (input, context) => {
+  execute: async (_callId, input, ctx) => {
     const result = await findPhotosService({
-      userId: context.userId,
+      userId: ctx.userId,
       tags: input.tags,
       startDate: input.startDate ? new Date(input.startDate) : undefined,
       endDate: input.endDate ? new Date(input.endDate) : undefined,
@@ -40,9 +40,6 @@ export const findPhotosTool = tool<typeof inputSchema, BackendAgentContext>({
       dateField: input.dateField || "dateTaken",
       limit: input.limit,
     });
-    return {
-      success: true,
-      content: JSON.stringify(result.items, null, 2),
-    };
+    return textResult(JSON.stringify(result.items, null, 2));
   },
-});
+};

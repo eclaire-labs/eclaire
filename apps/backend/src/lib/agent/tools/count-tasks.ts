@@ -4,13 +4,12 @@
  * Count tasks matching criteria.
  */
 
-import { tool } from "@eclaire/ai";
+import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import {
   countTasks as countTasksService,
   type TaskStatus,
 } from "../../services/tasks.js";
-import type { BackendAgentContext } from "../types.js";
 
 const inputSchema = z.object({
   text: z
@@ -26,11 +25,12 @@ const inputSchema = z.object({
   endDate: z.string().optional().describe("End of date range (ISO format)"),
 });
 
-export const countTasksTool = tool<typeof inputSchema, BackendAgentContext>({
+export const countTasksTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "countTasks",
+  label: "Count Tasks",
   description: "Count tasks matching criteria.",
   inputSchema,
-  execute: async (input, context) => {
+  execute: async (_callId, input, ctx) => {
     let validStatus: TaskStatus | undefined;
     if (
       input.status &&
@@ -40,16 +40,13 @@ export const countTasksTool = tool<typeof inputSchema, BackendAgentContext>({
     }
 
     const count = await countTasksService({
-      userId: context.userId,
+      userId: ctx.userId,
       text: input.text,
       tags: input.tags,
       status: validStatus,
       startDate: input.startDate ? new Date(input.startDate) : undefined,
       endDate: input.endDate ? new Date(input.endDate) : undefined,
     });
-    return {
-      success: true,
-      content: JSON.stringify({ count }),
-    };
+    return textResult(JSON.stringify({ count }));
   },
-});
+};
