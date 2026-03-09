@@ -262,21 +262,11 @@ async function setInstalledVersion(
   schema: Awaited<typeof import("../db/index.js")>["schema"],
   version: string,
 ): Promise<void> {
-  const existing = await db
-    .select()
-    .from(schema.appMeta)
-    .where(eq(schema.appMeta.key, "installed_version"))
-    .limit(1);
-
-  if (existing.length > 0) {
-    await db
-      .update(schema.appMeta)
-      .set({ value: version, updatedAt: new Date() })
-      .where(eq(schema.appMeta.key, "installed_version"));
-  } else {
-    await db.insert(schema.appMeta).values({
-      key: "installed_version",
-      value: version,
+  await db
+    .insert(schema.appMeta)
+    .values({ key: "installed_version", value: version })
+    .onConflictDoUpdate({
+      target: schema.appMeta.key,
+      set: { value: version, updatedAt: new Date() },
     });
-  }
 }

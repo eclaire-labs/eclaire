@@ -38,7 +38,6 @@ import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
-import { recordHistory } from "./history.js";
 import type { CallerContext } from "./types.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
@@ -132,29 +131,6 @@ async function getDocumentTags(documentId: string): Promise<string[]> {
   } catch (error) {
     logger.error({ err: error, documentId }, "Error getting tags for document");
     return [];
-  }
-}
-
-async function addTagsToDocument(
-  documentId: string,
-  tagNames: string[],
-  userId: string,
-) {
-  if (!tagNames || tagNames.length === 0) return;
-  try {
-    // Get or create tags (this uses its own transaction)
-    const tagRecords = await getOrCreateTags(tagNames, userId);
-    if (tagRecords.length > 0) {
-      await db
-        .insert(documentsTags)
-        .values(
-          tagRecords.map((tag) => ({ documentId: documentId, tagId: tag.id })),
-        )
-        .onConflictDoNothing();
-    }
-  } catch (error) {
-    logger.error({ err: error, documentId }, "Error adding tags to document");
-    throw new Error("Failed to add tags to document");
   }
 }
 
@@ -311,16 +287,18 @@ export async function createDocument(
 
     storageInfo = { storageId: storageKey };
 
-    // Now create the document record with the actual storage ID in a single operation
-    const [newDocument] = await db
-      .insert(schemaDocuments)
-      .values({
-        id: documentId, // Use the pre-generated ID
+    // Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
+
+    // Atomic transaction: insert document, tags, and history together
+    await txManager.withTransaction(async (tx) => {
+      await tx.documents.insert({
+        id: documentId,
         userId,
         title: metadata.title || originalFilename,
         description: metadata.description || null,
         dueDate: dueDateValue,
-        storageId: storageKey, // Use the actual storage ID from the save operation
+        storageId: storageKey,
         originalFilename,
         mimeType: verifiedMimeType,
         fileSize,
@@ -331,33 +309,39 @@ export async function createDocument(
         reviewStatus: metadata.reviewStatus || "pending",
         flagColor: metadata.flagColor || null,
         isPinned: metadata.isPinned || false,
-        // createdAt and updatedAt are handled by schema defaults
-      })
-      .returning();
+      });
 
-    if (metadata.tags && metadata.tags.length > 0) {
-      await addTagsToDocument(documentId, metadata.tags, userId);
-    }
+      // Handle tags inside transaction
+      if (metadata.tags && metadata.tags.length > 0) {
+        const tagList = await tx.getOrCreateTags(metadata.tags, userId);
+        for (const tag of tagList) {
+          await tx.documentsTags.insert({ documentId, tagId: tag.id });
+        }
+      }
 
-    await recordHistory({
-      action: "create",
-      itemType: "document",
-      itemId: documentId,
-      itemName: metadata.title || originalFilename,
-      afterData: {
-        id: documentId,
-        title: metadata.title,
-        storageId: storageInfo.storageId,
-        originalFilename,
-        mimeType: verifiedMimeType,
-        tags: metadata.tags,
-      },
-      actor: caller.actor,
-      actorId: caller.userId,
-      userId,
-    }).catch((err) =>
-      logger.error({ err }, "Failed to record history for document creation"),
-    );
+      // Record history - atomic with the insert
+      await tx.history.insert({
+        id: historyId,
+        action: "create",
+        itemType: "document",
+        itemId: documentId,
+        itemName: metadata.title || originalFilename,
+        beforeData: null,
+        afterData: {
+          id: documentId,
+          title: metadata.title,
+          storageId: storageInfo.storageId,
+          originalFilename,
+          mimeType: verifiedMimeType,
+          tags: metadata.tags,
+        },
+        actor: caller.actor,
+        actorId: caller.userId,
+        userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
+    });
 
     const newDocumentDetails = await getDocumentWithDetails(documentId, userId);
 
@@ -370,9 +354,9 @@ export async function createDocument(
         await queueAdapter.enqueueDocument({
           documentId,
           userId,
-          storageId: newDocument?.storageId || undefined,
-          mimeType: newDocument?.mimeType || undefined,
-          originalFilename: newDocument?.originalFilename || undefined,
+          storageId: storageKey,
+          mimeType: verifiedMimeType,
+          originalFilename,
         });
         logger.info(
           `Enqueued unified document processing job for document ${documentId}`,

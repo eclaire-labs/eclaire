@@ -34,7 +34,6 @@ import {
 } from "../pagination.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
-import { recordHistory } from "./history.js"; // Assuming this service exists and is configured
 import type { CallerContext } from "./types.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
@@ -369,17 +368,20 @@ export async function createPhoto(
 
     storageInfo = { storageId: storageKey };
 
-    // 3. Now create the photo record with the actual storage ID in a single operation
-    const [newPhoto] = await db
-      .insert(photos)
-      .values({
-        id: photoId, // Use the pre-generated ID
+    // 3. Pre-generate history ID for transaction
+    const historyId = generateHistoryId();
+    const tags = metadata.tags || [];
+
+    // Atomic transaction: insert photo, tags, and history together
+    await txManager.withTransaction(async (tx) => {
+      await tx.photos.insert({
+        id: photoId,
         userId: userId,
         title: metadata.title || originalFilename,
         description: metadata.description || null,
         dueDate: dueDateValue,
         originalFilename: originalFilename,
-        storageId: storageKey, // Use the actual storage ID from the save operation
+        storageId: storageKey,
         mimeType: verifiedMimeType,
         fileSize: fileSize,
         deviceId: metadata.deviceId || null,
@@ -434,36 +436,41 @@ export async function createPhoto(
         flagColor: metadata.flagColor || null,
         isPinned: metadata.isPinned || false,
 
-        processingEnabled: processingEnabled, // Set the processingEnabled flag based on metadata
-        // biome-ignore lint/suspicious/noExplicitAny: Drizzle insert type mismatch with optional columns
-      } as any)
-      .returning();
+        processingEnabled: processingEnabled,
+      });
 
-    // 4. Handle tags
-    const tags = metadata.tags || [];
-    if (tags.length > 0) {
-      await addTagsToPhoto(photoId, tags, userId);
-    }
+      // Handle tags inside transaction
+      if (tags.length > 0) {
+        const tagList = await tx.getOrCreateTags(tags, userId);
+        for (const tag of tagList) {
+          await tx.photosTags.insert({ photoId, tagId: tag.id });
+        }
+      }
 
-    // 5. Record history
-    await recordHistory({
-      action: "create",
-      itemType: "photo",
-      itemId: photoId,
-      itemName: metadata.title || originalFilename,
-      afterData: {
-        id: photoId,
-        title: metadata.title,
-        originalFilename: originalFilename,
-        storageId: storageInfo.storageId,
-        tags: tags,
-      },
-      actor: caller.actor,
-      actorId: caller.userId,
-      userId: userId,
+      // Record history - atomic with the insert
+      await tx.history.insert({
+        id: historyId,
+        action: "create",
+        itemType: "photo",
+        itemId: photoId,
+        itemName: metadata.title || originalFilename,
+        beforeData: null,
+        afterData: {
+          id: photoId,
+          title: metadata.title,
+          originalFilename: originalFilename,
+          storageId: storageInfo.storageId,
+          tags: tags,
+        },
+        actor: caller.actor,
+        actorId: caller.userId,
+        userId: userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
     });
 
-    // 6. Initialize processing job status tracking
+    // 4. Initialize processing job status tracking
     if (processingEnabled) {
       // Determine processing stages based on image type
       const needsHeicConversion =
@@ -490,10 +497,10 @@ export async function createPhoto(
       });
     }
 
-    // 7. Queue background processing jobs (HEIC conversion and AI analysis) only if enabled
+    // 5. Queue background processing jobs (HEIC conversion and AI analysis) only if enabled
     if (processingEnabled) {
       await queuePhotoBackgroundJobs(
-        newPhoto, // Use the photo data we already have instead of fetching it again
+        { id: photoId, storageId: storageKey },
         userId,
         originalMimeType,
         metadata.originalFilename || "untitled.jpg",
@@ -1405,45 +1412,6 @@ async function getPhotoTags(photoId: string): Promise<string[]> {
       "Error getting tags for photo",
     );
     return [];
-  }
-}
-
-/**
- * Associates a list of tags with a photo. Creates tags if they don't exist.
- * @param photoId - The ID of the photo.
- * @param tagNames - An array of tag names to associate.
- * @param userId - The ID of the user who owns the photo.
- */
-async function addTagsToPhoto(
-  photoId: string,
-  tagNames: string[],
-  userId: string,
-) {
-  if (!tagNames || tagNames.length === 0) return;
-
-  try {
-    const tagRecords = await getOrCreateTags(tagNames, userId); // Scoped to user
-    if (tagRecords.length > 0) {
-      await db
-        .insert(photosTags)
-        .values(
-          tagRecords.map((tag) => ({
-            photoId: photoId,
-            tagId: tag.id,
-          })),
-        )
-        .onConflictDoNothing();
-    }
-  } catch (error) {
-    logger.error(
-      {
-        photoId,
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Error adding tags to photo",
-    );
-    throw new Error("Failed to add tags to photo");
   }
 }
 
