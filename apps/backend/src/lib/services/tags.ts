@@ -30,7 +30,10 @@ export async function findUserTags(
   if (type) {
     const junction = junctionMap[type];
     const rows = await db
-      .selectDistinct({ name: tags.name })
+      .selectDistinct({
+        name: tags.name,
+        nameLower: sql<string>`lower(${tags.name})`,
+      })
       .from(tags)
       .innerJoin(junction.table, eq(junction.tagIdCol, tags.id))
       .where(eq(tags.userId, userId))
@@ -39,7 +42,10 @@ export async function findUserTags(
   }
 
   const rows = await db
-    .selectDistinct({ name: tags.name })
+    .selectDistinct({
+      name: tags.name,
+      nameLower: sql<string>`lower(${tags.name})`,
+    })
     .from(tags)
     .where(eq(tags.userId, userId))
     .orderBy(asc(sql`lower(${tags.name})`));
