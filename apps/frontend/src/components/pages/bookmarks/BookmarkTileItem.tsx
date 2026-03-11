@@ -3,7 +3,7 @@ import {
   ExternalLink,
   FileText,
   Image as ImageIcon,
-  MessageSquare,
+  MessageCircle,
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
@@ -138,7 +138,7 @@ export function BookmarkTileItem({
               }}
               title="Chat about this bookmark"
             >
-              <MessageSquare className="h-3 w-3 text-muted-foreground" />
+              <MessageCircle className="h-3 w-3 text-muted-foreground" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

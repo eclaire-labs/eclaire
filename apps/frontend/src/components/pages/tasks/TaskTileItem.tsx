@@ -3,7 +3,7 @@ import {
   Edit,
   FileText,
   GitBranch,
-  MessageSquare,
+  MessageCircle,
   MoreHorizontal,
   RefreshCw,
   Trash2,
@@ -171,7 +171,7 @@ export function TaskTileItem({
                   : "Chat with AI about this task"
               }
             >
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <MessageCircle className="h-4 w-4 text-muted-foreground" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

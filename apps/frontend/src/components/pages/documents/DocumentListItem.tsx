@@ -2,7 +2,7 @@ import {
   Download,
   Edit,
   FileText,
-  MessageSquare,
+  MessageCircle,
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
@@ -186,7 +186,7 @@ export function DocumentListItem({
           }}
           title="Chat about this document"
         >
-          <MessageSquare className="h-3 w-3 text-muted-foreground" />
+          <MessageCircle className="h-3 w-3 text-muted-foreground" />
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -202,7 +202,7 @@ export function DocumentListItem({
               <Edit className="mr-2 h-4 w-4" /> Edit Details
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onChatClick(doc)}>
-              <MessageSquare className="mr-2 h-4 w-4" /> Chat with AI
+              <MessageCircle className="mr-2 h-4 w-4" /> Chat with AI
             </DropdownMenuItem>
             {doc.fileUrl && (
               <DropdownMenuItem asChild>

@@ -20,7 +20,6 @@ import {
   Link,
   Loader2,
   MessageCircle,
-  MessageSquare,
   Monitor,
   Package,
   Repeat,
@@ -284,7 +283,7 @@ export function BookmarkDetailClient() {
               onClick={actions.handleChatClick}
               title="Chat about this bookmark"
             >
-              <MessageSquare className="h-4 w-4" />
+              <MessageCircle className="h-4 w-4" />
             </Button>
             {isEditMode ? (
               <>
@@ -891,7 +890,7 @@ export function BookmarkDetailClient() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4" />
+                    <MessageCircle className="h-4 w-4" />
                     Reddit Post Details
                   </CardTitle>
                 </CardHeader>

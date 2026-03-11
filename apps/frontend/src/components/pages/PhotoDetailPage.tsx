@@ -10,7 +10,7 @@ import {
   Eye,
   Loader2,
   MapPin,
-  MessageSquare,
+  MessageCircle,
   RotateCcw,
   Save,
   Trash2,
@@ -302,7 +302,7 @@ export function PhotoDetailClient() {
               onClick={actions.handleChatClick}
               title="Chat about this photo"
             >
-              <MessageSquare className="h-4 w-4" />
+              <MessageCircle className="h-4 w-4" />
             </Button>
             <Button variant="outline" asChild>
               <a

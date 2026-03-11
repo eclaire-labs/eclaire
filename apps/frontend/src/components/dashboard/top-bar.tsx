@@ -6,7 +6,7 @@ import {
   Key,
   LogOut,
   Maximize2,
-  MessageSquare,
+  MessageCircle,
   Minimize2,
   User,
 } from "lucide-react";
@@ -88,7 +88,7 @@ export function TopBar({
               className="relative"
               aria-label={assistantOpen ? "Close Assistant" : "Open Assistant"}
             >
-              <MessageSquare className="h-5 w-5" />
+              <MessageCircle className="h-5 w-5" />
             </Button>
             {onAssistantFullScreenToggle && (
               <Button
@@ -184,7 +184,7 @@ export function TopBar({
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to="/settings" search={{ tab: "assistant" }}>
-                <MessageSquare className="mr-2 h-4 w-4" />
+                <MessageCircle className="mr-2 h-4 w-4" />
                 Assistant
               </Link>
             </DropdownMenuItem>

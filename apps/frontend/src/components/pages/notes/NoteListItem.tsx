@@ -1,7 +1,7 @@
 import {
   Edit,
   FileText,
-  MessageSquare,
+  MessageCircle,
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
@@ -119,7 +119,7 @@ export function NoteListItem({
       {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler only stops propagation to parent row */}
       <div
         role="presentation"
-        className="w-16 flex-shrink-0 mr-3 flex items-center justify-center"
+        className="w-20 flex-shrink-0 mr-3 flex items-center justify-center gap-1"
         onClick={(e) => e.stopPropagation()}
       >
         <PinFlagControls
@@ -142,7 +142,7 @@ export function NoteListItem({
           }}
           title="Chat about this note"
         >
-          <MessageSquare className="h-3 w-3 text-muted-foreground" />
+          <MessageCircle className="h-3 w-3 text-muted-foreground" />
         </Button>
       </div>
       {/* Actions */}

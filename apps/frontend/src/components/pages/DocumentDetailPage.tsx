@@ -8,7 +8,7 @@ import {
   FileText,
   Image as ImageIcon,
   Loader2,
-  MessageSquare,
+  MessageCircle,
   Save,
   Trash2,
   X,
@@ -242,7 +242,7 @@ export function DocumentDetailClient() {
               onClick={actions.handleChatClick}
               title="Chat about this document"
             >
-              <MessageSquare className="h-4 w-4" />
+              <MessageCircle className="h-4 w-4" />
             </Button>
 
             {document.fileUrl && (

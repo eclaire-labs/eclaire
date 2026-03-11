@@ -7,7 +7,7 @@ import {
   Edit3,
   Link2,
   Loader2,
-  MessageSquare,
+  MessageCircle,
   MoreHorizontal,
   Plus,
   RefreshCw,
@@ -432,7 +432,7 @@ export function TaskDetailClient() {
             onClick={actions.handleChatClick}
             title="Chat about this task"
           >
-            <MessageSquare className="h-4 w-4" />
+            <MessageCircle className="h-4 w-4" />
           </Button>
           {isEditing ? (
             <>

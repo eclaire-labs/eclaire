@@ -5,7 +5,7 @@ import {
   Edit,
   FileText,
   Loader2,
-  MessageSquare,
+  MessageCircle,
   Save,
   Trash2,
   Type,
@@ -202,7 +202,7 @@ export function NoteDetailClient() {
               onClick={actions.handleChatClick}
               title="Chat about this note"
             >
-              <MessageSquare className="h-4 w-4" />
+              <MessageCircle className="h-4 w-4" />
             </Button>
             {isEditing ? (
               <>

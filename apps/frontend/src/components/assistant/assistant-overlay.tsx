@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { CheckSquare, Maximize2, MessageSquare, Upload } from "lucide-react";
+import { CheckSquare, Maximize2, MessageCircle, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,7 @@ export function AssistantOverlay({
     },
     {
       name: "Windowed Chat",
-      icon: MessageSquare,
+      icon: MessageCircle,
       action: onWindowedChat,
     },
     {
