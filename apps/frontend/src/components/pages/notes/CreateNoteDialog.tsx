@@ -4,6 +4,7 @@ import { TagEditor } from "@/components/shared/TagEditor";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -116,14 +117,12 @@ export function CreateNoteDialog({
               }
             />
           </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
+          <DialogFooter className="pt-4 border-t mt-2">
+            <DialogClose asChild>
+              <Button type="button" variant="ghost" disabled={isCreating}>
+                Cancel
+              </Button>
+            </DialogClose>
             <Button type="submit" disabled={!form.title.trim() || isCreating}>
               Create Entry
             </Button>

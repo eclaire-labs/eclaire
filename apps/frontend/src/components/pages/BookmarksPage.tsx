@@ -1,25 +1,16 @@
 import { useNavigate } from "@tanstack/react-router";
-import {
-  AlertCircle,
-  BookOpen,
-  Download,
-  Globe,
-  Loader2,
-  Monitor,
-  Plus,
-  Smartphone,
-  Upload,
-} from "lucide-react";
+import { AlertCircle, Globe, Loader2, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -33,8 +24,6 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useTags } from "@/hooks/use-tags";
-import { normalizeApiUrl } from "@/lib/api-client";
-import { formatDate } from "@/lib/list-page-utils";
 import type { Bookmark } from "@/types/bookmark";
 import { BookmarkListItem } from "./bookmarks/BookmarkListItem";
 import { BookmarkTileItem } from "./bookmarks/BookmarkTileItem";
@@ -94,7 +83,6 @@ export default function BookmarksPage() {
   );
   const [isBookmarkDialogOpen, setIsBookmarkDialogOpen] = useState(false);
   const [isNewBookmarkDialogOpen, setIsNewBookmarkDialogOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
 
   const containerRef = useRef<HTMLElement | null>(null);
 
@@ -131,7 +119,6 @@ export default function BookmarksPage() {
 
   const openEditDialog = useCallback((bookmark: Bookmark) => {
     setSelectedBookmark(bookmark);
-    setIsEditMode(true);
     setIsBookmarkDialogOpen(true);
   }, []);
 
@@ -156,7 +143,7 @@ export default function BookmarksPage() {
         description: selectedBookmark.description,
         tags: selectedBookmark.tags,
       });
-      setIsEditMode(false);
+      setIsBookmarkDialogOpen(false);
       toast.success("Bookmark updated", {
         description: "Your bookmark has been updated successfully.",
       });
@@ -326,7 +313,7 @@ export default function BookmarksPage() {
             isCreating={isCreating}
           />
 
-          {/* View/Edit Bookmark Dialog */}
+          {/* Edit Bookmark Dialog */}
           {selectedBookmark && (
             <Dialog
               open={isBookmarkDialogOpen}
@@ -334,226 +321,98 @@ export default function BookmarksPage() {
             >
               <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>
-                    {isEditMode ? "Edit Bookmark" : "Bookmark Details"}
-                  </DialogTitle>
+                  <DialogTitle>Edit Bookmark</DialogTitle>
+                  <DialogDescription>
+                    Make changes to your bookmark.
+                  </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-title">Title</Label>
-                    <Input
-                      id="edit-title"
-                      value={selectedBookmark.title || ""}
-                      onChange={(e) =>
-                        setSelectedBookmark({
-                          ...selectedBookmark,
-                          title: e.target.value,
-                        })
-                      }
-                      readOnly={!isEditMode}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-url">URL</Label>
-                    <Input
-                      id="edit-url"
-                      type="url"
-                      value={selectedBookmark.url || ""}
-                      readOnly
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-description">Description</Label>
-                    <Textarea
-                      id="edit-description"
-                      value={selectedBookmark.description || ""}
-                      onChange={(e) =>
-                        setSelectedBookmark({
-                          ...selectedBookmark,
-                          description: e.target.value,
-                        })
-                      }
-                      readOnly={!isEditMode}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    {isEditMode ? (
-                      <TagEditor
-                        tags={selectedBookmark.tags}
-                        onAddTag={(tag) =>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleUpdateBookmark();
+                  }}
+                >
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-title">Title</Label>
+                      <Input
+                        id="edit-title"
+                        value={selectedBookmark.title || ""}
+                        onChange={(e) =>
                           setSelectedBookmark({
                             ...selectedBookmark,
-                            tags: [...selectedBookmark.tags, tag],
-                          })
-                        }
-                        onRemoveTag={(tag) =>
-                          setSelectedBookmark({
-                            ...selectedBookmark,
-                            tags: selectedBookmark.tags.filter(
-                              (t) => t !== tag,
-                            ),
+                            title: e.target.value,
                           })
                         }
                       />
-                    ) : (
-                      <>
-                        <Label>Tags</Label>
-                        <div className="flex flex-wrap gap-2 pt-2">
-                          {selectedBookmark.tags.length > 0 ? (
-                            selectedBookmark.tags.map((tag) => (
-                              <Badge key={tag} variant="outline">
-                                {tag}
-                              </Badge>
-                            ))
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              No tags
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Details section (view mode only) */}
-                  {!isEditMode && (
-                    <div className="space-y-4 pt-4 border-t">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <Label>Author</Label>
-                          <p className="text-muted-foreground">
-                            {selectedBookmark.author || "N/A"}
-                          </p>
-                        </div>
-                        <div>
-                          <Label>Language</Label>
-                          <p className="text-muted-foreground">
-                            {selectedBookmark.lang || "N/A"}
-                          </p>
-                        </div>
-                        <div>
-                          <Label>Added On</Label>
-                          <p className="text-muted-foreground">
-                            {formatDate(selectedBookmark.createdAt)}
-                          </p>
-                        </div>
-                        <div>
-                          <Label>Page Last Updated</Label>
-                          <p className="text-muted-foreground">
-                            {formatDate(selectedBookmark.pageLastUpdatedAt)}
-                          </p>
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Screenshots</Label>
-                        <div className="flex flex-wrap gap-2 pt-2">
-                          {selectedBookmark.screenshotFullPageUrl && (
-                            <Button variant="outline" size="sm" asChild>
-                              <a
-                                href={normalizeApiUrl(
-                                  selectedBookmark.screenshotFullPageUrl,
-                                )}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Monitor className="mr-2 h-4 w-4" />
-                                Desktop
-                              </a>
-                            </Button>
-                          )}
-                          {selectedBookmark.screenshotMobileUrl && (
-                            <Button variant="outline" size="sm" asChild>
-                              <a
-                                href={normalizeApiUrl(
-                                  selectedBookmark.screenshotMobileUrl,
-                                )}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Smartphone className="mr-2 h-4 w-4" />
-                                Mobile
-                              </a>
-                            </Button>
-                          )}
-                          {!selectedBookmark.screenshotFullPageUrl &&
-                            !selectedBookmark.screenshotMobileUrl && (
-                              <p className="text-sm text-muted-foreground">
-                                No screenshots available yet.
-                              </p>
-                            )}
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Archived Content</Label>
-                        <div className="flex flex-wrap gap-2 pt-2">
-                          {selectedBookmark.pdfUrl && (
-                            <Button variant="outline" size="sm" asChild>
-                              <a
-                                href={normalizeApiUrl(selectedBookmark.pdfUrl)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Download className="mr-2 h-4 w-4" />
-                                PDF
-                              </a>
-                            </Button>
-                          )}
-                          {selectedBookmark.contentUrl && (
-                            <Button variant="outline" size="sm" asChild>
-                              <a
-                                href={normalizeApiUrl(
-                                  selectedBookmark.contentUrl,
-                                )}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <BookOpen className="mr-2 h-4 w-4" />
-                                Readable
-                              </a>
-                            </Button>
-                          )}
-                          {!selectedBookmark.pdfUrl &&
-                            !selectedBookmark.contentUrl && (
-                              <p className="text-sm text-muted-foreground">
-                                No archived content available yet.
-                              </p>
-                            )}
-                        </div>
-                      </div>
                     </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  {isEditMode ? (
-                    <>
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsEditMode(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleUpdateBookmark}
-                        disabled={isUpdating}
-                      >
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-url">URL</Label>
+                      <Input
+                        id="edit-url"
+                        type="url"
+                        value={selectedBookmark.url || ""}
+                        readOnly
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-description">Description</Label>
+                      <Textarea
+                        id="edit-description"
+                        value={selectedBookmark.description || ""}
+                        onChange={(e) =>
+                          setSelectedBookmark({
+                            ...selectedBookmark,
+                            description: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <TagEditor
+                      tags={selectedBookmark.tags}
+                      onAddTag={(tag) =>
+                        setSelectedBookmark({
+                          ...selectedBookmark,
+                          tags: [...selectedBookmark.tags, tag],
+                        })
+                      }
+                      onRemoveTag={(tag) =>
+                        setSelectedBookmark({
+                          ...selectedBookmark,
+                          tags: selectedBookmark.tags.filter((t) => t !== tag),
+                        })
+                      }
+                    />
+                  </div>
+                  <DialogFooter className="sm:justify-between gap-2 pt-4 border-t mt-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => {
+                        setIsBookmarkDialogOpen(false);
+                        state.openDeleteDialog(
+                          selectedBookmark.id,
+                          selectedBookmark.title ?? "Untitled",
+                        );
+                      }}
+                    >
+                      Delete
+                    </Button>
+                    <div className="flex gap-2">
+                      <DialogClose asChild>
+                        <Button type="button" variant="outline">
+                          Cancel
+                        </Button>
+                      </DialogClose>
+                      <Button type="submit" disabled={isUpdating}>
                         {isUpdating && (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         )}
                         Save Changes
                       </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsBookmarkDialogOpen(false)}
-                      >
-                        Close
-                      </Button>
-                      <Button onClick={() => setIsEditMode(true)}>Edit</Button>
-                    </>
-                  )}
-                </DialogFooter>
+                    </div>
+                  </DialogFooter>
+                </form>
               </DialogContent>
             </Dialog>
           )}

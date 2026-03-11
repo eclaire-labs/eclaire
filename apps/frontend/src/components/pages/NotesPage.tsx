@@ -9,10 +9,10 @@ import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { TagEditor } from "@/components/shared/TagEditor";
 import type { UploadingFile } from "@/components/shared/UploadProgressList";
 import { UploadProgressList } from "@/components/shared/UploadProgressList";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -28,7 +28,6 @@ import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation"
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useNotes } from "@/hooks/use-notes";
 import { useTags } from "@/hooks/use-tags";
-import { formatDate } from "@/lib/list-page-utils";
 import type { Note } from "@/types/note";
 import { CreateNoteDialog } from "./notes/CreateNoteDialog";
 import { NoteListItem } from "./notes/NoteListItem";
@@ -100,7 +99,6 @@ export default function NotesPage() {
   const [selectedEntry, setSelectedEntry] = useState<Note | null>(null);
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
   const [isNewEntryDialogOpen, setIsNewEntryDialogOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<NotesUploadingFile[]>(
     [],
   );
@@ -140,7 +138,6 @@ export default function NotesPage() {
 
   const openEditDialog = useCallback((entry: Note) => {
     setSelectedEntry(entry);
-    setIsEditMode(true);
     setIsEntryDialogOpen(true);
   }, []);
 
@@ -174,7 +171,7 @@ export default function NotesPage() {
         dueDate: selectedEntry.dueDate,
         tags: selectedEntry.tags,
       });
-      setIsEditMode(false);
+      setIsEntryDialogOpen(false);
       toast.success("Note entry updated", {
         description: "Your note entry has been updated successfully.",
       });
@@ -394,120 +391,81 @@ export default function NotesPage() {
       isDeleting={isDeleting}
       dialogs={
         <>
-          {/* View/Edit Entry Dialog */}
+          {/* Edit Entry Dialog */}
           <Dialog open={isEntryDialogOpen} onOpenChange={setIsEntryDialogOpen}>
             <DialogContent className="sm:max-w-[625px]">
               <DialogHeader>
-                <DialogTitle>
-                  {isEditMode ? "Edit Note Entry" : "Note Entry"}
-                </DialogTitle>
+                <DialogTitle>Edit Note Entry</DialogTitle>
                 <DialogDescription>
-                  {isEditMode
-                    ? "Make changes to your note entry."
-                    : "View your note entry details."}
+                  Make changes to your note entry.
                 </DialogDescription>
               </DialogHeader>
               {selectedEntry && (
-                <div className="space-y-4">
-                  {isEditMode ? (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="title">Title</Label>
-                        <Input
-                          id="title"
-                          value={selectedEntry.title}
-                          onChange={(e) =>
-                            setSelectedEntry({
-                              ...selectedEntry,
-                              title: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="content">Content</Label>
-                        <Textarea
-                          id="content"
-                          rows={8}
-                          value={selectedEntry.content || ""}
-                          onChange={(e) =>
-                            setSelectedEntry({
-                              ...selectedEntry,
-                              content: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="due-date">Due Date (optional)</Label>
-                        <DueDatePicker
-                          value={selectedEntry.dueDate || null}
-                          onChange={(value) =>
-                            setSelectedEntry({
-                              ...selectedEntry,
-                              dueDate: value,
-                            })
-                          }
-                        />
-                      </div>
-                      <TagEditor
-                        tags={selectedEntry.tags}
-                        onAddTag={(tag) =>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleUpdateEntry();
+                  }}
+                >
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Title</Label>
+                      <Input
+                        id="title"
+                        value={selectedEntry.title}
+                        onChange={(e) =>
                           setSelectedEntry({
                             ...selectedEntry,
-                            tags: [...selectedEntry.tags, tag],
-                          })
-                        }
-                        onRemoveTag={(tag) =>
-                          setSelectedEntry({
-                            ...selectedEntry,
-                            tags: selectedEntry.tags.filter((t) => t !== tag),
+                            title: e.target.value,
                           })
                         }
                       />
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <h3 className="text-xl font-semibold mb-1">
-                          {selectedEntry.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(selectedEntry.createdAt)}
-                        </p>
-                      </div>
-                      <div className="pt-2">
-                        <p className="whitespace-pre-line">
-                          {selectedEntry.content}
-                        </p>
-                      </div>
-                      {selectedEntry.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-4">
-                          {selectedEntry.tags.map((tag) => (
-                            <Badge key={tag} variant="outline">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-              <DialogFooter className="flex items-center justify-between">
-                {isEditMode ? (
-                  <>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="content">Content</Label>
+                      <Textarea
+                        id="content"
+                        rows={8}
+                        value={selectedEntry.content || ""}
+                        onChange={(e) =>
+                          setSelectedEntry({
+                            ...selectedEntry,
+                            content: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="due-date">Due Date (optional)</Label>
+                      <DueDatePicker
+                        value={selectedEntry.dueDate || null}
+                        onChange={(value) =>
+                          setSelectedEntry({
+                            ...selectedEntry,
+                            dueDate: value,
+                          })
+                        }
+                      />
+                    </div>
+                    <TagEditor
+                      tags={selectedEntry.tags}
+                      onAddTag={(tag) =>
+                        setSelectedEntry({
+                          ...selectedEntry,
+                          tags: [...selectedEntry.tags, tag],
+                        })
+                      }
+                      onRemoveTag={(tag) =>
+                        setSelectedEntry({
+                          ...selectedEntry,
+                          tags: selectedEntry.tags.filter((t) => t !== tag),
+                        })
+                      }
+                    />
+                  </div>
+                  <DialogFooter className="sm:justify-between gap-2 pt-4 border-t mt-2">
                     <Button
-                      variant="ghost"
-                      onClick={() => setIsEditMode(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button onClick={handleUpdateEntry}>Save Changes</Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
+                      type="button"
                       variant="destructive"
                       onClick={() => {
                         if (selectedEntry) {
@@ -521,10 +479,22 @@ export default function NotesPage() {
                     >
                       Delete
                     </Button>
-                    <Button onClick={() => setIsEditMode(true)}>Edit</Button>
-                  </>
-                )}
-              </DialogFooter>
+                    <div className="flex gap-2">
+                      <DialogClose asChild>
+                        <Button type="button" variant="outline">
+                          Cancel
+                        </Button>
+                      </DialogClose>
+                      <Button
+                        type="submit"
+                        disabled={!selectedEntry.title.trim()}
+                      >
+                        Save Changes
+                      </Button>
+                    </div>
+                  </DialogFooter>
+                </form>
+              )}
             </DialogContent>
           </Dialog>
 
