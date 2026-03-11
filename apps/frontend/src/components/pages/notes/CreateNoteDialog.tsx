@@ -68,57 +68,67 @@ export function CreateNoteDialog({
             Create a new note entry to record your thoughts.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="new-title">Title</Label>
-            <Input
-              id="new-title"
-              placeholder="Enter a title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-content">Content (optional)</Label>
-            <Textarea
-              id="new-content"
-              placeholder="Add content to your note (optional)..."
-              rows={8}
-              value={form.content || ""}
-              onChange={(e) => setForm({ ...form, content: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-due-date">Due Date (optional)</Label>
-            <DueDatePicker
-              value={form.dueDate}
-              onChange={(value) =>
-                setForm({
-                  ...form,
-                  dueDate: value,
-                })
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleCreate();
+          }}
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-title">Title</Label>
+              <Input
+                id="new-title"
+                placeholder="Enter a title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-content">Content (optional)</Label>
+              <Textarea
+                id="new-content"
+                placeholder="Add content to your note (optional)..."
+                rows={8}
+                value={form.content || ""}
+                onChange={(e) => setForm({ ...form, content: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-due-date">Due Date (optional)</Label>
+              <DueDatePicker
+                value={form.dueDate}
+                onChange={(value) =>
+                  setForm({
+                    ...form,
+                    dueDate: value,
+                  })
+                }
+              />
+            </div>
+            <TagEditor
+              tags={form.tags}
+              onAddTag={(tag) =>
+                setForm({ ...form, tags: [...form.tags, tag] })
+              }
+              onRemoveTag={(tag) =>
+                setForm({ ...form, tags: form.tags.filter((t) => t !== tag) })
               }
             />
           </div>
-          <TagEditor
-            tags={form.tags}
-            onAddTag={(tag) => setForm({ ...form, tags: [...form.tags, tag] })}
-            onRemoveTag={(tag) =>
-              setForm({ ...form, tags: form.tags.filter((t) => t !== tag) })
-            }
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={!form.title.trim() || isCreating}
-          >
-            Create Entry
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!form.title.trim() || isCreating}>
+              Create Entry
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
