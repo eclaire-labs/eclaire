@@ -10,9 +10,10 @@ import {
   X,
 } from "lucide-react";
 import type { FormEvent } from "react";
+import { useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { AssetReference } from "@/types/message";
 
 interface MessageInputProps {
@@ -34,6 +35,18 @@ export function MessageInput({
   attachedAssets,
   setAttachedAssets,
 }: MessageInputProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow textarea based on content
+  // biome-ignore lint/correctness/useExhaustiveDependencies: value triggers resize recalculation
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+    }
+  }, [value]);
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!value.trim() || isLoading) return;
@@ -58,7 +71,7 @@ export function MessageInput({
   };
 
   return (
-    <div className="p-4">
+    <div className="p-3">
       {/* Attached assets display */}
       {attachedAssets.length > 0 && (
         <div className="mb-3 p-3 bg-muted/30 rounded-lg">
@@ -95,20 +108,22 @@ export function MessageInput({
       )}
 
       {/* Input form */}
-      <form onSubmit={handleSubmit} className="flex items-center gap-2">
-        <Input
+      <form onSubmit={handleSubmit} className="flex items-end gap-2">
+        <Textarea
+          ref={textareaRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Type your message..."
           disabled={isLoading}
-          className="flex-1"
+          className="flex-1 min-h-[40px] max-h-[120px] resize-none py-2.5 text-sm"
+          rows={1}
         />
         <Button
           type="submit"
           size="icon"
           disabled={isLoading || !value.trim()}
-          className="flex-shrink-0"
+          className="flex-shrink-0 h-10 w-10 rounded-full"
         >
           <Send className="h-4 w-4" />
         </Button>

@@ -35,7 +35,7 @@ export function MessageItem({
 
       <div
         className={cn(
-          "max-w-[80%] space-y-2 rounded-lg px-4 py-3",
+          "max-w-[85%] space-y-2 rounded-lg px-4 py-2.5",
           isUser
             ? "bg-primary text-primary-foreground"
             : message.isError
@@ -88,7 +88,12 @@ export function MessageItem({
         )}
 
         {/* Timestamp */}
-        <p className="text-xs mt-1 opacity-70">
+        <p
+          className={cn(
+            "text-[10px] mt-1",
+            isUser ? "text-primary-foreground/60" : "text-muted-foreground/60",
+          )}
+        >
           {message.timestamp.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",

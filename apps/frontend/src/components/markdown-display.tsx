@@ -66,8 +66,14 @@ export function MarkdownDisplay({ content, className }: MarkdownDisplayProps) {
     // Base prose styling
     "prose prose-neutral dark:prose-invert max-w-full",
 
+    // Remove extra margins on first/last elements for tight container fit
+    "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+
     // Word wrapping and overflow handling
     "break-words overflow-wrap-anywhere",
+
+    // Normalize line-height to match non-prose text
+    "prose-p:leading-normal prose-li:leading-normal",
 
     // Light/dark mode adjustments for better contrast
     "dark:prose-p:text-gray-300 prose-p:text-gray-700",
@@ -114,11 +120,59 @@ export function MarkdownDisplay({ content, className }: MarkdownDisplayProps) {
     "prose-td:p-2 prose-td:border prose-td:border-neutral-300 dark:prose-td:border-neutral-700",
   );
 
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Inject copy buttons into code blocks after render
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when HTML content changes to inject buttons
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const copySvg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+    const checkSvg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+    const preBlocks = container.querySelectorAll("pre");
+    for (const pre of preBlocks) {
+      if (pre.querySelector(".copy-code-btn")) continue;
+
+      pre.style.position = "relative";
+
+      const button = document.createElement("button");
+      button.className =
+        "copy-code-btn absolute top-2 right-2 p-1.5 rounded-md bg-neutral-200/80 dark:bg-neutral-700/80 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 transition-opacity opacity-0";
+      button.innerHTML = copySvg;
+      button.title = "Copy code";
+
+      button.addEventListener("click", () => {
+        const code = pre.querySelector("code");
+        if (code) {
+          navigator.clipboard.writeText(code.textContent || "");
+          button.innerHTML = checkSvg;
+          setTimeout(() => {
+            button.innerHTML = copySvg;
+          }, 2000);
+        }
+      });
+
+      pre.classList.add("group");
+      pre.addEventListener("mouseenter", () => {
+        button.style.opacity = "1";
+      });
+      pre.addEventListener("mouseleave", () => {
+        button.style.opacity = "0";
+      });
+
+      pre.appendChild(button);
+    }
+  }, [processedContent.htmlContent]);
+
   return (
-    <div className={className}>
+    <div ref={containerRef}>
       {/* Render the markdown content normally */}
       <div
-        className={proseClasses}
+        className={cn(proseClasses, className)}
         // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized markdown rendering
         dangerouslySetInnerHTML={{ __html: processedContent.htmlContent }}
       />

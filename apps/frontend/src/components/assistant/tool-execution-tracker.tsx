@@ -90,7 +90,7 @@ function ToolExecutionItem({
                   <span className="font-medium text-sm">{toolCall.name}</span>
                 </div>
                 {toolCall.error && (
-                  <p className="text-xs text-red-600 truncate">
+                  <p className="text-xs text-destructive truncate">
                     Error: {toolCall.error}
                   </p>
                 )}
@@ -129,10 +129,10 @@ function ToolExecutionItem({
             {/* Error details */}
             {toolCall.error && (
               <div>
-                <h4 className="text-xs font-medium text-red-600 mb-2">
+                <h4 className="text-xs font-medium text-destructive mb-2">
                   Error Details:
                 </h4>
-                <pre className="text-xs bg-red-50 text-red-800 p-2 rounded border border-red-200">
+                <pre className="text-xs bg-destructive/10 text-destructive p-2 rounded border border-destructive/20">
                   {toolCall.error}
                 </pre>
               </div>

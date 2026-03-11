@@ -71,6 +71,9 @@ export function ChatPanel({
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
           showThinkingTokens={showThinkingTokens}
+          onSuggestedPrompt={(prompt) => {
+            setInput(prompt);
+          }}
         />
       </div>
 

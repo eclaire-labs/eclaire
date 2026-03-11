@@ -299,7 +299,7 @@ const AssistantContent = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 py-2.5 border-b">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b bg-background/95 backdrop-blur-sm">
         <div className="flex-1 min-w-0">
           {isEditingTitle ? (
             <div className="flex items-center gap-2">
@@ -489,7 +489,7 @@ export function GlobalAssistant({
           onOpenChange={(open) => !open && onOpenChange(false)}
         >
           <DialogContent
-            className="max-w-[95vw] max-h-[95vh] h-[90vh] w-[90vw] p-0 flex flex-col overflow-hidden"
+            className="max-w-[95vw] max-h-[95vh] h-[90vh] w-[90vw] p-0 flex flex-col overflow-hidden [&>button:last-child]:hidden"
             onInteractOutside={(e) => e.preventDefault()}
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
