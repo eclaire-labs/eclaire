@@ -36,6 +36,7 @@ const initializedAdapter = drizzleAdapter(db, {
 });
 
 export const auth = betterAuth({
+  baseURL: config.services.backendUrl,
   database: initializedAdapter,
   emailAndPassword: {
     enabled: true,
