@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { describeRoute } from "hono-openapi";
+import { describeRoute, validator as zValidator } from "hono-openapi";
 import { createChildLogger } from "../lib/logger.js";
 import { parseSearchFields } from "../lib/search-params.js";
 import {
@@ -24,8 +24,9 @@ export const historyRoutes = new Hono<{ Variables: RouteVariables }>();
 historyRoutes.get(
   "/",
   describeRoute(getHistoryRouteDescription),
+  zValidator("query", HistorySearchParamsSchema),
   withAuth(async (c, userId) => {
-    const params = HistorySearchParamsSchema.parse(c.req.query());
+    const params = c.req.valid("query");
     const { startDate, endDate } = parseSearchFields(params);
 
     const historyRecords = await findHistory({

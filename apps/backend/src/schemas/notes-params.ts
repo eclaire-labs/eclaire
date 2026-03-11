@@ -162,108 +162,101 @@ export const NoteMetadataSchema = z
   });
 
 // Search/query parameters schema
-export const NoteSearchSchema = z
-  .object({
-    text: z
-      .string()
-      .optional()
-      .meta({
-        description: "Search text to find in note titles and content",
-        examples: ["meeting", "research ideas", "Q1 planning"],
-      }),
+export const NoteSearchSchema = z.object({
+  text: z
+    .string()
+    .optional()
+    .meta({
+      description: "Search text to find in note titles and content",
+      examples: ["meeting", "research ideas", "Q1 planning"],
+    }),
 
-    tags: z
-      .string()
-      .optional()
-      .meta({
-        description: "Comma-separated list of tags to filter by",
-        examples: ["work,meeting", "personal", "research,ideas"],
-      }),
+  tags: z
+    .string()
+    .optional()
+    .meta({
+      description: "Comma-separated list of tags to filter by",
+      examples: ["work,meeting", "personal", "research,ideas"],
+    }),
 
-    startDate: z
-      .string()
-      .datetime()
-      .optional()
-      .meta({
-        description:
-          "Filter notes created on or after this date (ISO 8601 format)",
-        examples: ["2024-01-01T00:00:00Z"],
-      }),
+  startDate: z
+    .string()
+    .datetime()
+    .optional()
+    .meta({
+      description:
+        "Filter notes created on or after this date (ISO 8601 format)",
+      examples: ["2024-01-01T00:00:00Z"],
+    }),
 
-    endDate: z
-      .string()
-      .datetime()
-      .optional()
-      .meta({
-        description:
-          "Filter notes created on or before this date (ISO 8601 format)",
-        examples: ["2024-12-31T23:59:59Z"],
-      }),
+  endDate: z
+    .string()
+    .datetime()
+    .optional()
+    .meta({
+      description:
+        "Filter notes created on or before this date (ISO 8601 format)",
+      examples: ["2024-12-31T23:59:59Z"],
+    }),
 
-    dueDateStart: z
-      .string()
-      .datetime()
-      .optional()
-      .meta({
-        description:
-          "Filter notes with due dates on or after this date (ISO 8601 format)",
-        examples: ["2024-01-01T00:00:00Z"],
-      }),
+  dueDateStart: z
+    .string()
+    .datetime()
+    .optional()
+    .meta({
+      description:
+        "Filter notes with due dates on or after this date (ISO 8601 format)",
+      examples: ["2024-01-01T00:00:00Z"],
+    }),
 
-    dueDateEnd: z
-      .string()
-      .datetime()
-      .optional()
-      .meta({
-        description:
-          "Filter notes with due dates on or before this date (ISO 8601 format)",
-        examples: ["2024-12-31T23:59:59Z"],
-      }),
+  dueDateEnd: z
+    .string()
+    .datetime()
+    .optional()
+    .meta({
+      description:
+        "Filter notes with due dates on or before this date (ISO 8601 format)",
+      examples: ["2024-12-31T23:59:59Z"],
+    }),
 
-    limit: z.coerce
-      .number()
-      .int()
-      .positive()
-      .max(200)
-      .default(50)
-      .meta({
-        description: "Maximum number of results to return per page",
-        examples: ["10", "50", "100"],
-      }),
+  limit: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(200)
+    .default(50)
+    .meta({
+      description: "Maximum number of results to return per page",
+      examples: ["10", "50", "100"],
+    }),
 
-    cursor: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
-        examples: [
-          "eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6Im50ZV8xMjMifQ",
-        ],
-      }),
+  cursor: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
+      examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6Im50ZV8xMjMifQ"],
+    }),
 
-    sortBy: z
-      .enum(["createdAt", "title"])
-      .optional()
-      .default("createdAt")
-      .meta({
-        description: "Field to sort notes by",
-        examples: ["createdAt", "title"],
-      }),
+  sortBy: z
+    .enum(["createdAt", "title"])
+    .optional()
+    .default("createdAt")
+    .meta({
+      description: "Field to sort notes by",
+      examples: ["createdAt", "title"],
+    }),
 
-    sortDir: z
-      .enum(["asc", "desc"])
-      .optional()
-      .default("desc")
-      .meta({
-        description: "Sort direction",
-        examples: ["asc", "desc"],
-      }),
-  })
-  .meta({
-    ref: "NoteSearchParams",
-    description: "Query parameters for searching and filtering notes",
-  });
+  sortDir: z
+    .enum(["asc", "desc"])
+    .optional()
+    .default("desc")
+    .meta({
+      description: "Sort direction",
+      examples: ["asc", "desc"],
+    }),
+});
 
 // Path parameters
 export const NoteIdParam = z

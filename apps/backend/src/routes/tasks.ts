@@ -70,8 +70,9 @@ export const tasksRoutes = new Hono<{ Variables: RouteVariables }>();
 tasksRoutes.get(
   "/",
   describeRoute(getTasksRouteDescription),
+  zValidator("query", TaskSearchParamsSchema),
   withAuth(async (c, userId) => {
-    const params = TaskSearchParamsSchema.parse(c.req.query());
+    const params = c.req.valid("query");
     const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
       parseSearchFields(params);
 

@@ -55,8 +55,9 @@ export const documentsRoutes = new Hono<{ Variables: RouteVariables }>();
 documentsRoutes.get(
   "/",
   describeRoute(getDocumentsRouteDescription),
+  zValidator("query", DocumentSearchParamsSchema),
   withAuth(async (c, userId) => {
-    const params = DocumentSearchParamsSchema.parse(c.req.query());
+    const params = c.req.valid("query");
     const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
       parseSearchFields(params);
 

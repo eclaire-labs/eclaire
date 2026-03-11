@@ -59,8 +59,9 @@ export const photosRoutes = new Hono<{ Variables: RouteVariables }>();
 photosRoutes.get(
   "/",
   describeRoute(getPhotosRouteDescription),
+  zValidator("query", PhotoSearchParamsSchema),
   withAuth(async (c, userId) => {
-    const params = PhotoSearchParamsSchema.parse(c.req.query());
+    const params = c.req.valid("query");
     const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
       parseSearchFields(params);
 

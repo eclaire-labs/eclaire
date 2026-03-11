@@ -162,121 +162,113 @@ export const DocumentMetadataSchema = z
   });
 
 // Search parameters schema
-export const DocumentSearchParamsSchema = z
-  .object({
-    text: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Text to search for in document title, description, or content",
-        examples: ["quarterly report", "project proposal"],
-      }),
+export const DocumentSearchParamsSchema = z.object({
+  text: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Text to search for in document title, description, or content",
+      examples: ["quarterly report", "project proposal"],
+    }),
 
-    tags: z
-      .string()
-      .optional()
-      .meta({
-        description: "Comma-separated list of tags to filter by",
-        examples: ["finance,report", "project,draft"],
-      }),
+  tags: z
+    .string()
+    .optional()
+    .meta({
+      description: "Comma-separated list of tags to filter by",
+      examples: ["finance,report", "project,draft"],
+    }),
 
-    startDate: z
-      .string()
-      .optional()
-      .meta({
-        description: "Start date for filtering documents (YYYY-MM-DD format)",
-        examples: ["2024-01-01", "2024-06-01"],
-        format: "date",
-      }),
+  startDate: z
+    .string()
+    .optional()
+    .meta({
+      description: "Start date for filtering documents (YYYY-MM-DD format)",
+      examples: ["2024-01-01", "2024-06-01"],
+      format: "date",
+    }),
 
-    endDate: z
-      .string()
-      .optional()
-      .meta({
-        description: "End date for filtering documents (YYYY-MM-DD format)",
-        examples: ["2024-12-31", "2024-06-30"],
-        format: "date",
-      }),
+  endDate: z
+    .string()
+    .optional()
+    .meta({
+      description: "End date for filtering documents (YYYY-MM-DD format)",
+      examples: ["2024-12-31", "2024-06-30"],
+      format: "date",
+    }),
 
-    limit: z.coerce
-      .number()
-      .min(1)
-      .max(200)
-      .optional()
-      .default(50)
-      .meta({
-        description: "Maximum number of documents to return per page",
-        examples: [10, 25, 50],
-      }),
+  limit: z.coerce
+    .number()
+    .min(1)
+    .max(200)
+    .optional()
+    .default(50)
+    .meta({
+      description: "Maximum number of documents to return per page",
+      examples: [10, 25, 50],
+    }),
 
-    cursor: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
-        examples: [
-          "eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6ImRvY18xMjMifQ",
-        ],
-      }),
+  cursor: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
+      examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6ImRvY18xMjMifQ"],
+    }),
 
-    dueDateStart: z
-      .string()
-      .optional()
-      .meta({
-        description: "Start date for filtering by due date (YYYY-MM-DD format)",
-        examples: ["2024-01-01", "2024-06-01"],
-        format: "date",
-      }),
+  dueDateStart: z
+    .string()
+    .optional()
+    .meta({
+      description: "Start date for filtering by due date (YYYY-MM-DD format)",
+      examples: ["2024-01-01", "2024-06-01"],
+      format: "date",
+    }),
 
-    dueDateEnd: z
-      .string()
-      .optional()
-      .meta({
-        description: "End date for filtering by due date (YYYY-MM-DD format)",
-        examples: ["2024-12-31", "2024-06-30"],
-        format: "date",
-      }),
+  dueDateEnd: z
+    .string()
+    .optional()
+    .meta({
+      description: "End date for filtering by due date (YYYY-MM-DD format)",
+      examples: ["2024-12-31", "2024-06-30"],
+      format: "date",
+    }),
 
-    sortBy: z
-      .enum([
-        "createdAt",
-        "updatedAt",
-        "title",
-        "mimeType",
-        "fileSize",
-        "originalFilename",
-      ])
-      .optional()
-      .default("createdAt")
-      .meta({
-        description: "Field to sort documents by",
-        examples: ["createdAt", "title", "fileSize"],
-      }),
+  sortBy: z
+    .enum([
+      "createdAt",
+      "updatedAt",
+      "title",
+      "mimeType",
+      "fileSize",
+      "originalFilename",
+    ])
+    .optional()
+    .default("createdAt")
+    .meta({
+      description: "Field to sort documents by",
+      examples: ["createdAt", "title", "fileSize"],
+    }),
 
-    sortDir: z
-      .enum(["asc", "desc"])
-      .optional()
-      .default("desc")
-      .meta({
-        description: "Sort direction",
-        examples: ["asc", "desc"],
-      }),
+  sortDir: z
+    .enum(["asc", "desc"])
+    .optional()
+    .default("desc")
+    .meta({
+      description: "Sort direction",
+      examples: ["asc", "desc"],
+    }),
 
-    fileTypes: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Comma-separated list of file types/MIME types to filter by",
-        examples: ["application/pdf", "image/jpeg,image/png"],
-      }),
-  })
-  .meta({
-    ref: "DocumentSearchParams",
-    description: "Search and filter parameters for documents",
-  });
+  fileTypes: z
+    .string()
+    .optional()
+    .meta({
+      description: "Comma-separated list of file types/MIME types to filter by",
+      examples: ["application/pdf", "image/jpeg,image/png"],
+    }),
+});
 
 // Request schemas for review/flag/pin status updates
 export const DocumentReviewUpdateSchema = reviewStatusUpdateSchema(

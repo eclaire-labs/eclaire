@@ -53,8 +53,9 @@ export const notesRoutes = new Hono<{ Variables: RouteVariables }>();
 notesRoutes.get(
   "/",
   describeRoute(getNotesRouteDescription),
+  zValidator("query", NoteSearchSchema),
   withAuth(async (c, userId) => {
-    const params = NoteSearchSchema.parse(c.req.query());
+    const params = c.req.valid("query");
     const parsed = parseSearchFields(params);
 
     const result = await findNotesPaginated({

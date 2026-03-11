@@ -40,23 +40,7 @@ import {
 } from "./lib/queue/index.js";
 import { channelRegistry } from "./lib/channels.js";
 
-import { allRoutes } from "./routes/all.js";
-import { authRoutes } from "./routes/auth.js";
-import { bookmarksRoutes } from "./routes/bookmarks.js";
-import { channelsRoutes } from "./routes/channels.js";
-import { documentsRoutes } from "./routes/documents.js";
-import { feedbackRoutes } from "./routes/feedback.js";
-import { historyRoutes } from "./routes/history.js";
-import { modelRoutes } from "./routes/model.js";
-import { notesRoutes } from "./routes/notes.js";
-import { notificationsRoutes } from "./routes/notifications.js";
-import { photosRoutes } from "./routes/photos.js";
-import { processingEventsRoutes } from "./routes/processing-events.js";
-import { processingStatusRoutes } from "./routes/processing-status.js";
-import { sessionsRoutes } from "./routes/sessions.js";
-import { tagsRoutes } from "./routes/tags.js";
-import { tasksRoutes } from "./routes/tasks.js";
-import { userRoutes } from "./routes/user.js";
+import { registerApiRoutes } from "./routes/registry.js";
 
 import type { RouteVariables } from "./types/route-variables.js";
 
@@ -120,9 +104,6 @@ app.use("*", async (c, next) => {
   return next();
 });
 
-// Auth routes (Better Auth handler + event recording)
-app.route("/api/auth", authRoutes);
-
 // Health check handler
 const healthHandler = (c: Context<{ Variables: Variables }>) => {
   // Build info comes from environment set during Docker build
@@ -149,23 +130,8 @@ const healthHandler = (c: Context<{ Variables: Variables }>) => {
 // Health check endpoint for load balancers / Docker / k8s
 app.get("/health", healthHandler);
 
-// Register API routes
-app.route("/api/tasks", tasksRoutes);
-app.route("/api/bookmarks", bookmarksRoutes);
-app.route("/api/channels", channelsRoutes);
-app.route("/api/documents", documentsRoutes);
-app.route("/api/feedback", feedbackRoutes);
-app.route("/api/notes", notesRoutes);
-app.route("/api/notifications", notificationsRoutes);
-app.route("/api/photos", photosRoutes);
-app.route("/api/history", historyRoutes);
-app.route("/api/all", allRoutes);
-app.route("/api/user", userRoutes);
-app.route("/api/model", modelRoutes);
-app.route("/api/sessions", sessionsRoutes);
-app.route("/api/processing-status", processingStatusRoutes);
-app.route("/api/processing-events", processingEventsRoutes);
-app.route("/api/tags", tagsRoutes);
+// Register all API routes (auth, resources, system endpoints)
+registerApiRoutes(app);
 
 // SPA middleware - serves frontend static files and falls back to index.html
 // Must be registered AFTER all API routes

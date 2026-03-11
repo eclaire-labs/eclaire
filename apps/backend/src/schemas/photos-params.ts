@@ -195,125 +195,118 @@ export const PhotoMetadataSchema = z
   });
 
 // Search parameters schema
-export const PhotoSearchParamsSchema = z
-  .object({
-    text: z
-      .string()
-      .optional()
-      .meta({
-        description: "Text search across photo titles and descriptions",
-        examples: ["sunset", "vacation photos"],
-      }),
+export const PhotoSearchParamsSchema = z.object({
+  text: z
+    .string()
+    .optional()
+    .meta({
+      description: "Text search across photo titles and descriptions",
+      examples: ["sunset", "vacation photos"],
+    }),
 
-    tags: z
-      .string()
-      .optional()
-      .meta({
-        description: "Comma-separated list of tags to filter by",
-        examples: ["nature,landscape", "family,vacation"],
-      }),
+  tags: z
+    .string()
+    .optional()
+    .meta({
+      description: "Comma-separated list of tags to filter by",
+      examples: ["nature,landscape", "family,vacation"],
+    }),
 
-    startDate: z
-      .string()
-      .optional()
-      .meta({
-        description: "Start date for filtering photos (YYYY-MM-DD format)",
-        examples: ["2024-01-01"],
-      }),
+  startDate: z
+    .string()
+    .optional()
+    .meta({
+      description: "Start date for filtering photos (YYYY-MM-DD format)",
+      examples: ["2024-01-01"],
+    }),
 
-    endDate: z
-      .string()
-      .optional()
-      .meta({
-        description: "End date for filtering photos (YYYY-MM-DD format)",
-        examples: ["2024-12-31"],
-      }),
+  endDate: z
+    .string()
+    .optional()
+    .meta({
+      description: "End date for filtering photos (YYYY-MM-DD format)",
+      examples: ["2024-12-31"],
+    }),
 
-    locationCity: z
-      .string()
-      .optional()
-      .meta({
-        description: "Filter photos by city name",
-        examples: ["New York", "San Francisco", "London"],
-      }),
+  locationCity: z
+    .string()
+    .optional()
+    .meta({
+      description: "Filter photos by city name",
+      examples: ["New York", "San Francisco", "London"],
+    }),
 
-    dateField: z
-      .enum(["createdAt", "dateTaken"])
-      .optional()
-      .default("createdAt")
-      .meta({
-        description: "Which date field to use for date range filtering",
-        examples: ["createdAt", "dateTaken"],
-      }),
+  dateField: z
+    .enum(["createdAt", "dateTaken"])
+    .optional()
+    .default("createdAt")
+    .meta({
+      description: "Which date field to use for date range filtering",
+      examples: ["createdAt", "dateTaken"],
+    }),
 
-    dueDateStart: z
-      .string()
-      .optional()
-      .meta({
-        description: "Start date for due date filtering (YYYY-MM-DD format)",
-        examples: ["2024-01-01"],
-      }),
+  dueDateStart: z
+    .string()
+    .optional()
+    .meta({
+      description: "Start date for due date filtering (YYYY-MM-DD format)",
+      examples: ["2024-01-01"],
+    }),
 
-    dueDateEnd: z
-      .string()
-      .optional()
-      .meta({
-        description: "End date for due date filtering (YYYY-MM-DD format)",
-        examples: ["2024-12-31"],
-      }),
+  dueDateEnd: z
+    .string()
+    .optional()
+    .meta({
+      description: "End date for due date filtering (YYYY-MM-DD format)",
+      examples: ["2024-12-31"],
+    }),
 
-    deviceId: z
-      .string()
-      .optional()
-      .meta({
-        description: "Filter photos by device ID",
-        examples: ["iphone-12-pro", "camera-001"],
-      }),
+  deviceId: z
+    .string()
+    .optional()
+    .meta({
+      description: "Filter photos by device ID",
+      examples: ["iphone-12-pro", "camera-001"],
+    }),
 
-    limit: z.coerce
-      .number()
-      .min(1)
-      .max(200)
-      .optional()
-      .default(50)
-      .meta({
-        description: "Maximum number of photos to return per page",
-        examples: [25, 50, 100],
-      }),
+  limit: z.coerce
+    .number()
+    .min(1)
+    .max(200)
+    .optional()
+    .default(50)
+    .meta({
+      description: "Maximum number of photos to return per page",
+      examples: [25, 50, 100],
+    }),
 
-    cursor: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
-        examples: [
-          "eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6InBodF8xMjMifQ",
-        ],
-      }),
+  cursor: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
+      examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6InBodF8xMjMifQ"],
+    }),
 
-    sortBy: z
-      .enum(["createdAt", "dateTaken", "title"])
-      .optional()
-      .default("createdAt")
-      .meta({
-        description: "Field to sort photos by",
-        examples: ["createdAt", "dateTaken", "title"],
-      }),
+  sortBy: z
+    .enum(["createdAt", "dateTaken", "title"])
+    .optional()
+    .default("createdAt")
+    .meta({
+      description: "Field to sort photos by",
+      examples: ["createdAt", "dateTaken", "title"],
+    }),
 
-    sortDir: z
-      .enum(["asc", "desc"])
-      .optional()
-      .default("desc")
-      .meta({
-        description: "Sort direction",
-        examples: ["asc", "desc"],
-      }),
-  })
-  .meta({
-    ref: "PhotoSearchParams",
-    description: "Search and filter parameters for photos",
-  });
+  sortDir: z
+    .enum(["asc", "desc"])
+    .optional()
+    .default("desc")
+    .meta({
+      description: "Sort direction",
+      examples: ["asc", "desc"],
+    }),
+});
 
 // Path parameters
 export const PhotoIdParam = z

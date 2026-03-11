@@ -26,68 +26,6 @@ export const getNotesRouteDescription = {
   summary: "Get all notes or search notes",
   description:
     "Retrieve all notes for the authenticated user or search notes with optional filters",
-  parameters: [
-    {
-      name: "text",
-      in: "query" as const,
-      description: "Search text to find in note titles and content",
-      required: false,
-      schema: { type: "string" as const },
-    },
-    {
-      name: "tags",
-      in: "query" as const,
-      description: "Comma-separated list of tags to filter by",
-      required: false,
-      schema: { type: "string" as const },
-    },
-    {
-      name: "startDate",
-      in: "query" as const,
-      description:
-        "Filter notes created on or after this date (ISO 8601 format)",
-      required: false,
-      schema: { type: "string" as const, format: "date-time" as const },
-    },
-    {
-      name: "endDate",
-      in: "query" as const,
-      description:
-        "Filter notes created on or before this date (ISO 8601 format)",
-      required: false,
-      schema: { type: "string" as const, format: "date-time" as const },
-    },
-    {
-      name: "limit",
-      in: "query" as const,
-      description: "Maximum number of results to return",
-      required: false,
-      schema: { type: "string" as const, pattern: "^\\d+$" },
-    },
-    {
-      name: "offset",
-      in: "query" as const,
-      description: "Number of results to skip (for pagination)",
-      required: false,
-      schema: { type: "string" as const, pattern: "^\\d+$" },
-    },
-    {
-      name: "dueDateStart",
-      in: "query" as const,
-      description:
-        "Filter notes with due dates on or after this date (ISO 8601 format)",
-      required: false,
-      schema: { type: "string" as const, format: "date-time" as const },
-    },
-    {
-      name: "dueDateEnd",
-      in: "query" as const,
-      description:
-        "Filter notes with due dates on or before this date (ISO 8601 format)",
-      required: false,
-      schema: { type: "string" as const, format: "date-time" as const },
-    },
-  ],
   responses: {
     200: {
       description: "List of notes with pagination info",

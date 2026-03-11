@@ -48,8 +48,9 @@ export const bookmarksRoutes = new Hono<{ Variables: RouteVariables }>();
 bookmarksRoutes.get(
   "/",
   describeRoute(getBookmarksRouteDescription),
+  zValidator("query", BookmarkSearchParamsSchema),
   withAuth(async (c, userId) => {
-    const params = BookmarkSearchParamsSchema.parse(c.req.query());
+    const params = c.req.valid("query");
     const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
       parseSearchFields(params);
 

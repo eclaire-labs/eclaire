@@ -197,156 +197,142 @@ export const PartialTaskSchema = makePartial(TaskSchema).meta({
 });
 
 // Task search/filter parameters schema
-export const TaskSearchParamsSchema = z
-  .object({
-    text: z
-      .string()
-      .optional()
-      .meta({
-        description: "Search text to match against task title and description",
-        examples: ["documentation", "meeting", "urgent"],
-      }),
+export const TaskSearchParamsSchema = z.object({
+  text: z
+    .string()
+    .optional()
+    .meta({
+      description: "Search text to match against task title and description",
+      examples: ["documentation", "meeting", "urgent"],
+    }),
 
-    tags: z
-      .string()
-      .optional()
-      .meta({
-        description: "Comma-separated list of tags to filter by",
-        examples: ["urgent,development", "meeting,planning"],
-      }),
+  tags: z
+    .string()
+    .optional()
+    .meta({
+      description: "Comma-separated list of tags to filter by",
+      examples: ["urgent,development", "meeting,planning"],
+    }),
 
-    status: z
-      .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
-      .optional()
-      .meta({
-        description: "Filter tasks by status",
-        examples: ["backlog", "in-progress", "completed", "cancelled"],
-      }),
+  status: z
+    .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
+    .optional()
+    .meta({
+      description: "Filter tasks by status",
+      examples: ["backlog", "in-progress", "completed", "cancelled"],
+    }),
 
-    priority: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .max(4)
-      .optional()
-      .meta({
-        description:
-          "Filter tasks by priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low",
-        examples: [1, 2, 3],
-      }),
+  priority: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(4)
+    .optional()
+    .meta({
+      description:
+        "Filter tasks by priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low",
+      examples: [1, 2, 3],
+    }),
 
-    startDate: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Filter tasks with due dates on or after this date (YYYY-MM-DD format)",
-        examples: ["2025-06-01", "2025-12-31"],
-      }),
+  startDate: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Filter tasks with due dates on or after this date (YYYY-MM-DD format)",
+      examples: ["2025-06-01", "2025-12-31"],
+    }),
 
-    endDate: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Filter tasks with due dates on or before this date (YYYY-MM-DD format)",
-        examples: ["2025-06-30", "2025-12-31"],
-      }),
+  endDate: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Filter tasks with due dates on or before this date (YYYY-MM-DD format)",
+      examples: ["2025-06-30", "2025-12-31"],
+    }),
 
-    limit: z.coerce
-      .number()
-      .min(1)
-      .max(200)
-      .optional()
-      .default(50)
-      .meta({
-        description: "Maximum number of tasks to return per page",
-        examples: [10, 25, 50],
-      }),
+  limit: z.coerce
+    .number()
+    .min(1)
+    .max(200)
+    .optional()
+    .default(50)
+    .meta({
+      description: "Maximum number of tasks to return per page",
+      examples: [10, 25, 50],
+    }),
 
-    cursor: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
-        examples: [
-          "eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6InRza18xMjMifQ",
-        ],
-      }),
+  cursor: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
+      examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6InRza18xMjMifQ"],
+    }),
 
-    sortBy: z
-      .enum([
+  sortBy: z
+    .enum(["createdAt", "dueDate", "status", "title", "priority", "sortOrder"])
+    .optional()
+    .default("createdAt")
+    .meta({
+      description: "Field to sort tasks by",
+      examples: [
         "createdAt",
         "dueDate",
         "status",
         "title",
         "priority",
         "sortOrder",
-      ])
-      .optional()
-      .default("createdAt")
-      .meta({
-        description: "Field to sort tasks by",
-        examples: [
-          "createdAt",
-          "dueDate",
-          "status",
-          "title",
-          "priority",
-          "sortOrder",
-        ],
-      }),
+      ],
+    }),
 
-    sortDir: z
-      .enum(["asc", "desc"])
-      .optional()
-      .default("desc")
-      .meta({
-        description: "Sort direction",
-        examples: ["asc", "desc"],
-      }),
+  sortDir: z
+    .enum(["asc", "desc"])
+    .optional()
+    .default("desc")
+    .meta({
+      description: "Sort direction",
+      examples: ["asc", "desc"],
+    }),
 
-    dueDateStart: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Filter tasks with due dates on or after this date (YYYY-MM-DD format)",
-        examples: ["2025-06-01", "2025-12-31"],
-      }),
+  dueDateStart: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Filter tasks with due dates on or after this date (YYYY-MM-DD format)",
+      examples: ["2025-06-01", "2025-12-31"],
+    }),
 
-    dueDateEnd: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Filter tasks with due dates on or before this date (YYYY-MM-DD format)",
-        examples: ["2025-06-30", "2025-12-31"],
-      }),
+  dueDateEnd: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Filter tasks with due dates on or before this date (YYYY-MM-DD format)",
+      examples: ["2025-06-30", "2025-12-31"],
+    }),
 
-    parentId: z
-      .string()
-      .optional()
-      .meta({
-        description:
-          "Filter tasks by parent task ID (returns sub-tasks of the specified parent)",
-        examples: ["tsk_abc123"],
-      }),
+  parentId: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Filter tasks by parent task ID (returns sub-tasks of the specified parent)",
+      examples: ["tsk_abc123"],
+    }),
 
-    topLevelOnly: z
-      .enum(["true", "false"])
-      .optional()
-      .meta({
-        description:
-          "When 'true', only return top-level tasks (exclude sub-tasks). Ignored if parentId is set.",
-        examples: ["true"],
-      }),
-  })
-  .meta({
-    ref: "TaskSearchParams",
-    description: "Query parameters for searching and filtering tasks",
-  });
+  topLevelOnly: z
+    .enum(["true", "false"])
+    .optional()
+    .meta({
+      description:
+        "When 'true', only return top-level tasks (exclude sub-tasks). Ignored if parentId is set.",
+      examples: ["true"],
+    }),
+});
 
 // Task comment creation schema
 export const TaskCommentCreateSchema = z
