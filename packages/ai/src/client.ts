@@ -38,6 +38,18 @@ import {
 const getLogger = createLazyLogger("ai-client");
 
 // =============================================================================
+// THINKING TAG CLEANUP
+// =============================================================================
+
+/**
+ * Strip `<think>...</think>` blocks that some models emit in their content.
+ * Applied as defense-in-depth so callers always receive clean content.
+ */
+function stripThinkingTags(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+}
+
+// =============================================================================
 // DEFAULTS
 // =============================================================================
 
@@ -120,6 +132,10 @@ export async function callAI(
 ): Promise<AIResponse> {
   const logger = getLogger();
 
+  // Workers never need thinking — disable it to preserve token budget
+  const resolvedEnableThinking =
+    options.enableThinking ?? (context === "workers" ? false : undefined);
+
   // If streaming is requested, delegate to callAIStream and collect results
   if (options.stream) {
     const streamResponse = await callAIStream(messages, context, options);
@@ -158,8 +174,12 @@ export async function callAI(
     }
 
     const joinedReasoning = reasoningChunks.join("");
+    const rawContent = contentChunks.join("");
     return {
-      content: contentChunks.join(""),
+      content:
+        resolvedEnableThinking === false
+          ? stripThinkingTags(rawContent)
+          : rawContent,
       reasoning: joinedReasoning?.trim() ? joinedReasoning : undefined,
       usage: finalUsage,
       estimatedInputTokens: streamResponse.estimatedInputTokens,
@@ -176,7 +196,7 @@ export async function callAI(
   const processedMessages = applyThinkingPrefix(
     messages,
     modelId,
-    options.enableThinking,
+    resolvedEnableThinking,
   );
 
   // Estimate token count
@@ -221,7 +241,7 @@ export async function callAI(
         tools: options.tools,
         toolChoice: options.toolChoice,
         responseFormat: options.responseFormat,
-        enableThinking: options.enableThinking,
+        enableThinking: resolvedEnableThinking,
       },
       providerOverrides: providerConfig.overrides,
     },
@@ -354,7 +374,10 @@ export async function callAI(
     }
 
     return {
-      content: parsed.content,
+      content:
+        resolvedEnableThinking === false
+          ? stripThinkingTags(parsed.content)
+          : parsed.content,
       reasoning: parsed.reasoning?.trim() ? parsed.reasoning : undefined,
       toolCalls: parsed.toolCalls,
       usage: parsed.usage,
@@ -450,11 +473,15 @@ export async function callAIStream(
   const { provider, providerConfig, modelId, modelConfig } =
     validateAIConfig(context);
 
+  // Workers never need thinking — disable it to preserve token budget
+  const resolvedEnableThinking =
+    options.enableThinking ?? (context === "workers" ? false : undefined);
+
   // Apply thinking prefix to system messages
   const processedMessages = applyThinkingPrefix(
     messages,
     modelId,
-    options.enableThinking,
+    resolvedEnableThinking,
   );
 
   // Estimate token count
@@ -502,7 +529,7 @@ export async function callAIStream(
         tools: options.tools,
         toolChoice: options.toolChoice,
         responseFormat: options.responseFormat,
-        enableThinking: options.enableThinking,
+        enableThinking: resolvedEnableThinking,
       },
       providerOverrides: providerConfig.overrides,
     },

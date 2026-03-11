@@ -90,9 +90,13 @@ export class OpenAICompatibleAdapter implements DialectAdapter {
       }
     }
 
-    // Add enable_thinking for models that support it (e.g. Qwen3 via llama-server)
+    // Add enable_thinking for models that support it (e.g. Qwen3/3.5 via llama-server)
     if (params.options.enableThinking !== undefined) {
       body.enable_thinking = params.options.enableThinking;
+      // WORKAROUND: llama-server ignores top-level enable_thinking; requires chat_template_kwargs instead
+      body.chat_template_kwargs = {
+        enable_thinking: params.options.enableThinking,
+      };
     }
 
     // Add response format if specified

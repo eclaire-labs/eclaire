@@ -549,6 +549,11 @@ export function getThinkingPromptPrefix(
       }
     }
 
+    case "provider-controlled":
+      // Provider-controlled models use API parameters (e.g., enable_thinking),
+      // not prompt prefixes.
+      return "";
+
     default:
       logger.warn({ modelId, mode: reasoning.mode }, "Unknown reasoning mode");
       return "";
