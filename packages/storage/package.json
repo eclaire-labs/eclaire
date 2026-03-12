@@ -1,10 +1,21 @@
 {
   "name": "@eclaire/storage",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Storage abstraction - local filesystem and S3-compatible backends with zero-dependency core",
+  "version": "0.1.0",
+  "description": "Storage abstraction with local filesystem and in-memory backends, zero-dependency core",
   "license": "MIT",
   "type": "module",
+  "keywords": [
+    "storage",
+    "filesystem",
+    "object-storage",
+    "s3",
+    "abstraction"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eclaire-labs/eclaire",
+    "directory": "packages/storage"
+  },
   "files": [
     "dist"
   ],
@@ -21,6 +32,11 @@
       "types": "./src/core/index.ts",
       "default": "./dist/core/index.js"
     },
+    "./keys": {
+      "development": "./src/keys/index.ts",
+      "types": "./src/keys/index.ts",
+      "default": "./dist/keys/index.js"
+    },
     "./local": {
       "development": "./src/adapters/local/index.ts",
       "types": "./src/adapters/local/index.ts",
@@ -30,11 +46,6 @@
       "development": "./src/adapters/memory/index.ts",
       "types": "./src/adapters/memory/index.ts",
       "default": "./dist/adapters/memory/index.js"
-    },
-    "./s3": {
-      "development": "./src/adapters/s3/index.ts",
-      "types": "./src/adapters/s3/index.ts",
-      "default": "./dist/adapters/s3/index.js"
     }
   },
   "scripts": {

@@ -20,19 +20,21 @@ export type {
   StorageStats,
   WriteOptions,
 } from "@eclaire/storage/core";
-// Re-export key utilities for convenience
 // Re-export errors
+export {
+  StorageAccessDeniedError,
+  StorageError,
+  StorageInvalidKeyError,
+  StorageNotFoundError,
+} from "@eclaire/storage/core";
+// Re-export key utilities for convenience
 export {
   assetPrefix,
   buildKey,
   categoryPrefix,
   parseKey,
-  StorageAccessDeniedError,
-  StorageError,
-  StorageInvalidKeyError,
-  StorageNotFoundError,
   userPrefix,
-} from "@eclaire/storage/core";
+} from "@eclaire/storage/keys";
 
 // Create a pino-compatible logger adapter
 const pinoLogger = createChildLogger("storage");

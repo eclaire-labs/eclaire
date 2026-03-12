@@ -13,21 +13,12 @@ export {
   StorageNotFoundError,
   StorageQuotaExceededError,
 } from "./errors.js";
-// Key utilities
-export type { ParsedKey } from "./keys.js";
+// Key safety utilities (generic — no opinion on key structure)
 export {
   assertSafeKey,
   assertSafePrefix,
-  assetPrefix,
-  buildKey,
-  categoryPrefix,
   isSafeKey,
   isSafePrefix,
-  isValidKey,
-  isValidKeyComponent,
-  parseKey,
-  sanitizeKeyComponent,
-  userPrefix,
 } from "./keys.js";
 // Types
 export type {
