@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
+    "@playwright/test": "1.58.2",
     "node-addon-api": "8.6.0",
     "node-gyp": "12.2.0",
     "oxlint": "catalog:"
@@ -49,6 +50,8 @@
     "test:integration:ai:local": "pnpm --filter @eclaire/ai test:integration:local",
     "test:integration:ai:openrouter": "pnpm --filter @eclaire/ai test:integration:openrouter",
     "test:integration:bullmq": "pnpm --filter @eclaire/queue test:bullmq",
+    "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
+    "test:e2e:ui": "playwright test --config tests/e2e/playwright.config.ts --ui",
     "lint": "pnpm lint:biome && pnpm lint:oxlint",
     "lint:biome": "biome lint ./",
     "lint:oxlint": "oxlint --tsconfig tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives apps packages tools scripts",
