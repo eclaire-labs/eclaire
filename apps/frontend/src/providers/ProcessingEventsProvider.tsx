@@ -159,6 +159,10 @@ export function ProcessingEventsProvider({
                 queryClient.invalidateQueries({
                   queryKey: ["processing-summary"],
                 });
+                // Update processing jobs list (Processing page)
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-jobs"],
+                });
                 break;
 
               case "stage_started":
@@ -167,19 +171,25 @@ export function ProcessingEventsProvider({
                   queryKey: ["processing-status", assetType, assetId],
                 });
                 // Optimistically update the asset's processingStatus in the list
-                // This ensures the UI shows "processing" immediately without a list refetch
-                // biome-ignore lint/suspicious/noExplicitAny: query cache items have varying shapes per asset type
-                queryClient.setQueriesData<any[]>(
+                // Uses infinite query structure: { pages: [{ items: [...] }, ...] }
+                queryClient.setQueriesData(
                   { queryKey: [assetType] },
-                  (oldData) => {
-                    if (!oldData || !Array.isArray(oldData)) return oldData;
-                    return oldData.map(
-                      // biome-ignore lint/suspicious/noExplicitAny: list items have varying shapes per asset type
-                      (item: any) =>
-                        item.id === assetId
-                          ? { ...item, processingStatus: "processing" }
-                          : item,
-                    );
+                  // biome-ignore lint/suspicious/noExplicitAny: query cache items have varying shapes per asset type
+                  (oldData: any) => {
+                    if (!oldData?.pages) return oldData;
+                    return {
+                      ...oldData,
+                      // biome-ignore lint/suspicious/noExplicitAny: page items have varying shapes per asset type
+                      pages: oldData.pages.map((page: any) => ({
+                        ...page,
+                        // biome-ignore lint/suspicious/noExplicitAny: list items have varying shapes per asset type
+                        items: page.items.map((item: any) =>
+                          item.id === assetId
+                            ? { ...item, processingStatus: "processing" }
+                            : item,
+                        ),
+                      })),
+                    };
                   },
                 );
                 // Optimistically update the asset's processingStatus in the detail view
@@ -190,12 +200,20 @@ export function ProcessingEventsProvider({
                     return { ...oldData, processingStatus: "processing" };
                   },
                 );
+                // Update processing jobs list (Processing page)
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-jobs"],
+                });
                 break;
 
               case "stage_completed":
                 // Invalidate to refetch fresh status
                 queryClient.invalidateQueries({
                   queryKey: ["processing-status", assetType, assetId],
+                });
+                // Update processing jobs list (Processing page)
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-jobs"],
                 });
                 break;
 
@@ -207,6 +225,20 @@ export function ProcessingEventsProvider({
                     (old: Record<string, unknown> | undefined) =>
                       old ? { ...old, overallProgress: progress } : old,
                   );
+                  // Also update progress in the processing jobs list (Processing page)
+                  queryClient.setQueryData(
+                    ["processing-jobs"],
+                    // biome-ignore lint/suspicious/noExplicitAny: processing job items are untyped in this context
+                    (oldJobs: any[] | undefined) => {
+                      if (!oldJobs) return oldJobs;
+                      // biome-ignore lint/suspicious/noExplicitAny: processing job items are untyped in this context
+                      return oldJobs.map((job: any) =>
+                        job.assetType === assetType && job.assetId === assetId
+                          ? { ...job, overallProgress: progress }
+                          : job,
+                      );
+                    },
+                  );
                 }
                 break;
 
@@ -215,27 +247,27 @@ export function ProcessingEventsProvider({
                 queryClient.invalidateQueries({
                   queryKey: ["processing-status", assetType, assetId],
                 });
-                // Force refetch of asset list and individual asset to get fresh data
-                // Using refetchQueries instead of invalidateQueries ensures immediate
-                // network request, so tags and other processed data appear immediately
-                queryClient.refetchQueries({
+                // Invalidate asset list and detail so fresh data is fetched
+                // (active queries refetch immediately; inactive ones refetch on next mount)
+                queryClient.invalidateQueries({
                   queryKey: [assetType],
-                  type: "active",
                 });
-                queryClient.refetchQueries({
+                queryClient.invalidateQueries({
                   queryKey: [assetType, assetId],
-                  type: "active",
                 });
-                // For photos, also refetch AI analysis cache
+                // For photos, also invalidate AI analysis cache
                 if (assetType === "photos") {
-                  queryClient.refetchQueries({
+                  queryClient.invalidateQueries({
                     queryKey: ["photo-analysis", assetId],
-                    type: "active",
                   });
                 }
                 // Update summary counts (job moved to completed)
                 queryClient.invalidateQueries({
                   queryKey: ["processing-summary"],
+                });
+                // Update processing jobs list (Processing page)
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-jobs"],
                 });
                 // Trigger registered refresh callbacks
                 const callback = refreshCallbacksRef.current.get(assetType);
@@ -251,10 +283,13 @@ export function ProcessingEventsProvider({
                 queryClient.invalidateQueries({
                   queryKey: ["processing-status", assetType, assetId],
                 });
-                // Force refetch of asset list to show failure state immediately
-                queryClient.refetchQueries({
+                // Invalidate asset list so failure state appears
+                queryClient.invalidateQueries({
                   queryKey: [assetType],
-                  type: "active",
+                });
+                // Update processing jobs list (Processing page)
+                queryClient.invalidateQueries({
+                  queryKey: ["processing-jobs"],
                 });
                 // Update summary counts (job moved to failed)
                 if (type === "job_failed") {

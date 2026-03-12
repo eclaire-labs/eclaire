@@ -376,6 +376,7 @@ export default function ProcessingContent() {
       }
       return response.json();
     },
+    staleTime: 0, // Always refetch on mount — this is a monitoring dashboard
     // Only poll as fallback when SSE is disconnected
     refetchInterval: isConnected ? false : 60000, // Poll every minute when SSE disconnected
   });
