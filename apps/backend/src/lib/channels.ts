@@ -46,21 +46,25 @@ const sessionAndModelDeps = {
 function channelQueryDeps(platform: ChannelPlatform) {
   return {
     findChannel: async (channelId: string, userId: string) => {
-      return (await db.query.channels.findFirst({
-        where: and(
-          eq(schema.channels.id, channelId),
-          eq(schema.channels.userId, userId),
-        ),
-      })) ?? null;
+      return (
+        (await db.query.channels.findFirst({
+          where: and(
+            eq(schema.channels.id, channelId),
+            eq(schema.channels.userId, userId),
+          ),
+        })) ?? null
+      );
     },
     findChannelById: async (channelId: string) => {
-      return (await db.query.channels.findFirst({
-        where: and(
-          eq(schema.channels.id, channelId),
-          eq(schema.channels.platform, platform),
-          schema.channels.isActive,
-        ),
-      })) ?? null;
+      return (
+        (await db.query.channels.findFirst({
+          where: and(
+            eq(schema.channels.id, channelId),
+            eq(schema.channels.platform, platform),
+            schema.channels.isActive,
+          ),
+        })) ?? null
+      );
     },
     findActiveChannels: async () => {
       return db.query.channels.findMany({

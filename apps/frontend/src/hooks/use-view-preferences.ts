@@ -104,7 +104,10 @@ function sanitizePreferences(
   pageType: PageType,
 ): ViewPreferences {
   if (!VALID_SORT_KEYS[pageType].includes(merged.sortBy)) {
-    return { ...merged, sortBy: DEFAULT_PREFERENCES[pageType].sortBy } as ViewPreferences;
+    return {
+      ...merged,
+      sortBy: DEFAULT_PREFERENCES[pageType].sortBy,
+    } as ViewPreferences;
   }
   return merged;
 }
