@@ -20,11 +20,15 @@ export async function executeQuery<T = Record<string, unknown>>(
   if (dbType === "sqlite") {
     // biome-ignore lint/suspicious/noExplicitAny: vendor-specific .all() on DbInstance union
     return (db as any).all(query) as T[];
-  } else {
+  } else if (dbType === "pglite") {
+    // PGlite returns { rows: T[] }
     // biome-ignore lint/suspicious/noExplicitAny: vendor-specific .execute() on DbInstance union
     const result = await (db as any).execute(query);
-    // postgres-js returns array, pglite returns { rows: [] }
-    return Array.isArray(result) ? result : (result.rows ?? []);
+    return result.rows ?? [];
+  } else {
+    // postgres-js returns T[] directly
+    // biome-ignore lint/suspicious/noExplicitAny: vendor-specific .execute() on DbInstance union
+    return await (db as any).execute(query);
   }
 }
 

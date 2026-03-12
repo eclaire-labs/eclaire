@@ -42,28 +42,29 @@ function wrapSqliteTx(
     const table = schema[tableName];
 
     if (!table) {
-      console.warn(`Table ${tableName} not found in schema`);
+      throw new Error(
+        `Table "${tableName}" not found in SQLite schema. ` +
+          `Ensure it is exported from the schema module.`,
+      );
     }
 
     return {
       // biome-ignore lint/suspicious/noExplicitAny: dynamic insert values
       async insert(values: any): Promise<void> {
-        if (!table) return;
         // Execute synchronously but return Promise for API consistency
         db.insert(table).values(values).run();
       },
       // biome-ignore lint/suspicious/noExplicitAny: dynamic update values
       async update(where: SQL | undefined, values: any): Promise<void> {
-        if (!table || !where) return;
+        if (!where) return;
         db.update(table).set(values).where(where).run();
       },
       async delete(where: SQL | undefined): Promise<void> {
-        if (!table || !where) return;
+        if (!where) return;
         db.delete(table).where(where).run();
       },
       // biome-ignore lint/suspicious/noExplicitAny: dynamic select return type
       async findFirst(where: SQL | undefined): Promise<any | undefined> {
-        if (!table) return undefined;
         const baseQuery = db.select().from(table);
         // Use .get() for single row (better-sqlite3 optimization)
         return where
@@ -72,7 +73,6 @@ function wrapSqliteTx(
       },
       // biome-ignore lint/suspicious/noExplicitAny: dynamic select return type
       async findMany(where: SQL | undefined): Promise<any[]> {
-        if (!table) return [];
         const baseQuery = db.select().from(table);
         return where ? baseQuery.where(where).all() : baseQuery.all();
       },
@@ -92,7 +92,6 @@ function wrapSqliteTx(
       userId: string,
     ): Promise<{ id: string; name: string }[]> {
       const tagsTable = schema.tags;
-      if (!tagsTable) return [];
       if (!tagNames || tagNames.length === 0) return [];
 
       const uniqueNames = [
@@ -112,7 +111,7 @@ function wrapSqliteTx(
             userId,
           })),
         )
-        .onConflictDoNothing({ target: [tagsTable.userId, tagsTable.name] })
+        .onConflictDoNothing()
         .run();
 
       // Fetch all matching tags using synchronous .all() method

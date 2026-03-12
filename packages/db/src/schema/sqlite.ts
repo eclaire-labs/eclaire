@@ -183,7 +183,11 @@ export const tasks = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     description: text("description"),
-    status: text("status").notNull().default("not-started"),
+    status: text("status", {
+      enum: ["backlog", "not-started", "in-progress", "completed", "cancelled"],
+    })
+      .notNull()
+      .default("not-started"),
     dueDate: integer("due_date", { mode: "timestamp_ms" }),
     assignedToId: text("assigned_to_id").references(() => users.id, {
       onDelete: "set null",
@@ -574,8 +578,11 @@ export const tags = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
   },
   (t) => ({
-    // Case-insensitive unique constraint per user (COLLATE NOCASE)
-    userTagNameIdx: uniqueIndex("tags_user_id_name_idx").on(t.userId, t.name),
+    // Case-insensitive unique constraint per user (matches PG's lower(name) index)
+    userTagNameLowerIdx: uniqueIndex("tags_user_id_name_lower_idx").on(
+      t.userId,
+      sql`lower(${t.name})`,
+    ),
   }),
 );
 

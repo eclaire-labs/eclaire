@@ -57,6 +57,13 @@
       "when": 1773042207760,
       "tag": "0007_regular_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1773327429732,
+      "tag": "0008_tricky_nomad",
+      "breakpoints": true
     }
   ]
 }

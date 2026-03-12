@@ -53,13 +53,6 @@ export function getDatabaseUrl(): string | null {
 }
 
 /**
- * Get the database auth token (for Turso/LibSQL or other auth-token based DBs)
- */
-export function getDatabaseAuthToken(): string | undefined {
-  return process.env.DATABASE_AUTH_TOKEN;
-}
-
-/**
  * Get the database type from environment.
  * Defaults to postgres for dev/prod parity.
  * Accepts both "postgres" and "postgresql" for backwards compatibility.
