@@ -547,9 +547,6 @@ importers:
 
   packages/ai:
     dependencies:
-      '@eclaire/logger':
-        specifier: workspace:*
-        version: link:../logger
       tiktoken:
         specifier: 1.0.22
         version: 1.0.22
@@ -596,10 +593,6 @@ importers:
         version: 5.9.3
 
   packages/channels/core:
-    dependencies:
-      '@eclaire/core':
-        specifier: workspace:*
-        version: link:../../core
     devDependencies:
       '@biomejs/biome':
         specifier: 'catalog:'
@@ -628,15 +621,9 @@ importers:
       '@eclaire/channels-core':
         specifier: workspace:*
         version: link:../core
-      '@eclaire/core':
-        specifier: workspace:*
-        version: link:../../core
       discord.js:
         specifier: 14.18.0
         version: 14.18.0
-      drizzle-orm:
-        specifier: ^0.45.0
-        version: 0.45.1(@electric-sql/pglite@0.3.15)(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.6.2)(kysely@0.28.11)(pg@8.20.0)(postgres@3.4.8)
       sodium-native:
         specifier: ^4.0.0
         version: 4.3.3
@@ -665,18 +652,12 @@ importers:
       '@eclaire/channels-core':
         specifier: workspace:*
         version: link:../core
-      '@eclaire/core':
-        specifier: workspace:*
-        version: link:../../core
       '@slack/bolt':
         specifier: ^4.1.0
         version: 4.6.0(@types/express@5.0.6)
       '@slack/web-api':
         specifier: ^7.0.0
         version: 7.14.1
-      drizzle-orm:
-        specifier: ^0.45.0
-        version: 0.45.1(@electric-sql/pglite@0.3.15)(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.6.2)(kysely@0.28.11)(pg@8.20.0)(postgres@3.4.8)
     devDependencies:
       '@biomejs/biome':
         specifier: 'catalog:'
@@ -702,12 +683,6 @@ importers:
       '@eclaire/channels-core':
         specifier: workspace:*
         version: link:../core
-      '@eclaire/core':
-        specifier: workspace:*
-        version: link:../../core
-      drizzle-orm:
-        specifier: ^0.45.0
-        version: 0.45.1(@electric-sql/pglite@0.3.15)(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.6.2)(kysely@0.28.11)(pg@8.20.0)(postgres@3.4.8)
       telegraf:
         specifier: 4.16.3
         version: 4.16.3(encoding@0.1.13)

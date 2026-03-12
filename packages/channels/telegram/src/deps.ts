@@ -1,10 +1,12 @@
 /**
  * Dependency injection for the Telegram adapter.
  *
- * The adapter needs access to backend services (DB, AI agent, history, encryption, logger)
+ * The adapter needs access to backend services (AI agent, history, encryption, logger)
  * that live in the backend app. Rather than creating circular dependencies, the backend
  * injects these at startup via `setDeps()`.
  */
+
+import type { ChannelRecord } from "@eclaire/channels-core";
 
 /** Minimal stream event shape consumed by the Telegram adapter. */
 export interface StreamEvent {
@@ -23,10 +25,15 @@ export interface TelegramLogger {
 }
 
 export interface TelegramDeps {
-  // biome-ignore lint/suspicious/noExplicitAny: injected from backend, DB type varies by dialect
-  db: any;
-  // biome-ignore lint/suspicious/noExplicitAny: injected from backend, schema type varies by dialect
-  schema: any;
+  /** Find a single channel by ID and owning user. */
+  findChannel: (
+    channelId: string,
+    userId: string,
+  ) => Promise<ChannelRecord | null>;
+  /** Find a single channel by ID (for bot start/stop). */
+  findChannelById: (channelId: string) => Promise<ChannelRecord | null>;
+  /** Find all active channels for this platform (for startAllBots). */
+  findActiveChannels: () => Promise<ChannelRecord[]>;
   encrypt: (value: string) => string;
   decrypt: (value: string) => string;
   processPromptRequest: (

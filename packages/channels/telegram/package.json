@@ -30,11 +30,9 @@
   },
   "dependencies": {
     "@eclaire/channels-core": "workspace:*",
-    "@eclaire/core": "workspace:*",
     "telegraf": "4.16.3"
   },
   "peerDependencies": {
-    "drizzle-orm": "^0.45.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {

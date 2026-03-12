@@ -1,4 +1,18 @@
-import type { ChannelCapability, ChannelPlatform } from "@eclaire/core/types";
+export const CHANNEL_PLATFORMS = [
+  "telegram",
+  "slack",
+  "whatsapp",
+  "email",
+  "discord",
+] as const;
+export type ChannelPlatform = (typeof CHANNEL_PLATFORMS)[number];
+
+export const CHANNEL_CAPABILITIES = [
+  "notification",
+  "chat",
+  "bidirectional",
+] as const;
+export type ChannelCapability = (typeof CHANNEL_CAPABILITIES)[number];
 
 /** Minimal channel record shape needed by adapters (from DB row). */
 export interface ChannelRecord {

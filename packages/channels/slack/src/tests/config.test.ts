@@ -16,8 +16,9 @@ const mockDecrypt = (value: string) =>
 
 beforeEach(() => {
   setDeps({
-    db: {},
-    schema: {},
+    findChannel: async () => null,
+    findChannelById: async () => null,
+    findActiveChannels: async () => [],
     encrypt: mockEncrypt,
     decrypt: mockDecrypt,
     processPromptRequest: async () => ({}),

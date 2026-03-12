@@ -3,6 +3,8 @@
  * Only provides encrypt/decrypt and stubs for the rest.
  */
 
+import { and, eq } from "drizzle-orm";
+import type { ChannelRecord } from "@eclaire/channels-core";
 import { ChannelRegistry } from "@eclaire/channels-core";
 import { initTelegramAdapter } from "@eclaire/channels-telegram";
 import { initDiscordAdapter } from "@eclaire/channels-discord";
@@ -25,13 +27,51 @@ const notSupported = () => {
   throw new Error("Not supported in CLI context");
 };
 
+function channelQueryDeps(platform: string) {
+  return {
+    findChannel: async (
+      channelId: string,
+      userId: string,
+    ): Promise<ChannelRecord | null> => {
+      const { db, schema } = getDb();
+      // biome-ignore lint/suspicious/noExplicitAny: CLI db types are loosely typed
+      return (db as any).query.channels.findFirst({
+        where: and(
+          eq(schema.channels.id, channelId),
+          eq(schema.channels.userId, userId),
+        ),
+      });
+    },
+    findChannelById: async (
+      channelId: string,
+    ): Promise<ChannelRecord | null> => {
+      const { db, schema } = getDb();
+      // biome-ignore lint/suspicious/noExplicitAny: CLI db types are loosely typed
+      return (db as any).query.channels.findFirst({
+        where: and(
+          eq(schema.channels.id, channelId),
+          eq(schema.channels.platform, platform as never),
+          schema.channels.isActive,
+        ),
+      });
+    },
+    findActiveChannels: async (): Promise<ChannelRecord[]> => {
+      const { db, schema } = getDb();
+      // biome-ignore lint/suspicious/noExplicitAny: CLI db types are loosely typed
+      return (db as any).query.channels.findMany({
+        where: and(
+          eq(schema.channels.platform, platform as never),
+          schema.channels.isActive,
+        ),
+      });
+    },
+  };
+}
+
 export function getChannelRegistry(): ChannelRegistry {
   if (_registry) return _registry;
 
-  const { db, schema } = getDb();
   const sharedDeps = {
-    db,
-    schema,
     encrypt,
     decrypt,
     processPromptRequest: notSupported as never,
@@ -40,8 +80,14 @@ export function getChannelRegistry(): ChannelRegistry {
   };
 
   _registry = new ChannelRegistry();
-  _registry.register(initTelegramAdapter(sharedDeps));
-  _registry.register(initDiscordAdapter(sharedDeps));
-  _registry.register(initSlackAdapter(sharedDeps));
+  _registry.register(
+    initTelegramAdapter({ ...channelQueryDeps("telegram"), ...sharedDeps }),
+  );
+  _registry.register(
+    initDiscordAdapter({ ...channelQueryDeps("discord"), ...sharedDeps }),
+  );
+  _registry.register(
+    initSlackAdapter({ ...channelQueryDeps("slack"), ...sharedDeps }),
+  );
   return _registry;
 }

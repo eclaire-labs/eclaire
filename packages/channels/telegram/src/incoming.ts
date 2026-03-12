@@ -1,4 +1,3 @@
-import { and, eq } from "drizzle-orm";
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
 import type { BotContext } from "./commands.js";
@@ -16,8 +15,8 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const { db, schema, logger, processPromptRequest, recordHistory } = getDeps();
-  const { channels } = schema;
+  const { findChannel, logger, processPromptRequest, recordHistory } =
+    getDeps();
 
   // biome-ignore lint/style/noNonNullAssertion: Telegraf text handler guarantees message
   if (!("text" in ctx.message!) || !ctx.message.text) {
@@ -41,9 +40,7 @@ export async function handleIncomingMessage(
 
   try {
     // Get the channel to verify it supports chat/bidirectional
-    const channel = await db.query.channels.findFirst({
-      where: and(eq(channels.id, channelId), eq(channels.userId, userId)),
-    });
+    const channel = await findChannel(channelId, userId);
 
     if (!channel) {
       logger.warn(

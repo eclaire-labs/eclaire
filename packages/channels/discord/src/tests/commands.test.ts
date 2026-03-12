@@ -48,8 +48,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   resetSessions();
   setDeps({
-    db: {} as never,
-    schema: {} as never,
+    findChannel: vi.fn(),
+    findChannelById: vi.fn(),
+    findActiveChannels: vi.fn(),
     encrypt: vi.fn(),
     decrypt: vi.fn(),
     processPromptRequest: vi.fn(),
@@ -128,8 +129,9 @@ describe("handleCommandInteraction", () => {
 
     it("replies with unavailable when createSession is not provided", async () => {
       setDeps({
-        db: {} as never,
-        schema: {} as never,
+        findChannel: vi.fn(),
+        findChannelById: vi.fn(),
+        findActiveChannels: vi.fn(),
         encrypt: vi.fn(),
         decrypt: vi.fn(),
         processPromptRequest: vi.fn(),
@@ -167,8 +169,9 @@ describe("handleCommandInteraction", () => {
 
     it("replies when getModelInfo is not provided", async () => {
       setDeps({
-        db: {} as never,
-        schema: {} as never,
+        findChannel: vi.fn(),
+        findChannelById: vi.fn(),
+        findActiveChannels: vi.fn(),
         encrypt: vi.fn(),
         decrypt: vi.fn(),
         processPromptRequest: vi.fn(),

@@ -17,8 +17,9 @@ const mockLogger = {
 beforeEach(() => {
   vi.clearAllMocks();
   setDeps({
-    db: {} as never,
-    schema: {} as never,
+    findChannel: vi.fn(),
+    findChannelById: vi.fn(),
+    findActiveChannels: vi.fn(),
     encrypt: mockEncrypt,
     decrypt: mockDecrypt,
     processPromptRequest: vi.fn(),

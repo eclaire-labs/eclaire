@@ -1,5 +1,4 @@
-import type { ChannelPlatform } from "@eclaire/core/types";
-import type { ChannelAdapter } from "./types.js";
+import type { ChannelAdapter, ChannelPlatform } from "./types.js";
 
 export class ChannelRegistry {
   private adapters = new Map<ChannelPlatform, ChannelAdapter>();

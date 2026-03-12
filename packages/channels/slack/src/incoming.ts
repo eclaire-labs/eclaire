@@ -1,4 +1,3 @@
-import { and, eq } from "drizzle-orm";
 import type { WebClient } from "@slack/web-api";
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
@@ -22,8 +21,8 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const { db, schema, logger, processPromptRequest, recordHistory } = getDeps();
-  const { channels } = schema;
+  const { findChannel, logger, processPromptRequest, recordHistory } =
+    getDeps();
 
   // Drop messages with no text
   if (!text) return;
@@ -39,9 +38,7 @@ export async function handleIncomingMessage(
   );
 
   try {
-    const channel = await db.query.channels.findFirst({
-      where: and(eq(channels.id, channelId), eq(channels.userId, userId)),
-    });
+    const channel = await findChannel(channelId, userId);
 
     if (!channel) {
       logger.warn(

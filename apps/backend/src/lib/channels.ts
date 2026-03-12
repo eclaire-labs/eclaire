@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import { getActiveModelForContext } from "@eclaire/ai";
 import { ChannelRegistry } from "@eclaire/channels-core";
 import { initDiscordAdapter } from "@eclaire/channels-discord";
@@ -41,9 +42,39 @@ const sessionAndModelDeps = {
   },
 } as const;
 
+/** Build platform-specific channel query helpers. */
+function channelQueryDeps(platform: string) {
+  return {
+    findChannel: async (channelId: string, userId: string) => {
+      return db.query.channels.findFirst({
+        where: and(
+          eq(schema.channels.id, channelId),
+          eq(schema.channels.userId, userId),
+        ),
+      });
+    },
+    findChannelById: async (channelId: string) => {
+      return db.query.channels.findFirst({
+        where: and(
+          eq(schema.channels.id, channelId),
+          eq(schema.channels.platform, platform),
+          schema.channels.isActive,
+        ),
+      });
+    },
+    findActiveChannels: async () => {
+      return db.query.channels.findMany({
+        where: and(
+          eq(schema.channels.platform, platform),
+          schema.channels.isActive,
+        ),
+      });
+    },
+  };
+}
+
 const telegramAdapter = initTelegramAdapter({
-  db,
-  schema,
+  ...channelQueryDeps("telegram"),
   encrypt,
   decrypt,
   processPromptRequest,
@@ -56,8 +87,7 @@ const telegramAdapter = initTelegramAdapter({
 channelRegistry.register(telegramAdapter);
 
 const discordAdapter = initDiscordAdapter({
-  db,
-  schema,
+  ...channelQueryDeps("discord"),
   encrypt,
   decrypt,
   processPromptRequest,
@@ -70,8 +100,7 @@ const discordAdapter = initDiscordAdapter({
 channelRegistry.register(discordAdapter);
 
 const slackAdapter = initSlackAdapter({
-  db,
-  schema,
+  ...channelQueryDeps("slack"),
   encrypt,
   decrypt,
   processPromptRequest,

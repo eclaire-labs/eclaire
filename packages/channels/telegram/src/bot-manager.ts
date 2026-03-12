@@ -1,4 +1,3 @@
-import { and, eq } from "drizzle-orm";
 import { type Context, session, Telegraf } from "telegraf";
 import { getDeps } from "./deps.js";
 import { decryptConfig, type TelegramConfig } from "./config.js";
@@ -277,20 +276,13 @@ export async function stopBot(channelId: string): Promise<void> {
  * Starts a Telegram bot for a specific channel.
  */
 export async function startBot(channelId: string): Promise<boolean> {
-  const { db, schema, logger } = getDeps();
-  const { channels } = schema;
+  const { findChannelById, logger } = getDeps();
 
   try {
     // Stop existing instance if any
     await stopBot(channelId);
 
-    const channel = await db.query.channels.findFirst({
-      where: and(
-        eq(channels.id, channelId),
-        eq(channels.platform, "telegram"),
-        channels.isActive,
-      ),
-    });
+    const channel = await findChannelById(channelId);
 
     if (!channel) {
       logger.error({ channelId }, "Telegram channel not found or inactive");
@@ -418,23 +410,12 @@ export async function sendMessage(
  * Starts all active Telegram channels for all users.
  */
 export async function startAllBots(): Promise<void> {
-  const { db, schema, logger } = getDeps();
-  const { channels } = schema;
+  const { findActiveChannels, logger } = getDeps();
 
   try {
     logger.info("Starting all Telegram bots");
 
-    const telegramChannels = await db.query.channels.findMany({
-      where: and(eq(channels.platform, "telegram"), channels.isActive),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            displayName: true,
-          },
-        },
-      },
-    });
+    const telegramChannels = await findActiveChannels();
 
     logger.info(
       { count: telegramChannels.length },
@@ -463,7 +444,7 @@ export async function startAllBots(): Promise<void> {
             {
               channelId: channel.id,
               userId: channel.userId,
-              userName: channel.user.displayName,
+              channelName: channel.name,
             },
             "Telegram bot started successfully",
           );

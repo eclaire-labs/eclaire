@@ -1,4 +1,3 @@
-import { and, eq } from "drizzle-orm";
 import {
   Client,
   GatewayIntentBits,
@@ -349,20 +348,13 @@ export async function stopBot(channelId: string): Promise<void> {
  * Starts a Discord bot for a specific channel.
  */
 export async function startBot(channelId: string): Promise<boolean> {
-  const { db, schema, logger } = getDeps();
-  const { channels } = schema;
+  const { findChannelById, logger } = getDeps();
 
   try {
     // Stop existing instance if any
     await stopBot(channelId);
 
-    const channel = await db.query.channels.findFirst({
-      where: and(
-        eq(channels.id, channelId),
-        eq(channels.platform, "discord"),
-        channels.isActive,
-      ),
-    });
+    const channel = await findChannelById(channelId);
 
     if (!channel) {
       logger.error({ channelId }, "Discord channel not found or inactive");
@@ -708,23 +700,12 @@ export async function sendVoiceMessage(
  * Starts all active Discord channels for all users.
  */
 export async function startAllBots(): Promise<void> {
-  const { db, schema, logger } = getDeps();
-  const { channels } = schema;
+  const { findActiveChannels, logger } = getDeps();
 
   try {
     logger.info("Starting all Discord bots");
 
-    const discordChannels = await db.query.channels.findMany({
-      where: and(eq(channels.platform, "discord"), channels.isActive),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            displayName: true,
-          },
-        },
-      },
-    });
+    const discordChannels = await findActiveChannels();
 
     logger.info(
       { count: discordChannels.length },
@@ -818,7 +799,7 @@ export async function startAllBots(): Promise<void> {
             {
               channelId: entry.channel.id,
               userId: entry.channel.userId,
-              userName: entry.channel.user.displayName,
+              channelName: entry.channel.name,
             },
             "Discord bot started successfully",
           );

@@ -1,4 +1,3 @@
-import { and, eq } from "drizzle-orm";
 import { App } from "@slack/bolt";
 import { getDeps } from "./deps.js";
 import { decryptConfig, type SlackConfig } from "./config.js";
@@ -424,20 +423,13 @@ export async function stopBot(channelId: string): Promise<void> {
  * Starts a Slack bot for a specific channel.
  */
 export async function startBot(channelId: string): Promise<boolean> {
-  const { db, schema, logger } = getDeps();
-  const { channels } = schema;
+  const { findChannelById, logger } = getDeps();
 
   try {
     // Stop existing instance if any
     await stopBot(channelId);
 
-    const channel = await db.query.channels.findFirst({
-      where: and(
-        eq(channels.id, channelId),
-        eq(channels.platform, "slack"),
-        channels.isActive,
-      ),
-    });
+    const channel = await findChannelById(channelId);
 
     if (!channel) {
       logger.error({ channelId }, "Slack channel not found or inactive");
@@ -595,23 +587,12 @@ export async function sendMessage(
  * Starts all active Slack channels for all users.
  */
 export async function startAllBots(): Promise<void> {
-  const { db, schema, logger } = getDeps();
-  const { channels } = schema;
+  const { findActiveChannels, logger } = getDeps();
 
   try {
     logger.info("Starting all Slack bots");
 
-    const slackChannels = await db.query.channels.findMany({
-      where: and(eq(channels.platform, "slack"), channels.isActive),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            displayName: true,
-          },
-        },
-      },
-    });
+    const slackChannels = await findActiveChannels();
 
     logger.info({ count: slackChannels.length }, "Found active Slack channels");
 
@@ -696,7 +677,7 @@ export async function startAllBots(): Promise<void> {
             {
               channelId: entry.channel.id,
               userId: entry.channel.userId,
-              userName: entry.channel.user.displayName,
+              channelName: entry.channel.name,
             },
             "Slack bot started successfully",
           );

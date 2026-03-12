@@ -28,9 +28,6 @@
     "check": "biome check ./",
     "fix": "biome check --write ./"
   },
-  "dependencies": {
-    "@eclaire/core": "workspace:*"
-  },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
