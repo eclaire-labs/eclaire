@@ -37,7 +37,6 @@
     "tiktoken": "1.0.22"
   },
   "peerDependencies": {
-    "@eclaire/logger": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {

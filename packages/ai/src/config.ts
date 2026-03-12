@@ -171,6 +171,21 @@ export function clearConfigCaches(): void {
   getLogger().debug({}, "Configuration caches cleared");
 }
 
+/**
+ * Seed the configuration caches from objects (no filesystem needed).
+ * Used by initAI() when inline config is provided instead of configPath.
+ * @internal
+ */
+export function setInlineConfig(config: {
+  providers: ProvidersConfiguration;
+  models: ModelsConfiguration;
+  selection: SelectionConfiguration;
+}): void {
+  providersConfigCache = config.providers;
+  modelsConfigCache = config.models;
+  selectionConfigCache = config.selection;
+}
+
 // =============================================================================
 // PROVIDERS CONFIGURATION
 // =============================================================================

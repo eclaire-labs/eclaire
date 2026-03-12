@@ -7,10 +7,14 @@
  * ```typescript
  * import { initAI, callAI, callAIStream } from "@eclaire/ai";
  *
- * // Initialize the AI client (call once at startup)
+ * // Initialize with file-based config
+ * initAI({ configPath: "/path/to/config/ai" });
+ *
+ * // Or initialize with inline config
  * initAI({
- *   configPath: "/path/to/config/ai",
- *   createChildLogger: (name) => myLogger.child({ module: name }),
+ *   providers: { providers: { ... } },
+ *   models: { models: { ... } },
+ *   selection: { active: { default: "openai:gpt-4o" } },
  * });
  *
  * // Non-streaming call
@@ -49,17 +53,31 @@
  * ```
  */
 
-import { clearConfigCaches, clearConfigPath, setConfigPath } from "./config.js";
+import {
+  clearConfigCaches,
+  clearConfigPath,
+  setConfigPath,
+  setInlineConfig,
+} from "./config.js";
 import { clearDebugLogPath, setDebugLogPath } from "./debug-logger.js";
 import { clearLoggerFactory, setLoggerFactory } from "./logger.js";
-import type { AILogger } from "./types.js";
+import type {
+  AILogger,
+  ModelsConfiguration,
+  ProvidersConfiguration,
+  SelectionConfiguration,
+} from "./types.js";
 
 // =============================================================================
 // INITIALIZATION
 // =============================================================================
 
 /**
- * Configuration options for initializing the AI client
+ * Configuration options for initializing the AI client.
+ *
+ * Provide config in one of two ways:
+ * - **File-based:** pass `configPath` pointing to a directory with providers.json, models.json, selection.json
+ * - **Programmatic:** pass `providers`, `models`, and `selection` objects directly
  */
 export interface AIClientConfig {
   /**
@@ -67,16 +85,37 @@ export interface AIClientConfig {
    * - providers.json
    * - models.json
    * - selection.json
+   *
+   * Required unless `providers`, `models`, and `selection` are provided.
    */
-  configPath: string;
+  configPath?: string;
+
+  /**
+   * Provider configuration (alternative to file-based config).
+   * Must be provided together with `models` and `selection`.
+   */
+  providers?: ProvidersConfiguration;
+
+  /**
+   * Model configuration (alternative to file-based config).
+   * Must be provided together with `providers` and `selection`.
+   */
+  models?: ModelsConfiguration;
+
+  /**
+   * Selection configuration (alternative to file-based config).
+   * Must be provided together with `providers` and `models`.
+   */
+  selection?: SelectionConfiguration;
 
   /**
    * Factory function to create child loggers.
-   * Should return a logger compatible with pino's interface.
+   * Should return a logger compatible with the AILogger interface.
+   * Falls back to console logging if not provided.
    *
    * @param name - Logger name (e.g., "ai-client", "ai-config")
    */
-  createChildLogger: (name: string) => AILogger;
+  createChildLogger?: (name: string) => AILogger;
 
   /**
    * Optional path to a debug log file (JSONL format).
@@ -95,15 +134,17 @@ let _initialized = false;
  * @param config - Configuration options
  * @throws Error if already initialized (call resetAI first)
  *
- * @example
+ * @example File-based config
  * ```typescript
- * import { initAI } from "@eclaire/ai";
- * import { createChildLogger } from "@eclaire/logger";
- * import { config } from "./config";
+ * initAI({ configPath: "./config/ai" });
+ * ```
  *
+ * @example Programmatic config
+ * ```typescript
  * initAI({
- *   configPath: path.join(config.dirs.config, "ai"),
- *   createChildLogger,
+ *   providers: { providers: { openai: { baseUrl: "https://api.openai.com", dialect: "openai_compatible", auth: { type: "bearer", value: process.env.OPENAI_API_KEY } } } },
+ *   models: { models: { "openai:gpt-4o": { name: "GPT-4o", provider: "openai", providerModel: "gpt-4o", capabilities: { ... } } } },
+ *   selection: { active: { default: "openai:gpt-4o" } },
  * });
  * ```
  */
@@ -114,8 +155,24 @@ export function initAI(config: AIClientConfig): void {
     );
   }
 
-  setConfigPath(config.configPath);
-  setLoggerFactory(config.createChildLogger);
+  // Config source: inline objects OR file path (must provide one)
+  if (config.providers && config.models && config.selection) {
+    setInlineConfig({
+      providers: config.providers,
+      models: config.models,
+      selection: config.selection,
+    });
+  } else if (config.configPath) {
+    setConfigPath(config.configPath);
+  } else {
+    throw new Error(
+      "initAI requires either configPath or { providers, models, selection }.",
+    );
+  }
+
+  if (config.createChildLogger) {
+    setLoggerFactory(config.createChildLogger);
+  }
   setDebugLogPath(config.debugLogPath);
   _initialized = true;
 }
