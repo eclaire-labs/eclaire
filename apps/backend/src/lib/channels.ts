@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { getActiveModelForContext } from "@eclaire/ai";
-import { ChannelRegistry } from "@eclaire/channels-core";
+import { type ChannelPlatform, ChannelRegistry } from "@eclaire/channels-core";
 import { initDiscordAdapter } from "@eclaire/channels-discord";
 import { initSlackAdapter } from "@eclaire/channels-slack";
 import { initTelegramAdapter } from "@eclaire/channels-telegram";
@@ -43,24 +43,24 @@ const sessionAndModelDeps = {
 } as const;
 
 /** Build platform-specific channel query helpers. */
-function channelQueryDeps(platform: string) {
+function channelQueryDeps(platform: ChannelPlatform) {
   return {
     findChannel: async (channelId: string, userId: string) => {
-      return db.query.channels.findFirst({
+      return (await db.query.channels.findFirst({
         where: and(
           eq(schema.channels.id, channelId),
           eq(schema.channels.userId, userId),
         ),
-      });
+      })) ?? null;
     },
     findChannelById: async (channelId: string) => {
-      return db.query.channels.findFirst({
+      return (await db.query.channels.findFirst({
         where: and(
           eq(schema.channels.id, channelId),
           eq(schema.channels.platform, platform),
           schema.channels.isActive,
         ),
-      });
+      })) ?? null;
     },
     findActiveChannels: async () => {
       return db.query.channels.findMany({
