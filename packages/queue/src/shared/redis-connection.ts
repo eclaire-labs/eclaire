@@ -2,7 +2,7 @@
  * Shared Redis connection setup for BullMQ
  */
 
-import { getErrorMessage } from "@eclaire/core";
+import { getErrorMessage } from "../core/error-utils.js";
 import { Redis } from "ioredis";
 import type { QueueLogger } from "../core/types.js";
 

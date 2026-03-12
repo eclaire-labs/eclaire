@@ -5,7 +5,7 @@
  * long-polling to process jobs from a remote backend.
  */
 
-import { getErrorMessage } from "@eclaire/core";
+import { getErrorMessage } from "../core/error-utils.js";
 import { isRateLimitError, type RateLimitError } from "../core/errors.js";
 import {
   addStagesToList,

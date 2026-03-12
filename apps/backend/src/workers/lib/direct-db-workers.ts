@@ -7,7 +7,8 @@
  */
 
 import { runWithRequestId } from "@eclaire/logger";
-import { createEventCallbacks, QueueNames } from "@eclaire/queue/app";
+import { createEventCallbacks } from "@eclaire/queue/core";
+import { QueueNames } from "../../lib/queue/queue-names.js";
 import type {
   JobContext,
   JobEventCallbacks,

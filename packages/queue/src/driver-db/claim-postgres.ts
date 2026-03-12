@@ -4,7 +4,7 @@
  * Uses FOR UPDATE SKIP LOCKED for optimal concurrent claiming.
  */
 
-import { getErrorMessage } from "@eclaire/core";
+import { getErrorMessage } from "../core/error-utils.js";
 import { sql } from "drizzle-orm";
 import type { QueueLogger } from "../core/types.js";
 import { generateJobId } from "../core/utils.js";

@@ -1,17 +1,16 @@
 /**
- * Database Queue Adapter
+ * Eclaire-specific Database Queue Adapter
  *
  * Database-backed queue implementation for zero-Redis deployments.
  * Uses the queue_jobs table (via driver-db) for job storage.
  */
 
-import { getErrorMessage } from "@eclaire/core";
-import type { DbInstance } from "@eclaire/db";
+import { getErrorMessage } from "@eclaire/queue";
+import type { QueueClient } from "@eclaire/queue/core";
+import { createDbQueueClient, getQueueSchema } from "@eclaire/queue/driver-db";
+import type { NotifyEmitter } from "@eclaire/queue/driver-db";
 import { getRequestId, type Logger } from "@eclaire/logger";
-import type { QueueClient } from "../../core/types.js";
-import { createDbQueueClient } from "../../driver-db/client.js";
-import { getQueueSchema } from "../../driver-db/schema.js";
-import type { NotifyEmitter } from "../../driver-db/types.js";
+import type { DbInstance } from "@eclaire/db";
 import { QueueNames } from "../queue-names.js";
 import type {
   AssetType,
@@ -94,7 +93,6 @@ export function createDatabaseAdapter(
     const queueName = getQueueName(assetType, options.jobType);
 
     // Use assetType:assetId as the idempotency key
-    // This replaces the old (assetType, assetId, jobType) unique constraint
     const key = `${assetType}:${assetId}`;
 
     // Get requestId from AsyncLocalStorage (set by HTTP middleware)

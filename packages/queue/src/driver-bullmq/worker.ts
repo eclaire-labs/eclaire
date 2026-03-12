@@ -2,7 +2,7 @@
  * @eclaire/queue/driver-bullmq - BullMQ Worker implementation
  */
 
-import { getErrorMessage } from "@eclaire/core";
+import { getErrorMessage } from "../core/error-utils.js";
 import {
   type Job as BullMQJob,
   Worker as BullMQWorker,

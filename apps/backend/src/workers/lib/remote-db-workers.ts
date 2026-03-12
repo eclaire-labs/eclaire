@@ -8,7 +8,7 @@
  * Use this when SERVICE_ROLE=worker and you want to use Postgres instead of Redis.
  */
 
-import { QueueNames } from "@eclaire/queue/app";
+import { QueueNames } from "../../lib/queue/queue-names.js";
 import type { JobContext, Worker } from "@eclaire/queue/core";
 import {
   createDbWorker,

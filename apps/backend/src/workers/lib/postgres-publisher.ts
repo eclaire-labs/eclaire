@@ -14,7 +14,7 @@ import type { Logger } from "@eclaire/logger";
 import {
   createEventCallbacks,
   type ProcessingSSEEvent,
-} from "@eclaire/queue/app";
+} from "@eclaire/queue/core";
 import type { JobEventCallbacks } from "@eclaire/queue/core";
 import { sql } from "drizzle-orm";
 

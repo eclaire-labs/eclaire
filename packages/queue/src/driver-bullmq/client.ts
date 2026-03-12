@@ -2,7 +2,7 @@
  * @eclaire/queue/driver-bullmq - BullMQ QueueClient implementation
  */
 
-import { getErrorMessage } from "@eclaire/core";
+import { getErrorMessage } from "../core/error-utils.js";
 import { type JobsOptions, Queue } from "bullmq";
 import { JobAlreadyActiveError } from "../core/errors.js";
 import { initializeStages } from "../core/progress.js";

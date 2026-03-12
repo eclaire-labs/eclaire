@@ -11,7 +11,7 @@ export {
 } from "@eclaire/queue";
 
 // Queue names
-export { type QueueName, QueueNames } from "@eclaire/queue/app";
+export { type QueueName, QueueNames } from "./queue-names.js";
 // Queue adapter (main entry point for enqueuing jobs)
 export {
   type AssetType,

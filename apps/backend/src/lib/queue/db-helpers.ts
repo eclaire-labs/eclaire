@@ -1,5 +1,5 @@
-// Re-export database queue helpers from @eclaire/queue package
-export { getScheduledTime, isJobExpired, isJobReady } from "@eclaire/queue/app";
+// Re-export database queue helpers from @eclaire/queue core
+export { getScheduledTime, isJobExpired, isJobReady } from "@eclaire/queue/core";
 
 /**
  * Get expiration timestamp

@@ -2,7 +2,7 @@
  * @eclaire/queue/driver-db - Database Worker implementation
  */
 
-import { getErrorMessage } from "@eclaire/core";
+import { getErrorMessage } from "../core/error-utils.js";
 import {
   addStagesToList,
   calculateOverallProgress,

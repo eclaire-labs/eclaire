@@ -6,8 +6,8 @@
  * transform queue events to the SSE event format.
  */
 
-import { getErrorMessage } from "@eclaire/core";
-import type { JobEventCallbacks } from "../core/types.js";
+import { getErrorMessage } from "./error-utils.js";
+import type { JobEventCallbacks } from "./types.js";
 
 /**
  * SSE event structure for real-time processing updates
@@ -81,23 +81,11 @@ export type ArtifactProcessor = (
 export interface EventCallbacksConfig {
   /**
    * Function to publish SSE events
-   *
-   * For unified mode (same container as backend):
-   * - Use `publishDirectSSEEvent` from processing-events.ts
-   *
-   * For worker mode (separate container):
-   * - Use HTTP POST to `/api/processing-status/{assetType}/{assetId}/event`
    */
   publisher: SSEPublisher;
 
   /**
    * Optional function to process artifacts when a stage completes.
-   *
-   * For unified mode (direct-db workers):
-   * - Use `processArtifacts` from artifact-processor.ts
-   *
-   * For worker mode (separate container):
-   * - Artifacts are sent via HTTP and processed by the backend
    */
   artifactProcessor?: ArtifactProcessor;
 
@@ -148,37 +136,18 @@ function extractAssetMetadata(
  *
  * @example
  * ```typescript
- * // Unified mode (same container)
- * import { publishDirectSSEEvent } from "./routes/processing-events.js";
- * import { createEventCallbacks } from "@eclaire/queue/app";
+ * import { createEventCallbacks } from "@eclaire/queue";
  *
  * const eventCallbacks = createEventCallbacks({
- *   publisher: publishDirectSSEEvent,
+ *   publisher: async (userId, event) => {
+ *     // Send event to client via SSE, WebSocket, etc.
+ *   },
  *   logger,
  * });
  *
  * const worker = createDbWorker({
  *   // ... other config
  *   eventCallbacks,
- * });
- * ```
- *
- * @example
- * ```typescript
- * // Worker mode (separate container)
- * import { createEventCallbacks } from "@eclaire/queue/app";
- *
- * async function httpPublisher(userId: string, event: ProcessingSSEEvent) {
- *   await fetch(`${BACKEND_URL}/api/processing-events/publish`, {
- *     method: "POST",
- *     headers: { "Content-Type": "application/json" },
- *     body: JSON.stringify({ userId, event }),
- *   });
- * }
- *
- * const eventCallbacks = createEventCallbacks({
- *   publisher: httpPublisher,
- *   logger,
  * });
  * ```
  */

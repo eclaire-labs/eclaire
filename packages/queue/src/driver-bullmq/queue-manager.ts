@@ -2,30 +2,30 @@
  * BullMQ queue management
  */
 
-import { getErrorMessage } from "@eclaire/core";
-import type { Logger } from "@eclaire/logger";
-import { Queue } from "bullmq";
+import { getErrorMessage } from "../core/error-utils.js";
+import type { QueueLogger } from "../core/types.js";
+import { type JobsOptions, Queue } from "bullmq";
 import {
   closeRedisConnection,
   createRedisConnection,
 } from "../shared/redis-connection.js";
-import { type QueueName, QueueNames } from "../app/queue-names.js";
-import { getDefaultJobOptions } from "./job-options.js";
 
 export interface QueueManagerConfig {
   /** Redis URL for BullMQ */
   redisUrl: string;
   /** Logger instance */
-  logger: Logger;
+  logger: QueueLogger;
   /** Service name for logging */
   serviceName?: string;
   /** Redis key prefix for BullMQ (default: "eclaire") */
   prefix?: string;
+  /** Optional default job options per queue name */
+  defaultJobOptions?: Record<string, JobsOptions>;
 }
 
 export interface QueueManager {
   /** Get a queue by name */
-  getQueue(name: QueueName): Queue | null;
+  getQueue(name: string): Queue | null;
   /** Close all queues and Redis connection */
   close(): Promise<void>;
   /** Check if manager is connected */
@@ -41,6 +41,7 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
     logger,
     serviceName = "Queue Service",
     prefix = "eclaire",
+    defaultJobOptions: defaultJobOptionsMap,
   } = config;
 
   // Store queue instances to avoid recreating them
@@ -64,7 +65,7 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
   }
 
   return {
-    getQueue(name: QueueName): Queue | null {
+    getQueue(name: string): Queue | null {
       // Check if connection is available
       if (!connection) {
         logger.error(
@@ -74,17 +75,6 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
         return null;
       }
 
-      // Validate queue name
-      if (!Object.values(QueueNames).includes(name)) {
-        logger.warn(
-          {
-            queueName: name,
-            knownNames: Object.values(QueueNames),
-          },
-          "Attempted to get queue with unknown name",
-        );
-      }
-
       // Get or create queue
       if (!queues[name]) {
         try {
@@ -92,7 +82,7 @@ export function createQueueManager(config: QueueManagerConfig): QueueManager {
           queues[name] = new Queue(name, {
             connection: connection,
             prefix,
-            defaultJobOptions: getDefaultJobOptions(name),
+            defaultJobOptions: defaultJobOptionsMap?.[name],
           });
           logger.info({ queueName: name }, "Queue initialized successfully");
 

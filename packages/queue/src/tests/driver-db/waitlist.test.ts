@@ -6,10 +6,10 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
-import type { JobWaitlistInterface } from "../../app/types.js";
+import type { JobWaitlistInterface } from "../../core/types.js";
 // Tests use plain strings as queue names (e.g. "bookmarks", "photos") — the
 // waitlist is now generic and accepts any string key.
-import { createJobWaitlist } from "../../app/waitlist.js";
+import { createJobWaitlist } from "../../core/waitlist.js";
 import { createTestLogger, sleep } from "../testkit/index.js";
 
 describe("G1-G3: Waitlist", () => {

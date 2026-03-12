@@ -8,8 +8,9 @@
 import {
   createQueueManager,
   type QueueManager,
-  type QueueName,
-} from "@eclaire/queue/app";
+} from "@eclaire/queue/driver-bullmq";
+import type { QueueName } from "./queue-names.js";
+import { getDefaultJobOptionsMap } from "./queue-options.js";
 import type { Queue } from "bullmq";
 import { config } from "../../config/index.js";
 import { createChildLogger } from "../logger.js";
@@ -40,6 +41,7 @@ if (queueBackend === "redis") {
       redisUrl,
       logger,
       serviceName: "Backend Service",
+      defaultJobOptions: getDefaultJobOptionsMap(),
     });
   }
 } else {

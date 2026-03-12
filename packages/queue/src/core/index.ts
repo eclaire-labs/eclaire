@@ -27,6 +27,8 @@
  * ```
  */
 
+// Re-export error utilities
+export { getErrorMessage } from "./error-utils.js";
 // Re-export all errors
 export {
   ConnectionError,
@@ -80,6 +82,8 @@ export type {
   JobStage,
   JobStageStatus,
   JobStatus,
+  // Waitlist
+  JobWaitlistInterface,
   NotifyEmitter,
   // Notification types
   NotifyListener,
@@ -121,3 +125,16 @@ export {
   timeout,
   withTimeout,
 } from "./utils.js";
+// Re-export event callbacks
+export {
+  type ArtifactProcessor,
+  createEventCallbacks,
+  type EventCallbacksConfig,
+  type JobAssetMetadata,
+  type ProcessingSSEEvent,
+  type SSEPublisher,
+} from "./event-callbacks.js";
+// Re-export waitlist
+export { createJobWaitlist, type WaitlistConfig } from "./waitlist.js";
+// Re-export helpers
+export { getScheduledTime, isJobExpired, isJobReady } from "./helpers.js";

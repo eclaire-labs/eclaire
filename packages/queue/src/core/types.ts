@@ -662,6 +662,30 @@ export interface QueueLogger {
 }
 
 // ============================================================================
+// Job Waitlist Interface
+// ============================================================================
+
+/**
+ * Interface for managing worker notification waitlists.
+ * Provides push-based notifications to waiting workers when jobs become available.
+ */
+export interface JobWaitlistInterface {
+  addWaiter(
+    queue: string,
+    workerId: string,
+    timeout?: number,
+    // biome-ignore lint/suspicious/noExplicitAny: return type varies — resolves with claimed job or null
+  ): Promise<any>;
+  notifyWaiters(queue: string, count?: number): number;
+  notifyAllWaiters(queue: string): number;
+  scheduleNextWakeup(queue: string): Promise<void>;
+  getWaiterCount(queue: string): number;
+  getStats(): Record<string, number>;
+  /** Close the waitlist, clearing all timers and rejecting pending waiters */
+  close(): void;
+}
+
+// ============================================================================
 // Configuration Types
 // ============================================================================
 

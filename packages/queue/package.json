@@ -36,11 +36,6 @@
       "types": "./src/transport-http/index.ts",
       "default": "./dist/transport-http/index.js"
     },
-    "./app": {
-      "development": "./src/app/index.ts",
-      "types": "./src/app/index.ts",
-      "default": "./dist/app/index.js"
-    },
     "./driver-db/schema/sqlite": {
       "development": "./src/driver-db/schema/sqlite.ts",
       "types": "./src/driver-db/schema/sqlite.ts",
@@ -68,9 +63,6 @@
     "test:all": "pnpm test:sqlite && pnpm test:pglite && pnpm test:bullmq"
   },
   "dependencies": {
-    "@eclaire/core": "workspace:*",
-    "@eclaire/db": "workspace:*",
-    "@eclaire/logger": "workspace:*",
     "bullmq": "5.70.2",
     "cron-parser": "5.5.0",
     "ioredis": "5.9.3",

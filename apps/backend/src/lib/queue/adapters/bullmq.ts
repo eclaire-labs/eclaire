@@ -1,13 +1,13 @@
 /**
- * BullMQ Queue Adapter
+ * Eclaire-specific BullMQ Queue Adapter
  *
  * Redis-backed queue implementation using BullMQ for high-throughput job processing.
  */
 
 import { getRequestId, type Logger } from "@eclaire/logger";
-import type { QueueName } from "../queue-names.js";
+import type { QueueManager } from "@eclaire/queue/driver-bullmq";
+import type { Queue } from "bullmq";
 import { QueueNames } from "../queue-names.js";
-import type { QueueManager } from "../queues.js";
 import type {
   BookmarkJobData,
   DocumentJobData,
@@ -32,14 +32,14 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
   const { queueManager, logger } = config;
 
   async function enqueueToRedis(
-    queueName: QueueName,
+    queueName: string,
     jobName: string,
     assetType: string,
     assetId: string,
     userId: string,
     data: JobData,
   ): Promise<void> {
-    const queue = queueManager.getQueue(queueName);
+    const queue: Queue | null = queueManager.getQueue(queueName);
     if (!queue) {
       logger.error({ queueName }, "Queue not available");
       throw new Error("Queue not available");

@@ -12,7 +12,7 @@ import { createRedisConnection } from "@eclaire/queue";
 import {
   createEventCallbacks,
   type ProcessingSSEEvent,
-} from "@eclaire/queue/app";
+} from "@eclaire/queue/core";
 import type { JobEventCallbacks } from "@eclaire/queue/core";
 import type { Redis } from "ioredis";
 

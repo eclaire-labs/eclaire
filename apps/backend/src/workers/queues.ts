@@ -10,13 +10,16 @@
 import { createRedisConnection } from "@eclaire/queue";
 import {
   createQueueManager,
+  type QueueManager,
+} from "@eclaire/queue/driver-bullmq";
+import type { QueueName } from "../lib/queue/queue-names.js";
+import { QueueNames } from "../lib/queue/queue-names.js";
+import {
+  getDefaultJobOptionsMap,
   getLongTaskWorkerOptions,
   getMediumTaskWorkerOptions,
   getShortTaskWorkerOptions,
-  type QueueManager,
-  type QueueName,
-  QueueNames,
-} from "@eclaire/queue/app";
+} from "../lib/queue/queue-options.js";
 import type { Queue, WorkerOptions } from "bullmq";
 import type { Redis } from "ioredis";
 import { config as appConfig } from "../config/index.js";
@@ -81,6 +84,7 @@ if (queueBackend === "redis" && redisConnection) {
     redisUrl: config.redis.url,
     logger,
     serviceName: "Workers",
+    defaultJobOptions: getDefaultJobOptionsMap(),
   });
   logger.info({}, "Queue manager initialized for Bull Board");
 }

@@ -5,9 +5,8 @@
  * This eliminates continuous polling by notifying workers immediately when new jobs are enqueued.
  */
 
-import { getErrorMessage } from "@eclaire/core";
-import type { QueueLogger } from "../core/types.js";
-import type { JobWaitlistInterface } from "./types.js";
+import { getErrorMessage } from "./error-utils.js";
+import type { JobWaitlistInterface, QueueLogger } from "./types.js";
 
 interface Waiter {
   // biome-ignore lint/suspicious/noExplicitAny: resolve callback accepts any job type or null

@@ -2,7 +2,7 @@
  * @eclaire/queue/driver-bullmq - Redis connection management
  */
 
-import { getErrorMessage } from "@eclaire/core";
+import { getErrorMessage } from "../core/error-utils.js";
 import { Redis, type RedisOptions } from "ioredis";
 import type { QueueLogger } from "../core/types.js";
 import type { RedisConfig } from "./types.js";

@@ -1,5 +1,5 @@
 /**
- * Shared queue name constants used by both backend and workers
+ * Eclaire-specific queue name constants used by both backend and workers
  */
 
 export const QueueNames = {

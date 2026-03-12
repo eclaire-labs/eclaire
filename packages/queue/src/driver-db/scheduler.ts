@@ -8,7 +8,7 @@
 
 // We'll use a simple cron parser - users can provide their own
 // For now, this is a minimal implementation
-import { getErrorMessage } from "@eclaire/core";
+import { getErrorMessage } from "../core/error-utils.js";
 import { CronExpressionParser } from "cron-parser";
 import { and, eq, lte, sql } from "drizzle-orm";
 import type {

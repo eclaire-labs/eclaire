@@ -11,7 +11,7 @@
  * - Listener: Used by workers to wait for job availability
  */
 
-import { getErrorMessage } from "@eclaire/core";
+import { getErrorMessage } from "../core/error-utils.js";
 import type { QueueLogger } from "../core/types.js";
 import type { NotifyEmitter, NotifyListener } from "./types.js";
 

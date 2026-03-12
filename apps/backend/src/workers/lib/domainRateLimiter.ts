@@ -1,4 +1,4 @@
-import { QueueNames } from "@eclaire/queue/app";
+import { QueueNames } from "../../lib/queue/queue-names.js";
 import { createChildLogger } from "../../lib/logger.js";
 import { updateProcessingJobStatus } from "../../lib/services/processing-status.js";
 import { config } from "../config.js";
