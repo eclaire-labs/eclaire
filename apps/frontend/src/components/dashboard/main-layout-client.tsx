@@ -1,8 +1,10 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import {
   Activity,
   AlertTriangle,
   BookMarked,
+  Bot,
   Clock,
   FileText,
   Flag,
@@ -12,6 +14,7 @@ import {
   ListTodo,
   Notebook,
   Pin,
+  Plus,
   Search,
   Settings,
   Upload,
@@ -37,6 +40,7 @@ import { MobileLayout } from "@/components/mobile/mobile-layout";
 import type { MobileTab } from "@/components/mobile/mobile-tab-bar";
 import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { listAgents } from "@/lib/api-agents";
 import { apiFetch } from "@/lib/api-client";
 import {
   abortSession,
@@ -54,22 +58,13 @@ import {
   type StreamingRequest,
   useStreamingClient,
 } from "@/lib/streaming-client";
+import { convertBackendMessage } from "@/lib/message-utils";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
+import type { Agent } from "@/types/agent";
 import type { Bookmark as BookmarkType } from "@/types/bookmark";
-import type { BackendMessage, ConversationSummary } from "@/types/conversation";
+import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, ContentLink, Message } from "@/types/message";
 import { convertToToolCallSummary } from "@/types/message";
-
-function convertBackendMessage(msg: BackendMessage): Message {
-  return {
-    id: msg.id,
-    role: msg.role,
-    content: msg.content,
-    timestamp: new Date(msg.createdAt),
-    thinkingContent: msg.thinkingContent,
-    toolCalls: msg.toolCalls,
-  };
-}
 
 // Define navigation items outside the component for better structure
 const navigation = [
@@ -96,9 +91,14 @@ interface MainLayoutClientProps {
 }
 
 export function MainLayoutClient({ children }: MainLayoutClientProps) {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const search = location.search as {
+    tab?: string;
+    agentActorId?: string;
+  };
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantFullScreen, setAssistantFullScreen] = useState(false);
   const [preAttachedAssets, setPreAttachedAssets] = useState<AssetReference[]>(
@@ -124,6 +124,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     useState<ConversationSummary | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+  const [agentRailItems, setAgentRailItems] = useState<Agent[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -137,6 +138,24 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     addOrUpdateTool,
     clearTools,
   } = useToolExecutionTracker();
+
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        const response = await listAgents();
+        setAgentRailItems(response.items);
+      } catch (error) {
+        console.error("Failed to load agents:", error);
+      }
+    };
+
+    loadAgents();
+    window.addEventListener("agents-updated", loadAgents);
+
+    return () => {
+      window.removeEventListener("agents-updated", loadAgents);
+    };
+  }, []);
 
   // Streaming optimization state
   const [_isPending, startTransition] = useTransition();
@@ -394,6 +413,12 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     return false;
   };
 
+  const activeAgentId = pathname.startsWith("/agents/")
+    ? pathname.split("/")[2] || DEFAULT_AGENT_ACTOR_ID
+    : pathname === "/settings" && search.tab === "assistant"
+      ? search.agentActorId || DEFAULT_AGENT_ACTOR_ID
+      : null;
+
   // Function to open assistant with pre-attached assets
   const openAssistantWithAssets = (assets: AssetReference[]) => {
     setPreAttachedAssets(assets);
@@ -473,7 +498,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   const handleDeleteAllConversations = async () => {
     try {
-      const response = await listSessions(1000, 0);
+      const response = await listSessions(1000, 0, DEFAULT_AGENT_ACTOR_ID);
       await Promise.all(response.items.map((c) => deleteSession(c.id)));
       startNewConversation();
     } catch (error) {
@@ -609,7 +634,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
             metadata: {
               status: task.status,
               dueDate: task.dueDate,
-              assignedToId: task.assignedToId,
+              assigneeActorId: task.assigneeActorId,
               tags: task.tags,
               processingStatus: task.processingStatus,
               createdAt: task.createdAt,
@@ -688,7 +713,9 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
       // Lazy session creation on first message
       let sessionId = currentConversation?.id;
       if (!sessionId) {
-        const session = await createSession();
+        const session = await createSession({
+          agentActorId: DEFAULT_AGENT_ACTOR_ID,
+        });
         sessionId = session.id;
         setCurrentConversation(session);
       }
@@ -700,13 +727,13 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
         context:
           attachedAssets.length > 0
             ? {
-                agent: "eclaire",
+                agentActorId: DEFAULT_AGENT_ACTOR_ID,
                 assets: attachedAssets.map((asset) => ({
                   type: asset.type,
                   id: asset.id,
                 })),
               }
-            : undefined,
+            : { agentActorId: DEFAULT_AGENT_ACTOR_ID },
       };
 
       await streamingClient.startStream?.(streamingRequest);
@@ -957,6 +984,52 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
                 </li>
               ))}
             </ul>
+            <div className="mt-5 space-y-3">
+              <div className="flex items-center justify-between px-3">
+                <Link
+                  to="/agents/$agentId"
+                  params={{ agentId: DEFAULT_AGENT_ACTOR_ID }}
+                  className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+                >
+                  <Bot className="h-3.5 w-3.5" />
+                  Agents
+                </Link>
+                <Link
+                  to="/agents/$agentId"
+                  params={{ agentId: "new" }}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-[hsl(var(--hover-bg))] hover:text-foreground"
+                >
+                  <Plus className="h-4 w-4" />
+                </Link>
+              </div>
+              <div className="space-y-1">
+                {agentRailItems.map((agent) => (
+                  <Link
+                    key={agent.id}
+                    to="/agents/$agentId"
+                    params={{ agentId: agent.id }}
+                    className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${
+                      activeAgentId === agent.id
+                        ? "font-medium"
+                        : "text-muted-foreground hover:bg-[hsl(var(--hover-bg))]"
+                    }`}
+                    style={
+                      activeAgentId === agent.id
+                        ? {
+                            backgroundColor: `hsl(var(--sidebar-active-bg) / var(--sidebar-active-bg-opacity))`,
+                            color: `hsl(var(--sidebar-active-text))`,
+                          }
+                        : undefined
+                    }
+                  >
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full border bg-background text-[11px] font-semibold">
+                      {agent.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="truncate">{agent.name}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
             <PopularTagsSection />
           </nav>
         </div>

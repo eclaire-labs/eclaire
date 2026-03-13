@@ -1,3 +1,4 @@
+import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { Bot, Edit2, History, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ChatPanel } from "@/components/assistant/chat-panel";
@@ -7,20 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { listSessions } from "@/lib/api-sessions";
-import type { BackendMessage, ConversationSummary } from "@/types/conversation";
+import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
-
-// Helper function to convert backend messages to frontend format
-function _convertBackendMessage(msg: BackendMessage): Message {
-  return {
-    id: msg.id,
-    role: msg.role,
-    content: msg.content,
-    timestamp: new Date(msg.createdAt),
-    thinkingContent: msg.thinkingContent,
-    toolCalls: msg.toolCalls,
-  };
-}
 
 interface MobileChatInterfaceProps {
   messages: Message[];
@@ -79,7 +68,7 @@ export function MobileChatInterface({
   useEffect(() => {
     if (showHistory) {
       setIsLoadingConversations(true);
-      listSessions(50, 0)
+      listSessions(50, 0, DEFAULT_AGENT_ACTOR_ID)
         .then((response) => {
           setConversations(response.items);
         })

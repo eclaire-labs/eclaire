@@ -1,3 +1,4 @@
+import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import {
   CheckSquare,
   Edit2,
@@ -22,19 +23,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { listSessions } from "@/lib/api-sessions";
-import type { BackendMessage, ConversationSummary } from "@/types/conversation";
+import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
-
-// Helper function to convert backend messages to frontend format
-function _convertBackendMessage(msg: BackendMessage): Message {
-  return {
-    id: msg.id,
-    role: msg.role,
-    content: msg.content,
-    timestamp: new Date(msg.createdAt),
-    thinkingContent: msg.thinkingContent,
-  };
-}
 
 interface GlobalAssistantProps {
   open: boolean;
@@ -95,7 +85,7 @@ const ConversationHistoryDialog = ({
       const loadConversations = async () => {
         setIsLoading(true);
         try {
-          const response = await listSessions(50, 0);
+          const response = await listSessions(50, 0, DEFAULT_AGENT_ACTOR_ID);
           setConversations(response.items);
         } catch (error) {
           console.error("Failed to load conversations:", error);
