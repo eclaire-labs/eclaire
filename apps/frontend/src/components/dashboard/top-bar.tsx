@@ -8,6 +8,7 @@ import {
   Maximize2,
   MessageCircle,
   Minimize2,
+  Palette,
   User,
 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -180,6 +181,12 @@ export function TopBar({
               <Link to="/settings" search={{ tab: "account" }}>
                 <CreditCard className="mr-2 h-4 w-4" />
                 Account
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/settings" search={{ tab: "appearance" }}>
+                <Palette className="mr-2 h-4 w-4" />
+                Appearance
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

@@ -4,6 +4,7 @@ import {
   EditIcon,
   Loader2,
   PlusIcon,
+  ShieldCheck,
   TrashIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -18,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -312,14 +314,7 @@ export default function ApiKeyManager() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-semibold">Actor API Keys</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage credentials for yourself, your agents, and external systems.
-          </p>
-        </div>
-
+      <div className="flex justify-end">
         <Dialog
           open={showCreateSystemDialog}
           onOpenChange={setShowCreateSystemDialog}
@@ -425,7 +420,7 @@ export default function ApiKeyManager() {
               </div>
 
               {apiKeys.length === 0 ? (
-                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                <div className="rounded-md border p-4 text-sm text-muted-foreground">
                   No API keys for this actor yet.
                 </div>
               ) : (
@@ -515,19 +510,22 @@ export default function ApiKeyManager() {
         </div>
       )}
 
-      <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-        <p className="mb-2 font-medium">Security notes</p>
-        <ul className="space-y-1 text-xs">
-          <li>• Full keys are only shown once when created.</li>
-          <li>
-            • Keys act as the selected actor, not always as you personally.
-          </li>
-          <li>• External systems should get the narrowest scopes they need.</li>
-          <li>
-            • Revoke unused keys instead of sharing one credential broadly.
-          </li>
-        </ul>
-      </div>
+      <Alert>
+        <ShieldCheck className="h-4 w-4" />
+        <AlertTitle>Security notes</AlertTitle>
+        <AlertDescription>
+          <ul className="mt-2 space-y-1 text-xs">
+            <li>Full keys are only shown once when created.</li>
+            <li>
+              Keys act as the selected actor, not always as you personally.
+            </li>
+            <li>External systems should get the narrowest scopes they need.</li>
+            <li>
+              Revoke unused keys instead of sharing one credential broadly.
+            </li>
+          </ul>
+        </AlertDescription>
+      </Alert>
 
       <Dialog
         open={!!createActorId}

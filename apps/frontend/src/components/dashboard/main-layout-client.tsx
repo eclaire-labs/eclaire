@@ -16,7 +16,6 @@ import {
   Pin,
   Plus,
   Search,
-  Settings,
   Upload,
 } from "lucide-react";
 import {
@@ -82,8 +81,6 @@ const navigation = [
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Photos", href: "/photos", icon: ImageIcon },
   { name: "History", href: "/history", icon: History },
-  { name: "Settings", href: "/settings", icon: Settings, separator: true },
-  // { name: "Feedback", href: "#", icon: MessageSquare, isDialog: true },
 ];
 
 interface MainLayoutClientProps {
