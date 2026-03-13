@@ -9,6 +9,7 @@ import {
   getFeedbackById,
   getUserFeedback,
 } from "../lib/services/feedback.js";
+import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
@@ -60,15 +61,13 @@ feedbackRoutes.post(
   "/",
   describeRoute(postFeedbackRouteDescription),
   zValidator("json", CreateFeedbackSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const data = c.req.valid("json");
 
     logger.info({ userId, data }, "Creating feedback");
 
-    const feedback = await createFeedback(data, userId, {
-      userId,
-      actor: "user",
-    });
+    const feedback = await createFeedback(data, userId, caller);
 
     return c.json(feedback, 201);
   }, logger),

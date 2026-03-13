@@ -1,4 +1,5 @@
 import type { WebClient } from "@slack/web-api";
+import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
 import { getSession } from "./commands.js";
@@ -21,8 +22,13 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const { findChannel, logger, processPromptRequest, recordHistory } =
-    getDeps();
+  const {
+    findChannel,
+    logger,
+    processPromptRequest,
+    recordHistory,
+    routeChannelPrompt,
+  } = getDeps();
 
   // Drop messages with no text
   if (!text) return;
@@ -66,6 +72,37 @@ export async function handleIncomingMessage(
       return;
     }
 
+    const routing = routeChannelPrompt
+      ? await routeChannelPrompt(
+          userId,
+          text,
+          channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+        )
+      : {
+          agentActorId: channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+          prompt: text,
+        };
+
+    if (routing.error) {
+      await client.chat.postMessage({
+        channel: slackChannelId,
+        thread_ts: messageTs,
+        text: routing.error,
+      });
+      return;
+    }
+
+    const sessionState = getSession(channelId);
+    const channelAgentActorId = routing.agentActorId;
+    const routedPrompt = routing.prompt;
+    if (
+      sessionState.agentActorId &&
+      sessionState.agentActorId !== channelAgentActorId
+    ) {
+      sessionState.sessionId = undefined;
+      sessionState.agentActorId = undefined;
+    }
+
     // Add thinking reaction as typing indicator
     await addThinkingReaction(client, slackChannelId, messageTs, logger);
 
@@ -73,11 +110,19 @@ export async function handleIncomingMessage(
     const requestId = `slack-${channelId}-${Date.now()}`;
 
     // Get or lazily create session for multi-turn context
-    const sessionState = getSession(channelId);
-    if (!sessionState.sessionId && deps.createSession) {
+    if (
+      (!sessionState.sessionId ||
+        sessionState.agentActorId !== channelAgentActorId) &&
+      deps.createSession
+    ) {
       try {
-        const session = await deps.createSession(userId);
+        const session = await deps.createSession(
+          userId,
+          undefined,
+          channelAgentActorId,
+        );
         sessionState.sessionId = session.id;
+        sessionState.agentActorId = channelAgentActorId;
       } catch (sessionError) {
         logger.warn(
           {
@@ -100,8 +145,8 @@ export async function handleIncomingMessage(
     if (deps.processPromptRequestStream) {
       const stream = await deps.processPromptRequestStream({
         userId,
-        prompt: text,
-        context: { agent: "slack-bot" },
+        prompt: routedPrompt,
+        context: { agentActorId: channelAgentActorId },
         requestId,
         conversationId: sessionId,
         enableThinking,
@@ -117,8 +162,8 @@ export async function handleIncomingMessage(
       // Non-streaming fallback
       const result = await processPromptRequest({
         userId,
-        prompt: text,
-        context: { agent: "slack-bot" },
+        prompt: routedPrompt,
+        context: { agentActorId: channelAgentActorId },
         requestId,
         conversationId: sessionId,
         enableThinking,
@@ -160,7 +205,7 @@ export async function handleIncomingMessage(
         platform: "slack",
         channelId,
       },
-      actor: "user",
+      actor: "human",
       userId,
       metadata: {
         platform: "slack",

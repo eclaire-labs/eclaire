@@ -24,6 +24,7 @@ import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialo
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { MarkdownDisplayWithAssets } from "@/components/markdown-display-with-assets";
+import { ActorPicker } from "@/components/shared/ActorPicker";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { RecurrenceToggle } from "@/components/shared/recurrence-toggle";
@@ -48,6 +49,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useActors } from "@/hooks/use-actors";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useTask, useTasks } from "@/hooks/use-tasks";
 import { apiFetch } from "@/lib/api-client";
@@ -56,9 +58,8 @@ import {
   deleteTaskComment,
   updateTaskComment,
 } from "@/lib/api-comments";
-import { getUsers } from "@/lib/api-users";
 import { formatDate } from "@/lib/date-utils";
-import type { TaskComment, TaskStatus, User } from "@/types/task";
+import type { TaskComment, TaskStatus } from "@/types/task";
 import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
 import {
   PRIORITY_OPTIONS,
@@ -94,7 +95,7 @@ export function TaskDetailClient() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
+  const { actors } = useActors(["human", "agent"]);
 
   // Comments state
   const [comments, setComments] = useState<TaskComment[]>([]);
@@ -110,7 +111,7 @@ export function TaskDetailClient() {
     status: "not-started" as TaskStatus,
     priority: 0,
     dueDate: "",
-    assignedToId: "",
+    assigneeActorId: "",
     tags: [] as string[],
     recurrence: {
       isRecurring: false,
@@ -130,7 +131,7 @@ export function TaskDetailClient() {
         status: task.status,
         priority: task.priority ?? 0,
         dueDate: task.dueDate || "",
-        assignedToId: task.assignedToId || "",
+        assigneeActorId: task.assigneeActorId || "",
         tags: [...task.tags],
         recurrence: {
           isRecurring: task.isRecurring || false,
@@ -142,18 +143,6 @@ export function TaskDetailClient() {
       });
     }
   }, [task, isEditing]);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const usersData = await getUsers();
-        setUsers(usersData);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      }
-    };
-    fetchUsers();
-  }, []);
 
   // Initialize comments from task data
   useEffect(() => {
@@ -255,7 +244,7 @@ export function TaskDetailClient() {
         status: task.status,
         priority: task.priority ?? 0,
         dueDate: task.dueDate || "",
-        assignedToId: task.assignedToId || "",
+        assigneeActorId: task.assigneeActorId || "",
         tags: [...task.tags],
         recurrence: {
           isRecurring: task.isRecurring || false,
@@ -282,7 +271,7 @@ export function TaskDetailClient() {
         dueDate: editForm.dueDate
           ? new Date(editForm.dueDate).toISOString()
           : null,
-        assignedToId: editForm.assignedToId.trim() || null,
+        assigneeActorId: editForm.assigneeActorId.trim() || null,
         tags: editForm.tags,
         isRecurring: editForm.recurrence.isRecurring,
         cronExpression: editForm.recurrence.cronExpression,
@@ -549,25 +538,26 @@ export function TaskDetailClient() {
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1">
-                              {comment.user.userType === "assistant" ? (
+                              {comment.author.kind === "agent" ? (
                                 <span className="text-sm">🤖</span>
                               ) : (
                                 <span className="text-sm">👤</span>
                               )}
                               <span className="font-medium text-sm">
-                                {comment.user.displayName || comment.user.id}
+                                {comment.author.displayName ||
+                                  comment.author.id}
                               </span>
                             </div>
                             <Badge
                               variant={
-                                comment.user.userType === "assistant"
+                                comment.author.kind === "agent"
                                   ? "default"
                                   : "secondary"
                               }
                               className="text-xs"
                             >
-                              {comment.user.userType === "assistant"
-                                ? "AI Assistant"
+                              {comment.author.kind === "agent"
+                                ? "Agent"
                                 : "Team Member"}
                             </Badge>
                           </div>
@@ -809,72 +799,27 @@ export function TaskDetailClient() {
                 <div>
                   <Label>Assigned To</Label>
                   {isEditing ? (
-                    <Select
-                      value={editForm.assignedToId || "UNASSIGNED"}
-                      onValueChange={(value) =>
-                        handleInputChange(
-                          "assignedToId",
-                          value === "UNASSIGNED" ? "" : value,
-                        )
+                    <ActorPicker
+                      actors={actors}
+                      value={editForm.assigneeActorId || null}
+                      allowUnassigned
+                      placeholder="Search people and agents"
+                      searchPlaceholder="Search people and agents..."
+                      onChange={(value) =>
+                        handleInputChange("assigneeActorId", value ?? "")
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select assignee" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
-                        {users.some((u) => u.userType === "assistant") && (
-                          <>
-                            <SelectItem
-                              value="__section_ai__"
-                              disabled
-                              className="text-xs font-semibold text-muted-foreground"
-                            >
-                              AI Assistants
-                            </SelectItem>
-                            {users
-                              .filter((u) => u.userType === "assistant")
-                              .map((user) => (
-                                <SelectItem key={user.id} value={user.id}>
-                                  🤖 {user.displayName || user.email || user.id}
-                                </SelectItem>
-                              ))}
-                          </>
-                        )}
-                        {users.some((u) => u.userType !== "assistant") && (
-                          <>
-                            <SelectItem
-                              value="__section_team__"
-                              disabled
-                              className="text-xs font-semibold text-muted-foreground"
-                            >
-                              Team Members
-                            </SelectItem>
-                            {users
-                              .filter((u) => u.userType !== "assistant")
-                              .map((user) => (
-                                <SelectItem key={user.id} value={user.id}>
-                                  👤 {user.displayName || user.email || user.id}
-                                </SelectItem>
-                              ))}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
+                    />
                   ) : (
                     <p className="text-muted-foreground">
-                      {task.assignedToId
+                      {task.assigneeActorId
                         ? (() => {
-                            const assignee = users.find(
-                              (u) => u.id === task.assignedToId,
+                            const assigneeId = task.assigneeActorId;
+                            const assignee = actors.find(
+                              (actor) => actor.id === assigneeId,
                             );
-                            const displayName = assignee
-                              ? assignee.displayName ||
-                                assignee.email ||
-                                assignee.id
-                              : task.assignedToId;
+                            const displayName = assignee?.label || assigneeId;
                             const icon =
-                              assignee?.userType === "assistant" ? "🤖" : "👤";
+                              assignee?.kind === "agent" ? "🤖" : "👤";
                             return `${icon} ${displayName}`;
                           })()
                         : "Unassigned"}
@@ -1093,25 +1038,7 @@ export function TaskDetailClient() {
           }
         }}
         isCreating={isCreatingSubTask}
-        renderAssigneeSelectContent={() => (
-          <SelectContent>
-            <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
-            {users
-              .filter((u) => u.userType === "assistant")
-              .map((user) => (
-                <SelectItem key={user.id} value={user.id}>
-                  {user.displayName || user.email || user.id}
-                </SelectItem>
-              ))}
-            {users
-              .filter((u) => u.userType !== "assistant")
-              .map((user) => (
-                <SelectItem key={user.id} value={user.id}>
-                  {user.displayName || user.email || user.id}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        )}
+        assigneeOptions={actors}
       />
     </div>
   );

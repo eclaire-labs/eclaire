@@ -7,6 +7,7 @@
 import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { updateTask as updateTaskService } from "../../services/tasks.js";
+import { agentToolCaller } from "./caller.js";
 
 const inputSchema = z.object({
   id: z.string().describe("ID of the task to update"),
@@ -40,10 +41,11 @@ export const updateTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   promptGuidelines: ["Always confirm with the user before modifying tasks."],
   execute: async (_callId, input, ctx) => {
     const { id, ...updateData } = input;
-    const result = await updateTaskService(id, updateData, {
-      userId: ctx.userId,
-      actor: "assistant",
-    });
+    const result = await updateTaskService(
+      id,
+      updateData,
+      agentToolCaller(ctx),
+    );
     return textResult(JSON.stringify(result, null, 2));
   },
 };

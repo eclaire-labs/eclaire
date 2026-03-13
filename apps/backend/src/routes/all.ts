@@ -10,6 +10,7 @@ import {
   findAllEntriesWithCount,
 } from "../lib/services/all.js";
 import { parseSearchFields } from "../lib/search-params.js";
+import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
@@ -59,7 +60,8 @@ allRoutes.get(
 allRoutes.post(
   "/",
   describeRoute(postAllRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const formData = await c.req.formData();
     const metadataPart = formData.get("metadata");
     const contentPart = formData.get("content") as File;
@@ -125,7 +127,7 @@ allRoutes.post(
         userAgent,
         requestId,
       },
-      { userId, actor: "user" },
+      caller,
     );
 
     if (result.success) {

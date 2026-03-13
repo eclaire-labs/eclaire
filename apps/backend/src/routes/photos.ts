@@ -18,6 +18,7 @@ import {
   reprocessPhoto,
   updatePhotoMetadata,
 } from "../lib/services/photos.js";
+import { principalCaller } from "../lib/services/types.js";
 import {
   detectAndVerifyMimeType,
   parseUploadMetadata,
@@ -86,7 +87,8 @@ photosRoutes.get(
 photosRoutes.post(
   "/",
   describeRoute(postPhotosRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const formData = await c.req.formData();
     const contentPart = formData.get("content") as File;
 
@@ -130,7 +132,7 @@ photosRoutes.post(
         extractedMetadata,
       },
       userId,
-      { userId, actor: "user" },
+      caller,
     );
     return c.json(newPhoto, 201);
   }, logger),
@@ -157,14 +159,12 @@ photosRoutes.put(
   "/:id",
   describeRoute(putPhotoRouteDescription),
   zValidator("json", PhotoSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
 
-    const updatedPhoto = await updatePhotoMetadata(id, validatedData, {
-      userId,
-      actor: "user",
-    });
+    const updatedPhoto = await updatePhotoMetadata(id, validatedData, caller);
 
     if (!updatedPhoto) {
       throw new NotFoundError("Photo");
@@ -179,14 +179,12 @@ photosRoutes.patch(
   "/:id",
   describeRoute(patchPhotoRouteDescription),
   zValidator("json", PartialPhotoSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
 
-    const updatedPhoto = await updatePhotoMetadata(id, validatedData, {
-      userId,
-      actor: "user",
-    });
+    const updatedPhoto = await updatePhotoMetadata(id, validatedData, caller);
 
     if (!updatedPhoto) {
       throw new NotFoundError("Photo");
@@ -200,14 +198,10 @@ photosRoutes.patch(
 photosRoutes.delete(
   "/:id",
   describeRoute(deletePhotoRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
-    await deletePhoto(
-      id,
-      userId,
-      { userId, actor: "user" },
-      parseDeleteStorage(c),
-    );
+    await deletePhoto(id, userId, caller, parseDeleteStorage(c));
     return new Response(null, { status: 204 });
   }, logger),
 );

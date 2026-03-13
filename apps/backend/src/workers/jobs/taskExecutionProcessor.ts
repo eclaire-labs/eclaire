@@ -1,13 +1,14 @@
 import { type AIMessage, callAI } from "@eclaire/ai";
 import type { JobContext } from "@eclaire/queue/core";
 import { processPromptRequest } from "../../lib/agent/index.js";
+import { DEFAULT_AGENT_ID } from "../../lib/services/agents.js";
 import { createChildLogger } from "../../lib/logger.js";
 import { createTaskComment as createTaskCommentService } from "../../lib/services/taskComments.js";
 import {
   updateTaskExecutionTracking,
   updateTaskStatusAsAssistant,
 } from "../../lib/services/tasks.js";
-import { assistantCaller } from "../../lib/services/types.js";
+import { agentCaller } from "../../lib/services/types.js";
 
 const logger = createChildLogger("task-execution-processor");
 
@@ -21,10 +22,10 @@ const USE_PROMPT_AI = true;
 async function updateTaskStatus(
   taskId: string,
   status: "not-started" | "in-progress" | "completed",
-  _userId: string,
+  userId: string,
   assignedAssistantId?: string,
 ): Promise<void> {
-  const assistantId = assignedAssistantId || "user-ai-assistant";
+  const assistantId = assignedAssistantId || DEFAULT_AGENT_ID;
   const completedAt = status === "completed" ? new Date().toISOString() : null;
 
   logger.info(
@@ -36,7 +37,7 @@ async function updateTaskStatus(
     await updateTaskStatusAsAssistant(
       taskId,
       status,
-      assistantCaller(assistantId),
+      agentCaller(assistantId, userId),
       completedAt,
     );
     logger.info({ taskId, status }, "Task status updated successfully");
@@ -99,7 +100,7 @@ export interface TaskExecutionJobData {
   title: string;
   description: string;
   userId: string;
-  assignedToId?: string;
+  assigneeActorId?: string | null;
   isAssignedToAI?: boolean;
   isRecurringExecution?: boolean; // Set by scheduler for recurring job executions
 }
@@ -164,6 +165,7 @@ async function generatePromptAIResponse(
   description: string,
   taskId: string,
   userId: string,
+  agentActorId: string,
 ): Promise<string> {
   logger.info(
     { taskId, userId },
@@ -174,7 +176,7 @@ async function generatePromptAIResponse(
   const prompt = `You have been assigned to work on this task. You need to analyze it and take the necessary actions to complete it using the available tools.\n\nTask Details:\n${taskContent}\n\nPlease complete this task now by searching for relevant information and providing the results.`;
 
   const context = {
-    agent: "eclaire",
+    agentActorId,
     backgroundTaskExecution: true,
   };
 
@@ -218,19 +220,18 @@ async function generatePromptAIResponse(
 async function createTaskComment(
   taskId: string,
   content: string,
+  assistantId: string,
+  userId: string,
 ): Promise<void> {
-  // Use a system user ID for the assistant comment author
-  const assistantUserId = "user-ai-assistant";
-
   logger.info(
-    { taskId, contentLength: content.length },
+    { taskId, contentLength: content.length, assistantId },
     "About to create task comment",
   );
 
   try {
     await createTaskCommentService(
       { taskId, content },
-      assistantCaller(assistantUserId),
+      agentCaller(assistantId, userId),
     );
 
     logger.info({ taskId }, "AI assistant comment created successfully");
@@ -301,8 +302,14 @@ async function processUserTask(ctx: JobContext<TaskExecutionJobData>) {
  * Main task execution processor - handles both AI assistant and user tasks
  */
 async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
-  const { taskId, title, description, userId, assignedToId, isAssignedToAI } =
-    ctx.job.data;
+  const {
+    taskId,
+    title,
+    description,
+    userId,
+    assigneeActorId,
+    isAssignedToAI,
+  } = ctx.job.data;
 
   if (!taskId || !userId) {
     throw new Error(
@@ -311,7 +318,13 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
   }
 
   logger.info(
-    { jobId: ctx.job.id, taskId, userId, assignedToId, isAssignedToAI },
+    {
+      jobId: ctx.job.id,
+      taskId,
+      userId,
+      assigneeActorId,
+      isAssignedToAI,
+    },
     "Starting task execution processing job",
   );
 
@@ -319,8 +332,10 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
     // Use the isAssignedToAI field provided by the backend job data
     const isAI = isAssignedToAI || false;
 
-    if (assignedToId && isAI) {
-      logger.info({ taskId, assignedToId }, "Processing AI assistant task");
+    const assistantId = assigneeActorId;
+
+    if (assistantId && isAI) {
+      logger.info({ taskId, assigneeActorId }, "Processing AI assistant task");
 
       const STAGE_NAME = "ai_response";
       await ctx.initStages([STAGE_NAME]);
@@ -328,7 +343,7 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
       try {
         // Mark task as in-progress when AI assistant starts working
         try {
-          await updateTaskStatus(taskId, "in-progress", userId, assignedToId);
+          await updateTaskStatus(taskId, "in-progress", userId, assistantId);
         } catch (statusError) {
           logger.error(
             {
@@ -357,6 +372,7 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
             description,
             taskId,
             userId,
+            assigneeActorId ?? DEFAULT_AGENT_ID,
           );
         } else {
           logger.info({ taskId }, "Generating AI response using simple AI");
@@ -374,7 +390,7 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
 
         await ctx.updateStageProgress(STAGE_NAME, 50);
 
-        await createTaskComment(taskId, aiResponse);
+        await createTaskComment(taskId, aiResponse, assistantId, userId);
         logger.info({ taskId }, "Task comment created");
 
         await ctx.updateStageProgress(STAGE_NAME, 90);
@@ -389,7 +405,7 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
 
         // Mark task as completed now that AI assistant has finished
         try {
-          await updateTaskStatus(taskId, "completed", userId, assignedToId);
+          await updateTaskStatus(taskId, "completed", userId, assistantId);
         } catch (statusError) {
           logger.error(
             {
@@ -426,7 +442,7 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
       }
     } else {
       // Process as user task
-      logger.info({ taskId, assignedToId }, "Processing user task");
+      logger.info({ taskId, assigneeActorId }, "Processing user task");
       await processUserTask(ctx);
     }
 

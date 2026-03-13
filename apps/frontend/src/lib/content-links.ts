@@ -138,7 +138,7 @@ export const fetchContentMetadata = async (
           metadata: {
             status: task.status,
             dueDate: task.dueDate,
-            assignedToId: task.assignedToId,
+            assigneeActorId: task.assigneeActorId,
             tags: task.tags,
             processingStatus: task.processingStatus,
             createdAt: task.createdAt,

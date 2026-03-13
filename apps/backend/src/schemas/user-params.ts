@@ -1,4 +1,5 @@
 import z from "zod/v4";
+import { ApiKeyScopeSchema } from "@eclaire/api-types";
 
 // User profile schema (complete user record)
 export const UserProfileSchema = z.object({
@@ -68,6 +69,12 @@ export const DeleteAllUserDataSchema = z.object({
 
 // Create API key request schema
 export const CreateApiKeySchema = z.object({
+  name: z.string().min(1, "Name is required").max(100).optional(),
+  scopes: z.array(ApiKeyScopeSchema).optional(),
+  expiresAt: z.coerce.date().nullable().optional(),
+});
+
+export const RenameApiKeySchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
 });
 
@@ -84,4 +91,5 @@ export const ActivityTimelineQuerySchema = z.object({
 // TypeScript types
 export type DeleteAllUserData = z.infer<typeof DeleteAllUserDataSchema>;
 export type CreateApiKey = z.infer<typeof CreateApiKeySchema>;
+export type RenameApiKey = z.infer<typeof RenameApiKeySchema>;
 export type ActivityTimelineQuery = z.infer<typeof ActivityTimelineQuerySchema>;

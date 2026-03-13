@@ -1,53 +1,18 @@
 // lib/services/history.ts
+import type {
+  HistoryAction,
+  HistoryActor,
+  HistoryItemType,
+} from "@eclaire/core/types";
 import { db, schema } from "../../db/index.js";
+import { humanCaller } from "./types.js";
 import { createChildLogger } from "../logger.js";
 
 const { history } = schema;
 
 const logger = createChildLogger("services:history");
 
-export type HistoryAction =
-  | "create"
-  | "update"
-  | "delete"
-  | "api_call" // Existing generic API call
-  | "ai_prompt_image_response" // New: AI specifically returned an image
-  | "ai_prompt_text_response" // New: AI specifically returned text
-  | "ai_prompt_error" // New: Error during AI processing of a prompt
-  | "api_content_upload" // New: Content uploaded without a prompt
-  | "api_error_general" // New: General error in the API route
-  | "user.login" // New: User successful login
-  | "user.logout" // New: User explicit logout
-  | "conversation_created" // New: Conversation created
-  | "conversation_updated" // New: Conversation updated
-  | "conversation_deleted" // New: Conversation deleted
-  // Streaming-specific actions
-  | "ai_prompt_streaming_response" // New: AI streaming response
-  | "ai_prompt_streaming_error" // New: Error during AI streaming
-  | "api_streaming_content_upload" // New: Content uploaded to streaming endpoint
-  | "api_error_streaming_general" // New: General streaming API error
-  // Channel and notification actions
-  | "telegram_message_processed" // New: Telegram message processed
-  | "send_notification"; // New: Notification sent to channels
-
-export type HistoryItemType =
-  | "task"
-  | "note"
-  | "bookmark"
-  | "document"
-  | "photo"
-  | "api" // Existing generic API item
-  | "prompt" // New: For text responses from AI prompts
-  | "api_error" // New: For logging API errors
-  | "content_submission" // New: For content uploaded without a prompt
-  | "user_session" // New: For authentication and session events
-  | "conversation" // New: For conversation operations
-  | "task_comment" // New: For task comment operations
-  | "channel" // New: For channel operations
-  | "notification" // New: For notification operations
-  | "telegram_chat"; // New: For Telegram chat operations
-
-export type HistoryActor = "user" | "assistant" | "system";
+export type { HistoryAction, HistoryActor, HistoryItemType };
 
 export interface RecordHistoryParams {
   action: HistoryAction;
@@ -60,6 +25,8 @@ export interface RecordHistoryParams {
   afterData?: Record<string, any> | null; // More specific type for JSON objects
   actor: HistoryActor;
   actorId?: string; // The specific user/agent who performed the action
+  authorizedByActorId?: string | null;
+  grantId?: string | null;
   userId?: string; // The resource owner (whose data was affected)
   // biome-ignore lint/suspicious/noExplicitAny: JSON blob for audit trail
   metadata?: Record<string, any> | null; // Additional metadata for events
@@ -76,6 +43,8 @@ export async function recordHistory({
   afterData,
   actor,
   actorId,
+  authorizedByActorId,
+  grantId,
   userId,
   metadata,
   tx,
@@ -94,6 +63,8 @@ export async function recordHistory({
       afterData: afterData || null, // No JSON.stringify needed - Drizzle handles it
       actor,
       actorId: actorId || null,
+      authorizedByActorId: authorizedByActorId || null,
+      grantId: grantId || null,
       userId: userId || null,
       metadata: metadata || null, // No JSON.stringify needed - Drizzle handles it
       // timestamp is handled by .$defaultFn in schema
@@ -106,6 +77,9 @@ export async function recordHistory({
         itemId,
         itemName,
         actor,
+        actorId,
+        authorizedByActorId,
+        grantId,
         userId,
         metadata,
         error: error instanceof Error ? error.message : "Unknown error",
@@ -275,14 +249,15 @@ export async function recordLoginHistory({
   metadata: AuthenticationMetadata;
   success?: boolean;
 }) {
+  const caller = humanCaller(userId);
   return recordHistory({
     action: success ? "user.login" : "user.login",
     itemType: "user_session",
     itemId: sessionId,
     itemName: success ? "Successful login" : "Failed login attempt",
-    actor: "user",
-    actorId: userId,
-    userId: userId,
+    actor: caller.actor,
+    actorId: caller.actorId,
+    userId: caller.ownerUserId,
     metadata: {
       ...metadata,
       success,
@@ -299,14 +274,15 @@ export async function recordLogoutHistory({
   sessionId: string;
   metadata: AuthenticationMetadata;
 }) {
+  const caller = humanCaller(userId);
   return recordHistory({
     action: "user.logout",
     itemType: "user_session",
     itemId: sessionId,
     itemName: "User logout",
-    actor: "user",
-    actorId: userId,
-    userId: userId,
+    actor: caller.actor,
+    actorId: caller.actorId,
+    userId: caller.ownerUserId,
     metadata,
   });
 }

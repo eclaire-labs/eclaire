@@ -14,12 +14,53 @@ import type {
   ListChannelsResponse,
 } from "../../schemas/channels-responses.js";
 import { channelRegistry } from "../channels.js";
-import { NotFoundError } from "../errors.js";
+import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import { DEFAULT_AGENT_ID } from "./agents.js";
+import { getActorSummaryOrNull, isAgentActor } from "./actors.js";
 import { recordHistory } from "./history.js";
-import type { CallerContext } from "./types.js";
+import {
+  callerActorId,
+  callerOwnerUserId,
+  type CallerContext,
+} from "./types.js";
 
 const logger = createChildLogger("channels");
+
+function channelRequiresAgent(
+  capability: ChannelResponse["capability"],
+): boolean {
+  return capability === "chat" || capability === "bidirectional";
+}
+
+async function resolveChannelAgentActorId(
+  userId: string,
+  capability: ChannelResponse["capability"],
+  requestedAgentActorId?: string | null,
+  existingAgentActorId?: string | null,
+): Promise<string | null> {
+  const normalizedRequested =
+    requestedAgentActorId === undefined
+      ? (existingAgentActorId ?? null)
+      : requestedAgentActorId?.trim() || null;
+
+  const resolvedAgentActorId =
+    normalizedRequested ??
+    (channelRequiresAgent(capability) ? DEFAULT_AGENT_ID : null);
+
+  if (!resolvedAgentActorId) {
+    return null;
+  }
+
+  if (!(await isAgentActor(userId, resolvedAgentActorId))) {
+    throw new ValidationError(
+      `Invalid agent actor ID: ${resolvedAgentActorId}. Channel agents must be existing agent actors.`,
+      "agentActorId",
+    );
+  }
+
+  return resolvedAgentActorId;
+}
 
 /**
  * Validates and encrypts platform-specific config via the channel adapter.
@@ -49,11 +90,16 @@ async function validateAndEncryptConfig(
 /**
  * Formats a channel for API response (excludes sensitive config)
  */
-// biome-ignore lint/suspicious/noExplicitAny: raw DB row
-function formatChannelForResponse(channel: any): ChannelResponse {
+async function formatChannelForResponse(
+  channel: typeof channels.$inferSelect,
+): Promise<ChannelResponse> {
+  const agentActorId = channel.agentActorId ?? null;
+
   return {
     id: channel.id,
     userId: channel.userId,
+    agentActorId,
+    agent: await getActorSummaryOrNull(channel.userId, agentActorId),
     name: channel.name,
     platform: channel.platform,
     capability: channel.capability,
@@ -75,7 +121,9 @@ export async function getUserChannels(
       orderBy: (channels, { desc }) => [desc(channels.createdAt)],
     });
 
-    const formattedChannels = userChannels.map(formatChannelForResponse);
+    const formattedChannels = await Promise.all(
+      userChannels.map(formatChannelForResponse),
+    );
 
     return {
       items: formattedChannels,
@@ -121,6 +169,8 @@ export async function createChannel(
   caller: CallerContext,
   channelData: CreateChannelRequest,
 ): Promise<ChannelResponse> {
+  const actorId = callerActorId(caller);
+  const ownerUserId = callerOwnerUserId(caller);
   try {
     // Validate and encrypt the platform-specific config
     const encryptedConfig = await validateAndEncryptConfig(
@@ -131,11 +181,18 @@ export async function createChannel(
       throw new Error("Invalid configuration for platform");
     }
 
+    const agentActorId = await resolveChannelAgentActorId(
+      userId,
+      channelData.capability,
+      channelData.agentActorId,
+    );
+
     // Create the channel
     const [newChannel] = await db
       .insert(channels)
       .values({
         userId,
+        agentActorId,
         name: channelData.name,
         platform: channelData.platform,
         capability: channelData.capability,
@@ -155,13 +212,15 @@ export async function createChannel(
       itemId: newChannel.id,
       itemName: channelData.name,
       afterData: {
-        ...formatChannelForResponse(newChannel),
+        ...(await formatChannelForResponse(newChannel)),
         platform: channelData.platform,
         capability: channelData.capability,
       },
       actor: caller.actor,
-      actorId: caller.userId,
-      userId: userId,
+      actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: ownerUserId,
     });
 
     // Start channel runtime if the adapter supports it
@@ -198,8 +257,9 @@ export async function createChannel(
     );
 
     if (
-      error instanceof Error &&
-      error.message === "Invalid configuration for platform"
+      error instanceof ValidationError ||
+      (error instanceof Error &&
+        error.message === "Invalid configuration for platform")
     ) {
       throw error;
     }
@@ -217,6 +277,8 @@ export async function updateChannel(
   caller: CallerContext,
   updateData: UpdateChannelRequest,
 ): Promise<ChannelResponse> {
+  const actorId = callerActorId(caller);
+  const ownerUserId = callerOwnerUserId(caller);
   try {
     // Get existing channel
     const existingChannel = await db.query.channels.findFirst({
@@ -226,6 +288,15 @@ export async function updateChannel(
     if (!existingChannel) {
       throw new NotFoundError("Channel");
     }
+
+    const effectiveCapability =
+      updateData.capability ?? existingChannel.capability;
+    const resolvedAgentActorId = await resolveChannelAgentActorId(
+      userId,
+      effectiveCapability,
+      updateData.agentActorId,
+      existingChannel.agentActorId ?? null,
+    );
 
     // Prepare update object
     // biome-ignore lint/suspicious/noExplicitAny: dynamic update object
@@ -239,6 +310,13 @@ export async function updateChannel(
 
     if (updateData.capability !== undefined) {
       updateValues.capability = updateData.capability;
+    }
+
+    if (
+      updateData.agentActorId !== undefined ||
+      updateData.capability !== undefined
+    ) {
+      updateValues.agentActorId = resolvedAgentActorId;
     }
 
     if (updateData.isActive !== undefined) {
@@ -274,11 +352,13 @@ export async function updateChannel(
       itemType: "channel",
       itemId: channelId,
       itemName: updatedChannel.name,
-      beforeData: formatChannelForResponse(existingChannel),
-      afterData: formatChannelForResponse(updatedChannel),
+      beforeData: await formatChannelForResponse(existingChannel),
+      afterData: await formatChannelForResponse(updatedChannel),
       actor: caller.actor,
-      actorId: caller.userId,
-      userId: userId,
+      actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: ownerUserId,
     });
 
     // Handle channel runtime restart if config or active status changed
@@ -317,9 +397,10 @@ export async function updateChannel(
     );
 
     if (
-      error instanceof Error &&
-      (error.message === "Channel not found" ||
-        error.message === "Invalid configuration for platform")
+      error instanceof ValidationError ||
+      (error instanceof Error &&
+        (error.message === "Channel not found" ||
+          error.message === "Invalid configuration for platform"))
     ) {
       throw error;
     }
@@ -336,6 +417,8 @@ export async function deleteChannel(
   userId: string,
   caller: CallerContext,
 ): Promise<void> {
+  const actorId = callerActorId(caller);
+  const ownerUserId = callerOwnerUserId(caller);
   try {
     // Get existing channel for history
     const existingChannel = await db.query.channels.findFirst({
@@ -370,10 +453,12 @@ export async function deleteChannel(
       itemType: "channel",
       itemId: channelId,
       itemName: existingChannel.name,
-      beforeData: formatChannelForResponse(existingChannel),
+      beforeData: await formatChannelForResponse(existingChannel),
       actor: caller.actor,
-      actorId: caller.userId,
-      userId: userId,
+      actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: ownerUserId,
     });
 
     logger.info(

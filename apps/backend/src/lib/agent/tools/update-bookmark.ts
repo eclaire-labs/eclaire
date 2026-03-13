@@ -7,6 +7,7 @@
 import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { updateBookmark } from "../../services/bookmarks.js";
+import { agentToolCaller } from "./caller.js";
 
 const inputSchema = z.object({
   id: z.string().describe("ID of the bookmark to update"),
@@ -28,10 +29,7 @@ export const updateBookmarkTool: RuntimeToolDefinition<typeof inputSchema> = {
   ],
   execute: async (_callId, input, ctx) => {
     const { id, ...updateData } = input;
-    const result = await updateBookmark(id, updateData, {
-      userId: ctx.userId,
-      actor: "assistant",
-    });
+    const result = await updateBookmark(id, updateData, agentToolCaller(ctx));
     return textResult(JSON.stringify(result, null, 2));
   },
 };

@@ -13,6 +13,7 @@ import {
   reprocessDocument,
   updateDocument,
 } from "../lib/services/documents.js";
+import { principalCaller } from "../lib/services/types.js";
 import {
   detectAndVerifyMimeType,
   parseUploadMetadata,
@@ -83,7 +84,8 @@ documentsRoutes.get(
 documentsRoutes.post(
   "/",
   describeRoute(postDocumentsRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const formData = await c.req.formData();
     const contentPart = formData.get("content") as File;
 
@@ -128,7 +130,7 @@ documentsRoutes.post(
         userAgent: c.req.header("User-Agent") || "",
       },
       userId,
-      { userId, actor: "user" },
+      caller,
     );
     return c.json(newDocument, 201);
   }, logger),
@@ -155,13 +157,11 @@ documentsRoutes.put(
   "/:id",
   describeRoute(putDocumentRouteDescription),
   zValidator("json", DocumentSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedDocument = await updateDocument(id, validatedData, {
-      userId,
-      actor: "user",
-    });
+    const updatedDocument = await updateDocument(id, validatedData, caller);
 
     if (!updatedDocument) {
       throw new NotFoundError("Document");
@@ -176,13 +176,11 @@ documentsRoutes.patch(
   "/:id",
   describeRoute(patchDocumentRouteDescription),
   zValidator("json", PartialDocumentSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedDocument = await updateDocument(id, validatedData, {
-      userId,
-      actor: "user",
-    });
+    const updatedDocument = await updateDocument(id, validatedData, caller);
 
     if (!updatedDocument) {
       throw new NotFoundError("Document");
@@ -287,14 +285,10 @@ documentsRoutes.get(
 documentsRoutes.delete(
   "/:id",
   describeRoute(deleteDocumentRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
-    await deleteDocument(
-      id,
-      userId,
-      { userId, actor: "user" },
-      parseDeleteStorage(c),
-    );
+    await deleteDocument(id, userId, caller, parseDeleteStorage(c));
     return new Response(null, { status: 204 });
   }, logger),
 );

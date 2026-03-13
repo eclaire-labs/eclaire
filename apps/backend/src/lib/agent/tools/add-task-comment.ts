@@ -7,6 +7,7 @@
 import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { createTaskComment } from "../../services/taskComments.js";
+import { agentToolCaller } from "./caller.js";
 
 const inputSchema = z.object({
   taskId: z.string().describe("ID of the task to comment on"),
@@ -24,7 +25,7 @@ export const addTaskCommentTool: RuntimeToolDefinition<typeof inputSchema> = {
   execute: async (_callId, input, ctx) => {
     const result = await createTaskComment(
       { taskId: input.taskId, content: input.content },
-      { userId: ctx.userId, actor: "assistant" },
+      agentToolCaller(ctx),
     );
     return textResult(JSON.stringify(result, null, 2));
   },

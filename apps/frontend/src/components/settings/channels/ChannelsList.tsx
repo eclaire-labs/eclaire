@@ -33,7 +33,7 @@ export default function ChannelsList() {
           <CardTitle>Communication Channels</CardTitle>
           <CardDescription>
             Connect platforms to receive notifications and interact with your
-            assistant
+            selected agents
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -64,7 +64,7 @@ export default function ChannelsList() {
             <CardTitle>Communication Channels</CardTitle>
             <CardDescription>
               Connect platforms to receive notifications and interact with your
-              assistant
+              selected agents
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -103,7 +103,7 @@ export default function ChannelsList() {
             </h3>
             <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
               Add your first communication channel to start receiving
-              notifications and chatting with your assistant.
+              notifications and chatting with your agents.
             </p>
             <AddChannelDialog
               trigger={
@@ -145,13 +145,17 @@ export default function ChannelsList() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                  <strong>Chat:</strong> Users can chat with the assistant on
-                  this channel
+                  <strong>Chat:</strong> Users can chat with the assigned agent
+                  on this channel
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full" />
                   <strong>Both:</strong> Both notifications and chat
                   functionality
+                </div>
+                <div className="pt-2">
+                  Direct address: start a message with `@agent-name` to route
+                  that turn to a specific agent instead of the channel default.
                 </div>
               </div>
             </div>

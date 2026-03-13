@@ -13,6 +13,7 @@ import {
 } from "@eclaire/ai";
 import type { Context } from "../../schemas/prompt-params.js";
 import { createChildLogger } from "../logger.js";
+import { DEFAULT_AGENT_ID, getAgent } from "../services/agents.js";
 import { getUserContextForPrompt } from "../user.js";
 import { fetchAssetContents } from "./asset-fetcher.js";
 import {
@@ -22,7 +23,7 @@ import {
 } from "./conversation-adapter.js";
 import { buildSystemPrompt } from "./system-prompt-builder.js";
 import { backendTools } from "./tools/index.js";
-import type { UserContext } from "./types.js";
+import type { AgentDefinition, UserContext } from "./types.js";
 
 const logger = createChildLogger("prompt-service");
 
@@ -44,15 +45,32 @@ export interface PromptResponse {
   toolCalls?: ToolCallSummaryOutput[];
 }
 
+function getRequestedAgentActorId(context?: Context): string {
+  return context?.agentActorId ?? DEFAULT_AGENT_ID;
+}
+
+function selectAgentTools(agent: AgentDefinition): typeof backendTools {
+  const selectedEntries = agent.toolNames
+    .map((toolName) => [toolName, backendTools[toolName]] as const)
+    .filter(
+      (entry): entry is [string, (typeof backendTools)[string]] => !!entry[1],
+    );
+
+  return Object.fromEntries(selectedEntries);
+}
+
 /**
  * Create a configured RuntimeAgent for the backend.
  */
 export function createBackendAgent(options: {
+  agent: AgentDefinition;
   includeTools: boolean;
   isBackgroundTask: boolean;
   assetContents?: Array<{ type: string; id: string; content: string }>;
   enableThinking?: boolean;
 }) {
+  const agentTools = selectAgentTools(options.agent);
+  const promptTools = options.includeTools ? agentTools : {};
   const toolCallingMode = options.includeTools ? "native" : "off";
 
   return new RuntimeAgent({
@@ -63,13 +81,15 @@ export function createBackendAgent(options: {
       const userContext = context.extra?.userContext as UserContext | undefined;
       return buildSystemPrompt({
         userContext,
+        agent: options.agent,
         assetContents: options.assetContents,
+        tools: promptTools,
         toolCallingMode,
         isBackgroundTaskExecution: options.isBackgroundTask,
       });
     },
 
-    tools: options.includeTools ? backendTools : {},
+    tools: options.includeTools ? agentTools : {},
 
     maxSteps: 10,
 
@@ -100,6 +120,10 @@ export async function processPromptRequest(
   try {
     // Get user context for personalization
     const userContext = (await getUserContextForPrompt(userId)) as UserContext;
+    const agentDefinition = await getAgent(
+      userId,
+      getRequestedAgentActorId(context),
+    );
 
     // Fetch asset contents if provided
     const assetContents = context?.assets
@@ -130,6 +154,7 @@ export async function processPromptRequest(
     }
 
     const agent = createBackendAgent({
+      agent: agentDefinition,
       includeTools,
       isBackgroundTask,
       assetContents,
@@ -140,7 +165,11 @@ export async function processPromptRequest(
       userId,
       requestId,
       conversationId,
-      extra: { userContext },
+      extra: {
+        userContext,
+        agent: agentDefinition,
+        allowedSkillNames: agentDefinition.skillNames,
+      },
     });
 
     const previousRuntimeMessages = previousMessages
@@ -156,6 +185,7 @@ export async function processPromptRequest(
     const finalConversationId = await saveConversationMessages({
       conversationId,
       userId,
+      agentActorId: agentDefinition.id,
       prompt,
       result,
       requestId,
@@ -320,6 +350,10 @@ export async function processPromptRequestStream(
 
   // Get user context for personalization
   const userContext = (await getUserContextForPrompt(userId)) as UserContext;
+  const agentDefinition = await getAgent(
+    userId,
+    getRequestedAgentActorId(context),
+  );
 
   // Fetch asset contents if provided
   const assetContents = context?.assets
@@ -357,6 +391,7 @@ export async function processPromptRequestStream(
   }
 
   const agent = createBackendAgent({
+    agent: agentDefinition,
     includeTools,
     isBackgroundTask,
     assetContents,
@@ -367,7 +402,11 @@ export async function processPromptRequestStream(
     userId,
     requestId,
     conversationId,
-    extra: { userContext },
+    extra: {
+      userContext,
+      agent: agentDefinition,
+      allowedSkillNames: agentDefinition.skillNames,
+    },
   });
 
   const previousRuntimeMessages = previousMessages
@@ -395,6 +434,7 @@ export async function processPromptRequestStream(
             const finalConversationId = await saveConversationMessages({
               conversationId,
               userId,
+              agentActorId: agentDefinition.id,
               prompt,
               result,
               requestId,

@@ -6,7 +6,7 @@ const { feedback } = schema;
 
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
-import type { CallerContext } from "./types.js";
+import { callerActorId, type CallerContext } from "./types.js";
 
 const logger = createChildLogger("services:feedback");
 
@@ -32,6 +32,7 @@ export async function createFeedback(
   userId: string,
   caller: CallerContext,
 ): Promise<FeedbackEntry> {
+  const actorId = callerActorId(caller);
   try {
     logger.info({ userId, data }, "Creating feedback entry");
 
@@ -62,7 +63,7 @@ export async function createFeedback(
         sentiment: data.sentiment,
       },
       actor: caller.actor,
-      actorId: caller.userId,
+      actorId,
       userId: userId,
       metadata: { userId },
     });

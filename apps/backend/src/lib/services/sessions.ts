@@ -23,6 +23,7 @@ import {
   transformRuntimeEvent,
 } from "../agent/index.js";
 import type { UserContext } from "../agent/types.js";
+import { DEFAULT_AGENT_ID, getAgent } from "./agents.js";
 import { createChildLogger } from "../logger.js";
 import { getUserContextForPrompt } from "../user.js";
 import {
@@ -30,13 +31,18 @@ import {
   type ConversationWithMessages,
   countConversations,
   createConversation,
+  getConversation,
   deleteConversation,
   getConversationWithMessages,
   listConversations,
   updateConversation,
 } from "./conversations.js";
 import { recordHistory } from "./history.js";
-import type { CallerContext } from "./types.js";
+import {
+  callerActorId,
+  callerOwnerUserId,
+  type CallerContext,
+} from "./types.js";
 
 const logger = createChildLogger("services:sessions");
 
@@ -58,7 +64,7 @@ export interface SendMessageOptions {
   context?: Context;
   enableThinking?: boolean;
   requestId?: string;
-  caller?: CallerContext;
+  caller: CallerContext;
 }
 
 // ============================================================================
@@ -87,9 +93,13 @@ export async function createSession(
   userId: string,
   caller: CallerContext,
   title?: string,
+  agentActorId?: string,
 ): Promise<Session> {
+  const actorId = callerActorId(caller);
+  const ownerUserId = callerOwnerUserId(caller);
   const session = await createConversation({
     userId,
+    agentActorId: agentActorId ?? DEFAULT_AGENT_ID,
     title: title || "New session",
   });
 
@@ -101,8 +111,10 @@ export async function createSession(
     beforeData: null,
     afterData: session,
     actor: caller.actor,
-    actorId: caller.userId,
-    userId,
+    actorId,
+    authorizedByActorId: caller.authorizedByActorId ?? null,
+    grantId: caller.grantId ?? null,
+    userId: ownerUserId,
   });
 
   return session;
@@ -110,12 +122,13 @@ export async function createSession(
 
 export async function listSessions(
   userId: string,
+  agentActorId?: string,
   limit?: number,
   offset?: number,
 ): Promise<{ items: Session[]; totalCount: number }> {
   const [items, totalCount] = await Promise.all([
-    listConversations(userId, limit, offset),
-    countConversations(userId),
+    listConversations(userId, agentActorId, limit, offset),
+    countConversations(userId, agentActorId),
   ]);
   return { items, totalCount };
 }
@@ -133,6 +146,8 @@ export async function updateSession(
   caller: CallerContext,
   updates: { title?: string },
 ): Promise<Session | null> {
+  const actorId = callerActorId(caller);
+  const ownerUserId = callerOwnerUserId(caller);
   const updated = await updateConversation(sessionId, userId, updates);
 
   if (updated) {
@@ -144,8 +159,10 @@ export async function updateSession(
       beforeData: { updates },
       afterData: updated,
       actor: caller.actor,
-      actorId: caller.userId,
-      userId,
+      actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: ownerUserId,
     });
   }
 
@@ -157,6 +174,8 @@ export async function deleteSession(
   userId: string,
   caller: CallerContext,
 ): Promise<boolean> {
+  const actorId = callerActorId(caller);
+  const ownerUserId = callerOwnerUserId(caller);
   const success = await deleteConversation(sessionId, userId);
 
   if (success) {
@@ -171,8 +190,10 @@ export async function deleteSession(
       beforeData: { sessionId },
       afterData: null,
       actor: caller.actor,
-      actorId: caller.userId,
-      userId,
+      actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: ownerUserId,
     });
   }
 
@@ -186,6 +207,8 @@ export async function deleteSession(
 export async function sendMessage(
   options: SendMessageOptions,
 ): Promise<ReadableStream<StreamEvent>> {
+  const callerActor = callerActorId(options.caller);
+  const ownerUserId = callerOwnerUserId(options.caller);
   const { sessionId, userId, prompt, context, enableThinking, requestId } =
     options;
 
@@ -211,8 +234,42 @@ export async function sendMessage(
 
   logger.info({ sessionId, userId, requestId }, "Processing session message");
 
+  const session = await getConversation(sessionId, userId);
+  if (!session) {
+    runningExecutions.delete(sessionId);
+    return new ReadableStream<StreamEvent>({
+      start(controller) {
+        controller.enqueue({
+          type: "error",
+          error: "Session not found",
+          timestamp: new Date().toISOString(),
+        });
+        controller.close();
+      },
+    });
+  }
+
+  const requestedAgentActorId =
+    context?.agentActorId ?? session.agentActorId ?? DEFAULT_AGENT_ID;
+
+  if (requestedAgentActorId !== session.agentActorId) {
+    runningExecutions.delete(sessionId);
+    return new ReadableStream<StreamEvent>({
+      start(controller) {
+        controller.enqueue({
+          type: "error",
+          error:
+            "A session is bound to a single agent. Start a new session to switch agents.",
+          timestamp: new Date().toISOString(),
+        });
+        controller.close();
+      },
+    });
+  }
+
   // Get user context for personalization
   const userContext = (await getUserContextForPrompt(userId)) as UserContext;
+  const agentDefinition = await getAgent(userId, session.agentActorId);
 
   // Fetch asset contents if provided
   const assetContents = context?.assets
@@ -255,14 +312,17 @@ export async function sendMessage(
     itemName: "AI Session Message",
     beforeData: { prompt },
     afterData: { streaming: true, sessionId },
-    actor: options.caller?.actor ?? "assistant",
-    actorId: options.caller?.userId,
-    userId,
+    actor: options.caller.actor,
+    actorId: callerActor,
+    authorizedByActorId: options.caller.authorizedByActorId ?? null,
+    grantId: options.caller.grantId ?? null,
+    userId: ownerUserId,
   }).catch((err) => {
     logger.error({ err }, "Failed to record session message history");
   });
 
   const agent = createBackendAgent({
+    agent: agentDefinition,
     includeTools,
     isBackgroundTask,
     assetContents,
@@ -273,7 +333,11 @@ export async function sendMessage(
     userId,
     requestId,
     conversationId: sessionId,
-    extra: { userContext },
+    extra: {
+      userContext,
+      agent: agentDefinition,
+      allowedSkillNames: agentDefinition.skillNames,
+    },
   });
 
   const previousRuntimeMessages = previousMessages
@@ -301,6 +365,11 @@ export async function sendMessage(
             const finalConversationId = await saveConversationMessages({
               conversationId: sessionId,
               userId,
+              agentActorId: session.agentActorId,
+              userAuthorActorId: callerActor,
+              userAuthorizedByActorId:
+                options.caller.authorizedByActorId ?? null,
+              userGrantId: options.caller.grantId ?? null,
               prompt,
               result,
               requestId,

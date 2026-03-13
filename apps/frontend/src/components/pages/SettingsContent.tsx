@@ -9,7 +9,7 @@ import { MobileSettingsMenu } from "@/components/mobile/mobile-settings-menu";
 import AccountSettings from "@/components/settings/AccountSettings";
 import ApiKeyManager from "@/components/settings/ApiKeyManager";
 import AppearanceSettings from "@/components/settings/AppearanceSettings";
-import AssistantSettings from "@/components/settings/AssistantSettings";
+import AssistantDisplaySettings from "@/components/settings/AssistantDisplaySettings";
 import NotificationSettings from "@/components/settings/NotificationSettings";
 import ProfileSettings from "@/components/settings/ProfileSettings";
 import {
@@ -124,7 +124,7 @@ export default function SettingsContent() {
       case "appearance":
         return <AppearanceSettings />;
       case "assistant":
-        return <AssistantSettings />;
+        return <AssistantDisplaySettings />;
       case "notifications":
         return <NotificationSettings />;
       case "api-keys":
@@ -133,7 +133,7 @@ export default function SettingsContent() {
             <CardHeader>
               <CardTitle>API Keys</CardTitle>
               <CardDescription>
-                Manage your API keys and access for third-party integrations.
+                Manage API keys for yourself, your agents, and external systems.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
@@ -144,8 +144,8 @@ export default function SettingsContent() {
                 <h3 className="text-lg font-semibold">API Documentation</h3>
                 <div className="prose dark:prose-invert max-w-none">
                   <p>
-                    To use the API, include your API key in the Authorization
-                    header of your requests:
+                    To use the API, include the actor API key in the
+                    Authorization header of your requests:
                   </p>
                   <pre className="p-4 bg-muted rounded-md overflow-x-auto">
                     <code>{`Authorization: Bearer YOUR_API_KEY`}</code>
@@ -349,7 +349,7 @@ export default function SettingsContent() {
         </TabsContent>
 
         <TabsContent value="assistant">
-          <AssistantSettings />
+          <AssistantDisplaySettings />
         </TabsContent>
 
         <TabsContent value="notifications">
@@ -361,7 +361,7 @@ export default function SettingsContent() {
             <CardHeader>
               <CardTitle>API Keys</CardTitle>
               <CardDescription>
-                Manage your API keys and access for third-party integrations.
+                Manage API keys for yourself, your agents, and external systems.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
@@ -373,8 +373,8 @@ export default function SettingsContent() {
                 <h3 className="text-lg font-semibold">API Documentation</h3>
                 <div className="prose dark:prose-invert max-w-none">
                   <p>
-                    To use the API, include your API key in the Authorization
-                    header of your requests:
+                    To use the API, include the actor API key in the
+                    Authorization header of your requests:
                   </p>
                   <pre className="p-4 bg-muted rounded-md overflow-x-auto">
                     <code>{`Authorization: Bearer YOUR_API_KEY`}</code>

@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -60,6 +61,7 @@ interface SlackChannelFormProps {
   }) => Promise<void>;
   isSubmitting: boolean;
   isEditing?: boolean;
+  renderExtraFields?: ReactNode;
 }
 
 export default function SlackChannelForm({
@@ -67,6 +69,7 @@ export default function SlackChannelForm({
   onSubmit,
   isSubmitting,
   isEditing = false,
+  renderExtraFields,
 }: SlackChannelFormProps) {
   const [showBotToken, setShowBotToken] = useState(false);
   const [showAppToken, setShowAppToken] = useState(false);
@@ -185,7 +188,7 @@ export default function SlackChannelForm({
                       <div className="flex flex-col gap-1">
                         <div className="font-medium">Chat</div>
                         <div className="text-xs text-muted-foreground">
-                          Users can chat with the assistant on this channel
+                          Users can chat with the assigned agent on this channel
                         </div>
                       </div>
                     </SelectItem>
@@ -193,7 +196,7 @@ export default function SlackChannelForm({
                       <div className="flex flex-col gap-1">
                         <div className="font-medium">Both</div>
                         <div className="text-xs text-muted-foreground">
-                          Both notifications and chat functionality
+                          Notifications plus agent conversation
                         </div>
                       </div>
                     </SelectItem>
@@ -363,6 +366,8 @@ export default function SlackChannelForm({
               </FormItem>
             )}
           />
+
+          {renderExtraFields}
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="submit" disabled={isSubmitting}>

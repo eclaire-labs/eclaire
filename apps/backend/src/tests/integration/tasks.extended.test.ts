@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import {
-  AI_ASSISTANT_USER_ID,
+  DEFAULT_AGENT_ACTOR_ID,
   loggedFetch,
   type TaskEntry,
   type TaskListResponse,
@@ -556,14 +556,14 @@ describe("Tasks — Assistant Status Endpoint", { timeout: 30000 }, () => {
       body: JSON.stringify({
         title: "Assistant Status Test Task",
         status: "not-started",
-        assignedToId: AI_ASSISTANT_USER_ID,
+        assigneeActorId: DEFAULT_AGENT_ACTOR_ID,
       }),
     });
 
     expect(response.status).toBe(201);
     const data = (await response.json()) as TaskEntry;
     taskId = data.id;
-    expect(data.assignedToId).toBe(AI_ASSISTANT_USER_ID);
+    expect(data.assigneeActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
   });
 
   it("PUT /api/tasks/:id/assistant-status — should update task status as assistant", async () => {
@@ -573,7 +573,7 @@ describe("Tasks — Assistant Status Endpoint", { timeout: 30000 }, () => {
       method: "PUT",
       body: JSON.stringify({
         status: "in-progress",
-        assignedAssistantId: AI_ASSISTANT_USER_ID,
+        assignedAssistantId: DEFAULT_AGENT_ACTOR_ID,
       }),
     });
 
@@ -590,7 +590,7 @@ describe("Tasks — Assistant Status Endpoint", { timeout: 30000 }, () => {
       method: "PUT",
       body: JSON.stringify({
         status: "completed",
-        assignedAssistantId: AI_ASSISTANT_USER_ID,
+        assignedAssistantId: DEFAULT_AGENT_ACTOR_ID,
         completedAt,
       }),
     });

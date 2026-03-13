@@ -18,8 +18,11 @@ export type SessionListResponse = ConversationListResponse;
 /**
  * Create a new session
  */
-export async function createSession(title?: string): Promise<Session> {
-  const response = await apiPost("/api/sessions", title ? { title } : {});
+export async function createSession(options?: {
+  title?: string;
+  agentActorId?: string;
+}): Promise<Session> {
+  const response = await apiPost("/api/sessions", options ?? {});
   return response.json();
 }
 
@@ -29,10 +32,16 @@ export async function createSession(title?: string): Promise<Session> {
 export async function listSessions(
   limit = 50,
   offset = 0,
+  agentActorId?: string,
 ): Promise<SessionListResponse> {
-  const response = await apiGet(
-    `/api/sessions?limit=${limit}&offset=${offset}`,
-  );
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (agentActorId) {
+    params.set("agentActorId", agentActorId);
+  }
+  const response = await apiGet(`/api/sessions?${params.toString()}`);
   return response.json();
 }
 

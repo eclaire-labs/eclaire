@@ -38,7 +38,11 @@ import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
-import type { CallerContext } from "./types.js";
+import {
+  callerActorId,
+  callerOwnerUserId,
+  type CallerContext,
+} from "./types.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:documents");
@@ -252,6 +256,7 @@ export async function createDocument(
   userId: string,
   caller: CallerContext,
 ): Promise<DocumentDetails> {
+  const actorId = callerActorId(caller);
   // Generate document ID first so we can use it for storage
   const documentId = generateDocumentId();
   const { metadata, content, originalMimeType, userAgent } = data;
@@ -336,7 +341,7 @@ export async function createDocument(
           tags: metadata.tags,
         },
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId,
         metadata: null,
         timestamp: new Date(),
@@ -399,7 +404,8 @@ export async function updateDocument(
   documentData: UpdateDocumentParams,
   caller: CallerContext,
 ): Promise<DocumentDetails> {
-  const { userId } = caller;
+  const userId = callerOwnerUserId(caller);
+  const actorId = callerActorId(caller);
   try {
     const existingDocument = await db.query.documents.findFirst({
       columns: { title: true, description: true },
@@ -461,7 +467,7 @@ export async function updateDocument(
         beforeData: existingDocument,
         afterData: { ...existingDocument, ...documentData },
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -482,6 +488,7 @@ export async function deleteDocument(
   caller: CallerContext,
   deleteStorage: boolean = true,
 ): Promise<{ success: boolean }> {
+  const actorId = callerActorId(caller);
   try {
     const existingDocument = await db.query.documents.findFirst({
       where: and(
@@ -516,7 +523,7 @@ export async function deleteDocument(
         beforeData: existingDocument,
         afterData: null,
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),

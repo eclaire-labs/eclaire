@@ -1,6 +1,6 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import {
-  AI_ASSISTANT_USER_ID,
+  DEFAULT_AGENT_ACTOR_ID,
   globalTestCleanup,
   loggedFetch,
   RecurrenceTestHelpers,
@@ -115,8 +115,8 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
       );
 
       // Task should be assigned to current user (not AI assistant)
-      expect(task.assignedToId).not.toBeNull();
-      expect(task.assignedToId).not.toBe(AI_ASSISTANT_USER_ID);
+      expect(task.assigneeActorId).not.toBeNull();
+      expect(task.assigneeActorId).not.toBe(DEFAULT_AGENT_ACTOR_ID);
     });
 
     it("should create non-recurring task (baseline)", async () => {
@@ -173,7 +173,7 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
       const task = await RecurrenceTestHelpers.createRecurringTask(
         "AI Assistant Recurring Task",
         patterns.everyFiveSeconds,
-        AI_ASSISTANT_USER_ID,
+        DEFAULT_AGENT_ACTOR_ID,
       );
       recurringTaskIds.push(task.id);
 
@@ -181,7 +181,7 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
         task,
         patterns.everyFiveSeconds,
       );
-      expect(task.assignedToId).toBe(AI_ASSISTANT_USER_ID);
+      expect(task.assigneeActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
     });
   });
 
@@ -705,7 +705,7 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
       // Verify initial state
       expect(task.lastRunAt).toBeNull();
       expect(task.nextRunAt).toBeDefined();
-      expect(task.assignedToId).not.toBe(AI_ASSISTANT_USER_ID);
+      expect(task.assigneeActorId).not.toBe(DEFAULT_AGENT_ACTOR_ID);
 
       // Wait for execution
       const initialNextRunAt = task.nextRunAt!;
@@ -725,7 +725,7 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
       const task = await RecurrenceTestHelpers.createRecurringTask(
         "AI Assistant Execution Task",
         patterns.everyThreeSeconds,
-        AI_ASSISTANT_USER_ID,
+        DEFAULT_AGENT_ACTOR_ID,
         RecurrenceTestHelpers.getFutureDate(10),
       );
       recurringTaskIds.push(task.id);
@@ -733,7 +733,7 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
       // Verify initial state
       expect(task.lastRunAt).toBeNull();
       expect(task.nextRunAt).toBeDefined();
-      expect(task.assignedToId).toBe(AI_ASSISTANT_USER_ID);
+      expect(task.assigneeActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
 
       // Wait for execution by checking for AI comments
       const initialNextRunAt = task.nextRunAt!;
@@ -1159,7 +1159,7 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
       const task = await RecurrenceTestHelpers.createRecurringTask(
         "AI Immediate Task",
         patterns.everyFiveSeconds,
-        AI_ASSISTANT_USER_ID,
+        DEFAULT_AGENT_ACTOR_ID,
         RecurrenceTestHelpers.getFutureDate(10),
         undefined,
         true,
@@ -1167,7 +1167,7 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
       recurringTaskIds.push(task.id);
 
       // Verify task is configured correctly
-      expect(task.assignedToId).toBe(AI_ASSISTANT_USER_ID);
+      expect(task.assigneeActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
       expect(task.runImmediately).toBe(true);
       RecurrenceTestHelpers.verifyRecurrenceConfig(
         task,

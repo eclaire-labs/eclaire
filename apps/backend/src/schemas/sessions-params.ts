@@ -4,6 +4,7 @@ import { ContextSchema } from "./prompt-params.js";
 
 export const CreateSessionSchema = z.object({
   title: z.string().min(1).max(200).optional(),
+  agentActorId: z.string().optional(),
 });
 
 export const SendMessageSchema = z.object({
@@ -17,6 +18,7 @@ export const UpdateSessionSchema = z.object({
 });
 
 export const ListSessionsSchema = z.object({
+  agentActorId: z.string().optional(),
   limit: z.string().regex(/^\d+$/).transform(Number).optional(),
   offset: z.string().regex(/^\d+$/).transform(Number).optional(),
 });

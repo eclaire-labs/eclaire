@@ -1,5 +1,5 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { CheckSquare, Loader2, Plus, User as UserIcon } from "lucide-react";
+import { CheckSquare, Loader2, Plus } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -8,11 +8,10 @@ import React, {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
+import { ActorPicker } from "@/components/shared/ActorPicker";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { TagEditor } from "@/components/shared/TagEditor";
-import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -47,10 +46,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
+import { useActors } from "@/hooks/use-actors";
 import { useTags } from "@/hooks/use-tags";
 import { useTasks } from "@/hooks/use-tasks";
-import { getUsers } from "@/lib/api-users";
-import type { Task, TaskStatus, User } from "@/types/task";
+import type { Task, TaskStatus } from "@/types/task";
 import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
 import { TaskListItem } from "./tasks/TaskListItem";
 import { TaskTileItem } from "./tasks/TaskTileItem";
@@ -62,28 +61,6 @@ import {
 import { tasksConfig } from "./tasks/tasks-config";
 
 const routeApi = getRouteApi("/_authenticated/tasks/");
-
-// ---------------------------------------------------------------------------
-// Transform backend user data to frontend User type
-// ---------------------------------------------------------------------------
-// biome-ignore lint/suspicious/noExplicitAny: backend user shape may differ from frontend User type
-const transformBackendUser = (backendUser: any): User => ({
-  id: backendUser.id,
-  displayName: backendUser.displayName || backendUser.name || null,
-  userType: backendUser.userType || ("user" as const),
-  email: backendUser.email || "",
-  fullName: backendUser.fullName || backendUser.name || null,
-  avatarUrl: backendUser.avatarUrl || backendUser.image || null,
-});
-
-// Transform auth user to match UserAvatar expected format
-// biome-ignore lint/suspicious/noExplicitAny: auth user shape varies across providers
-const transformAuthUserForAvatar = (authUser: any) => ({
-  displayName: authUser.displayName || authUser.name || null,
-  fullName: authUser.fullName || authUser.name || null,
-  email: authUser.email || "",
-  avatarUrl: authUser.avatarUrl || authUser.image || null,
-});
 
 // ---------------------------------------------------------------------------
 // Page Component
@@ -115,27 +92,12 @@ export default function TasksPage() {
   } = useTasks(params);
 
   const { data: allTags = [] } = useTags("tasks");
-
-  // Users for assignee dropdown
-  const [users, setUsers] = useState<User[]>([]);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const usersData = await getUsers();
-        const transformedUsers = usersData.map(transformBackendUser);
-        setUsers(transformedUsers);
-      } catch (err) {
-        console.error("Error fetching users:", err);
-      }
-    };
-    fetchUsers();
-  }, []);
+  const { actors } = useActors(["human", "agent"]);
 
   // Current user ID
   const currentUserId = auth?.user?.id || "";
 
-  // Build assignee list from both users and tasks
+  // Build assignee list from actors with task-driven fallback for stale assignments.
   const allAssignees: Array<{ id: string; name: string; userType: string }> =
     useMemo(() => {
       const assigneeSet = new Set<string>();
@@ -145,23 +107,24 @@ export default function TasksPage() {
         userType: string;
       }> = [];
 
-      users.forEach((user) => {
-        if (!assigneeSet.has(user.id)) {
-          assigneeSet.add(user.id);
+      actors.forEach((actor) => {
+        if (!assigneeSet.has(actor.id)) {
+          assigneeSet.add(actor.id);
           assigneeList.push({
-            id: user.id,
-            name: user.displayName || user.email || user.id,
-            userType: user.userType,
+            id: actor.id,
+            name: actor.label,
+            userType: actor.legacyUserType,
           });
         }
       });
 
       tasks.forEach((task) => {
-        if (task.assignedToId && !assigneeSet.has(task.assignedToId)) {
-          assigneeSet.add(task.assignedToId);
+        const assigneeId = task.assigneeActorId;
+        if (assigneeId && !assigneeSet.has(assigneeId)) {
+          assigneeSet.add(assigneeId);
           assigneeList.push({
-            id: task.assignedToId,
-            name: task.assignedToId,
+            id: assigneeId,
+            name: assigneeId,
             userType: "user",
           });
         }
@@ -173,7 +136,7 @@ export default function TasksPage() {
         }
         return a.name.localeCompare(b.name);
       });
-    }, [tasks, users]);
+    }, [actors, tasks]);
 
   // Shared list page state
   const state = useListPageState(tasks, allTags, tasksConfig, {
@@ -303,8 +266,8 @@ export default function TasksPage() {
           dueDate: new Date(taskData.dueDate).toISOString(),
         }),
         status: taskData.status || "not-started",
-        ...(taskData.assignedToId?.trim() && {
-          assignedToId: taskData.assignedToId,
+        ...(taskData.assigneeActorId?.trim() && {
+          assigneeActorId: taskData.assigneeActorId,
         }),
         ...(taskData.description && { description: taskData.description }),
         isRecurring: taskData.isRecurring || false,
@@ -359,8 +322,8 @@ export default function TasksPage() {
           dueDate: new Date(editingTask.dueDate).toISOString(),
         }),
         status: editingTask.status || "not-started",
-        ...(editingTask.assignedToId && {
-          assignedToId: editingTask.assignedToId,
+        ...(editingTask.assigneeActorId && {
+          assigneeActorId: editingTask.assigneeActorId,
         }),
         ...(editingTask.description && {
           description: editingTask.description,
@@ -394,7 +357,33 @@ export default function TasksPage() {
   };
 
   // Current user for avatars
-  const currentUser = auth?.user ? transformBackendUser(auth.user) : undefined;
+  const currentUser = useMemo(() => {
+    if (!auth?.user) {
+      return undefined;
+    }
+
+    const displayName =
+      "displayName" in auth.user && typeof auth.user.displayName === "string"
+        ? auth.user.displayName
+        : auth.user.name;
+    const fullName =
+      "fullName" in auth.user && typeof auth.user.fullName === "string"
+        ? auth.user.fullName
+        : auth.user.name;
+    const avatarUrl =
+      "avatarUrl" in auth.user && typeof auth.user.avatarUrl === "string"
+        ? auth.user.avatarUrl
+        : auth.user.image;
+
+    return {
+      id: auth.user.id,
+      displayName: displayName || null,
+      userType: "user" as const,
+      email: auth.user.email || "",
+      fullName: fullName || null,
+      avatarUrl: avatarUrl || null,
+    };
+  }, [auth?.user]);
 
   // Build dynamic extra-filter options for the layout
   const assigneeOptions = useMemo(() => {
@@ -464,62 +453,6 @@ export default function TasksPage() {
       allAssignees,
       currentUser,
     ],
-  );
-
-  // Assignee select options shared across dialogs
-  const renderAssigneeSelectContent = () => (
-    <SelectContent>
-      <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
-      {allAssignees.some((a) => a.userType === "assistant") && (
-        <>
-          <SelectItem
-            value="__section_ai__"
-            disabled
-            className="text-xs font-semibold text-muted-foreground"
-          >
-            AI Assistants
-          </SelectItem>
-          {allAssignees
-            .filter((a) => a.userType === "assistant")
-            .map((assignee) => (
-              <SelectItem key={assignee.id} value={assignee.id}>
-                <div className="flex items-center gap-2">
-                  <AIAvatar size="sm" />
-                  {assignee.name}
-                </div>
-              </SelectItem>
-            ))}
-        </>
-      )}
-      {allAssignees.some((a) => a.userType !== "assistant") && (
-        <>
-          <SelectItem
-            value="__section_team__"
-            disabled
-            className="text-xs font-semibold text-muted-foreground"
-          >
-            Team Members
-          </SelectItem>
-          {allAssignees
-            .filter((a) => a.userType !== "assistant")
-            .map((assignee) => (
-              <SelectItem key={assignee.id} value={assignee.id}>
-                <div className="flex items-center gap-2">
-                  {assignee.id === auth?.user?.id && auth.user ? (
-                    <UserAvatar
-                      user={transformAuthUserForAvatar(auth.user)}
-                      size="sm"
-                    />
-                  ) : (
-                    <UserIcon className="h-3 w-3" />
-                  )}
-                  {assignee.name}
-                </div>
-              </SelectItem>
-            ))}
-        </>
-      )}
-    </SelectContent>
   );
 
   return (
@@ -670,22 +603,24 @@ export default function TasksPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="edit-assignee">Assignee</Label>
-                      <Select
-                        name="assignedToId"
-                        value={editingTask.assignedToId || "UNASSIGNED"}
-                        onValueChange={(value) => {
-                          const finalValue =
-                            value === "UNASSIGNED" ? null : value;
+                      <ActorPicker
+                        id="edit-assignee"
+                        actors={actors}
+                        value={editingTask.assigneeActorId ?? null}
+                        allowUnassigned
+                        placeholder="Search people and agents"
+                        searchPlaceholder="Search people and agents..."
+                        onChange={(value) =>
                           setEditingTask((prev) =>
-                            prev ? { ...prev, assignedToId: finalValue } : null,
-                          );
-                        }}
-                      >
-                        <SelectTrigger id="edit-assignee">
-                          <SelectValue placeholder="Assignee" />
-                        </SelectTrigger>
-                        {renderAssigneeSelectContent()}
-                      </Select>
+                            prev
+                              ? {
+                                  ...prev,
+                                  assigneeActorId: value,
+                                }
+                              : null,
+                          )
+                        }
+                      />
                     </div>
                   </div>
                   {/* Tags */}
@@ -753,7 +688,7 @@ export default function TasksPage() {
             onCreateTask={handleCreateTask}
             isCreating={isUpdating}
             defaultAssigneeId={newTaskDefaultAssignee}
-            renderAssigneeSelectContent={renderAssigneeSelectContent}
+            assigneeOptions={actors}
           />
         </>
       }

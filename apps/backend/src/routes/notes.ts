@@ -14,6 +14,7 @@ import {
   updateNoteEntry,
   validateNoteFileUpload,
 } from "../lib/services/notes.js";
+import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
@@ -77,7 +78,8 @@ notesRoutes.post(
   "/",
   describeRoute(postNotesRouteDescription),
   zValidator("json", NoteSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const validatedData = c.req.valid("json");
 
     if (!validatedData.title) {
@@ -101,10 +103,7 @@ notesRoutes.post(
       userAgent: c.req.header("User-Agent") || "",
     };
 
-    const newEntry = await createNoteEntry(servicePayload, {
-      userId,
-      actor: "user",
-    });
+    const newEntry = await createNoteEntry(servicePayload, caller);
     return c.json(newEntry, 201);
   }, logger),
 );
@@ -113,7 +112,8 @@ notesRoutes.post(
 notesRoutes.post(
   "/upload",
   describeRoute(postNoteUploadRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const body = await c.req.parseBody();
     const file = body.content as File;
     const metadataStr = body.metadata as string;
@@ -145,10 +145,7 @@ notesRoutes.post(
     };
 
     // Reuse existing createNoteEntry function
-    const newEntry = await createNoteEntry(servicePayload, {
-      userId,
-      actor: "user",
-    });
+    const newEntry = await createNoteEntry(servicePayload, caller);
     return c.json(newEntry, 201);
   }, logger),
 );
@@ -174,12 +171,13 @@ notesRoutes.put(
   "/:id",
   describeRoute(putNoteRouteDescription),
   zValidator("json", NoteSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
     const updatedEntry = await updateNoteEntry(
       id,
       toNoteServiceData(c.req.valid("json")),
-      { userId, actor: "user" },
+      caller,
     );
     if (!updatedEntry) throw new NotFoundError("Note");
     return c.json(updatedEntry);
@@ -191,12 +189,13 @@ notesRoutes.patch(
   "/:id",
   describeRoute(patchNoteRouteDescription),
   zValidator("json", PartialNoteSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
     const updatedEntry = await updateNoteEntry(
       id,
       toNoteServiceData(c.req.valid("json")),
-      { userId, actor: "user" },
+      caller,
     );
     if (!updatedEntry) throw new NotFoundError("Note");
     return c.json(updatedEntry);
@@ -207,9 +206,10 @@ notesRoutes.patch(
 notesRoutes.delete(
   "/:id",
   describeRoute(deleteNoteRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
-    await deleteNoteEntry(id, userId, { userId, actor: "user" });
+    await deleteNoteEntry(id, userId, caller);
     return new Response(null, { status: 204 });
   }, logger),
 );

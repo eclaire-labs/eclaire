@@ -33,7 +33,7 @@ describe("TaskSchema", () => {
       description: "A complete task",
       status: "in-progress",
       dueDate: "2026-06-15T09:00:00Z",
-      assignedToId: "user-123",
+      assigneeActorId: "user-123",
       processingEnabled: false,
       tags: ["urgent", "backend"],
       reviewStatus: "accepted",

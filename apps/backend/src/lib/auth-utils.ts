@@ -1,74 +1,76 @@
-import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { config } from "../config/index.js";
-import { db, schema } from "../db/index.js";
+import { db } from "../db/index.js";
 import { parseApiKey, verifyApiKeyHash } from "./api-key-security.js";
+import type { AuthPrincipal } from "./auth-principal.js";
 import { createChildLogger } from "./logger.js";
+import { ensureHumanActorForUserId } from "./services/actors.js";
+import {
+  resolveApiKeyCredential,
+  touchActorCredentialUsage,
+} from "./services/actor-credentials.js";
 
 const logger = createChildLogger("auth-utils");
 
-const { apiKeys } = schema;
-
 /**
- * Verifies an API key and returns validation result with user ID
+ * Verifies an API key and returns validation result with resolved principal fields
  * @param apiKey The API key to verify
- * @returns Object with isValid boolean and userId if valid
+ * @returns Object with isValid boolean and principal if valid
  */
 export async function verifyApiKey(
   apiKey: string,
-): Promise<{ isValid: boolean; userId: string | null }> {
+): Promise<{ isValid: boolean; principal: AuthPrincipal | null }> {
   try {
-    // Parse the API key format: sk-{15chars}-{32chars}
     const parsed = parseApiKey(apiKey);
     if (!parsed) {
-      return { isValid: false, userId: null };
+      return { isValid: false, principal: null };
     }
 
     const { keyId } = parsed;
-
-    // Find the key record by keyId
-    const keyRecord = await db.query.apiKeys.findFirst({
-      // biome-ignore lint/style/noNonNullAssertion: guaranteed by regex match above
-      where: and(eq(apiKeys.keyId, keyId!), apiKeys.isActive),
-    });
-
-    if (!keyRecord) {
-      return { isValid: false, userId: null };
+    const credential = await resolveApiKeyCredential(keyId ?? "");
+    if (!credential) {
+      return { isValid: false, principal: null };
     }
 
-    // Verify the hash using HMAC
     const isValid = verifyApiKeyHash(
       apiKey,
-      keyRecord.keyHash,
-      keyRecord.hashVersion,
+      credential.keyHash,
+      credential.hashVersion,
     );
 
     if (!isValid) {
-      return { isValid: false, userId: null };
+      return { isValid: false, principal: null };
     }
 
-    // Update last used timestamp
-    await db
-      .update(apiKeys)
-      .set({ lastUsedAt: new Date() })
-      .where(eq(apiKeys.id, keyRecord.id));
+    await touchActorCredentialUsage(credential.credentialId);
 
-    return { isValid: true, userId: keyRecord.userId };
+    return {
+      isValid: true,
+      principal: {
+        actorId: credential.actorId,
+        actorKind: credential.actorKind,
+        ownerUserId: credential.ownerUserId,
+        grantId: credential.grantId,
+        grantedByActorId: credential.grantedByActorId,
+        credentialId: credential.credentialId,
+        authMethod: "api_key",
+        scopes: credential.scopes,
+      },
+    };
   } catch (_error) {
-    return { isValid: false, userId: null };
+    return { isValid: false, principal: null };
   }
 }
 
 /**
- * Gets the authenticated user ID from Hono context, supporting both Better Auth sessions and API keys.
+ * Gets the authenticated principal from Hono context, supporting both Better Auth sessions and API keys.
  * Session resolution is lazy — the DB is only hit if an API key isn't present.
  * @param c The Hono context
- * @returns The authenticated user ID or null if not authenticated
+ * @returns The authenticated principal or null if not authenticated
  */
-export async function getAuthenticatedUserId(
+export async function getAuthenticatedPrincipal(
   c: Context,
-): Promise<string | null> {
-  // Check for API key first (avoids session DB hit for programmatic clients)
+): Promise<AuthPrincipal | null> {
   const authHeader = c.req.header("Authorization");
   const apiKey = authHeader?.startsWith("Bearer ")
     ? authHeader.substring(7)
@@ -79,25 +81,32 @@ export async function getAuthenticatedUserId(
 
   if (keyToVerify) {
     try {
-      const { isValid, userId } = await verifyApiKey(keyToVerify);
+      const { isValid, principal } = await verifyApiKey(keyToVerify);
 
-      if (isValid && userId) {
-        return userId;
+      if (isValid && principal) {
+        return principal;
       }
     } catch (_error) {}
   }
 
-  // Fall back to session auth (lazy — resolves session from DB only when needed)
   const resolveSession = c.get("resolveSession");
   if (resolveSession) {
     const session = await resolveSession();
     if (session?.user?.id) {
-      return session.user.id;
+      await ensureHumanActorForUserId(session.user.id);
+      return {
+        actorId: session.user.id,
+        actorKind: "human",
+        ownerUserId: session.user.id,
+        grantId: null,
+        grantedByActorId: null,
+        credentialId: null,
+        authMethod: "session",
+        scopes: ["*"],
+      };
     }
   }
 
-  // Allow unauthenticated localhost requests (self-hosted convenience, non-production only).
-  // Only triggers when both API key and session auth fail.
   if (!config.isProduction) {
     const clientIP =
       c.req.header("x-forwarded-for") ||
@@ -113,10 +122,20 @@ export async function getAuthenticatedUserId(
     if (isLocalhost) {
       const firstUser = await db.query.users.findFirst();
       if (firstUser) {
+        await ensureHumanActorForUserId(firstUser.id);
         logger.debug(
           "Localhost auth bypass: authenticating as first user (non-production only)",
         );
-        return firstUser.id;
+        return {
+          actorId: firstUser.id,
+          actorKind: "human",
+          ownerUserId: firstUser.id,
+          grantId: null,
+          grantedByActorId: null,
+          credentialId: null,
+          authMethod: "localhost",
+          scopes: ["*"],
+        };
       }
     }
   }
@@ -131,9 +150,16 @@ export async function getAuthenticatedUserId(
  * @throws Error response if not authenticated
  */
 export async function requireAuth(c: Context): Promise<string> {
-  const userId = await getAuthenticatedUserId(c);
-  if (!userId) {
+  const principal = await getAuthenticatedPrincipal(c);
+  if (!principal) {
     throw new Error("Unauthorized");
   }
-  return userId;
+  return principal.ownerUserId;
+}
+
+export async function getAuthenticatedUserId(
+  c: Context,
+): Promise<string | null> {
+  const principal = await getAuthenticatedPrincipal(c);
+  return principal?.ownerUserId ?? null;
 }

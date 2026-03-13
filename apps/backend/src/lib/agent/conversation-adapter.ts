@@ -70,6 +70,10 @@ export interface SaveableResult {
 export interface SaveConversationOptions {
   conversationId?: string;
   userId: string;
+  agentActorId: string;
+  userAuthorActorId?: string | null;
+  userAuthorizedByActorId?: string | null;
+  userGrantId?: string | null;
   prompt: string;
   result: SaveableResult;
   requestId?: string;
@@ -82,7 +86,17 @@ export interface SaveConversationOptions {
 export async function saveConversationMessages(
   options: SaveConversationOptions,
 ): Promise<string | undefined> {
-  const { conversationId, userId, prompt, result, requestId } = options;
+  const {
+    conversationId,
+    userId,
+    agentActorId,
+    userAuthorActorId,
+    userAuthorizedByActorId,
+    userGrantId,
+    prompt,
+    result,
+    requestId,
+  } = options;
 
   // If no conversation context and we have a result, create new conversation
   if (!conversationId) {
@@ -94,6 +108,7 @@ export async function saveConversationMessages(
     const title = generateConversationTitle(prompt);
     const newConversation = await createConversation({
       userId,
+      agentActorId,
       title,
     });
 
@@ -101,14 +116,20 @@ export async function saveConversationMessages(
     await createMessage({
       conversationId: newConversation.id,
       role: "user",
+      authorActorId: userAuthorActorId ?? userId,
       content: prompt,
-      metadata: { requestId },
+      metadata: {
+        requestId,
+        authorizedByActorId: userAuthorizedByActorId ?? null,
+        grantId: userGrantId ?? null,
+      },
     });
 
     // Add assistant response
     await createMessage({
       conversationId: newConversation.id,
       role: "assistant",
+      authorActorId: agentActorId ?? newConversation.agentActorId,
       content: result.text,
       thinkingContent: result.thinking,
       toolCalls:
@@ -132,13 +153,19 @@ export async function saveConversationMessages(
   await createMessage({
     conversationId,
     role: "user",
+    authorActorId: userAuthorActorId ?? userId,
     content: prompt,
-    metadata: { requestId },
+    metadata: {
+      requestId,
+      authorizedByActorId: userAuthorizedByActorId ?? null,
+      grantId: userGrantId ?? null,
+    },
   });
 
   await createMessage({
     conversationId,
     role: "assistant",
+    authorActorId: agentActorId,
     content: result.text,
     thinkingContent: result.thinking,
     toolCalls:

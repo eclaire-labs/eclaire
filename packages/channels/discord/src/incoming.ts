@@ -1,3 +1,4 @@
+import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
 import { MessageFlags, type Message, type TextChannel } from "discord.js";
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
@@ -29,9 +30,13 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const { findChannel, logger, processPromptRequest, recordHistory } =
-    getDeps();
-
+  const {
+    findChannel,
+    logger,
+    processPromptRequest,
+    recordHistory,
+    routeChannelPrompt,
+  } = getDeps();
   const text = message.content;
   const attachments = extractAttachments(message);
 
@@ -79,6 +84,33 @@ export async function handleIncomingMessage(
       return;
     }
 
+    const routing = routeChannelPrompt
+      ? await routeChannelPrompt(
+          userId,
+          text || "",
+          channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+        )
+      : {
+          agentActorId: channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+          prompt: text || "",
+        };
+
+    if (routing.error) {
+      await message.reply(routing.error);
+      return;
+    }
+
+    const sessionState = getSession(channelId);
+    const channelAgentActorId = routing.agentActorId;
+    const routedText = routing.prompt;
+    if (
+      sessionState.agentActorId &&
+      sessionState.agentActorId !== channelAgentActorId
+    ) {
+      sessionState.sessionId = undefined;
+      sessionState.agentActorId = undefined;
+    }
+
     // Send typing indicator (with circuit breaker protection)
     const textChannel = message.channel as TextChannel;
     await safeSendTyping(textChannel, logger);
@@ -87,11 +119,19 @@ export async function handleIncomingMessage(
     const requestId = `discord-${channelId}-${Date.now()}`;
 
     // Get or lazily create session for multi-turn context
-    const sessionState = getSession(channelId);
-    if (!sessionState.sessionId && deps.createSession) {
+    if (
+      (!sessionState.sessionId ||
+        sessionState.agentActorId !== channelAgentActorId) &&
+      deps.createSession
+    ) {
       try {
-        const session = await deps.createSession(userId);
+        const session = await deps.createSession(
+          userId,
+          undefined,
+          channelAgentActorId,
+        );
         sessionState.sessionId = session.id;
+        sessionState.agentActorId = channelAgentActorId;
       } catch (sessionError) {
         logger.warn(
           {
@@ -121,7 +161,7 @@ export async function handleIncomingMessage(
         try {
           const audioBuffer = await downloadFile(voiceAttachment.url);
           const result = await deps.processAudioMessage(userId, audioBuffer, {
-            agent: "discord-bot",
+            agentActorId: channelAgentActorId,
             channelId,
             discordUserId,
             format: "ogg",
@@ -153,7 +193,7 @@ export async function handleIncomingMessage(
               platform: "discord",
               channelId,
             },
-            actor: "user",
+            actor: "human",
             userId,
             metadata: { platform: "discord", channelId },
           });
@@ -175,14 +215,14 @@ export async function handleIncomingMessage(
     // Build prompt text: include attachment URLs if present
     const promptText =
       attachments.length > 0
-        ? `${text || ""}${text ? "\n" : ""}[Attachments: ${attachments.map((a) => `${a.name} (${a.contentType ?? "unknown"}): ${a.url}`).join(", ")}]`
-        : text;
+        ? `${routedText}${routedText ? "\n" : ""}[Attachments: ${attachments.map((a) => `${a.name} (${a.contentType ?? "unknown"}): ${a.url}`).join(", ")}]`
+        : routedText;
 
     if (deps.processPromptRequestStream) {
       const stream = await deps.processPromptRequestStream({
         userId,
         prompt: promptText,
-        context: { agent: "discord-bot", attachments },
+        context: { agentActorId: channelAgentActorId, attachments },
         requestId,
         conversationId: sessionId,
         enableThinking,
@@ -196,7 +236,7 @@ export async function handleIncomingMessage(
       const result = await processPromptRequest({
         userId,
         prompt: promptText,
-        context: { agent: "discord-bot", attachments },
+        context: { agentActorId: channelAgentActorId, attachments },
         requestId,
         conversationId: sessionId,
         enableThinking,
@@ -232,7 +272,7 @@ export async function handleIncomingMessage(
         platform: "discord",
         channelId,
       },
-      actor: "user",
+      actor: "human",
       userId: userId,
       metadata: {
         platform: "discord",

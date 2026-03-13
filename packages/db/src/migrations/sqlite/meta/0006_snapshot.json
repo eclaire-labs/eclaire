@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ad075a8d-b264-4389-a546-d79109e1cf9f",
+  "id": "873285bb-296a-4922-8c6c-b8b1f5d59a7a",
   "prevId": "7b5ea153-6f63-42fc-ad98-369233ca02ab",
   "tables": {
     "accounts": {
@@ -117,6 +117,479 @@
         "accounts_user_id_users_id_fk": {
           "name": "accounts_user_id_users_id_fk",
           "tableFrom": "accounts",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "actor_credentials": {
+      "name": "actor_credentials",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "owner_user_id": {
+          "name": "owner_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "grant_id": {
+          "name": "grant_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'api_key'"
+        },
+        "key_id": {
+          "name": "key_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key_hash": {
+          "name": "key_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hash_version": {
+          "name": "hash_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "key_suffix": {
+          "name": "key_suffix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_used_at": {
+          "name": "last_used_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        }
+      },
+      "indexes": {
+        "actor_credentials_key_id_unique": {
+          "name": "actor_credentials_key_id_unique",
+          "columns": ["key_id"],
+          "isUnique": true
+        },
+        "actor_credentials_actor_id_idx": {
+          "name": "actor_credentials_actor_id_idx",
+          "columns": ["actor_id"],
+          "isUnique": false
+        },
+        "actor_credentials_owner_user_id_idx": {
+          "name": "actor_credentials_owner_user_id_idx",
+          "columns": ["owner_user_id"],
+          "isUnique": false
+        },
+        "actor_credentials_grant_id_idx": {
+          "name": "actor_credentials_grant_id_idx",
+          "columns": ["grant_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "actor_credentials_actor_id_actors_id_fk": {
+          "name": "actor_credentials_actor_id_actors_id_fk",
+          "tableFrom": "actor_credentials",
+          "tableTo": "actors",
+          "columnsFrom": ["actor_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "actor_credentials_owner_user_id_users_id_fk": {
+          "name": "actor_credentials_owner_user_id_users_id_fk",
+          "tableFrom": "actor_credentials",
+          "tableTo": "users",
+          "columnsFrom": ["owner_user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "actor_credentials_grant_id_actor_grants_id_fk": {
+          "name": "actor_credentials_grant_id_actor_grants_id_fk",
+          "tableFrom": "actor_credentials",
+          "tableTo": "actor_grants",
+          "columnsFrom": ["grant_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "actor_grants": {
+      "name": "actor_grants",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "owner_user_id": {
+          "name": "owner_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "granted_by_actor_id": {
+          "name": "granted_by_actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scopes": {
+          "name": "scopes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
+        }
+      },
+      "indexes": {
+        "actor_grants_actor_id_idx": {
+          "name": "actor_grants_actor_id_idx",
+          "columns": ["actor_id"],
+          "isUnique": false
+        },
+        "actor_grants_owner_user_id_idx": {
+          "name": "actor_grants_owner_user_id_idx",
+          "columns": ["owner_user_id"],
+          "isUnique": false
+        },
+        "actor_grants_granted_by_actor_id_idx": {
+          "name": "actor_grants_granted_by_actor_id_idx",
+          "columns": ["granted_by_actor_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "actor_grants_actor_id_actors_id_fk": {
+          "name": "actor_grants_actor_id_actors_id_fk",
+          "tableFrom": "actor_grants",
+          "tableTo": "actors",
+          "columnsFrom": ["actor_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "actor_grants_owner_user_id_users_id_fk": {
+          "name": "actor_grants_owner_user_id_users_id_fk",
+          "tableFrom": "actor_grants",
+          "tableTo": "users",
+          "columnsFrom": ["owner_user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "actor_grants_granted_by_actor_id_actors_id_fk": {
+          "name": "actor_grants_granted_by_actor_id_actors_id_fk",
+          "tableFrom": "actor_grants",
+          "tableTo": "actors",
+          "columnsFrom": ["granted_by_actor_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "actors": {
+      "name": "actors",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "owner_user_id": {
+          "name": "owner_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
+        }
+      },
+      "indexes": {
+        "actors_owner_user_id_idx": {
+          "name": "actors_owner_user_id_idx",
+          "columns": ["owner_user_id"],
+          "isUnique": false
+        },
+        "actors_owner_user_id_kind_idx": {
+          "name": "actors_owner_user_id_kind_idx",
+          "columns": ["owner_user_id", "kind"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "actors_owner_user_id_users_id_fk": {
+          "name": "actors_owner_user_id_users_id_fk",
+          "tableFrom": "actors",
+          "tableTo": "users",
+          "columnsFrom": ["owner_user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "agents": {
+      "name": "agents",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "system_prompt": {
+          "name": "system_prompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tool_names": {
+          "name": "tool_names",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
+        },
+        "skill_names": {
+          "name": "skill_names",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast((unixepoch('subsec') * 1000) as integer))"
+        }
+      },
+      "indexes": {
+        "agents_user_id_idx": {
+          "name": "agents_user_id_idx",
+          "columns": ["user_id"],
+          "isUnique": false
+        },
+        "agents_user_id_updated_at_idx": {
+          "name": "agents_user_id_updated_at_idx",
+          "columns": ["user_id", "updated_at"],
+          "isUnique": false
+        },
+        "agents_user_id_name_lower_idx": {
+          "name": "agents_user_id_name_lower_idx",
+          "columns": ["user_id", "lower(\"name\")"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "agents_user_id_users_id_fk": {
+          "name": "agents_user_id_users_id_fk",
+          "tableFrom": "agents",
           "tableTo": "users",
           "columnsFrom": ["user_id"],
           "columnsTo": ["id"],
@@ -616,6 +1089,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "agent_actor_id": {
+          "name": "agent_actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "name": {
           "name": "name",
           "type": "text(255)",
@@ -675,6 +1155,11 @@
           "columns": ["user_id"],
           "isUnique": false
         },
+        "channels_agent_actor_id_idx": {
+          "name": "channels_agent_actor_id_idx",
+          "columns": ["agent_actor_id"],
+          "isUnique": false
+        },
         "channels_platform_idx": {
           "name": "channels_platform_idx",
           "columns": ["platform"],
@@ -695,6 +1180,15 @@
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "channels_agent_actor_id_actors_id_fk": {
+          "name": "channels_agent_actor_id_actors_id_fk",
+          "tableFrom": "channels",
+          "tableTo": "actors",
+          "columnsFrom": ["agent_actor_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -713,6 +1207,13 @@
         },
         "user_id": {
           "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "agent_actor_id": {
+          "name": "agent_actor_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -761,6 +1262,11 @@
         "conversations_user_id_idx": {
           "name": "conversations_user_id_idx",
           "columns": ["user_id"],
+          "isUnique": false
+        },
+        "conversations_user_id_agent_actor_id_idx": {
+          "name": "conversations_user_id_agent_actor_id_idx",
+          "columns": ["user_id", "agent_actor_id"],
           "isUnique": false
         },
         "conversations_last_message_at_idx": {
@@ -1190,6 +1696,27 @@
           "notNull": true,
           "autoincrement": false
         },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "authorized_by_actor_id": {
+          "name": "authorized_by_actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "grant_id": {
+          "name": "grant_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "metadata": {
           "name": "metadata",
           "type": "text",
@@ -1223,6 +1750,21 @@
           "name": "history_user_id_idx",
           "columns": ["user_id"],
           "isUnique": false
+        },
+        "history_actor_id_idx": {
+          "name": "history_actor_id_idx",
+          "columns": ["actor_id"],
+          "isUnique": false
+        },
+        "history_authorized_by_actor_id_idx": {
+          "name": "history_authorized_by_actor_id_idx",
+          "columns": ["authorized_by_actor_id"],
+          "isUnique": false
+        },
+        "history_grant_id_idx": {
+          "name": "history_grant_id_idx",
+          "columns": ["grant_id"],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -1233,6 +1775,55 @@
           "columnsFrom": ["user_id"],
           "columnsTo": ["id"],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "human_actors": {
+      "name": "human_actors",
+      "columns": {
+        "actor_id": {
+          "name": "actor_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "human_actors_user_id_idx": {
+          "name": "human_actors_user_id_idx",
+          "columns": ["user_id"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "human_actors_actor_id_actors_id_fk": {
+          "name": "human_actors_actor_id_actors_id_fk",
+          "tableFrom": "human_actors",
+          "tableTo": "actors",
+          "columnsFrom": ["actor_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "human_actors_user_id_users_id_fk": {
+          "name": "human_actors_user_id_users_id_fk",
+          "tableFrom": "human_actors",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -1262,6 +1853,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "author_actor_id": {
+          "name": "author_actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "content": {
@@ -1298,6 +1896,11 @@
         "messages_conversation_id_idx": {
           "name": "messages_conversation_id_idx",
           "columns": ["conversation_id"],
+          "isUnique": false
+        },
+        "messages_author_actor_id_idx": {
+          "name": "messages_author_actor_id_idx",
+          "columns": ["author_actor_id"],
           "isUnique": false
         },
         "messages_created_at_idx": {
@@ -2036,9 +2639,9 @@
         }
       },
       "indexes": {
-        "tags_user_id_name_idx": {
-          "name": "tags_user_id_name_idx",
-          "columns": ["user_id", "name"],
+        "tags_user_id_name_lower_idx": {
+          "name": "tags_user_id_name_lower_idx",
+          "columns": ["user_id", "lower(\"name\")"],
           "isUnique": true
         }
       },
@@ -2072,6 +2675,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "author_actor_id": {
+          "name": "author_actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "user_id": {
@@ -2116,6 +2726,11 @@
           "columns": ["user_id"],
           "isUnique": false
         },
+        "task_comments_author_actor_id_idx": {
+          "name": "task_comments_author_actor_id_idx",
+          "columns": ["author_actor_id"],
+          "isUnique": false
+        },
         "task_comments_created_at_idx": {
           "name": "task_comments_created_at_idx",
           "columns": ["created_at"],
@@ -2130,6 +2745,15 @@
           "columnsFrom": ["task_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "task_comments_author_actor_id_actors_id_fk": {
+          "name": "task_comments_author_actor_id_actors_id_fk",
+          "tableFrom": "task_comments",
+          "tableTo": "actors",
+          "columnsFrom": ["author_actor_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "task_comments_user_id_users_id_fk": {
@@ -2192,8 +2816,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "assigned_to_id": {
-          "name": "assigned_to_id",
+        "assignee_actor_id": {
+          "name": "assignee_actor_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -2298,6 +2922,11 @@
           "columns": ["due_date"],
           "isUnique": false
         },
+        "tasks_assignee_actor_id_idx": {
+          "name": "tasks_assignee_actor_id_idx",
+          "columns": ["assignee_actor_id"],
+          "isUnique": false
+        },
         "tasks_is_pinned_idx": {
           "name": "tasks_is_pinned_idx",
           "columns": ["is_pinned"],
@@ -2349,11 +2978,11 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "tasks_assigned_to_id_users_id_fk": {
-          "name": "tasks_assigned_to_id_users_id_fk",
+        "tasks_assignee_actor_id_actors_id_fk": {
+          "name": "tasks_assignee_actor_id_actors_id_fk",
           "tableFrom": "tasks",
-          "tableTo": "users",
-          "columnsFrom": ["assigned_to_id"],
+          "tableTo": "actors",
+          "columnsFrom": ["assignee_actor_id"],
           "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
@@ -2944,11 +3573,26 @@
       "\"documents\".\"enabled\"": "\"documents\".\"processing_enabled\"",
       "\"notes\".\"enabled\"": "\"notes\".\"processing_enabled\"",
       "\"photos\".\"enabled\"": "\"photos\".\"processing_enabled\"",
+      "\"tasks\".\"assigned_to_id\"": "\"tasks\".\"assignee_actor_id\"",
       "\"tasks\".\"enabled\"": "\"tasks\".\"processing_enabled\""
     }
   },
   "internal": {
     "indexes": {
+      "agents_user_id_name_lower_idx": {
+        "columns": {
+          "lower(\"name\")": {
+            "isExpression": true
+          }
+        }
+      },
+      "tags_user_id_name_lower_idx": {
+        "columns": {
+          "lower(\"name\")": {
+            "isExpression": true
+          }
+        }
+      },
       "users_email_idx": {
         "columns": {
           "lower(\"email\")": {

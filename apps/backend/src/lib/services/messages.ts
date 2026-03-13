@@ -12,6 +12,7 @@ const logger = createChildLogger("messages-service");
 export interface CreateMessageParams {
   conversationId: string;
   role: "user" | "assistant";
+  authorActorId?: string | null;
   content: string;
   thinkingContent?: string | null;
   toolCalls?: ToolCallSummary[];
@@ -23,6 +24,7 @@ export interface MessageEntry {
   id: string;
   conversationId: string;
   role: "user" | "assistant";
+  authorActorId?: string | null;
   content: string;
   thinkingContent?: string | null;
   toolCalls?: ToolCallSummary[];
@@ -57,6 +59,7 @@ export async function createMessage(
       id: generateMessageId(),
       conversationId: params.conversationId,
       role: params.role,
+      authorActorId: params.authorActorId ?? null,
       content: params.content,
       thinkingContent: params.thinkingContent,
       metadata,

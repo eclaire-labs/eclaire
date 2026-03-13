@@ -9,6 +9,7 @@ import {
   getUserChannels,
   updateChannel,
 } from "../lib/services/channels.js";
+import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 
 // Import schemas
@@ -57,12 +58,12 @@ channelsRoutes.post(
   "/",
   describeRoute(postChannelsRouteDescription),
   zValidator("json", CreateChannelSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
     const channelData = c.req.valid("json");
 
     const channel = await createChannel(
       userId,
-      { userId, actor: "user" },
+      principalCaller(principal),
       channelData,
     );
 
@@ -99,7 +100,7 @@ channelsRoutes.put(
   "/:id",
   describeRoute(putChannelRouteDescription),
   zValidator("json", UpdateChannelSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
     const { id: channelId } = ChannelIdParamSchema.parse({
       id: c.req.param("id"),
     });
@@ -108,7 +109,7 @@ channelsRoutes.put(
     const channel = await updateChannel(
       channelId,
       userId,
-      { userId, actor: "user" },
+      principalCaller(principal),
       updateData,
     );
 
@@ -129,7 +130,7 @@ channelsRoutes.put(
 channelsRoutes.patch(
   "/:id",
   zValidator("json", UpdateChannelSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
     const { id: channelId } = ChannelIdParamSchema.parse({
       id: c.req.param("id"),
     });
@@ -138,7 +139,7 @@ channelsRoutes.patch(
     const channel = await updateChannel(
       channelId,
       userId,
-      { userId, actor: "user" },
+      principalCaller(principal),
       updateData,
     );
 
@@ -159,12 +160,12 @@ channelsRoutes.patch(
 channelsRoutes.delete(
   "/:id",
   describeRoute(deleteChannelRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
     const { id: channelId } = ChannelIdParamSchema.parse({
       id: c.req.param("id"),
     });
 
-    await deleteChannel(channelId, userId, { userId, actor: "user" });
+    await deleteChannel(channelId, userId, principalCaller(principal));
 
     logger.info(
       {

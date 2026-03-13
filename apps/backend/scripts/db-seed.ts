@@ -36,7 +36,10 @@ const schema = dbType === "sqlite" ? sqliteSchema : pgSchema;
 // --- Drizzle Insert Types ---
 type InsertUser = InferInsertModel<typeof schema.users>;
 type InsertAccount = InferInsertModel<typeof schema.accounts>;
-type InsertApiKey = InferInsertModel<typeof schema.apiKeys>;
+type InsertActor = InferInsertModel<typeof schema.actors>;
+type InsertHumanActor = InferInsertModel<typeof schema.humanActors>;
+type InsertActorGrant = InferInsertModel<typeof schema.actorGrants>;
+type InsertActorCredential = InferInsertModel<typeof schema.actorCredentials>;
 
 type Database =
   | PostgresJsDatabase<typeof pgSchema>
@@ -240,30 +243,107 @@ async function main() {
     const demoUser1Hash = computeApiKeyHash(FIXED_TEST_KEYS.demoUser1.fullKey);
     const demoUser2Hash = computeApiKeyHash(FIXED_TEST_KEYS.demoUser2.fullKey);
 
-    const demoApiKeysData: InsertApiKey[] = [
+    const demoActorsData: InsertActor[] = [
+      {
+        id: DEMO_USER1_ID,
+        ownerUserId: DEMO_USER1_ID,
+        kind: "human",
+        displayName: "Demo User",
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: DEMO_USER2_ID,
+        ownerUserId: DEMO_USER2_ID,
+        kind: "human",
+        displayName: "Demo User 2",
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+
+    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
+    await (db as any)
+      .insert(schema.actors)
+      .values(demoActorsData)
+      .onConflictDoNothing();
+
+    const demoHumanActorsData: InsertHumanActor[] = [
+      {
+        actorId: DEMO_USER1_ID,
+        userId: DEMO_USER1_ID,
+      },
+      {
+        actorId: DEMO_USER2_ID,
+        userId: DEMO_USER2_ID,
+      },
+    ];
+
+    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
+    await (db as any)
+      .insert(schema.humanActors)
+      .values(demoHumanActorsData)
+      .onConflictDoNothing();
+
+    const demoGrantsData: InsertActorGrant[] = [
+      {
+        id: `grant-${FIXED_TEST_KEYS.demoUser1.keyId}`,
+        actorId: DEMO_USER1_ID,
+        ownerUserId: DEMO_USER1_ID,
+        grantedByActorId: DEMO_USER1_ID,
+        name: "Demo User Test API Key",
+        scopes: ["*"],
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: `grant-${FIXED_TEST_KEYS.demoUser2.keyId}`,
+        actorId: DEMO_USER2_ID,
+        ownerUserId: DEMO_USER2_ID,
+        grantedByActorId: DEMO_USER2_ID,
+        name: "Demo User 2 Test API Key",
+        scopes: ["*"],
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+
+    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
+    await (db as any)
+      .insert(schema.actorGrants)
+      .values(demoGrantsData)
+      .onConflictDoNothing();
+
+    const demoApiKeysData: InsertActorCredential[] = [
       {
         keyId: FIXED_TEST_KEYS.demoUser1.keyId,
         keyHash: demoUser1Hash.keyHash,
         hashVersion: demoUser1Hash.hashVersion,
         keySuffix: FIXED_TEST_KEYS.demoUser1.keySuffix,
-        userId: DEMO_USER1_ID,
+        actorId: DEMO_USER1_ID,
+        ownerUserId: DEMO_USER1_ID,
+        grantId: `grant-${FIXED_TEST_KEYS.demoUser1.keyId}`,
         name: "Demo User Test API Key",
         createdAt: now,
+        updatedAt: now,
       },
       {
         keyId: FIXED_TEST_KEYS.demoUser2.keyId,
         keyHash: demoUser2Hash.keyHash,
         hashVersion: demoUser2Hash.hashVersion,
         keySuffix: FIXED_TEST_KEYS.demoUser2.keySuffix,
-        userId: DEMO_USER2_ID,
+        actorId: DEMO_USER2_ID,
+        ownerUserId: DEMO_USER2_ID,
+        grantId: `grant-${FIXED_TEST_KEYS.demoUser2.keyId}`,
         name: "Demo User 2 Test API Key",
         createdAt: now,
+        updatedAt: now,
       },
     ];
 
     // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
     await (db as any)
-      .insert(schema.apiKeys)
+      .insert(schema.actorCredentials)
       .values(demoApiKeysData)
       .onConflictDoNothing();
     console.log(`-> ${demoApiKeysData.length} demo API keys ensured.`);

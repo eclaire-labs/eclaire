@@ -4,17 +4,20 @@ import { and, count, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 import { db, dbType, queueJobs, schema, txManager } from "../../db/index.js";
-import {
-  formatApiKeyForDisplay,
-  generateFullApiKey,
-} from "../api-key-security.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getUserProfile } from "../user.js";
+import {
+  createActorApiKey,
+  listActorApiKeys,
+  revokeActorApiKey,
+  updateActorApiKey,
+  type CreateActorApiKeyInput,
+} from "./actor-credentials.js";
+import { listActorSummaries } from "./actors.js";
 
 const {
   accounts,
-  apiKeys,
   bookmarks,
   bookmarksTags,
   documents,
@@ -875,7 +878,7 @@ export async function getQuickStats(userId: string) {
 // ============================================================================
 
 /**
- * Get user profile with available assignees (current user + all assistants)
+ * Get user profile with available assignees (current user + all agents)
  * @param userId - The ID of the current user
  * @returns User profile and available assignees list
  */
@@ -886,34 +889,19 @@ export async function getUserWithAssignees(userId: string) {
     throw new NotFoundError("User");
   }
 
-  // Fetch all assistant users from database
-  const assistantUsers = await db.query.users.findMany({
-    where: eq(users.userType, "assistant"),
-    columns: {
-      id: true,
-      displayName: true,
-      userType: true,
-      email: true,
-    },
-  });
+  const actors = await listActorSummaries(userId);
 
-  // Prepare available assignees (current user + all assistant users)
-  const availableAssignees = [
-    // Current user
-    {
-      id: user.id,
-      displayName: user.displayName || user.email || user.id,
-      userType: user.userType,
-      email: user.email,
-    },
-    // All assistant users from database
-    ...assistantUsers.map((assistant) => ({
-      id: assistant.id,
-      displayName: assistant.displayName || "AI Assistant",
-      userType: assistant.userType,
-      email: assistant.email,
-    })),
-  ];
+  const availableAssignees = actors.map((actor) => ({
+    id: actor.id,
+    displayName: actor.displayName,
+    userType:
+      actor.kind === "human"
+        ? ("user" as const)
+        : actor.kind === "agent"
+          ? ("assistant" as const)
+          : ("worker" as const),
+    email: actor.id === user.id ? user.email : undefined,
+  }));
 
   return { user, availableAssignees };
 }
@@ -979,26 +967,7 @@ export async function getPublicUserProfile(userId: string) {
  * @returns Array of API keys with display formatting
  */
 export async function getUserApiKeys(userId: string) {
-  const keys = await db.query.apiKeys.findMany({
-    where: and(eq(apiKeys.userId, userId), apiKeys.isActive),
-    columns: {
-      id: true,
-      keyId: true,
-      keySuffix: true,
-      name: true,
-      createdAt: true,
-      lastUsedAt: true,
-    },
-    orderBy: (apiKeys, { desc }) => [desc(apiKeys.createdAt)],
-  });
-
-  return keys.map((k) => ({
-    id: k.id,
-    displayKey: formatApiKeyForDisplay(k.keyId, k.keySuffix),
-    name: k.name,
-    createdAt: k.createdAt,
-    lastUsedAt: k.lastUsedAt,
-  }));
+  return listActorApiKeys(userId, userId);
 }
 
 /**
@@ -1007,41 +976,13 @@ export async function getUserApiKeys(userId: string) {
  * @param name - Optional name for the key
  * @returns Created API key with full key (only returned once)
  */
-export async function createApiKey(userId: string, name?: string) {
-  const keyName = name || `API Key ${new Date().toISOString().split("T")[0]}`;
-  const { fullKey, keyId, hash, hashVersion, suffix } = generateFullApiKey();
-
-  const result = await db
-    .insert(apiKeys)
-    .values({
-      keyId,
-      keyHash: hash,
-      hashVersion,
-      keySuffix: suffix,
-      name: keyName,
-      userId,
-    })
-    .returning({
-      id: apiKeys.id,
-      keyId: apiKeys.keyId,
-      keySuffix: apiKeys.keySuffix,
-      name: apiKeys.name,
-      createdAt: apiKeys.createdAt,
-    });
-
-  const createdKey = result[0];
-  if (!createdKey) {
-    throw new Error("Failed to create API key");
-  }
-
-  return {
-    id: createdKey.id,
-    key: fullKey, // Only time we return the full key!
-    displayKey: formatApiKeyForDisplay(createdKey.keyId, createdKey.keySuffix),
-    name: createdKey.name,
-    createdAt: createdKey.createdAt,
-    lastUsedAt: null,
-  };
+export async function createApiKey(
+  userId: string,
+  input: string | CreateActorApiKeyInput,
+) {
+  const normalizedInput =
+    typeof input === "string" || input === undefined ? { name: input } : input;
+  return createActorApiKey(userId, userId, normalizedInput);
 }
 
 /**
@@ -1050,15 +991,7 @@ export async function createApiKey(userId: string, name?: string) {
  * @param keyId - The ID of the key to delete
  */
 export async function deleteApiKey(userId: string, keyId: string) {
-  const result = await db
-    .update(apiKeys)
-    .set({ isActive: false })
-    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
-    .returning({ id: apiKeys.id });
-
-  if (result.length === 0) {
-    throw new NotFoundError("API key");
-  }
+  await revokeActorApiKey(userId, userId, keyId);
 }
 
 /**
@@ -1073,30 +1006,7 @@ export async function updateApiKeyName(
   keyId: string,
   name: string,
 ) {
-  const [updatedKey] = await db
-    .update(apiKeys)
-    .set({ name })
-    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
-    .returning({
-      id: apiKeys.id,
-      keyId: apiKeys.keyId,
-      keySuffix: apiKeys.keySuffix,
-      name: apiKeys.name,
-      createdAt: apiKeys.createdAt,
-      lastUsedAt: apiKeys.lastUsedAt,
-    });
-
-  if (!updatedKey) {
-    throw new NotFoundError("API key");
-  }
-
-  return {
-    id: updatedKey.id,
-    displayKey: formatApiKeyForDisplay(updatedKey.keyId, updatedKey.keySuffix),
-    name: updatedKey.name,
-    createdAt: updatedKey.createdAt,
-    lastUsedAt: updatedKey.lastUsedAt,
-  };
+  return updateActorApiKey(userId, userId, keyId, { name });
 }
 
 // ============================================================================

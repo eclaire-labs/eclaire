@@ -11,6 +11,7 @@ import {
   sendMessage,
   updateSession,
 } from "../lib/services/sessions.js";
+import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {
   CreateSessionSchema,
@@ -28,13 +29,14 @@ export const sessionsRoutes = new Hono<{ Variables: RouteVariables }>();
 sessionsRoutes.post(
   "/",
   zValidator("json", CreateSessionSchema),
-  withAuth(async (c, userId) => {
-    const { title } = c.req.valid("json");
+  withAuth(async (c, userId, principal) => {
+    const { title, agentActorId } = c.req.valid("json");
 
     const session = await createSession(
       userId,
-      { userId, actor: "user" },
+      principalCaller(principal),
       title,
+      agentActorId,
     );
 
     logger.info({ userId, sessionId: session.id }, "Created session");
@@ -49,10 +51,16 @@ sessionsRoutes.get(
   zValidator("query", ListSessionsSchema),
   withAuth(async (c, userId) => {
     const query = c.req.valid("query");
+    const agentActorId = query.agentActorId;
     const limit = query.limit || 50;
     const offset = query.offset || 0;
 
-    const { items, totalCount } = await listSessions(userId, limit, offset);
+    const { items, totalCount } = await listSessions(
+      userId,
+      agentActorId,
+      limit,
+      offset,
+    );
 
     return c.json({
       items,
@@ -82,14 +90,14 @@ sessionsRoutes.get(
 sessionsRoutes.put(
   "/:id",
   zValidator("json", UpdateSessionSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
     const sessionId = c.req.param("id");
     const body = c.req.valid("json");
 
     const updated = await updateSession(
       sessionId,
       userId,
-      { userId, actor: "user" },
+      principalCaller(principal),
       body,
     );
 
@@ -104,12 +112,13 @@ sessionsRoutes.put(
 // DELETE /api/sessions/:id - Delete session
 sessionsRoutes.delete(
   "/:id",
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
     const sessionId = c.req.param("id");
-    const success = await deleteSession(sessionId, userId, {
+    const success = await deleteSession(
+      sessionId,
       userId,
-      actor: "user",
-    });
+      principalCaller(principal),
+    );
 
     if (!success) {
       throw new NotFoundError("Session");
@@ -123,7 +132,7 @@ sessionsRoutes.delete(
 sessionsRoutes.post(
   "/:id/messages",
   zValidator("json", SendMessageSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
     const sessionId = c.req.param("id");
     const requestId = c.get("requestId");
     const body = c.req.valid("json");
@@ -135,7 +144,7 @@ sessionsRoutes.post(
       context: body.context,
       enableThinking: body.enableThinking,
       requestId,
-      caller: { userId, actor: "user" },
+      caller: principalCaller(principal),
     });
 
     // Convert StreamEvent stream to SSE-formatted bytes

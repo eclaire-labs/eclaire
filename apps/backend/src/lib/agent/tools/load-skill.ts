@@ -25,7 +25,15 @@ export const loadSkillTool: RuntimeToolDefinition<typeof inputSchema> = {
   description:
     "Load the full instructions of a skill by name. See the available skills list in your system prompt.",
   inputSchema,
-  execute: async (_callId, input) => {
+  execute: async (_callId, input, ctx) => {
+    const allowedSkillNames = Array.isArray(ctx.extra?.allowedSkillNames)
+      ? (ctx.extra.allowedSkillNames as string[])
+      : null;
+
+    if (allowedSkillNames && !allowedSkillNames.includes(input.name)) {
+      return errorResult(`Skill '${input.name}' is not enabled for this agent`);
+    }
+
     const content = loadSkillContent(input.name);
     if (!content) {
       return errorResult(`Skill '${input.name}' not found`);

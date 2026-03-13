@@ -23,7 +23,7 @@ export interface StreamingRequest {
   sessionId: string;
   prompt: string;
   context?: {
-    agent?: string;
+    agentActorId?: string;
     assets?: Array<{
       type: "note" | "bookmark" | "document" | "photo" | "task";
       id: string;

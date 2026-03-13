@@ -7,6 +7,7 @@
 import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { createNoteEntry } from "../../services/notes.js";
+import { agentToolCaller } from "./caller.js";
 
 const inputSchema = z.object({
   title: z.string().describe("Title of the note"),
@@ -38,10 +39,7 @@ export const createNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
       userAgent: "AI Assistant",
     };
 
-    const result = await createNoteEntry(servicePayload, {
-      userId: ctx.userId,
-      actor: "assistant",
-    });
+    const result = await createNoteEntry(servicePayload, agentToolCaller(ctx));
     return textResult(JSON.stringify(result, null, 2));
   },
 };

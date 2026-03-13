@@ -14,10 +14,13 @@ export const CHANNEL_CAPABILITIES = [
 ] as const;
 export type ChannelCapability = (typeof CHANNEL_CAPABILITIES)[number];
 
+export const DEFAULT_CHANNEL_AGENT_ACTOR_ID = "eclaire" as const;
+
 /** Minimal channel record shape needed by adapters (from DB row). */
 export interface ChannelRecord {
   id: string;
   userId: string;
+  agentActorId?: string | null;
   name: string;
   platform: ChannelPlatform;
   capability: ChannelCapability;

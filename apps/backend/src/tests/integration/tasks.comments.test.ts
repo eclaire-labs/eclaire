@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import {
-  AI_ASSISTANT_USER_ID,
+  DEFAULT_AGENT_ACTOR_ID,
   globalTestCleanup,
   loggedFetch,
   type TaskComment,
@@ -189,15 +189,15 @@ describe("Task Comments", { timeout: 30000 }, () => {
       assignmentTaskId = task.id;
 
       // Task should be assigned to current user by default
-      expect(task.assignedToId).not.toBeNull();
-      expect(task.assignedToId).not.toBe(AI_ASSISTANT_USER_ID);
+      expect(task.assigneeActorId).not.toBeNull();
+      expect(task.assigneeActorId).not.toBe(DEFAULT_AGENT_ACTOR_ID);
     });
 
     it("PUT /api/tasks/:id - should allow assignment to AI assistant", async () => {
       expect(assignmentTaskId).not.toBeNull();
 
       const updateData = {
-        assignedToId: AI_ASSISTANT_USER_ID,
+        assigneeActorId: DEFAULT_AGENT_ACTOR_ID,
       };
 
       const response = await loggedFetch(`/tasks/${assignmentTaskId}`, {
@@ -211,7 +211,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
       expect(response.status).toBe(200);
       const task = (await response.json()) as TaskEntry;
 
-      expect(task.assignedToId).toBe(AI_ASSISTANT_USER_ID);
+      expect(task.assigneeActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
     });
 
     it("POST /api/tasks - should allow explicit assignment to AI assistant during creation", async () => {
@@ -219,7 +219,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
         title: "Task Assigned to AI Assistant",
         description: "This task is explicitly assigned to AI assistant.",
         status: "not-started",
-        assignedToId: AI_ASSISTANT_USER_ID,
+        assigneeActorId: DEFAULT_AGENT_ACTOR_ID,
       };
 
       const response = await loggedFetch(`/tasks`, {
@@ -233,7 +233,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
       expect(response.status).toBe(201);
       const task = (await response.json()) as TaskEntry;
 
-      expect(task.assignedToId).toBe(AI_ASSISTANT_USER_ID);
+      expect(task.assigneeActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
       expect(task.title).toBe(taskData.title);
 
       // Clean up
@@ -250,7 +250,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
           title: "AI Assistant Comment Test",
           description: "This task should generate an AI assistant comment.",
           status: "not-started",
-          assignedToId: AI_ASSISTANT_USER_ID,
+          assigneeActorId: DEFAULT_AGENT_ACTOR_ID,
         };
 
         const response = await loggedFetch(`/tasks`, {
@@ -264,7 +264,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
         expect(response.status).toBe(201);
         const task = (await response.json()) as TaskEntry;
 
-        expect(task.assignedToId).toBe(AI_ASSISTANT_USER_ID);
+        expect(task.assigneeActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
         expect(task.title).toBe(taskData.title);
 
         // Poll for AI assistant comments (indicates task execution occurred)
@@ -307,7 +307,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
       expect(assignmentTaskId).not.toBeNull();
 
       const updateData = {
-        assignedToId: "non-existent-user-id",
+        assigneeActorId: "non-existent-user-id",
       };
 
       const response = await loggedFetch(`/tasks/${assignmentTaskId}`, {
@@ -323,7 +323,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
 
       // Should return an error when assigned user doesn't exist
       expect(errorResponse).toHaveProperty("error");
-      expect(errorResponse.error).toContain("Invalid user ID");
+      expect(errorResponse.error).toContain("Invalid assignee actor ID");
     });
 
     it("DELETE /api/tasks/:id - should clean up assignment test task", async () => {

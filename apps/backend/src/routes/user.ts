@@ -27,6 +27,7 @@ import {
   ActivityTimelineQuerySchema,
   CreateApiKeySchema,
   DeleteAllUserDataSchema,
+  RenameApiKeySchema,
   UpdateProfileSchema,
 } from "../schemas/user-params.js";
 // Import route descriptions
@@ -70,74 +71,103 @@ userRoutes.delete(
   "/data",
   describeRoute(deleteAllUserDataRouteDescription),
   zValidator("json", DeleteAllUserDataSchema),
-  withAuth(async (c, userId) => {
-    const { password } = c.req.valid("json");
-    if (!password) {
-      throw new ValidationError("Password is required for confirmation");
-    }
-
-    try {
-      await deleteAllUserData(userId, password);
-    } catch (error: unknown) {
-      if (error instanceof Error && error.message === "Invalid password") {
-        throw new ValidationError("Invalid password provided");
+  withAuth(
+    async (c, userId) => {
+      const { password } = c.req.valid("json");
+      if (!password) {
+        throw new ValidationError("Password is required for confirmation");
       }
-      throw error;
-    }
 
-    logger.info(
-      { requestId: c.get("requestId"), userId },
-      "All user data deleted successfully",
-    );
+      try {
+        await deleteAllUserData(userId, password);
+      } catch (error: unknown) {
+        if (error instanceof Error && error.message === "Invalid password") {
+          throw new ValidationError("Invalid password provided");
+        }
+        throw error;
+      }
 
-    return c.json({
-      message:
-        "All user data deleted successfully. Your account remains active.",
-      accountKept: true,
-    });
-  }, logger),
+      logger.info(
+        { requestId: c.get("requestId"), userId },
+        "All user data deleted successfully",
+      );
+
+      return c.json({
+        message:
+          "All user data deleted successfully. Your account remains active.",
+        accountKept: true,
+      });
+    },
+    logger,
+    {
+      allowApiKey: false,
+    },
+  ),
 );
 
 // GET /api/user/api-keys - Get all user's API keys
 userRoutes.get(
   "/api-keys",
-  withAuth(async (c, userId) => {
-    const apiKeys = await getUserApiKeys(userId);
-    return c.json({ items: apiKeys });
-  }, logger),
+  withAuth(
+    async (c, userId) => {
+      const apiKeys = await getUserApiKeys(userId);
+      return c.json({ items: apiKeys });
+    },
+    logger,
+    {
+      allowApiKey: false,
+    },
+  ),
 );
 
 // POST /api/user/api-keys - Create a new API key
 userRoutes.post(
   "/api-keys",
   zValidator("json", CreateApiKeySchema),
-  withAuth(async (c, userId) => {
-    const { name } = c.req.valid("json");
-    const apiKey = await createApiKey(userId, name);
-    return c.json(apiKey, 201);
-  }, logger),
+  withAuth(
+    async (c, userId) => {
+      const apiKey = await createApiKey(userId, c.req.valid("json"));
+      return c.json(apiKey, 201);
+    },
+    logger,
+    {
+      allowApiKey: false,
+    },
+  ),
 );
 
 // DELETE /api/user/api-keys/:id - Delete a specific API key
 userRoutes.delete(
   "/api-keys/:id",
-  withAuth(async (c, userId) => {
-    const keyId = c.req.param("id");
-    await deleteApiKey(userId, keyId);
-    return new Response(null, { status: 204 });
-  }, logger),
+  withAuth(
+    async (c, userId) => {
+      const keyId = c.req.param("id");
+      await deleteApiKey(userId, keyId);
+      return new Response(null, { status: 204 });
+    },
+    logger,
+    {
+      allowApiKey: false,
+    },
+  ),
 );
 
 // PATCH /api/user/api-keys/:id - Update API key name
 userRoutes.patch(
   "/api-keys/:id",
-  zValidator("json", CreateApiKeySchema),
-  withAuth(async (c, userId) => {
-    const keyId = c.req.param("id");
-    const { name } = c.req.valid("json");
-    const apiKey = await updateApiKeyName(userId, keyId, name);
-    return c.json(apiKey);
-  }, logger),
+  zValidator("json", RenameApiKeySchema),
+  withAuth(
+    async (c, userId) => {
+      const keyId = c.req.param("id");
+      const { name } = c.req.valid("json");
+      const apiKey = await updateApiKeyName(userId, keyId, name);
+      return c.json(apiKey);
+    },
+    logger,
+    {
+      allowApiKey: false,
+    },
+  ),
 );
 
 // GET /api/user/dashboard-stats - Get dashboard statistics

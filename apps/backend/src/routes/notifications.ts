@@ -5,6 +5,7 @@ import { createChildLogger } from "../lib/logger.js";
 // Import services
 import { getNotificationChannels } from "../lib/services/channels.js";
 import { recordHistory } from "../lib/services/history.js";
+import { callerActorId, principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import { SendNotificationSchema } from "../schemas/channels-params.js";
@@ -22,7 +23,8 @@ notificationsRoutes.post(
   "/",
   describeRoute(postNotificationsRouteDescription),
   zValidator("json", SendNotificationSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const requestId = c.get("requestId");
 
     const notificationData = c.req.valid("json");
@@ -138,8 +140,8 @@ notificationsRoutes.post(
         failedChannels,
         results: processedResults,
       },
-      actor: "user",
-      actorId: userId,
+      actor: caller.actor,
+      actorId: callerActorId(caller),
       userId: userId,
       metadata: {
         requestId,

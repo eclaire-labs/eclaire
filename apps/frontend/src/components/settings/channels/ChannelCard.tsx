@@ -150,6 +150,11 @@ export default function ChannelCard({ channel, onEdit }: ChannelCardProps) {
                   {platformInfo.displayName} • Created{" "}
                   {formatDate(channel.createdAt)}
                 </CardDescription>
+                {channel.agent && channel.capability !== "notification" ? (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Agent: {channel.agent.displayName || channel.agent.id}
+                  </p>
+                ) : null}
               </div>
             </div>
 

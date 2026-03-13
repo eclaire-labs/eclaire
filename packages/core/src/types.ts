@@ -76,6 +76,9 @@ export type ChannelCapability = (typeof CHANNEL_CAPABILITIES)[number];
 export const FEEDBACK_SENTIMENTS = ["positive", "negative"] as const;
 export type FeedbackSentiment = (typeof FEEDBACK_SENTIMENTS)[number];
 
+export const DEFAULT_AGENT_ACTOR_ID = "eclaire" as const;
+export const DEFAULT_AGENT_ACTOR_NAME = "Eclaire" as const;
+
 export const HISTORY_ACTIONS = [
   "create",
   "update",
@@ -95,6 +98,11 @@ export const HISTORY_ACTIONS = [
   "ai_prompt_streaming_error",
   "api_streaming_content_upload",
   "api_error_streaming_general",
+  "telegram_message_processed",
+  "slack_message_processed",
+  "discord_message_processed",
+  "discord_voice_message_processed",
+  "send_notification",
 ] as const;
 export type HistoryAction = (typeof HISTORY_ACTIONS)[number];
 
@@ -111,10 +119,17 @@ export const HISTORY_ITEM_TYPES = [
   "user_session",
   "conversation",
   "task_comment",
+  "channel",
+  "notification",
+  "telegram_chat",
+  "slack_chat",
+  "discord_chat",
+  "discord_voice",
+  "feedback",
 ] as const;
 export type HistoryItemType = (typeof HISTORY_ITEM_TYPES)[number];
 
-export const HISTORY_ACTORS = ["user", "assistant", "system"] as const;
+export const HISTORY_ACTORS = ["human", "agent", "system", "service"] as const;
 export type HistoryActor = (typeof HISTORY_ACTORS)[number];
 
 /**
@@ -182,7 +197,7 @@ export interface TaskInsert {
   description?: string;
   status?: TaskStatus;
   dueDate?: string;
-  assignedToId?: string;
+  assigneeActorId?: string;
   priority?: number;
   processingEnabled?: boolean;
   reviewStatus?: ReviewStatus;

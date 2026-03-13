@@ -1,5 +1,7 @@
 import {
+  generateActorId,
   generateApiKeyId,
+  generateAgentId,
   generateBookmarkId,
   generateChannelId,
   generateConversationId,
@@ -69,6 +71,50 @@ export const users = sqliteTable(
   (table) => ({
     // Case-insensitive email uniqueness to match PostgreSQL's lower(email) index
     emailIdx: uniqueIndex("users_email_idx").on(sql`lower(${table.email})`),
+  }),
+);
+
+export const actors = sqliteTable(
+  "actors",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateActorId()),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind", {
+      enum: ["human", "agent", "system", "service"],
+    }).notNull(),
+    displayName: text("display_name"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  },
+  (table) => ({
+    ownerUserIdx: index("actors_owner_user_id_idx").on(table.ownerUserId),
+    ownerUserKindIdx: index("actors_owner_user_id_kind_idx").on(
+      table.ownerUserId,
+      table.kind,
+    ),
+  }),
+);
+
+export const humanActors = sqliteTable(
+  "human_actors",
+  {
+    actorId: text("actor_id")
+      .primaryKey()
+      .references(() => actors.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    userIdx: uniqueIndex("human_actors_user_id_idx").on(table.userId),
   }),
 );
 
@@ -172,6 +218,85 @@ export const apiKeys = sqliteTable(
   }),
 );
 
+export const actorGrants = sqliteTable(
+  "actor_grants",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateSecurityId()),
+    actorId: text("actor_id")
+      .notNull()
+      .references(() => actors.id, { onDelete: "cascade" }),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    grantedByActorId: text("granted_by_actor_id").references(() => actors.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    scopes: text("scopes", { mode: "json" }).$type<string[]>().notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  },
+  (table) => ({
+    actorIdx: index("actor_grants_actor_id_idx").on(table.actorId),
+    ownerUserIdx: index("actor_grants_owner_user_id_idx").on(table.ownerUserId),
+    grantedByActorIdx: index("actor_grants_granted_by_actor_id_idx").on(
+      table.grantedByActorId,
+    ),
+  }),
+);
+
+export const actorCredentials = sqliteTable(
+  "actor_credentials",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateApiKeyId()),
+    actorId: text("actor_id")
+      .notNull()
+      .references(() => actors.id, { onDelete: "cascade" }),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    grantId: text("grant_id")
+      .notNull()
+      .references(() => actorGrants.id, { onDelete: "cascade" }),
+    type: text("type", {
+      enum: ["api_key"],
+    })
+      .notNull()
+      .default("api_key"),
+    keyId: text("key_id").notNull().unique(),
+    keyHash: text("key_hash").notNull(),
+    hashVersion: integer("hash_version").notNull().default(1),
+    keySuffix: text("key_suffix").notNull(),
+    name: text("name").notNull(),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  },
+  (table) => ({
+    actorIdx: index("actor_credentials_actor_id_idx").on(table.actorId),
+    ownerUserIdx: index("actor_credentials_owner_user_id_idx").on(
+      table.ownerUserId,
+    ),
+    grantIdx: index("actor_credentials_grant_id_idx").on(table.grantId),
+  }),
+);
+
 export const tasks = sqliteTable(
   "tasks",
   {
@@ -189,7 +314,7 @@ export const tasks = sqliteTable(
       .notNull()
       .default("not-started"),
     dueDate: integer("due_date", { mode: "timestamp_ms" }),
-    assignedToId: text("assigned_to_id").references(() => users.id, {
+    assigneeActorId: text("assignee_actor_id").references(() => actors.id, {
       onDelete: "set null",
     }),
     priority: integer("priority").notNull().default(0),
@@ -222,6 +347,9 @@ export const tasks = sqliteTable(
     userIdx: index("tasks_user_id_idx").on(table.userId),
     statusIdx: index("tasks_status_idx").on(table.status),
     dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
+    assigneeActorIdx: index("tasks_assignee_actor_id_idx").on(
+      table.assigneeActorId,
+    ),
     isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
     completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
     parentIdx: index("tasks_parent_id_idx").on(table.parentId),
@@ -265,6 +393,9 @@ export const taskComments = sqliteTable(
     taskId: text("task_id")
       .notNull()
       .references(() => tasks.id, { onDelete: "cascade" }),
+    authorActorId: text("author_actor_id").references(() => actors.id, {
+      onDelete: "set null",
+    }),
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -279,6 +410,9 @@ export const taskComments = sqliteTable(
   (table) => ({
     taskIdx: index("task_comments_task_id_idx").on(table.taskId),
     userIdx: index("task_comments_user_id_idx").on(table.userId),
+    authorActorIdx: index("task_comments_author_actor_id_idx").on(
+      table.authorActorId,
+    ),
     createdAtIdx: index("task_comments_created_at_idx").on(table.createdAt),
   }),
 );
@@ -683,6 +817,8 @@ export const history = sqliteTable(
     afterData: text("after_data", { mode: "json" }).$type<HistoryAfterData>(),
     actor: text("actor").notNull(),
     actorId: text("actor_id"),
+    authorizedByActorId: text("authorized_by_actor_id"),
+    grantId: text("grant_id"),
     metadata: text("metadata", { mode: "json" }).$type<HistoryMetadata>(),
     timestamp: integer("timestamp", { mode: "timestamp_ms" })
       .notNull()
@@ -695,6 +831,10 @@ export const history = sqliteTable(
     itemIdx: index("history_item_idx").on(table.itemType, table.itemId),
     userIdx: index("history_user_id_idx").on(table.userId),
     actorIdx: index("history_actor_id_idx").on(table.actorId),
+    authorizedByActorIdx: index("history_authorized_by_actor_id_idx").on(
+      table.authorizedByActorId,
+    ),
+    grantIdx: index("history_grant_id_idx").on(table.grantId),
   }),
 );
 
@@ -707,6 +847,7 @@ export const conversations = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    agentActorId: text("agent_actor_id").notNull(),
     title: text("title").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
@@ -719,8 +860,52 @@ export const conversations = sqliteTable(
   },
   (table) => ({
     userIdx: index("conversations_user_id_idx").on(table.userId),
+    userAgentIdx: index("conversations_user_id_agent_actor_id_idx").on(
+      table.userId,
+      table.agentActorId,
+    ),
     lastMessageIdx: index("conversations_last_message_at_idx").on(
       table.lastMessageAt,
+    ),
+  }),
+);
+
+export const agents = sqliteTable(
+  "agents",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateAgentId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    systemPrompt: text("system_prompt").notNull(),
+    toolNames: text("tool_names", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'`),
+    skillNames: text("skill_names", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'`),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  },
+  (table) => ({
+    userIdx: index("agents_user_id_idx").on(table.userId),
+    userUpdatedAtIdx: index("agents_user_id_updated_at_idx").on(
+      table.userId,
+      table.updatedAt,
+    ),
+    userNameIdx: uniqueIndex("agents_user_id_name_lower_idx").on(
+      table.userId,
+      sql`lower(${table.name})`,
     ),
   }),
 );
@@ -735,6 +920,7 @@ export const messages = sqliteTable(
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
     role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    authorActorId: text("author_actor_id"),
     content: text("content").notNull(),
     thinkingContent: text("thinking_content"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -745,6 +931,9 @@ export const messages = sqliteTable(
   (table) => ({
     conversationIdx: index("messages_conversation_id_idx").on(
       table.conversationId,
+    ),
+    authorActorIdx: index("messages_author_actor_id_idx").on(
+      table.authorActorId,
     ),
     createdAtIdx: index("messages_created_at_idx").on(table.createdAt),
   }),
@@ -759,6 +948,9 @@ export const channels = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    agentActorId: text("agent_actor_id").references(() => actors.id, {
+      onDelete: "set null",
+    }),
     name: text("name", { length: 255 }).notNull(),
     platform: text("platform", {
       enum: ["telegram", "slack", "whatsapp", "email", "discord"],
@@ -779,6 +971,7 @@ export const channels = sqliteTable(
   },
   (table) => ({
     userIdx: index("channels_user_id_idx").on(table.userId),
+    agentActorIdx: index("channels_agent_actor_id_idx").on(table.agentActorId),
     platformIdx: index("channels_platform_idx").on(table.platform),
     activeIdx: index("channels_is_active_idx").on(table.isActive),
   }),
@@ -812,9 +1005,13 @@ export const feedback = sqliteTable(
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
+  actorLinks: many(humanActors),
+  ownedActors: many(actors),
   sessions: many(sessions),
   accounts: many(accounts),
   apiKeys: many(apiKeys),
+  actorGrants: many(actorGrants),
+  actorCredentials: many(actorCredentials),
   tasks: many(tasks, { relationName: "taskOwner" }),
   assignedTasks: many(tasks, { relationName: "taskAssignee" }),
   bookmarks: many(bookmarks),
@@ -826,6 +1023,61 @@ export const usersRelations = relations(users, ({ many }) => ({
   conversations: many(conversations),
   channels: many(channels),
   feedback: many(feedback),
+}));
+
+export const actorsRelations = relations(actors, ({ one, many }) => ({
+  ownerUser: one(users, {
+    fields: [actors.ownerUserId],
+    references: [users.id],
+  }),
+  grants: many(actorGrants),
+  credentials: many(actorCredentials),
+}));
+
+export const actorGrantsRelations = relations(actorGrants, ({ one, many }) => ({
+  actor: one(actors, {
+    fields: [actorGrants.actorId],
+    references: [actors.id],
+  }),
+  ownerUser: one(users, {
+    fields: [actorGrants.ownerUserId],
+    references: [users.id],
+  }),
+  grantedByActor: one(actors, {
+    fields: [actorGrants.grantedByActorId],
+    references: [actors.id],
+    relationName: "actorGrantAuthor",
+  }),
+  credentials: many(actorCredentials),
+}));
+
+export const actorCredentialsRelations = relations(
+  actorCredentials,
+  ({ one }) => ({
+    actor: one(actors, {
+      fields: [actorCredentials.actorId],
+      references: [actors.id],
+    }),
+    ownerUser: one(users, {
+      fields: [actorCredentials.ownerUserId],
+      references: [users.id],
+    }),
+    grant: one(actorGrants, {
+      fields: [actorCredentials.grantId],
+      references: [actorGrants.id],
+    }),
+  }),
+);
+
+export const humanActorsRelations = relations(humanActors, ({ one }) => ({
+  actor: one(actors, {
+    fields: [humanActors.actorId],
+    references: [actors.id],
+  }),
+  user: one(users, {
+    fields: [humanActors.userId],
+    references: [users.id],
+  }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -842,10 +1094,9 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [users.id],
     relationName: "taskOwner",
   }),
-  assignedTo: one(users, {
-    fields: [tasks.assignedToId],
-    references: [users.id],
-    relationName: "taskAssignee",
+  assigneeActor: one(actors, {
+    fields: [tasks.assigneeActorId],
+    references: [actors.id],
   }),
   parent: one(tasks, {
     fields: [tasks.parentId],
@@ -946,6 +1197,10 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 
 export const channelsRelations = relations(channels, ({ one }) => ({
   user: one(users, { fields: [channels.userId], references: [users.id] }),
+  agentActor: one(actors, {
+    fields: [channels.agentActorId],
+    references: [actors.id],
+  }),
 }));
 
 export const feedbackRelations = relations(feedback, ({ one }) => ({

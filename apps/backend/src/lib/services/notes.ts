@@ -31,7 +31,11 @@ import {
   type CursorPaginatedResponse,
 } from "../pagination.js";
 import { getQueueAdapter } from "../queue/index.js";
-import type { CallerContext } from "./types.js";
+import {
+  callerActorId,
+  callerOwnerUserId,
+  type CallerContext,
+} from "./types.js";
 
 const logger = createChildLogger("services:notes");
 
@@ -186,7 +190,8 @@ export async function createNoteEntry(
   data: CreateNoteData,
   caller: CallerContext,
 ) {
-  const { userId } = caller;
+  const userId = callerOwnerUserId(caller);
+  const actorId = callerActorId(caller);
   try {
     const { metadata } = data;
 
@@ -245,7 +250,7 @@ export async function createNoteEntry(
           tags: tagNames,
         },
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -315,7 +320,8 @@ export async function updateNoteEntry(
   noteData: UpdateNoteParams,
   caller: CallerContext,
 ) {
-  const { userId } = caller;
+  const userId = callerOwnerUserId(caller);
+  const actorId = callerActorId(caller);
   try {
     // Get existing entry for history
     const existingEntry = await getNoteEntryById(id, userId);
@@ -387,7 +393,7 @@ export async function updateNoteEntry(
         beforeData: existingEntry,
         afterData: { ...existingEntry, ...noteData },
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -417,6 +423,7 @@ export async function deleteNoteEntry(
   userId: string,
   caller: CallerContext,
 ) {
+  const actorId = callerActorId(caller);
   try {
     // Get existing entry for history
     const existingEntry = await getNoteEntryById(id, userId);
@@ -446,7 +453,7 @@ export async function deleteNoteEntry(
         beforeData: existingEntry,
         afterData: null,
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),

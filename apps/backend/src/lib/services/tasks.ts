@@ -22,7 +22,7 @@ import {
 } from "drizzle-orm";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
-const { tags, taskComments, tasks, tasksTags, users } = schema;
+const { tags, taskComments, tasks, tasksTags } = schema;
 
 import { config } from "../../config/index.js";
 import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
@@ -43,8 +43,14 @@ import {
   QueueNames,
   RECURRING_TASK_KEY_PREFIX,
 } from "../queue/index.js";
+import { getActorSummaryOrNull, isAgentActor } from "./actors.js";
 import { recordHistory } from "./history.js";
-import type { CallerContext } from "./types.js";
+import { formatTaskCommentForResponse } from "./taskComments.js";
+import {
+  callerActorId,
+  callerOwnerUserId,
+  type CallerContext,
+} from "./types.js";
 
 const logger = createChildLogger("services:tasks");
 
@@ -70,72 +76,57 @@ export type FindTasksParams = {
 // Queue name for task tag_generation jobs (maps to old jobType="tag_generation")
 const TASK_PROCESSING_QUEUE = "task-processing";
 
-/**
- * Validates an assignedToId and returns the validated user ID
- * @param assignedToId - The user ID to validate (can be null/undefined)
- * @param currentUserId - The current user's ID (fallback for null/empty)
- * @param allowFallback - Whether to fallback to currentUserId for invalid IDs (false = throw error)
- * @returns Promise<string> - The validated user ID
- * @throws Error if assignedToId is invalid and allowFallback is false
- */
-async function validateAssignedToId(
-  assignedToId: string | null | undefined,
+interface ResolvedTaskAssignee {
+  assigneeActorId: string;
+  kind: "human" | "agent" | "system" | "service";
+}
+
+async function resolveTaskAssignee(
+  assigneeActorId: string | null | undefined,
   currentUserId: string,
   allowFallback: boolean = true,
-): Promise<string> {
-  // If null, undefined, or empty string, assign to current user
-  if (!assignedToId || !assignedToId.trim()) {
-    return currentUserId;
+): Promise<ResolvedTaskAssignee> {
+  if (!assigneeActorId || !assigneeActorId.trim()) {
+    return {
+      assigneeActorId: currentUserId,
+      kind: "human",
+    };
   }
 
-  // Check if the assigned user exists
-  const assignedUser = await db.query.users.findFirst({
-    where: eq(users.id, assignedToId),
-  });
+  const normalizedActorId = assigneeActorId.trim();
+  const actor = await getActorSummaryOrNull(currentUserId, normalizedActorId);
 
-  if (assignedUser) {
-    return assignedToId;
+  if (actor?.kind === "human") {
+    return {
+      assigneeActorId: normalizedActorId,
+      kind: "human",
+    };
   }
 
-  // User not found - either fallback or throw error
+  if (actor?.kind === "agent") {
+    return {
+      assigneeActorId: normalizedActorId,
+      kind: "agent",
+    };
+  }
+
   if (allowFallback) {
     logger.warn(
       {
-        invalidAssignedTo: assignedToId,
+        invalidAssignedTo: assigneeActorId,
         currentUserId,
       },
-      "Invalid assignedTo user ID provided, defaulting to current user",
+      "Invalid assignee actor ID provided, defaulting to current user",
     );
-    return currentUserId;
-  } else {
-    throw new Error(
-      `Invalid user ID: ${assignedToId}. User must exist and be either self or assistant.`,
-    );
+    return {
+      assigneeActorId: currentUserId,
+      kind: "human",
+    };
   }
-}
 
-/**
- * Checks if a user ID belongs to an AI assistant
- * @param userId - The user ID to check
- * @returns Promise<boolean> - True if the user is an AI assistant
- */
-async function isAIAssistant(userId: string): Promise<boolean> {
-  try {
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { userType: true },
-    });
-    return user?.userType === "assistant";
-  } catch (error) {
-    logger.error(
-      {
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Error checking if user is AI assistant",
-    );
-    return false;
-  }
+  throw new Error(
+    `Invalid assignee actor ID: ${assigneeActorId}. Assignee must be an existing human or agent actor.`,
+  );
 }
 
 /**
@@ -167,7 +158,7 @@ interface CreateTaskParams {
   status?: TaskStatus;
   priority?: number;
   dueDate?: string;
-  assignedToId?: string;
+  assigneeActorId?: string;
   tags?: string[];
   reviewStatus?: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
@@ -188,7 +179,7 @@ interface UpdateTaskParams {
   status?: string;
   priority?: number;
   dueDate?: string | null;
-  assignedToId?: string | null;
+  assigneeActorId?: string | null;
   tags?: string[];
   reviewStatus?: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
@@ -560,7 +551,7 @@ function cleanTaskForResponse(
     task.completedAt != null ? formatToISO8601(task.completedAt) : null;
 
   // Create a new object excluding the timestamp fields
-  const { createdAt, updatedAt, ...cleanedTask } = task;
+  const { createdAt, updatedAt, assigneeActorId, ...cleanedTask } = task;
 
   // Recurrence data comes from the scheduler; default to non-recurring if not provided
   const recurrenceData = scheduleData ?? {
@@ -575,6 +566,7 @@ function cleanTaskForResponse(
     dueDate,
     lastExecutedAt,
     completedAt,
+    assigneeActorId: assigneeActorId ?? null,
     createdAt: createdAt ? formatToISO8601(createdAt) : null,
     updatedAt: updatedAt ? formatToISO8601(updatedAt) : null,
     processingStatus: processingStatus || "pending",
@@ -598,7 +590,8 @@ export async function createTask(
   taskData: CreateTaskParams,
   caller: CallerContext,
 ) {
-  const { userId } = caller;
+  const userId = callerOwnerUserId(caller);
+  const actorId = callerActorId(caller);
   try {
     // Validate recurrence parameters first
     const recurrenceValidation = validateRecurrenceParams(
@@ -629,9 +622,8 @@ export async function createTask(
     const taskStatus = taskData.status || "not-started";
     const completedAtValue = taskStatus === "completed" ? new Date() : null;
 
-    // Validate assignedTo user exists if provided, otherwise default to current user
-    const assignedToUserId = await validateAssignedToId(
-      taskData.assignedToId,
+    const resolvedAssignee = await resolveTaskAssignee(
+      taskData.assigneeActorId,
       userId,
       true, // Allow fallback for create operations
     );
@@ -667,7 +659,7 @@ export async function createTask(
         description: taskData.description || null,
         status: taskStatus,
         dueDate: dueDateValue,
-        assignedToId: assignedToUserId,
+        assigneeActorId: resolvedAssignee.assigneeActorId,
         completedAt: completedAtValue,
         priority: taskData.priority ?? 0,
         processingEnabled: taskData.processingEnabled ?? true,
@@ -704,10 +696,10 @@ export async function createTask(
           status: taskStatus,
           dueDate: taskData.dueDate,
           tags: taskData.tags,
-          assignedToId: assignedToUserId,
+          assigneeActorId: resolvedAssignee.assigneeActorId,
         },
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -725,7 +717,7 @@ export async function createTask(
     logger.info({ taskId, userId }, "Queued task for AI tag processing");
 
     // Queue task execution processing if task is assigned to an AI assistant
-    const isAssignedToAI = await isAIAssistant(assignedToUserId);
+    const isAssignedToAI = resolvedAssignee.kind === "agent";
     if (isAssignedToAI) {
       const delay = calculateAIAssistantJobDelay(dueDateValue);
       const scheduledFor = delay > 0 ? new Date(Date.now() + delay) : undefined;
@@ -735,13 +727,18 @@ export async function createTask(
         title: taskData.title,
         description: taskData.description || "",
         isAssignedToAI: true,
-        assignedToId: assignedToUserId,
+        assigneeActorId: resolvedAssignee.assigneeActorId,
         dueDate: dueDateValue ?? undefined,
         scheduledFor,
         jobType: "execution",
       });
       logger.info(
-        { taskId, userId, assignedToId: assignedToUserId, delay },
+        {
+          taskId,
+          userId,
+          assigneeActorId: resolvedAssignee.assigneeActorId,
+          delay,
+        },
         "Queued task for execution processing",
       );
     }
@@ -756,7 +753,7 @@ export async function createTask(
           title: taskData.title,
           description: taskData.description || "",
           userId: userId,
-          assignedToId: assignedToUserId,
+          assigneeActorId: resolvedAssignee.assigneeActorId,
           isAssignedToAI: isAssignedToAI,
         },
         recurrenceEndDateValue,
@@ -801,7 +798,8 @@ export async function updateTask(
   taskData: UpdateTaskParams,
   caller: CallerContext,
 ) {
-  const { userId } = caller;
+  const userId = callerOwnerUserId(caller);
+  const actorId = callerActorId(caller);
   try {
     // Get existing task first to check current recurrence status
     const existingTask = await db.query.tasks.findFirst({
@@ -854,15 +852,16 @@ export async function updateTask(
 
     // Create a data object without tags for the task update
     const { tags: tagNames, ...taskUpdateData } = taskData;
+    let resolvedUpdatedAssignee: ResolvedTaskAssignee | null = null;
 
-    // Validate assignedToId if it's being updated - strict validation (no fallback)
-    if ("assignedToId" in taskUpdateData) {
-      const validatedAssignedToId = await validateAssignedToId(
-        taskUpdateData.assignedToId,
+    // Validate assignee actor if it's being updated - strict validation (no fallback)
+    if ("assigneeActorId" in taskUpdateData) {
+      resolvedUpdatedAssignee = await resolveTaskAssignee(
+        taskUpdateData.assigneeActorId,
         userId,
         false, // No fallback for update operations - strict validation
       );
-      taskUpdateData.assignedToId = validatedAssignedToId;
+      taskUpdateData.assigneeActorId = resolvedUpdatedAssignee.assigneeActorId;
     }
 
     // Validate parentId if being changed (single-level nesting, same user)
@@ -970,6 +969,10 @@ export async function updateTask(
       ...taskUpdateData,
       updatedAt: new Date(), // Use current date
     };
+
+    if (resolvedUpdatedAssignee) {
+      updateSet.assigneeActorId = resolvedUpdatedAssignee.assigneeActorId;
+    }
 
     // Conditionally add dueDate to the update set
     if (includeDueDateUpdate) {
@@ -1089,7 +1092,7 @@ export async function updateTask(
           tags: tagNames ?? currentTaskTags,
         },
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -1097,11 +1100,12 @@ export async function updateTask(
     });
 
     // Queue task execution processing if assignment to AI assistant has changed
-    const finalAssignedToId =
-      taskUpdateData.assignedToId || existingTask.assignedToId;
+    const existingAssignedIdentity = existingTask.assigneeActorId;
+    const finalAssigneeActorId =
+      resolvedUpdatedAssignee?.assigneeActorId ?? existingTask.assigneeActorId;
     const assignmentChanged =
-      "assignedToId" in taskUpdateData &&
-      taskUpdateData.assignedToId !== existingTask.assignedToId;
+      "assigneeActorId" in taskUpdateData &&
+      finalAssigneeActorId !== existingAssignedIdentity;
     const dueDateChanged =
       includeDueDateUpdate &&
       dueDateValue?.getTime() !== existingTask.dueDate?.getTime();
@@ -1112,8 +1116,8 @@ export async function updateTask(
       // Cancel existing task execution job before creating new one
       await cancelTaskExecutionJob(id);
 
-      if (finalAssignedToId) {
-        const isAssignedToAI = await isAIAssistant(finalAssignedToId);
+      if (finalAssigneeActorId) {
+        const isAssignedToAI = await isAgentActor(userId, finalAssigneeActorId);
         if (isAssignedToAI) {
           const finalDueDate = includeDueDateUpdate
             ? dueDateValue
@@ -1129,13 +1133,18 @@ export async function updateTask(
             title: existingTask.title,
             description: existingTask.description || "",
             isAssignedToAI: true,
-            assignedToId: finalAssignedToId,
+            assigneeActorId: finalAssigneeActorId,
             dueDate: finalDueDate ?? undefined,
             scheduledFor,
             jobType: "execution",
           });
           logger.info(
-            { taskId: id, userId, assignedToId: finalAssignedToId, delay },
+            {
+              taskId: id,
+              userId,
+              assigneeActorId: finalAssigneeActorId,
+              delay,
+            },
             "Queued updated task for execution processing",
           );
         }
@@ -1181,16 +1190,16 @@ export async function updateTask(
           finalCronExpression,
           existingIsRecurring: existingSchedule?.isRecurring ?? false,
           existingCronExpression: existingSchedule?.cronExpression ?? null,
-          finalAssignedToId,
-          existingAssignedToId: existingTask.assignedToId,
+          finalAssigneeActorId,
+          existingAssigneeActorId: existingAssignedIdentity,
         },
         "Processing recurring task scheduler update",
       );
 
       if (finalIsRecurring && finalCronExpression) {
         // Update or create scheduler with updated assignment information
-        const isAssignedToAI = finalAssignedToId
-          ? await isAIAssistant(finalAssignedToId)
+        const isAssignedToAI = finalAssigneeActorId
+          ? await isAgentActor(userId, finalAssigneeActorId)
           : false;
         const finalRecurrenceLimit = includeRecurrenceLimitUpdate
           ? recurrenceLimitValue
@@ -1208,7 +1217,7 @@ export async function updateTask(
             title: taskData.title || existingTask.title,
             description: taskData.description ?? existingTask.description ?? "",
             userId: userId,
-            assignedToId: finalAssignedToId,
+            assigneeActorId: finalAssigneeActorId,
             isAssignedToAI: isAssignedToAI,
           },
           finalRecurrenceEndDate,
@@ -1221,7 +1230,7 @@ export async function updateTask(
             {
               taskId: id,
               cronExpression: finalCronExpression,
-              assignedToId: finalAssignedToId,
+              assigneeActorId: finalAssigneeActorId,
             },
             "Failed to update recurring task scheduler",
           );
@@ -1231,7 +1240,7 @@ export async function updateTask(
               taskId: id,
               assignmentChanged,
               recurrenceChanged,
-              assignedToId: finalAssignedToId,
+              assigneeActorId: finalAssigneeActorId,
               cronExpression: finalCronExpression,
               isAssignedToAI,
             },
@@ -1289,8 +1298,11 @@ export async function updateTask(
       throw error;
     }
 
-    // Re-throw validation errors (like Invalid user ID) to preserve specific error messages
-    if (error instanceof Error && error.message.includes("Invalid user ID")) {
+    // Re-throw validation errors to preserve specific error messages
+    if (
+      error instanceof Error &&
+      error.message.includes("Invalid assignee actor ID")
+    ) {
       throw error;
     }
 
@@ -1315,9 +1327,10 @@ export async function updateTaskStatusAsAssistant(
   caller: CallerContext,
   completedAt?: string | null,
 ): Promise<void> {
+  const actorId = callerActorId(caller);
   try {
     logger.info(
-      { taskId, status, assignedAssistantId: caller.userId, completedAt },
+      { taskId, status, assignedAssistantId: actorId, completedAt },
       "Updating task status as assistant",
     );
 
@@ -1327,7 +1340,7 @@ export async function updateTaskStatusAsAssistant(
       columns: {
         id: true,
         userId: true,
-        assignedToId: true,
+        assigneeActorId: true,
         status: true,
         completedAt: true,
       },
@@ -1338,10 +1351,8 @@ export async function updateTaskStatusAsAssistant(
     }
 
     // Verify the assistant is actually assigned to this task
-    if (task.assignedToId !== caller.userId) {
-      throw new Error(
-        `Assistant ${caller.userId} is not assigned to task ${taskId}`,
-      );
+    if (task.assigneeActorId !== actorId) {
+      throw new Error(`Assistant ${actorId} is not assigned to task ${taskId}`);
     }
 
     const beforeData = {
@@ -1386,11 +1397,11 @@ export async function updateTaskStatusAsAssistant(
       afterData,
       userId: task.userId, // The task owner
       actor: caller.actor,
-      actorId: caller.userId,
+      actorId,
       metadata: {
         updatedFields: ["status", ...(completedAt ? ["completedAt"] : [])],
         statusChange: `${beforeData.status} → ${status}`,
-        assistantId: caller.userId, // Store assistant ID in metadata instead
+        assistantId: actorId, // Store assistant ID in metadata instead
       },
     });
 
@@ -1398,7 +1409,7 @@ export async function updateTaskStatusAsAssistant(
       {
         taskId,
         status,
-        assignedAssistantId: caller.userId,
+        assignedAssistantId: actorId,
         taskOwner: task.userId,
       },
       "Task status updated successfully by assistant",
@@ -1408,7 +1419,7 @@ export async function updateTaskStatusAsAssistant(
       {
         taskId,
         status,
-        assignedAssistantId: caller.userId,
+        assignedAssistantId: actorId,
         completedAt,
         error: error instanceof Error ? error.message : "Unknown error",
       },
@@ -1446,7 +1457,7 @@ export async function updateTaskExecutionTrackingWithPermissions(
     columns: {
       id: true,
       userId: true,
-      assignedToId: true,
+      assigneeActorId: true,
     },
   });
 
@@ -1455,7 +1466,7 @@ export async function updateTaskExecutionTrackingWithPermissions(
   }
 
   // Check if user has permission to update execution tracking
-  const canUpdate = task.userId === userId || task.assignedToId === userId;
+  const canUpdate = task.userId === userId || task.assigneeActorId === userId;
   if (!canUpdate) {
     throw new ForbiddenError("Unauthorized to update this task");
   }
@@ -1466,7 +1477,7 @@ export async function updateTaskExecutionTrackingWithPermissions(
       taskId,
       userId,
       taskOwnerId: task.userId,
-      taskAssignedToId: task.assignedToId,
+      taskAssigneeActorId: task.assigneeActorId,
       updates: { lastExecutedAt },
     },
     "Task execution tracking update",
@@ -1613,6 +1624,7 @@ export async function deleteTask(
   userId: string,
   caller: CallerContext,
 ) {
+  const actorId = callerActorId(caller);
   try {
     logger.info({ taskId: id, userId }, "Starting task deletion process");
 
@@ -1682,7 +1694,7 @@ export async function deleteTask(
         beforeData: { ...existingTask, tags: taskTags },
         afterData: null,
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -1789,7 +1801,7 @@ export async function getTaskById(taskId: string, userId: string) {
     const [taskTagNames, taskCommentsData, scheduleData, childCountResult] =
       await Promise.all([
         getTaskTags(taskId),
-        getTaskCommentsWithUsers(taskId),
+        getTaskCommentsWithUsers(taskId, task.userId),
         getTaskScheduleData(taskId),
         db
           .select({ value: count() })
@@ -1832,7 +1844,10 @@ async function getTaskTags(taskId: string): Promise<string[]> {
 }
 
 // Helper function to get comments for a task with user info
-async function getTaskCommentsWithUsers(taskId: string) {
+async function getTaskCommentsWithUsers(
+  taskId: string,
+  taskOwnerUserId: string,
+) {
   const comments = await db.query.taskComments.findMany({
     where: eq(taskComments.taskId, taskId),
     with: {
@@ -1847,11 +1862,11 @@ async function getTaskCommentsWithUsers(taskId: string) {
     orderBy: [desc(taskComments.createdAt)],
   });
 
-  return comments.map((comment) => ({
-    ...comment,
-    createdAt: comment.createdAt ? formatToISO8601(comment.createdAt) : null,
-    updatedAt: comment.updatedAt ? formatToISO8601(comment.updatedAt) : null,
-  }));
+  return Promise.all(
+    comments.map((comment) =>
+      formatTaskCommentForResponse(comment, taskOwnerUserId),
+    ),
+  );
 }
 
 // Helper function to get a task with its tags

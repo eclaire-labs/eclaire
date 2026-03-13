@@ -24,12 +24,21 @@ function PageLoading() {
 }
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  validateSearch: (search: Record<string, unknown>): { tab?: SettingsTab } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: SettingsTab; agentActorId?: string } => {
     const tab = search.tab as string | undefined;
-    if (tab && validTabs.includes(tab as SettingsTab)) {
-      return { tab: tab as SettingsTab };
-    }
-    return {};
+    return {
+      tab:
+        tab && validTabs.includes(tab as SettingsTab)
+          ? (tab as SettingsTab)
+          : undefined,
+      agentActorId:
+        typeof search.agentActorId === "string" &&
+        search.agentActorId.length > 0
+          ? search.agentActorId
+          : undefined,
+    };
   },
   component: () => (
     <Suspense fallback={<PageLoading />}>

@@ -3,7 +3,7 @@ import { describeRoute, validator as zValidator } from "hono-openapi";
 import type { Logger } from "pino";
 import z from "zod/v4";
 import { NotFoundError } from "../lib/errors.js";
-import type { CallerContext } from "../lib/services/types.js";
+import { principalCaller, type CallerContext } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {
   flagColorUpdateSchema,
@@ -45,14 +45,11 @@ export function registerReviewEndpoint(
     "/:id/review",
     describeRoute(routeDescription),
     zValidator("json", reviewStatusUpdateSchema(resourceName)),
-    withAuth(async (c, userId) => {
+    withAuth(async (c, _userId, principal) => {
+      const caller = principalCaller(principal);
       const id = c.req.param("id");
       const { reviewStatus } = c.req.valid("json");
-      const updated = await updateFn(
-        id,
-        { reviewStatus },
-        { userId, actor: "user" },
-      );
+      const updated = await updateFn(id, { reviewStatus }, caller);
       if (!updated) throw new NotFoundError(resourceName);
       return c.json(updated);
     }, logger),
@@ -70,14 +67,11 @@ export function registerFlagEndpoint(
     "/:id/flag",
     describeRoute(routeDescription),
     zValidator("json", flagColorUpdateSchema(resourceName)),
-    withAuth(async (c, userId) => {
+    withAuth(async (c, _userId, principal) => {
+      const caller = principalCaller(principal);
       const id = c.req.param("id");
       const { flagColor } = c.req.valid("json");
-      const updated = await updateFn(
-        id,
-        { flagColor },
-        { userId, actor: "user" },
-      );
+      const updated = await updateFn(id, { flagColor }, caller);
       if (!updated) throw new NotFoundError(resourceName);
       return c.json(updated);
     }, logger),
@@ -95,14 +89,11 @@ export function registerPinEndpoint(
     "/:id/pin",
     describeRoute(routeDescription),
     zValidator("json", isPinnedUpdateSchema(resourceName)),
-    withAuth(async (c, userId) => {
+    withAuth(async (c, _userId, principal) => {
+      const caller = principalCaller(principal);
       const id = c.req.param("id");
       const { isPinned } = c.req.valid("json");
-      const updated = await updateFn(
-        id,
-        { isPinned },
-        { userId, actor: "user" },
-      );
+      const updated = await updateFn(id, { isPinned }, caller);
       if (!updated) throw new NotFoundError(resourceName);
       return c.json(updated);
     }, logger),

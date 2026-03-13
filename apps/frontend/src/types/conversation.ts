@@ -8,6 +8,7 @@ import type { Message, ToolCallSummary } from "./message";
 export interface ConversationSummary {
   id: string;
   userId: string;
+  agentActorId: string;
   title: string;
   createdAt: Date | string;
   updatedAt: Date | string;

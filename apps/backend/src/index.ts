@@ -81,6 +81,7 @@ app.use(
 app.use("*", async (c, next) => {
   c.set("user", null);
   c.set("session", null);
+  c.set("principal", null);
 
   // Lazy resolver: caches the result so the DB is hit at most once per request
   let cached:

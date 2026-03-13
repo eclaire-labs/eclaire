@@ -14,6 +14,7 @@ import {
   createBookmarkAndQueueJob,
   validateAndNormalizeBookmarkUrl,
 } from "../../services/bookmarks.js";
+import { agentToolCaller } from "./caller.js";
 
 const inputSchema = z.object({
   url: z.string().describe("URL to bookmark"),
@@ -48,7 +49,7 @@ export const createBookmarkTool: RuntimeToolDefinition<typeof inputSchema> = {
         },
         userAgent: "AI Assistant",
       },
-      { userId: ctx.userId, actor: "assistant" },
+      agentToolCaller(ctx),
     );
 
     if (!result.success) {

@@ -1,61 +1,89 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { useAuth } from "@/hooks/use-auth";
-import { apiFetch } from "@/lib/api-client";
+import {
+  createActorApiKey,
+  createServiceActor,
+  deleteActorApiKey,
+  deleteServiceActor,
+  listActorApiKeys,
+  listActorCredentialScopes,
+  listActors,
+  updateActorApiKey,
+  type ActorApiKey,
+  type ActorSummary,
+  type ApiKeyScopeCatalogItem,
+} from "@/lib/api-actors";
 
-interface ApiKeyData {
-  id: string;
-  displayKey: string;
-  name: string;
-  createdAt: string;
-  lastUsedAt: string | null;
-}
-
-interface CreateApiKeyResponse {
-  id: string;
-  key: string; // Full key only returned on creation
-  displayKey: string;
-  name: string;
-  createdAt: string;
-  lastUsedAt: null;
+export interface ActorApiKeyGroup {
+  actor: ActorSummary;
+  apiKeys: ActorApiKey[];
 }
 
 interface UseApiKeysResult {
-  apiKeys: ApiKeyData[];
+  actorGroups: ActorApiKeyGroup[];
+  scopeCatalog: ApiKeyScopeCatalogItem[];
   isLoading: boolean;
   error: Error | null;
-  createApiKey: (name?: string) => Promise<CreateApiKeyResponse | null>;
-  deleteApiKey: (id: string) => Promise<boolean>;
-  updateApiKey: (id: string, name: string) => Promise<boolean>;
+  createApiKey: (
+    actorId: string,
+    payload: { name?: string; scopes?: string[] },
+  ) => Promise<ActorApiKey | null>;
+  updateApiKey: (
+    actorId: string,
+    keyId: string,
+    payload: { name?: string; scopes?: string[] },
+  ) => Promise<boolean>;
+  deleteApiKey: (actorId: string, keyId: string) => Promise<boolean>;
+  createExternalSystem: (displayName: string) => Promise<ActorSummary | null>;
+  deleteExternalSystem: (actorId: string) => Promise<boolean>;
 }
 
-/**
- * Hook for managing multiple user API keys
- */
+const MANAGEABLE_KINDS = new Set<ActorSummary["kind"]>([
+  "human",
+  "agent",
+  "service",
+]);
+
 export function useApiKeys(): UseApiKeysResult {
   const { data: session, isPending: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch all API keys from the backend
   const {
-    data: apiKeysData,
+    data,
     isLoading: isQueryLoading,
     error: queryError,
   } = useQuery({
-    queryKey: ["user-api-keys"],
-    queryFn: async (): Promise<ApiKeyData[]> => {
-      const res = await apiFetch("/api/user/api-keys");
-      if (!res.ok) {
-        if (res.status === 401) {
-          throw new Error("Unauthorized");
-        }
-        throw new Error("Failed to fetch API keys");
-      }
-      const data = await res.json();
-      return data.items || [];
+    queryKey: ["actor-api-keys"],
+    queryFn: async (): Promise<{
+      actorGroups: ActorApiKeyGroup[];
+      scopeCatalog: ApiKeyScopeCatalogItem[];
+    }> => {
+      const [{ items: actors }, { items: scopeCatalog }] = await Promise.all([
+        listActors(),
+        listActorCredentialScopes(),
+      ]);
+
+      const manageableActors = actors.filter(
+        (actor) =>
+          MANAGEABLE_KINDS.has(actor.kind) &&
+          actor.id !== DEFAULT_AGENT_ACTOR_ID,
+      );
+
+      const actorGroups = await Promise.all(
+        manageableActors.map(async (actor) => {
+          const { items } = await listActorApiKeys(actor.id);
+          return {
+            actor,
+            apiKeys: items ?? [],
+          };
+        }),
+      );
+
+      return { actorGroups, scopeCatalog };
     },
     enabled: !!session?.user && !authLoading,
     retry: (failureCount, error) => {
-      // Don't retry on 401 errors
       if (error.message === "Unauthorized") {
         return false;
       }
@@ -63,123 +91,109 @@ export function useApiKeys(): UseApiKeysResult {
     },
   });
 
-  // Mutation for creating a new API key
+  const invalidateActorKeys = () =>
+    queryClient.invalidateQueries({ queryKey: ["actor-api-keys"] });
+
   const createKeyMutation = useMutation({
-    mutationFn: async (name?: string): Promise<CreateApiKeyResponse> => {
-      const res = await apiFetch("/api/user/api-keys", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: name || "API Key" }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to create API key");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      // Refresh the API keys list
-      queryClient.invalidateQueries({ queryKey: ["user-api-keys"] });
-    },
-  });
-
-  // Mutation for deleting an API key
-  const deleteKeyMutation = useMutation({
-    mutationFn: async (id: string): Promise<void> => {
-      const res = await apiFetch(`/api/user/api-keys/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to delete API key");
-      }
-    },
-    onSuccess: () => {
-      // Refresh the API keys list
-      queryClient.invalidateQueries({ queryKey: ["user-api-keys"] });
-    },
-  });
-
-  // Mutation for updating an API key name
-  const updateKeyMutation = useMutation({
-    mutationFn: async ({
-      id,
-      name,
+    mutationFn: ({
+      actorId,
+      payload,
     }: {
-      id: string;
-      name: string;
-    }): Promise<void> => {
-      const res = await apiFetch(`/api/user/api-keys/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to update API key");
-      }
-    },
-    onSuccess: () => {
-      // Refresh the API keys list
-      queryClient.invalidateQueries({ queryKey: ["user-api-keys"] });
-    },
+      actorId: string;
+      payload: { name?: string; scopes?: string[] };
+    }) => createActorApiKey(actorId, payload),
+    onSuccess: invalidateActorKeys,
   });
 
-  const createApiKey = async (
-    name?: string,
-  ): Promise<CreateApiKeyResponse | null> => {
-    if (!session?.user) {
-      throw new Error("You must be logged in to create an API key");
-    }
+  const updateKeyMutation = useMutation({
+    mutationFn: ({
+      actorId,
+      keyId,
+      payload,
+    }: {
+      actorId: string;
+      keyId: string;
+      payload: { name?: string; scopes?: string[] };
+    }) => updateActorApiKey(actorId, keyId, payload),
+    onSuccess: invalidateActorKeys,
+  });
 
-    try {
-      const newApiKey = await createKeyMutation.mutateAsync(name);
-      return newApiKey;
-    } catch (error) {
-      console.error("Error creating API key:", error);
-      return null;
-    }
-  };
+  const deleteKeyMutation = useMutation({
+    mutationFn: ({ actorId, keyId }: { actorId: string; keyId: string }) =>
+      deleteActorApiKey(actorId, keyId),
+    onSuccess: invalidateActorKeys,
+  });
 
-  const deleteApiKey = async (id: string): Promise<boolean> => {
-    try {
-      await deleteKeyMutation.mutateAsync(id);
-      return true;
-    } catch (error) {
-      console.error("Error deleting API key:", error);
-      return false;
-    }
-  };
+  const createExternalSystemMutation = useMutation({
+    mutationFn: (displayName: string) => createServiceActor(displayName),
+    onSuccess: invalidateActorKeys,
+  });
 
-  const updateApiKey = async (id: string, name: string): Promise<boolean> => {
-    try {
-      await updateKeyMutation.mutateAsync({ id, name });
-      return true;
-    } catch (error) {
-      console.error("Error updating API key:", error);
-      return false;
-    }
-  };
+  const deleteExternalSystemMutation = useMutation({
+    mutationFn: (actorId: string) => deleteServiceActor(actorId),
+    onSuccess: invalidateActorKeys,
+  });
 
   return {
-    apiKeys: apiKeysData || [],
+    actorGroups: data?.actorGroups ?? [],
+    scopeCatalog: data?.scopeCatalog ?? [],
     isLoading:
       authLoading ||
       isQueryLoading ||
       createKeyMutation.isPending ||
+      updateKeyMutation.isPending ||
       deleteKeyMutation.isPending ||
-      updateKeyMutation.isPending,
+      createExternalSystemMutation.isPending ||
+      deleteExternalSystemMutation.isPending,
     error:
       queryError ||
       createKeyMutation.error ||
+      updateKeyMutation.error ||
       deleteKeyMutation.error ||
-      updateKeyMutation.error,
-    createApiKey,
-    deleteApiKey,
-    updateApiKey,
+      createExternalSystemMutation.error ||
+      deleteExternalSystemMutation.error,
+    createApiKey: async (actorId, payload) => {
+      try {
+        return await createKeyMutation.mutateAsync({ actorId, payload });
+      } catch (error) {
+        console.error("Error creating API key:", error);
+        return null;
+      }
+    },
+    updateApiKey: async (actorId, keyId, payload) => {
+      try {
+        await updateKeyMutation.mutateAsync({ actorId, keyId, payload });
+        return true;
+      } catch (error) {
+        console.error("Error updating API key:", error);
+        return false;
+      }
+    },
+    deleteApiKey: async (actorId, keyId) => {
+      try {
+        await deleteKeyMutation.mutateAsync({ actorId, keyId });
+        return true;
+      } catch (error) {
+        console.error("Error deleting API key:", error);
+        return false;
+      }
+    },
+    createExternalSystem: async (displayName) => {
+      try {
+        return await createExternalSystemMutation.mutateAsync(displayName);
+      } catch (error) {
+        console.error("Error creating external system actor:", error);
+        return null;
+      }
+    },
+    deleteExternalSystem: async (actorId) => {
+      try {
+        await deleteExternalSystemMutation.mutateAsync(actorId);
+        return true;
+      } catch (error) {
+        console.error("Error deleting external system actor:", error);
+        return false;
+      }
+    },
   };
 }

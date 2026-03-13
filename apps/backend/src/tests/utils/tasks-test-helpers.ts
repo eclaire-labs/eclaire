@@ -23,8 +23,8 @@ export const createLoggedFetch = (apiKey: string) => {
 export const loggedFetch = createLoggedFetch(TEST_API_KEY);
 export const loggedFetch2 = createLoggedFetch(TEST_API_KEY_2);
 
-// AI Assistant user ID (created by migration)
-export const AI_ASSISTANT_USER_ID = "user-ai-assistant";
+// Default agent actor used by task assignment tests
+export const DEFAULT_AGENT_ACTOR_ID = "eclaire";
 
 // Comment user interface
 export interface CommentUser {
@@ -37,7 +37,7 @@ export interface CommentUser {
 export interface TaskComment {
   id: string;
   taskId: string;
-  userId: string;
+  authorActorId: string;
   content: string;
   createdAt: string; // ISO 8601 format
   updatedAt: string; // ISO 8601 format
@@ -52,7 +52,7 @@ export interface TaskEntry {
   description: string | null;
   status: "backlog" | "not-started" | "in-progress" | "completed" | "cancelled";
   dueDate: string | null;
-  assignedToId: string | null;
+  assigneeActorId: string | null;
   processingEnabled: boolean;
   priority: number;
   parentId: string | null;
@@ -110,7 +110,7 @@ export const RecurrenceTestHelpers = {
   createRecurringTask: async (
     title: string,
     cronExpression: string = "*/3 * * * * *",
-    assignedToId?: string,
+    assigneeActorId?: string,
     recurrenceEndDate?: string,
     recurrenceLimit?: number,
     runImmediately?: boolean,
@@ -124,7 +124,7 @@ export const RecurrenceTestHelpers = {
       description: "Test recurring task",
       isRecurring: true,
       cronExpression,
-      assignedToId,
+      assigneeActorId,
       recurrenceEndDate: defaultEndDate,
       recurrenceLimit,
       runImmediately,

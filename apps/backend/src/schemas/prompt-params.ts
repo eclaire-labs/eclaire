@@ -40,7 +40,7 @@ export const AssetReferenceSchema = z.object({
 // Context schema for pre-selected assets and agent specification
 export const ContextSchema = z.object({
   assets: z.array(AssetReferenceSchema).optional(),
-  agent: z.string().default("eclaire"), // Default to eclaire agent
+  agentActorId: z.string().optional(),
   backgroundTaskExecution: z.boolean().optional(), // Flag for background task execution
 });
 

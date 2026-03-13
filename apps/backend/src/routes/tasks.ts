@@ -18,6 +18,7 @@ import {
   reprocessTask,
   updateTask,
 } from "../lib/services/tasks.js";
+import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
@@ -53,10 +54,12 @@ function toTaskServiceData<
     dueDate?: string | null;
     cronExpression?: string | null;
     recurrenceEndDate?: string | null;
+    assigneeActorId?: string | null;
   },
 >(data: T) {
   return {
     ...data,
+    assigneeActorId: data.assigneeActorId ?? undefined,
     description: data.description || undefined,
     dueDate: data.dueDate || undefined,
     cronExpression: data.cronExpression || undefined,
@@ -103,12 +106,10 @@ tasksRoutes.post(
   "/",
   describeRoute(postTasksRouteDescription),
   zValidator("json", TaskSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const validatedData = c.req.valid("json");
-    const newTask = await createTask(toTaskServiceData(validatedData), {
-      userId,
-      actor: "user",
-    });
+    const newTask = await createTask(toTaskServiceData(validatedData), caller);
     return c.json(newTask, 201);
   }, logger),
 );
@@ -129,13 +130,15 @@ tasksRoutes.put(
   "/:id",
   describeRoute(putTaskRouteDescription),
   zValidator("json", TaskSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), {
-      userId,
-      actor: "user",
-    });
+    const updatedTask = await updateTask(
+      id,
+      toTaskServiceData(validatedData),
+      caller,
+    );
     if (!updatedTask) throw new NotFoundError("Task");
     return c.json(updatedTask);
   }, logger),
@@ -146,13 +149,15 @@ tasksRoutes.patch(
   "/:id",
   describeRoute(patchTaskRouteDescription),
   zValidator("json", PartialTaskSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedTask = await updateTask(id, toTaskServiceData(validatedData), {
-      userId,
-      actor: "user",
-    });
+    const updatedTask = await updateTask(
+      id,
+      toTaskServiceData(validatedData),
+      caller,
+    );
     if (!updatedTask) throw new NotFoundError("Task");
     return c.json(updatedTask);
   }, logger),
@@ -162,9 +167,10 @@ tasksRoutes.patch(
 tasksRoutes.delete(
   "/:id",
   describeRoute(deleteTaskRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
-    const success = await deleteTask(id, userId, { userId, actor: "user" });
+    const success = await deleteTask(id, userId, caller);
     if (!success) throw new NotFoundError("Task");
     return new Response(null, { status: 204 });
   }, logger),
@@ -208,13 +214,11 @@ tasksRoutes.post(
       }),
     }),
   ),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const taskId = c.req.param("id");
     const { content } = c.req.valid("json");
-    const newComment = await createTaskComment(
-      { taskId, content },
-      { userId, actor: "user" },
-    );
+    const newComment = await createTaskComment({ taskId, content }, caller);
     return c.json(newComment, 201);
   }, logger),
 );
@@ -232,13 +236,14 @@ tasksRoutes.put(
       }),
     }),
   ),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const commentId = c.req.param("commentId");
     const { content } = c.req.valid("json");
     const updatedComment = await updateTaskComment(
       commentId,
       { content },
-      { userId, actor: "user" },
+      caller,
     );
     return c.json(updatedComment);
   }, logger),
@@ -248,9 +253,10 @@ tasksRoutes.put(
 tasksRoutes.delete(
   "/:taskId/comments/:commentId",
   describeRoute(deleteTaskCommentRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const commentId = c.req.param("commentId");
-    await deleteTaskComment(commentId, { userId, actor: "user" });
+    await deleteTaskComment(commentId, caller);
     return new Response(null, { status: 204 });
   }, logger),
 );

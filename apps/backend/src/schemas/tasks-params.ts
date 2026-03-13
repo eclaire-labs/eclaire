@@ -66,13 +66,13 @@ export const TaskSchema = z
         examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
       }),
 
-    assignedToId: z
+    assigneeActorId: z
       .string()
       .nullable()
       .optional()
       .meta({
-        description: "User ID of the person assigned to this task",
-        examples: ["user123", "user456"],
+        description: "Actor ID assigned to this task",
+        examples: ["user123", "agent123"],
       }),
 
     processingEnabled: z

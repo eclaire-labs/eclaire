@@ -170,7 +170,7 @@ describe("fetchContentMetadata", () => {
       description: "Fix the login bug",
       status: "in_progress",
       dueDate: "2025-06-01",
-      assignedToId: "user-42",
+      assigneeActorId: "user-42",
       tags: ["urgent"],
       processingStatus: "completed",
       createdAt: "2025-01-01",
@@ -200,7 +200,7 @@ describe("fetchContentMetadata", () => {
     expect(result.metadata).toEqual({
       status: "in_progress",
       dueDate: "2025-06-01",
-      assignedToId: "user-42",
+      assigneeActorId: "user-42",
       tags: ["urgent"],
       processingStatus: "completed",
       createdAt: "2025-01-01",

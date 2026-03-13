@@ -7,6 +7,7 @@
 import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import { updateNoteEntry } from "../../services/notes.js";
+import { agentToolCaller } from "./caller.js";
 
 const inputSchema = z.object({
   id: z.string().describe("ID of the note to update"),
@@ -31,10 +32,7 @@ export const updateNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
   promptGuidelines: ["Always confirm with the user before modifying notes."],
   execute: async (_callId, input, ctx) => {
     const { id, ...updateData } = input;
-    const result = await updateNoteEntry(id, updateData, {
-      userId: ctx.userId,
-      actor: "assistant",
-    });
+    const result = await updateNoteEntry(id, updateData, agentToolCaller(ctx));
     return textResult(JSON.stringify(result, null, 2));
   },
 };

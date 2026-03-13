@@ -1,9 +1,11 @@
+import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
 import type { Context, Telegraf } from "telegraf";
 import { getDeps } from "./deps.js";
 
 /** Per-chat session state stored by Telegraf's session middleware. */
 export interface TelegramSessionData {
   sessionId?: string;
+  agentActorId?: string;
   enableThinking: boolean;
 }
 
@@ -26,12 +28,16 @@ const COMMANDS: TelegramCommand[] = [
   {
     name: "start",
     description: "Start the assistant",
-    handler: async (ctx, _channelId, userId) => {
-      const { createSession, logger } = getDeps();
+    handler: async (ctx, channelId, userId) => {
+      const { createSession, findChannel, logger } = getDeps();
       try {
         if (createSession && !ctx.session.sessionId) {
-          const session = await createSession(userId);
+          const channel = await findChannel(channelId, userId);
+          const agentActorId =
+            channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
+          const session = await createSession(userId, undefined, agentActorId);
           ctx.session.sessionId = session.id;
+          ctx.session.agentActorId = agentActorId;
         }
         await ctx.reply(
           "Hello! I'm your Eclaire assistant. How can I help you today?",
@@ -65,15 +71,19 @@ const COMMANDS: TelegramCommand[] = [
   {
     name: "new",
     description: "Start a new conversation",
-    handler: async (ctx, _channelId, userId) => {
-      const { createSession, logger } = getDeps();
+    handler: async (ctx, channelId, userId) => {
+      const { createSession, findChannel, logger } = getDeps();
       if (!createSession) {
         await ctx.reply("Session management is not available.");
         return;
       }
       try {
-        const session = await createSession(userId);
+        const channel = await findChannel(channelId, userId);
+        const agentActorId =
+          channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
+        const session = await createSession(userId, undefined, agentActorId);
         ctx.session.sessionId = session.id;
+        ctx.session.agentActorId = agentActorId;
         await ctx.reply("New conversation started.");
       } catch (error) {
         logger.error(
@@ -116,14 +126,22 @@ const COMMANDS: TelegramCommand[] = [
   {
     name: "history",
     description: "Show recent conversations",
-    handler: async (ctx, _channelId, userId) => {
-      const { listSessions, logger } = getDeps();
+    handler: async (ctx, channelId, userId) => {
+      const { findChannel, listSessions, logger } = getDeps();
       if (!listSessions) {
         await ctx.reply("Session history is not available.");
         return;
       }
       try {
-        const sessions = await listSessions(userId, 10);
+        const channel = await findChannel(channelId, userId);
+        const agentActorId =
+          channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
+        const sessions = await listSessions(
+          userId,
+          10,
+          undefined,
+          agentActorId,
+        );
         if (sessions.length === 0) {
           await ctx.reply("No conversations found.");
           return;
@@ -164,19 +182,24 @@ const COMMANDS: TelegramCommand[] = [
   {
     name: "clear",
     description: "Clear conversation and start fresh",
-    handler: async (ctx, _channelId, userId) => {
-      const { createSession, deleteSession, logger } = getDeps();
+    handler: async (ctx, channelId, userId) => {
+      const { createSession, deleteSession, findChannel, logger } = getDeps();
       try {
         // Delete current session if one exists
         if (ctx.session.sessionId && deleteSession) {
           await deleteSession(ctx.session.sessionId, userId);
         }
         ctx.session.sessionId = undefined;
+        ctx.session.agentActorId = undefined;
 
         // Create a fresh session if possible
         if (createSession) {
-          const session = await createSession(userId);
+          const channel = await findChannel(channelId, userId);
+          const agentActorId =
+            channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
+          const session = await createSession(userId, undefined, agentActorId);
           ctx.session.sessionId = session.id;
+          ctx.session.agentActorId = agentActorId;
         }
 
         await ctx.reply("Conversation cleared.");

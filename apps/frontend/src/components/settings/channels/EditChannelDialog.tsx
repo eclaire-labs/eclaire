@@ -1,5 +1,7 @@
+import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import { useEffect, useState } from "react";
+import { ActorPicker } from "@/components/shared/ActorPicker";
 import {
   Dialog,
   DialogContent,
@@ -7,6 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { useActors } from "@/hooks/use-actors";
 import {
   type Channel,
   type SlackConfig,
@@ -31,6 +35,10 @@ export default function EditChannelDialog({
   const [config, setConfig] = useState<TelegramConfig | SlackConfig | null>(
     null,
   );
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(
+    DEFAULT_AGENT_ACTOR_ID,
+  );
+  const { actors: availableAgents } = useActors(["agent"]);
 
   // Fetch current config when dialog opens (we need to get the decrypted config)
   useEffect(() => {
@@ -44,6 +52,8 @@ export default function EditChannelDialog({
       } else {
         setConfig(null);
       }
+
+      setSelectedAgentId(channel.agentActorId || DEFAULT_AGENT_ACTOR_ID);
     } else {
       setConfig(null);
     }
@@ -64,6 +74,8 @@ export default function EditChannelDialog({
       await updateChannel(channel.id, {
         name: data.name,
         capability: data.capability,
+        agentActorId:
+          data.capability === "notification" ? null : selectedAgentId,
         config: data.config,
       });
 
@@ -78,6 +90,24 @@ export default function EditChannelDialog({
   const renderPlatformForm = () => {
     if (!channel) return null;
 
+    const agentSelect = (
+      <div className="space-y-2">
+        <Label htmlFor="edit-channel-agent">Channel Agent</Label>
+        <ActorPicker
+          id="edit-channel-agent"
+          actors={availableAgents}
+          value={selectedAgentId}
+          placeholder="Search channel agents"
+          searchPlaceholder="Search channel agents..."
+          onChange={(value) => {
+            if (value) {
+              setSelectedAgentId(value);
+            }
+          }}
+        />
+      </div>
+    );
+
     switch (channel.platform) {
       case "telegram":
         return (
@@ -90,6 +120,7 @@ export default function EditChannelDialog({
             onSubmit={handleUpdateChannel}
             isSubmitting={isUpdating}
             isEditing={true}
+            renderExtraFields={agentSelect}
           />
         );
       case "slack":
@@ -103,6 +134,7 @@ export default function EditChannelDialog({
             onSubmit={handleUpdateChannel}
             isSubmitting={isUpdating}
             isEditing={true}
+            renderExtraFields={agentSelect}
           />
         );
       default:
@@ -128,7 +160,7 @@ export default function EditChannelDialog({
           </DialogTitle>
           <DialogDescription>
             Update your {platform.displayName} channel configuration and
-            settings.
+            assigned agent.
           </DialogDescription>
         </DialogHeader>
 

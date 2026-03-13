@@ -36,6 +36,16 @@ export interface TelegramDeps {
   findActiveChannels: () => Promise<ChannelRecord[]>;
   encrypt: (value: string) => string;
   decrypt: (value: string) => string;
+  routeChannelPrompt?: (
+    userId: string,
+    prompt: string,
+    defaultAgentActorId: string,
+  ) => Promise<{
+    agentActorId: string;
+    prompt: string;
+    addressedAgentName?: string;
+    error?: string;
+  }>;
   processPromptRequest: (
     // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
     ...args: any[]
@@ -52,11 +62,13 @@ export interface TelegramDeps {
   createSession?: (
     userId: string,
     title?: string,
+    agentActorId?: string,
   ) => Promise<{ id: string; title: string }>;
   listSessions?: (
     userId: string,
     limit?: number,
     offset?: number,
+    agentActorId?: string,
   ) => Promise<
     Array<{
       id: string;

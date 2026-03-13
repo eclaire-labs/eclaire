@@ -86,7 +86,8 @@ export function TaskTileItem({
   allAssignees,
   currentUser,
 }: TaskTileItemProps) {
-  const assignee = allAssignees.find((a) => a.id === task.assignedToId);
+  const assigneeId = task.assigneeActorId;
+  const assignee = allAssignees.find((a) => a.id === assigneeId);
 
   return (
     <Card
@@ -269,13 +270,11 @@ export function TaskTileItem({
           </div>
           <div
             className="flex items-center text-muted-foreground"
-            title={`Assigned to ${task.assignedToId || "Unassigned"}`}
+            title={`Assigned to ${assigneeId || "Unassigned"}`}
           >
-            {task.assignedToId
+            {assigneeId
               ? (() => {
-                  const displayName = assignee
-                    ? assignee.name
-                    : task.assignedToId;
+                  const displayName = assignee ? assignee.name : assigneeId;
                   const truncated =
                     displayName.length > 10
                       ? `${displayName.substring(0, 10)}...`

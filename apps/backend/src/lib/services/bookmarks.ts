@@ -34,7 +34,11 @@ import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
-import type { CallerContext } from "./types.js";
+import {
+  callerActorId,
+  callerOwnerUserId,
+  type CallerContext,
+} from "./types.js";
 
 const logger = createChildLogger("services:bookmarks");
 
@@ -209,6 +213,7 @@ export async function createBookmarkAndQueueJob(
   payload: CreateBookmarkPayload,
   caller: CallerContext,
 ) {
+  const actorId = callerActorId(caller);
   try {
     const { url, userId, rawMetadata, userAgent } = payload;
 
@@ -265,7 +270,7 @@ export async function createBookmarkAndQueueJob(
         beforeData: null,
         afterData: null,
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -350,7 +355,8 @@ export async function updateBookmark(
   bookmarkData: UpdateBookmarkParams,
   caller: CallerContext,
 ) {
-  const { userId } = caller;
+  const userId = callerOwnerUserId(caller);
+  const actorId = callerActorId(caller);
   try {
     const existingBookmark = await getBookmarkById(id, userId);
     if (!existingBookmark) throw new NotFoundError("Bookmark");
@@ -401,7 +407,7 @@ export async function updateBookmark(
         beforeData: existingBookmark,
         afterData: { ...existingBookmark, ...bookmarkData },
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -436,6 +442,7 @@ export async function deleteBookmark(
   caller: CallerContext,
   deleteStorage: boolean = true,
 ) {
+  const actorId = callerActorId(caller);
   try {
     const existingBookmark = await getBookmarkById(id, userId);
     if (!existingBookmark) throw new NotFoundError("Bookmark");
@@ -463,7 +470,7 @@ export async function deleteBookmark(
         beforeData: existingBookmark,
         afterData: null,
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),

@@ -12,7 +12,7 @@ export const transformTaskData = (raw: any): Task => ({
   description: raw.description,
   status: raw.status,
   dueDate: raw.dueDate,
-  assignedToId: raw.assignedToId,
+  assigneeActorId: raw.assigneeActorId ?? null,
   tags: raw.tags || [],
   createdAt: raw.createdAt || new Date().toISOString(),
   updatedAt: raw.updatedAt || new Date().toISOString(),

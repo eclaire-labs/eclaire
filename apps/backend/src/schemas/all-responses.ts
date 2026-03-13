@@ -73,10 +73,10 @@ const BaseItemSchema = z
       .string()
       .nullable()
       .meta({ description: "Status field for tasks" }),
-    assignedToId: z
+    assigneeActorId: z
       .string()
       .nullable()
-      .meta({ description: "ID of user assigned to task" }),
+      .meta({ description: "Actor ID assigned to task" }),
     processingEnabled: z.boolean().nullable().meta({
       description: "Whether background processing is enabled for the item",
     }),
@@ -147,10 +147,10 @@ export const CreatedItemSchema = z
       .string()
       .nullable()
       .meta({ description: "Status field for tasks" }),
-    assignedToId: z
+    assigneeActorId: z
       .string()
       .nullable()
-      .meta({ description: "ID of user assigned to task" }),
+      .meta({ description: "Actor ID assigned to task" }),
     processingEnabled: z.boolean().nullable().meta({
       description:
         "Whether background processing is enabled for the created item",

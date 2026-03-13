@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
-import type { ReactNode } from "react";
 import { useState } from "react";
+import { ActorPicker } from "@/components/shared/ActorPicker";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { RecurrenceToggle } from "@/components/shared/recurrence-toggle";
 import { TagEditor } from "@/components/shared/TagEditor";
@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import type { ActorOption } from "@/hooks/use-actors";
 import type { Task, TaskStatus } from "@/types/task";
 import { CREATE_STATUS_OPTIONS, PRIORITY_OPTIONS } from "./task-utils";
 
@@ -32,7 +33,7 @@ const INITIAL_TASK: Omit<Task, "id"> = {
   description: "",
   status: "not-started",
   dueDate: "",
-  assignedToId: null,
+  assigneeActorId: null,
   tags: [],
   createdAt: "",
   updatedAt: "",
@@ -63,8 +64,7 @@ interface CreateTaskDialogProps {
   defaultAssigneeId?: string;
   /** Pre-fill parentId when creating a sub-task */
   parentId?: string | null;
-  /** Render the assignee SelectContent (shared with edit dialog) */
-  renderAssigneeSelectContent: () => ReactNode;
+  assigneeOptions: ActorOption[];
 }
 
 export function CreateTaskDialog({
@@ -74,20 +74,20 @@ export function CreateTaskDialog({
   isCreating,
   defaultAssigneeId,
   parentId,
-  renderAssigneeSelectContent,
+  assigneeOptions,
 }: CreateTaskDialogProps) {
   const [task, setTask] = useState<Omit<Task, "id">>({
     ...INITIAL_TASK,
-    assignedToId: defaultAssigneeId ?? null,
-    userId: defaultAssigneeId ?? "",
+    assigneeActorId: defaultAssigneeId ?? null,
+    userId: "",
     parentId: parentId ?? null,
   });
 
   const reset = (assigneeId?: string) =>
     setTask({
       ...INITIAL_TASK,
-      assignedToId: assigneeId ?? defaultAssigneeId ?? null,
-      userId: assigneeId ?? defaultAssigneeId ?? "",
+      assigneeActorId: assigneeId ?? defaultAssigneeId ?? null,
+      userId: "",
       parentId: parentId ?? null,
     });
 
@@ -230,20 +230,20 @@ export function CreateTaskDialog({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="new-assignee">Assignee</Label>
-                <Select
-                  value={task.assignedToId || "UNASSIGNED"}
-                  onValueChange={(value) =>
+                <ActorPicker
+                  id="new-assignee"
+                  actors={assigneeOptions}
+                  value={task.assigneeActorId ?? null}
+                  allowUnassigned
+                  placeholder="Search people and agents"
+                  searchPlaceholder="Search people and agents..."
+                  onChange={(value) =>
                     setTask({
                       ...task,
-                      assignedToId: value === "UNASSIGNED" ? null : value,
+                      assigneeActorId: value,
                     })
                   }
-                >
-                  <SelectTrigger id="new-assignee">
-                    <SelectValue placeholder="Assignee" />
-                  </SelectTrigger>
-                  {renderAssigneeSelectContent()}
-                </Select>
+                />
               </div>
             </div>
             {/* Tags */}

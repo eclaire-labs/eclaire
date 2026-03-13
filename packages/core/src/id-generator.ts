@@ -22,6 +22,7 @@ export const generateSecurityId = () => randomUUID();
  * These entities use clean nanoid with consistent prefixes
  */
 export const generateUserId = () => `user-${generateCleanId()}`;
+export const generateActorId = () => `actor-${generateCleanId()}`;
 export const generateTaskId = () => `task-${generateCleanId()}`;
 export const generateBookmarkId = () => `bm-${generateCleanId()}`;
 export const generateDocumentId = () => `doc-${generateCleanId()}`;
@@ -36,6 +37,7 @@ export const generateMessageId = () => `msg-${generateCleanId()}`;
 export const generateTaskCommentId = () => `tc-${generateCleanId()}`;
 export const generateChannelId = () => `ch-${generateCleanId()}`;
 export const generateFeedbackId = () => `fb-${generateCleanId()}`;
+export const generateAgentId = () => `agent-${generateCleanId()}`;
 
 /**
  * ID Generation for Storage Files
@@ -55,6 +57,7 @@ function createIdValidator(prefix: string): (id: string) => boolean {
 }
 
 export const isValidUserId = createIdValidator("user");
+export const isValidActorId = createIdValidator("actor");
 export const isValidTaskId = createIdValidator("task");
 export const isValidBookmarkId = createIdValidator("bm");
 export const isValidDocumentId = createIdValidator("doc");
@@ -69,6 +72,7 @@ export const isValidTaskCommentId = createIdValidator("tc");
 export const isValidChannelId = createIdValidator("ch");
 export const isValidAssetProcessingJobId = createIdValidator("apj");
 export const isValidFeedbackId = createIdValidator("fb");
+export const isValidAgentId = createIdValidator("agent");
 
 /**
  * Utility to extract entity type from ID
@@ -88,6 +92,7 @@ export const ID_CONSTANTS = {
   STANDARD_LENGTH,
   PREFIXES: {
     USER: "user-",
+    ACTOR: "actor-",
     TASK: "task-",
     BOOKMARK: "bm-",
     DOCUMENT: "doc-",
@@ -102,5 +107,6 @@ export const ID_CONSTANTS = {
     CHANNEL: "ch-",
     ASSET_PROCESSING_JOB: "apj-",
     FEEDBACK: "fb-",
+    AGENT: "agent-",
   },
 } as const;

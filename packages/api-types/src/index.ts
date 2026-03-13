@@ -1,6 +1,25 @@
 // Shared schemas and inferred types for the Eclaire API
 
 export {
+  DEFAULT_AGENT_ACTOR_ID,
+  ActorKindSchema,
+  ActorSummarySchema,
+  type ActorKind,
+  type ActorSummary,
+} from "./actors.js";
+
+export {
+  ApiKeyScopeSchema,
+  ApiKeyScopeCatalogItemSchema,
+  ActorApiKeySchema,
+  CreatedActorApiKeySchema,
+  type ApiKeyScope,
+  type ApiKeyScopeCatalogItem,
+  type ActorApiKey,
+  type CreatedActorApiKey,
+} from "./auth.js";
+
+export {
   reviewStatusSchema,
   flagColorSchema,
   taskStatusSchema,

@@ -52,7 +52,7 @@ export interface TaskJobData extends JobData {
   description?: string;
   isRecurringExecution?: boolean;
   isAssignedToAI?: boolean;
-  assignedToId?: string;
+  assigneeActorId?: string | null;
   dueDate?: Date;
   scheduledFor?: Date;
   jobType?: "tag_generation" | "execution";

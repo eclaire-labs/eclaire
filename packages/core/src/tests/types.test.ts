@@ -75,7 +75,7 @@ const constArrays = [
   {
     name: "HISTORY_ACTORS",
     arr: HISTORY_ACTORS,
-    expected: ["user", "assistant", "system"],
+    expected: ["human", "agent", "system", "service"],
   },
 ] as const;
 
@@ -86,13 +86,13 @@ describe.each(constArrays)("$name", ({ arr, expected }) => {
 });
 
 describe("HISTORY_ACTIONS", () => {
-  it("has 18 entries", () => {
-    expect(HISTORY_ACTIONS.length).toBe(18);
+  it("has 23 entries", () => {
+    expect(HISTORY_ACTIONS.length).toBe(23);
   });
 });
 
 describe("HISTORY_ITEM_TYPES", () => {
-  it("has 12 entries", () => {
-    expect(HISTORY_ITEM_TYPES.length).toBe(12);
+  it("has 19 entries", () => {
+    expect(HISTORY_ITEM_TYPES.length).toBe(19);
   });
 });

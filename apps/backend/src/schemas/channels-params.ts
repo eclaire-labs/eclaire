@@ -30,6 +30,15 @@ export const CreateChannelSchema = z
       }),
     platform: ChannelPlatformSchema,
     capability: ChannelCapabilitySchema,
+    agentActorId: z
+      .string()
+      .nullable()
+      .optional()
+      .meta({
+        description:
+          "Agent actor assigned to handle chat-capable channels. Defaults to Eclaire for chat and bidirectional channels when omitted.",
+        examples: ["eclaire", "ag_123", null],
+      }),
     config: z
       .object({})
       .passthrough()
@@ -60,6 +69,14 @@ export const UpdateChannelSchema = z
         examples: ["Updated Channel Name"],
       }),
     capability: ChannelCapabilitySchema.optional(),
+    agentActorId: z
+      .string()
+      .nullable()
+      .optional()
+      .meta({
+        description: "Updated agent actor assigned to this channel",
+        examples: ["eclaire", "ag_123", null],
+      }),
     config: z
       .object({})
       .passthrough()

@@ -1,4 +1,5 @@
 import z from "zod/v4";
+import { ActorSummarySchema } from "@eclaire/api-types";
 import {
   ChannelCapabilitySchema,
   ChannelPlatformSchema,
@@ -9,6 +10,8 @@ import { paginatedResponseSchema } from "./common.js";
 export const ChannelResponseSchema = z.object({
   id: z.string(),
   userId: z.string(),
+  agentActorId: z.string().nullable(),
+  agent: ActorSummarySchema.nullable(),
   name: z.string(),
   platform: ChannelPlatformSchema,
   capability: ChannelCapabilitySchema,

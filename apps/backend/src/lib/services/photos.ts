@@ -34,7 +34,11 @@ import {
 } from "../pagination.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
-import type { CallerContext } from "./types.js";
+import {
+  callerActorId,
+  callerOwnerUserId,
+  type CallerContext,
+} from "./types.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:photos");
@@ -258,6 +262,7 @@ export async function createPhoto(
   userId: string,
   caller: CallerContext,
 ) {
+  const actorId = callerActorId(caller);
   // Generate photo ID first so we can use it for storage
   const photoId = generatePhotoId();
   const { metadata, content, originalMimeType, userAgent, extractedMetadata } =
@@ -469,7 +474,7 @@ export async function createPhoto(
           tags: tags,
         },
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -570,7 +575,8 @@ export async function updatePhotoMetadata(
   photoData: UpdatePhotoParams,
   caller: CallerContext,
 ) {
-  const { userId } = caller;
+  const userId = callerOwnerUserId(caller);
+  const actorId = callerActorId(caller);
   try {
     // 1. Fetch existing photo for authorization and history
     // Fetch all relevant fields for history comparison
@@ -643,7 +649,7 @@ export async function updatePhotoMetadata(
           tags: tagNames ?? currentPhotoTags,
         },
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),
@@ -671,6 +677,7 @@ export async function deletePhoto(
   caller: CallerContext,
   deleteStorage: boolean = true,
 ) {
+  const actorId = callerActorId(caller);
   try {
     // 1. Fetch existing photo for authorization/history
     const existingPhoto = await db.query.photos.findFirst({
@@ -715,7 +722,7 @@ export async function deletePhoto(
         beforeData: { ...existingPhoto, tags: photoTags },
         afterData: null,
         actor: caller.actor,
-        actorId: caller.userId,
+        actorId,
         userId: userId,
         metadata: null,
         timestamp: new Date(),

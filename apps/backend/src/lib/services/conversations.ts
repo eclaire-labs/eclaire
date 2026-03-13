@@ -11,6 +11,7 @@ const logger = createChildLogger("conversations-service");
 
 export interface CreateConversationParams {
   userId: string;
+  agentActorId: string;
   title: string;
 }
 
@@ -21,6 +22,7 @@ export interface UpdateConversationParams {
 export interface ConversationWithMessages {
   id: string;
   userId: string;
+  agentActorId: string;
   title: string;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +31,7 @@ export interface ConversationWithMessages {
   messages: Array<{
     id: string;
     role: "user" | "assistant";
+    authorActorId?: string | null;
     content: string;
     thinkingContent?: string | null;
     toolCalls?: ToolCallSummary[];
@@ -41,6 +44,7 @@ export interface ConversationWithMessages {
 export interface ConversationSummary {
   id: string;
   userId: string;
+  agentActorId: string;
   title: string;
   createdAt: Date;
   updatedAt: Date;
@@ -61,6 +65,7 @@ export async function createConversation(
     .values({
       id: generateConversationId(),
       userId: params.userId,
+      agentActorId: params.agentActorId,
       title: params.title,
     })
     .returning();
@@ -151,15 +156,26 @@ export async function getConversationWithMessages(
  */
 export async function listConversations(
   userId: string,
+  agentActorId?: string,
   limit: number = 50,
   offset: number = 0,
 ): Promise<ConversationSummary[]> {
-  logger.debug({ userId, limit, offset }, "Listing conversations");
+  logger.debug(
+    { userId, agentActorId, limit, offset },
+    "Listing conversations",
+  );
 
   const userConversations = await db
     .select()
     .from(conversations)
-    .where(eq(conversations.userId, userId))
+    .where(
+      agentActorId
+        ? and(
+            eq(conversations.userId, userId),
+            eq(conversations.agentActorId, agentActorId),
+          )
+        : eq(conversations.userId, userId),
+    )
     .orderBy(desc(conversations.lastMessageAt))
     .limit(limit)
     .offset(offset);
@@ -175,11 +191,21 @@ export async function listConversations(
 /**
  * Count total conversations for a user
  */
-export async function countConversations(userId: string): Promise<number> {
+export async function countConversations(
+  userId: string,
+  agentActorId?: string,
+): Promise<number> {
   const [result] = await db
     .select({ count: count() })
     .from(conversations)
-    .where(eq(conversations.userId, userId));
+    .where(
+      agentActorId
+        ? and(
+            eq(conversations.userId, userId),
+            eq(conversations.agentActorId, agentActorId),
+          )
+        : eq(conversations.userId, userId),
+    );
   return result?.count ?? 0;
 }
 

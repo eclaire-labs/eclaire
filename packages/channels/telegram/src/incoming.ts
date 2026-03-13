@@ -1,3 +1,4 @@
+import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
 import type { BotContext } from "./commands.js";
@@ -15,8 +16,13 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const { findChannel, logger, processPromptRequest, recordHistory } =
-    getDeps();
+  const {
+    findChannel,
+    logger,
+    processPromptRequest,
+    recordHistory,
+    routeChannelPrompt,
+  } = getDeps();
 
   // biome-ignore lint/style/noNonNullAssertion: Telegraf text handler guarantees message
   if (!("text" in ctx.message!) || !ctx.message.text) {
@@ -66,6 +72,33 @@ export async function handleIncomingMessage(
       return;
     }
 
+    const routing = routeChannelPrompt
+      ? await routeChannelPrompt(
+          userId,
+          message,
+          channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+        )
+      : {
+          agentActorId: channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+          prompt: message,
+        };
+
+    if (routing.error) {
+      await ctx.reply(routing.error);
+      return;
+    }
+
+    const channelAgentActorId = routing.agentActorId;
+    const routedPrompt = routing.prompt;
+
+    if (
+      ctx.session.agentActorId &&
+      ctx.session.agentActorId !== channelAgentActorId
+    ) {
+      ctx.session.sessionId = undefined;
+      ctx.session.agentActorId = undefined;
+    }
+
     // Send typing indicator (with circuit breaker protection)
     if (ctx.chat) {
       await safeSendChatAction(ctx.telegram, ctx.chat.id, "typing", logger);
@@ -75,10 +108,19 @@ export async function handleIncomingMessage(
     const requestId = `telegram-${channelId}-${Date.now()}`;
 
     // Lazily create a session on first message if possible
-    if (!ctx.session.sessionId && deps.createSession) {
+    if (
+      (!ctx.session.sessionId ||
+        ctx.session.agentActorId !== channelAgentActorId) &&
+      deps.createSession
+    ) {
       try {
-        const session = await deps.createSession(userId);
+        const session = await deps.createSession(
+          userId,
+          undefined,
+          channelAgentActorId,
+        );
         ctx.session.sessionId = session.id;
+        ctx.session.agentActorId = channelAgentActorId;
       } catch (sessionError) {
         logger.warn(
           {
@@ -102,8 +144,8 @@ export async function handleIncomingMessage(
     if (deps.processPromptRequestStream && ctx.chat) {
       const stream = await deps.processPromptRequestStream({
         userId,
-        prompt: message,
-        context: { agent: "telegram-bot" },
+        prompt: routedPrompt,
+        context: { agentActorId: channelAgentActorId },
         requestId,
         conversationId: sessionId,
         enableThinking,
@@ -119,8 +161,8 @@ export async function handleIncomingMessage(
       // Non-streaming fallback
       const result = await processPromptRequest({
         userId,
-        prompt: message,
-        context: { agent: "telegram-bot" },
+        prompt: routedPrompt,
+        context: { agentActorId: channelAgentActorId },
         requestId,
         conversationId: sessionId,
         enableThinking,
@@ -155,7 +197,7 @@ export async function handleIncomingMessage(
         platform: "telegram",
         channelId,
       },
-      actor: "user",
+      actor: "human",
       userId: userId,
       metadata: {
         platform: "telegram",

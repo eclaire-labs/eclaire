@@ -1,7 +1,13 @@
 import type { Context } from "hono";
 import type { Logger } from "pino";
 import z from "zod/v4";
-import { getAuthenticatedUserId } from "../lib/auth-utils.js";
+import type { ApiKeyScope } from "@eclaire/api-types";
+import {
+  assertPrincipalScopes,
+  inferRequiredScopesForRequest,
+  type AuthPrincipal,
+} from "../lib/auth-principal.js";
+import { getAuthenticatedPrincipal } from "../lib/auth-utils.js";
 import {
   ForbiddenError,
   NotFoundError,
@@ -11,8 +17,18 @@ import type { RouteVariables } from "../types/route-variables.js";
 
 type HonoContext = Context<{ Variables: RouteVariables }>;
 
-// biome-ignore lint/suspicious/noExplicitAny: Hono's validator middleware enriches the context type — using `any` for the context parameter lets validated data (c.req.valid) flow through without type errors
-type AuthHandler = (c: any, userId: string) => Promise<any> | any;
+type AuthHandler = (
+  // biome-ignore lint/suspicious/noExplicitAny: validator middleware enriches the context at call sites; keeping the handler context open preserves those validated types
+  c: any,
+  userId: string,
+  principal: AuthPrincipal,
+  // biome-ignore lint/suspicious/noExplicitAny: Hono handlers return typed responses that don't share a clean common generic here
+) => Promise<any> | any;
+
+interface WithAuthOptions {
+  allowApiKey?: boolean;
+  requiredScopes?: ApiKeyScope[];
+}
 
 /**
  * Route handler wrapper that provides authenticated userId and centralized error handling.
@@ -25,15 +41,36 @@ type AuthHandler = (c: any, userId: string) => Promise<any> | any;
  *   - ZodError → 400 with details
  * - Catches unexpected errors, logs them, and returns 500
  */
-export function withAuth(handler: AuthHandler, logger: Logger) {
+export function withAuth(
+  handler: AuthHandler,
+  logger: Logger,
+  options?: WithAuthOptions,
+) {
   return async (c: HonoContext) => {
-    const userId = await getAuthenticatedUserId(c);
-    if (!userId) {
+    const principal = await getAuthenticatedPrincipal(c);
+    if (!principal) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
     try {
-      return await handler(c, userId);
+      if (
+        principal.authMethod === "api_key" &&
+        options?.allowApiKey === false
+      ) {
+        return c.json(
+          { error: "API keys are not allowed for this endpoint" },
+          403,
+        );
+      }
+
+      const requiredScopes =
+        options?.requiredScopes ??
+        inferRequiredScopesForRequest(c.req.path, c.req.method);
+
+      assertPrincipalScopes(principal, requiredScopes);
+
+      c.set("principal", principal);
+      return await handler(c, principal.ownerUserId, principal);
     } catch (error) {
       if (error instanceof NotFoundError) {
         return c.json({ error: error.message }, 404);
@@ -55,7 +92,9 @@ export function withAuth(handler: AuthHandler, logger: Logger) {
       logger.error(
         {
           requestId,
-          userId,
+          userId: principal.ownerUserId,
+          actorId: principal.actorId,
+          grantId: principal.grantId,
           error: error instanceof Error ? error.message : "Unknown error",
           stack: error instanceof Error ? error.stack : undefined,
         },

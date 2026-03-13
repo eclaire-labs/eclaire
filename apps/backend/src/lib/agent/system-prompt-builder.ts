@@ -1,19 +1,17 @@
 /**
  * System Prompt Builder
  *
- * Builds personalized system prompts for the AI agent.
- * Extracted from the original prompt.ts for better modularity.
+ * Builds personalized system prompts for the selected agent.
  */
 
 import {
-  getAlwaysIncludeSkills,
-  getPromptContributions,
-  getSkillSummary,
+  discoverSkills,
   loadSkillContent,
   toOpenAITools,
+  type RuntimeToolDefinition,
 } from "@eclaire/ai";
 import { backendTools } from "./tools/index.js";
-import type { UserContext } from "./types.js";
+import type { AgentDefinition, UserContext } from "./types.js";
 
 export interface AssetContent {
   type: string;
@@ -25,82 +23,97 @@ export type ToolCallingMode = "native" | "text" | "off";
 
 export interface BuildSystemPromptOptions {
   userContext?: UserContext | null;
+  agent?: AgentDefinition;
   assetContents?: AssetContent[];
+  tools?: Record<string, RuntimeToolDefinition>;
   toolCallingMode?: ToolCallingMode;
   isBackgroundTaskExecution?: boolean;
 }
 
-/**
- * Generate tool signatures for the system prompt.
- * Uses the declarative tool definitions to create TypeScript-like signatures.
- */
-function getToolSignatures(): string {
-  const tools = toOpenAITools(backendTools);
-  return tools
-    .map((t) => {
-      const params = t.function.parameters as {
+function getToolSignatures(
+  tools: Record<string, RuntimeToolDefinition>,
+): string {
+  return toOpenAITools(tools)
+    .map((tool) => {
+      const params = tool.function.parameters as {
         properties?: Record<string, unknown>;
       };
       const paramStr = params.properties
         ? Object.entries(params.properties)
             .map(([name, schema]) => {
-              const s = schema as { type?: string; description?: string };
-              return `${name}?: ${s.type || "any"}`;
+              const param = schema as { type?: string };
+              return `${name}?: ${param.type || "any"}`;
             })
             .join(", ")
         : "";
-      return `function ${t.function.name}(${paramStr}): Promise<any>; // ${t.function.description}`;
+
+      return `function ${tool.function.name}(${paramStr}): Promise<any>; // ${tool.function.description}`;
     })
     .join("\n");
 }
 
-/**
- * Append skill content and tool prompt contributions to a system prompt.
- * No-op when no skills or contributions are configured.
- */
-function appendSkillContent(prompt: string): string {
+function appendAgentCapabilities(
+  prompt: string,
+  options: {
+    agent?: AgentDefinition;
+    tools: Record<string, RuntimeToolDefinition>;
+  },
+): string {
   let result = prompt;
 
-  // Skill summary with on-demand loading instruction
-  const summary = getSkillSummary();
-  if (summary) {
-    result += `\n\n## Skills\n${summary}\n\nUse the loadSkill tool to load a skill's full instructions when the task matches its description.`;
+  const discoveredSkills = discoverSkills();
+  const enabledSkills = (options.agent?.skillNames ?? [])
+    .map((name) => discoveredSkills.find((skill) => skill.name === name))
+    .filter((skill): skill is NonNullable<typeof skill> => !!skill);
+
+  if (enabledSkills.length > 0) {
+    result += `\n\n## Skills\nAvailable skills:\n${enabledSkills.map((skill) => `- ${skill.name}: ${skill.description}`).join("\n")}\n\nUse the loadSkill tool to load a skill's full instructions when the task matches its description.`;
   }
 
-  // Always-include skills get their full content injected
-  const alwaysInclude = getAlwaysIncludeSkills();
-  for (const skill of alwaysInclude) {
+  for (const skill of enabledSkills) {
+    if (!skill.alwaysInclude) {
+      continue;
+    }
+
     const content = loadSkillContent(skill.name);
     if (content) {
       result += `\n\n## ${skill.name}\n${content}`;
     }
   }
 
-  // Tool prompt contributions (snippets and guidelines from active tools)
-  const { snippets, guidelines } = getPromptContributions();
+  const snippets: string[] = [];
+  const guidelines: string[] = [];
+
+  for (const tool of Object.values(options.tools)) {
+    if (tool.promptSnippet) {
+      snippets.push(tool.promptSnippet);
+    }
+    if (tool.promptGuidelines) {
+      guidelines.push(...tool.promptGuidelines);
+    }
+  }
+
   if (snippets.length > 0) {
     result += `\n\n${snippets.join("\n\n")}`;
   }
+
   if (guidelines.length > 0) {
-    result += `\n\n## Tool Guidelines\n${guidelines.map((g) => `- ${g}`).join("\n")}`;
+    result += `\n\n## Tool Guidelines\n${guidelines.map((guideline) => `- ${guideline}`).join("\n")}`;
   }
 
   return result;
 }
 
-/**
- * Build the system prompt with user context and current date/time
- */
 export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
   const {
     userContext,
+    agent,
     assetContents,
+    tools = backendTools,
     toolCallingMode = "native",
     isBackgroundTaskExecution = false,
   } = options;
 
-  // Only include tool signatures/JSON format for "text" mode
-  // In "native" mode, tools are sent via API - no need to describe them in prompt
   const includeToolSignatures = toolCallingMode === "text";
 
   const currentDate = new Date();
@@ -112,13 +125,11 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
     day: "numeric",
   });
 
-  // Build personalized greeting
-  let personalizedGreeting = "You are a helpful assistant.";
-  if (userContext?.displayName) {
-    personalizedGreeting = `You are a helpful assistant talking to ${userContext.displayName}.`;
-  }
+  const fallbackInstruction = userContext?.displayName
+    ? `You are a helpful assistant talking to ${userContext.displayName}.`
+    : "You are a helpful assistant.";
+  const baseInstruction = agent?.systemPrompt?.trim() || fallbackInstruction;
 
-  // Add user context information
   let userContextInfo = "";
   if (userContext) {
     const hasContext =
@@ -151,7 +162,6 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
     }
   }
 
-  // Build asset content section
   let assetContentSection = "";
   if (assetContents && assetContents.length > 0) {
     assetContentSection =
@@ -160,11 +170,9 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
     for (const asset of assetContents) {
       assetContentSection += `### ${asset.type.charAt(0).toUpperCase() + asset.type.slice(1)} (ID: ${asset.id})\n`;
       if (asset.content) {
-        // Truncate very long content to avoid overwhelming the AI
         const truncatedContent =
           asset.content.length > 4000
-            ? asset.content.substring(0, 4000) +
-              "\n\n[Content truncated - showing first 4000 characters]"
+            ? `${asset.content.substring(0, 4000)}\n\n[Content truncated - showing first 4000 characters]`
             : asset.content;
         assetContentSection += `${truncatedContent}\n\n`;
       } else {
@@ -176,12 +184,10 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
       "When answering the user's question, please reference and use the content above as the primary source. Focus on providing a helpful response based on this content.\n";
   }
 
-  // Base prompt with personalization and content
-  const basePrompt = `${personalizedGreeting}
+  const basePrompt = `${baseInstruction}
 
 Current Date & Time: ${currentDateString} (${currentTimeString})${userContextInfo}${assetContentSection}`;
 
-  // Special prompt for background task execution
   if (isBackgroundTaskExecution) {
     const toolSignaturesSection = includeToolSignatures
       ? `
@@ -189,7 +195,7 @@ Analyze the task request. If it requires searching for information or counting i
 Dates must be ISO strings (YYYY-MM-DD).
 
 \`\`\`typescript
-${getToolSignatures()}
+${getToolSignatures(tools)}
 \`\`\`
 
 # Response Format: Plain Text with Optional Tool Calls
@@ -209,7 +215,8 @@ If you need to call tools, use this JSON format:
 `
       : "";
 
-    return appendSkillContent(`${basePrompt}
+    return appendAgentCapabilities(
+      `${basePrompt}
 
 You are an AI assistant that has been assigned to work on a task. You have full access to search tools to find related information in the user's knowledge base (notes, bookmarks, documents, photos, and other tasks) that might be relevant to completing this task.
 
@@ -240,17 +247,20 @@ CRITICAL RULES:
 5. These are internal app navigation links, NOT web URLs
 
 REMEMBER: These /content-type/id links become clickable buttons in the user interface for easy navigation.
-${toolSignaturesSection}`);
+${toolSignaturesSection}`,
+      { agent, tools },
+    );
   }
 
-  // If tools are off, return simple conversational prompt
   if (toolCallingMode === "off") {
-    return appendSkillContent(`${basePrompt}
+    return appendAgentCapabilities(
+      `${basePrompt}
 
-Please provide a helpful and informative response based on the user's question and any referenced content above. Be conversational and focus on directly answering their question.`);
+Please provide a helpful and informative response based on the user's question and any referenced content above. Be conversational and focus on directly answering their question.`,
+      { agent, tools },
+    );
   }
 
-  // Tool signatures section only for "text" mode
   const toolSignaturesSection = includeToolSignatures
     ? `
 # Response Format: Plain Text with Optional Tool Calls
@@ -271,13 +281,13 @@ If you need to call tools, use this JSON format:
 Dates must be ISO strings (YYYY-MM-DD).
 
 \`\`\`typescript
-${getToolSignatures()}
+${getToolSignatures(tools)}
 \`\`\`
 `
     : "";
 
-  // Prompt with content linking requirements (always) and tool signatures (text mode only)
-  return appendSkillContent(`${basePrompt}
+  return appendAgentCapabilities(
+    `${basePrompt}
 
 **CRITICAL: Content Linking Requirements**
 
@@ -300,5 +310,7 @@ CRITICAL RULES:
 5. These are internal app navigation links, NOT web URLs
 
 REMEMBER: These /content-type/id links become clickable buttons in the user interface for easy navigation.
-${toolSignaturesSection}`);
+${toolSignaturesSection}`,
+    { agent, tools },
+  );
 }

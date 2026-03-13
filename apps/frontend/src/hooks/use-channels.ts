@@ -2,11 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
+import type { ActorSummary } from "@/lib/api-actors";
 
 // Channel types based on backend schemas
 export interface Channel {
   id: string;
   userId: string;
+  agentActorId: string | null;
+  agent: ActorSummary | null;
   name: string;
   platform: "telegram" | "slack" | "whatsapp" | "email" | "discord";
   capability: "notification" | "chat" | "bidirectional";
@@ -31,12 +34,14 @@ export interface CreateChannelData {
   name: string;
   platform: Channel["platform"];
   capability: Channel["capability"];
+  agentActorId?: string | null;
   config: TelegramConfig | SlackConfig | Record<string, unknown>;
 }
 
 export interface UpdateChannelData {
   name?: string;
   capability?: Channel["capability"];
+  agentActorId?: string | null;
   config?: TelegramConfig | SlackConfig | Record<string, unknown>;
   isActive?: boolean;
 }

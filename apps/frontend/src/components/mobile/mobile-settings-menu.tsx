@@ -54,14 +54,14 @@ const settingsMenuItems: SettingsMenuItem[] = [
   {
     id: "assistant",
     label: "Assistant",
-    description: "AI assistant settings and behavior",
+    description: "Overlay and display behavior",
     icon: Bot,
     href: "/settings?tab=assistant",
   },
   {
     id: "api-keys",
     label: "API Keys",
-    description: "Manage API keys and integrations",
+    description: "Manage actor keys and external systems",
     icon: Key,
     href: "/settings?tab=api-keys",
   },

@@ -14,6 +14,7 @@ import {
   validateAndNormalizeBookmarkUrl,
 } from "../lib/services/bookmarks.js";
 import { parseDeleteStorage, parseSearchFields } from "../lib/search-params.js";
+import { principalCaller } from "../lib/services/types.js";
 import { getStorage } from "../lib/storage/index.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
@@ -77,7 +78,8 @@ bookmarksRoutes.post(
   "/",
   describeRoute(postBookmarksRouteDescription),
   zValidator("json", CreateBookmarkSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const body = c.req.valid("json");
     const {
       url,
@@ -120,7 +122,7 @@ bookmarksRoutes.post(
         rawMetadata: enrichedMetadata,
         userAgent: c.req.header("User-Agent") || "",
       },
-      { userId, actor: "user" },
+      caller,
     );
 
     if (!result.success) {
@@ -156,13 +158,11 @@ bookmarksRoutes.put(
   "/:id",
   describeRoute(putBookmarkRouteDescription),
   zValidator("json", BookmarkSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedBookmark = await updateBookmark(id, validatedData, {
-      userId,
-      actor: "user",
-    });
+    const updatedBookmark = await updateBookmark(id, validatedData, caller);
 
     if (!updatedBookmark) {
       throw new NotFoundError("Bookmark");
@@ -177,13 +177,11 @@ bookmarksRoutes.patch(
   "/:id",
   describeRoute(patchBookmarkRouteDescription),
   zValidator("json", PartialBookmarkSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, _userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
-    const updatedBookmark = await updateBookmark(id, validatedData, {
-      userId,
-      actor: "user",
-    });
+    const updatedBookmark = await updateBookmark(id, validatedData, caller);
 
     if (!updatedBookmark) {
       throw new NotFoundError("Bookmark");
@@ -197,14 +195,10 @@ bookmarksRoutes.patch(
 bookmarksRoutes.delete(
   "/:id",
   describeRoute(deleteBookmarkRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const id = c.req.param("id");
-    await deleteBookmark(
-      id,
-      userId,
-      { userId, actor: "user" },
-      parseDeleteStorage(c),
-    );
+    await deleteBookmark(id, userId, caller, parseDeleteStorage(c));
     return new Response(null, { status: 204 });
   }, logger),
 );
@@ -343,7 +337,8 @@ registerCommonEndpoints(bookmarksRoutes, {
 bookmarksRoutes.post(
   "/import",
   describeRoute(postBookmarksImportRouteDescription),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const body = await c.req.parseBody();
     const file = body.file as File;
 
@@ -377,10 +372,7 @@ bookmarksRoutes.post(
 
     // Import bookmarks using the service
     const { importBookmarkFile } = await import("../lib/services/bookmarks.js");
-    const result = await importBookmarkFile(userId, bookmarkData, {
-      userId,
-      actor: "user",
-    });
+    const result = await importBookmarkFile(userId, bookmarkData, caller);
 
     return c.json({
       message: "Bookmarks imported successfully",

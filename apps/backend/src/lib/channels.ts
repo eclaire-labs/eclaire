@@ -11,6 +11,7 @@ import {
 } from "./agent/index.js";
 import { decrypt, encrypt } from "./encryption.js";
 import { createChildLogger } from "./logger.js";
+import { listAgents } from "./services/agents.js";
 import { recordHistory } from "./services/history.js";
 import {
   createSession,
@@ -21,12 +22,110 @@ import { systemCaller } from "./services/types.js";
 
 export const channelRegistry = new ChannelRegistry();
 
+function buildAgentHandleCandidates(name: string): string[] {
+  const normalized = name
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9_\s-]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  if (!normalized) {
+    return [];
+  }
+
+  return Array.from(
+    new Set([
+      normalized,
+      normalized.replace(/-/g, "_"),
+      normalized.replace(/-/g, ""),
+    ]),
+  );
+}
+
+function parseAddressedPrompt(prompt: string): {
+  handle: string;
+  cleanedPrompt: string;
+} | null {
+  const match = prompt.match(/^\s*@([a-z0-9_-]+)\s*[:,-]?\s*(.*)$/is);
+  if (!match) {
+    return null;
+  }
+
+  const [, rawHandle, rawPrompt] = match;
+  if (!rawHandle) {
+    return null;
+  }
+
+  return {
+    handle: rawHandle.toLowerCase(),
+    cleanedPrompt: rawPrompt?.trim() ?? "",
+  };
+}
+
+async function routeChannelPrompt(
+  userId: string,
+  prompt: string,
+  defaultAgentActorId: string,
+): Promise<{
+  agentActorId: string;
+  prompt: string;
+  addressedAgentName?: string;
+  error?: string;
+}> {
+  const addressedPrompt = parseAddressedPrompt(prompt);
+  if (!addressedPrompt) {
+    return { agentActorId: defaultAgentActorId, prompt };
+  }
+
+  const availableAgents = await listAgents(userId);
+  const matchedAgent = availableAgents.find((agent) =>
+    buildAgentHandleCandidates(agent.name).includes(addressedPrompt.handle),
+  );
+
+  if (!matchedAgent) {
+    const knownHandles = availableAgents
+      .flatMap((agent) => buildAgentHandleCandidates(agent.name).slice(0, 1))
+      .slice(0, 6)
+      .map((handle) => `@${handle}`)
+      .join(", ");
+
+    return {
+      agentActorId: defaultAgentActorId,
+      prompt,
+      error: knownHandles
+        ? `I couldn't find agent @${addressedPrompt.handle}. Try one of: ${knownHandles}.`
+        : `I couldn't find agent @${addressedPrompt.handle}.`,
+    };
+  }
+
+  if (!addressedPrompt.cleanedPrompt) {
+    return {
+      agentActorId: matchedAgent.id,
+      prompt,
+      error: `Tell me what you want ${matchedAgent.name} to do after @${addressedPrompt.handle}.`,
+    };
+  }
+
+  return {
+    agentActorId: matchedAgent.id,
+    prompt: addressedPrompt.cleanedPrompt,
+    addressedAgentName: matchedAgent.name,
+  };
+}
+
 /** Shared session & model deps for all channel adapters. */
 const sessionAndModelDeps = {
-  createSession: (userId: string, title?: string) =>
-    createSession(userId, systemCaller(userId), title),
-  listSessions: async (userId: string, limit?: number, offset?: number) => {
-    const result = await listSessions(userId, limit, offset);
+  createSession: (userId: string, title?: string, agentActorId?: string) =>
+    createSession(userId, systemCaller(userId), title, agentActorId),
+  listSessions: async (
+    userId: string,
+    limit?: number,
+    offset?: number,
+    agentActorId?: string,
+  ) => {
+    const result = await listSessions(userId, agentActorId, limit, offset);
     return result.items;
   },
   deleteSession: (sessionId: string, userId: string) =>
@@ -40,6 +139,7 @@ const sessionAndModelDeps = {
       model: model.providerModel,
     };
   },
+  routeChannelPrompt,
 } as const;
 
 /** Build platform-specific channel query helpers. */

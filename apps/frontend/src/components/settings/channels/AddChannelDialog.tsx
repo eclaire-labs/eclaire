@@ -1,6 +1,8 @@
+import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { ActorPicker } from "@/components/shared/ActorPicker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useActors } from "@/hooks/use-actors";
 import {
   type Channel,
   type SlackConfig,
@@ -36,7 +39,11 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
   const [selectedPlatform, setSelectedPlatform] = useState<
     Channel["platform"] | null
   >(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(
+    DEFAULT_AGENT_ACTOR_ID,
+  );
   const { createChannel, isCreating } = useChannels();
+  const { actors: availableAgents } = useActors(["agent"]);
 
   const handleCreateChannel = async (data: {
     name: string;
@@ -54,6 +61,8 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
         name: data.name,
         platform: selectedPlatform,
         capability: data.capability,
+        agentActorId:
+          data.capability === "notification" ? null : selectedAgentId,
         config: data.config,
       });
 
@@ -68,9 +77,31 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
     if (!newOpen) {
       // Reset platform selection when closing
       setSelectedPlatform(null);
+      setSelectedAgentId(DEFAULT_AGENT_ACTOR_ID);
     }
     setOpen(newOpen);
   };
+
+  const renderAgentSelect = (
+    <div className="space-y-2">
+      <Label htmlFor="new-channel-agent">Channel Agent</Label>
+      <ActorPicker
+        id="new-channel-agent"
+        actors={availableAgents}
+        value={selectedAgentId}
+        placeholder="Search channel agents"
+        searchPlaceholder="Search channel agents..."
+        onChange={(value) => {
+          if (value) {
+            setSelectedAgentId(value);
+          }
+        }}
+      />
+      <p className="text-sm text-muted-foreground">
+        Chat-capable channels will route conversations through this agent.
+      </p>
+    </div>
+  );
 
   const renderPlatformForm = () => {
     switch (selectedPlatform) {
@@ -79,6 +110,7 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
           <TelegramChannelForm
             onSubmit={handleCreateChannel}
             isSubmitting={isCreating}
+            renderExtraFields={renderAgentSelect}
           />
         );
       case "slack":
@@ -86,6 +118,7 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
           <SlackChannelForm
             onSubmit={handleCreateChannel}
             isSubmitting={isCreating}
+            renderExtraFields={renderAgentSelect}
           />
         );
       default:
@@ -112,7 +145,7 @@ export default function AddChannelDialog({ trigger }: AddChannelDialogProps) {
           <DialogTitle>Add Communication Channel</DialogTitle>
           <DialogDescription>
             Connect a new platform to receive notifications and interact with
-            your assistant.
+            your selected agent.
           </DialogDescription>
         </DialogHeader>
 

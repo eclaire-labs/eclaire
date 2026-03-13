@@ -50,7 +50,7 @@ type HistoryItemType =
   | "api_error"
   | "content_submission";
 
-type HistoryActor = "user" | "assistant" | "system";
+type HistoryActor = "human" | "agent" | "system" | "service";
 
 // Interface for history item
 interface HistoryItem {
@@ -382,9 +382,10 @@ export default function HistoryPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Actors</SelectItem>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="assistant">Assistant</SelectItem>
+                <SelectItem value="human">Human</SelectItem>
+                <SelectItem value="agent">Agent</SelectItem>
                 <SelectItem value="system">System</SelectItem>
+                <SelectItem value="service">Service</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -505,9 +506,10 @@ export default function HistoryPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Actors</SelectItem>
-              <SelectItem value="user">User</SelectItem>
-              <SelectItem value="assistant">Assistant</SelectItem>
+              <SelectItem value="human">Human</SelectItem>
+              <SelectItem value="agent">Agent</SelectItem>
               <SelectItem value="system">System</SelectItem>
+              <SelectItem value="service">Service</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -565,7 +567,7 @@ export default function HistoryPage() {
                     {getChangeDescription(item)}
                     {" by "}
                     <span className="flex items-center inline-flex">
-                      {item.actor === "user" ? (
+                      {item.actor === "human" ? (
                         auth?.user ? (
                           <UserAvatar
                             user={adaptUserForAvatar(auth.user)}
@@ -575,12 +577,12 @@ export default function HistoryPage() {
                         ) : (
                           <User className="mr-1 h-3 w-3" />
                         )
-                      ) : item.actor === "assistant" ? (
+                      ) : item.actor === "agent" ? (
                         <AIAvatar size="sm" className="mr-1" />
                       ) : (
                         <User className="mr-1 h-3 w-3" />
                       )}
-                      {item.actor === "user"
+                      {item.actor === "human"
                         ? auth?.user
                           ? // biome-ignore lint/suspicious/noExplicitAny: auth user type lacks displayName/name
                             (auth.user as any).displayName ||
@@ -589,9 +591,11 @@ export default function HistoryPage() {
                             auth.user.email ||
                             "You"
                           : "You"
-                        : item.actor === "assistant"
-                          ? "Assistant"
-                          : "System"}
+                        : item.actor === "agent"
+                          ? "Agent"
+                          : item.actor === "service"
+                            ? "Service"
+                            : "System"}
                     </span>
                   </span>
                 </div>

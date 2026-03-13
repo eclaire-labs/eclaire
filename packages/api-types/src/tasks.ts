@@ -1,4 +1,5 @@
 import z from "zod/v4";
+import { ActorSummarySchema } from "./actors.js";
 import { paginatedResponseSchema, reviewStatusSchema } from "./common.js";
 
 export const CommentUserSchema = z
@@ -13,10 +14,11 @@ export const TaskCommentSchema = z
   .object({
     id: z.string(),
     taskId: z.string(),
-    userId: z.string(),
+    authorActorId: z.string(),
     content: z.string(),
     createdAt: z.string(),
     updatedAt: z.string(),
+    author: ActorSummarySchema,
     user: CommentUserSchema,
   })
   .meta({ ref: "TaskComment" });
@@ -35,7 +37,7 @@ export const TaskResponseSchema = z
     ]),
     priority: z.number().int().min(0).max(4),
     dueDate: z.string().nullable(),
-    assignedToId: z.string().nullable(),
+    assigneeActorId: z.string().nullable(),
     reviewStatus: reviewStatusSchema,
     flagColor: z.enum(["red", "yellow", "orange", "green", "blue"]).nullable(),
     isPinned: z.boolean(),

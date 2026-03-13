@@ -80,7 +80,8 @@ export function TaskListItem({
   allAssignees,
   currentUser,
 }: TaskListItemProps) {
-  const assignee = allAssignees.find((a) => a.id === task.assignedToId);
+  const assigneeId = task.assigneeActorId;
+  const assignee = allAssignees.find((a) => a.id === assigneeId);
 
   const statusConfig = getStatusConfig(task.status);
 
@@ -172,7 +173,7 @@ export function TaskListItem({
       <TableCell className="hidden lg:table-cell align-middle">
         <div className="flex items-center text-sm text-muted-foreground truncate">
           <span className="truncate">
-            {task.assignedToId ? (
+            {assigneeId ? (
               <div className="flex items-center gap-1">
                 {assignee?.userType === "assistant" ? (
                   <AIAvatar size="sm" />
@@ -184,7 +185,7 @@ export function TaskListItem({
                 ) : (
                   <UserIcon className="h-3 w-3" />
                 )}
-                <span>{assignee ? assignee.name : task.assignedToId}</span>
+                <span>{assignee ? assignee.name : assigneeId}</span>
               </div>
             ) : (
               <span className="italic">Unassigned</span>
