@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef } from "react";
+import { PushToTalkButton } from "@/components/assistant/push-to-talk-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -118,6 +119,12 @@ export function MessageInput({
           disabled={isLoading}
           className="flex-1 min-h-[40px] max-h-[120px] resize-none py-2.5 text-sm"
           rows={1}
+        />
+        <PushToTalkButton
+          onTranscription={(text) => {
+            onChange(value + (value ? " " : "") + text);
+          }}
+          disabled={isLoading}
         />
         <Button
           type="submit"

@@ -86,6 +86,7 @@
     "@bull-board/ui": "6.20.3",
     "@eclaire/ai": "workspace:*",
     "@eclaire/api-types": "workspace:*",
+    "@eclaire/audio": "workspace:*",
     "@eclaire/channels-core": "workspace:*",
     "@eclaire/channels-discord": "workspace:*",
     "@eclaire/channels-slack": "workspace:*",

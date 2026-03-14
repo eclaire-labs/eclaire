@@ -10,6 +10,7 @@ import type { Hono } from "hono";
 import { allRoutes } from "./all.js";
 import { agentsRoutes } from "./agents.js";
 import { actorsRoutes } from "./actors.js";
+import { audioRoutes } from "./audio.js";
 import { authRoutes } from "./auth.js";
 import { bookmarksRoutes } from "./bookmarks.js";
 import { browserRoutes } from "./browser.js";
@@ -33,6 +34,7 @@ export function registerApiRoutes(app: Hono<any>): void {
   app.route("/api/auth", authRoutes);
   app.route("/api/agents", agentsRoutes);
   app.route("/api/actors", actorsRoutes);
+  app.route("/api/audio", audioRoutes);
   app.route("/api/tasks", tasksRoutes);
   app.route("/api/bookmarks", bookmarksRoutes);
   app.route("/api/browser", browserRoutes);

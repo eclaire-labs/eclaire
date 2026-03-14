@@ -68,6 +68,9 @@ importers:
       '@eclaire/api-types':
         specifier: workspace:*
         version: link:../../packages/api-types
+      '@eclaire/audio':
+        specifier: workspace:*
+        version: link:../../packages/audio
       '@eclaire/channels-core':
         specifier: workspace:*
         version: link:../../packages/channels/core
@@ -600,6 +603,28 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+
+  packages/audio:
+    dependencies:
+      '@eclaire/logger':
+        specifier: workspace:*
+        version: link:../logger
+    devDependencies:
+      '@biomejs/biome':
+        specifier: 'catalog:'
+        version: 2.4.4
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.10.4
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.50.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 4.0.18
+        version: 4.0.18(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@2.0.1))(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/channels/core:
     devDependencies:

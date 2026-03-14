@@ -2,6 +2,7 @@
 
 import { User } from "lucide-react";
 import { AIAvatar } from "@/components/assistant/ai-avatar";
+import { AudioPlaybackButton } from "@/components/assistant/audio-playback-button";
 import { ToolExecutionTracker } from "@/components/assistant/tool-execution-tracker";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -87,18 +88,25 @@ export function MessageItem({
           </div>
         )}
 
-        {/* Timestamp */}
-        <p
-          className={cn(
-            "text-[10px] mt-1",
-            isUser ? "text-primary-foreground/60" : "text-muted-foreground/60",
+        {/* Timestamp + audio playback */}
+        <div className="flex items-center gap-1 mt-1">
+          <p
+            className={cn(
+              "text-[10px]",
+              isUser
+                ? "text-primary-foreground/60"
+                : "text-muted-foreground/60",
+            )}
+          >
+            {message.timestamp.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </p>
+          {!isUser && !message.isError && (
+            <AudioPlaybackButton text={message.content} />
           )}
-        >
-          {message.timestamp.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </p>
+        </div>
       </div>
 
       {isUser &&

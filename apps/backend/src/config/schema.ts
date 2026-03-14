@@ -80,6 +80,16 @@ export interface EclaireConfig {
     userSkillsDirs?: string[];
   };
 
+  // Audio (STT/TTS via mlx-audio)
+  audio: {
+    enabled: boolean;
+    baseUrl: string;
+    requestTimeoutMs: number;
+    defaultSttModel: string;
+    defaultTtsModel: string;
+    defaultTtsVoice: string;
+  };
+
   // Browser automation
   browser: {
     chromeMcpCommand: string;
@@ -367,6 +377,17 @@ export function buildConfig(): EclaireConfig {
       timeout: int(env.AI_TIMEOUT, 180000),
       skillsDir: env.AI_SKILLS_DIR || undefined,
       userSkillsDirs: stringList(env.AI_USER_SKILLS_DIRS),
+    },
+
+    // Audio (STT/TTS via mlx-audio)
+    audio: {
+      enabled: env.AUDIO_ENABLED === "true",
+      baseUrl: env.AUDIO_BASE_URL || "http://127.0.0.1:9100",
+      requestTimeoutMs: int(env.AUDIO_REQUEST_TIMEOUT, 30000),
+      defaultSttModel:
+        env.AUDIO_STT_MODEL || "mlx-community/parakeet-tdt-0.6b-v3",
+      defaultTtsModel: env.AUDIO_TTS_MODEL || "mlx-community/chatterbox-4bit",
+      defaultTtsVoice: env.AUDIO_TTS_VOICE || "",
     },
 
     // Browser automation

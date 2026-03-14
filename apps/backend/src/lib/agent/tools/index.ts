@@ -7,6 +7,7 @@
 
 import type { RuntimeToolDefinition } from "@eclaire/ai";
 import { getMcpRegistry } from "../../mcp/index.js";
+import { isAudioAvailable } from "../../services/audio.js";
 // Count tools
 import { countBookmarksTool } from "./count-bookmarks.js";
 import { countDocumentsTool } from "./count-documents.js";
@@ -37,6 +38,9 @@ import { searchAllTool } from "./search-all.js";
 import { addTaskCommentTool } from "./add-task-comment.js";
 import { browseChromeTool } from "./browse-chrome.js";
 import { browseWebTool } from "./browse-web.js";
+// Audio tools
+import { synthesizeSpeechTool } from "./synthesize-speech.js";
+import { transcribeAudioTool } from "./transcribe-audio.js";
 // Tag tools
 import { listTagsTool } from "./list-tags.js";
 // Update tools
@@ -91,14 +95,23 @@ const staticTools: Record<string, RuntimeToolDefinition> = {
  * Use this instead of `staticTools` when you need the full tool set.
  */
 export function getBackendTools(): Record<string, RuntimeToolDefinition> {
+  const tools: Record<string, RuntimeToolDefinition> = { ...staticTools };
+
+  // Merge MCP-sourced tools
   try {
     const mcpTools = getMcpRegistry().getMcpTools();
-    if (Object.keys(mcpTools).length === 0) return staticTools;
-    return { ...staticTools, ...mcpTools };
+    Object.assign(tools, mcpTools);
   } catch {
     // Registry not yet initialized (e.g. during import-time access)
-    return staticTools;
   }
+
+  // Merge audio tools if audio service is available
+  if (isAudioAvailable()) {
+    tools.transcribeAudio = transcribeAudioTool;
+    tools.synthesizeSpeech = synthesizeSpeechTool;
+  }
+
+  return tools;
 }
 
 /**
@@ -135,3 +148,6 @@ export { searchAllTool } from "./search-all.js";
 export { updateBookmarkTool } from "./update-bookmark.js";
 export { updateNoteTool } from "./update-note.js";
 export { updateTaskTool } from "./update-task.js";
+// Audio tools
+export { synthesizeSpeechTool } from "./synthesize-speech.js";
+export { transcribeAudioTool } from "./transcribe-audio.js";
