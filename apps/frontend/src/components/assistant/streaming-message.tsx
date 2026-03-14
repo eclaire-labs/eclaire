@@ -105,6 +105,7 @@ export function StreamingMessage({
       <MarkdownDisplay
         content={displayedContent}
         className="text-sm prose-sm"
+        skipLinkDetection
       />
       {shouldShowCursor && (
         <span className="inline-block w-2 h-4 bg-primary ml-1 animate-pulse" />

@@ -6,9 +6,60 @@
  */
 
 import * as path from "node:path";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { initAI, registerSkillSource } from "@eclaire/ai";
 import { config } from "../config/index.js";
 import { createChildLogger } from "./logger.js";
+
+type SkillSourceScope = "admin" | "user";
+
+export interface RegisteredSkillSource {
+  dir: string;
+  scope: SkillSourceScope;
+}
+
+export function resolveAISkillSources(
+  options: {
+    runtime?: "local" | "container";
+    configDir?: string;
+    adminSkillsDir?: string;
+    userSkillsDirs?: string[];
+    userHomeDir?: string;
+    pathExists?: (filePath: string) => boolean;
+  } = {},
+): RegisteredSkillSource[] {
+  const runtime = options.runtime ?? config.runtime;
+  const configDir = options.configDir ?? config.dirs.config;
+  const adminSkillsDir = options.adminSkillsDir ?? config.ai.skillsDir;
+  const userSkillsDirs = options.userSkillsDirs ?? config.ai.userSkillsDirs;
+  const userHomeDir = options.userHomeDir ?? homedir();
+  const pathExists = options.pathExists ?? existsSync;
+
+  const sources: RegisteredSkillSource[] = [
+    {
+      dir: path.join(configDir, "ai", "skills"),
+      scope: "admin",
+    },
+  ];
+
+  if (adminSkillsDir) {
+    sources.push({ dir: adminSkillsDir, scope: "admin" });
+  }
+
+  if (runtime === "local") {
+    const defaultUserSkillsDir = path.join(userHomeDir, ".agents", "skills");
+    if (pathExists(defaultUserSkillsDir)) {
+      sources.push({ dir: defaultUserSkillsDir, scope: "user" });
+    }
+
+    for (const dir of userSkillsDirs ?? []) {
+      sources.push({ dir, scope: "user" });
+    }
+  }
+
+  return sources;
+}
 
 /**
  * Initialize the AI client with backend configuration.
@@ -21,11 +72,7 @@ export function initializeAI(): void {
     debugLogPath: config.ai.debugLogPath,
   });
 
-  // Register skill sources (directories may not exist yet — registry handles gracefully)
-  const defaultSkillsDir = path.join(config.dirs.config, "ai", "skills");
-  registerSkillSource(defaultSkillsDir, "admin");
-
-  if (config.ai.skillsDir) {
-    registerSkillSource(config.ai.skillsDir, "admin");
+  for (const source of resolveAISkillSources()) {
+    registerSkillSource(source.dir, source.scope);
   }
 }

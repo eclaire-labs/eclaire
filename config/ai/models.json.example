@@ -82,6 +82,44 @@
       },
       "pricing": null
     },
+    "llama-cpp:qwen3.5-4b-q4": {
+      "name": "Qwen 3.5 4B (Q4_K_M)",
+      "provider": "llama-cpp",
+      "providerModel": "unsloth/Qwen3.5-4B-GGUF:Q4_K_M",
+      "capabilities": {
+        "modalities": { "input": ["text", "image"], "output": ["text"] },
+        "streaming": true,
+        "tools": true,
+        "jsonSchema": false,
+        "structuredOutputs": false,
+        "reasoning": { "supported": true, "mode": "provider-controlled" },
+        "contextWindow": 262144
+      },
+      "source": {
+        "url": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF",
+        "format": "gguf",
+        "quantization": "Q4_K_M",
+        "visionSizeBytes": 672423616
+      }
+    },
+    "openrouter:gemini-2.5-flash-lite": {
+      "name": "Google Gemini 2.5 Flash Lite",
+      "provider": "openrouter",
+      "providerModel": "google/gemini-2.5-flash-lite-preview-09-2025",
+      "capabilities": {
+        "modalities": { "input": ["text", "image"], "output": ["text"] },
+        "streaming": true,
+        "tools": true,
+        "jsonSchema": true,
+        "structuredOutputs": true,
+        "reasoning": { "supported": false },
+        "contextWindow": 1048576
+      },
+      "tokenizer": { "type": "tiktoken", "encoding": "cl100k_base" },
+      "source": {
+        "url": "https://openrouter.ai/models/google/gemini-2.5-flash-lite-preview-09-2025"
+      }
+    },
     "openrouter:qwen-qwen3-vl-30b-a3b-instruct": {
       "name": "Qwen: Qwen3 VL 30B A3B Instruct",
       "provider": "openrouter",

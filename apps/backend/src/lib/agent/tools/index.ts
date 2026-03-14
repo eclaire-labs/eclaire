@@ -33,6 +33,7 @@ import { loadSkillTool } from "./load-skill.js";
 import { searchAllTool } from "./search-all.js";
 // Task comment tools
 import { addTaskCommentTool } from "./add-task-comment.js";
+import { browseWebTool } from "./browse-web.js";
 // Tag tools
 import { listTagsTool } from "./list-tags.js";
 // Update tools
@@ -52,6 +53,7 @@ export const backendTools: Record<string, RuntimeToolDefinition> = {
   findTasks: findTasksTool,
   // Search tools
   searchAll: searchAllTool,
+  browseWeb: browseWebTool,
   // Count tools
   countNotes: countNotesTool,
   countBookmarks: countBookmarksTool,
@@ -82,6 +84,7 @@ export const backendTools: Record<string, RuntimeToolDefinition> = {
 
 // Re-export individual tools for direct imports
 export { addTaskCommentTool } from "./add-task-comment.js";
+export { browseWebTool } from "./browse-web.js";
 export { countBookmarksTool } from "./count-bookmarks.js";
 export { countDocumentsTool } from "./count-documents.js";
 export { countNotesTool } from "./count-notes.js";

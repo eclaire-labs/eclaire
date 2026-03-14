@@ -15,9 +15,14 @@ import type { ContentLink } from "@/types/message";
 interface MarkdownDisplayProps {
   content: string;
   className?: string;
+  skipLinkDetection?: boolean;
 }
 
-export function MarkdownDisplay({ content, className }: MarkdownDisplayProps) {
+export function MarkdownDisplay({
+  content,
+  className,
+  skipLinkDetection,
+}: MarkdownDisplayProps) {
   const [processedContent, setProcessedContent] = React.useState<{
     htmlContent: string;
     contentLinks: ContentLink[];
@@ -26,8 +31,10 @@ export function MarkdownDisplay({ content, className }: MarkdownDisplayProps) {
   React.useEffect(() => {
     const processMarkdown = async () => {
       try {
-        // Detect content links in the raw content
-        const detectedLinks = detectContentLinks(content);
+        // Detect content links in the raw content (skip during streaming)
+        const detectedLinks = skipLinkDetection
+          ? []
+          : detectContentLinks(content);
 
         // Fetch metadata for all detected links
         const linksWithMetadata =
@@ -60,7 +67,7 @@ export function MarkdownDisplay({ content, className }: MarkdownDisplayProps) {
     if (content) {
       processMarkdown();
     }
-  }, [content]);
+  }, [content, skipLinkDetection]);
 
   const proseClasses = cn(
     // Base prose styling

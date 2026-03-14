@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { ChatPanel } from "@/components/assistant/chat-panel";
 import { ConversationHistoryDialog } from "@/components/assistant/conversation-history-dialog";
@@ -82,11 +83,14 @@ function createEmptyDraft(): AgentPayload {
   };
 }
 
+const LOAD_SKILL_TOOL_NAME = "loadSkill";
+
 function AgentChecklist({
   title,
   description,
   items,
   selectedNames,
+  lockedNames,
   onToggle,
   disabled,
 }: {
@@ -94,6 +98,7 @@ function AgentChecklist({
   description: string;
   items: AgentCatalogItem[];
   selectedNames: string[];
+  lockedNames?: string[];
   onToggle: (name: string, checked: boolean) => void;
   disabled?: boolean;
 }) {
@@ -108,6 +113,7 @@ function AgentChecklist({
           <div className="space-y-3">
             {items.map((item) => {
               const checked = selectedNames.includes(item.name);
+              const isLocked = lockedNames?.includes(item.name) ?? false;
               return (
                 <div
                   key={item.name}
@@ -120,7 +126,7 @@ function AgentChecklist({
                       onToggle(item.name, value === true)
                     }
                     className="mt-0.5"
-                    disabled={disabled}
+                    disabled={disabled || isLocked}
                   />
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -136,6 +142,11 @@ function AgentChecklist({
                       >
                         {item.name}
                       </Badge>
+                      {isLocked && (
+                        <Badge variant="outline" className="text-[10px]">
+                          Required
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {item.description}
@@ -197,6 +208,14 @@ export default function AssistantSettings({
   } = useToolExecutionTracker();
 
   const selectedAgentName = selectedAgent?.name || draft.name;
+  const loadSkillRequired = (draft.skillNames ?? []).length > 0;
+  const effectiveToolNames = useMemo(() => {
+    const names = new Set(draft.toolNames ?? []);
+    if (loadSkillRequired) {
+      names.add(LOAD_SKILL_TOOL_NAME);
+    }
+    return Array.from(names);
+  }, [draft.toolNames, loadSkillRequired]);
 
   const refreshAgents = useCallback(async () => {
     const [agentList, agentCatalog] = await Promise.all([
@@ -320,21 +339,22 @@ export default function AssistantSettings({
       ]);
     },
     onDone: async () => {
-      if (finalStreamingTextRef.current.trim()) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `assistant-${Date.now()}`,
-            role: "assistant",
-            content: finalStreamingTextRef.current.trim(),
-            timestamp: new Date(),
-            thinkingContent: finalStreamingThoughtRef.current.trim() || null,
-            toolCalls:
-              streamingToolCalls.length > 0
-                ? streamingToolCalls.map(convertToToolCallSummary)
-                : undefined,
-          },
-        ]);
+      const finalContent = finalStreamingTextRef.current.trim();
+      if (finalContent) {
+        const assistantMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: finalContent,
+          timestamp: new Date(),
+          thinkingContent: finalStreamingThoughtRef.current.trim() || null,
+          toolCalls:
+            streamingToolCalls.length > 0
+              ? streamingToolCalls.map(convertToToolCallSummary)
+              : undefined,
+        };
+        flushSync(() => {
+          setMessages((prev) => [...prev, assistantMessage]);
+        });
       }
       setIsStreaming(false);
       setStreamingText("");
@@ -474,7 +494,7 @@ export default function AssistantSettings({
         name: draft.name.trim(),
         description: draft.description?.trim() || null,
         systemPrompt: draft.systemPrompt.trim(),
-        toolNames: draft.toolNames ?? [],
+        toolNames: effectiveToolNames,
         skillNames: draft.skillNames ?? [],
       };
 
@@ -548,13 +568,13 @@ export default function AssistantSettings({
 
   const selectedTools = useMemo(
     () =>
-      (draft.toolNames ?? [])
+      effectiveToolNames
         .map(
           (name) =>
             catalog.tools.find((tool) => tool.name === name)?.label || name,
         )
         .slice(0, 4),
-    [catalog.tools, draft.toolNames],
+    [catalog.tools, effectiveToolNames],
   );
 
   const isNew = selectedAgentId === "new";
@@ -600,7 +620,7 @@ export default function AssistantSettings({
 
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">
-              {(draft.toolNames ?? []).length} tools enabled
+              {effectiveToolNames.length} tools enabled
             </Badge>
             <Badge variant="secondary">
               {(draft.skillNames ?? []).length} skills enabled
@@ -800,7 +820,8 @@ export default function AssistantSettings({
                 title="Tools"
                 description="These are the actions the agent can take inside the workspace."
                 items={catalog.tools}
-                selectedNames={draft.toolNames ?? []}
+                selectedNames={effectiveToolNames}
+                lockedNames={loadSkillRequired ? [LOAD_SKILL_TOOL_NAME] : []}
                 onToggle={(name, checked) =>
                   toggleDraftArray("toolNames", name, checked)
                 }

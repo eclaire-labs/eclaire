@@ -1,6 +1,6 @@
 {
   "active": {
-    "backend": "llama-cpp:qwen3-14b-q4",
-    "workers": "llama-cpp:gemma-3-4b-q4"
+    "backend": "openrouter:gemini-2.5-flash-lite",
+    "workers": "openrouter:gemini-2.5-flash-lite"
   }
 }

@@ -5,6 +5,10 @@ import { backendTools } from "../agent/tools/index.js";
 import type { AgentCatalogItem, AgentDefinition } from "../agent/types.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import {
+  normalizeCreateAgentCapabilities,
+  normalizeUpdatedAgentCapabilities,
+} from "./agent-capabilities.js";
 import { DEFAULT_AGENT_ACTOR_ID } from "./actor-constants.js";
 import {
   createAgentActor,
@@ -158,7 +162,8 @@ export async function createAgent(
   userId: string,
   input: CreateAgentInput,
 ): Promise<AgentDefinition> {
-  validateAgentCapabilities(input);
+  const capabilities = normalizeCreateAgentCapabilities(input);
+  validateAgentCapabilities(capabilities);
 
   const trimmedName = input.name.trim();
 
@@ -169,8 +174,8 @@ export async function createAgent(
       name: trimmedName,
       description: input.description?.trim() || null,
       systemPrompt: input.systemPrompt.trim(),
-      toolNames: input.toolNames ?? [],
-      skillNames: input.skillNames ?? [],
+      toolNames: capabilities.toolNames,
+      skillNames: capabilities.skillNames,
     })
     .returning();
 
@@ -193,7 +198,15 @@ export async function updateAgent(
     throw new ValidationError("The default Eclaire agent is read-only");
   }
 
-  validateAgentCapabilities(updates);
+  const existingAgent = await getAgent(userId, agentId);
+  const capabilityUpdates = normalizeUpdatedAgentCapabilities(existingAgent, {
+    toolNames: updates.toolNames,
+    skillNames: updates.skillNames,
+  });
+  validateAgentCapabilities({
+    toolNames: capabilityUpdates.toolNames,
+    skillNames: capabilityUpdates.skillNames ?? existingAgent.skillNames,
+  });
 
   const trimmedName = updates.name?.trim();
 
@@ -207,11 +220,11 @@ export async function updateAgent(
       ...(updates.systemPrompt !== undefined
         ? { systemPrompt: updates.systemPrompt.trim() }
         : {}),
-      ...(updates.toolNames !== undefined
-        ? { toolNames: updates.toolNames }
+      ...(capabilityUpdates.toolNames !== undefined
+        ? { toolNames: capabilityUpdates.toolNames }
         : {}),
-      ...(updates.skillNames !== undefined
-        ? { skillNames: updates.skillNames }
+      ...(capabilityUpdates.skillNames !== undefined
+        ? { skillNames: capabilityUpdates.skillNames }
         : {}),
       updatedAt: new Date(),
     })

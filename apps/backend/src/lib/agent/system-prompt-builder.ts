@@ -104,6 +104,49 @@ function appendAgentCapabilities(
   return result;
 }
 
+const CONTENT_TOOL_NAMES = [
+  "findNotes",
+  "findBookmarks",
+  "findDocuments",
+  "findPhotos",
+  "findTasks",
+  "searchAll",
+  "getNote",
+  "getBookmark",
+  "getTask",
+  "getDueItems",
+];
+
+function hasContentTools(
+  tools: Record<string, RuntimeToolDefinition>,
+): boolean {
+  return CONTENT_TOOL_NAMES.some((name) => name in tools);
+}
+
+const CONTENT_LINKING_INSTRUCTIONS = `
+
+**CRITICAL: Content Linking Requirements**
+
+WHENEVER you reference ANY content item found through tool calls, you MUST include the internal app link in this EXACT format:
+
+FORMAT: /{content-type}/{exact-id-from-tool}
+
+REQUIRED FORMATS:
+- Bookmarks: /bookmarks/bm-oCwyieTY1w
+- Documents: /documents/doc-abc123
+- Photos: /photos/photo-xyz789
+- Tasks: /tasks/task-456
+- Notes: /notes/note-789
+
+CRITICAL RULES:
+1. ALWAYS use the exact 'id' field returned by tool functions
+2. NEVER use markdown links like [text](url)
+3. NEVER use external URLs when referencing internal content
+4. Include the app link DIRECTLY in your response text
+5. These are internal app navigation links, NOT web URLs
+
+REMEMBER: These /content-type/id links become clickable buttons in the user interface for easy navigation.`;
+
 export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
   const {
     userContext,
@@ -215,6 +258,10 @@ If you need to call tools, use this JSON format:
 `
       : "";
 
+    const contentLinking = hasContentTools(tools)
+      ? `\n4. Reference any relevant content you find using the internal app links format${CONTENT_LINKING_INSTRUCTIONS}`
+      : "";
+
     return appendAgentCapabilities(
       `${basePrompt}
 
@@ -223,30 +270,7 @@ You are an AI assistant that has been assigned to work on a task. You have full 
 When working on tasks:
 1. Analyze the task details provided above
 2. Search for related content that might help with the task using available tools
-3. Provide a helpful, practical, and actionable response
-4. Reference any relevant content you find using the internal app links format
-
-**CRITICAL: Content Linking Requirements**
-
-WHENEVER you reference ANY content item found through tool calls, you MUST include the internal app link in this EXACT format:
-
-FORMAT: /{content-type}/{exact-id-from-tool}
-
-REQUIRED FORMATS:
-- Bookmarks: /bookmarks/bm-oCwyieTY1w
-- Documents: /documents/doc-abc123
-- Photos: /photos/photo-xyz789
-- Tasks: /tasks/task-456
-- Notes: /notes/note-789
-
-CRITICAL RULES:
-1. ALWAYS use the exact 'id' field returned by tool functions
-2. NEVER use markdown links like [text](url)
-3. NEVER use external URLs when referencing internal content
-4. Include the app link DIRECTLY in your response text
-5. These are internal app navigation links, NOT web URLs
-
-REMEMBER: These /content-type/id links become clickable buttons in the user interface for easy navigation.
+3. Provide a helpful, practical, and actionable response${contentLinking}
 ${toolSignaturesSection}`,
       { agent, tools },
     );
@@ -286,30 +310,12 @@ ${getToolSignatures(tools)}
 `
     : "";
 
+  const contentLinkingNormal = hasContentTools(tools)
+    ? CONTENT_LINKING_INSTRUCTIONS
+    : "";
+
   return appendAgentCapabilities(
-    `${basePrompt}
-
-**CRITICAL: Content Linking Requirements**
-
-WHENEVER you reference ANY content item found through tool calls, you MUST include the internal app link in this EXACT format:
-
-FORMAT: /{content-type}/{exact-id-from-tool}
-
-REQUIRED FORMATS:
-- Bookmarks: /bookmarks/bm-oCwyieTY1w
-- Documents: /documents/doc-abc123
-- Photos: /photos/photo-xyz789
-- Tasks: /tasks/task-456
-- Notes: /notes/note-789
-
-CRITICAL RULES:
-1. ALWAYS use the exact 'id' field returned by tool functions
-2. NEVER use markdown links like [text](url)
-3. NEVER use external URLs when referencing internal content
-4. Include the app link DIRECTLY in your response text
-5. These are internal app navigation links, NOT web URLs
-
-REMEMBER: These /content-type/id links become clickable buttons in the user interface for easy navigation.
+    `${basePrompt}${contentLinkingNormal}
 ${toolSignaturesSection}`,
     { agent, tools },
   );

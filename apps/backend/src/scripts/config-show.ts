@@ -73,6 +73,10 @@ console.log("AI Settings:");
 console.log(`  configDir:      ${config.dirs.config}/ai`);
 console.log(`  debugLogPath:   ${config.ai.debugLogPath || "(disabled)"}`);
 console.log(`  timeout:        ${config.ai.timeout}ms`);
+console.log(`  skillsDir:      ${config.ai.skillsDir || "(disabled)"}`);
+console.log(
+  `  userSkillsDirs: ${config.ai.userSkillsDirs?.join(", ") || "(disabled)"}`,
+);
 console.log(`  (providers/models configured in config/ai/*.json)`);
 console.log("");
 

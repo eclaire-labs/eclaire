@@ -77,6 +77,7 @@ export interface EclaireConfig {
     debugLogPath?: string;
     timeout: number;
     skillsDir?: string;
+    userSkillsDirs?: string[];
   };
 
   // Worker
@@ -120,6 +121,20 @@ function int(value: string | undefined, defaultValue: number): number {
   if (!value) return defaultValue;
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) ? defaultValue : parsed;
+}
+
+/**
+ * Parse a comma/newline separated string list.
+ */
+function stringList(value: string | undefined): string[] | undefined {
+  if (!value) return undefined;
+
+  const items = value
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return items.length > 0 ? items : undefined;
 }
 
 /**
@@ -345,6 +360,7 @@ export function buildConfig(): EclaireConfig {
       debugLogPath: env.AI_DEBUG_LOG_PATH || undefined,
       timeout: int(env.AI_TIMEOUT, 180000),
       skillsDir: env.AI_SKILLS_DIR || undefined,
+      userSkillsDirs: stringList(env.AI_USER_SKILLS_DIRS),
     },
 
     // Worker
