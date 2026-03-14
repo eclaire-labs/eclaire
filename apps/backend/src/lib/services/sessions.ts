@@ -338,6 +338,9 @@ export async function sendMessage(
       userContext,
       agent: agentDefinition,
       allowedSkillNames: agentDefinition.skillNames,
+      callerAuthMethod: options.caller.authMethod,
+      callerActorKind: options.caller.actor,
+      backgroundTaskExecution: isBackgroundTask,
     },
   });
 

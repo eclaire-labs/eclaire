@@ -12,6 +12,7 @@ import { agentsRoutes } from "./agents.js";
 import { actorsRoutes } from "./actors.js";
 import { authRoutes } from "./auth.js";
 import { bookmarksRoutes } from "./bookmarks.js";
+import { browserRoutes } from "./browser.js";
 import { channelsRoutes } from "./channels.js";
 import { documentsRoutes } from "./documents.js";
 import { feedbackRoutes } from "./feedback.js";
@@ -34,6 +35,7 @@ export function registerApiRoutes(app: Hono<any>): void {
   app.route("/api/actors", actorsRoutes);
   app.route("/api/tasks", tasksRoutes);
   app.route("/api/bookmarks", bookmarksRoutes);
+  app.route("/api/browser", browserRoutes);
   app.route("/api/channels", channelsRoutes);
   app.route("/api/documents", documentsRoutes);
   app.route("/api/feedback", feedbackRoutes);

@@ -84,7 +84,7 @@ function createEmptyDraft(): AgentPayload {
 
 const LOAD_SKILL_TOOL_NAME = "loadSkill";
 
-function AgentChecklist({
+export function AgentChecklist({
   title,
   description,
   items,
@@ -113,6 +113,11 @@ function AgentChecklist({
             {items.map((item) => {
               const checked = selectedNames.includes(item.name);
               const isLocked = lockedNames?.includes(item.name) ?? false;
+              const isUnavailable =
+                item.availability !== undefined &&
+                item.availability !== "available";
+              const isToggleDisabled =
+                disabled || isLocked || (isUnavailable && !checked);
               return (
                 <div
                   key={item.name}
@@ -125,7 +130,7 @@ function AgentChecklist({
                       onToggle(item.name, value === true)
                     }
                     className="mt-0.5"
-                    disabled={disabled || isLocked}
+                    disabled={isToggleDisabled}
                   />
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -146,10 +151,38 @@ function AgentChecklist({
                           Required
                         </Badge>
                       )}
+                      {item.name === "browseChrome" && (
+                        <>
+                          <Badge variant="outline" className="text-[10px]">
+                            Local only
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px]">
+                            Signed-in Chrome
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px]">
+                            Interactive
+                          </Badge>
+                        </>
+                      )}
+                      {item.availability === "setup_required" && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Setup required
+                        </Badge>
+                      )}
+                      {item.availability === "disabled" && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Disabled
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {item.description}
                     </p>
+                    {item.availabilityReason && (
+                      <p className="text-xs text-muted-foreground">
+                        {item.availabilityReason}
+                      </p>
+                    )}
                   </div>
                 </div>
               );

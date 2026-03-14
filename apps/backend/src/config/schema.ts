@@ -80,6 +80,12 @@ export interface EclaireConfig {
     userSkillsDirs?: string[];
   };
 
+  // Browser automation
+  browser: {
+    chromeMcpCommand: string;
+    chromeMcpConnectTimeout: number;
+  };
+
   // Worker
   worker: {
     port: number;
@@ -361,6 +367,12 @@ export function buildConfig(): EclaireConfig {
       timeout: int(env.AI_TIMEOUT, 180000),
       skillsDir: env.AI_SKILLS_DIR || undefined,
       userSkillsDirs: stringList(env.AI_USER_SKILLS_DIRS),
+    },
+
+    // Browser automation
+    browser: {
+      chromeMcpCommand: env.CHROME_MCP_COMMAND || "chrome-devtools-mcp",
+      chromeMcpConnectTimeout: int(env.CHROME_MCP_CONNECT_TIMEOUT, 15000),
     },
 
     // Worker

@@ -12,6 +12,7 @@ import {
   type RuntimeStreamEvent,
 } from "@eclaire/ai";
 import type { Context } from "../../schemas/prompt-params.js";
+import { browserRuntime } from "../browser/index.js";
 import { createChildLogger } from "../logger.js";
 import { DEFAULT_AGENT_ID, getAgent } from "../services/agents.js";
 import { getUserContextForPrompt } from "../user.js";
@@ -34,6 +35,8 @@ export interface ProcessPromptOptions {
   requestId?: string;
   conversationId?: string;
   enableThinking?: boolean;
+  callerAuthMethod?: string;
+  callerActorKind?: string;
 }
 
 export interface PromptResponse {
@@ -56,7 +59,25 @@ function selectAgentTools(agent: AgentDefinition): typeof backendTools {
       (entry): entry is [string, (typeof backendTools)[string]] => !!entry[1],
     );
 
-  return Object.fromEntries(selectedEntries);
+  return Object.fromEntries(
+    selectedEntries.filter(([toolName]) => {
+      if (toolName !== "browseChrome") {
+        return true;
+      }
+      const availability = browserRuntime.getToolAvailability();
+      if (availability.availability !== "available") {
+        logger.debug(
+          {
+            availability: availability.availability,
+            reason: availability.availabilityReason,
+          },
+          "browseChrome tool filtered out — not available",
+        );
+        return false;
+      }
+      return true;
+    }),
+  );
 }
 
 /**
@@ -108,8 +129,16 @@ export function createBackendAgent(options: {
 export async function processPromptRequest(
   options: ProcessPromptOptions,
 ): Promise<PromptResponse> {
-  const { userId, prompt, context, requestId, conversationId, enableThinking } =
-    options;
+  const {
+    userId,
+    prompt,
+    context,
+    requestId,
+    conversationId,
+    enableThinking,
+    callerAuthMethod,
+    callerActorKind,
+  } = options;
 
   const startTime = Date.now();
   logger.info(
@@ -169,6 +198,9 @@ export async function processPromptRequest(
         userContext,
         agent: agentDefinition,
         allowedSkillNames: agentDefinition.skillNames,
+        callerAuthMethod,
+        callerActorKind,
+        backgroundTaskExecution: isBackgroundTask,
       },
     });
 
@@ -339,8 +371,16 @@ export function transformRuntimeEvent(
 export async function processPromptRequestStream(
   options: ProcessPromptOptions,
 ): Promise<ReadableStream<StreamEvent>> {
-  const { userId, prompt, context, requestId, conversationId, enableThinking } =
-    options;
+  const {
+    userId,
+    prompt,
+    context,
+    requestId,
+    conversationId,
+    enableThinking,
+    callerAuthMethod,
+    callerActorKind,
+  } = options;
 
   const startTime = Date.now();
   logger.info(
@@ -406,6 +446,9 @@ export async function processPromptRequestStream(
       userContext,
       agent: agentDefinition,
       allowedSkillNames: agentDefinition.skillNames,
+      callerAuthMethod,
+      callerActorKind,
+      backgroundTaskExecution: isBackgroundTask,
     },
   });
 

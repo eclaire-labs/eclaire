@@ -33,4 +33,6 @@ export interface AgentCatalogItem {
   name: string;
   label: string;
   description: string;
+  availability?: "available" | "setup_required" | "disabled";
+  availabilityReason?: string;
 }

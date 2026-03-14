@@ -1,6 +1,7 @@
 import { discoverSkills } from "@eclaire/ai";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import { browserRuntime } from "../browser/index.js";
 import { backendTools } from "../agent/tools/index.js";
 import type { AgentCatalogItem, AgentDefinition } from "../agent/types.js";
 import { NotFoundError, ValidationError } from "../errors.js";
@@ -55,6 +56,9 @@ function listToolCatalog(): AgentCatalogItem[] {
       name: tool.name,
       label: tool.label,
       description: tool.description,
+      ...(tool.name === "browseChrome"
+        ? browserRuntime.getToolAvailability()
+        : {}),
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }
