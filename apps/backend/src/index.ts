@@ -130,6 +130,7 @@ const healthHandler = (c: Context<{ Variables: Variables }>) => {
 
 // Health check endpoint for load balancers / Docker / k8s
 app.get("/health", healthHandler);
+app.get("/api/health", healthHandler);
 
 // Register all API routes (auth, resources, system endpoints)
 registerApiRoutes(app);
