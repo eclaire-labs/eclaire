@@ -34,6 +34,8 @@
     "test:all": "vitest run && AI_TEST_PROVIDER=local vitest run"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "async-mutex": "0.5.0",
     "tiktoken": "1.0.22"
   },
   "peerDependencies": {

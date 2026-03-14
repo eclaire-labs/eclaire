@@ -89,6 +89,15 @@ export interface RuntimeToolDefinition<TInput extends AnyZodType = AnyZodType> {
   ) => Promise<RuntimeToolResult>;
 
   /**
+   * Optional raw JSON Schema for the tool's parameters.
+   * When set, `runtimeToolToOpenAI()` uses this directly instead of
+   * calling `z.toJSONSchema(inputSchema)`. This allows MCP-sourced tools
+   * to pass through their server-provided JSON Schema without lossy
+   * JSON-Schema-to-Zod conversion.
+   */
+  __rawJsonSchema?: Record<string, unknown>;
+
+  /**
    * Optional text snippet injected into the system prompt.
    * Use this for instructions the model needs to know about the tool
    * beyond the schema description.

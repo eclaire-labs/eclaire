@@ -501,6 +501,27 @@ export {
 } from "./registries/index.js";
 
 // =============================================================================
+// MCP
+// =============================================================================
+
+export type {
+  McpAvailabilityConfig,
+  McpConnectionState,
+  McpServerConfig,
+  McpServersFileConfig,
+  McpToolDescriptor,
+  McpToolMode,
+  McpTransportType,
+} from "./mcp/index.js";
+
+export {
+  McpServerConnection,
+  mcpToolToRuntimeTool,
+  mcpToolsToGroupedRuntimeTool,
+  normalizeMcpResult,
+} from "./mcp/index.js";
+
+// =============================================================================
 // TYPES
 // =============================================================================
 

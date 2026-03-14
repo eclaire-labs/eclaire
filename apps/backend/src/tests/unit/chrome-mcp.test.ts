@@ -1,10 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
 import { ChromeMcpSessionManager } from "../../lib/browser/chrome-mcp.js";
 
+function createMockConnection() {
+  return {
+    callTool: vi.fn(),
+    ensureConnected: vi.fn(),
+    disconnect: vi.fn(),
+    getState: vi.fn().mockReturnValue("disconnected"),
+    getLastError: vi.fn().mockReturnValue(null),
+    getServerKey: vi.fn().mockReturnValue("chrome-devtools"),
+    getConfig: vi.fn().mockReturnValue({}),
+    getDiscoveredTools: vi.fn().mockReturnValue([]),
+    discoverTools: vi.fn().mockResolvedValue([]),
+  } as any;
+}
+
 describe("ChromeMcpSessionManager", () => {
   it("parses structured list_pages results that use page ids", async () => {
-    const manager = new ChromeMcpSessionManager();
-    vi.spyOn(manager as any, "callTool").mockResolvedValue({
+    const conn = createMockConnection();
+    conn.callTool.mockResolvedValue({
       structuredContent: {
         pages: [
           {
@@ -15,6 +29,7 @@ describe("ChromeMcpSessionManager", () => {
         ],
       },
     });
+    const manager = new ChromeMcpSessionManager(conn);
 
     await expect(manager.listTabs()).resolves.toEqual([
       {
@@ -28,8 +43,8 @@ describe("ChromeMcpSessionManager", () => {
   });
 
   it("parses text list_pages results from chrome-devtools-mcp", async () => {
-    const manager = new ChromeMcpSessionManager();
-    vi.spyOn(manager as any, "callTool").mockResolvedValue({
+    const conn = createMockConnection();
+    conn.callTool.mockResolvedValue({
       content: [
         {
           type: "text",
@@ -37,6 +52,7 @@ describe("ChromeMcpSessionManager", () => {
         },
       ],
     });
+    const manager = new ChromeMcpSessionManager(conn);
 
     await expect(manager.listTabs()).resolves.toEqual([
       {
@@ -57,24 +73,26 @@ describe("ChromeMcpSessionManager", () => {
   });
 
   it("uses pageId when selecting a page", async () => {
-    const manager = new ChromeMcpSessionManager();
-    const callTool = vi.spyOn(manager as any, "callTool").mockResolvedValue({
+    const conn = createMockConnection();
+    conn.callTool.mockResolvedValue({
       content: [{ type: "text", text: "Selected page 4." }],
     });
+    const manager = new ChromeMcpSessionManager(conn);
 
     await manager.selectTab(4);
 
-    expect(callTool).toHaveBeenCalledWith("select_page", { pageId: 4 });
+    expect(conn.callTool).toHaveBeenCalledWith("select_page", { pageId: 4 });
   });
 
   it("uses pageId when closing a page", async () => {
-    const manager = new ChromeMcpSessionManager();
-    const callTool = vi.spyOn(manager as any, "callTool").mockResolvedValue({
+    const conn = createMockConnection();
+    conn.callTool.mockResolvedValue({
       content: [{ type: "text", text: "Closed page 4." }],
     });
+    const manager = new ChromeMcpSessionManager(conn);
 
     await manager.closeTab(4);
 
-    expect(callTool).toHaveBeenCalledWith("close_page", { pageId: 4 });
+    expect(conn.callTool).toHaveBeenCalledWith("close_page", { pageId: 4 });
   });
 });

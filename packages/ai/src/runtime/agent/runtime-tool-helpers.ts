@@ -20,6 +20,9 @@ type AnyZodType = z.ZodType<any, any, any>;
 
 /**
  * Convert a RuntimeToolDefinition to OpenAI ToolDefinition format.
+ *
+ * When `__rawJsonSchema` is present (e.g. MCP-sourced tools), it is used
+ * directly as the function parameters instead of converting via Zod.
  */
 export function runtimeToolToOpenAI(
   tool: RuntimeToolDefinition<AnyZodType>,
@@ -29,7 +32,7 @@ export function runtimeToolToOpenAI(
     function: {
       name: tool.name,
       description: tool.description,
-      parameters: z.toJSONSchema(tool.inputSchema),
+      parameters: tool.__rawJsonSchema ?? z.toJSONSchema(tool.inputSchema),
     },
   };
 }

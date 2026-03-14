@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import type { McpServerConnection } from "@eclaire/ai";
 import { config } from "../../config/index.js";
 import { ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import { getMcpRegistry } from "../mcp/index.js";
 import { ChromeMcpSessionManager } from "./chrome-mcp.js";
-import { resolveBrowserCommand } from "./command.js";
 import { USER_BROWSER_CAPABILITIES, USER_BROWSER_PROFILE } from "./profiles.js";
 import type {
   BrowserConversationState,
@@ -23,33 +24,43 @@ function getConversationKey(context: {
 }
 
 export class BrowserRuntime {
-  private readonly chromeMcp = new ChromeMcpSessionManager();
+  private chromeMcp: ChromeMcpSessionManager | null = null;
   private readonly conversations = new Map<string, BrowserConversationState>();
+
+  private getChromeMcp(): ChromeMcpSessionManager {
+    if (this.chromeMcp) return this.chromeMcp;
+
+    let connection: McpServerConnection | undefined;
+    try {
+      connection = getMcpRegistry().getConnection("chrome-devtools");
+    } catch {
+      // Registry not initialized yet
+    }
+
+    if (!connection) {
+      throw new ValidationError(
+        "Chrome DevTools MCP server is not configured in the MCP registry.",
+      );
+    }
+
+    this.chromeMcp = new ChromeMcpSessionManager(connection);
+    return this.chromeMcp;
+  }
 
   private getAvailability(): {
     available: boolean;
     reason: string | null;
   } {
-    if (config.isContainer) {
+    try {
+      const registry = getMcpRegistry();
+      const availability = registry.getServerAvailability("chrome-devtools");
       return {
-        available: false,
-        reason:
-          "Chrome browser control is only available for local desktop installs.",
+        available: availability.availability === "available",
+        reason: availability.availabilityReason ?? null,
       };
+    } catch {
+      return { available: false, reason: "MCP registry not initialized." };
     }
-
-    const resolvedCommand = resolveBrowserCommand(
-      config.browser.chromeMcpCommand,
-    );
-    if (!resolvedCommand) {
-      return {
-        available: false,
-        reason:
-          "The chrome-devtools-mcp binary is not installed or not available on PATH.",
-      };
-    }
-
-    return { available: true, reason: null };
   }
 
   private getConversationState(key: string): BrowserConversationState {
@@ -73,7 +84,7 @@ export class BrowserRuntime {
   private async refreshTabs(
     state?: BrowserConversationState,
   ): Promise<BrowserTabSummary[]> {
-    const tabs = await this.chromeMcp.listTabs();
+    const tabs = await this.getChromeMcp().listTabs();
 
     if (state) {
       state.lastTabs = tabs;
@@ -113,7 +124,7 @@ export class BrowserRuntime {
     tabId?: string,
   ): Promise<BrowserTabSummary> {
     const tab = this.getTabById(state, tabId);
-    await this.chromeMcp.selectTab(tab.pageIdx);
+    await this.getChromeMcp().selectTab(tab.pageIdx);
     state.activeTabId = tab.id;
     state.updatedAt = Date.now();
     return tab;
@@ -132,25 +143,14 @@ export class BrowserRuntime {
     availability: "available" | "setup_required" | "disabled";
     availabilityReason?: string;
   } {
-    if (config.isContainer) {
+    try {
+      return getMcpRegistry().getServerAvailability("chrome-devtools");
+    } catch {
       return {
         availability: "disabled",
-        availabilityReason: "Local desktop installs only.",
+        availabilityReason: "MCP registry not initialized.",
       };
     }
-
-    const resolvedCommand = resolveBrowserCommand(
-      config.browser.chromeMcpCommand,
-    );
-    if (!resolvedCommand) {
-      return {
-        availability: "setup_required",
-        availabilityReason:
-          "Install the chrome-devtools-mcp binary to enable this tool.",
-      };
-    }
-
-    return { availability: "available" };
   }
 
   getStatus(conversationKey?: string): BrowserStatus {
@@ -163,22 +163,35 @@ export class BrowserRuntime {
       state?.lastTabs.find((tab) => tab.selected) ||
       null;
 
+    let mcpState: string = "disabled";
+    let mcpLastError: string | null = null;
+
+    if (availability.available) {
+      try {
+        const chromeMcp = this.getChromeMcp();
+        mcpState = chromeMcp.getState();
+        mcpLastError = chromeMcp.getLastError();
+      } catch {
+        mcpState = "error";
+      }
+    }
+
     return {
       enabled: availability.available,
       available: availability.available,
-      state: availability.available ? this.chromeMcp.getState() : "disabled",
+      state: mcpState as BrowserStatus["state"],
       profile: USER_BROWSER_PROFILE,
       transport: USER_BROWSER_PROFILE.transport,
       capabilities: USER_BROWSER_CAPABILITIES,
       tabCount: state?.lastTabs.length ?? 0,
       activeTab,
-      lastError: availability.reason || this.chromeMcp.getLastError(),
+      lastError: availability.reason || mcpLastError,
     };
   }
 
   async attach(conversationKey?: string): Promise<BrowserStatus> {
     this.ensureAvailable();
-    await this.chromeMcp.ensureConnected();
+    await this.getChromeMcp().ensureConnected();
 
     if (conversationKey) {
       const state = this.getConversationState(conversationKey);
@@ -189,7 +202,7 @@ export class BrowserRuntime {
   }
 
   async detach(conversationKey?: string): Promise<BrowserStatus> {
-    await this.chromeMcp.disconnect();
+    await this.getChromeMcp().disconnect();
 
     if (conversationKey) {
       const state = this.getConversationState(conversationKey);
@@ -209,7 +222,7 @@ export class BrowserRuntime {
   }): Promise<BrowserTabSummary[]> {
     this.ensureAvailable();
     const state = this.getConversationState(getConversationKey(context));
-    await this.chromeMcp.ensureConnected();
+    await this.getChromeMcp().ensureConnected();
     return this.refreshTabs(state);
   }
 
@@ -223,7 +236,7 @@ export class BrowserRuntime {
   ): Promise<BrowserTabSummary> {
     this.ensureAvailable();
     const state = this.getConversationState(getConversationKey(context));
-    await this.chromeMcp.ensureConnected();
+    await this.getChromeMcp().ensureConnected();
     if (state.lastTabs.length === 0) {
       await this.refreshTabs(state);
     }
@@ -242,8 +255,8 @@ export class BrowserRuntime {
   ): Promise<{ tab: BrowserTabSummary | null; message: string }> {
     this.ensureAvailable();
     const state = this.getConversationState(getConversationKey(context));
-    await this.chromeMcp.ensureConnected();
-    const message = await this.chromeMcp.openTab(url);
+    await this.getChromeMcp().ensureConnected();
+    const message = await this.getChromeMcp().openTab(url);
     const tabs = await this.refreshTabs(state);
     const activeTab =
       tabs.find((tab) => tab.selected) || tabs[tabs.length - 1] || null;
@@ -262,12 +275,12 @@ export class BrowserRuntime {
   ): Promise<{ tab: BrowserTabSummary; message: string }> {
     this.ensureAvailable();
     const state = this.getConversationState(getConversationKey(context));
-    await this.chromeMcp.ensureConnected();
+    await this.getChromeMcp().ensureConnected();
     if (state.lastTabs.length === 0) {
       await this.refreshTabs(state);
     }
     const tab = await this.selectTabInternal(state, tabId);
-    const message = await this.chromeMcp.navigate(url);
+    const message = await this.getChromeMcp().navigate(url);
     await this.refreshTabs(state);
     return { tab, message };
   }
@@ -282,12 +295,12 @@ export class BrowserRuntime {
   ): Promise<{ tab: BrowserTabSummary; snapshot: string }> {
     this.ensureAvailable();
     const state = this.getConversationState(getConversationKey(context));
-    await this.chromeMcp.ensureConnected();
+    await this.getChromeMcp().ensureConnected();
     if (state.lastTabs.length === 0) {
       await this.refreshTabs(state);
     }
     const tab = await this.selectTabInternal(state, tabId);
-    const snapshot = await this.chromeMcp.snapshot();
+    const snapshot = await this.getChromeMcp().snapshot();
     state.lastSnapshot = snapshot;
     return { tab, snapshot };
   }
@@ -303,12 +316,12 @@ export class BrowserRuntime {
   ): Promise<{ tab: BrowserTabSummary; message: string }> {
     this.ensureAvailable();
     const state = this.getConversationState(getConversationKey(context));
-    await this.chromeMcp.ensureConnected();
+    await this.getChromeMcp().ensureConnected();
     if (state.lastTabs.length === 0) {
       await this.refreshTabs(state);
     }
     const tab = await this.selectTabInternal(state, tabId);
-    const message = await this.chromeMcp.click(uid);
+    const message = await this.getChromeMcp().click(uid);
     return { tab, message };
   }
 
@@ -324,12 +337,12 @@ export class BrowserRuntime {
   ): Promise<{ tab: BrowserTabSummary; message: string }> {
     this.ensureAvailable();
     const state = this.getConversationState(getConversationKey(context));
-    await this.chromeMcp.ensureConnected();
+    await this.getChromeMcp().ensureConnected();
     if (state.lastTabs.length === 0) {
       await this.refreshTabs(state);
     }
     const tab = await this.selectTabInternal(state, tabId);
-    const message = await this.chromeMcp.fill(uid, value);
+    const message = await this.getChromeMcp().fill(uid, value);
     return { tab, message };
   }
 
@@ -344,12 +357,12 @@ export class BrowserRuntime {
   ): Promise<{ tab: BrowserTabSummary; message: string }> {
     this.ensureAvailable();
     const state = this.getConversationState(getConversationKey(context));
-    await this.chromeMcp.ensureConnected();
+    await this.getChromeMcp().ensureConnected();
     if (state.lastTabs.length === 0) {
       await this.refreshTabs(state);
     }
     const tab = await this.selectTabInternal(state, tabId);
-    const message = await this.chromeMcp.pressKey(key);
+    const message = await this.getChromeMcp().pressKey(key);
     return { tab, message };
   }
 
@@ -367,7 +380,7 @@ export class BrowserRuntime {
   }> {
     this.ensureAvailable();
     const state = this.getConversationState(getConversationKey(context));
-    await this.chromeMcp.ensureConnected();
+    await this.getChromeMcp().ensureConnected();
     if (state.lastTabs.length === 0) {
       await this.refreshTabs(state);
     }
@@ -381,7 +394,7 @@ export class BrowserRuntime {
     fs.mkdirSync(screenshotDir, { recursive: true });
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const screenshotPath = path.join(screenshotDir, `chrome-${timestamp}.png`);
-    const message = await this.chromeMcp.screenshot(screenshotPath);
+    const message = await this.getChromeMcp().screenshot(screenshotPath);
     return { tab, screenshotPath, message };
   }
 
@@ -399,12 +412,12 @@ export class BrowserRuntime {
   }> {
     this.ensureAvailable();
     const state = this.getConversationState(getConversationKey(context));
-    await this.chromeMcp.ensureConnected();
+    await this.getChromeMcp().ensureConnected();
     if (state.lastTabs.length === 0) {
       await this.refreshTabs(state);
     }
     const tab = await this.selectTabInternal(state, tabId);
-    const message = await this.chromeMcp.closeTab(tab.pageIdx);
+    const message = await this.getChromeMcp().closeTab(tab.pageIdx);
     const tabs = await this.refreshTabs(state);
     const nextTab = tabs.find((item) => item.selected) || tabs[0] || null;
     state.activeTabId = nextTab?.id ?? null;

@@ -11,6 +11,7 @@ import { homedir } from "node:os";
 import { initAI, registerSkillSource } from "@eclaire/ai";
 import { config } from "../config/index.js";
 import { createChildLogger } from "./logger.js";
+import { initMcpRegistry, loadMcpServersConfig } from "./mcp/index.js";
 
 type SkillSourceScope = "admin" | "user";
 
@@ -75,4 +76,17 @@ export function initializeAI(): void {
   for (const source of resolveAISkillSources()) {
     registerSkillSource(source.dir, source.scope);
   }
+}
+
+/**
+ * Initialize the MCP server registry.
+ * Call after initializeAI() during application startup.
+ */
+export async function initializeMcp(): Promise<void> {
+  const servers = loadMcpServersConfig();
+  const registry = await initMcpRegistry(servers);
+
+  // Register managed tool names so the registry can track their availability.
+  // browseChrome is hand-crafted but backed by the chrome-devtools MCP server.
+  registry.registerManagedTool("browseChrome", "chrome-devtools");
 }

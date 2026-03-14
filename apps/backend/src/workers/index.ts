@@ -19,7 +19,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { config as appConfig } from "../config/index.js";
-import { initializeAI } from "../lib/ai-init.js";
+import { initializeAI, initializeMcp } from "../lib/ai-init.js";
 import { createChildLogger } from "../lib/logger.js";
 import { config } from "./config.js";
 import processBookmarkJob from "./jobs/bookmarkProcessor.js";
@@ -70,6 +70,7 @@ export async function startBullMQWorkers(): Promise<void> {
   if (!isAIInitialized()) {
     initializeAI();
   }
+  await initializeMcp();
   validateAIConfigOnStartup();
 
   // Initialize Hono app for Bull Board
@@ -259,6 +260,7 @@ export async function startDatabaseWorkers(): Promise<void> {
   if (!isAIInitialized()) {
     initializeAI();
   }
+  await initializeMcp();
   validateAIConfigOnStartup();
 
   // Start direct database workers with event callbacks

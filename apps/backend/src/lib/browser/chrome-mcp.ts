@@ -1,22 +1,13 @@
-import { mkdirSync } from "node:fs";
-import path from "node:path";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { Mutex } from "async-mutex";
-import { config } from "../../config/index.js";
-import { createChildLogger } from "../logger.js";
-import { resolveBrowserCommand } from "./command.js";
+/**
+ * Chrome MCP Session Manager
+ *
+ * Chrome-specific wrapper around the generic McpServerConnection.
+ * Provides typed methods for Chrome DevTools operations and handles
+ * Chrome-specific response parsing (tab lists, text content, etc.).
+ */
+
+import type { McpServerConnection } from "@eclaire/ai";
 import type { BrowserState, BrowserTabSummary } from "./types.js";
-
-const logger = createChildLogger("browser:chrome-mcp");
-
-function sanitizeEnv(env: NodeJS.ProcessEnv): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(env).filter(
-      (entry): entry is [string, string] => typeof entry[1] === "string",
-    ),
-  );
-}
 
 function normalizeTextContent(result: unknown): string {
   if (!result || typeof result !== "object") {
@@ -186,174 +177,77 @@ function extractPages(result: unknown): BrowserTabSummary[] {
 }
 
 export class ChromeMcpSessionManager {
-  private client: Client | null = null;
-  private state: BrowserState = "disconnected";
-  private lastError: string | null = null;
-  private readonly mutex = new Mutex();
+  constructor(private readonly connection: McpServerConnection) {}
 
   getState(): BrowserState {
-    return this.state;
+    return this.connection.getState() as BrowserState;
   }
 
   getLastError(): string | null {
-    return this.lastError;
-  }
-
-  private createTransport(): StdioClientTransport {
-    const command =
-      resolveBrowserCommand(config.browser.chromeMcpCommand) ||
-      config.browser.chromeMcpCommand;
-
-    return new StdioClientTransport({
-      command,
-      args: ["--autoConnect"],
-      stderr: "pipe",
-      cwd: config.home,
-      env: sanitizeEnv(process.env),
-    });
+    return this.connection.getLastError();
   }
 
   async ensureConnected(): Promise<void> {
-    await this.mutex.runExclusive(async () => {
-      if (this.client && this.state === "connected") {
-        return;
-      }
-
-      this.state = "connecting";
-      this.lastError = null;
-
-      const transport = this.createTransport();
-      const client = new Client(
-        {
-          name: "@eclaire/backend",
-          version: "0.0.0",
-        },
-        {
-          capabilities: {},
-        },
-      );
-
-      try {
-        const rootDir = path.join(config.dirs.browserData, "chrome-mcp");
-        mkdirSync(rootDir, { recursive: true });
-
-        await Promise.race([
-          client.connect(transport),
-          new Promise((_, reject) => {
-            setTimeout(() => {
-              reject(
-                new Error(
-                  `Chrome MCP connect timed out after ${config.browser.chromeMcpConnectTimeout}ms`,
-                ),
-              );
-            }, config.browser.chromeMcpConnectTimeout);
-          }),
-        ]);
-
-        this.client = client;
-        this.state = "connected";
-        logger.info("Chrome MCP attached");
-      } catch (error) {
-        this.client = null;
-        this.state = "error";
-        this.lastError =
-          error instanceof Error
-            ? error.message
-            : "Failed to attach to Chrome MCP";
-        logger.warn({ err: error }, "Chrome MCP attach failed");
-        throw error;
-      }
-    });
+    return this.connection.ensureConnected();
   }
 
   async disconnect(): Promise<void> {
-    await this.mutex.runExclusive(async () => {
-      try {
-        await this.client?.close();
-      } catch (error) {
-        logger.warn(
-          { err: error },
-          "Failed to close Chrome MCP client cleanly",
-        );
-      } finally {
-        this.client = null;
-        this.state = "disconnected";
-      }
-    });
-  }
-
-  private async callTool(
-    name: string,
-    args: Record<string, unknown> = {},
-  ): Promise<unknown> {
-    await this.ensureConnected();
-
-    if (!this.client) {
-      throw new Error("Chrome MCP client is not connected");
-    }
-
-    try {
-      return await this.client.callTool({
-        name,
-        arguments: args,
-      });
-    } catch (error) {
-      this.state = "error";
-      this.lastError =
-        error instanceof Error
-          ? error.message
-          : `Chrome MCP tool '${name}' failed`;
-      throw error;
-    }
+    return this.connection.disconnect();
   }
 
   async listTabs(): Promise<BrowserTabSummary[]> {
-    const result = await this.callTool("list_pages");
+    const result = await this.connection.callTool("list_pages");
     return extractPages(result);
   }
 
   async openTab(url: string): Promise<string> {
-    const result = await this.callTool("new_page", { url });
+    const result = await this.connection.callTool("new_page", { url });
     return normalizeTextContent(result) || "Opened a new Chrome tab.";
   }
 
   async selectTab(pageIdx: number): Promise<string> {
-    const result = await this.callTool("select_page", { pageId: pageIdx });
+    const result = await this.connection.callTool("select_page", {
+      pageId: pageIdx,
+    });
     return normalizeTextContent(result) || `Selected tab ${pageIdx}.`;
   }
 
   async closeTab(pageIdx: number): Promise<string> {
-    const result = await this.callTool("close_page", { pageId: pageIdx });
+    const result = await this.connection.callTool("close_page", {
+      pageId: pageIdx,
+    });
     return normalizeTextContent(result) || `Closed tab ${pageIdx}.`;
   }
 
   async navigate(url: string): Promise<string> {
-    const result = await this.callTool("navigate_page", { url });
+    const result = await this.connection.callTool("navigate_page", { url });
     return normalizeTextContent(result) || `Navigated to ${url}.`;
   }
 
   async snapshot(): Promise<string> {
-    const result = await this.callTool("take_snapshot");
+    const result = await this.connection.callTool("take_snapshot");
     return normalizeTextContent(result) || "Snapshot captured.";
   }
 
   async click(uid: string): Promise<string> {
-    const result = await this.callTool("click", { uid });
+    const result = await this.connection.callTool("click", { uid });
     return normalizeTextContent(result) || `Clicked ${uid}.`;
   }
 
   async fill(uid: string, value: string): Promise<string> {
-    const result = await this.callTool("fill", { uid, value });
+    const result = await this.connection.callTool("fill", { uid, value });
     return normalizeTextContent(result) || `Filled ${uid}.`;
   }
 
   async pressKey(key: string): Promise<string> {
-    const result = await this.callTool("press_key", { key });
+    const result = await this.connection.callTool("press_key", { key });
     return normalizeTextContent(result) || `Pressed ${key}.`;
   }
 
   async screenshot(filePath: string): Promise<string> {
-    const result = await this.callTool("take_screenshot", { filePath });
+    const result = await this.connection.callTool("take_screenshot", {
+      filePath,
+    });
     return normalizeTextContent(result) || `Screenshot saved to ${filePath}.`;
   }
 }

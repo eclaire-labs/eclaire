@@ -1,0 +1,19 @@
+{
+  "servers": {
+    "chrome-devtools": {
+      "name": "Chrome DevTools",
+      "description": "Control the user's live Chrome browser session via Chrome DevTools MCP",
+      "transport": "stdio",
+      "command": "chrome-devtools-mcp",
+      "args": ["--autoConnect"],
+      "connectTimeout": 15000,
+      "enabled": true,
+      "toolMode": "managed",
+      "availability": {
+        "requireLocal": true,
+        "requireHumanAuth": true,
+        "disableInBackground": true
+      }
+    }
+  }
+}

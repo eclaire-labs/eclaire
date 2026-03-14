@@ -2,9 +2,11 @@
  * Backend Agent Tools
  *
  * All available tools for the RuntimeAgent.
+ * Static tools are defined here; MCP-sourced tools are merged in via getBackendTools().
  */
 
 import type { RuntimeToolDefinition } from "@eclaire/ai";
+import { getMcpRegistry } from "../../mcp/index.js";
 // Count tools
 import { countBookmarksTool } from "./count-bookmarks.js";
 import { countDocumentsTool } from "./count-documents.js";
@@ -43,9 +45,9 @@ import { updateNoteTool } from "./update-note.js";
 import { updateTaskTool } from "./update-task.js";
 
 /**
- * All backend tools as a record for RuntimeAgent.
+ * Static backend tools (always available).
  */
-export const backendTools: Record<string, RuntimeToolDefinition> = {
+const staticTools: Record<string, RuntimeToolDefinition> = {
   // Find tools
   findNotes: findNotesTool,
   findBookmarks: findBookmarksTool,
@@ -83,6 +85,27 @@ export const backendTools: Record<string, RuntimeToolDefinition> = {
   // Skill tools
   loadSkill: loadSkillTool,
 };
+
+/**
+ * All backend tools: static tools merged with dynamic MCP-sourced tools.
+ * Use this instead of `staticTools` when you need the full tool set.
+ */
+export function getBackendTools(): Record<string, RuntimeToolDefinition> {
+  try {
+    const mcpTools = getMcpRegistry().getMcpTools();
+    if (Object.keys(mcpTools).length === 0) return staticTools;
+    return { ...staticTools, ...mcpTools };
+  } catch {
+    // Registry not yet initialized (e.g. during import-time access)
+    return staticTools;
+  }
+}
+
+/**
+ * @deprecated Use getBackendTools() instead. Kept for backward compatibility
+ * during migration — only includes static tools, not MCP-sourced tools.
+ */
+export const backendTools: Record<string, RuntimeToolDefinition> = staticTools;
 
 // Re-export individual tools for direct imports
 export { addTaskCommentTool } from "./add-task-comment.js";

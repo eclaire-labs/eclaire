@@ -4,7 +4,11 @@
  * Thin service layer that uses RuntimeAgent for AI interactions.
  */
 
-import type { AIMessage, ToolCallSummaryOutput } from "@eclaire/ai";
+import type {
+  AIMessage,
+  RuntimeToolDefinition,
+  ToolCallSummaryOutput,
+} from "@eclaire/ai";
 import {
   convertFromLlm,
   createRuntimeContext,
@@ -12,7 +16,7 @@ import {
   type RuntimeStreamEvent,
 } from "@eclaire/ai";
 import type { Context } from "../../schemas/prompt-params.js";
-import { browserRuntime } from "../browser/index.js";
+import { getMcpRegistry } from "../mcp/index.js";
 import { createChildLogger } from "../logger.js";
 import { DEFAULT_AGENT_ID, getAgent } from "../services/agents.js";
 import { getUserContextForPrompt } from "../user.js";
@@ -23,7 +27,7 @@ import {
   saveConversationMessages,
 } from "./conversation-adapter.js";
 import { buildSystemPrompt } from "./system-prompt-builder.js";
-import { backendTools } from "./tools/index.js";
+import { getBackendTools } from "./tools/index.js";
 import type { AgentDefinition, UserContext } from "./types.js";
 
 const logger = createChildLogger("prompt-service");
@@ -52,29 +56,40 @@ function getRequestedAgentActorId(context?: Context): string {
   return context?.agentActorId ?? DEFAULT_AGENT_ID;
 }
 
-function selectAgentTools(agent: AgentDefinition): typeof backendTools {
+function selectAgentTools(
+  agent: AgentDefinition,
+): Record<string, RuntimeToolDefinition> {
+  const allTools = getBackendTools();
+
   const selectedEntries = agent.toolNames
-    .map((toolName) => [toolName, backendTools[toolName]] as const)
-    .filter(
-      (entry): entry is [string, (typeof backendTools)[string]] => !!entry[1],
-    );
+    .map((toolName) => [toolName, allTools[toolName]] as const)
+    .filter((entry): entry is [string, RuntimeToolDefinition] => !!entry[1]);
+
+  let registry: ReturnType<typeof getMcpRegistry> | null = null;
+  try {
+    registry = getMcpRegistry();
+  } catch {
+    // Registry not initialized yet
+  }
 
   return Object.fromEntries(
     selectedEntries.filter(([toolName]) => {
-      if (toolName !== "browseChrome") {
-        return true;
-      }
-      const availability = browserRuntime.getToolAvailability();
-      if (availability.availability !== "available") {
+      if (!registry) return true;
+
+      // Check MCP server availability generically
+      const mcpAvailability = registry.getToolAvailability(toolName);
+      if (mcpAvailability && mcpAvailability.availability !== "available") {
         logger.debug(
           {
-            availability: availability.availability,
-            reason: availability.availabilityReason,
+            toolName,
+            availability: mcpAvailability.availability,
+            reason: mcpAvailability.availabilityReason,
           },
-          "browseChrome tool filtered out — not available",
+          "MCP tool filtered out — not available",
         );
         return false;
       }
+
       return true;
     }),
   );

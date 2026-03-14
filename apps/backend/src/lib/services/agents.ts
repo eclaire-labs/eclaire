@@ -1,11 +1,11 @@
 import { discoverSkills } from "@eclaire/ai";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
-import { browserRuntime } from "../browser/index.js";
-import { backendTools } from "../agent/tools/index.js";
+import { getBackendTools } from "../agent/tools/index.js";
 import type { AgentCatalogItem, AgentDefinition } from "../agent/types.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import { getMcpRegistry } from "../mcp/index.js";
 import {
   normalizeCreateAgentCapabilities,
   normalizeUpdatedAgentCapabilities,
@@ -51,15 +51,24 @@ export interface UpdateAgentInput {
 }
 
 function listToolCatalog(): AgentCatalogItem[] {
-  return Object.values(backendTools)
-    .map((tool) => ({
-      name: tool.name,
-      label: tool.label,
-      description: tool.description,
-      ...(tool.name === "browseChrome"
-        ? browserRuntime.getToolAvailability()
-        : {}),
-    }))
+  const allTools = getBackendTools();
+  let registry: ReturnType<typeof getMcpRegistry> | null = null;
+  try {
+    registry = getMcpRegistry();
+  } catch {
+    // Registry not initialized yet
+  }
+
+  return Object.values(allTools)
+    .map((tool) => {
+      const mcpAvailability = registry?.getToolAvailability(tool.name);
+      return {
+        name: tool.name,
+        label: tool.label,
+        description: tool.description,
+        ...mcpAvailability,
+      };
+    })
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -76,7 +85,7 @@ function validateAgentCapabilities(input: {
   toolNames?: string[];
   skillNames?: string[];
 }): void {
-  const availableTools = new Set(Object.keys(backendTools));
+  const availableTools = new Set(Object.keys(getBackendTools()));
   const availableSkills = new Set(discoverSkills().map((skill) => skill.name));
 
   for (const toolName of input.toolNames ?? []) {
@@ -116,7 +125,7 @@ export function getDefaultAgentDefinition(): AgentDefinition {
     name: "Eclaire",
     description: "Default general-purpose assistant for your workspace.",
     systemPrompt: DEFAULT_AGENT_SYSTEM_PROMPT,
-    toolNames: Object.keys(backendTools),
+    toolNames: Object.keys(getBackendTools()),
     skillNames: discoverSkills().map((skill) => skill.name),
     isEditable: false,
   };

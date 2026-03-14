@@ -28,7 +28,7 @@ import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { showRoutes } from "hono/dev";
-import { initializeAI } from "./lib/ai-init.js";
+import { initializeAI, initializeMcp } from "./lib/ai-init.js";
 import { auth } from "./lib/auth.js";
 import { validateEncryptionService } from "./lib/encryption.js";
 import { logger, smartLogger } from "./lib/logger.js";
@@ -148,6 +148,9 @@ const start = async () => {
     if (SERVICE_ROLE === "api" || SERVICE_ROLE === "all") {
       // Initialize AI client before validation
       initializeAI();
+
+      // Initialize MCP server registry (connects to configured MCP servers)
+      await initializeMcp();
 
       // Validate configurations first - fail fast if not properly configured
       validateAIConfigOnStartup();
