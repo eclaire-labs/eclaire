@@ -2,6 +2,7 @@ import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bot,
+  History,
   Info,
   MessageSquare,
   Plus,
@@ -13,6 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChatPanel } from "@/components/assistant/chat-panel";
+import { ConversationHistoryDialog } from "@/components/assistant/conversation-history-dialog";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import {
   useToolExecutionTracker,
@@ -45,6 +47,7 @@ import {
 } from "@/lib/api-agents";
 import {
   createSession,
+  deleteSession,
   getSessionWithMessages,
   listSessions,
 } from "@/lib/api-sessions";
@@ -101,7 +104,7 @@ function AgentChecklist({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="max-h-56 pr-4">
+        <ScrollArea className="max-h-[32rem] pr-4">
           <div className="space-y-3">
             {items.map((item) => {
               const checked = selectedNames.includes(item.name);
@@ -181,6 +184,7 @@ export default function AssistantSettings({
   const [streamingThought, setStreamingThought] = useState("");
   const [streamingText, setStreamingText] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const finalStreamingTextRef = useRef("");
@@ -370,6 +374,24 @@ export default function AssistantSettings({
     finalStreamingThoughtRef.current = "";
     setIsStreaming(false);
     clearTools();
+  };
+
+  const handleDeleteSession = async (id: string) => {
+    await deleteSession(id);
+    if (currentConversation?.id === id) {
+      startNewChat();
+    }
+    if (selectedAgentId !== "new") {
+      await refreshSessions(selectedAgentId);
+    }
+  };
+
+  const handleDeleteAllSessions = async () => {
+    await Promise.all(sessions.map((s) => deleteSession(s.id)));
+    startNewChat();
+    if (selectedAgentId !== "new") {
+      await refreshSessions(selectedAgentId);
+    }
   };
 
   const handleSend = async () => {
@@ -628,25 +650,14 @@ export default function AssistantSettings({
                 </div>
                 <div className="flex items-center gap-2">
                   {sessions.length > 0 && (
-                    <ScrollArea className="max-h-32">
-                      <div className="flex gap-1">
-                        {sessions.map((session) => (
-                          <Button
-                            key={session.id}
-                            variant={
-                              currentConversation?.id === session.id
-                                ? "secondary"
-                                : "ghost"
-                            }
-                            size="sm"
-                            className="max-w-[140px] shrink-0"
-                            onClick={() => handleSessionSelect(session)}
-                          >
-                            <span className="truncate">{session.title}</span>
-                          </Button>
-                        ))}
-                      </div>
-                    </ScrollArea>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowHistory(true)}
+                    >
+                      <History className="mr-2 h-4 w-4" />
+                      History ({sessions.length})
+                    </Button>
                   )}
                   <Button variant="outline" size="sm" onClick={startNewChat}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -817,6 +828,16 @@ export default function AssistantSettings({
         label="Agent"
         onConfirm={handleDeleteAgent}
         isDeleting={isSaving}
+      />
+
+      <ConversationHistoryDialog
+        open={showHistory}
+        onOpenChange={setShowHistory}
+        onSelectConversation={handleSessionSelect}
+        onDeleteConversation={handleDeleteSession}
+        onDeleteAllConversations={handleDeleteAllSessions}
+        currentConversationId={currentConversation?.id}
+        agentActorId={selectedAgentId !== "new" ? selectedAgentId : undefined}
       />
     </div>
   );

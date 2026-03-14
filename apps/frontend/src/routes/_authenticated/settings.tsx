@@ -9,7 +9,7 @@ const validTabs = [
   "account",
   "appearance",
   "assistant",
-  "notifications",
+  "channels",
   "api-keys",
   "about",
 ] as const;

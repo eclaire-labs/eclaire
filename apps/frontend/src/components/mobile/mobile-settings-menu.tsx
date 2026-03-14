@@ -1,11 +1,11 @@
 import { getRouteApi, Link, useLocation } from "@tanstack/react-router";
 import {
-  Bell,
   Bot,
   ChevronRight,
   Info,
   Key,
   LayoutDashboard,
+  Radio,
   Settings,
   User,
 } from "lucide-react";
@@ -45,11 +45,11 @@ const settingsMenuItems: SettingsMenuItem[] = [
     href: "/settings?tab=appearance",
   },
   {
-    id: "notifications",
-    label: "Notifications",
-    description: "Configure notification preferences",
-    icon: Bell,
-    href: "/settings?tab=notifications",
+    id: "channels",
+    label: "Channels",
+    description: "Configure channel integrations",
+    icon: Radio,
+    href: "/settings?tab=channels",
   },
   {
     id: "assistant",

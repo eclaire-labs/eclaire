@@ -10,7 +10,7 @@ import AccountSettings from "@/components/settings/AccountSettings";
 import ApiKeyManager from "@/components/settings/ApiKeyManager";
 import AppearanceSettings from "@/components/settings/AppearanceSettings";
 import AssistantDisplaySettings from "@/components/settings/AssistantDisplaySettings";
-import NotificationSettings from "@/components/settings/NotificationSettings";
+import ChannelSettings from "@/components/settings/ChannelSettings";
 import ProfileSettings from "@/components/settings/ProfileSettings";
 import {
   Card,
@@ -55,7 +55,7 @@ type SettingsTab =
   | "account"
   | "appearance"
   | "assistant"
-  | "notifications"
+  | "channels"
   | "api-keys"
   | "about";
 
@@ -85,7 +85,7 @@ export default function SettingsContent() {
         "account",
         "appearance",
         "assistant",
-        "notifications",
+        "channels",
         "api-keys",
         "about",
       ].includes(tabParam)
@@ -125,8 +125,8 @@ export default function SettingsContent() {
         return <AppearanceSettings />;
       case "assistant":
         return <AssistantDisplaySettings />;
-      case "notifications":
-        return <NotificationSettings />;
+      case "channels":
+        return <ChannelSettings />;
       case "api-keys":
         return (
           <Card>
@@ -271,8 +271,8 @@ export default function SettingsContent() {
                   ? "Appearance"
                   : tabParam === "assistant"
                     ? "Assistant"
-                    : tabParam === "notifications"
-                      ? "Notifications"
+                    : tabParam === "channels"
+                      ? "Channels"
                       : tabParam === "api-keys"
                         ? "API Keys"
                         : tabParam === "about"
@@ -325,8 +325,8 @@ export default function SettingsContent() {
           <TabsTrigger value="assistant" className="py-2.5">
             Assistant
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="py-2.5">
-            Notifications
+          <TabsTrigger value="channels" className="py-2.5">
+            Channels
           </TabsTrigger>
           <TabsTrigger value="api-keys" className="py-2.5">
             API Keys
@@ -352,8 +352,8 @@ export default function SettingsContent() {
           <AssistantDisplaySettings />
         </TabsContent>
 
-        <TabsContent value="notifications">
-          <NotificationSettings />
+        <TabsContent value="channels">
+          <ChannelSettings />
         </TabsContent>
 
         <TabsContent value="api-keys">

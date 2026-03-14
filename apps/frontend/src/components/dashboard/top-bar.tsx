@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Minimize2,
   Palette,
+  Radio,
   User,
 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -196,9 +197,9 @@ export function TopBar({
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/settings" search={{ tab: "notifications" }}>
-                <Bell className="mr-2 h-4 w-4" />
-                Notifications
+              <Link to="/settings" search={{ tab: "channels" }}>
+                <Radio className="mr-2 h-4 w-4" />
+                Channels
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
