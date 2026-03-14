@@ -34,7 +34,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -109,7 +108,7 @@ function AgentChecklist({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="max-h-[32rem] pr-4">
+        <div className="max-h-[calc(50vh-8rem)] overflow-y-auto pr-1">
           <div className="space-y-3">
             {items.map((item) => {
               const checked = selectedNames.includes(item.name);
@@ -156,7 +155,7 @@ function AgentChecklist({
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
@@ -815,7 +814,7 @@ export default function AssistantSettings({
               </CardContent>
             </Card>
 
-            <div className="space-y-6">
+            <div className="space-y-6 xl:sticky xl:top-6 xl:self-start">
               <AgentChecklist
                 title="Tools"
                 description="These are the actions the agent can take inside the workspace."
