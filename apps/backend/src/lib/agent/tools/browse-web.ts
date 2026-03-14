@@ -313,6 +313,7 @@ export const browseWebTool: RuntimeToolDefinition<typeof inputSchema> = {
         binary: "agent-browser",
         args: invocation.args,
         timeoutMs: config.timeouts.pageNavigation,
+        signal: ctx.signal,
       });
 
       if (input.action === "screenshot" && invocation.screenshotPath) {
@@ -322,6 +323,7 @@ export const browseWebTool: RuntimeToolDefinition<typeof inputSchema> = {
             sessionName: invocation.sessionName,
             screenshotPath: invocation.screenshotPath,
             command: ["agent-browser", ...invocation.args].join(" "),
+            ...(result.stderr && { stderr: result.stderr }),
           },
         );
       }
@@ -338,6 +340,7 @@ export const browseWebTool: RuntimeToolDefinition<typeof inputSchema> = {
       return textResult(result.stdout || fallbackMessages[input.action], {
         sessionName: invocation.sessionName,
         command: ["agent-browser", ...invocation.args].join(" "),
+        ...(result.stderr && { stderr: result.stderr }),
       });
     } catch (error) {
       if (error instanceof CliExecutionError) {
