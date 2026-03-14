@@ -703,14 +703,14 @@ export async function startAllBots(): Promise<void> {
   const { findActiveChannels, logger } = getDeps();
 
   try {
-    logger.info("Starting all Discord bots");
-
     const discordChannels = await findActiveChannels();
 
-    logger.info(
-      { count: discordChannels.length },
-      "Found active Discord channels",
-    );
+    if (discordChannels.length === 0) {
+      logger.debug("No active Discord channels, skipping");
+      return;
+    }
+
+    logger.info({ count: discordChannels.length }, "Starting Discord bots");
 
     // Group by bot token to create one client per token
     const tokenGroups = new Map<

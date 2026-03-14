@@ -590,11 +590,14 @@ export async function startAllBots(): Promise<void> {
   const { findActiveChannels, logger } = getDeps();
 
   try {
-    logger.info("Starting all Slack bots");
-
     const slackChannels = await findActiveChannels();
 
-    logger.info({ count: slackChannels.length }, "Found active Slack channels");
+    if (slackChannels.length === 0) {
+      logger.debug("No active Slack channels, skipping");
+      return;
+    }
+
+    logger.info({ count: slackChannels.length }, "Starting Slack bots");
 
     // Group by bot token to create one app per token
     const tokenGroups = new Map<

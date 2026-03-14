@@ -28,13 +28,20 @@ export class ChannelRegistry {
     return Array.from(this.adapters.values());
   }
 
-  /** Start all adapters that have runtime lifecycle. */
+  /** Start all adapters that have runtime lifecycle (in parallel). */
   async startAll(): Promise<void> {
-    for (const adapter of this.adapters.values()) {
-      if (adapter.startAll) {
-        await adapter.startAll();
-      }
-    }
+    const starts = Array.from(this.adapters.values())
+      .filter((a) => a.startAll)
+      .map((a) =>
+        a.startAll?.().catch((error) => {
+          // Safety net: each adapter already logs its own errors internally.
+          console.error(
+            `Channel adapter ${a.platform} startAll failed:`,
+            error,
+          );
+        }),
+      );
+    await Promise.all(starts);
   }
 
   /** Stop all adapters. */

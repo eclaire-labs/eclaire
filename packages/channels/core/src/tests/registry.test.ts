@@ -82,6 +82,49 @@ describe("ChannelRegistry", () => {
     await registry.startAll();
   });
 
+  it("startAll() runs adapters in parallel", async () => {
+    const registry = new ChannelRegistry();
+    const callOrder: string[] = [];
+
+    const startAll1 = vi.fn().mockImplementation(async () => {
+      callOrder.push("telegram-start");
+      await new Promise((r) => setTimeout(r, 50));
+      callOrder.push("telegram-end");
+    });
+    const startAll2 = vi.fn().mockImplementation(async () => {
+      callOrder.push("slack-start");
+      await new Promise((r) => setTimeout(r, 10));
+      callOrder.push("slack-end");
+    });
+
+    registry.register(createMockAdapter("telegram", { startAll: startAll1 }));
+    registry.register(createMockAdapter("slack", { startAll: startAll2 }));
+
+    await registry.startAll();
+
+    // Both should start before either finishes (parallel)
+    expect(callOrder.indexOf("slack-start")).toBeLessThan(
+      callOrder.indexOf("telegram-end"),
+    );
+  });
+
+  it("startAll() continues even if one adapter throws", async () => {
+    const registry = new ChannelRegistry();
+    const failingStart = vi.fn().mockRejectedValue(new Error("boom"));
+    const successStart = vi.fn().mockResolvedValue(undefined);
+
+    registry.register(
+      createMockAdapter("telegram", { startAll: failingStart }),
+    );
+    registry.register(createMockAdapter("slack", { startAll: successStart }));
+
+    // Should not throw
+    await registry.startAll();
+
+    expect(failingStart).toHaveBeenCalledOnce();
+    expect(successStart).toHaveBeenCalledOnce();
+  });
+
   it("stopAll() delegates to each adapter's stopAll in parallel", async () => {
     const registry = new ChannelRegistry();
     const stopAll1 = vi.fn().mockResolvedValue(undefined);

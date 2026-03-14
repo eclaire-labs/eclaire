@@ -413,14 +413,14 @@ export async function startAllBots(): Promise<void> {
   const { findActiveChannels, logger } = getDeps();
 
   try {
-    logger.info("Starting all Telegram bots");
-
     const telegramChannels = await findActiveChannels();
 
-    logger.info(
-      { count: telegramChannels.length },
-      "Found active Telegram channels",
-    );
+    if (telegramChannels.length === 0) {
+      logger.debug("No active Telegram channels, skipping");
+      return;
+    }
+
+    logger.info({ count: telegramChannels.length }, "Starting Telegram bots");
 
     for (const channel of telegramChannels) {
       try {

@@ -198,7 +198,7 @@ const start = async () => {
         "HTTP server running successfully",
       );
 
-      // Start Telegram bots after server is running
+      // Start channel adapters (Telegram, Discord, Slack) after server is running
       if (config.security.masterEncryptionKey) {
         logger.info("Starting channel adapters...");
         await channelRegistry.startAll();
