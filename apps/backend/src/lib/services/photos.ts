@@ -1121,7 +1121,7 @@ export async function findPhotos({
     // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: photos.createdAt,
-      dateTaken: photos.dateTaken,
+      dateTaken: sql`COALESCE(${photos.dateTaken}, ${photos.createdAt})`,
       title: photos.title,
     };
     const sortColumn = sortColumnMap[sortBy] || photos.createdAt;
@@ -1295,7 +1295,7 @@ export async function findPhotos({
     // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
       if (sortBy === "title") return item.title;
-      if (sortBy === "dateTaken") return item.dateTaken;
+      if (sortBy === "dateTaken") return item.dateTaken ?? item.createdAt;
       return item.createdAt; // createdAt formatted as ISO string
     };
     const nextCursor =
