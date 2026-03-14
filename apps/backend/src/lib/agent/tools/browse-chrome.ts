@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import {
   errorResult,
   textResult,
@@ -5,6 +7,8 @@ import {
 } from "@eclaire/ai";
 import z from "zod/v4";
 import { browserRuntime } from "../../browser/index.js";
+import { createPhoto } from "../../services/photos.js";
+import { agentToolCaller } from "./caller.js";
 
 const inputSchema = z.object({
   action: z
@@ -246,11 +250,31 @@ export const browseChromeTool: RuntimeToolDefinition<typeof inputSchema> = {
             runtimeContext,
             input.tabId,
           );
-          return textResult(`Screenshot saved to ${result.screenshotPath}`, {
-            transport: "chrome-mcp",
-            activeTab: result.tab,
-            screenshotPath: result.screenshotPath,
-          });
+          const screenshotBuffer = fs.readFileSync(result.screenshotPath);
+          const photo = await createPhoto(
+            {
+              content: screenshotBuffer,
+              metadata: {
+                title: `Screenshot – ${result.tab.title}`,
+                description: `Screenshot of ${result.tab.url}`,
+                tags: ["chrome-screenshot"],
+                originalFilename: path.basename(result.screenshotPath),
+              },
+              originalMimeType: "image/png",
+              userAgent: "browseChrome",
+              extractedMetadata: {},
+            },
+            ctx.userId,
+            agentToolCaller(ctx),
+          );
+          return textResult(
+            `Screenshot saved as /photos/${photo.id}\nTitle: ${photo.title}\nURL: ${result.tab.url}`,
+            {
+              transport: "chrome-mcp",
+              activeTab: result.tab,
+              photoId: photo.id,
+            },
+          );
         }
 
         case "closeTab": {

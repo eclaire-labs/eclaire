@@ -372,7 +372,7 @@ export class BrowserRuntime {
       await this.refreshTabs(state);
     }
     const tab = await this.selectTabInternal(state, tabId);
-    const screenshotDir = path.join(
+    const screenshotDir = path.resolve(
       config.dirs.browserData,
       "chrome-mcp",
       "screenshots",
