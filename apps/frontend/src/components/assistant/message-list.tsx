@@ -45,7 +45,6 @@ interface MessageListProps {
   streamingText?: string;
   streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
-  onSuggestedPrompt?: (prompt: string) => void;
 }
 
 export function MessageList({
@@ -56,7 +55,6 @@ export function MessageList({
   streamingText,
   streamingToolCalls = [],
   showThinkingTokens = true,
-  onSuggestedPrompt,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -86,46 +84,6 @@ export function MessageList({
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
-  // Empty / welcome state
-  const isEmptyState = messages.length === 0 && !isLoading && !isStreaming;
-
-  if (isEmptyState) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-        <AIAvatar size="lg" className="mb-4" />
-        <h3 className="text-lg font-semibold mb-1">AI Assistant</h3>
-        <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-          Ask me anything about your documents, bookmarks, tasks, or notes.
-        </p>
-        {onSuggestedPrompt && (
-          <div className="grid gap-2 w-full max-w-xs">
-            <button
-              type="button"
-              className="text-left text-sm px-3 py-2 rounded-lg border hover:bg-muted transition-colors text-muted-foreground"
-              onClick={() => onSuggestedPrompt("Summarize my recent bookmarks")}
-            >
-              Summarize my recent bookmarks
-            </button>
-            <button
-              type="button"
-              className="text-left text-sm px-3 py-2 rounded-lg border hover:bg-muted transition-colors text-muted-foreground"
-              onClick={() => onSuggestedPrompt("What tasks are due this week?")}
-            >
-              What tasks are due this week?
-            </button>
-            <button
-              type="button"
-              className="text-left text-sm px-3 py-2 rounded-lg border hover:bg-muted transition-colors text-muted-foreground"
-              onClick={() => onSuggestedPrompt("Find my most recent notes")}
-            >
-              Find my most recent notes
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="relative p-4 space-y-4">
