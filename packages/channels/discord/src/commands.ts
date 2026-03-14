@@ -117,8 +117,8 @@ const COMMANDS: CommandDef[] = [
           return;
         }
         const lines = list.map((s, i) => {
-          const title =
-            s.title.length > 40 ? `${s.title.slice(0, 37)}...` : s.title;
+          const t = s.title || "New session";
+          const title = t.length > 40 ? `${t.slice(0, 37)}...` : t;
           return `${i + 1}. ${title} (${s.messageCount} msgs)`;
         });
         await interaction.editReply(

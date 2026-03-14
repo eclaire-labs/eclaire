@@ -19,7 +19,7 @@ const mockCreateSession = vi.fn(async () => ({
 }));
 type SessionItem = {
   id: string;
-  title: string;
+  title: string | null;
   messageCount: number;
   updatedAt: Date;
 };

@@ -136,7 +136,7 @@ export const ConversationHistoryDialog = ({
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-sm truncate">
-                          {conversation.title}
+                          {conversation.title || "New session"}
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1">
                           {conversation.messageCount} messages

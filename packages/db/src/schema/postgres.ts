@@ -1057,7 +1057,7 @@ export const conversations = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     agentActorId: text("agent_actor_id").notNull(),
-    title: text("title").notNull(),
+    title: text("title"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

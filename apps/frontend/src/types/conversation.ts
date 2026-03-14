@@ -9,7 +9,7 @@ export interface ConversationSummary {
   id: string;
   userId: string;
   agentActorId: string;
-  title: string;
+  title: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
   lastMessageAt: Date | string | null;

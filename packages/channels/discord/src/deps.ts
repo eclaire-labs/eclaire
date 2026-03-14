@@ -69,7 +69,7 @@ export interface DiscordDeps {
     userId: string,
     title?: string,
     agentActorId?: string,
-  ) => Promise<{ id: string; title: string }>;
+  ) => Promise<{ id: string; title: string | null }>;
   listSessions?: (
     userId: string,
     limit?: number,
@@ -78,7 +78,7 @@ export interface DiscordDeps {
   ) => Promise<
     Array<{
       id: string;
-      title: string;
+      title: string | null;
       messageCount: number;
       updatedAt: Date;
     }>

@@ -12,7 +12,7 @@ const logger = createChildLogger("conversations-service");
 export interface CreateConversationParams {
   userId: string;
   agentActorId: string;
-  title: string;
+  title?: string | null;
 }
 
 export interface UpdateConversationParams {
@@ -23,7 +23,7 @@ export interface ConversationWithMessages {
   id: string;
   userId: string;
   agentActorId: string;
-  title: string;
+  title: string | null;
   createdAt: Date;
   updatedAt: Date;
   lastMessageAt: Date | null;
@@ -45,7 +45,7 @@ export interface ConversationSummary {
   id: string;
   userId: string;
   agentActorId: string;
-  title: string;
+  title: string | null;
   createdAt: Date;
   updatedAt: Date;
   lastMessageAt: Date | null;

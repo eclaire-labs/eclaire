@@ -31,6 +31,7 @@ import {
   type ConversationWithMessages,
   countConversations,
   createConversation,
+  generateConversationTitle,
   getConversation,
   deleteConversation,
   getConversationWithMessages,
@@ -100,14 +101,14 @@ export async function createSession(
   const session = await createConversation({
     userId,
     agentActorId: agentActorId ?? DEFAULT_AGENT_ID,
-    title: title || "New session",
+    title: title || null,
   });
 
   await recordHistory({
     action: "conversation_created",
     itemType: "conversation",
     itemId: session.id,
-    itemName: session.title,
+    itemName: session.title ?? undefined,
     beforeData: null,
     afterData: session,
     actor: caller.actor,
@@ -155,7 +156,7 @@ export async function updateSession(
       action: "conversation_updated",
       itemType: "conversation",
       itemId: sessionId,
-      itemName: updated.title,
+      itemName: updated.title ?? undefined,
       beforeData: { updates },
       afterData: updated,
       actor: caller.actor,
@@ -374,6 +375,17 @@ export async function sendMessage(
               result,
               requestId,
             });
+
+            // Auto-generate title from first message
+            if (!session.title) {
+              const title = generateConversationTitle(prompt);
+              updateConversation(sessionId, userId, { title }).catch((err) => {
+                logger.error(
+                  { err, sessionId },
+                  "Failed to auto-title session",
+                );
+              });
+            }
 
             const endTime = Date.now();
 

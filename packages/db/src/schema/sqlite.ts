@@ -848,7 +848,7 @@ export const conversations = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     agentActorId: text("agent_actor_id").notNull(),
-    title: text("title").notNull(),
+    title: text("title"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
