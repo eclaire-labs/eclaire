@@ -1,6 +1,16 @@
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { History, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,6 +43,7 @@ export const ConversationHistoryDialog = ({
 }: ConversationHistoryDialogProps) => {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -134,7 +145,13 @@ export const ConversationHistoryDialog = ({
                           <p className="text-xs text-muted-foreground">
                             {new Date(
                               conversation.lastMessageAt,
-                            ).toLocaleDateString()}
+                            ).toLocaleString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
                           </p>
                         )}
                       </div>
@@ -161,7 +178,7 @@ export const ConversationHistoryDialog = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleDeleteAll}
+              onClick={() => setShowDeleteAllConfirm(true)}
               className="w-full text-destructive hover:text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -169,6 +186,30 @@ export const ConversationHistoryDialog = ({
             </Button>
           </div>
         )}
+        <AlertDialog
+          open={showDeleteAllConfirm}
+          onOpenChange={setShowDeleteAllConfirm}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete all conversations?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete all {conversations.length}{" "}
+                conversation{conversations.length === 1 ? "" : "s"}. This action
+                cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteAll}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete All
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
