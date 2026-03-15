@@ -1,1 +1,0 @@
-ALTER TABLE `agents` ADD `model_id` text;

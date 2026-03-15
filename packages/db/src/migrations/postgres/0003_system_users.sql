@@ -1,2 +1,0 @@
--- No-op.
--- The legacy synthetic assistant user is no longer part of the actor-native design.

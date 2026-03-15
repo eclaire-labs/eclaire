@@ -47,13 +47,18 @@ describe("Schema Structural Parity", () => {
     .map(([key]) => key)
     .filter((key) => sqliteTableMap.has(key));
 
+  // Columns that only exist in PG (e.g. tsvector for full-text search)
+  const PG_ONLY_COLUMNS = new Set(["searchVector"]);
+
   for (const tableName of commonNames) {
     it(`table "${tableName}" should have the same columns in both dialects`, () => {
       const pgTable = pgTableMap.get(tableName);
       const sqliteTable = sqliteTableMap.get(tableName);
       if (!pgTable || !sqliteTable) return;
 
-      const pgCols = Object.keys(getTableColumns(pgTable as any)).sort();
+      const pgCols = Object.keys(getTableColumns(pgTable as any))
+        .filter((col) => !PG_ONLY_COLUMNS.has(col))
+        .sort();
       const sqliteCols = Object.keys(
         getTableColumns(sqliteTable as any),
       ).sort();

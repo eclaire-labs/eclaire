@@ -1253,6 +1253,10 @@ export const messagesRelations = relations(messages, ({ one }) => ({
   }),
 }));
 
+export const agentsRelations = relations(agents, ({ one }) => ({
+  user: one(users, { fields: [agents.userId], references: [users.id] }),
+}));
+
 export const channelsRelations = relations(channels, ({ one }) => ({
   user: one(users, { fields: [channels.userId], references: [users.id] }),
   agentActor: one(actors, {
