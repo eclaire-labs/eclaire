@@ -20,6 +20,10 @@ export const SpeechRequestSchema = z.object({
     .optional()
     .describe("Output audio format (default: mp3)"),
   model: z.string().optional().describe("Override the default TTS model"),
+  stream: z
+    .boolean()
+    .optional()
+    .describe("Stream audio response in chunks (default: false)"),
 });
 
 export type SpeechRequest = z.infer<typeof SpeechRequestSchema>;

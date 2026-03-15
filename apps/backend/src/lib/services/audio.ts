@@ -12,7 +12,6 @@ import {
   type AudioProviderConfig,
   type SynthesizeInput,
   type TranscribeInput,
-  type TranscriptionResult,
 } from "@eclaire/audio";
 import { createChildLogger } from "../logger.js";
 
@@ -58,6 +57,18 @@ export async function synthesize(input: SynthesizeInput): Promise<Buffer> {
     throw new Error("Audio service is not enabled");
   }
   return provider.synthesize(input);
+}
+
+/**
+ * Synthesize text to audio, returning a streaming response.
+ */
+export async function synthesizeStream(
+  input: SynthesizeInput,
+): Promise<Response> {
+  if (!provider) {
+    throw new Error("Audio service is not enabled");
+  }
+  return provider.synthesizeStream(input);
 }
 
 /**

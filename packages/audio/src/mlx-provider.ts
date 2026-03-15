@@ -72,6 +72,20 @@ export class MlxAudioProvider implements AudioProvider {
     return buffer;
   }
 
+  async synthesizeStream(input: SynthesizeInput): Promise<Response> {
+    const model = input.model ?? this.config.defaultTtsModel;
+    const voice = input.voice ?? (this.config.defaultTtsVoice || undefined);
+    const format = input.format ?? "wav";
+
+    return this.client.synthesizeStream({
+      model,
+      text: input.text,
+      voice,
+      speed: input.speed,
+      format,
+    });
+  }
+
   async checkHealth(): Promise<AudioHealth> {
     try {
       const alive = await this.client.ping();

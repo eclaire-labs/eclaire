@@ -147,6 +147,43 @@ export class MlxAudioClient {
     return Buffer.from(arrayBuffer);
   }
 
+  /**
+   * Synthesize speech via POST /v1/audio/speech with streaming.
+   *
+   * Returns the raw Response so the caller can stream the body.
+   */
+  async synthesizeStream(input: {
+    model: string;
+    text: string;
+    voice?: string;
+    speed?: number;
+    format?: string;
+  }): Promise<Response> {
+    const body: Record<string, unknown> = {
+      model: input.model,
+      input: input.text,
+      stream: true,
+    };
+    if (input.voice) body.voice = input.voice;
+    if (input.speed !== undefined) body.speed = input.speed;
+    if (input.format) body.response_format = input.format;
+
+    const response = await this.fetch("/v1/audio/speech", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        `mlx-audio streaming speech synthesis failed: ${response.status} ${response.statusText}${errorText ? ` — ${errorText}` : ""}`,
+      );
+    }
+
+    return response;
+  }
+
   // --------------------------------------------------------------------------
   // Helpers
   // --------------------------------------------------------------------------

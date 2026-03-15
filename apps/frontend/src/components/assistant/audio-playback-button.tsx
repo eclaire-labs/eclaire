@@ -3,6 +3,10 @@
  *
  * Self-contained: checks audio availability internally,
  * renders nothing when unavailable.
+ *
+ * Supports two modes:
+ * - Streaming: plays audio as it's generated (low latency)
+ * - Buffered: waits for full synthesis before playback (fallback)
  */
 
 import { Loader2, Square, Volume2 } from "lucide-react";
@@ -15,6 +19,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAudio } from "@/hooks/use-audio";
+import { useStreamingPlayback } from "@/hooks/use-streaming-playback";
+import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 
 type PlaybackStatus = "idle" | "synthesizing" | "playing";
 
@@ -23,24 +29,47 @@ interface AudioPlaybackButtonProps {
 }
 
 export function AudioPlaybackButton({ text }: AudioPlaybackButtonProps) {
-  const { synthesize, isAudioAvailable } = useAudio();
+  const { synthesize, isAudioAvailable, isStreamingEnabled } = useAudio();
+  const streamingPlayback = useStreamingPlayback();
+  const [preferences] = useAssistantPreferences();
   const [status, setStatus] = useState<PlaybackStatus>("idle");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const cachedUrlRef = useRef<string | null>(null);
 
+  const useStreaming = isStreamingEnabled && preferences.useStreamingTTS;
+
+  // Derive combined status from both modes
+  const combinedStatus = useStreaming
+    ? streamingPlayback.status === "loading"
+      ? "synthesizing"
+      : streamingPlayback.status === "playing"
+        ? "playing"
+        : status
+    : status;
+
   const handleClick = useCallback(async () => {
-    // If currently playing, stop
-    if (status === "playing" && audioRef.current) {
+    // --- Streaming mode ---
+    if (useStreaming) {
+      if (streamingPlayback.status === "playing") {
+        streamingPlayback.stop();
+        return;
+      }
+      if (streamingPlayback.status !== "idle") return;
+      await streamingPlayback.play(text);
+      return;
+    }
+
+    // --- Buffered mode ---
+    if (combinedStatus === "playing" && audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       setStatus("idle");
       return;
     }
 
-    if (status === "synthesizing") return;
+    if (combinedStatus === "synthesizing") return;
 
     try {
-      // Use cached URL if available
       let url = cachedUrlRef.current;
       if (!url) {
         setStatus("synthesizing");
@@ -60,7 +89,6 @@ export function AudioPlaybackButton({ text }: AudioPlaybackButtonProps) {
       audio.onerror = () => {
         setStatus("idle");
         audioRef.current = null;
-        // Clear cache on error so next attempt re-synthesizes
         cachedUrlRef.current = null;
       };
 
@@ -69,7 +97,7 @@ export function AudioPlaybackButton({ text }: AudioPlaybackButtonProps) {
       setStatus("idle");
       cachedUrlRef.current = null;
     }
-  }, [status, text, synthesize]);
+  }, [useStreaming, streamingPlayback, combinedStatus, text, synthesize]);
 
   if (!isAudioAvailable || !text.trim()) {
     return null;
@@ -85,11 +113,11 @@ export function AudioPlaybackButton({ text }: AudioPlaybackButtonProps) {
             size="icon"
             className="h-5 w-5 p-0 text-muted-foreground/60 hover:text-foreground"
             onClick={handleClick}
-            disabled={status === "synthesizing"}
+            disabled={combinedStatus === "synthesizing"}
           >
-            {status === "synthesizing" ? (
+            {combinedStatus === "synthesizing" ? (
               <Loader2 className="h-3 w-3 animate-spin" />
-            ) : status === "playing" ? (
+            ) : combinedStatus === "playing" ? (
               <Square className="h-3 w-3" />
             ) : (
               <Volume2 className="h-3 w-3" />
@@ -97,9 +125,9 @@ export function AudioPlaybackButton({ text }: AudioPlaybackButtonProps) {
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          {status === "synthesizing"
+          {combinedStatus === "synthesizing"
             ? "Generating audio..."
-            : status === "playing"
+            : combinedStatus === "playing"
               ? "Stop"
               : "Listen"}
         </TooltipContent>

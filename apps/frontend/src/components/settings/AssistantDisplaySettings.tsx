@@ -1,5 +1,5 @@
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
-import { Bot, Brain, ExternalLink, Info, Mic } from "lucide-react";
+import { Bot, Brain, ExternalLink, Info, Mic, Volume2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
   Card,
@@ -156,7 +156,7 @@ export default function AssistantDisplaySettings() {
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">Audio Options</h4>
                   <p className="text-sm text-muted-foreground">
-                    Configure push-to-talk transcription behavior.
+                    Configure audio transcription and speech behavior.
                   </p>
                 </div>
 
@@ -187,6 +187,38 @@ export default function AssistantDisplaySettings() {
                     checked={preferences.useStreamingSTT}
                     onCheckedChange={(checked) =>
                       updatePreference("useStreamingSTT", checked)
+                    }
+                    disabled={!isStreamingEnabled}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex items-center space-x-3">
+                    <Volume2 className="h-4 w-4 text-muted-foreground" />
+                    <div className="space-y-0.5">
+                      <Label
+                        htmlFor="streaming-tts"
+                        className="text-sm font-normal"
+                      >
+                        Use streaming speech synthesis
+                        {!isStreamingEnabled && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            (Not available)
+                          </span>
+                        )}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Start playing audio as it's generated for faster
+                        response. Disable to wait for full synthesis before
+                        playback.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="streaming-tts"
+                    checked={preferences.useStreamingTTS}
+                    onCheckedChange={(checked) =>
+                      updatePreference("useStreamingTTS", checked)
                     }
                     disabled={!isStreamingEnabled}
                   />

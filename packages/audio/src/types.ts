@@ -87,6 +87,8 @@ export interface AudioProvider {
   transcribe(input: TranscribeInput): Promise<TranscriptionResult>;
   /** Synthesize text to audio */
   synthesize(input: SynthesizeInput): Promise<Buffer>;
+  /** Synthesize text to audio, returning the raw streaming response */
+  synthesizeStream(input: SynthesizeInput): Promise<Response>;
   /** Check if the audio server is reachable and ready */
   checkHealth(): Promise<AudioHealth>;
 }

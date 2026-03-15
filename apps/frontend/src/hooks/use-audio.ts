@@ -24,6 +24,11 @@ interface UseAudioReturn {
   synthesize: (text: string) => Promise<string>;
   isSynthesizing: boolean;
 
+  /** Send text for streaming synthesis, returns a ReadableStream reader. */
+  synthesizeStream: (
+    text: string,
+  ) => Promise<ReadableStreamDefaultReader<Uint8Array>>;
+
   /** Whether the audio service is available and ready. */
   isAudioAvailable: boolean;
   isCheckingAvailability: boolean;
@@ -159,11 +164,27 @@ export function useAudio(): UseAudioReturn {
     }
   }, []);
 
+  const synthesizeStream = useCallback(
+    async (text: string): Promise<ReadableStreamDefaultReader<Uint8Array>> => {
+      const response = await apiFetch("/api/audio/speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, format: "wav", stream: true }),
+      });
+      if (!response.body) {
+        throw new Error("No response body for streaming synthesis");
+      }
+      return response.body.getReader();
+    },
+    [],
+  );
+
   return {
     transcribe,
     isTranscribing,
     synthesize,
     isSynthesizing,
+    synthesizeStream,
     isAudioAvailable,
     isCheckingAvailability,
     isStreamingEnabled,

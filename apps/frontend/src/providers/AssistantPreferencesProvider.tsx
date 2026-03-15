@@ -12,12 +12,14 @@ interface AssistantPreferences {
   showThinkingTokens: boolean;
   showAssistantOverlay: boolean;
   useStreamingSTT: boolean;
+  useStreamingTTS: boolean;
 }
 
 const DEFAULT_PREFERENCES: AssistantPreferences = {
   showThinkingTokens: true,
   showAssistantOverlay: true,
   useStreamingSTT: true,
+  useStreamingTTS: true,
 };
 
 const STORAGE_KEY = "assistant-preferences";

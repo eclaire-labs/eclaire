@@ -19,6 +19,7 @@ import {
   getAudioHealth,
   isAudioAvailable,
   synthesize,
+  synthesizeStream,
   transcribe,
 } from "../lib/services/audio.js";
 import { getUpgradeWebSocket } from "../lib/websocket.js";
@@ -85,9 +86,33 @@ audioRoutes.post(
       return c.json({ error: "Audio service is not available" }, 503);
     }
 
-    const { text, voice, speed, format, model } = c.req.valid("json");
+    const { text, voice, speed, format, model, stream } = c.req.valid("json");
     const outputFormat = format ?? "mp3";
 
+    // Streaming mode: pipe mlx-audio response through to client
+    if (stream) {
+      const upstreamResponse = await synthesizeStream({
+        text,
+        voice,
+        speed,
+        format: outputFormat,
+        model,
+      });
+
+      const contentType = outputFormat === "wav" ? "audio/wav" : "audio/mpeg";
+
+      return new Response(
+        upstreamResponse.body as ReadableStream<Uint8Array> | null,
+        {
+          headers: {
+            "Content-Type": contentType,
+            "Transfer-Encoding": "chunked",
+          },
+        },
+      );
+    }
+
+    // Buffered mode (default)
     const audioBuffer = await synthesize({
       text,
       voice,
