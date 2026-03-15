@@ -82,6 +82,13 @@ export async function getAudioHealth(): Promise<AudioHealth> {
   const health = await provider.checkHealth();
   if (health.status === "ready") {
     health.streamingEnabled = true;
+    if (audioConfig) {
+      health.defaults = {
+        sttModel: audioConfig.defaultSttModel,
+        ttsModel: audioConfig.defaultTtsModel,
+        ttsVoice: audioConfig.defaultTtsVoice,
+      };
+    }
   }
   return health;
 }

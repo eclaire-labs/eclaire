@@ -14,7 +14,13 @@ interface AssistantPreferences {
   useStreamingSTT: boolean;
   useStreamingTTS: boolean;
   voiceMode: boolean;
+  sttModel: string;
+  ttsModel: string;
+  ttsVoice: string;
+  ttsSpeed: number;
 }
+
+type PreferenceValue = AssistantPreferences[keyof AssistantPreferences];
 
 const DEFAULT_PREFERENCES: AssistantPreferences = {
   showThinkingTokens: true,
@@ -22,13 +28,20 @@ const DEFAULT_PREFERENCES: AssistantPreferences = {
   useStreamingSTT: true,
   useStreamingTTS: true,
   voiceMode: false,
+  sttModel: "",
+  ttsModel: "",
+  ttsVoice: "",
+  ttsSpeed: 1.0,
 };
 
 const STORAGE_KEY = "assistant-preferences";
 
 interface AssistantPreferencesContextType {
   preferences: AssistantPreferences;
-  updatePreference: (key: keyof AssistantPreferences, value: boolean) => void;
+  updatePreference: (
+    key: keyof AssistantPreferences,
+    value: PreferenceValue,
+  ) => void;
   isLoaded: boolean;
 }
 
@@ -82,7 +95,7 @@ export function AssistantPreferencesProvider({
   }, []);
 
   const updatePreference = useCallback(
-    (key: keyof AssistantPreferences, value: boolean) => {
+    (key: keyof AssistantPreferences, value: PreferenceValue) => {
       setPreferences((prev) => {
         const newPreferences = { ...prev, [key]: value };
         if (typeof window !== "undefined") {
@@ -117,7 +130,7 @@ export function AssistantPreferencesProvider({
 // Hook to use assistant preferences
 export function useAssistantPreferences(): [
   AssistantPreferences,
-  (key: keyof AssistantPreferences, value: boolean) => void,
+  (key: keyof AssistantPreferences, value: PreferenceValue) => void,
   boolean,
 ] {
   const context = useContext(AssistantPreferencesContext);

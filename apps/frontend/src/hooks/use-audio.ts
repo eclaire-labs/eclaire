@@ -3,16 +3,25 @@
  *
  * Provides transcribe/synthesize functions and audio service availability check.
  * Uses the backend audio endpoints at /api/audio/*.
+ * Reads model/voice/speed preferences and passes them through API calls.
  */
 
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch, apiGet, apiPost } from "@/lib/api-client";
+import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
+
+interface AudioHealthDefaults {
+  sttModel: string;
+  ttsModel: string;
+  ttsVoice: string;
+}
 
 interface AudioHealth {
   status: "ready" | "unavailable";
   models?: Array<{ id: string }>;
   streamingEnabled?: boolean;
+  defaults?: AudioHealthDefaults;
 }
 
 interface UseAudioReturn {
@@ -35,6 +44,12 @@ interface UseAudioReturn {
 
   /** Whether the backend supports streaming STT via WebSocket. */
   isStreamingEnabled: boolean;
+
+  /** Server default models (from health check). */
+  defaults: AudioHealthDefaults | null;
+
+  /** Currently loaded models on the audio server. */
+  models: Array<{ id: string }>;
 }
 
 /**
@@ -96,6 +111,7 @@ async function blobToWav(blob: Blob): Promise<Blob> {
 export function useAudio(): UseAudioReturn {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [preferences] = useAssistantPreferences();
 
   // Track object URLs for cleanup
   const objectUrlsRef = useRef<string[]>([]);
@@ -129,54 +145,79 @@ export function useAudio(): UseAudioReturn {
 
   const isAudioAvailable = health?.status === "ready";
   const isStreamingEnabled = health?.streamingEnabled === true;
+  const defaults = health?.defaults ?? null;
+  const models = health?.models ?? [];
 
-  const transcribe = useCallback(async (blob: Blob): Promise<string> => {
-    setIsTranscribing(true);
-    try {
-      // Convert to WAV for maximum backend compatibility
-      // (mlx-audio doesn't support WebM/Opus format)
-      const wavBlob = await blobToWav(blob);
-      const formData = new FormData();
-      formData.append("file", wavBlob, "recording.wav");
+  // Build TTS body with user-selected model/voice/speed overrides
+  const buildTtsBody = useCallback(
+    (text: string, extra?: Record<string, unknown>) => {
+      const body: Record<string, unknown> = { text, ...extra };
+      if (preferences.ttsModel) body.model = preferences.ttsModel;
+      if (preferences.ttsVoice) body.voice = preferences.ttsVoice;
+      if (preferences.ttsSpeed !== 1.0) body.speed = preferences.ttsSpeed;
+      return body;
+    },
+    [preferences.ttsModel, preferences.ttsVoice, preferences.ttsSpeed],
+  );
 
-      const response = await apiPost("/api/audio/transcriptions", formData);
-      const data = await response.json();
-      return data.text ?? "";
-    } finally {
-      setIsTranscribing(false);
-    }
-  }, []);
+  const transcribe = useCallback(
+    async (blob: Blob): Promise<string> => {
+      setIsTranscribing(true);
+      try {
+        // Convert to WAV for maximum backend compatibility
+        // (mlx-audio doesn't support WebM/Opus format)
+        const wavBlob = await blobToWav(blob);
+        const formData = new FormData();
+        formData.append("file", wavBlob, "recording.wav");
+        if (preferences.sttModel) {
+          formData.append("model", preferences.sttModel);
+        }
 
-  const synthesize = useCallback(async (text: string): Promise<string> => {
-    setIsSynthesizing(true);
-    try {
-      const response = await apiFetch("/api/audio/speech", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, format: "mp3" }),
-      });
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      objectUrlsRef.current.push(url);
-      return url;
-    } finally {
-      setIsSynthesizing(false);
-    }
-  }, []);
+        const response = await apiPost("/api/audio/transcriptions", formData);
+        const data = await response.json();
+        return data.text ?? "";
+      } finally {
+        setIsTranscribing(false);
+      }
+    },
+    [preferences.sttModel],
+  );
+
+  const synthesize = useCallback(
+    async (text: string): Promise<string> => {
+      setIsSynthesizing(true);
+      try {
+        const response = await apiFetch("/api/audio/speech", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildTtsBody(text, { format: "mp3" })),
+        });
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        objectUrlsRef.current.push(url);
+        return url;
+      } finally {
+        setIsSynthesizing(false);
+      }
+    },
+    [buildTtsBody],
+  );
 
   const synthesizeStream = useCallback(
     async (text: string): Promise<ReadableStreamDefaultReader<Uint8Array>> => {
       const response = await apiFetch("/api/audio/speech", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, format: "wav", stream: true }),
+        body: JSON.stringify(
+          buildTtsBody(text, { format: "wav", stream: true }),
+        ),
       });
       if (!response.body) {
         throw new Error("No response body for streaming synthesis");
       }
       return response.body.getReader();
     },
-    [],
+    [buildTtsBody],
   );
 
   return {
@@ -188,5 +229,7 @@ export function useAudio(): UseAudioReturn {
     isAudioAvailable,
     isCheckingAvailability,
     isStreamingEnabled,
+    defaults,
+    models,
   };
 }

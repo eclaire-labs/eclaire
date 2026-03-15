@@ -17,8 +17,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import ChromeBrowserControlCard from "@/components/settings/ChromeBrowserControlCard";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAudio } from "@/hooks/use-audio";
 import { useModelCapabilities } from "@/hooks/use-model-capabilities";
@@ -31,7 +33,7 @@ export default function AssistantDisplaySettings() {
     loading: modelLoading,
     error: modelError,
   } = useModelCapabilities();
-  const { isAudioAvailable, isStreamingEnabled } = useAudio();
+  const { isAudioAvailable, isStreamingEnabled, defaults } = useAudio();
 
   if (!isLoaded || modelLoading) {
     return (
@@ -256,6 +258,79 @@ export default function AssistantDisplaySettings() {
                       updatePreference("voiceMode", checked)
                     }
                   />
+                </div>
+
+                <Separator className="my-2" />
+
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="stt-model" className="text-sm font-normal">
+                      STT model
+                    </Label>
+                    <Input
+                      id="stt-model"
+                      value={preferences.sttModel}
+                      onChange={(e) =>
+                        updatePreference("sttModel", e.target.value)
+                      }
+                      placeholder={defaults?.sttModel || "Server default"}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tts-model" className="text-sm font-normal">
+                      TTS model
+                    </Label>
+                    <Input
+                      id="tts-model"
+                      value={preferences.ttsModel}
+                      onChange={(e) =>
+                        updatePreference("ttsModel", e.target.value)
+                      }
+                      placeholder={defaults?.ttsModel || "Server default"}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tts-voice" className="text-sm font-normal">
+                      TTS voice
+                    </Label>
+                    <Input
+                      id="tts-voice"
+                      value={preferences.ttsVoice}
+                      onChange={(e) =>
+                        updatePreference("ttsVoice", e.target.value)
+                      }
+                      placeholder={defaults?.ttsVoice || "Default"}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-normal">TTS speed</Label>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {preferences.ttsSpeed.toFixed(2)}x
+                      </span>
+                    </div>
+                    <Slider
+                      value={[preferences.ttsSpeed]}
+                      onValueChange={([val]) =>
+                        updatePreference("ttsSpeed", val ?? 1.0)
+                      }
+                      min={0.25}
+                      max={4.0}
+                      step={0.25}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>0.25x</span>
+                      <span>1x</span>
+                      <span>4x</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </>

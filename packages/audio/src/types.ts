@@ -67,6 +67,11 @@ export interface AudioHealth {
   status: "ready" | "unavailable";
   models?: Array<{ id: string }>;
   streamingEnabled?: boolean;
+  defaults?: {
+    sttModel: string;
+    ttsModel: string;
+    ttsVoice: string;
+  };
 }
 
 // ============================================================================
