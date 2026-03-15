@@ -1,22 +1,27 @@
 /**
  * Audio Routes
  *
- * REST endpoints for STT/TTS, proxying to the mlx-audio server.
+ * REST + WebSocket endpoints for STT/TTS, proxying to the mlx-audio server.
  *
- *   GET  /api/audio/health          → audio server health
- *   POST /api/audio/transcriptions  → upload audio → { text }
- *   POST /api/audio/speech          → { text } → binary audio
+ *   GET  /api/audio/health                    → audio server health
+ *   POST /api/audio/transcriptions            → upload audio → { text }
+ *   POST /api/audio/speech                    → { text } → binary audio
+ *   WS   /api/audio/transcriptions/stream     → real-time streaming STT
  */
 
+import { MlxRealtimeClient } from "@eclaire/audio";
 import { Hono } from "hono";
 import { validator as zValidator } from "hono-openapi";
+import { getAuthenticatedPrincipal } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
+  getAudioConfig,
   getAudioHealth,
   isAudioAvailable,
   synthesize,
   transcribe,
 } from "../lib/services/audio.js";
+import { getUpgradeWebSocket } from "../lib/websocket.js";
 import { withAuth } from "../middleware/with-auth.js";
 import { SpeechRequestSchema } from "../schemas/audio-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
@@ -100,4 +105,125 @@ audioRoutes.post(
       },
     });
   }, logger),
+);
+
+// WS /api/audio/transcriptions/stream — Real-time streaming STT
+audioRoutes.get(
+  "/transcriptions/stream",
+  async (c, next) => {
+    // Authenticate before upgrading to WebSocket
+    const principal = await getAuthenticatedPrincipal(c);
+    if (!principal) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    c.set("principal", principal);
+    return next();
+  },
+  async (c, next) => {
+    const upgradeWebSocket = getUpgradeWebSocket();
+    const handler = upgradeWebSocket((c) => {
+      let mlxClient: MlxRealtimeClient | null = null;
+
+      return {
+        onOpen: async (_event, ws) => {
+          if (!isAudioAvailable()) {
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                error: "Audio service is not available",
+              }),
+            );
+            ws.close(1011, "Audio service unavailable");
+            return;
+          }
+
+          const audioConfig = getAudioConfig();
+          if (!audioConfig) {
+            ws.close(1011, "Audio not configured");
+            return;
+          }
+
+          const model = c.req.query("model") || audioConfig.defaultSttModel;
+          const language = c.req.query("language") || undefined;
+
+          mlxClient = new MlxRealtimeClient({
+            baseUrl: audioConfig.baseUrl,
+            model,
+            language,
+          });
+
+          mlxClient.onDelta((text) => {
+            ws.send(JSON.stringify({ type: "delta", delta: text }));
+          });
+
+          mlxClient.onComplete((text) => {
+            ws.send(JSON.stringify({ type: "complete", text }));
+          });
+
+          mlxClient.onError((err) => {
+            logger.error({ error: err.message }, "mlx-audio WebSocket error");
+            ws.send(JSON.stringify({ type: "error", error: err.message }));
+          });
+
+          mlxClient.onClose(() => {
+            logger.debug("mlx-audio WebSocket closed");
+          });
+
+          try {
+            await mlxClient.connect();
+            ws.send(JSON.stringify({ type: "connected" }));
+            logger.info({ model, language }, "Streaming STT session started");
+          } catch (err) {
+            const msg =
+              err instanceof Error ? err.message : "Connection failed";
+            logger.error(
+              { error: msg },
+              "Failed to connect to mlx-audio WebSocket",
+            );
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                error: `STT service connection failed: ${msg}`,
+              }),
+            );
+            ws.close(1011, "Upstream connection failed");
+          }
+        },
+
+        onMessage: (event, ws) => {
+          if (!mlxClient?.isConnected) return;
+
+          const { data } = event;
+          // Binary data = PCM audio chunk → forward to mlx-audio
+          if (data instanceof ArrayBuffer) {
+            mlxClient.sendAudio(Buffer.from(data));
+          } else if (Buffer.isBuffer(data)) {
+            mlxClient.sendAudio(data);
+          } else if (typeof data === "string") {
+            // Try to handle as binary if it's a string representation
+            try {
+              const buf = Buffer.from(data, "binary");
+              mlxClient.sendAudio(buf);
+            } catch {
+              // Ignore non-binary string messages
+            }
+          }
+        },
+
+        onClose: () => {
+          logger.info("Streaming STT session ended");
+          mlxClient?.close();
+          mlxClient = null;
+        },
+
+        onError: (event) => {
+          logger.error({ error: String(event) }, "Client WebSocket error");
+          mlxClient?.close();
+          mlxClient = null;
+        },
+      };
+    });
+
+    return handler(c, next);
+  },
 );

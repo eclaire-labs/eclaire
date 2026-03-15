@@ -1,5 +1,5 @@
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
-import { Bot, Brain, ExternalLink, Info } from "lucide-react";
+import { Bot, Brain, ExternalLink, Info, Mic } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
   Card,
@@ -12,6 +12,7 @@ import ChromeBrowserControlCard from "@/components/settings/ChromeBrowserControl
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { useAudio } from "@/hooks/use-audio";
 import { useModelCapabilities } from "@/hooks/use-model-capabilities";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 
@@ -22,6 +23,7 @@ export default function AssistantDisplaySettings() {
     loading: modelLoading,
     error: modelError,
   } = useModelCapabilities();
+  const { isAudioAvailable, isStreamingEnabled } = useAudio();
 
   if (!isLoaded || modelLoading) {
     return (
@@ -146,6 +148,52 @@ export default function AssistantDisplaySettings() {
               />
             </div>
           </div>
+          {isAudioAvailable && (
+            <>
+              <Separator />
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Audio Options</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Configure push-to-talk transcription behavior.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex items-center space-x-3">
+                    <Mic className="h-4 w-4 text-muted-foreground" />
+                    <div className="space-y-0.5">
+                      <Label
+                        htmlFor="streaming-stt"
+                        className="text-sm font-normal"
+                      >
+                        Use streaming transcription
+                        {!isStreamingEnabled && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            (Not available)
+                          </span>
+                        )}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Stream audio in real-time for live transcription while
+                        speaking. Disable to use the simpler
+                        record-then-transcribe mode.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="streaming-stt"
+                    checked={preferences.useStreamingSTT}
+                    onCheckedChange={(checked) =>
+                      updatePreference("useStreamingSTT", checked)
+                    }
+                    disabled={!isStreamingEnabled}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

@@ -3,10 +3,14 @@
  *
  * Self-contained: checks audio availability internally,
  * renders nothing when unavailable.
+ *
+ * Supports two modes:
+ * - Streaming (Phase 2): real-time WebSocket STT with partial transcription
+ * - Non-streaming (Phase 1 fallback): record → upload → transcribe
  */
 
 import { Loader2, Mic, MicOff } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -16,29 +20,88 @@ import {
 } from "@/components/ui/tooltip";
 import { useAudio } from "@/hooks/use-audio";
 import { useAudioRecorder } from "@/hooks/use-audio-recorder";
+import { useStreamingTranscription } from "@/hooks/use-streaming-transcription";
+import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 
 interface PushToTalkButtonProps {
   onTranscription: (text: string) => void;
+  onPartialTranscription?: (text: string | null) => void;
   disabled?: boolean;
 }
 
 export function PushToTalkButton({
   onTranscription,
+  onPartialTranscription,
   disabled = false,
 }: PushToTalkButtonProps) {
-  const { transcribe, isTranscribing, isAudioAvailable } = useAudio();
-  const { status, startRecording, stopRecording, isSupported } =
-    useAudioRecorder();
+  const { transcribe, isTranscribing, isAudioAvailable, isStreamingEnabled } =
+    useAudio();
+  const {
+    status: recorderStatus,
+    startRecording,
+    stopRecording,
+    isSupported,
+  } = useAudioRecorder();
+  const streaming = useStreamingTranscription();
+  const [preferences] = useAssistantPreferences();
   const isActiveRef = useRef(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleStart = useCallback(() => {
+  const useStreaming = isStreamingEnabled && preferences.useStreamingSTT;
+
+  // Forward partial transcription text
+  useEffect(() => {
+    if (useStreaming && streaming.status === "streaming") {
+      onPartialTranscription?.(streaming.partialText || null);
+    }
+  }, [
+    useStreaming,
+    streaming.status,
+    streaming.partialText,
+    onPartialTranscription,
+  ]);
+
+  // --- Streaming mode handlers ---
+  const handleStreamingStart = useCallback(() => {
+    if (disabled || isProcessing || isActiveRef.current) return;
+    isActiveRef.current = true;
+    streaming.start();
+
+    const handleGlobalUp = async () => {
+      window.removeEventListener("mouseup", handleGlobalUp);
+      if (!isActiveRef.current) return;
+      isActiveRef.current = false;
+
+      setIsProcessing(true);
+      try {
+        const text = await streaming.stop();
+        onPartialTranscription?.(null);
+        if (text?.trim()) {
+          onTranscription(text.trim());
+        }
+      } catch (err) {
+        console.error("[PTT] Streaming transcription error:", err);
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    window.addEventListener("mouseup", handleGlobalUp, { once: true });
+  }, [
+    disabled,
+    isProcessing,
+    streaming,
+    onTranscription,
+    onPartialTranscription,
+  ]);
+
+  // --- Non-streaming fallback handlers ---
+  const handleRecordStart = useCallback(() => {
     if (disabled || isTranscribing || isProcessing || isActiveRef.current)
       return;
     isActiveRef.current = true;
     startRecording();
 
-    // Listen for mouseup anywhere on the page (in case user moves mouse off button)
     const handleGlobalUp = async () => {
       window.removeEventListener("mouseup", handleGlobalUp);
       if (!isActiveRef.current) return;
@@ -79,7 +142,10 @@ export function PushToTalkButton({
     return null;
   }
 
-  const isRecording = status === "recording";
+  const isStreaming =
+    streaming.status === "streaming" || streaming.status === "connecting";
+  const isRecording = recorderStatus === "recording";
+  const isActive = useStreaming ? isStreaming : isRecording;
   const isBusy = isTranscribing || isProcessing;
 
   return (
@@ -89,14 +155,18 @@ export function PushToTalkButton({
           <Button
             type="button"
             size="icon"
-            variant={isRecording ? "destructive" : "ghost"}
+            variant={isActive ? "destructive" : "ghost"}
             disabled={disabled || isBusy}
-            className={`flex-shrink-0 h-10 w-10 rounded-full ${isRecording ? "animate-pulse" : ""}`}
-            onMouseDown={handleStart}
+            className={`flex-shrink-0 h-10 w-10 rounded-full ${isActive ? "animate-pulse" : ""}`}
+            onMouseDown={
+              useStreaming ? handleStreamingStart : handleRecordStart
+            }
           >
             {isBusy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isRecording ? (
+            ) : streaming.status === "connecting" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isActive ? (
               <MicOff className="h-4 w-4" />
             ) : (
               <Mic className="h-4 w-4" />
@@ -104,7 +174,11 @@ export function PushToTalkButton({
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          {isBusy ? "Transcribing..." : "Hold to record"}
+          {isBusy
+            ? "Transcribing..."
+            : streaming.status === "connecting"
+              ? "Connecting..."
+              : "Hold to record"}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

@@ -11,11 +11,13 @@ import {
 interface AssistantPreferences {
   showThinkingTokens: boolean;
   showAssistantOverlay: boolean;
+  useStreamingSTT: boolean;
 }
 
 const DEFAULT_PREFERENCES: AssistantPreferences = {
   showThinkingTokens: true,
   showAssistantOverlay: true,
+  useStreamingSTT: true,
 };
 
 const STORAGE_KEY = "assistant-preferences";

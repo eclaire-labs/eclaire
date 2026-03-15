@@ -23,11 +23,14 @@
 
 export { MlxAudioProvider } from "./mlx-provider.js";
 export { MlxAudioClient, readAudioFile } from "./mlx-client.js";
+export { MlxRealtimeClient } from "./mlx-ws-client.js";
 export type {
   AudioHealth,
   AudioProvider,
   AudioProviderConfig,
+  StreamingTranscriptionEvent,
   SynthesizeInput,
   TranscribeInput,
   TranscriptionResult,
 } from "./types.js";
+export type { MlxRealtimeConfig } from "./mlx-ws-client.js";

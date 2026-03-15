@@ -19,14 +19,16 @@ import { createChildLogger } from "../logger.js";
 const logger = createChildLogger("services:audio");
 
 let provider: AudioProvider | null = null;
+let audioConfig: AudioProviderConfig | null = null;
 
 /**
  * Initialize the audio service with the given config.
  * Creates the provider but does not verify connectivity.
  */
-export function initAudioService(audioConfig: AudioProviderConfig): void {
-  provider = new MlxAudioProvider(audioConfig);
-  logger.info({ baseUrl: audioConfig.baseUrl }, "Audio provider created");
+export function initAudioService(cfg: AudioProviderConfig): void {
+  audioConfig = cfg;
+  provider = new MlxAudioProvider(cfg);
+  logger.info({ baseUrl: cfg.baseUrl }, "Audio provider created");
 }
 
 /**
@@ -65,5 +67,16 @@ export async function getAudioHealth(): Promise<AudioHealth> {
   if (!provider) {
     return { status: "unavailable" };
   }
-  return provider.checkHealth();
+  const health = await provider.checkHealth();
+  if (health.status === "ready") {
+    health.streamingEnabled = true;
+  }
+  return health;
+}
+
+/**
+ * Get the audio provider config (for WebSocket proxy).
+ */
+export function getAudioConfig(): AudioProviderConfig | null {
+  return audioConfig;
 }

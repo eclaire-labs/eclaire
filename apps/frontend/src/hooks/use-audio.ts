@@ -12,6 +12,7 @@ import { apiFetch, apiGet, apiPost } from "@/lib/api-client";
 interface AudioHealth {
   status: "ready" | "unavailable";
   models?: Array<{ id: string }>;
+  streamingEnabled?: boolean;
 }
 
 interface UseAudioReturn {
@@ -26,6 +27,9 @@ interface UseAudioReturn {
   /** Whether the audio service is available and ready. */
   isAudioAvailable: boolean;
   isCheckingAvailability: boolean;
+
+  /** Whether the backend supports streaming STT via WebSocket. */
+  isStreamingEnabled: boolean;
 }
 
 /**
@@ -119,6 +123,7 @@ export function useAudio(): UseAudioReturn {
     });
 
   const isAudioAvailable = health?.status === "ready";
+  const isStreamingEnabled = health?.streamingEnabled === true;
 
   const transcribe = useCallback(async (blob: Blob): Promise<string> => {
     setIsTranscribing(true);
@@ -161,5 +166,6 @@ export function useAudio(): UseAudioReturn {
     isSynthesizing,
     isAudioAvailable,
     isCheckingAvailability,
+    isStreamingEnabled,
   };
 }

@@ -41,12 +41,17 @@ import {
 import { channelRegistry } from "./lib/channels.js";
 
 import { registerApiRoutes } from "./routes/registry.js";
+import { getInjectWebSocket, initWebSocket } from "./lib/websocket.js";
 
 import type { RouteVariables } from "./types/route-variables.js";
 
 type Variables = RouteVariables;
 
 const app = new Hono<{ Variables: Variables }>();
+
+// Initialize WebSocket support (must happen before routes are registered)
+// biome-ignore lint/suspicious/noExplicitAny: Hono generic variance mismatch
+initWebSocket(app as any);
 
 // Smart Pino logger middleware - logs all HTTP requests with protection against large content
 app.use("*", smartLogger());
@@ -203,11 +208,14 @@ const start = async () => {
       showRoutes(app);
       logger.info({}, "Route registration complete");
 
-      serve({
+      const server = serve({
         fetch: app.fetch,
         port,
         hostname: host,
       });
+
+      // Inject WebSocket handling into the HTTP server
+      getInjectWebSocket()(server);
 
       logger.info(
         { port, host, SERVICE_ROLE, QUEUE_BACKEND },

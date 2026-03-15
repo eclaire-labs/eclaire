@@ -4,13 +4,14 @@ import {
   Bookmark,
   CheckSquare,
   FileText,
+  Mic,
   Monitor,
   Send,
   StickyNote,
   X,
 } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PushToTalkButton } from "@/components/assistant/push-to-talk-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,9 @@ export function MessageInput({
   setAttachedAssets,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [partialTranscription, setPartialTranscription] = useState<
+    string | null
+  >(null);
 
   // Auto-grow textarea based on content
   // biome-ignore lint/correctness/useExhaustiveDependencies: value triggers resize recalculation
@@ -108,6 +112,14 @@ export function MessageInput({
         </div>
       )}
 
+      {/* Partial transcription display */}
+      {partialTranscription && (
+        <div className="px-3 pb-2 text-sm text-muted-foreground italic flex items-center gap-1.5">
+          <Mic className="h-3 w-3 animate-pulse text-destructive flex-shrink-0" />
+          <span>{partialTranscription}</span>
+        </div>
+      )}
+
       {/* Input form */}
       <form onSubmit={handleSubmit} className="flex items-end gap-2">
         <Textarea
@@ -122,8 +134,10 @@ export function MessageInput({
         />
         <PushToTalkButton
           onTranscription={(text) => {
+            setPartialTranscription(null);
             onChange(value + (value ? " " : "") + text);
           }}
+          onPartialTranscription={setPartialTranscription}
           disabled={isLoading}
         />
         <Button

@@ -66,6 +66,16 @@ export interface SynthesizeInput {
 export interface AudioHealth {
   status: "ready" | "unavailable";
   models?: Array<{ id: string }>;
+  streamingEnabled?: boolean;
+}
+
+// ============================================================================
+// Streaming STT Types
+// ============================================================================
+
+export interface StreamingTranscriptionEvent {
+  type: "delta" | "complete";
+  text: string;
 }
 
 // ============================================================================
