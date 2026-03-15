@@ -109,6 +109,7 @@ export function createBackendAgent(options: {
     aiContext: "backend",
     modelOverride: options.agent.modelId ?? undefined,
     toolCallingMode,
+    toolExecution: "parallel",
 
     instructions: (context) => {
       const userContext = context.extra?.userContext as UserContext | undefined;
@@ -279,6 +280,8 @@ export interface StreamEvent {
   type: "thought" | "tool-call" | "text-chunk" | "error" | "done";
   timestamp?: string;
   content?: string;
+  /** Tool call ID — used for tracking parallel tool executions */
+  id?: string;
   name?: string;
   status?: "starting" | "executing" | "completed" | "error";
   arguments?: Record<string, unknown>;
@@ -312,6 +315,7 @@ export function transformRuntimeEvent(
     case "tool_call_start":
       return {
         type: "tool-call",
+        id: event.id,
         name: event.name,
         status: "starting",
         timestamp,
@@ -320,6 +324,7 @@ export function transformRuntimeEvent(
     case "tool_call_end":
       return {
         type: "tool-call",
+        id: event.id,
         name: event.name,
         status: "starting",
         arguments: event.arguments,
@@ -329,6 +334,7 @@ export function transformRuntimeEvent(
     case "tool_progress":
       return {
         type: "tool-call",
+        id: event.id,
         name: event.name,
         status: "executing",
         timestamp,
@@ -344,6 +350,7 @@ export function transformRuntimeEvent(
       if (isError) {
         return {
           type: "tool-call",
+          id: event.id,
           name: event.name,
           status: "error",
           error: textContent,
@@ -352,6 +359,7 @@ export function transformRuntimeEvent(
       }
       return {
         type: "tool-call",
+        id: event.id,
         name: event.name,
         status: "completed",
         result: textContent,

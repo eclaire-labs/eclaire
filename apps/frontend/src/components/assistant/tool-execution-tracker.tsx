@@ -251,20 +251,25 @@ export function useToolExecutionTracker() {
 
   const addOrUpdateTool = useCallback(
     (
+      id: string | undefined,
       name: string,
       status: ToolStatus,
       args?: Record<string, unknown>,
       result?: unknown,
       error?: string,
     ) => {
-      const toolId = `${name}-${Date.now()}`;
+      const toolId = id ?? `${name}-${Date.now()}`;
 
       setToolCalls((prev) => {
-        // Find existing tool call or create new one
-        const existingIndex = prev.findIndex(
-          (t) =>
-            t.name === name && t.status !== "completed" && t.status !== "error",
-        );
+        // When we have a backend-provided ID, match by ID for parallel tool support
+        const existingIndex = id
+          ? prev.findIndex((t) => t.id === id)
+          : prev.findIndex(
+              (t) =>
+                t.name === name &&
+                t.status !== "completed" &&
+                t.status !== "error",
+            );
 
         if (existingIndex >= 0) {
           // Update existing tool call
@@ -282,22 +287,21 @@ export function useToolExecutionTracker() {
               : {}),
           };
           return updated;
-        } else {
-          // Add new tool call
-          const newTool: ToolCall = {
-            id: toolId,
-            name,
-            status,
-            arguments: args,
-            result,
-            error,
-            startTime: new Date(),
-            ...(status === "completed" || status === "error"
-              ? { endTime: new Date() }
-              : {}),
-          };
-          return [...prev, newTool];
         }
+        // Add new tool call
+        const newTool: ToolCall = {
+          id: toolId,
+          name,
+          status,
+          arguments: args,
+          result,
+          error,
+          startTime: new Date(),
+          ...(status === "completed" || status === "error"
+            ? { endTime: new Date() }
+            : {}),
+        };
+        return [...prev, newTool];
       });
 
       return toolId;

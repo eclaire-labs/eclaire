@@ -167,6 +167,7 @@ describe("StreamingClient", () => {
 
       expect(onToolCall).toHaveBeenCalledOnce();
       expect(onToolCall).toHaveBeenCalledWith(
+        undefined, // id (not set in this event)
         "search",
         "completed",
         { query: "vitest" },

@@ -77,6 +77,9 @@ export interface RuntimeAgentConfig {
   /** Tool calling mode */
   toolCallingMode?: "native" | "text" | "off";
 
+  /** Tool execution mode: "sequential" executes one at a time, "parallel" runs all concurrently. Default: "sequential" */
+  toolExecution?: "sequential" | "parallel";
+
   /** Maximum number of agent loop iterations (default: 10) */
   maxSteps?: number;
 

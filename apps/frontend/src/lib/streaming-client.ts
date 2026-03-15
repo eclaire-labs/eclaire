@@ -5,6 +5,8 @@ export interface StreamEvent {
   type: "thought" | "tool-call" | "text-chunk" | "error" | "done";
   timestamp?: string;
   content?: string;
+  /** Tool call ID — used for tracking parallel tool executions */
+  id?: string;
   name?: string;
   status?: "starting" | "executing" | "completed" | "error";
   // biome-ignore lint/suspicious/noExplicitAny: tool call arguments are arbitrary JSON from AI tools
@@ -36,6 +38,7 @@ export interface StreamingRequest {
 export interface StreamEventHandlers {
   onThought?: (content: string, timestamp?: string) => void;
   onToolCall?: (
+    id: string | undefined,
     name: string,
     status: "starting" | "executing" | "completed" | "error",
     // biome-ignore lint/suspicious/noExplicitAny: tool call arguments are arbitrary JSON from AI tools
@@ -201,6 +204,7 @@ export class StreamingClient {
       case "tool-call":
         if (event.name && event.status) {
           this.handlers.onToolCall?.(
+            event.id,
             event.name,
             event.status,
             event.arguments,

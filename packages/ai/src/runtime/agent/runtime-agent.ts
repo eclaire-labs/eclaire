@@ -169,7 +169,12 @@ export class RuntimeAgent {
 
       // Execute tool calls if any
       if (toolCalls.length > 0) {
-        step.toolExecutions = await this._executeTools(
+        const execMethod =
+          this.config.toolExecution === "parallel"
+            ? this._executeToolsParallel
+            : this._executeTools;
+        step.toolExecutions = await execMethod.call(
+          this,
           toolCalls,
           tools,
           context,
@@ -321,7 +326,12 @@ export class RuntimeAgent {
 
             // Execute tool calls
             if (toolCalls.length > 0) {
-              step.toolExecutions = await this._executeToolsStreaming(
+              const execMethod =
+                this.config.toolExecution === "parallel"
+                  ? this._executeToolsStreamingParallel
+                  : this._executeToolsStreaming;
+              step.toolExecutions = await execMethod.call(
+                this,
                 toolCalls,
                 tools,
                 context,
@@ -701,6 +711,235 @@ export class RuntimeAgent {
         createToolCallSummary({
           functionName: tc.name,
           arguments: tc.arguments,
+          result: result.isError
+            ? null
+            : result.content
+                .map((c) => (c.type === "text" ? c.text : `[${c.type}]`))
+                .join("\n"),
+          executionTimeMs: durationMs,
+          success: !result.isError,
+          error: result.isError
+            ? result.content
+                .map((c) => (c.type === "text" ? c.text : ""))
+                .join("")
+            : undefined,
+        }),
+      );
+    }
+
+    return executions;
+  }
+
+  /**
+   * Execute tools in parallel (non-streaming path).
+   * All tools start concurrently, results are collected in source order.
+   */
+  private async _executeToolsParallel(
+    toolCalls: Array<{
+      id: string;
+      name: string;
+      arguments: Record<string, unknown>;
+    }>,
+    tools: Record<string, RuntimeToolDefinition<AnyZodType>>,
+    context: RuntimeAgentContext,
+    runtimeMessages: RuntimeMessage[],
+    toolCallSummaries: ToolCallSummaryOutput[],
+  ): Promise<RuntimeStepToolExecution[]> {
+    const logger = getLogger();
+
+    // Phase 1: Start all tool executions — immediate errors get a resolved promise
+    const slots = toolCalls.map((tc) => {
+      const toolDef = tools[tc.name];
+      if (!toolDef) {
+        logger.warn(
+          { requestId: context.requestId, toolName: tc.name },
+          "Tool not found",
+        );
+        return {
+          tc,
+          startTime: Date.now(),
+          promise: Promise.resolve<RuntimeToolResult>({
+            content: [
+              { type: "text" as const, text: `Tool '${tc.name}' not found` },
+            ],
+            isError: true,
+          }),
+        };
+      }
+      return {
+        tc,
+        startTime: Date.now(),
+        promise: executeRuntimeTool(toolDef, tc.id, tc.arguments, context),
+      };
+    });
+
+    // Phase 2: Await in source order, collecting results
+    const executions: RuntimeStepToolExecution[] = [];
+    for (const slot of slots) {
+      const result = await slot.promise;
+      const durationMs = Date.now() - slot.startTime;
+
+      logger.debug(
+        {
+          requestId: context.requestId,
+          toolName: slot.tc.name,
+          durationMs,
+          isError: result.isError,
+        },
+        "Tool executed",
+      );
+
+      this._addToolResult(runtimeMessages, slot.tc, result);
+      executions.push({
+        toolName: slot.tc.name,
+        toolCallId: slot.tc.id,
+        input: slot.tc.arguments,
+        result,
+        durationMs,
+      });
+
+      toolCallSummaries.push(
+        createToolCallSummary({
+          functionName: slot.tc.name,
+          arguments: slot.tc.arguments,
+          result: result.isError
+            ? null
+            : result.content
+                .map((c) => (c.type === "text" ? c.text : `[${c.type}]`))
+                .join("\n"),
+          executionTimeMs: durationMs,
+          success: !result.isError,
+          error: result.isError
+            ? result.content
+                .map((c) => (c.type === "text" ? c.text : ""))
+                .join("")
+            : undefined,
+        }),
+      );
+    }
+
+    return executions;
+  }
+
+  /**
+   * Execute tools in parallel with streaming events.
+   * Emits all tool_call_start events immediately, then starts all executions
+   * concurrently. Results are emitted in source order.
+   */
+  private async _executeToolsStreamingParallel(
+    toolCalls: Array<{
+      id: string;
+      name: string;
+      arguments: Record<string, unknown>;
+    }>,
+    tools: Record<string, RuntimeToolDefinition<AnyZodType>>,
+    context: RuntimeAgentContext,
+    runtimeMessages: RuntimeMessage[],
+    toolCallSummaries: ToolCallSummaryOutput[],
+    controller: ReadableStreamDefaultController<RuntimeStreamEvent>,
+  ): Promise<RuntimeStepToolExecution[]> {
+    const logger = getLogger();
+
+    // Emit all tool_call_start events immediately so UI shows all tools starting
+    for (const tc of toolCalls) {
+      controller.enqueue({
+        type: "tool_call_start",
+        id: tc.id,
+        name: tc.name,
+      });
+    }
+
+    // Phase 1: Start all tool executions — immediate errors get a resolved promise
+    const slots = toolCalls.map((tc) => {
+      const toolDef = tools[tc.name];
+      if (!toolDef) {
+        logger.warn(
+          { requestId: context.requestId, toolName: tc.name },
+          "Tool not found",
+        );
+        const errorResult: RuntimeToolResult = {
+          content: [{ type: "text", text: `Tool '${tc.name}' not found` }],
+          isError: true,
+        };
+        controller.enqueue({
+          type: "tool_result",
+          id: tc.id,
+          name: tc.name,
+          result: errorResult,
+          durationMs: 0,
+        });
+        return {
+          tc,
+          startTime: Date.now(),
+          immediate: true as const,
+          promise: Promise.resolve(errorResult),
+        };
+      }
+      return {
+        tc,
+        startTime: Date.now(),
+        immediate: false as const,
+        promise: executeRuntimeTool(
+          toolDef,
+          tc.id,
+          tc.arguments,
+          context,
+          (update) => {
+            controller.enqueue({
+              type: "tool_progress",
+              id: tc.id,
+              name: tc.name,
+              progress: {
+                status: update.status,
+                progress: update.progress,
+                preview: update.preview,
+              },
+            });
+          },
+        ),
+      };
+    });
+
+    // Phase 2: Await in source order, emitting results
+    const executions: RuntimeStepToolExecution[] = [];
+    for (const slot of slots) {
+      const result = await slot.promise;
+      const durationMs = Date.now() - slot.startTime;
+
+      logger.debug(
+        {
+          requestId: context.requestId,
+          toolName: slot.tc.name,
+          durationMs,
+          isError: result.isError,
+        },
+        "Tool executed",
+      );
+
+      this._addToolResult(runtimeMessages, slot.tc, result);
+      executions.push({
+        toolName: slot.tc.name,
+        toolCallId: slot.tc.id,
+        input: slot.tc.arguments,
+        result,
+        durationMs,
+      });
+
+      // Immediate errors already emitted tool_result in Phase 1
+      if (!slot.immediate) {
+        controller.enqueue({
+          type: "tool_result",
+          id: slot.tc.id,
+          name: slot.tc.name,
+          result,
+          durationMs,
+        });
+      }
+
+      toolCallSummaries.push(
+        createToolCallSummary({
+          functionName: slot.tc.name,
+          arguments: slot.tc.arguments,
           result: result.isError
             ? null
             : result.content

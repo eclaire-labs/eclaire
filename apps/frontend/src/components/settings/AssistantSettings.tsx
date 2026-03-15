@@ -350,8 +350,8 @@ export default function AssistantSettings({
       finalStreamingThoughtRef.current += content;
       setStreamingThought((prev) => prev + content);
     },
-    onToolCall: (name, status, args, result, error) => {
-      addOrUpdateTool(name, status, args, result, error);
+    onToolCall: (id, name, status, args, result, error) => {
+      addOrUpdateTool(id, name, status, args, result, error);
     },
     onTextChunk: (content) => {
       finalStreamingTextRef.current += content;

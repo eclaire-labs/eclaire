@@ -221,13 +221,14 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
       setStreamingThought((prev) => prev + content);
     },
     onToolCall: (
+      id: string | undefined,
       name: string,
       status: "starting" | "executing" | "completed" | "error",
       args?: Record<string, unknown>,
       result?: unknown,
       error?: string,
     ) => {
-      addOrUpdateTool(name, status, args, result, error);
+      addOrUpdateTool(id, name, status, args, result, error);
     },
     onTextChunk: (content: string, _timestamp?: string) => {
       finalStreamingTextRef.current += content;
