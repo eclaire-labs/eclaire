@@ -51,6 +51,14 @@ export const upgradeSteps: UpgradeStep[] = [
     blockedUpgradeMessage: `There is no automated upgrade path from prior versions to 0.6.0.
 See CHANGELOG.md for migration instructions.`,
   },
+  {
+    version: "0.7.0",
+    description:
+      "Breaking release - no automated migration from prior versions",
+    blocksUpgradePath: true,
+    blockedUpgradeMessage: `There is no automated upgrade path from prior versions to 0.7.0.
+See CHANGELOG.md for migration instructions.`,
+  },
 ];
 
 /**
