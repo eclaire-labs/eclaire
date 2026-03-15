@@ -129,6 +129,22 @@
         "staticArgs": ["run", "--format", "json"],
         "timeout": 300000
       }
+    },
+    "codex-appserver": {
+      "dialect": "cli_jsonl",
+      "baseUrl": "",
+      "auth": { "type": "none" },
+      "cli": {
+        "command": "codex",
+        "cliProvider": "codex-appserver",
+        "promptMode": "stdin",
+        "staticArgs": ["app-server"],
+        "timeout": 600000,
+        "appServer": {
+          "autoApprove": true,
+          "maxRestarts": 3
+        }
+      }
     }
   }
 }

@@ -3,6 +3,10 @@
  *
  * Provides callAICli and callAICliStream — CLI-transport equivalents of
  * the HTTP-based callAI/callAIStream. Used when dialect is "cli_jsonl".
+ *
+ * Supports two modes:
+ * - One-shot subprocess (claude, codex exec, opencode): spawn → collect → exit
+ * - App-server (codex app-server): persistent JSON-RPC process with threads
  */
 
 import { interpolateEnvVars } from "../config.js";
@@ -16,9 +20,11 @@ import type {
   ModelConfig,
   ProviderConfig,
 } from "../types.js";
+import { CodexAppServerManager } from "./appserver/index.js";
 import { createDecoder } from "./decoders/index.js";
+import { buildAIResponse, cliEventsToSSEStream } from "./sse-encoder.js";
 import { CliSubprocessRunner } from "./subprocess-runner.js";
-import type { CliSpawnConfig } from "./types.js";
+import type { CliEvent, CliSpawnConfig } from "./types.js";
 
 const getLogger = createLazyLogger("cli-client");
 
@@ -70,7 +76,7 @@ function extractPrompt(messages: AIMessage[]): string {
 }
 
 // =============================================================================
-// SPAWN CONFIG BUILDING
+// SPAWN CONFIG BUILDING (for one-shot CLI providers)
 // =============================================================================
 
 /**
@@ -158,6 +164,77 @@ function buildSpawnConfig(
 }
 
 // =============================================================================
+// APP-SERVER SINGLETON MANAGEMENT
+// =============================================================================
+
+const appServerManagers = new Map<string, CodexAppServerManager>();
+
+function getAppServerManager(cli: CliConfig): CodexAppServerManager {
+  const key = `${cli.command}:${(cli.staticArgs ?? []).join(":")}`;
+  let mgr = appServerManagers.get(key);
+  if (!mgr) {
+    mgr = new CodexAppServerManager(cli);
+    appServerManagers.set(key, mgr);
+  }
+  return mgr;
+}
+
+/**
+ * Shutdown all app-server managers. Called during application shutdown.
+ */
+export async function shutdownAllAppServers(): Promise<void> {
+  const shutdowns = [...appServerManagers.values()].map((m) => m.shutdown());
+  await Promise.allSettled(shutdowns);
+  appServerManagers.clear();
+}
+
+// =============================================================================
+// APP-SERVER CALL HELPERS
+// =============================================================================
+
+async function callAICodexAppServer(
+  messages: AIMessage[],
+  cli: CliConfig,
+  options: AICallOptions,
+): Promise<AIResponse> {
+  const manager = getAppServerManager(cli);
+  const prompt = extractPrompt(messages);
+
+  const signal =
+    options.timeout && options.timeout > 0
+      ? AbortSignal.timeout(options.timeout)
+      : undefined;
+
+  const events: CliEvent[] = [];
+  for await (const event of manager.startTurn(
+    options.cliSessionId,
+    prompt,
+    signal,
+  )) {
+    events.push(event);
+  }
+
+  return buildAIResponse(events);
+}
+
+function callAICodexAppServerStream(
+  messages: AIMessage[],
+  cli: CliConfig,
+  options: AICallOptions,
+): AIStreamResponse {
+  const manager = getAppServerManager(cli);
+  const prompt = extractPrompt(messages);
+
+  const signal =
+    options.timeout && options.timeout > 0
+      ? AbortSignal.timeout(options.timeout)
+      : undefined;
+
+  const events = manager.startTurn(options.cliSessionId, prompt, signal);
+  return cliEventsToSSEStream(events);
+}
+
+// =============================================================================
 // PUBLIC API
 // =============================================================================
 
@@ -180,6 +257,21 @@ export async function callAICli(
     );
   }
 
+  // App-server: persistent process path
+  if (cli.cliProvider === "codex-appserver") {
+    logger.info(
+      {
+        modelId,
+        cliProvider: cli.cliProvider,
+        command: cli.command,
+        hasSession: !!options.cliSessionId,
+      },
+      "Making app-server AI call",
+    );
+    return callAICodexAppServer(messages, cli, options);
+  }
+
+  // One-shot subprocess path
   const prompt = extractPrompt(messages);
   const spawnConfig = buildSpawnConfig(
     cli,
@@ -242,6 +334,22 @@ export async function callAICliStream(
     );
   }
 
+  // App-server: persistent process path
+  if (cli.cliProvider === "codex-appserver") {
+    logger.info(
+      {
+        modelId,
+        cliProvider: cli.cliProvider,
+        command: cli.command,
+        hasSession: !!options.cliSessionId,
+        streaming: true,
+      },
+      "Making streaming app-server AI call",
+    );
+    return callAICodexAppServerStream(messages, cli, options);
+  }
+
+  // One-shot subprocess path
   const prompt = extractPrompt(messages);
   const spawnConfig = buildSpawnConfig(
     cli,

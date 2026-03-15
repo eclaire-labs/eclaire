@@ -72,7 +72,7 @@ export interface CliConfig {
   /** CLI binary name or path (e.g., "claude", "codex", "opencode") */
   command: string;
   /** Determines arg building and JSONL parsing */
-  cliProvider: "claude" | "codex" | "opencode";
+  cliProvider: "claude" | "codex" | "codex-appserver" | "opencode";
   /** How the prompt is delivered: "arg" (as CLI argument) or "stdin" (piped to stdin) */
   promptMode: "arg" | "stdin";
   /** Static args always passed to the CLI */
@@ -83,6 +83,20 @@ export interface CliConfig {
   timeout?: number;
   /** Grace period before SIGKILL (ms, default: 2000) */
   gracefulShutdownMs?: number;
+  /** App-server specific configuration (for codex-appserver) */
+  appServer?: AppServerConfig;
+}
+
+/**
+ * App-server configuration for long-lived CLI providers (e.g., codex app-server).
+ */
+export interface AppServerConfig {
+  /** Auto-approve tool executions and file changes (default: true) */
+  autoApprove?: boolean;
+  /** Max restart attempts before giving up (default: 3) */
+  maxRestarts?: number;
+  /** Restart backoff base in ms (default: 1000) */
+  restartBackoffMs?: number;
 }
 
 /**
