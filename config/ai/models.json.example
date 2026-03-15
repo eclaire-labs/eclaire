@@ -136,6 +136,57 @@
       "source": {
         "url": "https://openrouter.ai/models/qwen/qwen3-vl-30b-a3b-instruct"
       }
+    },
+    "claude-cli:claude-code": {
+      "name": "Claude Code (CLI)",
+      "provider": "claude-cli",
+      "providerModel": "claude-code",
+      "capabilities": {
+        "modalities": { "input": ["text"], "output": ["text"] },
+        "streaming": true,
+        "tools": false,
+        "jsonSchema": false,
+        "structuredOutputs": false,
+        "reasoning": { "supported": true, "mode": "always" },
+        "contextWindow": 200000
+      },
+      "source": {
+        "url": "https://github.com/anthropics/claude-code"
+      }
+    },
+    "codex-cli:codex": {
+      "name": "Codex (CLI)",
+      "provider": "codex-cli",
+      "providerModel": "codex",
+      "capabilities": {
+        "modalities": { "input": ["text"], "output": ["text"] },
+        "streaming": true,
+        "tools": false,
+        "jsonSchema": false,
+        "structuredOutputs": false,
+        "reasoning": { "supported": true, "mode": "always" },
+        "contextWindow": 200000
+      },
+      "source": {
+        "url": "https://github.com/openai/codex"
+      }
+    },
+    "opencode-cli:opencode": {
+      "name": "OpenCode (CLI)",
+      "provider": "opencode-cli",
+      "providerModel": "opencode",
+      "capabilities": {
+        "modalities": { "input": ["text"], "output": ["text"] },
+        "streaming": true,
+        "tools": false,
+        "jsonSchema": false,
+        "structuredOutputs": false,
+        "reasoning": { "supported": false },
+        "contextWindow": 200000
+      },
+      "source": {
+        "url": "https://github.com/sst/opencode"
+      }
     }
   }
 }

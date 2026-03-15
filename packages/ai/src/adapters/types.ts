@@ -63,6 +63,12 @@ export interface DialectAdapter {
 }
 
 /**
- * Adapter registry type
+ * HTTP dialect types that have DialectAdapter implementations.
+ * cli_jsonl uses subprocess transport and has no adapter.
  */
-export type AdapterRegistry = Record<Dialect, DialectAdapter>;
+export type HttpDialect = Exclude<Dialect, "cli_jsonl">;
+
+/**
+ * Adapter registry type — only HTTP-based dialects have adapters
+ */
+export type AdapterRegistry = Record<HttpDialect, DialectAdapter>;

@@ -13,7 +13,11 @@
  * Supported dialect types for AI providers.
  * Each dialect maps to an adapter that handles request/response transformation.
  */
-export type Dialect = "openai_compatible" | "mlx_native" | "anthropic_messages";
+export type Dialect =
+  | "openai_compatible"
+  | "mlx_native"
+  | "anthropic_messages"
+  | "cli_jsonl";
 
 /**
  * Provider authentication configuration.
@@ -61,6 +65,27 @@ export interface EngineConfig {
 }
 
 /**
+ * CLI provider configuration for cli_jsonl dialect.
+ * Defines how to invoke a CLI tool as an AI provider.
+ */
+export interface CliConfig {
+  /** CLI binary name or path (e.g., "claude", "codex", "opencode") */
+  command: string;
+  /** Determines arg building and JSONL parsing */
+  cliProvider: "claude" | "codex" | "opencode";
+  /** How the prompt is delivered: "arg" (as CLI argument) or "stdin" (piped to stdin) */
+  promptMode: "arg" | "stdin";
+  /** Static args always passed to the CLI */
+  staticArgs?: string[];
+  /** Extra environment variables (supports ${ENV:VAR} interpolation) */
+  env?: Record<string, string>;
+  /** Timeout in ms for the subprocess (default: 300000 = 5 min) */
+  timeout?: number;
+  /** Grace period before SIGKILL (ms, default: 2000) */
+  gracefulShutdownMs?: number;
+}
+
+/**
  * Provider configuration - defines how to connect to an AI provider.
  * For managed local providers, also includes engine launch settings.
  *
@@ -80,6 +105,8 @@ export interface ProviderConfig {
   overrides?: ProviderOverrides;
   /** Engine configuration for local providers. If present, this is a local provider. */
   engine?: EngineConfig;
+  /** CLI configuration for cli_jsonl dialect providers */
+  cli?: CliConfig;
 }
 
 /**
@@ -387,6 +414,9 @@ export interface AICallOptions {
 
   // Model override — bypass context-based selection and use this specific model ID
   modelOverride?: string;
+
+  // CLI provider session ID for resume (passed as --resume/--session to the CLI)
+  cliSessionId?: string;
 }
 
 /**
@@ -404,6 +434,8 @@ export interface AIResponse {
   usage?: TokenUsage;
   estimatedInputTokens?: number;
   finishReason?: FinishReason;
+  /** Session ID returned by CLI providers (for resume) */
+  cliSessionId?: string;
 }
 
 /**

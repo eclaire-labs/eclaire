@@ -195,6 +195,12 @@ export async function callAI(
       ? validateAIConfigForModelId(options.modelOverride)
       : validateAIConfig(context);
 
+  // CLI dialect: delegate to subprocess transport
+  if (providerConfig.dialect === "cli_jsonl") {
+    const { callAICli } = await import("./cli/client-cli.js");
+    return callAICli(messages, providerConfig, modelId, modelConfig, options);
+  }
+
   // Apply thinking prefix to system messages
   const processedMessages = applyThinkingPrefix(
     messages,
@@ -477,6 +483,18 @@ export async function callAIStream(
     options.modelOverride
       ? validateAIConfigForModelId(options.modelOverride)
       : validateAIConfig(context);
+
+  // CLI dialect: delegate to subprocess transport
+  if (providerConfig.dialect === "cli_jsonl") {
+    const { callAICliStream } = await import("./cli/client-cli.js");
+    return callAICliStream(
+      messages,
+      providerConfig,
+      modelId,
+      modelConfig,
+      options,
+    );
+  }
 
   // Workers never need thinking — disable it to preserve token budget
   const resolvedEnableThinking =

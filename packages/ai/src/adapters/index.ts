@@ -25,9 +25,16 @@ export const adapterRegistry: AdapterRegistry = {
 };
 
 /**
- * Get adapter for a specific dialect
+ * Get adapter for a specific dialect.
+ * CLI dialects use a separate transport path and don't have a DialectAdapter.
  */
 export function getAdapter(dialect: Dialect): DialectAdapter {
+  if (dialect === "cli_jsonl") {
+    throw new Error(
+      "cli_jsonl dialect uses subprocess transport, not HTTP adapters. " +
+        "This is handled by the CLI client (cli/client-cli.ts).",
+    );
+  }
   const adapter = adapterRegistry[dialect];
   if (!adapter) {
     throw new Error(`No adapter found for dialect: ${dialect}`);
@@ -39,7 +46,7 @@ export function getAdapter(dialect: Dialect): DialectAdapter {
  * Check if a dialect is supported
  */
 export function isDialectSupported(dialect: string): dialect is Dialect {
-  return dialect in adapterRegistry;
+  return dialect in adapterRegistry || dialect === "cli_jsonl";
 }
 
 // =============================================================================

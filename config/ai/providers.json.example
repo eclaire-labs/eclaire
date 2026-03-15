@@ -93,6 +93,42 @@
         "header": "x-api-key",
         "value": "${ENV:ANTHROPIC_API_KEY}"
       }
+    },
+    "claude-cli": {
+      "dialect": "cli_jsonl",
+      "baseUrl": "",
+      "auth": { "type": "none" },
+      "cli": {
+        "command": "claude",
+        "cliProvider": "claude",
+        "promptMode": "arg",
+        "staticArgs": ["-p", "--output-format", "stream-json", "--verbose"],
+        "timeout": 300000
+      }
+    },
+    "codex-cli": {
+      "dialect": "cli_jsonl",
+      "baseUrl": "",
+      "auth": { "type": "none" },
+      "cli": {
+        "command": "codex",
+        "cliProvider": "codex",
+        "promptMode": "stdin",
+        "staticArgs": ["-c", "notify=[]"],
+        "timeout": 300000
+      }
+    },
+    "opencode-cli": {
+      "dialect": "cli_jsonl",
+      "baseUrl": "",
+      "auth": { "type": "none" },
+      "cli": {
+        "command": "opencode",
+        "cliProvider": "opencode",
+        "promptMode": "arg",
+        "staticArgs": ["run", "--format", "json"],
+        "timeout": 300000
+      }
     }
   }
 }

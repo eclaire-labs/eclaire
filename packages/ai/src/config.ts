@@ -37,6 +37,7 @@ const DIALECT_ENDPOINTS: Record<Dialect, string> = {
   openai_compatible: "/chat/completions",
   mlx_native: "/responses",
   anthropic_messages: "/v1/messages",
+  cli_jsonl: "",
 };
 
 /**
@@ -645,6 +646,11 @@ export function resolveProviderForModel(
     auth: interpolateAuth(rawProviderConfig.auth),
     headers: interpolateHeaders(rawProviderConfig.headers),
   };
+
+  // CLI providers don't use baseUrl — skip URL validation
+  if (providerConfig.dialect === "cli_jsonl") {
+    return { providerConfig, url: "" };
+  }
 
   // Validate that baseUrl doesn't have unresolved env vars
   if (providerConfig.baseUrl.includes("${ENV:")) {

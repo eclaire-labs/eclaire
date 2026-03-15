@@ -539,6 +539,23 @@ export {
 } from "./mcp/index.js";
 
 // =============================================================================
+// CLI PROVIDERS
+// =============================================================================
+
+export {
+  callAICli,
+  callAICliStream,
+  CliSubprocessRunner,
+  createDecoder as createCliDecoder,
+} from "./cli/index.js";
+
+export type {
+  CliEvent,
+  CliJsonlDecoder,
+  CliSpawnConfig,
+} from "./cli/index.js";
+
+// =============================================================================
 // TYPES
 // =============================================================================
 
@@ -557,6 +574,7 @@ export type {
   AIResponse,
   AIStreamChunk,
   AIStreamResponse,
+  CliConfig,
   // Dialect types
   Dialect,
   EngineConfig,
