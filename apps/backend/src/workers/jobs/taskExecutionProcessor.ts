@@ -5,6 +5,9 @@ import { DEFAULT_AGENT_ID } from "../../lib/services/agents.js";
 import { createChildLogger } from "../../lib/logger.js";
 import { createTaskComment as createTaskCommentService } from "../../lib/services/taskComments.js";
 import {
+  completeTaskExecution,
+  createTaskExecution,
+  failTaskExecution,
   updateTaskExecutionTracking,
   updateTaskStatusAsAssistant,
 } from "../../lib/services/tasks.js";
@@ -337,6 +340,30 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
     if (assistantId && isAI) {
       logger.info({ taskId, assigneeActorId }, "Processing AI assistant task");
 
+      // Record execution start
+      let executionId: string | undefined;
+      try {
+        executionId = await createTaskExecution({
+          taskId,
+          userId,
+          scheduleKey: ctx.job.data.isRecurringExecution
+            ? `recurring-task:${taskId}`
+            : null,
+          jobId: ctx.job.id,
+        });
+      } catch (execError) {
+        logger.warn(
+          {
+            taskId,
+            error:
+              execError instanceof Error
+                ? execError.message
+                : String(execError),
+          },
+          "Failed to create execution record, continuing with processing",
+        );
+      }
+
       const STAGE_NAME = "ai_response";
       await ctx.initStages([STAGE_NAME]);
 
@@ -403,9 +430,13 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
         // Complete the final stage with artifacts - job completion is implicit when handler returns
         await ctx.completeStage(STAGE_NAME, finalArtifacts);
 
-        // Mark task as completed now that AI assistant has finished
+        // For recurring tasks, reset to "not-started" (awaiting next run).
+        // For one-off tasks, mark as "completed".
+        const finalStatus = ctx.job.data.isRecurringExecution
+          ? "not-started"
+          : "completed";
         try {
-          await updateTaskStatus(taskId, "completed", userId, assistantId);
+          await updateTaskStatus(taskId, finalStatus, userId, assistantId);
         } catch (statusError) {
           logger.error(
             {
@@ -415,8 +446,29 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
                   ? statusError.message
                   : "Unknown error",
             },
-            "Failed to update task status to completed, but processing was successful",
+            `Failed to update task status to ${finalStatus}, but processing was successful`,
           );
+        }
+
+        // Record execution success
+        if (executionId) {
+          try {
+            await completeTaskExecution(executionId, aiResponse, {
+              agentId: assistantId,
+            });
+          } catch (execError) {
+            logger.warn(
+              {
+                taskId,
+                executionId,
+                error:
+                  execError instanceof Error
+                    ? execError.message
+                    : String(execError),
+              },
+              "Failed to record execution completion",
+            );
+          }
         }
 
         // Note: Recurrence is handled by the scheduler - no need to update nextRunAt
@@ -426,6 +478,21 @@ async function processTaskExecution(ctx: JobContext<TaskExecutionJobData>) {
           "AI assistant task processing completed successfully",
         );
       } catch (error: unknown) {
+        // Record execution failure
+        if (executionId) {
+          try {
+            await failTaskExecution(
+              executionId,
+              error instanceof Error ? error.message : String(error),
+            );
+          } catch (_execError) {
+            logger.warn(
+              { taskId, executionId },
+              "Failed to record execution failure",
+            );
+          }
+        }
+
         logger.error(
           {
             jobId: ctx.job.id,

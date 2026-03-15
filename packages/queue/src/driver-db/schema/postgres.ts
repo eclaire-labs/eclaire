@@ -184,6 +184,9 @@ export const queueSchedulesPg = pgTable(
     /** When the schedule should stop creating jobs (null = no end date) */
     endDate: pgTimestamp("end_date", { withTimezone: true }),
 
+    /** IANA timezone for cron evaluation (e.g., "America/New_York"). Null = UTC. */
+    timezone: pgText("timezone"),
+
     /** When the schedule was created */
     createdAt: pgTimestamp("created_at", { withTimezone: true })
       .notNull()

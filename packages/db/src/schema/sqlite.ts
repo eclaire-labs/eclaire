@@ -14,6 +14,7 @@ import {
   generateSecurityId,
   generateTagId,
   generateTaskCommentId,
+  generateTaskExecutionId,
   generateTaskId,
   generateUserId,
 } from "@eclaire/core/id";
@@ -417,6 +418,47 @@ export const taskComments = sqliteTable(
       table.authorActorId,
     ),
     createdAtIdx: index("task_comments_created_at_idx").on(table.createdAt),
+  }),
+);
+
+export const taskExecutions = sqliteTable(
+  "task_executions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateTaskExecutionId()),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scheduleKey: text("schedule_key"),
+    jobId: text("job_id"),
+    status: text("status", {
+      enum: ["running", "completed", "failed", "skipped"],
+    }).notNull(),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    durationMs: integer("duration_ms"),
+    error: text("error"),
+    resultSummary: text("result_summary"),
+    tokenUsage: text("token_usage", { mode: "json" }),
+    metadata: text("metadata", { mode: "json" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  },
+  (table) => ({
+    taskCreatedAtIdx: index("task_executions_task_id_created_at_idx").on(
+      table.taskId,
+      table.createdAt,
+    ),
+    userCreatedAtIdx: index("task_executions_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    statusIdx: index("task_executions_status_idx").on(table.status),
   }),
 );
 

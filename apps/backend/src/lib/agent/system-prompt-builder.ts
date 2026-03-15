@@ -42,6 +42,32 @@ const CONTENT_TOOL_NAMES = [
   "getDueItems",
 ];
 
+const SCHEDULING_TOOL_NAMES = ["createTask", "updateTask"];
+
+function hasSchedulingTools(
+  tools: Record<string, RuntimeToolDefinition>,
+): boolean {
+  return SCHEDULING_TOOL_NAMES.some((name) => name in tools);
+}
+
+const SCHEDULING_INSTRUCTIONS = `
+
+**Scheduling & Recurring Work**
+
+When users ask for reminders, recurring summaries, periodic checks, or any scheduled work:
+1. Create a recurring task using createTask with isRecurring=true, a cronExpression, and assignToSelf=true
+2. Always confirm the schedule with the user before creating it
+3. You can use getDueItems to check what needs attention and findTasks to review scheduled tasks
+
+Common cron patterns (5-field: minute hour day-of-month month day-of-week):
+- Daily at 9am: 0 9 * * *
+- Every Monday at 9am: 0 9 * * 1
+- Weekdays at 9am: 0 9 * * 1-5
+- First of each month: 0 9 1 * *
+- Every hour: 0 * * * *
+
+To stop a recurring task, update it with isRecurring=false.`;
+
 function hasContentTools(
   tools: Record<string, RuntimeToolDefinition>,
 ): boolean {
@@ -239,8 +265,12 @@ ${getToolSignatures(tools)}
     ? CONTENT_LINKING_INSTRUCTIONS
     : "";
 
+  const schedulingNormal = hasSchedulingTools(tools)
+    ? SCHEDULING_INSTRUCTIONS
+    : "";
+
   return appendAgentCapabilities(
-    `${basePrompt}${contentLinkingNormal}
+    `${basePrompt}${contentLinkingNormal}${schedulingNormal}
 ${toolSignaturesSection}`,
     { skillNames: agent?.skillNames, tools },
   );

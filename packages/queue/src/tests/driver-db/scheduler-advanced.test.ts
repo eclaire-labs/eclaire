@@ -244,14 +244,18 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
       // Wait a bit more for any final processing
       await sleep(checkInterval * 2);
 
-      // Should have created exactly 3 jobs
-      const stats = await client.stats("test-queue");
-      expect(stats.pending).toBe(3);
-
-      // Schedule should be disabled
+      // Schedule should be disabled after reaching limit
       const schedules = await scheduler.list();
       const schedule = schedules.find((s) => s.key === "limited-schedule-3");
       expect(schedule?.enabled).toBe(false);
+
+      // Verify runCount reached the limit (stable key replaces pending jobs,
+      // so we check schedule runCount rather than pending job count)
+      const rows = await testDb.db
+        .select()
+        .from(queueSchedules)
+        .where(eq(queueSchedules.key, "limited-schedule-3"));
+      expect(rows[0]!.runCount).toBe(3);
     });
   });
 
@@ -409,12 +413,9 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
       expect(statsAfterRestart.pending).toBe(1);
     });
 
-    it("should use nextRunAt timestamp in job key for idempotency", async () => {
+    it("should use stable key per schedule for idempotency", async () => {
       scheduler = createTestScheduler();
-      const { queueSchedules, queueJobs } = testDb.schema;
-
-      // Create schedule with immediately=true
-      const _startTime = new Date();
+      const { queueJobs } = testDb.schema;
       await scheduler.upsert({
         key: "key-check",
         queue: "test-queue",
@@ -422,13 +423,6 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
         data: { keyCheck: true },
         immediately: true,
       });
-
-      // Get the nextRunAt before starting
-      const rows = await testDb.db
-        .select()
-        .from(queueSchedules)
-        .where(eq(queueSchedules.key, "key-check"));
-      const nextRunAt = rows[0]!.nextRunAt!;
 
       await scheduler.start();
 
@@ -445,8 +439,8 @@ describe.each(DB_TEST_CONFIGS)("D3, D4, D5, D7: Advanced Scheduler ($label)", ({
         .where(eq(queueJobs.queue, "test-queue"));
 
       expect(jobs).toHaveLength(1);
-      // Job key should be schedule:{scheduleKey}:{nextRunAt.getTime()}
-      expect(jobs[0]!.key).toBe(`schedule:key-check:${nextRunAt.getTime()}`);
+      // Job key should be schedule:{scheduleKey}:latest (stable key for overlap prevention)
+      expect(jobs[0]!.key).toBe("schedule:key-check:latest");
     });
   });
 });

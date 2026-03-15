@@ -34,6 +34,9 @@ export const transformTaskData = (raw: any): Task => ({
   lastRunAt: raw.lastRunAt || null,
   completedAt: raw.completedAt || null,
   comments: raw.comments || undefined,
+  lastExecutionStatus: raw.lastExecutionStatus ?? null,
+  lastExecutionError: raw.lastExecutionError ?? null,
+  lastExecutionAt: raw.lastExecutionAt ?? null,
 });
 
 const { useList, useSingle } = createCrudHooks<Task>({

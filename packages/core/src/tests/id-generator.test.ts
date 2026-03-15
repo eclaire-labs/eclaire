@@ -34,7 +34,9 @@ import {
   isValidTaskId,
   isValidUserId,
   isValidApiKeyId,
+  isValidTaskExecutionId,
   generateApiKeyId,
+  generateTaskExecutionId,
 } from "../id-generator.js";
 
 describe("generateCleanId", () => {
@@ -105,6 +107,11 @@ const entityGenerators = [
   },
   { name: "generateChannelId", fn: generateChannelId, prefix: "ch-" },
   { name: "generateFeedbackId", fn: generateFeedbackId, prefix: "fb-" },
+  {
+    name: "generateTaskExecutionId",
+    fn: generateTaskExecutionId,
+    prefix: "txe-",
+  },
 ] as const;
 
 describe.each(entityGenerators)("$name", ({ fn, prefix }) => {
@@ -238,6 +245,12 @@ const validatorPairs = [
     generator: generateFeedbackId,
     prefix: "fb",
   },
+  {
+    name: "isValidTaskExecutionId",
+    validator: isValidTaskExecutionId,
+    generator: generateTaskExecutionId,
+    prefix: "txe",
+  },
 ] as const;
 
 describe.each(validatorPairs)("$name", ({ validator, generator, prefix }) => {
@@ -302,8 +315,8 @@ describe("ID_CONSTANTS", () => {
     expect(ID_CONSTANTS.STANDARD_LENGTH).toBe(15);
   });
 
-  it("PREFIXES contains all 17 entity prefixes", () => {
-    expect(Object.keys(ID_CONSTANTS.PREFIXES).length).toBe(17);
+  it("PREFIXES contains all 18 entity prefixes", () => {
+    expect(Object.keys(ID_CONSTANTS.PREFIXES).length).toBe(18);
   });
 
   it("all PREFIXES end with a dash", () => {

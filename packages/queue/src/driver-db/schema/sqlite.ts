@@ -102,6 +102,8 @@ export const queueSchedulesSqlite = sqliteTable(
     runLimit: sqliteInteger("run_limit"),
     runCount: sqliteInteger("run_count").notNull().default(0),
     endDate: sqliteInteger("end_date", { mode: "timestamp_ms" }),
+    /** IANA timezone for cron evaluation (e.g., "America/New_York"). Null = UTC. */
+    timezone: sqliteText("timezone"),
     createdAt: sqliteInteger("created_at", { mode: "timestamp_ms" }).notNull(),
     updatedAt: sqliteInteger("updated_at", { mode: "timestamp_ms" }).notNull(),
   },

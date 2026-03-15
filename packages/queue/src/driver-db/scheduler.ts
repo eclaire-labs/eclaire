@@ -9,6 +9,7 @@
 // We'll use a simple cron parser - users can provide their own
 // For now, this is a minimal implementation
 import { getErrorMessage } from "../core/error-utils.js";
+import { JobAlreadyActiveError } from "../core/errors.js";
 import { CronExpressionParser } from "cron-parser";
 import { and, eq, lte, sql } from "drizzle-orm";
 import type {
@@ -81,15 +82,20 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
   /**
    * Calculate next run time from cron expression
    */
-  function getNextRunTime(cron: string, fromDate: Date = new Date()): Date {
+  function getNextRunTime(
+    cron: string,
+    fromDate: Date = new Date(),
+    timezone?: string | null,
+  ): Date {
     try {
       const interval = CronExpressionParser.parse(cron, {
         currentDate: fromDate,
+        tz: timezone ?? undefined,
       });
       return interval.next().toDate();
     } catch (error) {
       logger.error(
-        { cron, error: getErrorMessage(error) },
+        { cron, timezone, error: getErrorMessage(error) },
         "Invalid cron expression",
       );
       // Fall back to 1 hour from now
@@ -159,14 +165,41 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
             continue;
           }
 
-          // Enqueue the job with a deterministic key based on scheduled time
-          // This ensures idempotency if scheduler restarts before updating nextRunAt
-          await queueClient.enqueue(schedule.queue, schedule.data, {
-            key: `schedule:${schedule.key}:${schedule.nextRunAt.getTime()}`,
-          });
+          // Enqueue with a stable key per schedule and overlap prevention.
+          // If the previous job is still processing, skip this run.
+          try {
+            await queueClient.enqueue(schedule.queue, schedule.data, {
+              key: `schedule:${schedule.key}:latest`,
+              replace: "if_not_active",
+            });
+          } catch (enqueueError) {
+            if (enqueueError instanceof JobAlreadyActiveError) {
+              logger.warn(
+                { scheduleKey: schedule.key },
+                "Skipping overlapping execution — previous job still active",
+              );
+              // Still update nextRunAt so we don't re-trigger on next poll
+              const skipNextRunAt = getNextRunTime(
+                schedule.cron,
+                now,
+                schedule.timezone,
+              );
+              // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
+              await (db as any)
+                .update(queueSchedules)
+                .set({ nextRunAt: skipNextRunAt, updatedAt: now })
+                .where(eq(queueSchedules.id, schedule.id));
+              continue;
+            }
+            throw enqueueError;
+          }
 
           // Update schedule
-          const nextRunAt = getNextRunTime(schedule.cron, now);
+          const nextRunAt = getNextRunTime(
+            schedule.cron,
+            now,
+            schedule.timezone,
+          );
           // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
           await (db as any)
             .update(queueSchedules)
@@ -226,6 +259,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
         limit,
         endDate,
         immediately = false,
+        timezone,
       } = scheduleConfig;
 
       // Validate cron expression
@@ -234,7 +268,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
       }
 
       const now = new Date();
-      const nextRunAt = immediately ? now : getNextRunTime(cron, now);
+      const nextRunAt = immediately ? now : getNextRunTime(cron, now, timezone);
 
       try {
         // Try to insert, update on conflict
@@ -250,6 +284,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
             enabled,
             runLimit: limit || null,
             endDate: endDate || null,
+            timezone: timezone || null,
             nextRunAt,
             runCount: 0,
             createdAt: now,
@@ -264,6 +299,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
               enabled: sql`EXCLUDED.enabled`,
               runLimit: sql`EXCLUDED.run_limit`,
               endDate: sql`EXCLUDED.end_date`,
+              timezone: sql`EXCLUDED.timezone`,
               nextRunAt: sql`EXCLUDED.next_run_at`,
               updatedAt: now,
             },
@@ -347,6 +383,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
           enabled: row.enabled,
           limit: row.runLimit || undefined,
           endDate: row.endDate || undefined,
+          timezone: row.timezone || undefined,
         };
       } catch (error) {
         logger.error(
@@ -376,6 +413,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
           enabled: row.enabled,
           limit: row.runLimit || undefined,
           endDate: row.endDate || undefined,
+          timezone: row.timezone || undefined,
         }));
       } catch (error) {
         logger.error(

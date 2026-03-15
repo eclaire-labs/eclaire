@@ -29,6 +29,7 @@ import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { RecurrenceToggle } from "@/components/shared/recurrence-toggle";
 import { TagEditor } from "@/components/shared/TagEditor";
+import { TaskExecutionHistory } from "@/components/pages/tasks/TaskExecutionHistory";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -772,6 +773,20 @@ export function TaskDetailClient() {
                           <div className="flex items-center gap-2">
                             <RefreshCw className="h-3 w-3 text-blue-500" />
                             <span>This task repeats</span>
+                            {task.lastExecutionStatus && (
+                              <Badge
+                                variant={
+                                  task.lastExecutionStatus === "completed"
+                                    ? "success"
+                                    : task.lastExecutionStatus === "failed"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
+                                className="text-[10px] px-1.5 py-0"
+                              >
+                                Last: {task.lastExecutionStatus}
+                              </Badge>
+                            )}
                           </div>
                           {task.nextRunAt && (
                             <div className="text-xs">
@@ -794,6 +809,13 @@ export function TaskDetailClient() {
                       )}
                     </div>
                   </div>
+                )}
+
+                {!isEditing && task.isRecurring && (
+                  <TaskExecutionHistory
+                    taskId={task.id}
+                    isRecurring={task.isRecurring}
+                  />
                 )}
 
                 <div>

@@ -539,6 +539,9 @@ export interface ScheduleConfig {
 
   /** Run immediately on creation (default: false) */
   immediately?: boolean;
+
+  /** IANA timezone for cron evaluation (e.g., "America/New_York"). Null/undefined = UTC. */
+  timezone?: string;
 }
 
 /**

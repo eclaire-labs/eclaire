@@ -1,6 +1,7 @@
 import {
   formatToISO8601,
   generateHistoryId,
+  generateTaskExecutionId,
   generateTaskId,
   type TaskStatus,
 } from "@eclaire/core";
@@ -19,7 +20,7 @@ import {
 } from "drizzle-orm";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
-const { tags, taskComments, tasks, tasksTags } = schema;
+const { tags, taskComments, taskExecutions, tasks, tasksTags, users } = schema;
 
 import { config } from "../../config/index.js";
 import {
@@ -201,6 +202,18 @@ interface UpdateTaskParams {
 export type { TaskStatus };
 
 /**
+ * Get user's IANA timezone (e.g., "America/New_York"). Returns null if not set.
+ */
+async function getUserTimezone(userId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ timezone: users.timezone })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return row?.timezone ?? null;
+}
+
+/**
  * Creates or updates a scheduler for a recurring task
  * Uses unified scheduler (works with both Redis/BullMQ and Database modes)
  *
@@ -210,6 +223,7 @@ export type { TaskStatus };
  * @param endDate - Optional end date for recurrence
  * @param limit - Optional maximum number of executions
  * @param immediately - Optional flag to execute first job immediately
+ * @param timezone - Optional IANA timezone for cron evaluation
  * @returns Promise<boolean> - Success status
  */
 async function upsertTaskScheduler(
@@ -220,6 +234,7 @@ async function upsertTaskScheduler(
   endDate?: Date | null,
   limit?: number,
   immediately?: boolean,
+  timezone?: string | null,
 ): Promise<boolean> {
   try {
     const scheduler = await getScheduler();
@@ -238,6 +253,7 @@ async function upsertTaskScheduler(
       limit: limit || undefined,
       endDate: endDate || undefined,
       immediately: immediately || false,
+      timezone: timezone || undefined,
     });
 
     logger.info(
@@ -749,6 +765,7 @@ export async function createTask(
 
     // Set up recurring task scheduler if task is recurring
     if (taskData.isRecurring && taskData.cronExpression) {
+      const userTimezone = await getUserTimezone(userId);
       const success = await upsertTaskScheduler(
         taskId,
         taskData.cronExpression,
@@ -763,6 +780,7 @@ export async function createTask(
         recurrenceEndDateValue,
         taskData.recurrenceLimit ?? undefined,
         taskData.runImmediately ?? undefined,
+        userTimezone,
       );
 
       if (!success) {
@@ -1213,6 +1231,7 @@ export async function updateTask(
           ? runImmediatelyValue
           : false;
 
+        const userTimezone = await getUserTimezone(userId);
         const success = await upsertTaskScheduler(
           id,
           finalCronExpression,
@@ -1227,6 +1246,7 @@ export async function updateTask(
           finalRecurrenceEndDate,
           finalRecurrenceLimit ?? undefined,
           finalRunImmediately ?? undefined,
+          userTimezone,
         );
 
         if (!success) {
@@ -1738,18 +1758,24 @@ export async function getTaskById(taskId: string, userId: string) {
     }
 
     // Fetch data in parallel
-    const [taskTagNames, taskCommentsData, scheduleData, childCountResult] =
-      await Promise.all([
-        getTaskTags(taskId),
-        getTaskCommentsWithUsers(taskId, task.userId),
-        getTaskScheduleData(taskId),
-        db
-          .select({ value: count() })
-          .from(tasks)
-          .where(eq(tasks.parentId, taskId)),
-      ]);
+    const [
+      taskTagNames,
+      taskCommentsData,
+      scheduleData,
+      childCountResult,
+      lastExecution,
+    ] = await Promise.all([
+      getTaskTags(taskId),
+      getTaskCommentsWithUsers(taskId, task.userId),
+      getTaskScheduleData(taskId),
+      db
+        .select({ value: count() })
+        .from(tasks)
+        .where(eq(tasks.parentId, taskId)),
+      getLastTaskExecution(taskId),
+    ]);
 
-    return cleanTaskForResponse(
+    const response = cleanTaskForResponse(
       task,
       taskTagNames,
       task.processingStatus,
@@ -1757,6 +1783,13 @@ export async function getTaskById(taskId: string, userId: string) {
       scheduleData,
       childCountResult[0]?.value ?? 0,
     );
+
+    return {
+      ...response,
+      lastExecutionStatus: lastExecution?.status ?? null,
+      lastExecutionError: lastExecution?.error ?? null,
+      lastExecutionAt: lastExecution?.completedAt?.toISOString() ?? null,
+    };
   } catch (error) {
     logger.error(
       {
@@ -2214,4 +2247,190 @@ export async function reprocessTask(
     );
     return { success: false, error: "Failed to reprocess task" };
   }
+}
+
+// ============================================================================
+// Task Execution Recording
+// ============================================================================
+
+export interface CreateTaskExecutionParams {
+  taskId: string;
+  userId: string;
+  scheduleKey?: string | null;
+  jobId?: string | null;
+}
+
+/**
+ * Create a task execution record when execution starts.
+ * Returns the execution ID for later updates.
+ */
+export async function createTaskExecution(
+  params: CreateTaskExecutionParams,
+): Promise<string> {
+  const id = generateTaskExecutionId();
+  const now = new Date();
+
+  await db.insert(taskExecutions).values({
+    id,
+    taskId: params.taskId,
+    userId: params.userId,
+    scheduleKey: params.scheduleKey ?? null,
+    jobId: params.jobId ?? null,
+    status: "running",
+    startedAt: now,
+    createdAt: now,
+  });
+
+  return id;
+}
+
+/**
+ * Mark a task execution as completed.
+ */
+export async function completeTaskExecution(
+  executionId: string,
+  resultSummary?: string,
+  metadata?: Record<string, unknown>,
+): Promise<void> {
+  const now = new Date();
+
+  // Fetch startedAt to compute duration
+  const [execution] = await db
+    .select({ startedAt: taskExecutions.startedAt })
+    .from(taskExecutions)
+    .where(eq(taskExecutions.id, executionId))
+    .limit(1);
+
+  const durationMs = execution?.startedAt
+    ? now.getTime() - execution.startedAt.getTime()
+    : null;
+
+  await db
+    .update(taskExecutions)
+    .set({
+      status: "completed",
+      completedAt: now,
+      durationMs,
+      resultSummary: resultSummary?.slice(0, 500) ?? null,
+      metadata: metadata ?? null,
+    })
+    .where(eq(taskExecutions.id, executionId));
+}
+
+/**
+ * Mark a task execution as failed.
+ */
+export async function failTaskExecution(
+  executionId: string,
+  error: string,
+): Promise<void> {
+  const now = new Date();
+
+  const [execution] = await db
+    .select({ startedAt: taskExecutions.startedAt })
+    .from(taskExecutions)
+    .where(eq(taskExecutions.id, executionId))
+    .limit(1);
+
+  const durationMs = execution?.startedAt
+    ? now.getTime() - execution.startedAt.getTime()
+    : null;
+
+  await db
+    .update(taskExecutions)
+    .set({
+      status: "failed",
+      completedAt: now,
+      durationMs,
+      error,
+    })
+    .where(eq(taskExecutions.id, executionId));
+}
+
+/**
+ * Record a skipped execution (e.g., due to overlap).
+ */
+export async function recordSkippedTaskExecution(
+  params: CreateTaskExecutionParams,
+): Promise<void> {
+  const now = new Date();
+
+  await db.insert(taskExecutions).values({
+    id: generateTaskExecutionId(),
+    taskId: params.taskId,
+    userId: params.userId,
+    scheduleKey: params.scheduleKey ?? null,
+    jobId: params.jobId ?? null,
+    status: "skipped",
+    startedAt: now,
+    completedAt: now,
+    durationMs: 0,
+    createdAt: now,
+  });
+}
+
+/**
+ * Get paginated execution history for a task.
+ */
+export async function getTaskExecutions(
+  taskId: string,
+  userId: string,
+  params: { cursor?: string; limit?: number } = {},
+): Promise<CursorPaginatedResponse<typeof taskExecutions.$inferSelect>> {
+  const limit = params.limit ?? 20;
+
+  const conditions: SQL[] = [
+    eq(taskExecutions.taskId, taskId),
+    eq(taskExecutions.userId, userId),
+  ];
+
+  if (params.cursor) {
+    conditions.push(
+      buildCursorCondition(
+        taskExecutions.createdAt,
+        taskExecutions.id,
+        params.cursor,
+        "desc",
+      ),
+    );
+  }
+
+  const rows = await db
+    .select()
+    .from(taskExecutions)
+    .where(and(...conditions))
+    .orderBy(desc(taskExecutions.createdAt), desc(taskExecutions.id))
+    .limit(limit + 1);
+
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
+  const lastItem = items[items.length - 1];
+  const nextCursor =
+    hasMore && lastItem
+      ? encodeCursor(lastItem.createdAt?.getTime() ?? null, lastItem.id)
+      : null;
+
+  return { items, nextCursor, hasMore };
+}
+
+/**
+ * Get the most recent execution for a task (for lastExecutionStatus).
+ */
+export async function getLastTaskExecution(taskId: string): Promise<{
+  status: string;
+  error: string | null;
+  completedAt: Date | null;
+} | null> {
+  const [row] = await db
+    .select({
+      status: taskExecutions.status,
+      error: taskExecutions.error,
+      completedAt: taskExecutions.completedAt,
+    })
+    .from(taskExecutions)
+    .where(eq(taskExecutions.taskId, taskId))
+    .orderBy(desc(taskExecutions.createdAt))
+    .limit(1);
+
+  return row ?? null;
 }

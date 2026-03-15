@@ -58,6 +58,7 @@ export function isValidCronExpression(cronExpression: string): boolean {
 export function getNextExecutionTime(
   cronExpression: string,
   fromDate: Date = new Date(),
+  timezone?: string | null,
 ): Date | null {
   if (!isValidCronExpression(cronExpression)) {
     logger.warn({ cronExpression }, "Invalid cron expression provided");
@@ -67,6 +68,7 @@ export function getNextExecutionTime(
   try {
     const interval = CronExpressionParser.parse(cronExpression, {
       currentDate: fromDate,
+      tz: timezone ?? undefined,
     });
 
     return interval.next().toDate();

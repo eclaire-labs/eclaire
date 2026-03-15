@@ -38,6 +38,7 @@ export const generateTaskCommentId = () => `tc-${generateCleanId()}`;
 export const generateChannelId = () => `ch-${generateCleanId()}`;
 export const generateFeedbackId = () => `fb-${generateCleanId()}`;
 export const generateAgentId = () => `agent-${generateCleanId()}`;
+export const generateTaskExecutionId = () => `txe-${generateCleanId()}`;
 
 /**
  * ID Generation for Storage Files
@@ -73,6 +74,7 @@ export const isValidChannelId = createIdValidator("ch");
 export const isValidAssetProcessingJobId = createIdValidator("apj");
 export const isValidFeedbackId = createIdValidator("fb");
 export const isValidAgentId = createIdValidator("agent");
+export const isValidTaskExecutionId = createIdValidator("txe");
 
 /**
  * Utility to extract entity type from ID
@@ -108,5 +110,6 @@ export const ID_CONSTANTS = {
     ASSET_PROCESSING_JOB: "apj-",
     FEEDBACK: "fb-",
     AGENT: "agent-",
+    TASK_EXECUTION: "txe-",
   },
 } as const;

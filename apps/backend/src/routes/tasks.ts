@@ -15,6 +15,7 @@ import {
   deleteTask,
   findTasksPaginated,
   getTaskById,
+  getTaskExecutions,
   reprocessTask,
   updateTask,
 } from "../lib/services/tasks.js";
@@ -189,6 +190,24 @@ registerCommonEndpoints(tasksRoutes, {
   },
   logger,
 });
+
+// GET /api/tasks/:id/executions - Get execution history for a task
+tasksRoutes.get(
+  "/:id/executions",
+  zValidator(
+    "query",
+    z.object({
+      cursor: z.string().optional(),
+      limit: z.coerce.number().min(1).max(100).default(20).optional(),
+    }),
+  ),
+  withAuth(async (c, userId) => {
+    const taskId = c.req.param("id");
+    const { cursor, limit } = c.req.valid("query");
+    const result = await getTaskExecutions(taskId, userId, { cursor, limit });
+    return c.json(result);
+  }, logger),
+);
 
 // GET /api/tasks/:id/comments - Get comments for a task
 tasksRoutes.get(
