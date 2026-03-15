@@ -22,6 +22,7 @@ export interface TelegramLogger {
   error(obj: Record<string, unknown>, msg: string): void;
   error(msg: string): void;
   debug(obj: Record<string, unknown>, msg: string): void;
+  debug(msg: string): void;
 }
 
 export interface TelegramDeps {

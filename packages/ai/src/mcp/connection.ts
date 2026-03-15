@@ -175,7 +175,7 @@ export class McpServerConnection {
     this.discoveredTools = result.tools
       .filter((tool) => {
         if (allowedSet && !allowedSet.has(tool.name)) return false;
-        if (blockedSet && blockedSet.has(tool.name)) return false;
+        if (blockedSet?.has(tool.name)) return false;
         return true;
       })
       .map((tool) => ({

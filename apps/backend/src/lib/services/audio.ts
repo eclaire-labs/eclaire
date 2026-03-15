@@ -12,6 +12,7 @@ import {
   type AudioProviderConfig,
   type SynthesizeInput,
   type TranscribeInput,
+  type TranscriptionResult,
 } from "@eclaire/audio";
 import { createChildLogger } from "../logger.js";
 

@@ -215,7 +215,7 @@ audioRoutes.get(
           }
         },
 
-        onMessage: (event, ws) => {
+        onMessage: (event, _ws) => {
           if (!mlxClient?.isConnected) return;
 
           const { data } = event;
