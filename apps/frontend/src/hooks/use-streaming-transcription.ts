@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 type StreamingStatus = "idle" | "connecting" | "streaming" | "error";
 
@@ -16,6 +17,7 @@ interface UseStreamingTranscriptionReturn {
   partialText: string;
   finalText: string | null;
   errorMessage: string | null;
+  stream: MediaStream | null;
   start: () => void;
   stop: () => Promise<string | null>;
   cancel: () => void;
@@ -170,7 +172,9 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
                 resolveStopRef.current = null;
               }
             } else if (msg.type === "error") {
-              setErrorMessage(msg.error || "Transcription error");
+              const errorMsg = msg.error || "Transcription error";
+              setErrorMessage(errorMsg);
+              toast.error("Transcription error", { description: errorMsg });
               setStatus("error");
             }
           } catch {
@@ -192,6 +196,9 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
 
         ws.onerror = () => {
           setErrorMessage("WebSocket error");
+          toast.error("Audio streaming error", {
+            description: "WebSocket connection lost",
+          });
           cleanup();
           setStatus("error");
         };
@@ -207,13 +214,18 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
         setStatus("streaming");
       } catch (err) {
         cleanup();
-        const msg =
-          err instanceof DOMException && err.name === "NotAllowedError"
-            ? "Microphone permission denied"
-            : err instanceof Error
-              ? err.message
-              : "Failed to start streaming";
+        const isMicDenied =
+          err instanceof DOMException && err.name === "NotAllowedError";
+        const msg = isMicDenied
+          ? "Microphone permission denied"
+          : err instanceof Error
+            ? err.message
+            : "Failed to start streaming";
         setErrorMessage(msg);
+        toast.error(
+          isMicDenied ? "Microphone access denied" : "Streaming failed",
+          { description: isMicDenied ? "Check browser permissions" : msg },
+        );
         setStatus("error");
       }
     })();
@@ -284,6 +296,7 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
     partialText,
     finalText,
     errorMessage,
+    stream: streamRef.current,
     start,
     stop,
     cancel,

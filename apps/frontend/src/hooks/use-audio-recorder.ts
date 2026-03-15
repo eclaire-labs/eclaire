@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 type RecorderStatus = "idle" | "recording" | "error";
 
@@ -15,6 +16,7 @@ interface UseAudioRecorderReturn {
   stopRecording: () => Promise<Blob | null>;
   isSupported: boolean;
   errorMessage: string | null;
+  stream: MediaStream | null;
 }
 
 const MAX_RECORDING_MS = 60_000; // 60 seconds
@@ -129,11 +131,16 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         }, MAX_RECORDING_MS);
       } catch (err) {
         isStartingRef.current = false;
-        const msg =
-          err instanceof DOMException && err.name === "NotAllowedError"
-            ? "Microphone permission denied"
-            : "Failed to start recording";
+        const isMicDenied =
+          err instanceof DOMException && err.name === "NotAllowedError";
+        const msg = isMicDenied
+          ? "Microphone permission denied"
+          : "Failed to start recording";
         setErrorMessage(msg);
+        toast.error(
+          isMicDenied ? "Microphone access denied" : "Recording failed",
+          { description: isMicDenied ? "Check browser permissions" : msg },
+        );
         setStatus("error");
       }
     })();
@@ -205,5 +212,6 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     stopRecording,
     isSupported,
     errorMessage,
+    stream: streamRef.current,
   };
 }

@@ -11,6 +11,7 @@
 
 import { Loader2, Square, Volume2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -93,9 +94,11 @@ export function AudioPlaybackButton({ text }: AudioPlaybackButtonProps) {
       };
 
       await audio.play();
-    } catch {
+    } catch (err) {
       setStatus("idle");
       cachedUrlRef.current = null;
+      const msg = err instanceof Error ? err.message : "Audio playback failed";
+      toast.error("Playback failed", { description: msg });
     }
   }, [useStreaming, streamingPlayback, combinedStatus, text, synthesize]);
 

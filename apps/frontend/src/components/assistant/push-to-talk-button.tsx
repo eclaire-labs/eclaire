@@ -11,6 +11,7 @@
 
 import { Loader2, Mic, MicOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -19,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAudio } from "@/hooks/use-audio";
+import { useAudioLevel } from "@/hooks/use-audio-level";
 import { useAudioRecorder } from "@/hooks/use-audio-recorder";
 import { useStreamingTranscription } from "@/hooks/use-streaming-transcription";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
@@ -43,13 +45,38 @@ export function PushToTalkButton({
     startRecording,
     stopRecording,
     isSupported,
+    stream: recorderStream,
   } = useAudioRecorder();
   const streaming = useStreamingTranscription();
+  const audioLevel = useAudioLevel();
   const [preferences] = useAssistantPreferences();
   const isActiveRef = useRef(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const useStreaming = isStreamingEnabled && preferences.useStreamingSTT;
+
+  // Start/stop audio level monitoring when recording state changes
+  const audioLevelRef = useRef(audioLevel);
+  audioLevelRef.current = audioLevel;
+
+  useEffect(() => {
+    const stream = useStreaming ? streaming.stream : recorderStream;
+    const active = useStreaming
+      ? streaming.status === "streaming"
+      : recorderStatus === "recording";
+
+    if (active && stream) {
+      audioLevelRef.current.startMonitoring(stream);
+    } else {
+      audioLevelRef.current.stopMonitoring();
+    }
+  }, [
+    useStreaming,
+    streaming.status,
+    streaming.stream,
+    recorderStatus,
+    recorderStream,
+  ]);
 
   // Forward partial transcription text
   useEffect(() => {
@@ -83,7 +110,8 @@ export function PushToTalkButton({
           onTranscription(text.trim());
         }
       } catch (err) {
-        console.error("[PTT] Streaming transcription error:", err);
+        const msg = err instanceof Error ? err.message : "Transcription failed";
+        toast.error("Transcription failed", { description: msg });
       } finally {
         setIsProcessing(false);
       }
@@ -125,7 +153,8 @@ export function PushToTalkButton({
           onTranscription(text.trim());
         }
       } catch (err) {
-        console.error("[PTT] Transcription error:", err);
+        const msg = err instanceof Error ? err.message : "Transcription failed";
+        toast.error("Transcription failed", { description: msg });
       } finally {
         setIsProcessing(false);
       }
@@ -148,45 +177,66 @@ export function PushToTalkButton({
     return null;
   }
 
-  const isStreaming =
+  const isStreamingActive =
     streaming.status === "streaming" || streaming.status === "connecting";
   const isRecording = recorderStatus === "recording";
-  const isActive = useStreaming ? isStreaming : isRecording;
+  const isActive = useStreaming ? isStreamingActive : isRecording;
   const isBusy = isTranscribing || isProcessing;
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            size="icon"
-            variant={isActive ? "destructive" : "ghost"}
-            disabled={disabled || isBusy}
-            className={`flex-shrink-0 h-10 w-10 rounded-full ${isActive ? "animate-pulse" : ""}`}
-            onMouseDown={
-              useStreaming ? handleStreamingStart : handleRecordStart
-            }
-          >
-            {isBusy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : streaming.status === "connecting" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isActive ? (
-              <MicOff className="h-4 w-4" />
-            ) : (
-              <Mic className="h-4 w-4" />
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          {isBusy
-            ? "Transcribing..."
-            : streaming.status === "connecting"
-              ? "Connecting..."
-              : "Hold to record"}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className="flex items-center gap-1">
+      {/* Audio level indicator — visible only during recording */}
+      {isActive && (
+        <div className="flex items-end gap-0.5 h-5">
+          {[0.15, 0.3, 0.5, 0.75].map((threshold, i) => (
+            <div
+              key={threshold}
+              className="w-0.5 rounded-full transition-all duration-75"
+              style={{
+                height:
+                  audioLevel.level > threshold ? `${12 + i * 2}px` : "4px",
+                backgroundColor:
+                  audioLevel.level > threshold
+                    ? "hsl(var(--destructive))"
+                    : "hsl(var(--muted-foreground) / 0.3)",
+              }}
+            />
+          ))}
+        </div>
+      )}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant={isActive ? "destructive" : "ghost"}
+              disabled={disabled || isBusy}
+              className={`flex-shrink-0 h-10 w-10 rounded-full ${isActive ? "animate-pulse" : ""}`}
+              onMouseDown={
+                useStreaming ? handleStreamingStart : handleRecordStart
+              }
+            >
+              {isBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : streaming.status === "connecting" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isActive ? (
+                <MicOff className="h-4 w-4" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isBusy
+              ? "Transcribing..."
+              : streaming.status === "connecting"
+                ? "Connecting..."
+                : "Hold to record"}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
   );
 }

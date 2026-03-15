@@ -8,6 +8,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { apiFetch, apiGet, apiPost } from "@/lib/api-client";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 
@@ -176,6 +177,10 @@ export function useAudio(): UseAudioReturn {
         const response = await apiPost("/api/audio/transcriptions", formData);
         const data = await response.json();
         return data.text ?? "";
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Transcription failed";
+        toast.error("Transcription failed", { description: msg });
+        throw err;
       } finally {
         setIsTranscribing(false);
       }
@@ -196,6 +201,11 @@ export function useAudio(): UseAudioReturn {
         const url = URL.createObjectURL(blob);
         objectUrlsRef.current.push(url);
         return url;
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Speech synthesis failed";
+        toast.error("Speech synthesis failed", { description: msg });
+        throw err;
       } finally {
         setIsSynthesizing(false);
       }
@@ -205,17 +215,24 @@ export function useAudio(): UseAudioReturn {
 
   const synthesizeStream = useCallback(
     async (text: string): Promise<ReadableStreamDefaultReader<Uint8Array>> => {
-      const response = await apiFetch("/api/audio/speech", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          buildTtsBody(text, { format: "wav", stream: true }),
-        ),
-      });
-      if (!response.body) {
-        throw new Error("No response body for streaming synthesis");
+      try {
+        const response = await apiFetch("/api/audio/speech", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            buildTtsBody(text, { format: "wav", stream: true }),
+          ),
+        });
+        if (!response.body) {
+          throw new Error("No response body for streaming synthesis");
+        }
+        return response.body.getReader();
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Streaming synthesis failed";
+        toast.error("Speech synthesis failed", { description: msg });
+        throw err;
       }
-      return response.body.getReader();
     },
     [buildTtsBody],
   );
