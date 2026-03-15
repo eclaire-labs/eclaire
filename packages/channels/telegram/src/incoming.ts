@@ -5,6 +5,7 @@ import type { BotContext } from "./commands.js";
 import { splitMessage } from "./message-utils.js";
 import { sendStreamingResponse } from "./stream-sender.js";
 import { safeSendChatAction } from "./typing-indicator.js";
+import { Input } from "telegraf";
 
 /**
  * Handles incoming messages from Telegram for bidirectional channels.
@@ -218,6 +219,149 @@ export async function handleIncomingMessage(
 
     await ctx.reply(
       "I encountered an error processing your message. Please try again later.",
+    );
+  }
+}
+
+/**
+ * Handles incoming voice messages from Telegram.
+ * Downloads the voice file (OGG/Opus), transcribes via STT, processes through
+ * the AI agent, and replies with text + optional voice note.
+ */
+export async function handleIncomingVoiceMessage(
+  ctx: BotContext,
+  channelId: string,
+  userId: string,
+): Promise<void> {
+  const { findChannel, logger, processAudioMessage, recordHistory } = getDeps();
+
+  if (!processAudioMessage) {
+    logger.debug(
+      { channelId },
+      "Voice message received but audio processing not available",
+    );
+    return;
+  }
+
+  // biome-ignore lint/style/noNonNullAssertion: Telegraf voice handler guarantees message
+  const voice = (ctx.message as {
+    voice?: { file_id: string; duration: number };
+  })!.voice;
+  if (!voice) return;
+
+  const telegramUserId = ctx.from?.id;
+  const telegramUsername = ctx.from?.username;
+
+  logger.info(
+    {
+      channelId,
+      userId,
+      telegramUserId,
+      telegramUsername,
+      duration: voice.duration,
+    },
+    "Processing incoming Telegram voice message",
+  );
+
+  try {
+    const channel = await findChannel(channelId, userId);
+    if (!channel || !channel.isActive) {
+      if (!channel) {
+        logger.warn(
+          { channelId, userId },
+          "Channel not found for voice message - stopping bot",
+        );
+        await stopBot(channelId);
+      }
+      return;
+    }
+
+    if (channel.capability === "notification") {
+      await ctx.reply(
+        "This channel is configured for notifications only. I cannot respond to messages.",
+      );
+      return;
+    }
+
+    // Send typing indicator
+    if (ctx.chat) {
+      await safeSendChatAction(ctx.telegram, ctx.chat.id, "typing", logger);
+    }
+
+    // Download voice file from Telegram servers (always OGG/Opus)
+    const fileLink = await ctx.telegram.getFileLink(voice.file_id);
+    const response = await fetch(fileLink.href);
+    if (!response.ok) {
+      throw new Error(`Failed to download voice file: ${response.status}`);
+    }
+    const audioBuffer = Buffer.from(await response.arrayBuffer());
+
+    const agentActorId = channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
+
+    // Process: STT → AI → optional TTS
+    const result = await processAudioMessage(userId, audioBuffer, {
+      channelId,
+      agentActorId,
+      format: "ogg",
+      sessionId: ctx.session.sessionId,
+      ttsEnabled: true,
+      ttsFormat: "mp3",
+    });
+
+    // Send text response
+    if (result.response) {
+      const chunks = splitMessage(result.response);
+      for (let i = 0; i < chunks.length; i++) {
+        await ctx.reply(chunks[i] ?? "");
+        if (i < chunks.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+    }
+
+    // Send voice reply if TTS audio was generated
+    if (result.audioResponse) {
+      await ctx.replyWithVoice(
+        Input.fromBuffer(result.audioResponse, "response.mp3"),
+      );
+    }
+
+    // Record history
+    await recordHistory({
+      action: "telegram_voice_message_processed",
+      itemType: "telegram_voice",
+      itemId: `tg-voice-${telegramUserId}-${Date.now()}`,
+      itemName: "Telegram Voice Message",
+      beforeData: {
+        telegramUserId,
+        telegramUsername,
+        channelId,
+        voiceMessage: true,
+        duration: voice.duration,
+      },
+      afterData: {
+        response: result.response,
+        platform: "telegram",
+        channelId,
+      },
+      actor: "human",
+      userId,
+      metadata: { platform: "telegram", channelId },
+    });
+  } catch (error) {
+    logger.error(
+      {
+        channelId,
+        userId,
+        telegramUserId,
+        telegramUsername,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Error processing Telegram voice message",
+    );
+
+    await ctx.reply(
+      "I encountered an error processing your voice message. Please try again later.",
     );
   }
 }

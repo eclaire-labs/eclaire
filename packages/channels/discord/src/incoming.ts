@@ -1,12 +1,17 @@
 import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
 import { MessageFlags, type Message, type TextChannel } from "discord.js";
 import { getDeps } from "./deps.js";
-import { stopBot } from "./bot-manager.js";
+import { stopBot, sendVoiceMessage } from "./bot-manager.js";
 import { getSession } from "./commands.js";
 import { splitMessage } from "./message-utils.js";
 import { sendStreamingResponse } from "./stream-sender.js";
 import { safeSendTyping } from "./typing-indicator.js";
-import { downloadFile } from "./voice-utils.js";
+import {
+  convertToOggOpus,
+  downloadFile,
+  generateWaveform,
+  getAudioDuration,
+} from "./voice-utils.js";
 
 /**
  * Extracts attachment metadata from a Discord message.
@@ -165,6 +170,8 @@ export async function handleIncomingMessage(
             channelId,
             discordUserId,
             format: "ogg",
+            ttsEnabled: true,
+            ttsFormat: "wav",
           });
           responseText = result.response;
           if (responseText) {
@@ -174,6 +181,26 @@ export async function handleIncomingMessage(
               if (i < chunks.length - 1) {
                 await new Promise((resolve) => setTimeout(resolve, 100));
               }
+            }
+          }
+
+          // Send voice message reply if TTS audio was generated
+          if (result.audioResponse) {
+            try {
+              const ogg = await convertToOggOpus(result.audioResponse);
+              const duration = await getAudioDuration(ogg);
+              const waveform = await generateWaveform(ogg);
+              await sendVoiceMessage(channelId, ogg, duration, waveform);
+            } catch (voiceError) {
+              logger.warn(
+                {
+                  error:
+                    voiceError instanceof Error
+                      ? voiceError.message
+                      : "Unknown error",
+                },
+                "Failed to send voice message reply, text reply was already sent",
+              );
             }
           }
           // Record history and return early

@@ -12,6 +12,7 @@ import {
 import { decrypt, encrypt } from "./encryption.js";
 import { createChildLogger } from "./logger.js";
 import { listAgents } from "./services/agents.js";
+import { createProcessAudioMessage } from "./services/audio.js";
 import { recordHistory } from "./services/history.js";
 import {
   createSession,
@@ -142,6 +143,12 @@ const sessionAndModelDeps = {
   routeChannelPrompt,
 } as const;
 
+/** Audio message handler for channel adapters (STT → AI → optional TTS). */
+const processAudioMessage = createProcessAudioMessage({
+  processPromptRequest,
+  recordHistory,
+});
+
 /** Build platform-specific channel query helpers. */
 function channelQueryDeps(platform: ChannelPlatform) {
   return {
@@ -183,6 +190,7 @@ const telegramAdapter = initTelegramAdapter({
   decrypt,
   processPromptRequest,
   processPromptRequestStream,
+  processAudioMessage,
   recordHistory,
   logger: createChildLogger("telegram"),
   ...sessionAndModelDeps,
@@ -196,6 +204,7 @@ const discordAdapter = initDiscordAdapter({
   decrypt,
   processPromptRequest,
   processPromptRequestStream,
+  processAudioMessage,
   recordHistory,
   logger: createChildLogger("discord"),
   ...sessionAndModelDeps,
@@ -209,6 +218,7 @@ const slackAdapter = initSlackAdapter({
   decrypt,
   processPromptRequest,
   processPromptRequestStream,
+  processAudioMessage,
   recordHistory,
   logger: createChildLogger("slack"),
   ...sessionAndModelDeps,

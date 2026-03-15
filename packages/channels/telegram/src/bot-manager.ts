@@ -1,7 +1,10 @@
 import { type Context, session, Telegraf } from "telegraf";
 import { getDeps } from "./deps.js";
 import { decryptConfig, type TelegramConfig } from "./config.js";
-import { handleIncomingMessage } from "./incoming.js";
+import {
+  handleIncomingMessage,
+  handleIncomingVoiceMessage,
+} from "./incoming.js";
 import {
   type BotContext,
   type TelegramSessionData,
@@ -65,6 +68,33 @@ async function createBotInstance(
         try {
           await ctx.reply(
             "Sorry, I encountered an error processing your message. Please try again.",
+          );
+        } catch (_replyError) {
+          logger.error(
+            { channelId, userId },
+            "Failed to send error reply to Telegram",
+          );
+        }
+      }
+    });
+
+    // Handle incoming voice messages (STT → AI → optional voice reply)
+    bot.on("voice", async (ctx) => {
+      try {
+        await handleIncomingVoiceMessage(ctx as BotContext, channelId, userId);
+      } catch (error) {
+        logger.error(
+          {
+            channelId,
+            userId,
+            error: error instanceof Error ? error.message : "Unknown error",
+          },
+          "Error handling incoming Telegram voice message",
+        );
+
+        try {
+          await ctx.reply(
+            "Sorry, I encountered an error processing your voice message. Please try again.",
           );
         } catch (_replyError) {
           logger.error(

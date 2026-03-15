@@ -55,6 +55,12 @@ export interface TelegramDeps {
     // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
     ...args: any[]
   ) => Promise<ReadableStream<StreamEvent>>;
+  /** Optional handler for audio/voice messages. If not provided, voice messages are ignored. */
+  processAudioMessage?: (
+    userId: string,
+    audioBuffer: Buffer,
+    metadata: Record<string, unknown>,
+  ) => Promise<{ response?: string; audioResponse?: Buffer }>;
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   recordHistory: (entry: any) => Promise<void>;
   logger: TelegramLogger;

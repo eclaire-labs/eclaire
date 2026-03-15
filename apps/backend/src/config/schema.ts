@@ -82,7 +82,6 @@ export interface EclaireConfig {
 
   // Audio (STT/TTS via mlx-audio)
   audio: {
-    enabled: boolean;
     baseUrl: string;
     requestTimeoutMs: number;
     defaultSttModel: string;
@@ -381,7 +380,6 @@ export function buildConfig(): EclaireConfig {
 
     // Audio (STT/TTS via mlx-audio)
     audio: {
-      enabled: env.AUDIO_ENABLED === "true",
       baseUrl: env.AUDIO_BASE_URL || "http://127.0.0.1:9100",
       requestTimeoutMs: int(env.AUDIO_REQUEST_TIMEOUT, 30000),
       defaultSttModel:

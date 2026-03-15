@@ -1,7 +1,7 @@
 import { App } from "@slack/bolt";
 import { getDeps } from "./deps.js";
 import { decryptConfig, type SlackConfig } from "./config.js";
-import { handleIncomingMessage } from "./incoming.js";
+import { handleIncomingMessage, handleIncomingAudioFile } from "./incoming.js";
 import { registerCommands } from "./commands.js";
 import { splitMessage, convertMarkdownToMrkdwn } from "./message-utils.js";
 import { withRetry } from "./retry.js";
@@ -240,6 +240,50 @@ function createApp(
 
   // Handle incoming messages
   app.message(async ({ message, client }) => {
+    // Handle file_share messages with audio attachments
+    if (
+      message.subtype === "file_share" &&
+      "files" in message &&
+      "user" in message &&
+      "ts" in message &&
+      message.user
+    ) {
+      const files = (message as { files?: Array<Record<string, unknown>> })
+        .files;
+      const audioFile = files?.find(
+        (f) =>
+          typeof f.mimetype === "string" && f.mimetype.startsWith("audio/"),
+      );
+      if (audioFile && client.token) {
+        // Find the managing channel
+        let meta: ChannelMeta | undefined;
+        for (const m of managedChannels.values()) {
+          if (m.slackChannelId === message.channel) {
+            meta = m;
+            break;
+          }
+        }
+        if (meta) {
+          await handleIncomingAudioFile(
+            client,
+            client.token,
+            audioFile as {
+              id: string;
+              name?: string;
+              mimetype?: string;
+              url_private_download?: string;
+            },
+            message.channel,
+            message.user,
+            message.ts,
+            meta.channelId,
+            meta.userId,
+          );
+        }
+        return;
+      }
+    }
+
     // Only handle regular user messages (not bot messages, edits, etc.)
     if (message.subtype !== undefined) return;
     if (!("user" in message) || !("text" in message) || !("ts" in message))

@@ -99,3 +99,58 @@ export async function getAudioHealth(): Promise<AudioHealth> {
 export function getAudioConfig(): AudioProviderConfig | null {
   return audioConfig;
 }
+
+/**
+ * Create a `processAudioMessage` function for channel adapters.
+ *
+ * Composes: STT (transcribe) → AI prompt → optional TTS (synthesize).
+ * The returned function checks audio availability at call time, so it's safe
+ * to create before the audio provider is initialized.
+ */
+export function createProcessAudioMessage(deps: {
+  // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
+  processPromptRequest: (...args: any[]) => Promise<{ response?: string }>;
+  // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
+  recordHistory: (entry: any) => Promise<void>;
+}): (
+  userId: string,
+  audioBuffer: Buffer,
+  metadata: Record<string, unknown>,
+) => Promise<{ response?: string; audioResponse?: Buffer }> {
+  return async (userId, audioBuffer, metadata) => {
+    if (!isAudioAvailable()) {
+      throw new Error("Audio service not available");
+    }
+
+    // 1. Transcribe audio to text
+    const { text } = await transcribe({
+      file: audioBuffer,
+      fileName: `voice.${(metadata.format as string) ?? "ogg"}`,
+    });
+
+    if (!text?.trim()) {
+      return { response: undefined };
+    }
+
+    // 2. Process transcribed text through AI agent
+    const agentActorId = (metadata.agentActorId as string) ?? "eclaire";
+    const result = await deps.processPromptRequest({
+      userId,
+      prompt: text,
+      context: { agentActorId },
+      requestId: `audio-${metadata.channelId}-${Date.now()}`,
+      conversationId: metadata.sessionId,
+    });
+
+    // 3. Optional TTS synthesis
+    let audioResponse: Buffer | undefined;
+    if (metadata.ttsEnabled && result.response) {
+      audioResponse = await synthesize({
+        text: result.response,
+        format: ((metadata.ttsFormat as string) ?? "mp3") as "mp3" | "wav",
+      });
+    }
+
+    return { response: result.response, audioResponse };
+  };
+}

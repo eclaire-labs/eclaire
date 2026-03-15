@@ -55,6 +55,12 @@ export interface SlackDeps {
     // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
     ...args: any[]
   ) => Promise<ReadableStream<StreamEvent>>;
+  /** Optional handler for audio file attachments. If not provided, audio files are ignored. */
+  processAudioMessage?: (
+    userId: string,
+    audioBuffer: Buffer,
+    metadata: Record<string, unknown>,
+  ) => Promise<{ response?: string; audioResponse?: Buffer }>;
   // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   recordHistory: (entry: any) => Promise<void>;
   logger: SlackLogger;

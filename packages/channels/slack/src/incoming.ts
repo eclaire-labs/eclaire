@@ -233,3 +233,156 @@ export async function handleIncomingMessage(
     });
   }
 }
+
+/**
+ * Handles incoming audio file attachments from Slack.
+ * Downloads the audio file, transcribes via STT, processes through AI, and replies with text.
+ */
+export async function handleIncomingAudioFile(
+  client: WebClient,
+  botToken: string,
+  file: {
+    id: string;
+    name?: string;
+    mimetype?: string;
+    url_private_download?: string;
+  },
+  slackChannelId: string,
+  slackUserId: string,
+  messageTs: string,
+  channelId: string,
+  userId: string,
+): Promise<void> {
+  const { findChannel, logger, processAudioMessage, recordHistory } = getDeps();
+
+  if (!processAudioMessage) {
+    logger.debug(
+      { channelId },
+      "Audio file received but audio processing not available",
+    );
+    return;
+  }
+
+  logger.info(
+    {
+      channelId,
+      userId,
+      slackUserId,
+      fileName: file.name,
+      mimetype: file.mimetype,
+    },
+    "Processing incoming Slack audio file",
+  );
+
+  try {
+    const channel = await findChannel(channelId, userId);
+    if (!channel || !channel.isActive) {
+      if (!channel) {
+        logger.warn(
+          { channelId, userId },
+          "Channel not found for audio file - stopping bot",
+        );
+        await stopBot(channelId);
+      }
+      return;
+    }
+
+    if (channel.capability === "notification") {
+      await client.chat.postMessage({
+        channel: slackChannelId,
+        thread_ts: messageTs,
+        text: "This channel is configured for notifications only.",
+      });
+      return;
+    }
+
+    if (!file.url_private_download) {
+      logger.warn({ fileId: file.id }, "Audio file has no download URL");
+      return;
+    }
+
+    // Add thinking reaction as typing indicator
+    await addThinkingReaction(client, slackChannelId, messageTs, logger);
+
+    // Download audio file (Slack private URLs require bot token auth)
+    const response = await fetch(file.url_private_download, {
+      headers: { Authorization: `Bearer ${botToken}` },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to download Slack file: ${response.status}`);
+    }
+    const audioBuffer = Buffer.from(await response.arrayBuffer());
+
+    // Determine format from filename or mimetype
+    const ext = file.name?.split(".").pop() ?? "webm";
+    const agentActorId = channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
+
+    // Process: STT → AI (no TTS — Slack has no voice message support for bots)
+    const result = await processAudioMessage(userId, audioBuffer, {
+      channelId,
+      agentActorId,
+      format: ext,
+      ttsEnabled: false,
+    });
+
+    // Remove thinking reaction
+    await removeThinkingReaction(client, slackChannelId, messageTs, logger);
+
+    // Send text response
+    if (result.response) {
+      const mrkdwn = convertMarkdownToMrkdwn(result.response);
+      const chunks = splitMessage(mrkdwn);
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkText = chunks[i] ?? "";
+        await client.chat.postMessage({
+          channel: slackChannelId,
+          thread_ts: messageTs,
+          text: chunkText,
+        });
+        if (i < chunks.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+    }
+
+    // Record history
+    await recordHistory({
+      action: "slack_audio_processed",
+      itemType: "slack_audio",
+      itemId: `slack-audio-${slackUserId}-${Date.now()}`,
+      itemName: "Slack Audio File",
+      beforeData: {
+        slackUserId,
+        channelId,
+        fileName: file.name,
+        mimetype: file.mimetype,
+      },
+      afterData: {
+        response: result.response,
+        platform: "slack",
+        channelId,
+      },
+      actor: "human",
+      userId,
+      metadata: { platform: "slack", channelId },
+    });
+  } catch (error) {
+    logger.error(
+      {
+        channelId,
+        userId,
+        slackUserId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Error processing Slack audio file",
+    );
+
+    await removeThinkingReaction(client, slackChannelId, messageTs, logger);
+
+    await client.chat.postMessage({
+      channel: slackChannelId,
+      thread_ts: messageTs,
+      text: "I encountered an error processing your audio file. Please try again later.",
+    });
+  }
+}

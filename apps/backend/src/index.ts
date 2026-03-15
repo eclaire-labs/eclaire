@@ -157,21 +157,19 @@ const start = async () => {
       // Initialize MCP server registry (connects to configured MCP servers)
       await initializeMcp();
 
-      // Initialize audio service if enabled (STT/TTS via mlx-audio)
-      if (config.audio.enabled) {
-        const { initAudioService } = await import("./lib/services/audio.js");
-        initAudioService({
-          baseUrl: config.audio.baseUrl,
-          requestTimeoutMs: config.audio.requestTimeoutMs,
-          defaultSttModel: config.audio.defaultSttModel,
-          defaultTtsModel: config.audio.defaultTtsModel,
-          defaultTtsVoice: config.audio.defaultTtsVoice,
-        });
-        logger.info(
-          { baseUrl: config.audio.baseUrl },
-          "Audio service initialized",
-        );
-      }
+      // Initialize audio service (STT/TTS via mlx-audio — auto-detects server availability at runtime)
+      const { initAudioService } = await import("./lib/services/audio.js");
+      initAudioService({
+        baseUrl: config.audio.baseUrl,
+        requestTimeoutMs: config.audio.requestTimeoutMs,
+        defaultSttModel: config.audio.defaultSttModel,
+        defaultTtsModel: config.audio.defaultTtsModel,
+        defaultTtsVoice: config.audio.defaultTtsVoice,
+      });
+      logger.info(
+        { baseUrl: config.audio.baseUrl },
+        "Audio service initialized",
+      );
 
       // Validate configurations first - fail fast if not properly configured
       validateAIConfigOnStartup();
