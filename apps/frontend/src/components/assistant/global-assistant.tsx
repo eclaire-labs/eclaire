@@ -38,7 +38,7 @@ interface GlobalAssistantProps {
   inputRef: React.Ref<HTMLInputElement>;
   setInput: (value: string) => void;
   handleKeyDown: (e: React.KeyboardEvent) => void;
-  handleSend: () => void;
+  handleSend: (textOverride?: string) => void;
   startNewConversation: () => void;
   currentConversation: ConversationSummary | null;
   onEditConversationTitle: (newTitle: string) => void;
@@ -67,7 +67,7 @@ interface AssistantContentProps {
   inputRef: React.Ref<HTMLInputElement>;
   setInput: (value: string) => void;
   handleKeyDown: (e: React.KeyboardEvent) => void;
-  handleSend: () => void;
+  handleSend: (textOverride?: string) => void;
   startNewConversation: () => void;
   onFullScreenToggle?: () => void;
   fullScreen: boolean;

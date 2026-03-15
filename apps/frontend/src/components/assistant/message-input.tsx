@@ -16,6 +16,7 @@ import { PushToTalkButton } from "@/components/assistant/push-to-talk-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 import type { AssetReference } from "@/types/message";
 
 interface MessageInputProps {
@@ -26,6 +27,7 @@ interface MessageInputProps {
   isLoading: boolean;
   attachedAssets: AssetReference[];
   setAttachedAssets: React.Dispatch<React.SetStateAction<AssetReference[]>>;
+  onStopAutoPlay?: () => void;
 }
 
 export function MessageInput({
@@ -36,11 +38,13 @@ export function MessageInput({
   isLoading,
   attachedAssets,
   setAttachedAssets,
+  onStopAutoPlay,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [partialTranscription, setPartialTranscription] = useState<
     string | null
   >(null);
+  const [preferences] = useAssistantPreferences();
 
   // Auto-grow textarea based on content
   // biome-ignore lint/correctness/useExhaustiveDependencies: value triggers resize recalculation
@@ -135,10 +139,17 @@ export function MessageInput({
         <PushToTalkButton
           onTranscription={(text) => {
             setPartialTranscription(null);
-            onChange(value + (value ? " " : "") + text);
+            if (preferences.voiceMode) {
+              // Auto-send: submit transcription directly
+              onSubmit(text);
+            } else {
+              // Manual mode: append to input for review
+              onChange(value + (value ? " " : "") + text);
+            }
           }}
           onPartialTranscription={setPartialTranscription}
           disabled={isLoading}
+          onStopAutoPlay={onStopAutoPlay}
         />
         <Button
           type="submit"

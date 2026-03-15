@@ -13,6 +13,7 @@ interface AssistantPreferences {
   showAssistantOverlay: boolean;
   useStreamingSTT: boolean;
   useStreamingTTS: boolean;
+  voiceMode: boolean;
 }
 
 const DEFAULT_PREFERENCES: AssistantPreferences = {
@@ -20,6 +21,7 @@ const DEFAULT_PREFERENCES: AssistantPreferences = {
   showAssistantOverlay: true,
   useStreamingSTT: true,
   useStreamingTTS: true,
+  voiceMode: false,
 };
 
 const STORAGE_KEY = "assistant-preferences";

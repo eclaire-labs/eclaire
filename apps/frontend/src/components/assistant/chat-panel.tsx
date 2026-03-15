@@ -1,7 +1,10 @@
 // components/assistant/chat-panel.tsx
 
+import { useEffect, useRef } from "react";
 import type { ToolCall } from "@/components/assistant/tool-execution-tracker";
 import { Card } from "@/components/ui/card";
+import { useStreamingPlayback } from "@/hooks/use-streaming-playback";
+import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
 import { MessageInput } from "./message-input";
@@ -16,7 +19,7 @@ interface ChatPanelProps {
   // Input handling
   input: string;
   setInput: (value: string) => void;
-  handleSend: () => void;
+  handleSend: (textOverride?: string) => void;
   handleKeyDown: (e: React.KeyboardEvent) => void;
 
   // Asset attachment
@@ -51,11 +54,36 @@ export function ChatPanel({
   showThinkingTokens = true,
   className,
 }: ChatPanelProps) {
-  const handleSubmit = (_content: string) => {
-    // The actual sending logic is handled by the parent component
-    // through the handleSend prop, so we just need to trigger it
-    handleSend();
+  const [preferences] = useAssistantPreferences();
+  const autoPlayback = useStreamingPlayback();
+  const prevStreamingRef = useRef(false);
+  // Refs to avoid re-triggering the auto-play effect on every render
+  const messagesRef = useRef(messages);
+  const preferencesRef = useRef(preferences);
+  const autoPlaybackRef = useRef(autoPlayback);
+  messagesRef.current = messages;
+  preferencesRef.current = preferences;
+  autoPlaybackRef.current = autoPlayback;
+
+  const handleSubmit = (content: string) => {
+    handleSend(content);
   };
+
+  // Auto-play TTS when assistant response completes in voice mode.
+  useEffect(() => {
+    if (
+      prevStreamingRef.current &&
+      !isStreaming &&
+      preferencesRef.current.voiceMode &&
+      messagesRef.current.length > 0
+    ) {
+      const lastMsg = messagesRef.current[messagesRef.current.length - 1];
+      if (lastMsg?.role === "assistant" && !lastMsg.isError) {
+        autoPlaybackRef.current.play(lastMsg.content);
+      }
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   return (
     // The Card is the main flex container, taking full height and handling overflow.
@@ -85,6 +113,7 @@ export function ChatPanel({
           isLoading={isLoading || isStreaming}
           attachedAssets={attachedAssets}
           setAttachedAssets={setAttachedAssets}
+          onStopAutoPlay={autoPlayback.stop}
         />
       </div>
     </Card>

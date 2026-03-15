@@ -678,8 +678,9 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     return link;
   };
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSend = async (textOverride?: string) => {
+    const messageText = textOverride || input;
+    if (!messageText.trim()) return;
 
     // Wait for preferences to be loaded to ensure correct enableThinking value
     if (!preferencesLoaded) {
@@ -689,11 +690,11 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input,
+      content: messageText,
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
-    const currentInput = input;
+    const currentInput = messageText;
     setInput("");
 
     // Set loading state immediately for instant user feedback

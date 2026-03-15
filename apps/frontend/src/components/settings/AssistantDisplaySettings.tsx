@@ -1,5 +1,13 @@
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
-import { Bot, Brain, ExternalLink, Info, Mic, Volume2 } from "lucide-react";
+import {
+  Bot,
+  Brain,
+  ExternalLink,
+  Info,
+  MessageSquare,
+  Mic,
+  Volume2,
+} from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
   Card,
@@ -221,6 +229,32 @@ export default function AssistantDisplaySettings() {
                       updatePreference("useStreamingTTS", checked)
                     }
                     disabled={!isStreamingEnabled}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex items-center space-x-3">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <div className="space-y-0.5">
+                      <Label
+                        htmlFor="voice-mode"
+                        className="text-sm font-normal"
+                      >
+                        Conversational voice mode
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Auto-send transcriptions and auto-play responses for a
+                        hands-free voice conversation. Interrupt playback by
+                        holding the PTT button.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="voice-mode"
+                    checked={preferences.voiceMode}
+                    onCheckedChange={(checked) =>
+                      updatePreference("voiceMode", checked)
+                    }
                   />
                 </div>
               </div>

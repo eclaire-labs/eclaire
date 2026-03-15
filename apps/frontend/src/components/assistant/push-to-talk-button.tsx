@@ -27,12 +27,14 @@ interface PushToTalkButtonProps {
   onTranscription: (text: string) => void;
   onPartialTranscription?: (text: string | null) => void;
   disabled?: boolean;
+  onStopAutoPlay?: () => void;
 }
 
 export function PushToTalkButton({
   onTranscription,
   onPartialTranscription,
   disabled = false,
+  onStopAutoPlay,
 }: PushToTalkButtonProps) {
   const { transcribe, isTranscribing, isAudioAvailable, isStreamingEnabled } =
     useAudio();
@@ -64,6 +66,7 @@ export function PushToTalkButton({
   // --- Streaming mode handlers ---
   const handleStreamingStart = useCallback(() => {
     if (disabled || isProcessing || isActiveRef.current) return;
+    onStopAutoPlay?.(); // Barge-in: stop any auto-playing TTS
     isActiveRef.current = true;
     streaming.start();
 
@@ -93,12 +96,14 @@ export function PushToTalkButton({
     streaming,
     onTranscription,
     onPartialTranscription,
+    onStopAutoPlay,
   ]);
 
   // --- Non-streaming fallback handlers ---
   const handleRecordStart = useCallback(() => {
     if (disabled || isTranscribing || isProcessing || isActiveRef.current)
       return;
+    onStopAutoPlay?.(); // Barge-in: stop any auto-playing TTS
     isActiveRef.current = true;
     startRecording();
 
@@ -135,6 +140,7 @@ export function PushToTalkButton({
     stopRecording,
     transcribe,
     onTranscription,
+    onStopAutoPlay,
   ]);
 
   // Don't render when audio is unavailable or browser doesn't support recording
