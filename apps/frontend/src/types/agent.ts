@@ -6,6 +6,7 @@ export interface Agent {
   systemPrompt: string;
   toolNames: string[];
   skillNames: string[];
+  modelId?: string | null;
   isEditable: boolean;
   createdAt?: Date | string;
   updatedAt?: Date | string;

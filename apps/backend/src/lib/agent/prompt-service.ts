@@ -107,6 +107,7 @@ export function createBackendAgent(options: {
 
   return new RuntimeAgent({
     aiContext: "backend",
+    modelOverride: options.agent.modelId ?? undefined,
     toolCallingMode,
 
     instructions: (context) => {

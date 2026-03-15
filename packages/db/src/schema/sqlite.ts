@@ -890,6 +890,7 @@ export const agents = sqliteTable(
       .$type<string[]>()
       .notNull()
       .default(sql`'[]'`),
+    modelId: text("model_id"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),

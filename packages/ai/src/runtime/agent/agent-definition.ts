@@ -16,4 +16,6 @@ export interface AgentDefinitionBase {
   systemPrompt: string;
   toolNames: string[];
   skillNames: string[];
+  /** Optional model override in "provider:model" format. Null means use system default. */
+  modelId?: string | null;
 }

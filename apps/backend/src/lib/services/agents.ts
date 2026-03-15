@@ -1,4 +1,9 @@
-import { discoverSkills } from "@eclaire/ai";
+import {
+  discoverSkills,
+  getModelConfigById,
+  isValidModelIdFormat,
+  resolveProviderForModel,
+} from "@eclaire/ai";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import { getBackendTools } from "../agent/tools/index.js";
@@ -40,6 +45,7 @@ export interface CreateAgentInput {
   systemPrompt: string;
   toolNames?: string[];
   skillNames?: string[];
+  modelId?: string | null;
 }
 
 export interface UpdateAgentInput {
@@ -48,6 +54,7 @@ export interface UpdateAgentInput {
   systemPrompt?: string;
   toolNames?: string[];
   skillNames?: string[];
+  modelId?: string | null;
 }
 
 function listToolCatalog(): AgentCatalogItem[] {
@@ -81,6 +88,34 @@ function listSkillCatalog(): AgentCatalog["skills"] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function validateAgentModelId(modelId: string | null | undefined): void {
+  if (!modelId) return;
+
+  if (!isValidModelIdFormat(modelId)) {
+    throw new ValidationError(
+      `Invalid model ID format: "${modelId}". Expected "provider:model"`,
+      "modelId",
+    );
+  }
+
+  const modelConfig = getModelConfigById(modelId);
+  if (!modelConfig) {
+    throw new ValidationError(
+      `Model "${modelId}" not found in system configuration`,
+      "modelId",
+    );
+  }
+
+  try {
+    resolveProviderForModel(modelId, modelConfig);
+  } catch {
+    throw new ValidationError(
+      `Model "${modelId}" has an invalid provider configuration`,
+      "modelId",
+    );
+  }
+}
+
 function validateAgentCapabilities(input: {
   toolNames?: string[];
   skillNames?: string[];
@@ -112,6 +147,7 @@ function normalizeAgentRecord(
     systemPrompt: record.systemPrompt,
     toolNames: Array.isArray(record.toolNames) ? record.toolNames : [],
     skillNames: Array.isArray(record.skillNames) ? record.skillNames : [],
+    modelId: record.modelId ?? null,
     isEditable: true,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -127,6 +163,7 @@ export function getDefaultAgentDefinition(): AgentDefinition {
     systemPrompt: DEFAULT_AGENT_SYSTEM_PROMPT,
     toolNames: Object.keys(getBackendTools()),
     skillNames: discoverSkills().map((skill) => skill.name),
+    modelId: null,
     isEditable: false,
   };
 }
@@ -177,6 +214,7 @@ export async function createAgent(
 ): Promise<AgentDefinition> {
   const capabilities = normalizeCreateAgentCapabilities(input);
   validateAgentCapabilities(capabilities);
+  validateAgentModelId(input.modelId);
 
   const trimmedName = input.name.trim();
 
@@ -189,6 +227,7 @@ export async function createAgent(
       systemPrompt: input.systemPrompt.trim(),
       toolNames: capabilities.toolNames,
       skillNames: capabilities.skillNames,
+      modelId: input.modelId ?? null,
     })
     .returning();
 
@@ -220,6 +259,9 @@ export async function updateAgent(
     toolNames: capabilityUpdates.toolNames,
     skillNames: capabilityUpdates.skillNames ?? existingAgent.skillNames,
   });
+  if (updates.modelId !== undefined) {
+    validateAgentModelId(updates.modelId);
+  }
 
   const trimmedName = updates.name?.trim();
 
@@ -238,6 +280,9 @@ export async function updateAgent(
         : {}),
       ...(capabilityUpdates.skillNames !== undefined
         ? { skillNames: capabilityUpdates.skillNames }
+        : {}),
+      ...(updates.modelId !== undefined
+        ? { modelId: updates.modelId ?? null }
         : {}),
       updatedAt: new Date(),
     })

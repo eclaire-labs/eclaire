@@ -133,6 +133,7 @@ export class RuntimeAgent {
       const aiResponse = await callAI(llmMessages, this.config.aiContext, {
         ...this.config.aiOptions,
         ...aiOptions,
+        modelOverride: this.config.modelOverride,
         tools: toolCallingMode !== "off" ? openAITools : undefined,
         toolChoice: openAITools && openAITools.length > 0 ? "auto" : undefined,
         debugContext: {
@@ -277,6 +278,7 @@ export class RuntimeAgent {
               {
                 ...this.config.aiOptions,
                 ...aiOptions,
+                modelOverride: this.config.modelOverride,
                 tools: toolCallingMode !== "off" ? openAITools : undefined,
                 toolChoice:
                   openAITools && openAITools.length > 0 ? "auto" : undefined,

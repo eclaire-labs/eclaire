@@ -19,6 +19,7 @@ import { documentsRoutes } from "./documents.js";
 import { feedbackRoutes } from "./feedback.js";
 import { historyRoutes } from "./history.js";
 import { modelRoutes } from "./model.js";
+import { modelsRoutes } from "./models.js";
 import { notesRoutes } from "./notes.js";
 import { notificationsRoutes } from "./notifications.js";
 import { photosRoutes } from "./photos.js";
@@ -48,6 +49,7 @@ export function registerApiRoutes(app: Hono<any>): void {
   app.route("/api/all", allRoutes);
   app.route("/api/user", userRoutes);
   app.route("/api/model", modelRoutes);
+  app.route("/api/models", modelsRoutes);
   app.route("/api/sessions", sessionsRoutes);
   app.route("/api/processing-status", processingStatusRoutes);
   app.route("/api/processing-events", processingEventsRoutes);

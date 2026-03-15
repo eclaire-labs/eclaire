@@ -11,6 +11,7 @@ export interface AgentPayload {
   systemPrompt: string;
   toolNames?: string[];
   skillNames?: string[];
+  modelId?: string | null;
 }
 
 export async function listAgents(): Promise<AgentListResponse> {

@@ -15,6 +15,7 @@ import {
   getDialectEndpoint,
   getThinkingPromptPrefix,
   validateAIConfig,
+  validateAIConfigForModelId,
 } from "./config.js";
 import { isDebugLoggingEnabled, logDebugEntry } from "./debug-logger.js";
 import { createLazyLogger, getErrorMessage } from "./logger.js";
@@ -190,7 +191,9 @@ export async function callAI(
   // Non-streaming path
   const startTime = Date.now();
   const { provider, providerConfig, modelId, modelConfig } =
-    validateAIConfig(context);
+    options.modelOverride
+      ? validateAIConfigForModelId(options.modelOverride)
+      : validateAIConfig(context);
 
   // Apply thinking prefix to system messages
   const processedMessages = applyThinkingPrefix(
@@ -471,7 +474,9 @@ export async function callAIStream(
   const logger = getLogger();
   const startTime = Date.now();
   const { provider, providerConfig, modelId, modelConfig } =
-    validateAIConfig(context);
+    options.modelOverride
+      ? validateAIConfigForModelId(options.modelOverride)
+      : validateAIConfig(context);
 
   // Workers never need thinking — disable it to preserve token budget
   const resolvedEnableThinking =

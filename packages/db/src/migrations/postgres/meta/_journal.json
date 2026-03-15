@@ -57,6 +57,13 @@
       "when": 1773481648604,
       "tag": "0007_thick_menace",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1773569756993,
+      "tag": "0008_stiff_xavin",
+      "breakpoints": true
     }
   ]
 }

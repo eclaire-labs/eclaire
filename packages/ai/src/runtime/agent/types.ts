@@ -63,6 +63,9 @@ export interface RuntimeAgentConfig {
   /** AI context for model selection (e.g., "backend", "cli") */
   aiContext: AIContext;
 
+  /** Optional model ID override — bypasses context-based selection */
+  modelOverride?: string;
+
   /** System prompt — static string or dynamic function */
   instructions:
     | string

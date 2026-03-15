@@ -738,6 +738,52 @@ export function validateAIConfig(context: AIContext): ValidatedAIConfig {
 }
 
 /**
+ * Validates configuration for a specific model ID (bypasses selection.json).
+ * Used for per-agent model overrides.
+ */
+export function validateAIConfigForModelId(modelId: string): ValidatedAIConfig {
+  const logger = getLogger();
+
+  if (!isValidModelIdFormat(modelId)) {
+    throw new Error(
+      `Invalid model ID format: "${modelId}". Expected "provider:model"`,
+    );
+  }
+
+  const modelConfig = getModelConfigById(modelId);
+  if (!modelConfig) {
+    throw new Error(
+      `Model '${modelId}' not found in models.json. Check your configuration.`,
+    );
+  }
+
+  const { providerConfig, url } = resolveProviderForModel(modelId, modelConfig);
+  const apiKey = extractApiKeyFromAuth(providerConfig.auth);
+
+  logger.info(
+    {
+      modelId,
+      provider: modelConfig.provider,
+      url,
+      hasApiKey: !!apiKey,
+    },
+    "AI configuration validated for model override",
+  );
+
+  return {
+    provider: {
+      name: modelConfig.provider,
+      baseURL: providerConfig.baseUrl,
+      model: modelConfig.providerModel,
+      apiKey,
+    },
+    providerConfig,
+    modelId,
+    modelConfig,
+  };
+}
+
+/**
  * Validate AI configuration on startup (call from main entry points)
  */
 export function validateAIConfigOnStartup(): void {

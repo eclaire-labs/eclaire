@@ -21,6 +21,7 @@ import {
   useToolExecutionTracker,
   type ToolCall,
 } from "@/components/assistant/tool-execution-tracker";
+import { ModelPicker } from "@/components/settings/ModelPicker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ function createEmptyDraft(): AgentPayload {
       "You are a focused AI agent. Be precise, use the tools you have been given, and stay within your area of responsibility.",
     toolNames: [],
     skillNames: [],
+    modelId: null,
   };
 }
 
@@ -322,6 +324,7 @@ export default function AssistantSettings({
           systemPrompt: agent.systemPrompt,
           toolNames: agent.toolNames,
           skillNames: agent.skillNames,
+          modelId: agent.modelId ?? null,
         });
         setMessages([buildWelcomeMessage(agent.name)]);
         setCurrentConversation(null);
@@ -528,6 +531,7 @@ export default function AssistantSettings({
         systemPrompt: draft.systemPrompt.trim(),
         toolNames: effectiveToolNames,
         skillNames: draft.skillNames ?? [],
+        modelId: draft.modelId ?? null,
       };
 
       const savedAgent =
@@ -591,6 +595,7 @@ export default function AssistantSettings({
       systemPrompt: selectedAgent.systemPrompt,
       toolNames: selectedAgent.toolNames,
       skillNames: selectedAgent.skillNames,
+      modelId: null,
     });
     navigate({
       to: "/agents/$agentId",
@@ -801,6 +806,21 @@ export default function AssistantSettings({
                       disabled={isReadOnly || isSaving}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="agent-model">Model</Label>
+                  <ModelPicker
+                    value={draft.modelId ?? null}
+                    onChange={(modelId) =>
+                      setDraft((prev) => ({ ...prev, modelId }))
+                    }
+                    disabled={isReadOnly || isSaving}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave as &quot;System Default&quot; to use the globally
+                    configured model.
+                  </p>
                 </div>
 
                 <div className="space-y-2">

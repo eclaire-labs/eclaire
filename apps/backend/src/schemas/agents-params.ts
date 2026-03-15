@@ -6,6 +6,7 @@ export const AgentPayloadSchema = z.object({
   systemPrompt: z.string().min(1).max(12000),
   toolNames: z.array(z.string()).optional(),
   skillNames: z.array(z.string()).optional(),
+  modelId: z.string().max(200).optional().nullable(),
 });
 
 export const CreateAgentSchema = AgentPayloadSchema;

@@ -384,6 +384,9 @@ export interface AICallOptions {
 
   // Debug logging context (included in debug log entries when debugLogPath is set)
   debugContext?: Record<string, unknown>;
+
+  // Model override — bypass context-based selection and use this specific model ID
+  modelOverride?: string;
 }
 
 /**

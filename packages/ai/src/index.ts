@@ -266,6 +266,7 @@ export {
   // Modality helpers (generic)
   hasInputModality,
   isManaged,
+  isValidModelIdFormat,
   loadModelsConfiguration,
   // Config loading
   loadProvidersConfiguration,
@@ -285,6 +286,7 @@ export {
   setConfigPath,
   updateModel,
   validateAIConfig,
+  validateAIConfigForModelId,
   validateAIConfigOnStartup,
 } from "./config.js";
 
