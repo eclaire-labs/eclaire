@@ -69,3 +69,15 @@ export type {
   RuntimeStreamResult,
   CreateRuntimeContextOptions,
 } from "./agent/index.js";
+
+// Agent definition types
+export type { AgentDefinitionBase, AgentKind } from "./agent/index.js";
+
+// Prompt helpers
+export {
+  getToolSignatures,
+  collectToolPromptContributions,
+  appendAgentCapabilities,
+  selectTools,
+  type AppendCapabilitiesOptions,
+} from "./agent/index.js";

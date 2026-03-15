@@ -5,21 +5,20 @@
  */
 
 import {
-  discoverSkills,
-  loadSkillContent,
-  toOpenAITools,
+  appendAgentCapabilities,
+  getToolSignatures,
   type RuntimeToolDefinition,
+  type ToolCallingMode,
 } from "@eclaire/ai";
-import { backendTools } from "./tools/index.js";
 import type { AgentDefinition, UserContext } from "./types.js";
+
+export type { ToolCallingMode } from "@eclaire/ai";
 
 export interface AssetContent {
   type: string;
   id: string;
   content: string;
 }
-
-export type ToolCallingMode = "native" | "text" | "off";
 
 export interface BuildSystemPromptOptions {
   userContext?: UserContext | null;
@@ -28,80 +27,6 @@ export interface BuildSystemPromptOptions {
   tools?: Record<string, RuntimeToolDefinition>;
   toolCallingMode?: ToolCallingMode;
   isBackgroundTaskExecution?: boolean;
-}
-
-function getToolSignatures(
-  tools: Record<string, RuntimeToolDefinition>,
-): string {
-  return toOpenAITools(tools)
-    .map((tool) => {
-      const params = tool.function.parameters as {
-        properties?: Record<string, unknown>;
-      };
-      const paramStr = params.properties
-        ? Object.entries(params.properties)
-            .map(([name, schema]) => {
-              const param = schema as { type?: string };
-              return `${name}?: ${param.type || "any"}`;
-            })
-            .join(", ")
-        : "";
-
-      return `function ${tool.function.name}(${paramStr}): Promise<any>; // ${tool.function.description}`;
-    })
-    .join("\n");
-}
-
-function appendAgentCapabilities(
-  prompt: string,
-  options: {
-    agent?: AgentDefinition;
-    tools: Record<string, RuntimeToolDefinition>;
-  },
-): string {
-  let result = prompt;
-
-  const discoveredSkills = discoverSkills();
-  const enabledSkills = (options.agent?.skillNames ?? [])
-    .map((name) => discoveredSkills.find((skill) => skill.name === name))
-    .filter((skill): skill is NonNullable<typeof skill> => !!skill);
-
-  if (enabledSkills.length > 0) {
-    result += `\n\n## Skills\nAvailable skills:\n${enabledSkills.map((skill) => `- ${skill.name}: ${skill.description}`).join("\n")}\n\nUse the loadSkill tool to load a skill's full instructions when the task matches its description.`;
-  }
-
-  for (const skill of enabledSkills) {
-    if (!skill.alwaysInclude) {
-      continue;
-    }
-
-    const content = loadSkillContent(skill.name);
-    if (content) {
-      result += `\n\n## ${skill.name}\n${content}`;
-    }
-  }
-
-  const snippets: string[] = [];
-  const guidelines: string[] = [];
-
-  for (const tool of Object.values(options.tools)) {
-    if (tool.promptSnippet) {
-      snippets.push(tool.promptSnippet);
-    }
-    if (tool.promptGuidelines) {
-      guidelines.push(...tool.promptGuidelines);
-    }
-  }
-
-  if (snippets.length > 0) {
-    result += `\n\n${snippets.join("\n\n")}`;
-  }
-
-  if (guidelines.length > 0) {
-    result += `\n\n## Tool Guidelines\n${guidelines.map((guideline) => `- ${guideline}`).join("\n")}`;
-  }
-
-  return result;
 }
 
 const CONTENT_TOOL_NAMES = [
@@ -152,7 +77,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
     userContext,
     agent,
     assetContents,
-    tools = backendTools,
+    tools = {},
     toolCallingMode = "native",
     isBackgroundTaskExecution = false,
   } = options;
@@ -272,7 +197,7 @@ When working on tasks:
 2. Search for related content that might help with the task using available tools
 3. Provide a helpful, practical, and actionable response${contentLinking}
 ${toolSignaturesSection}`,
-      { agent, tools },
+      { skillNames: agent?.skillNames, tools },
     );
   }
 
@@ -281,7 +206,7 @@ ${toolSignaturesSection}`,
       `${basePrompt}
 
 Please provide a helpful and informative response based on the user's question and any referenced content above. Be conversational and focus on directly answering their question.`,
-      { agent, tools },
+      { skillNames: agent?.skillNames, tools },
     );
   }
 
@@ -317,6 +242,6 @@ ${getToolSignatures(tools)}
   return appendAgentCapabilities(
     `${basePrompt}${contentLinkingNormal}
 ${toolSignaturesSection}`,
-    { agent, tools },
+    { skillNames: agent?.skillNames, tools },
   );
 }

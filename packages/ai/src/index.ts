@@ -436,6 +436,11 @@ export type {
   SkillFrontmatter,
   SkillScope,
   SkillSource,
+  // Agent definition types
+  AgentDefinitionBase,
+  AgentKind,
+  // Prompt helper types
+  AppendCapabilitiesOptions,
   // Agent types
   RuntimeAgentConfig,
   RuntimeAgentContext,
@@ -465,6 +470,11 @@ export {
   createRuntimeContext,
   runtimeToolToOpenAI,
   executeRuntimeTool,
+  // Prompt helpers
+  getToolSignatures,
+  collectToolPromptContributions,
+  appendAgentCapabilities,
+  selectTools,
 } from "./runtime/index.js";
 
 // Registries
@@ -498,6 +508,11 @@ export {
   getAlwaysIncludeSkills,
   invalidateSkillCache,
   clearSkillSources,
+  // Skill normalization
+  LOAD_SKILL_TOOL_NAME,
+  normalizeToolNamesForSkills,
+  normalizeCreateAgentCapabilities,
+  normalizeUpdatedAgentCapabilities,
 } from "./registries/index.js";
 
 // =============================================================================
@@ -571,6 +586,8 @@ export type {
   // Message types
   TextContentPart,
   TokenizerConfig,
+  // Tool calling mode
+  ToolCallingMode,
   // API call types
   TokenUsage,
   ToolCallResult,

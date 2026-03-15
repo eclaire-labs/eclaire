@@ -38,3 +38,10 @@ export {
   invalidateSkillCache,
   clearSkillSources,
 } from "./skill-registry.js";
+
+export {
+  LOAD_SKILL_TOOL_NAME,
+  normalizeToolNamesForSkills,
+  normalizeCreateAgentCapabilities,
+  normalizeUpdatedAgentCapabilities,
+} from "./skill-normalization.js";

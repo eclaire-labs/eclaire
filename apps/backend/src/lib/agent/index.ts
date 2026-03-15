@@ -33,8 +33,5 @@ export {
   type BuildSystemPromptOptions,
   buildSystemPrompt,
 } from "./system-prompt-builder.js";
-// Tools
-export { backendTools } from "./tools/index.js";
-
 // Types
 export type { UserContext } from "./types.js";

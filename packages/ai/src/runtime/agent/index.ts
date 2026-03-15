@@ -22,3 +22,15 @@ export type {
 } from "./types.js";
 
 export { createRuntimeContext } from "./types.js";
+
+// Agent definition types
+export type { AgentDefinitionBase, AgentKind } from "./agent-definition.js";
+
+// Prompt helpers
+export {
+  getToolSignatures,
+  collectToolPromptContributions,
+  appendAgentCapabilities,
+  selectTools,
+  type AppendCapabilitiesOptions,
+} from "./prompt-helpers.js";

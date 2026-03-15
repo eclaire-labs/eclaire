@@ -13,6 +13,7 @@ import {
   convertFromLlm,
   createRuntimeContext,
   RuntimeAgent,
+  selectTools,
   type RuntimeStreamEvent,
 } from "@eclaire/ai";
 import type { Context } from "../../schemas/prompt-params.js";
@@ -59,11 +60,7 @@ function getRequestedAgentActorId(context?: Context): string {
 function selectAgentTools(
   agent: AgentDefinition,
 ): Record<string, RuntimeToolDefinition> {
-  const allTools = getBackendTools();
-
-  const selectedEntries = agent.toolNames
-    .map((toolName) => [toolName, allTools[toolName]] as const)
-    .filter((entry): entry is [string, RuntimeToolDefinition] => !!entry[1]);
+  const selected = selectTools(getBackendTools(), agent.toolNames);
 
   let registry: ReturnType<typeof getMcpRegistry> | null = null;
   try {
@@ -72,11 +69,10 @@ function selectAgentTools(
     // Registry not initialized yet
   }
 
-  return Object.fromEntries(
-    selectedEntries.filter(([toolName]) => {
-      if (!registry) return true;
+  if (!registry) return selected;
 
-      // Check MCP server availability generically
+  return Object.fromEntries(
+    Object.entries(selected).filter(([toolName]) => {
       const mcpAvailability = registry.getToolAvailability(toolName);
       if (mcpAvailability && mcpAvailability.availability !== "available") {
         logger.debug(

@@ -2,6 +2,10 @@
  * Backend Agent Types
  */
 
+import type { AgentDefinitionBase } from "@eclaire/ai";
+
+export type { AgentKind } from "@eclaire/ai";
+
 /**
  * User profile context for personalization
  */
@@ -14,16 +18,7 @@ export interface UserContext {
   country: string | null;
 }
 
-export type AgentKind = "builtin" | "custom";
-
-export interface AgentDefinition {
-  id: string;
-  kind: AgentKind;
-  name: string;
-  description: string | null;
-  systemPrompt: string;
-  toolNames: string[];
-  skillNames: string[];
+export interface AgentDefinition extends AgentDefinitionBase {
   isEditable: boolean;
   createdAt?: Date;
   updatedAt?: Date;
