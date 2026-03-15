@@ -27,15 +27,14 @@ export const searchAllTool: RuntimeToolDefinition<typeof inputSchema> = {
     "Search across all content types (notes, bookmarks, documents, photos, tasks) at once.",
   inputSchema,
   execute: async (_callId, input, ctx) => {
-    const results = await findAllEntries(
-      ctx.userId,
-      input.text,
-      input.tags,
-      input.startDate ? new Date(input.startDate) : undefined,
-      input.endDate ? new Date(input.endDate) : undefined,
-      undefined, // types — search all
-      input.limit,
-    );
-    return textResult(JSON.stringify(results, null, 2));
+    const results = await findAllEntries({
+      userId: ctx.userId,
+      text: input.text,
+      tagsList: input.tags,
+      startDate: input.startDate ? new Date(input.startDate) : undefined,
+      endDate: input.endDate ? new Date(input.endDate) : undefined,
+      limit: input.limit,
+    });
+    return textResult(JSON.stringify(results.items, null, 2));
   },
 };

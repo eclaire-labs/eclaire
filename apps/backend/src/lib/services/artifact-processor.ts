@@ -1,12 +1,39 @@
+import { eq, type sql } from "drizzle-orm";
 import type { AssetType } from "../../types/assets.js";
+import { db, schema } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 import { updateBookmarkArtifacts } from "./bookmarks.js";
 import { updateDocumentArtifacts } from "./documents.js";
-import { updateNoteArtifacts } from "./notes.js"; // You will uncomment these later
+import { updateNoteArtifacts } from "./notes.js";
 import { updatePhotoArtifacts } from "./photos.js";
 import { updateTaskArtifacts } from "./tasks.js";
 
 const logger = createChildLogger("artifact-processor");
+
+const assetTypeToTable: Record<string, { table: unknown; idCol: unknown }> = {
+  bookmarks: { table: schema.bookmarks, idCol: schema.bookmarks.id },
+  documents: { table: schema.documents, idCol: schema.documents.id },
+  notes: { table: schema.notes, idCol: schema.notes.id },
+  photos: { table: schema.photos, idCol: schema.photos.id },
+  tasks: { table: schema.tasks, idCol: schema.tasks.id },
+};
+
+/**
+ * Set the processing_status column on an entity row.
+ * Used by the artifact processor and queue job lifecycle.
+ */
+export async function setEntityProcessingStatus(
+  assetType: string,
+  assetId: string,
+  status: "pending" | "processing" | "completed" | "failed",
+): Promise<void> {
+  const mapping = assetTypeToTable[assetType];
+  if (!mapping) return;
+  await db
+    .update(mapping.table as Parameters<typeof db.update>[0])
+    .set({ processingStatus: status })
+    .where(eq(mapping.idCol as ReturnType<typeof sql>, assetId));
+}
 
 /**
  * Main dispatcher for processing artifacts from workers.
@@ -41,51 +68,29 @@ export async function processArtifacts(
 
   switch (assetType) {
     case "photos":
-      // This calls the existing service function you already have for photos.
       await updatePhotoArtifacts(assetId, artifacts);
-      logger.info(
-        { assetType, assetId },
-        "Successfully processed photo artifacts.",
-      );
       break;
-
     case "notes":
-      // The dispatcher now knows how to handle note artifacts.
       await updateNoteArtifacts(assetId, artifacts);
-      logger.info(
-        { assetType, assetId },
-        "Successfully processed note artifacts.",
-      );
       break;
-
     case "bookmarks":
       await updateBookmarkArtifacts(assetId, artifacts);
-      logger.info(
-        { assetType, assetId },
-        "Successfully processed bookmark artifacts.",
-      );
       break;
     case "tasks":
       await updateTaskArtifacts(assetId, artifacts);
-      logger.info(
-        { assetType, assetId },
-        "Successfully processed task artifacts.",
-      );
       break;
     case "documents":
       await updateDocumentArtifacts(assetId, artifacts);
-      logger.info(
-        { assetType, assetId },
-        "Successfully processed document artifacts.",
-      );
       break;
-
     default:
-      // This will catch calls for 'notes', 'documents', etc., until you add their cases.
       logger.warn(
         { assetType, assetId },
-        "Received artifacts for an asset type with no defined handler. Ignoring.",
+        "Received artifacts for an asset type with no defined handler.",
       );
-      break;
+      return;
   }
+
+  // Mark entity as completed after artifacts are saved
+  await setEntityProcessingStatus(assetType, assetId, "completed");
+  logger.info({ assetType, assetId }, "Successfully processed artifacts.");
 }

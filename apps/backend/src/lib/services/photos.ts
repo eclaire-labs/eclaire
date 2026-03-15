@@ -16,7 +16,12 @@ import exifr from "exifr"; // <-- Import exifr
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
-import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
+import {
+  batchGetTags,
+  buildTagFilterCondition,
+  getOrCreateTags,
+} from "../db-helpers.js";
+import { buildTextSearchCondition } from "../search.js";
 
 const { photos, photosTags, tags } = schema;
 
@@ -377,6 +382,21 @@ export async function createPhoto(
     const historyId = generateHistoryId();
     const tags = metadata.tags || [];
 
+    // Strip fields that are already in dedicated columns from metadata
+    const {
+      tags: _tags,
+      title: _title,
+      description: _desc,
+      dueDate: _due,
+      processingEnabled: _pe,
+      originalFilename: _of,
+      deviceId: _di,
+      reviewStatus: _rs,
+      flagColor: _fc,
+      isPinned: _ip,
+      ...metadataRest
+    } = metadata;
+
     // Atomic transaction: insert photo, tags, and history together
     await txManager.withTransaction(async (tx) => {
       await tx.photos.insert({
@@ -391,7 +411,7 @@ export async function createPhoto(
         fileSize: fileSize,
         deviceId: metadata.deviceId || null,
 
-        rawMetadata: metadata,
+        rawMetadata: metadataRest,
         originalMimeType: originalMimeType,
         userAgent: userAgent,
 
@@ -448,6 +468,7 @@ export async function createPhoto(
         isPinned: metadata.isPinned || false,
 
         processingEnabled: processingEnabled,
+        processingStatus: processingEnabled ? "pending" : null,
       });
 
       // Handle tags inside transaction
@@ -781,20 +802,14 @@ export async function deletePhoto(
  * @throws {NotFoundError} If the photo is not found or user is not authorized.
  */
 async function getPhotoWithDetails(photoId: string, userId: string) {
-  const [result] = await db
-    .select({
-      photo: photos,
-      status: queueJobs.status,
-    })
+  const [photo] = await db
+    .select()
     .from(photos)
-    .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
     .where(and(eq(photos.id, photoId), eq(photos.userId, userId)));
 
-  if (!result) {
+  if (!photo) {
     throw new NotFoundError("Photo");
   }
-
-  const photo = result.photo;
 
   const tags = await getPhotoTags(photoId);
 
@@ -860,7 +875,7 @@ async function getPhotoWithDetails(photoId: string, userId: string) {
     ),
 
     // Processing status
-    processingStatus: result.status || null,
+    processingStatus: photo.processingStatus || null,
 
     // Review, flagging, and pinning
     reviewStatus: photo.reviewStatus || "pending",
@@ -868,115 +883,6 @@ async function getPhotoWithDetails(photoId: string, userId: string) {
     isPinned: photo.isPinned || false,
     processingEnabled: photo.processingEnabled || false,
   };
-}
-
-/**
- * Retrieves all photos belonging to a specific user, including new fields.
- * @param userId - The ID of the user whose photos to retrieve.
- * @returns An array of photo details.
- */
-export async function getAllPhotos(userId: string) {
-  try {
-    // Use single query with LEFT JOIN to include processing status
-    const entriesList = await db
-      .select({
-        photo: photos,
-        status: queueJobs.status,
-      })
-      .from(photos)
-      .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
-      .where(eq(photos.userId, userId))
-      .orderBy(desc(photos.createdAt)); // Order by creation date
-
-    // Batch-load tags for all photos in one query (fixes N+1)
-    const photoIds = entriesList.map((r) => r.photo.id);
-    const tagMap = await batchGetTags(
-      photosTags,
-      photosTags.photoId,
-      photosTags.tagId,
-      photoIds,
-    );
-
-    // Process results to include tags and processing status
-    const entriesWithTags = entriesList.map((result) => {
-      const photo = result.photo;
-
-      // The main `imageUrl` will now always point to the smart `/view` endpoint.
-      const imageUrl = `/api/photos/${photo.id}/view`; // Simplified
-
-      const thumbnailUrl = photo.thumbnailStorageId
-        ? `/api/photos/${photo.id}/thumbnail`
-        : null;
-
-      // URL for direct access to the original file
-      const originalUrl = `/api/photos/${photo.id}/original`;
-
-      // URL for converted JPG (when applicable, like for HEIC files)
-      const convertedJpgUrl = photo.convertedJpgStorageId
-        ? `/api/photos/${photo.id}/converted`
-        : null;
-
-      return {
-        id: photo.id,
-        title: photo.title,
-        description: photo.description,
-        dueDate: photo.dueDate ? formatToISO8601(photo.dueDate) : null,
-        imageUrl: imageUrl, // This is the primary URL for display (smart serving)
-        thumbnailUrl: thumbnailUrl,
-        originalUrl: originalUrl, // Direct access to original file
-        convertedJpgUrl: convertedJpgUrl, // Access to converted JPG when available
-        originalFilename: photo.originalFilename || "",
-        mimeType: photo.mimeType || "", // Original MIME type
-        fileSize: photo.fileSize || 0,
-        createdAt: formatToISO8601(photo.createdAt),
-        updatedAt: formatToISO8601(photo.updatedAt),
-        dateTaken: photo.dateTaken ? formatToISO8601(photo.dateTaken) : null,
-        deviceId: photo.deviceId,
-        tags: tagMap.get(photo.id) ?? [],
-        // EXIF Data
-        cameraMake: photo.cameraMake,
-        cameraModel: photo.cameraModel,
-        lensModel: photo.lensModel,
-        iso: photo.iso,
-        fNumber: photo.fNumber,
-        exposureTime: photo.exposureTime,
-        orientation: photo.orientation,
-        imageWidth: photo.imageWidth,
-        imageHeight: photo.imageHeight,
-        // Location Data
-        latitude: photo.latitude,
-        longitude: photo.longitude,
-        altitude: photo.altitude,
-        locationCity: photo.locationCity,
-        locationCountryIso2: photo.locationCountryIso2,
-        locationCountryName: photo.locationCountryName,
-
-        // --- AI Generated Data ---
-        photoType: photo.photoType,
-        ocrText: photo.ocrText,
-        dominantColors: photo.dominantColors,
-
-        // For client-side logic, it might be useful to know if a conversion *should* exist
-        // or if the original is directly viewable.
-        isOriginalViewable: !["image/heic", "image/heif"].includes(
-          photo.mimeType || "",
-        ),
-
-        // Processing status
-        processingStatus: result.status || null,
-
-        // Review, flagging, and pinning
-        reviewStatus: photo.reviewStatus || "pending",
-        flagColor: photo.flagColor,
-        isPinned: photo.isPinned || false,
-        processingEnabled: photo.processingEnabled || false,
-      };
-    });
-
-    return entriesWithTags;
-  } catch (error) {
-    handleServiceError(error, "Failed to fetch photos");
-  }
 }
 
 /**
@@ -999,10 +905,12 @@ export async function getPhotoById(photoId: string, userId: string) {
 /** Common parameters shared by findPhotos, countPhotos, and the internal query-builder. */
 export interface FindPhotosParams {
   userId: string;
+  text?: string;
   tags?: string[];
   startDate?: Date;
   endDate?: Date;
   locationCity?: string;
+  deviceId?: string;
   dateField?: "createdAt" | "dateTaken";
   limit?: number;
   offset?: number;
@@ -1020,14 +928,30 @@ export interface FindPhotosParams {
  */
 function _buildPhotoQueryConditions({
   userId,
+  text,
   startDate,
   endDate,
   locationCity,
+  deviceId,
   dateField = "createdAt",
   dueDateStart,
   dueDateEnd,
 }: Omit<FindPhotosParams, "tags" | "limit">): SQL<unknown>[] {
   const definedConditions: SQL<unknown>[] = [eq(photos.userId, userId)];
+
+  if (text?.trim()) {
+    definedConditions.push(
+      buildTextSearchCondition(text, photos.searchVector, [
+        photos.title,
+        photos.description,
+        photos.ocrText,
+      ]),
+    );
+  }
+
+  if (deviceId?.trim()) {
+    definedConditions.push(eq(photos.deviceId, deviceId.trim()));
+  }
   const dateColumn =
     dateField === "dateTaken" ? photos.dateTaken : photos.createdAt;
 
@@ -1094,10 +1018,12 @@ function _buildPhotoQueryConditions({
  */
 export async function findPhotos({
   userId,
+  text,
   tags: tagsList,
   startDate,
   endDate,
   locationCity,
+  deviceId,
   dateField = "createdAt",
   limit = 50,
   cursor,
@@ -1109,9 +1035,11 @@ export async function findPhotos({
   try {
     const conditions = _buildPhotoQueryConditions({
       userId,
+      text,
       startDate,
       endDate,
       locationCity,
+      deviceId,
       dateField,
       dueDateStart,
       dueDateEnd,
@@ -1134,58 +1062,27 @@ export async function findPhotos({
       );
     }
 
-    let finalPhotoIds: string[];
-    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
-
-    // If filtering by tags:
+    // Add tag filter as a subquery condition
     if (tagsList && tagsList.length > 0) {
-      // Find photos matching base conditions (user, date, location)
-      const baseMatchedPhotos = await db
-        .select({ id: photos.id })
-        .from(photos)
-        .where(and(...conditions));
-
-      const basePhotoIds = baseMatchedPhotos.map((p) => p.id);
-      if (basePhotoIds.length === 0)
-        return { items: [], nextCursor: null, hasMore: false };
-
-      // Find which of those photos have ALL the required tags
-      const photosWithAllTags = await db
-        .select({ photoId: photosTags.photoId })
-        .from(photosTags)
-        .innerJoin(tags, eq(photosTags.tagId, tags.id))
-        .where(
-          and(
-            inArray(photosTags.photoId, basePhotoIds),
-            eq(tags.userId, userId),
-            inArray(tags.name, tagsList),
-          ),
-        )
-        .groupBy(photosTags.photoId)
-        .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
-
-      const taggedPhotoIds = photosWithAllTags.map((p) => p.photoId);
-
-      // Need to re-query to apply ordering and limit *after* tag filtering
-      if (taggedPhotoIds.length === 0)
-        return { items: [], nextCursor: null, hasMore: false };
-      const finalPhotos = await db
-        .select({ id: photos.id })
-        .from(photos)
-        .where(inArray(photos.id, taggedPhotoIds))
-        .orderBy(orderDir(sortColumn), orderDir(photos.id))
-        .limit(fetchLimit);
-      finalPhotoIds = finalPhotos.map((p) => p.id);
-    } else {
-      // No tag filter, just apply base conditions and limit/order
-      const matchedPhotos = await db
-        .select({ id: photos.id })
-        .from(photos)
-        .where(and(...conditions))
-        .orderBy(orderDir(sortColumn), orderDir(photos.id))
-        .limit(fetchLimit);
-      finalPhotoIds = matchedPhotos.map((p) => p.id);
+      conditions.push(
+        buildTagFilterCondition(
+          photosTags,
+          photosTags.photoId,
+          photosTags.tagId,
+          tagsList,
+          userId,
+        ),
+      );
     }
+
+    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+    const matchedPhotos = await db
+      .select({ id: photos.id })
+      .from(photos)
+      .where(and(...conditions))
+      .orderBy(orderDir(sortColumn), orderDir(photos.id))
+      .limit(fetchLimit);
+    let finalPhotoIds: string[] = matchedPhotos.map((p) => p.id);
 
     if (finalPhotoIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -1194,19 +1091,15 @@ export async function findPhotos({
     const hasMore = finalPhotoIds.length > limit;
     if (hasMore) finalPhotoIds = finalPhotoIds.slice(0, limit);
 
-    // Fetch full details with processing status using single query with JOIN
+    // Fetch full details in a single query
     const entriesList = await db
-      .select({
-        photo: photos,
-        status: queueJobs.status,
-      })
+      .select()
       .from(photos)
-      .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
       .where(inArray(photos.id, finalPhotoIds))
       .orderBy(orderDir(sortColumn), orderDir(photos.id));
 
     // Batch-load tags for all photos in one query (fixes N+1)
-    const batchPhotoIds = entriesList.map((r) => r.photo.id);
+    const batchPhotoIds = entriesList.map((r) => r.id);
     const tagMap = await batchGetTags(
       photosTags,
       photosTags.photoId,
@@ -1215,9 +1108,7 @@ export async function findPhotos({
     );
 
     // Process results to include tags and processing status
-    const items = entriesList.map((result) => {
-      const photo = result.photo;
-
+    const items = entriesList.map((photo) => {
       // The main `imageUrl` will now always point to the smart `/view` endpoint.
       const imageUrl = `/api/photos/${photo.id}/view`; // Simplified
 
@@ -1280,7 +1171,7 @@ export async function findPhotos({
         ),
 
         // Processing status
-        processingStatus: result.status || null,
+        processingStatus: photo.processingStatus || null,
 
         // Review, flagging, and pinning
         reviewStatus: photo.reviewStatus || "pending",
@@ -1317,10 +1208,12 @@ export async function findPhotos({
  */
 export async function countPhotos({
   userId,
+  text,
   tags: tagsList,
   startDate,
   endDate,
   locationCity,
+  deviceId,
   dateField = "createdAt",
   dueDateStart,
   dueDateEnd,
@@ -1328,47 +1221,33 @@ export async function countPhotos({
   try {
     const conditions = _buildPhotoQueryConditions({
       userId,
+      text,
       startDate,
       endDate,
       locationCity,
+      deviceId,
       dateField,
       dueDateStart,
       dueDateEnd,
     });
 
-    // If no tag filter, count directly
-    if (!tagsList || tagsList.length === 0) {
-      const countResult = await db
-        .select({ value: count() })
-        .from(photos)
-        .where(and(...conditions));
-      return countResult[0]?.value ?? 0;
+    if (tagsList && tagsList.length > 0) {
+      conditions.push(
+        buildTagFilterCondition(
+          photosTags,
+          photosTags.photoId,
+          photosTags.tagId,
+          tagsList,
+          userId,
+        ),
+      );
     }
 
-    // With tag filter, need to find matching IDs first, then count
-    const baseMatchedPhotos = await db
-      .select({ id: photos.id })
+    const [result] = await db
+      .select({ value: count() })
       .from(photos)
       .where(and(...conditions));
-
-    const basePhotoIds = baseMatchedPhotos.map((p) => p.id);
-    if (basePhotoIds.length === 0) return 0;
-
-    const photosWithAllTags = await db
-      .select({ photoId: photosTags.photoId })
-      .from(photosTags)
-      .innerJoin(tags, eq(photosTags.tagId, tags.id))
-      .where(
-        and(
-          inArray(photosTags.photoId, basePhotoIds),
-          eq(tags.userId, userId),
-          inArray(tags.name, tagsList),
-        ),
-      )
-      .groupBy(photosTags.photoId)
-      .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
-
-    return photosWithAllTags.length; // The count is the number of photos having all tags
+    return result?.value ?? 0;
   } catch (error) {
     handleServiceError(error, "Failed to count photos");
   }
@@ -1826,28 +1705,24 @@ async function _getPhotoStreamDetailsForViewing(
   photoId: string,
   userId: string,
 ): Promise<PhotoStreamDetails> {
-  // Use LEFT JOIN to get photo data along with processing status
   const [result] = await db
     .select({
-      photo: {
-        storageId: photos.storageId,
-        userId: photos.userId,
-        mimeType: photos.mimeType,
-        convertedJpgStorageId: photos.convertedJpgStorageId,
-      },
-      status: queueJobs.status,
+      storageId: photos.storageId,
+      userId: photos.userId,
+      mimeType: photos.mimeType,
+      convertedJpgStorageId: photos.convertedJpgStorageId,
+      processingStatus: photos.processingStatus,
     })
     .from(photos)
-    .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
     .where(and(eq(photos.id, photoId), eq(photos.userId, userId)))
     .limit(1);
 
-  if (!result || !result.photo) {
+  if (!result) {
     throw new NotFoundError("Photo");
   }
 
-  const photoMeta = result.photo;
-  const processingStatus = result.status;
+  const photoMeta = result;
+  const processingStatus = result.processingStatus;
 
   if (photoMeta.userId !== userId) {
     // Double check, though query should handle
@@ -2217,29 +2092,25 @@ export async function getViewStream(
   photoId: string,
   userId: string,
 ): Promise<PhotoStreamResult> {
-  // Use LEFT JOIN to get photo data along with processing status
   const [result] = await db
     .select({
-      photo: {
-        storageId: photos.storageId,
-        userId: photos.userId,
-        mimeType: photos.mimeType,
-        convertedJpgStorageId: photos.convertedJpgStorageId,
-        originalFilename: photos.originalFilename,
-      },
-      status: queueJobs.status,
+      storageId: photos.storageId,
+      userId: photos.userId,
+      mimeType: photos.mimeType,
+      convertedJpgStorageId: photos.convertedJpgStorageId,
+      originalFilename: photos.originalFilename,
+      processingStatus: photos.processingStatus,
     })
     .from(photos)
-    .leftJoin(queueJobs, eq(queueJobs.key, sql`'photos:' || ${photos.id}`))
     .where(and(eq(photos.id, photoId), eq(photos.userId, userId)))
     .limit(1);
 
-  if (!result || !result.photo) {
+  if (!result) {
     throw new NotFoundError("Photo");
   }
 
-  const photoMeta = result.photo;
-  const processingStatus = result.status;
+  const photoMeta = result;
+  const processingStatus = result.processingStatus;
 
   if (photoMeta.userId !== userId) {
     throw new ForbiddenError("Access denied");

@@ -222,18 +222,18 @@ describe("mapBookmarkToApiResponse", () => {
     expect(result.dueDate).toBeNull();
   });
 
-  it("should map processing status from queue job status", () => {
+  it("should map processing status from entity column", () => {
     const result = mapBookmarkToApiResponse({
       id: "bm-test123",
       originalUrl: "https://example.com",
       createdAt: new Date(),
       updatedAt: new Date(),
-      status: "completed",
+      processingStatus: "completed",
     });
     expect(result.processingStatus).toBe("completed");
   });
 
-  it("should return null processingStatus when status is absent", () => {
+  it("should return null processingStatus when processingStatus is absent", () => {
     const result = mapBookmarkToApiResponse({
       id: "bm-test123",
       originalUrl: "https://example.com",

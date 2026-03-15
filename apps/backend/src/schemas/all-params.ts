@@ -47,23 +47,65 @@ export const SearchQuerySchema = z.object({
       examples: ["due_now", "overdue", "due_today"],
     }),
 
+  isPinned: z
+    .enum(["true", "false"])
+    .optional()
+    .meta({
+      description: "Filter by pinned status",
+      examples: ["true"],
+    }),
+
+  flagged: z
+    .enum(["true"])
+    .optional()
+    .meta({
+      description:
+        "Filter for flagged items (any flag color). Set to 'true' to show only flagged items.",
+      examples: ["true"],
+    }),
+
+  flagColor: z
+    .enum(["red", "yellow", "orange", "green", "blue"])
+    .optional()
+    .meta({
+      description: "Filter by specific flag color",
+      examples: ["red", "orange"],
+    }),
+
+  reviewStatus: z
+    .enum(["pending", "accepted", "rejected"])
+    .optional()
+    .meta({
+      description: "Filter by review status",
+      examples: ["pending"],
+    }),
+
+  types: z
+    .string()
+    .optional()
+    .meta({
+      description:
+        "Comma-separated list of content types to include (task, bookmark, document, photo, note). Omit to search all types.",
+      examples: ["task,bookmark", "note,document"],
+    }),
+
   limit: z.coerce
     .number()
     .min(1)
-    .max(9999)
+    .max(200)
     .default(50)
     .meta({
-      description: "Maximum number of results to return",
-      examples: [20, 50, 100, 9999],
+      description: "Maximum number of results to return per page",
+      examples: [20, 50, 100],
     }),
 
-  offset: z.coerce
-    .number()
-    .min(0)
-    .default(0)
+  cursor: z
+    .string()
+    .optional()
     .meta({
-      description: "Number of results to skip for pagination",
-      examples: [0, 50, 100],
+      description:
+        "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
+      examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6Im50ZV8xMjMifQ"],
     }),
 });
 

@@ -64,6 +64,20 @@
       "when": 1773569756993,
       "tag": "0008_stiff_xavin",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1773574513711,
+      "tag": "0009_exotic_havok",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1773577489156,
+      "tag": "0010_serious_maddog",
+      "breakpoints": true
     }
   ]
 }

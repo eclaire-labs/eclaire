@@ -1,3 +1,4 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   BookMarked,
@@ -6,12 +7,13 @@ import {
   Filter,
   ImageIcon,
   ListTodo,
+  Loader2,
   Pin,
   Search,
   StickyNote,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
@@ -35,6 +37,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { apiFetch } from "@/lib/api-client";
 import { setFlagColor, togglePin } from "@/lib/api-content";
@@ -46,21 +50,89 @@ interface Item {
   title: string;
   description: string;
   type: ItemType;
-  dateAdded: string;
+  createdAt: string;
   tags: string[];
   reviewStatus?: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned?: boolean;
 }
 
+interface AllPage {
+  items: Item[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  totalCount?: number;
+}
+
 export default function PinnedItemsPage() {
   const isMobile = useIsMobile();
-  const [items, setItems] = useState<Item[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterTag, setFilterTag] = useState<string>("all");
-  const [isLoading, setIsLoading] = useState(true);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
+
+  // Build server params
+  const serverParams = useMemo(() => {
+    const params: Record<string, string> = { isPinned: "true" };
+    if (debouncedSearch) params.text = debouncedSearch;
+    if (filterTag !== "all") params.tags = filterTag;
+    if (filterType !== "all") params.types = filterType;
+    return params;
+  }, [debouncedSearch, filterTag, filterType]);
+
+  // Fetch with cursor pagination via useInfiniteQuery
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useInfiniteQuery<AllPage>({
+    queryKey: ["pinned-items", serverParams],
+    queryFn: async ({ pageParam }) => {
+      const searchParams = new URLSearchParams();
+      for (const [key, value] of Object.entries(serverParams)) {
+        if (value) searchParams.set(key, value);
+      }
+      if (pageParam) searchParams.set("cursor", pageParam as string);
+      const response = await apiFetch(`/api/all?${searchParams.toString()}`);
+      return response.json();
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const items = useMemo(
+    () => data?.pages.flatMap((page) => page.items) ?? [],
+    [data],
+  );
+
+  const totalCount = data?.pages[0]?.totalCount;
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasNextPage: hasNextPage ?? false,
+    isFetchingNextPage,
+    fetchNextPage,
+  });
+
+  // Get unique tags from loaded items
+  const allTags = useMemo(
+    () => Array.from(new Set(items.flatMap((item) => item.tags || []))),
+    [items],
+  );
+
+  // Active filter count for mobile badge
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterType !== "all") count++;
+    if (filterTag !== "all") count++;
+    return count;
+  }, [filterType, filterTag]);
 
   // Pin and flag handlers
   const handlePinToggle = async (item: Item) => {
@@ -71,18 +143,10 @@ export default function PinnedItemsPage() {
         !item.isPinned,
       );
       if (response.ok) {
-        const updatedItem = await response.json();
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id ? { ...i, isPinned: updatedItem.isPinned } : i,
-          ),
-        );
-        toast.success(updatedItem.isPinned ? "Pinned" : "Unpinned", {
-          description: `${item.title} has been ${updatedItem.isPinned ? "pinned" : "unpinned"}.`,
-        });
+        refetch();
+        toast.success(item.isPinned ? "Unpinned" : "Pinned");
       }
-    } catch (error) {
-      console.error("Error toggling pin:", error);
+    } catch {
       toast.error("Error", { description: "Failed to update pin status" });
     }
   };
@@ -96,18 +160,10 @@ export default function PinnedItemsPage() {
         newColor,
       );
       if (response.ok) {
-        const updatedItem = await response.json();
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id ? { ...i, flagColor: updatedItem.flagColor } : i,
-          ),
-        );
-        toast.success(newColor ? "Flagged" : "Unflagged", {
-          description: `${item.title} has been ${newColor ? "flagged" : "unflagged"}.`,
-        });
+        refetch();
+        toast.success(newColor ? "Flagged" : "Unflagged");
       }
-    } catch (error) {
-      console.error("Error toggling flag:", error);
+    } catch {
       toast.error("Error", { description: "Failed to update flag" });
     }
   };
@@ -123,18 +179,10 @@ export default function PinnedItemsPage() {
         color,
       );
       if (response.ok) {
-        const updatedItem = await response.json();
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id ? { ...i, flagColor: updatedItem.flagColor } : i,
-          ),
-        );
-        toast.success("Flag Updated", {
-          description: `${item.title} flag changed to ${color}.`,
-        });
+        refetch();
+        toast.success("Flag Updated");
       }
-    } catch (error) {
-      console.error("Error changing flag color:", error);
+    } catch {
       toast.error("Error", { description: "Failed to update flag color" });
     }
   };
@@ -157,89 +205,6 @@ export default function PinnedItemsPage() {
         return "bookmarks";
     }
   };
-
-  // Fetch all items from API and filter for pinned items
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        setIsLoading(true);
-        const response = await apiFetch("/api/all?limit=9999");
-        if (response.ok) {
-          const data = await response.json();
-          // Filter for pinned items only
-          const pinnedItems = data.items.filter(
-            (item: Item) => item.isPinned === true,
-          );
-          setItems(pinnedItems);
-        } else {
-          toast.error("Error", {
-            description: "Failed to load pinned items",
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching pinned items:", error);
-        toast.error("Error", {
-          description: "Failed to load pinned items",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchItems();
-  }, []);
-
-  // Get unique tags from all items - ensure items is always an array
-  const allTags = Array.from(
-    new Set((items || []).flatMap((item) => item.tags || [])),
-  );
-
-  // Get active filter count for mobile badge
-  const getActiveFilterCount = () => {
-    let count = 0;
-    if (filterType !== "all") count++;
-    if (filterTag !== "all") count++;
-    return count;
-  };
-
-  // Clear search input
-  const clearSearch = () => {
-    setSearchQuery("");
-    // Focus the input after clearing
-    const searchInput = document.querySelector(
-      'input[placeholder="Search pinned items..."]',
-    ) as HTMLInputElement;
-    if (searchInput) {
-      searchInput.focus();
-    }
-  };
-
-  // Clear all filters
-  const clearAllFilters = () => {
-    setFilterType("all");
-    setFilterTag("all");
-  };
-
-  const filteredItems = (items || []).filter((item) => {
-    // Search filter
-    const matchesSearch =
-      (item.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.description || "")
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      (item.tags || []).some((tag) =>
-        (tag || "").toLowerCase().includes(searchQuery.toLowerCase()),
-      );
-
-    // Type filter
-    const matchesType = filterType === "all" || item.type === filterType;
-
-    // Tag filter
-    const matchesTag =
-      filterTag === "all" || (item.tags || []).includes(filterTag);
-
-    return matchesSearch && matchesType && matchesTag;
-  });
 
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = {
@@ -282,25 +247,6 @@ export default function PinnedItemsPage() {
     }
   };
 
-  const _getFlagColorClass = (flagColor: string | null | undefined) => {
-    if (!flagColor) return "";
-
-    switch (flagColor) {
-      case "red":
-        return "bg-red-100 border-red-200 text-red-800";
-      case "yellow":
-        return "bg-yellow-100 border-yellow-200 text-yellow-800";
-      case "orange":
-        return "bg-orange-100 border-orange-200 text-orange-800";
-      case "green":
-        return "bg-green-100 border-green-200 text-green-800";
-      case "blue":
-        return "bg-blue-100 border-blue-200 text-blue-800";
-      default:
-        return "";
-    }
-  };
-
   const getReviewStatusBadge = (reviewStatus: string | undefined) => {
     switch (reviewStatus) {
       case "pending":
@@ -335,6 +281,21 @@ export default function PinnedItemsPage() {
     }
   };
 
+  const clearSearch = () => {
+    setSearchQuery("");
+    const searchInput = document.querySelector(
+      'input[placeholder="Search pinned items..."]',
+    ) as HTMLInputElement;
+    if (searchInput) {
+      searchInput.focus();
+    }
+  };
+
+  const clearAllFilters = () => {
+    setFilterType("all");
+    setFilterTag("all");
+  };
+
   // FilterSortDialog component
   const FilterSortDialog = () => (
     <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
@@ -347,7 +308,6 @@ export default function PinnedItemsPage() {
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          {/* Type Filter */}
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="type-filter" className="text-right font-medium">
               Type
@@ -367,7 +327,6 @@ export default function PinnedItemsPage() {
             </Select>
           </div>
 
-          {/* Tag Filter */}
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="tag-filter" className="text-right font-medium">
               Tag
@@ -416,11 +375,9 @@ export default function PinnedItemsPage() {
             <h1 className="text-lg md:text-3xl font-bold md:tracking-tight flex items-center gap-2">
               <Pin className="h-5 w-5 md:h-8 md:w-8 text-blue-500" />
               Pinned Items
-              {items.length > 0 && (
+              {totalCount !== undefined && (
                 <span className="ml-2 text-sm md:text-base font-normal text-muted-foreground">
-                  {filteredItems.length === items.length
-                    ? `(${items.length})`
-                    : `(${filteredItems.length} of ${items.length})`}
+                  ({totalCount})
                 </span>
               )}
             </h1>
@@ -433,9 +390,7 @@ export default function PinnedItemsPage() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-          {/* Search Input + Filter Button Container */}
           <div className="flex gap-2 flex-grow w-full md:w-auto">
-            {/* Search Input */}
             <div className="relative flex-grow">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -455,7 +410,6 @@ export default function PinnedItemsPage() {
                 </button>
               )}
             </div>
-            {/* Mobile filter button */}
             <Button
               variant="outline"
               size="icon"
@@ -464,15 +418,14 @@ export default function PinnedItemsPage() {
               title="Filter items"
             >
               <Filter className="h-4 w-4" />
-              {getActiveFilterCount() > 0 && (
+              {activeFilterCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                  {getActiveFilterCount()}
+                  {activeFilterCount}
                 </span>
               )}
             </Button>
           </div>
 
-          {/* Desktop filters - hidden on mobile */}
           <div className="hidden md:flex flex-wrap gap-2">
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-[130px]">
@@ -505,7 +458,6 @@ export default function PinnedItemsPage() {
 
         <div className="space-y-4">
           {isLoading ? (
-            // Loading skeleton
             [0, 1, 2, 3, 4].map((i) => (
               <div
                 key={i}
@@ -525,10 +477,10 @@ export default function PinnedItemsPage() {
                 </div>
               </div>
             ))
-          ) : filteredItems.length > 0 ? (
-            filteredItems.map((item) => (
+          ) : items.length > 0 ? (
+            items.map((item) => (
               <div
-                key={item.id}
+                key={`${item.type}-${item.id}`}
                 className="flex items-start justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors border-l-4 border-l-blue-500"
               >
                 <Link
@@ -556,7 +508,7 @@ export default function PinnedItemsPage() {
                         className="flex items-center gap-1"
                       >
                         <Calendar className="h-3 w-3" />{" "}
-                        {formatDate(item.dateAdded)}
+                        {formatDate(item.createdAt)}
                       </Badge>
                       {item.flagColor && (
                         <Badge variant="outline" className="capitalize">
@@ -598,9 +550,15 @@ export default function PinnedItemsPage() {
               </p>
             </div>
           )}
+
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="flex justify-center py-4">
+            {isFetchingNextPage && (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            )}
+          </div>
         </div>
 
-        {/* Filter Dialog */}
         <FilterSortDialog />
       </div>
     </TooltipProvider>

@@ -7,7 +7,7 @@ import { createChildLogger } from "../lib/logger.js";
 import {
   classifyAndCreateContent,
   detectAndVerifyMimeType,
-  findAllEntriesWithCount,
+  findAllEntriesPaginated,
 } from "../lib/services/all.js";
 import { parseSearchFields } from "../lib/search-params.js";
 import { principalCaller } from "../lib/services/types.js";
@@ -36,23 +36,32 @@ allRoutes.get(
     const params = c.req.valid("query");
     const { tags, startDate, endDate } = parseSearchFields(params);
 
-    const { items, totalCount } = await findAllEntriesWithCount(
+    const types = params.types
+      ? params.types.split(",").map((t: string) => t.trim())
+      : undefined;
+
+    const result = await findAllEntriesPaginated({
       userId,
-      params.text,
-      tags,
+      text: params.text,
+      tagsList: tags,
       startDate,
       endDate,
-      undefined,
-      params.limit,
-      params.dueStatus,
-    );
-
-    return c.json({
-      items,
-      totalCount,
+      types,
       limit: params.limit,
-      offset: params.offset,
+      cursor: params.cursor,
+      dueStatus: params.dueStatus,
+      isPinned:
+        params.isPinned === "true"
+          ? true
+          : params.isPinned === "false"
+            ? false
+            : undefined,
+      flagged: params.flagged === "true" ? true : undefined,
+      flagColor: params.flagColor,
+      reviewStatus: params.reviewStatus,
     });
+
+    return c.json(result);
   }, logger),
 );
 

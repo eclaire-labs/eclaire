@@ -1,8 +1,44 @@
 import { formatToISO8601 } from "@eclaire/core";
-import { eq, inArray, sql } from "drizzle-orm";
-import { db, schema, txManager } from "../db/index.js";
+import { and, eq, ilike, inArray, like, sql, type SQL } from "drizzle-orm";
+import { db, dbType, schema, txManager } from "../db/index.js";
 
 const { tags } = schema;
+
+/**
+ * Dialect-aware case-insensitive LIKE.
+ * PostgreSQL/PGLite: uses `ILIKE` (case-insensitive).
+ * SQLite: uses `LIKE` (already case-insensitive for ASCII by default).
+ */
+export const flexLike = dbType === "sqlite" ? like : ilike;
+
+/**
+ * Builds a tag-filter condition as a single `IN (subquery)` clause.
+ * Replaces the old 3-step pattern that fetched all matching IDs unbounded.
+ *
+ * Returns a condition that can be pushed into the WHERE clause array:
+ *   entityIdCol IN (SELECT ... FROM junction JOIN tags WHERE ... GROUP BY ... HAVING COUNT = N)
+ */
+export function buildTagFilterCondition(
+  // biome-ignore lint/suspicious/noExplicitAny: junction table type varies per entity
+  junctionTable: any,
+  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
+  entityIdCol: any,
+  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
+  tagIdCol: any,
+  tagsList: string[],
+  userId: string,
+): SQL {
+  return inArray(
+    entityIdCol,
+    db
+      .select({ id: entityIdCol })
+      .from(junctionTable)
+      .innerJoin(tags, eq(tagIdCol, tags.id))
+      .where(and(eq(tags.userId, userId), inArray(tags.name, tagsList)))
+      .groupBy(entityIdCol)
+      .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`),
+  );
+}
 
 /**
  * Efficiently finds or creates multiple tags using an atomic transaction.

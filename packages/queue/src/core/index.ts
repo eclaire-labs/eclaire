@@ -133,6 +133,7 @@ export {
   type JobAssetMetadata,
   type ProcessingSSEEvent,
   type SSEPublisher,
+  type StatusChangeCallback,
 } from "./event-callbacks.js";
 // Re-export waitlist
 export { createJobWaitlist, type WaitlistConfig } from "./waitlist.js";

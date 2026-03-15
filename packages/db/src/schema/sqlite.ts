@@ -321,6 +321,9 @@ export const tasks = sqliteTable(
     processingEnabled: integer("processing_enabled", { mode: "boolean" })
       .notNull()
       .default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
     }),
@@ -470,6 +473,9 @@ export const bookmarks = sqliteTable(
     processingEnabled: integer("processing_enabled", { mode: "boolean" })
       .notNull()
       .default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
 
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
@@ -523,6 +529,9 @@ export const documents = sqliteTable(
     processingEnabled: integer("processing_enabled", { mode: "boolean" })
       .notNull()
       .default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
     extractedMdStorageId: text("extracted_md_storage_id"),
     extractedTxtStorageId: text("extracted_txt_storage_id"),
 
@@ -614,6 +623,9 @@ export const photos = sqliteTable(
     processingEnabled: integer("processing_enabled", { mode: "boolean" })
       .notNull()
       .default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
 
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
@@ -668,6 +680,9 @@ export const notes = sqliteTable(
     processingEnabled: integer("processing_enabled", { mode: "boolean" })
       .notNull()
       .default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
     dueDate: integer("due_date", { mode: "timestamp_ms" }),
 
     reviewStatus: text("review_status", {

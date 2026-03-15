@@ -13,23 +13,25 @@ import {
   eq,
   gte,
   inArray,
-  like,
   lte,
-  or,
   type SQL,
-  sql,
 } from "drizzle-orm";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { bookmarks, bookmarksTags, tags } = schema;
 
 import isUrl from "is-url";
-import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
+import {
+  batchGetTags,
+  buildTagFilterCondition,
+  getOrCreateTags,
+} from "../db-helpers.js";
 import {
   buildCursorCondition,
   encodeCursor,
   type CursorPaginatedResponse,
 } from "../pagination.js";
+import { buildTextSearchCondition } from "../search.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
@@ -236,6 +238,17 @@ export async function createBookmarkAndQueueJob(
     // Pre-generate history ID for transaction
     const historyId = generateHistoryId();
 
+    // Strip fields that are already in dedicated columns from rawMetadata
+    const {
+      tags: _tags,
+      title: _title,
+      description: _desc,
+      dueDate: _due,
+      processingEnabled: _pe,
+      url: _url,
+      ...metadataRest
+    } = rawMetadata;
+
     // Atomic transaction: insert bookmark, tags, and history together
     await txManager.withTransaction(async (tx) => {
       // Insert bookmark
@@ -246,9 +259,10 @@ export async function createBookmarkAndQueueJob(
         title: title,
         description: description,
         dueDate: dueDateValue,
-        rawMetadata: rawMetadata,
+        rawMetadata: metadataRest,
         userAgent: userAgent,
         processingEnabled: processingEnabled,
+        processingStatus: processingEnabled ? "pending" : null,
       });
 
       // Insert bookmark-tag relationships
@@ -539,7 +553,7 @@ export function mapBookmarkToApiResponse(dbBookmark: any) {
     updatedAt,
     pageLastUpdatedAt,
     dueDate,
-    status,
+    processingStatus,
     // Extract storage IDs for URL generation
     faviconStorageId,
     thumbnailStorageId,
@@ -565,7 +579,7 @@ export function mapBookmarkToApiResponse(dbBookmark: any) {
       ? formatToISO8601(pageLastUpdatedAt)
       : null,
     dueDate: dueDate ? formatToISO8601(dueDate) : null,
-    processingStatus: status || null,
+    processingStatus: processingStatus || null,
 
     // Generate URLs from storage IDs (null if storage ID doesn't exist)
     faviconUrl: faviconStorageId
@@ -623,74 +637,6 @@ export function mapApiRequestToDbFields(apiData: any) {
 }
 
 /**
- * Retrieves all bookmarks for a user, including their tags and processing status.
- */
-export async function getAllBookmarks(userId: string) {
-  try {
-    const bookmarksList = await db
-      .select({
-        id: bookmarks.id,
-        title: bookmarks.title,
-        originalUrl: bookmarks.originalUrl,
-        normalizedUrl: bookmarks.normalizedUrl,
-        description: bookmarks.description,
-        author: bookmarks.author,
-        lang: bookmarks.lang,
-        createdAt: bookmarks.createdAt,
-        updatedAt: bookmarks.updatedAt,
-        pageLastUpdatedAt: bookmarks.pageLastUpdatedAt,
-        dueDate: bookmarks.dueDate,
-        faviconStorageId: bookmarks.faviconStorageId,
-        thumbnailStorageId: bookmarks.thumbnailStorageId,
-        screenshotDesktopStorageId: bookmarks.screenshotDesktopStorageId,
-        screenshotMobileStorageId: bookmarks.screenshotMobileStorageId,
-        screenshotFullPageStorageId: bookmarks.screenshotFullPageStorageId,
-        pdfStorageId: bookmarks.pdfStorageId,
-        readableHtmlStorageId: bookmarks.readableHtmlStorageId,
-        extractedMdStorageId: bookmarks.extractedMdStorageId,
-        extractedTxtStorageId: bookmarks.extractedTxtStorageId,
-        rawHtmlStorageId: bookmarks.rawHtmlStorageId,
-        readmeStorageId: bookmarks.readmeStorageId,
-        extractedText: bookmarks.extractedText,
-        rawMetadata: bookmarks.rawMetadata,
-        reviewStatus: bookmarks.reviewStatus,
-        flagColor: bookmarks.flagColor,
-        isPinned: bookmarks.isPinned,
-        processingEnabled: bookmarks.processingEnabled,
-        status: queueJobs.status,
-      })
-      .from(bookmarks)
-      .leftJoin(
-        queueJobs,
-        eq(queueJobs.key, sql`'bookmarks:' || ${bookmarks.id}`),
-      )
-      .where(eq(bookmarks.userId, userId))
-      .orderBy(desc(bookmarks.createdAt));
-
-    // This part remains the same, it just adds tags to the already-fetched data
-    return await Promise.all(
-      bookmarksList.map(async (bookmark) => {
-        const bookmarkWithTags = {
-          ...bookmark,
-          tags: await getBookmarkTags(bookmark.id),
-        };
-        return mapBookmarkToApiResponse(bookmarkWithTags);
-      }),
-    );
-  } catch (error) {
-    logger.error(
-      {
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Error getting all bookmarks",
-    );
-    throw new Error("Failed to fetch bookmarks");
-  }
-}
-
-/**
  * Retrieves a single bookmark by its ID, including tags and processing status.
  */
 export async function getBookmarkById(bookmarkId: string, userId: string) {
@@ -728,13 +674,9 @@ export async function getBookmarkById(bookmarkId: string, userId: string) {
         flagColor: bookmarks.flagColor,
         isPinned: bookmarks.isPinned,
         processingEnabled: bookmarks.processingEnabled,
-        status: queueJobs.status,
+        processingStatus: bookmarks.processingStatus,
       })
       .from(bookmarks)
-      .leftJoin(
-        queueJobs,
-        eq(queueJobs.key, sql`'bookmarks:' || ${bookmarks.id}`),
-      )
       .where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)));
 
     if (!bookmark) return null;
@@ -866,15 +808,14 @@ function _buildBookmarkQueryConditions({
   const definedConditions: SQL<unknown>[] = [eq(bookmarks.userId, userId)];
 
   if (text) {
-    const searchTerm = `%${text.trim()}%`;
-    // Search across title, description, and both URL fields
     definedConditions.push(
-      or(
-        like(bookmarks.title, searchTerm),
-        like(bookmarks.description, searchTerm),
-        like(bookmarks.originalUrl, searchTerm),
-        like(bookmarks.normalizedUrl, searchTerm),
-      ) as SQL<unknown>,
+      buildTextSearchCondition(text, bookmarks.searchVector, [
+        bookmarks.title,
+        bookmarks.description,
+        bookmarks.originalUrl,
+        bookmarks.normalizedUrl,
+        bookmarks.extractedText,
+      ]),
     );
   }
 
@@ -937,55 +878,27 @@ export async function findBookmarks({
       );
     }
 
-    // Determine final IDs with tag filtering BEFORE applying limit
-    let finalIds: string[];
-    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
-
+    // Add tag filter as a subquery condition (single query, no unbounded ID fetch)
     if (tagsList && tagsList.length > 0) {
-      // Find all IDs matching base conditions
-      const baseMatched = await db
-        .select({ id: bookmarks.id })
-        .from(bookmarks)
-        .where(and(...conditions));
-      const baseIds = baseMatched.map((e) => e.id);
-      if (baseIds.length === 0)
-        return { items: [], nextCursor: null, hasMore: false };
-
-      // Filter to IDs that have ALL required tags
-      const withAllTags = await db
-        .select({ bookmarkId: bookmarksTags.bookmarkId })
-        .from(bookmarksTags)
-        .innerJoin(tags, eq(bookmarksTags.tagId, tags.id))
-        .where(
-          and(
-            inArray(bookmarksTags.bookmarkId, baseIds),
-            eq(tags.userId, userId),
-            inArray(tags.name, tagsList),
-          ),
-        )
-        .groupBy(bookmarksTags.bookmarkId)
-        .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
-      const taggedIds = withAllTags.map((e) => e.bookmarkId);
-      if (taggedIds.length === 0)
-        return { items: [], nextCursor: null, hasMore: false };
-
-      // Apply sort + limit on the filtered set
-      const sorted = await db
-        .select({ id: bookmarks.id })
-        .from(bookmarks)
-        .where(inArray(bookmarks.id, taggedIds))
-        .orderBy(orderDir(sortColumn), orderDir(bookmarks.id))
-        .limit(fetchLimit);
-      finalIds = sorted.map((e) => e.id);
-    } else {
-      const matched = await db
-        .select({ id: bookmarks.id })
-        .from(bookmarks)
-        .where(and(...conditions))
-        .orderBy(orderDir(sortColumn), orderDir(bookmarks.id))
-        .limit(fetchLimit);
-      finalIds = matched.map((e) => e.id);
+      conditions.push(
+        buildTagFilterCondition(
+          bookmarksTags,
+          bookmarksTags.bookmarkId,
+          bookmarksTags.tagId,
+          tagsList,
+          userId,
+        ),
+      );
     }
+
+    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+    const matched = await db
+      .select({ id: bookmarks.id })
+      .from(bookmarks)
+      .where(and(...conditions))
+      .orderBy(orderDir(sortColumn), orderDir(bookmarks.id))
+      .limit(fetchLimit);
+    let finalIds: string[] = matched.map((e) => e.id);
 
     if (finalIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -1007,15 +920,11 @@ export async function findBookmarks({
         flagColor: bookmarks.flagColor,
         isPinned: bookmarks.isPinned,
         processingEnabled: bookmarks.processingEnabled,
-        status: queueJobs.status,
+        processingStatus: bookmarks.processingStatus,
         thumbnailStorageId: bookmarks.thumbnailStorageId,
         faviconStorageId: bookmarks.faviconStorageId,
       })
       .from(bookmarks)
-      .leftJoin(
-        queueJobs,
-        eq(queueJobs.key, sql`'bookmarks:' || ${bookmarks.id}`),
-      )
       .where(inArray(bookmarks.id, finalIds))
       .orderBy(orderDir(sortColumn), orderDir(bookmarks.id));
 
@@ -1037,7 +946,7 @@ export async function findBookmarks({
       reviewStatus: entry.reviewStatus,
       flagColor: entry.flagColor,
       isPinned: entry.isPinned,
-      processingStatus: entry.status || null,
+      processingStatus: entry.processingStatus || null,
       thumbnailUrl: entry.thumbnailStorageId
         ? `/api/bookmarks/${entry.id}/thumbnail`
         : null,
@@ -1099,36 +1008,23 @@ export async function countBookmarks({
       dueDateEnd,
     });
 
-    if (!tagsList || tagsList.length === 0) {
-      const [result] = await db
-        .select({ value: count() })
-        .from(bookmarks)
-        .where(and(...conditions));
-      return result?.value ?? 0;
+    if (tagsList && tagsList.length > 0) {
+      conditions.push(
+        buildTagFilterCondition(
+          bookmarksTags,
+          bookmarksTags.bookmarkId,
+          bookmarksTags.tagId,
+          tagsList,
+          userId,
+        ),
+      );
     }
 
-    const matchingEntries = await db
-      .select({ id: bookmarks.id })
+    const [result] = await db
+      .select({ value: count() })
       .from(bookmarks)
       .where(and(...conditions));
-    const entryIds = matchingEntries.map((e) => e.id);
-    if (entryIds.length === 0) return 0;
-
-    const entriesWithAllTags = await db
-      .select({ bookmarkId: bookmarksTags.bookmarkId })
-      .from(bookmarksTags)
-      .innerJoin(tags, eq(bookmarksTags.tagId, tags.id))
-      .where(
-        and(
-          inArray(bookmarksTags.bookmarkId, entryIds),
-          eq(tags.userId, userId),
-          inArray(tags.name, tagsList),
-        ),
-      )
-      .groupBy(bookmarksTags.bookmarkId)
-      .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
-
-    return entriesWithAllTags.length;
+    return result?.value ?? 0;
   } catch (error) {
     logger.error(
       {

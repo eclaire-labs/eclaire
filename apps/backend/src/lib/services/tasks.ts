@@ -14,18 +14,20 @@ import {
   inArray,
   isNotNull,
   isNull,
-  like,
   lte,
-  or,
   type SQL,
-  sql,
 } from "drizzle-orm";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { tags, taskComments, tasks, tasksTags } = schema;
 
 import { config } from "../../config/index.js";
-import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
+import {
+  batchGetTags,
+  buildTagFilterCondition,
+  getOrCreateTags,
+} from "../db-helpers.js";
+import { buildTextSearchCondition } from "../search.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
@@ -74,7 +76,7 @@ export type FindTasksParams = {
 };
 
 // Queue name for task tag_generation jobs (maps to old jobType="tag_generation")
-const TASK_PROCESSING_QUEUE = "task-processing";
+const _TASK_PROCESSING_QUEUE = "task-processing";
 
 interface ResolvedTaskAssignee {
   assigneeActorId: string;
@@ -663,6 +665,8 @@ export async function createTask(
         completedAt: completedAtValue,
         priority: taskData.priority ?? 0,
         processingEnabled: taskData.processingEnabled ?? true,
+        processingStatus:
+          (taskData.processingEnabled ?? true) ? "pending" : null,
         reviewStatus: taskData.reviewStatus || "pending",
         flagColor: taskData.flagColor || null,
         isPinned: taskData.isPinned || false,
@@ -1719,83 +1723,19 @@ export async function deleteTask(
   }
 }
 
-// Get all tasks for a user with their tags
-export async function getAllTasks(userId: string) {
-  try {
-    // Fetch tasks and schedule data in parallel
-    const [tasksList, schedulesMap] = await Promise.all([
-      db
-        .select({
-          task: tasks,
-          status: queueJobs.status,
-        })
-        .from(tasks)
-        .leftJoin(
-          queueJobs,
-          and(
-            eq(queueJobs.key, sql`'tasks:' || ${tasks.id}`),
-            eq(queueJobs.queue, TASK_PROCESSING_QUEUE),
-          ),
-        )
-        .where(eq(tasks.userId, userId)),
-      getTaskSchedulesMap(),
-    ]);
-
-    // For each task, get its tags and schedule data
-    const tasksWithTags = await Promise.all(
-      tasksList.map(async (result) => {
-        const task = result.task;
-        const taskTagNames = await getTaskTags(task.id);
-        const scheduleData = schedulesMap.get(task.id) || null;
-        return cleanTaskForResponse(
-          task,
-          taskTagNames,
-          result.status,
-          [],
-          scheduleData,
-        );
-      }),
-    );
-
-    return tasksWithTags;
-  } catch (error) {
-    logger.error(
-      {
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Error getting all tasks",
-    );
-    throw new Error("Failed to fetch tasks");
-  }
-}
-
 // Get a single task by ID with its tags
 export async function getTaskById(taskId: string, userId: string) {
   try {
     // Get the task by ID
-    const [result] = await db
-      .select({
-        task: tasks,
-        status: queueJobs.status,
-      })
+    const [task] = await db
+      .select()
       .from(tasks)
-      .leftJoin(
-        queueJobs,
-        and(
-          eq(queueJobs.key, sql`'tasks:' || ${tasks.id}`),
-          eq(queueJobs.queue, TASK_PROCESSING_QUEUE),
-        ),
-      )
       .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
 
-    if (!result) {
+    if (!task) {
       // Return null instead of throwing an error
       return null;
     }
-
-    const task = result.task;
 
     // Fetch data in parallel
     const [taskTagNames, taskCommentsData, scheduleData, childCountResult] =
@@ -1812,7 +1752,7 @@ export async function getTaskById(taskId: string, userId: string) {
     return cleanTaskForResponse(
       task,
       taskTagNames,
-      result.status,
+      task.processingStatus,
       taskCommentsData,
       scheduleData,
       childCountResult[0]?.value ?? 0,
@@ -1915,9 +1855,11 @@ function _buildTaskQueryConditions({
   const definedConditions: (SQL | undefined)[] = [eq(tasks.userId, userId)];
 
   if (text?.trim()) {
-    const searchTerm = `%${text.trim()}%`;
     definedConditions.push(
-      or(like(tasks.title, searchTerm), like(tasks.description, searchTerm)),
+      buildTextSearchCondition(text, tasks.searchVector, [
+        tasks.title,
+        tasks.description,
+      ]),
     );
   }
 
@@ -2029,55 +1971,27 @@ export async function findTasks({
       );
     }
 
-    // Determine final IDs with tag filtering BEFORE applying limit
-    let finalIds: string[];
-    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
-
+    // Add tag filter as a subquery condition
     if (tagsList && tagsList.length > 0) {
-      // Find all IDs matching base conditions
-      const baseMatched = await db
-        .select({ id: tasks.id })
-        .from(tasks)
-        .where(and(...conditions));
-      const baseIds = baseMatched.map((e) => e.id);
-      if (baseIds.length === 0)
-        return { items: [], nextCursor: null, hasMore: false };
-
-      // Filter to IDs that have ALL required tags
-      const withAllTags = await db
-        .select({ taskId: tasksTags.taskId })
-        .from(tasksTags)
-        .innerJoin(tags, eq(tasksTags.tagId, tags.id))
-        .where(
-          and(
-            inArray(tasksTags.taskId, baseIds),
-            eq(tags.userId, userId),
-            inArray(tags.name, tagsList),
-          ),
-        )
-        .groupBy(tasksTags.taskId)
-        .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
-      const taggedIds = withAllTags.map((e) => e.taskId);
-      if (taggedIds.length === 0)
-        return { items: [], nextCursor: null, hasMore: false };
-
-      // Apply sort + limit on the filtered set
-      const sorted = await db
-        .select({ id: tasks.id })
-        .from(tasks)
-        .where(inArray(tasks.id, taggedIds))
-        .orderBy(orderDir(sortColumn), orderDir(tasks.id))
-        .limit(fetchLimit);
-      finalIds = sorted.map((e) => e.id);
-    } else {
-      const matched = await db
-        .select({ id: tasks.id })
-        .from(tasks)
-        .where(and(...conditions))
-        .orderBy(orderDir(sortColumn), orderDir(tasks.id))
-        .limit(fetchLimit);
-      finalIds = matched.map((e) => e.id);
+      conditions.push(
+        buildTagFilterCondition(
+          tasksTags,
+          tasksTags.taskId,
+          tasksTags.tagId,
+          tagsList,
+          userId,
+        ),
+      );
     }
+
+    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+    const matched = await db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(and(...conditions))
+      .orderBy(orderDir(sortColumn), orderDir(tasks.id))
+      .limit(fetchLimit);
+    let finalIds: string[] = matched.map((e) => e.id);
 
     if (finalIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -2089,18 +2003,8 @@ export async function findTasks({
     // Fetch full data for the final page of IDs, schedule data, tags, and child counts in parallel
     const [entriesList, schedulesMap, tagMap, childCounts] = await Promise.all([
       db
-        .select({
-          task: tasks,
-          status: queueJobs.status,
-        })
+        .select()
         .from(tasks)
-        .leftJoin(
-          queueJobs,
-          and(
-            eq(queueJobs.key, sql`'tasks:' || ${tasks.id}`),
-            eq(queueJobs.queue, TASK_PROCESSING_QUEUE),
-          ),
-        )
         .where(inArray(tasks.id, finalIds))
         .orderBy(orderDir(sortColumn), orderDir(tasks.id)),
       getTaskSchedulesMap(),
@@ -2121,13 +2025,12 @@ export async function findTasks({
       if (row.parentId) childCountMap.set(row.parentId, row.count);
     }
 
-    const items = entriesList.map((result) => {
-      const task = result.task;
+    const items = entriesList.map((task) => {
       const scheduleData = schedulesMap.get(task.id) || null;
       return cleanTaskForResponse(
         task,
         tagMap.get(task.id) ?? [],
-        result.status,
+        task.processingStatus,
         [],
         scheduleData,
         childCountMap.get(task.id) ?? 0,
@@ -2205,38 +2108,23 @@ export async function countTasks({
       topLevelOnly,
     });
 
-    const baseQuery = db
-      .select({ id: tasks.id })
-      .from(tasks)
-      .where(and(...conditions));
-
-    if (!tagsList || tagsList.length === 0) {
-      const countResult = await db
-        .select({ value: count() })
-        .from(tasks)
-        .where(and(...conditions));
-      return countResult[0]?.value ?? 0;
+    if (tagsList && tagsList.length > 0) {
+      conditions.push(
+        buildTagFilterCondition(
+          tasksTags,
+          tasksTags.taskId,
+          tasksTags.tagId,
+          tagsList,
+          userId,
+        ),
+      );
     }
 
-    const matchingEntries = await baseQuery;
-    const entryIds = matchingEntries.map((e) => e.id);
-    if (entryIds.length === 0) return 0;
-
-    const entriesWithAllTags = await db
-      .select({ taskId: tasksTags.taskId })
-      .from(tasksTags)
-      .innerJoin(tags, eq(tasksTags.tagId, tags.id))
-      .where(
-        and(
-          inArray(tasksTags.taskId, entryIds),
-          eq(tags.userId, userId),
-          inArray(tags.name, tagsList),
-        ),
-      )
-      .groupBy(tasksTags.taskId)
-      .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
-
-    return entriesWithAllTags.length;
+    const [result] = await db
+      .select({ value: count() })
+      .from(tasks)
+      .where(and(...conditions));
+    return result?.value ?? 0;
   } catch (error) {
     logger.error(
       {

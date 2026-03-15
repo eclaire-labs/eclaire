@@ -7,22 +7,23 @@ import {
   and,
   asc,
   count,
-  countDistinct,
   desc,
   eq,
   gte,
   inArray,
-  like,
   lte,
-  or,
   type SQL,
-  sql,
 } from "drizzle-orm";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { notes, notesTags, tags } = schema;
 
-import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
+import {
+  batchGetTags,
+  buildTagFilterCondition,
+  getOrCreateTags,
+} from "../db-helpers.js";
+import { buildTextSearchCondition } from "../search.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
@@ -206,6 +207,18 @@ export async function createNoteEntry(
     const historyId = generateHistoryId();
     const tagNames = metadata.tags || [];
 
+    // Strip fields that are already in dedicated columns from metadata
+    const {
+      tags: _tags,
+      title: _title,
+      dueDate: _due,
+      processingEnabled: _pe,
+      reviewStatus: _rs,
+      flagColor: _fc,
+      isPinned: _ip,
+      ...metadataRest
+    } = metadata;
+
     // Atomic transaction: insert note, tags, and history together
     await txManager.withTransaction(async (tx) => {
       // Create note entry
@@ -218,10 +231,11 @@ export async function createNoteEntry(
           data.content.substring(0, 100) +
           (data.content.length > 100 ? "..." : ""),
         dueDate: dueDateValue,
-        rawMetadata: metadata,
+        rawMetadata: metadataRest,
         originalMimeType: data.originalMimeType,
         userAgent: data.userAgent,
         processingEnabled: processingEnabled,
+        processingStatus: processingEnabled ? "pending" : null,
         reviewStatus: metadata.reviewStatus || "pending",
         flagColor: metadata.flagColor || null,
         isPinned: metadata.isPinned || false,
@@ -478,80 +492,18 @@ export async function deleteNoteEntry(
   }
 }
 
-// Get all note entries for a user with their tags
-export async function getAllNoteEntries(userId: string) {
-  try {
-    // Get all note entries for the user with processing status
-    const entriesList = await db
-      .select({
-        note: notes,
-        status: queueJobs.status,
-      })
-      .from(notes)
-      .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
-      .where(eq(notes.userId, userId));
-
-    // Batch-load tags for all entries in one query
-    const noteIds = entriesList.map((r) => r.note.id);
-    const tagMap = await batchGetTags(
-      notesTags,
-      notesTags.noteId,
-      notesTags.tagId,
-      noteIds,
-    );
-
-    return entriesList.map((result) => {
-      const entry = result.note;
-      return {
-        id: entry.id,
-        title: entry.title,
-        content: entry.content,
-        description: entry.description,
-        dueDate: entry.dueDate ? formatToISO8601(entry.dueDate) : null,
-        createdAt: formatToISO8601(entry.createdAt),
-        updatedAt: formatToISO8601(entry.updatedAt),
-        processingStatus: result.status || null,
-        reviewStatus: entry.reviewStatus || "pending",
-        flagColor: entry.flagColor,
-        isPinned: entry.isPinned || false,
-        processingEnabled: entry.processingEnabled || false,
-        originalMimeType: entry.originalMimeType,
-        fileSize: null, // Not stored in notes table
-        metadata: entry.rawMetadata,
-        tags: tagMap.get(entry.id) ?? [],
-      };
-    });
-  } catch (error) {
-    logger.error(
-      {
-        userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Error getting all note entries",
-    );
-    throw new Error("Failed to fetch note entries");
-  }
-}
-
 // Get a single note entry by ID with its tags
 export async function getNoteEntryById(entryId: string, userId: string) {
   try {
     // Get the note entry by ID
-    const [result] = await db
-      .select({
-        note: notes,
-        status: queueJobs.status,
-      })
+    const [entry] = await db
+      .select()
       .from(notes)
-      .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
       .where(and(eq(notes.id, entryId), eq(notes.userId, userId)));
 
-    if (!result) {
+    if (!entry) {
       return null;
     }
-
-    const entry = result.note;
 
     // Get tags for the note entry
     const entryTagNames = await getNoteEntryTags(entryId);
@@ -563,7 +515,7 @@ export async function getNoteEntryById(entryId: string, userId: string) {
       description: entry.description,
       createdAt: formatToISO8601(entry.createdAt),
       updatedAt: formatToISO8601(entry.updatedAt),
-      processingStatus: result.status || null,
+      processingStatus: entry.processingStatus || null,
       reviewStatus: entry.reviewStatus || "pending",
       flagColor: entry.flagColor,
       isPinned: entry.isPinned || false,
@@ -597,21 +549,16 @@ async function getNoteEntryTags(entryId: string): Promise<string[]> {
 
 // Helper function to get a note entry with its tags
 async function getNoteEntryWithTags(entryId: string) {
-  const [result] = await db
-    .select({
-      note: notes,
-      status: queueJobs.status,
-    })
+  const [entry] = await db
+    .select()
     .from(notes)
-    .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
     .where(eq(notes.id, entryId))
     .limit(1);
 
-  if (!result) {
+  if (!entry) {
     throw new NotFoundError("Note");
   }
 
-  const entry = result.note;
   const entryTagNames = await getNoteEntryTags(entryId);
 
   return {
@@ -622,7 +569,7 @@ async function getNoteEntryWithTags(entryId: string) {
     dueDate: entry.dueDate ? formatToISO8601(entry.dueDate) : null,
     createdAt: formatToISO8601(entry.createdAt),
     updatedAt: formatToISO8601(entry.updatedAt),
-    processingStatus: result.status || null,
+    processingStatus: entry.processingStatus || null,
     reviewStatus: entry.reviewStatus || "pending",
     flagColor: entry.flagColor,
     isPinned: entry.isPinned || false,
@@ -664,13 +611,11 @@ function _buildNoteQueryConditions({
   const definedConditions: SQL<unknown>[] = [eq(notes.userId, userId)];
 
   if (text) {
-    const searchTerm = `%${text.trim()}%`;
-    // Search across title and content
     definedConditions.push(
-      or(
-        like(notes.title, searchTerm),
-        like(notes.content, searchTerm),
-      ) as SQL<unknown>,
+      buildTextSearchCondition(text, notes.searchVector, [
+        notes.title,
+        notes.content,
+      ]),
     );
   }
 
@@ -739,55 +684,27 @@ export async function findNotes({
       );
     }
 
-    // Determine final IDs with tag filtering BEFORE applying limit
-    let finalIds: string[];
-    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
-
+    // Add tag filter as a subquery condition
     if (tagsList && tagsList.length > 0) {
-      // Find all IDs matching base conditions
-      const baseMatched = await db
-        .select({ id: notes.id })
-        .from(notes)
-        .where(and(...baseConditions));
-      const baseIds = baseMatched.map((e) => e.id);
-      if (baseIds.length === 0)
-        return { items: [], nextCursor: null, hasMore: false };
-
-      // Filter to IDs that have ALL required tags
-      const withAllTags = await db
-        .select({ noteId: notesTags.noteId })
-        .from(notesTags)
-        .innerJoin(tags, eq(notesTags.tagId, tags.id))
-        .where(
-          and(
-            inArray(notesTags.noteId, baseIds),
-            eq(tags.userId, userId),
-            inArray(tags.name, tagsList),
-          ),
-        )
-        .groupBy(notesTags.noteId)
-        .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`);
-      const taggedIds = withAllTags.map((e) => e.noteId);
-      if (taggedIds.length === 0)
-        return { items: [], nextCursor: null, hasMore: false };
-
-      // Apply sort + limit on the filtered set
-      const sorted = await db
-        .select({ id: notes.id })
-        .from(notes)
-        .where(inArray(notes.id, taggedIds))
-        .orderBy(orderDir(sortColumn), orderDir(notes.id))
-        .limit(fetchLimit);
-      finalIds = sorted.map((e) => e.id);
-    } else {
-      const matched = await db
-        .select({ id: notes.id })
-        .from(notes)
-        .where(and(...baseConditions))
-        .orderBy(orderDir(sortColumn), orderDir(notes.id))
-        .limit(fetchLimit);
-      finalIds = matched.map((e) => e.id);
+      baseConditions.push(
+        buildTagFilterCondition(
+          notesTags,
+          notesTags.noteId,
+          notesTags.tagId,
+          tagsList,
+          userId,
+        ),
+      );
     }
+
+    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+    const matched = await db
+      .select({ id: notes.id })
+      .from(notes)
+      .where(and(...baseConditions))
+      .orderBy(orderDir(sortColumn), orderDir(notes.id))
+      .limit(fetchLimit);
+    let finalIds: string[] = matched.map((e) => e.id);
 
     if (finalIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -798,17 +715,13 @@ export async function findNotes({
 
     // Fetch full data for the final page of IDs
     const entriesList = await db
-      .select({
-        note: notes,
-        status: queueJobs.status,
-      })
+      .select()
       .from(notes)
-      .leftJoin(queueJobs, eq(queueJobs.key, sql`'notes:' || ${notes.id}`))
       .where(inArray(notes.id, finalIds))
       .orderBy(orderDir(sortColumn), orderDir(notes.id));
 
     // Batch-load tags for all entries in one query
-    const noteIds = entriesList.map((r) => r.note.id);
+    const noteIds = entriesList.map((r) => r.id);
     const tagMap = await batchGetTags(
       notesTags,
       notesTags.noteId,
@@ -816,8 +729,7 @@ export async function findNotes({
       noteIds,
     );
 
-    const items = entriesList.map((result) => {
-      const entry = result.note;
+    const items = entriesList.map((entry) => {
       return {
         id: entry.id,
         title: entry.title,
@@ -826,7 +738,7 @@ export async function findNotes({
         dueDate: entry.dueDate ? formatToISO8601(entry.dueDate) : null,
         createdAt: formatToISO8601(entry.createdAt),
         updatedAt: formatToISO8601(entry.updatedAt),
-        processingStatus: result.status || null,
+        processingStatus: entry.processingStatus || null,
         reviewStatus: entry.reviewStatus || "pending",
         flagColor: entry.flagColor,
         isPinned: entry.isPinned || false,
@@ -893,39 +805,23 @@ export async function countNotes({
       dueDateEnd,
     });
 
-    // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from Drizzle query builder
-    let countQuery;
-
     if (tagsList && tagsList.length > 0) {
-      // Count distinct note IDs when filtering by tags
-      countQuery = db
-        .select({ count: countDistinct(notes.id) })
-        .from(notes)
-        .innerJoin(notesTags, eq(notes.id, notesTags.noteId))
-        .innerJoin(tags, eq(notesTags.tagId, tags.id))
-        .where(
-          and(
-            ...baseConditions,
-            eq(tags.userId, userId),
-            inArray(tags.name, tagsList),
-          ),
-        )
-        .groupBy(notes.id)
-        .having(eq(countDistinct(tags.id), tagsList.length));
-
-      // Execute the subquery and count the results
-      const subqueryResults = await countQuery;
-      return subqueryResults.length;
-    } else {
-      // Simple count when not filtering by tags
-      countQuery = db
-        .select({ count: count() })
-        .from(notes)
-        .where(and(...baseConditions));
-
-      const result = await countQuery;
-      return result[0]?.count || 0;
+      baseConditions.push(
+        buildTagFilterCondition(
+          notesTags,
+          notesTags.noteId,
+          notesTags.tagId,
+          tagsList,
+          userId,
+        ),
+      );
     }
+
+    const [result] = await db
+      .select({ value: count() })
+      .from(notes)
+      .where(and(...baseConditions));
+    return result?.value ?? 0;
   } catch (error) {
     logger.error(
       {

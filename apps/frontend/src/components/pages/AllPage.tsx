@@ -1,3 +1,4 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import {
   BookMarked,
@@ -7,12 +8,13 @@ import {
   Filter,
   ImageIcon,
   ListTodo,
+  Loader2,
   Pin,
   Search,
   StickyNote,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
@@ -36,6 +38,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { apiFetch } from "@/lib/api-client";
 import { setFlagColor, togglePin } from "@/lib/api-content";
@@ -52,8 +56,13 @@ interface Item {
   reviewStatus?: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned?: boolean;
-  extractedText?: string | null;
-  ocrText?: string | null;
+}
+
+interface AllPage {
+  items: Item[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  totalCount?: number;
 }
 
 const routeApi = getRouteApi("/_authenticated/all/");
@@ -61,76 +70,78 @@ const routeApi = getRouteApi("/_authenticated/all/");
 export default function AllItemsPage() {
   const isMobile = useIsMobile();
   const { tag: tagParam } = routeApi.useSearch();
-  const [items, setItems] = useState<Item[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterTag, setFilterTag] = useState<string>(tagParam || "all");
-  const [isLoading, setIsLoading] = useState(true);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
 
-  // Sync filterTag when the URL search param changes (e.g. sidebar tag click)
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
+
+  // Sync filterTag when the URL search param changes
   useEffect(() => {
     setFilterTag(tagParam || "all");
   }, [tagParam]);
 
-  // Fetch all items from API
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        setIsLoading(true);
-        const response = await apiFetch("/api/all?limit=9999");
-        if (response.ok) {
-          const data = await response.json();
-          setItems(data.items);
-        } else {
-          toast.error("Error", { description: "Failed to load items" });
-        }
-      } catch (error) {
-        console.error("Error fetching items:", error);
-        toast.error("Error", { description: "Failed to load items" });
-      } finally {
-        setIsLoading(false);
+  // Build server params
+  const serverParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    if (debouncedSearch) params.text = debouncedSearch;
+    if (filterTag !== "all") params.tags = filterTag;
+    if (filterType !== "all") params.types = filterType;
+    return params;
+  }, [debouncedSearch, filterTag, filterType]);
+
+  // Fetch with cursor pagination via useInfiniteQuery
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useInfiniteQuery<AllPage>({
+    queryKey: ["all-items", serverParams],
+    queryFn: async ({ pageParam }) => {
+      const searchParams = new URLSearchParams();
+      for (const [key, value] of Object.entries(serverParams)) {
+        if (value) searchParams.set(key, value);
       }
-    };
+      if (pageParam) searchParams.set("cursor", pageParam as string);
+      const response = await apiFetch(`/api/all?${searchParams.toString()}`);
+      return response.json();
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
 
-    fetchItems();
-  }, []);
-
-  // Get unique tags from all items - ensure items is always an array
-  const allTags = Array.from(
-    new Set((items || []).flatMap((item) => item.tags || [])),
+  const items = useMemo(
+    () => data?.pages.flatMap((page) => page.items) ?? [],
+    [data],
   );
 
-  // Get active filter count for mobile badge
-  const getActiveFilterCount = () => {
+  const totalCount = data?.pages[0]?.totalCount;
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasNextPage: hasNextPage ?? false,
+    isFetchingNextPage,
+    fetchNextPage,
+  });
+
+  // Get unique tags from loaded items
+  const allTags = useMemo(
+    () => Array.from(new Set(items.flatMap((item) => item.tags || []))),
+    [items],
+  );
+
+  // Active filter count for mobile badge
+  const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filterType !== "all") count++;
     if (filterTag !== "all") count++;
     return count;
-  };
-
-  const filteredItems = (items || []).filter((item) => {
-    const lowerCaseQuery = searchQuery.toLowerCase();
-
-    // Search filter
-    const matchesSearch =
-      (item.title || "").toLowerCase().includes(lowerCaseQuery) ||
-      (item.description || "").toLowerCase().includes(lowerCaseQuery) ||
-      (item.extractedText || "").toLowerCase().includes(lowerCaseQuery) || // ADD THIS
-      (item.ocrText || "").toLowerCase().includes(lowerCaseQuery) || // AND THIS
-      (item.tags || []).some((tag) =>
-        (tag || "").toLowerCase().includes(lowerCaseQuery),
-      );
-
-    // Type filter
-    const matchesType = filterType === "all" || item.type === filterType;
-
-    // Tag filter
-    const matchesTag =
-      filterTag === "all" || (item.tags || []).includes(filterTag);
-
-    return matchesSearch && matchesType && matchesTag;
-  });
+  }, [filterType, filterTag]);
 
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = {
@@ -182,18 +193,10 @@ export default function AllItemsPage() {
         !item.isPinned,
       );
       if (response.ok) {
-        const updatedItem = await response.json();
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id ? { ...i, isPinned: updatedItem.isPinned } : i,
-          ),
-        );
-        toast.success(updatedItem.isPinned ? "Pinned" : "Unpinned", {
-          description: `${item.title} has been ${updatedItem.isPinned ? "pinned" : "unpinned"}.`,
-        });
+        refetch();
+        toast.success(item.isPinned ? "Unpinned" : "Pinned");
       }
-    } catch (error) {
-      console.error("Error toggling pin:", error);
+    } catch {
       toast.error("Error", { description: "Failed to update pin status" });
     }
   };
@@ -207,18 +210,10 @@ export default function AllItemsPage() {
         newColor,
       );
       if (response.ok) {
-        const updatedItem = await response.json();
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id ? { ...i, flagColor: updatedItem.flagColor } : i,
-          ),
-        );
-        toast.success(newColor ? "Flagged" : "Unflagged", {
-          description: `${item.title} has been ${newColor ? "flagged" : "unflagged"}.`,
-        });
+        refetch();
+        toast.success(newColor ? "Flagged" : "Unflagged");
       }
-    } catch (error) {
-      console.error("Error toggling flag:", error);
+    } catch {
       toast.error("Error", { description: "Failed to update flag" });
     }
   };
@@ -234,18 +229,10 @@ export default function AllItemsPage() {
         color,
       );
       if (response.ok) {
-        const updatedItem = await response.json();
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id ? { ...i, flagColor: updatedItem.flagColor } : i,
-          ),
-        );
-        toast.success("Flag Updated", {
-          description: `${item.title} flag changed to ${color}.`,
-        });
+        refetch();
+        toast.success("Flag Updated");
       }
-    } catch (error) {
-      console.error("Error changing flag color:", error);
+    } catch {
       toast.error("Error", { description: "Failed to update flag color" });
     }
   };
@@ -287,25 +274,19 @@ export default function AllItemsPage() {
     }
   };
 
-  // Clear search input
   const clearSearch = () => {
     setSearchQuery("");
-    // Focus the input after clearing
     const searchInput = document.querySelector(
       'input[placeholder="Search across all items..."]',
     ) as HTMLInputElement;
-    if (searchInput) {
-      searchInput.focus();
-    }
+    if (searchInput) searchInput.focus();
   };
 
-  // Clear all filters
   const clearAllFilters = () => {
     setFilterType("all");
     setFilterTag("all");
   };
 
-  // FilterSortDialog component
   const FilterSortDialog = () => (
     <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
       <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
@@ -317,7 +298,6 @@ export default function AllItemsPage() {
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          {/* Type Filter */}
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="type-filter" className="text-right font-medium">
               Type
@@ -337,7 +317,6 @@ export default function AllItemsPage() {
             </Select>
           </div>
 
-          {/* Tag Filter */}
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="tag-filter" className="text-right font-medium">
               Tag
@@ -385,11 +364,9 @@ export default function AllItemsPage() {
           <div>
             <h1 className="text-lg md:text-3xl font-bold md:tracking-tight">
               All Items
-              {items.length > 0 && (
+              {totalCount !== undefined && (
                 <span className="ml-2 text-sm md:text-base font-normal text-muted-foreground">
-                  {filteredItems.length === items.length
-                    ? `(${items.length})`
-                    : `(${filteredItems.length} of ${items.length})`}
+                  ({totalCount})
                 </span>
               )}
             </h1>
@@ -402,9 +379,7 @@ export default function AllItemsPage() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-          {/* Search Input + Filter Button Container */}
           <div className="flex gap-2 flex-grow w-full md:w-auto">
-            {/* Search Input */}
             <div className="relative flex-grow">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -424,7 +399,6 @@ export default function AllItemsPage() {
                 </button>
               )}
             </div>
-            {/* Mobile filter button */}
             <Button
               variant="outline"
               size="icon"
@@ -433,15 +407,14 @@ export default function AllItemsPage() {
               title="Filter items"
             >
               <Filter className="h-4 w-4" />
-              {getActiveFilterCount() > 0 && (
+              {activeFilterCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                  {getActiveFilterCount()}
+                  {activeFilterCount}
                 </span>
               )}
             </Button>
           </div>
 
-          {/* Desktop filters - hidden on mobile */}
           <div className="hidden md:flex flex-wrap gap-2">
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-[130px]">
@@ -474,7 +447,6 @@ export default function AllItemsPage() {
 
         <div className="space-y-4">
           {isLoading ? (
-            // Loading skeleton
             [0, 1, 2, 3, 4].map((i) => (
               <div
                 key={i}
@@ -494,10 +466,10 @@ export default function AllItemsPage() {
                 </div>
               </div>
             ))
-          ) : filteredItems.length > 0 ? (
-            filteredItems.map((item) => (
+          ) : items.length > 0 ? (
+            items.map((item) => (
               <div
-                key={item.id}
+                key={`${item.type}-${item.id}`}
                 className={`flex items-start justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors ${
                   item.isPinned ? "border-l-4 border-l-blue-500" : ""
                 }`}
@@ -567,9 +539,15 @@ export default function AllItemsPage() {
               <p className="text-muted-foreground">No items found</p>
             </div>
           )}
+
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="flex justify-center py-4">
+            {isFetchingNextPage && (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            )}
+          </div>
         </div>
 
-        {/* Filter Dialog */}
         <FilterSortDialog />
       </div>
     </TooltipProvider>

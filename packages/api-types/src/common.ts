@@ -20,8 +20,8 @@ export type FlagColor = z.infer<typeof flagColorSchema>;
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 
 /**
- * Standard paginated list response envelope.
- * All GET list endpoints return this shape: { items, totalCount, limit, offset }.
+ * Standard cursor-paginated list response envelope.
+ * All GET list endpoints return this shape.
  */
 export function paginatedResponseSchema(
   itemSchema: z.ZodType,
@@ -33,13 +33,17 @@ export function paginatedResponseSchema(
       items: z
         .array(itemSchema)
         .meta({ description: `Array of ${itemDescription}` }),
-      totalCount: z
-        .number()
-        .meta({ description: "Total number of items matching the query" }),
-      limit: z
-        .number()
-        .meta({ description: "Maximum number of results returned" }),
-      offset: z.number().meta({ description: "Number of results skipped" }),
+      nextCursor: z.string().nullable().meta({
+        description:
+          "Opaque cursor for the next page, or null if no more pages",
+      }),
+      hasMore: z
+        .boolean()
+        .meta({ description: "Whether more items are available" }),
+      totalCount: z.number().optional().meta({
+        description:
+          "Total number of items matching the query (only included on first page)",
+      }),
     })
     .meta({ ref });
 }

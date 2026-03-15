@@ -127,9 +127,9 @@ export async function getUserChannels(
 
     return {
       items: formattedChannels,
+      nextCursor: null,
+      hasMore: false,
       totalCount: formattedChannels.length,
-      limit: formattedChannels.length,
-      offset: 0,
     };
   } catch (error) {
     logger.error(

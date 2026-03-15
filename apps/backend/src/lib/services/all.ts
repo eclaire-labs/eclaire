@@ -407,114 +407,203 @@ function getDueDateRange(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Cross-entity search with cursor pagination
+// ---------------------------------------------------------------------------
+
+interface FindAllParams {
+  userId: string;
+  text?: string;
+  tagsList?: string[];
+  startDate?: Date;
+  endDate?: Date;
+  types?: string[];
+  limit?: number;
+  cursor?: string;
+  dueStatus?: string;
+  isPinned?: boolean;
+  flagged?: boolean;
+  flagColor?: string;
+  reviewStatus?: string;
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: items from heterogeneous entity queries
+type AllItem = Record<string, any> & { type: string };
+
+interface CursorPaginatedAll {
+  items: AllItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  totalCount?: number;
+}
+
 /**
- * Search for items across all types based on criteria.
- * This function fetches results from each collection service and then
- * combines, sorts, and limits them in the application layer.
- *
- * @param userId - The ID of the user
- * @param text - Optional text to search for in item content
- * @param tagsList - Optional array of tags to filter by
- * @param startDate - Optional start date
- * @param endDate - Optional end date
- * @param types - Optional array of item types to include (not yet implemented, searches all)
- * @param limit - Optional maximum number of results
- * @param dueStatus - Optional due date status filter
- * @returns A sorted array of items matching the criteria
+ * Decode cross-entity cursor.
+ * Format: base64url(JSON({ d: isoDateString, id: entityId }))
  */
-export async function findAllEntries(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  startDate?: Date,
-  endDate?: Date,
-  types?: string[], // Parameter is kept for future filtering logic
-  limit = 50,
-  dueStatus?: string,
-) {
+function decodeCrossEntityCursor(cursor: string): {
+  date: string;
+  id: string;
+} {
   try {
-    // Get due date range filter if specified
+    const parsed = JSON.parse(
+      Buffer.from(cursor, "base64url").toString("utf-8"),
+    );
+    return { date: parsed.d, id: parsed.id };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+function encodeCrossEntityCursor(date: string, id: string): string {
+  return Buffer.from(JSON.stringify({ d: date, id })).toString("base64url");
+}
+
+/**
+ * Search across all content types with cursor-based pagination.
+ *
+ * Fetches limit items from each type, merges by createdAt desc,
+ * applies cursor for deterministic paging, and returns the top `limit` items.
+ */
+export async function findAllEntries({
+  userId,
+  text,
+  tagsList,
+  startDate,
+  endDate,
+  types,
+  limit = 50,
+  cursor,
+  dueStatus,
+  isPinned,
+  flagged,
+  flagColor,
+  reviewStatus,
+}: FindAllParams): Promise<CursorPaginatedAll> {
+  try {
     const dueDateFilter = getDueDateRange(dueStatus);
     const dueDateStart = dueDateFilter?.startDue;
     const dueDateEnd = dueDateFilter?.endDue;
 
-    // We fetch from all services concurrently
-    const promises = [
-      findBookmarks({
-        userId,
-        text,
-        tags: tagsList,
-        startDate,
-        endDate,
-        limit,
-        dueDateStart,
-        dueDateEnd,
-      }).then((result) =>
-        result.items.map((item) => ({ ...item, type: "bookmark" })),
-      ),
-      findDocuments({
-        userId,
-        text,
-        tags: tagsList,
-        startDate,
-        endDate,
-        limit,
-        dueDateStart,
-        dueDateEnd,
-      }).then((result) =>
-        result.items.map((item) => ({ ...item, type: "document" })),
-      ),
-      findNotes({
-        userId,
-        text,
-        tags: tagsList,
-        startDate,
-        endDate,
-        limit,
-        dueDateStart,
-        dueDateEnd,
-      }).then((result) =>
-        result.items.map((item) => ({ ...item, type: "note" })),
-      ),
-      findPhotos({
-        userId,
-        tags: tagsList,
-        startDate,
-        endDate,
-        limit,
-        dueDateStart,
-        dueDateEnd,
-      }).then((result) =>
-        result.items.map((item) => ({ ...item, type: "photo" })),
-      ),
-      findTasks({
-        userId,
-        text,
-        tags: tagsList,
-        status: undefined,
-        startDate,
-        endDate,
-        limit,
-        dueDateStart,
-        dueDateEnd,
-      }).then((result) =>
-        result.items.map((item) => ({ ...item, type: "task" })),
-      ),
-    ];
+    const commonParams = {
+      userId,
+      text,
+      tags: tagsList,
+      startDate,
+      endDate,
+      dueDateStart,
+      dueDateEnd,
+    };
+
+    // Determine which types to query
+    const activeTypes = new Set(
+      types && types.length > 0
+        ? types
+        : ["bookmark", "document", "note", "photo", "task"],
+    );
+
+    // Fetch limit+1 from each active type (extra to detect hasMore after merge)
+    const fetchLimit = limit + 1;
+    const promises: Promise<AllItem[]>[] = [];
+
+    if (activeTypes.has("bookmark")) {
+      promises.push(
+        findBookmarks({ ...commonParams, limit: fetchLimit }).then((r) =>
+          r.items.map((item) => ({ ...item, type: "bookmark" })),
+        ),
+      );
+    }
+    if (activeTypes.has("document")) {
+      promises.push(
+        findDocuments({ ...commonParams, limit: fetchLimit }).then((r) =>
+          r.items.map((item) => ({ ...item, type: "document" })),
+        ),
+      );
+    }
+    if (activeTypes.has("note")) {
+      promises.push(
+        findNotes({ ...commonParams, limit: fetchLimit }).then((r) =>
+          r.items.map((item) => ({ ...item, type: "note" })),
+        ),
+      );
+    }
+    if (activeTypes.has("photo")) {
+      promises.push(
+        findPhotos({ ...commonParams, limit: fetchLimit }).then((r) =>
+          r.items.map((item) => ({ ...item, type: "photo" })),
+        ),
+      );
+    }
+    if (activeTypes.has("task")) {
+      promises.push(
+        findTasks({
+          ...commonParams,
+          status: undefined,
+          limit: fetchLimit,
+        }).then((r) => r.items.map((item) => ({ ...item, type: "task" }))),
+      );
+    }
 
     const results = await Promise.all(promises);
-    const allItems = results.flat();
+    let allItems = results.flat();
 
-    // Sort all combined items by their creation date (newest first)
-    // Note: Each service should return a consistent date field, e.g., `createdAt` or `dateCreated`
+    // Apply cross-entity filters (shared columns across all entity types)
+    if (isPinned !== undefined) {
+      allItems = allItems.filter((item) => item.isPinned === isPinned);
+    }
+    if (flagged) {
+      allItems = allItems.filter(
+        (item) => item.flagColor !== null && item.flagColor !== undefined,
+      );
+    }
+    if (flagColor) {
+      allItems = allItems.filter((item) => item.flagColor === flagColor);
+    }
+    if (reviewStatus) {
+      allItems = allItems.filter((item) => item.reviewStatus === reviewStatus);
+    }
+
+    // Normalize date field (services return different field names)
+    for (const item of allItems) {
+      if (!item.createdAt && item.date) {
+        item.createdAt = item.date;
+      }
+    }
+
+    // Sort by createdAt desc, then id desc for tie-breaking
     allItems.sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.dateCreated || 0).getTime();
-      const dateB = new Date(b.createdAt || b.dateCreated || 0).getTime();
-      return dateB - dateA;
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      if (dateB !== dateA) return dateB - dateA;
+      return (b.id || "").localeCompare(a.id || "");
     });
 
-    // Apply the final limit to the combined and sorted array
-    return allItems.slice(0, limit);
+    // Apply cursor: skip items at or before the cursor position
+    if (cursor) {
+      const { date: cursorDate, id: cursorId } =
+        decodeCrossEntityCursor(cursor);
+      const cursorTime = new Date(cursorDate).getTime();
+      const idx = allItems.findIndex((item) => {
+        const t = new Date(item.createdAt || 0).getTime();
+        return t < cursorTime || (t === cursorTime && item.id <= cursorId);
+      });
+      if (idx > 0) {
+        allItems = allItems.slice(idx);
+      }
+    }
+
+    // Check hasMore and trim to limit
+    const hasMore = allItems.length > limit;
+    const items = hasMore ? allItems.slice(0, limit) : allItems;
+
+    // Build next cursor from last item
+    const lastItem = items[items.length - 1];
+    const nextCursor =
+      hasMore && lastItem
+        ? encodeCrossEntityCursor(lastItem.createdAt, lastItem.id)
+        : null;
+
+    return { items, nextCursor, hasMore };
   } catch (error) {
     logger.error(
       {
@@ -536,99 +625,55 @@ export async function findAllEntries(
 }
 
 /**
- * Efficiently counts items matching search criteria across all collections
- * by summing up the counts from each individual service.
- *
- * @param userId - The ID of the user
- * @param text - Optional text to search for
- * @param tagsList - Optional array of tags to filter by
- * @param startDate - Optional start date
- * @param endDate - Optional end date
- * @param types - Optional array of item types to include (not yet implemented)
- * @param dueStatus - Optional due date status filter
- * @returns The total count of items matching the criteria
+ * Count items across all content types matching the given criteria.
  */
-export async function countAllEntries(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  startDate?: Date,
-  endDate?: Date,
-  types?: string[], // Parameter is kept for future filtering logic
-  dueStatus?: string,
-): Promise<number> {
+export async function countAllEntries({
+  userId,
+  text,
+  tagsList,
+  startDate,
+  endDate,
+  types,
+  dueStatus,
+}: Omit<FindAllParams, "limit" | "cursor">): Promise<number> {
   try {
-    // Get due date range filter if specified
     const dueDateFilter = getDueDateRange(dueStatus);
     const dueDateStart = dueDateFilter?.startDue;
     const dueDateEnd = dueDateFilter?.endDue;
 
-    const countPromises = [
-      countBookmarks({
-        userId,
-        text,
-        tags: tagsList,
-        startDate,
-        endDate,
-        dueDateStart,
-        dueDateEnd,
-      }),
-      countDocuments({
-        userId,
-        text,
-        tags: tagsList,
-        startDate,
-        endDate,
-        dueDateStart,
-        dueDateEnd,
-      }),
-      countNotes({
-        userId,
-        text,
-        tags: tagsList,
-        startDate,
-        endDate,
-        dueDateStart,
-        dueDateEnd,
-      }),
-      countPhotos({
-        userId,
-        tags: tagsList,
-        startDate,
-        endDate,
-        dueDateStart,
-        dueDateEnd,
-      }),
-      countTasks({
-        userId,
-        text,
-        tags: tagsList,
-        status: undefined,
-        startDate,
-        endDate,
-        dueDateStart,
-        dueDateEnd,
-      }),
-    ];
+    const commonParams = {
+      userId,
+      text,
+      tags: tagsList,
+      startDate,
+      endDate,
+      dueDateStart,
+      dueDateEnd,
+    };
+
+    const activeTypes = new Set(
+      types && types.length > 0
+        ? types
+        : ["bookmark", "document", "note", "photo", "task"],
+    );
+
+    const countPromises: Promise<number>[] = [];
+    if (activeTypes.has("bookmark"))
+      countPromises.push(countBookmarks(commonParams));
+    if (activeTypes.has("document"))
+      countPromises.push(countDocuments(commonParams));
+    if (activeTypes.has("note")) countPromises.push(countNotes(commonParams));
+    if (activeTypes.has("photo")) countPromises.push(countPhotos(commonParams));
+    if (activeTypes.has("task"))
+      countPromises.push(countTasks({ ...commonParams, status: undefined }));
 
     const counts = await Promise.all(countPromises);
-
-    // Sum the counts from all services
-    const totalCount = counts.reduce((sum, current) => sum + current, 0);
-
-    return totalCount;
+    return counts.reduce((sum, c) => sum + c, 0);
   } catch (error) {
     logger.error(
       {
         userId,
-        text,
-        tagsList,
-        startDate,
-        endDate,
-        types,
-        dueStatus,
         error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
       },
       "Error counting all entries",
     );
@@ -636,40 +681,21 @@ export async function countAllEntries(
   }
 }
 
-/** Runs findAllEntries and countAllEntries in parallel, returning both. */
-export async function findAllEntriesWithCount(
-  userId: string,
-  text?: string,
-  tagsList?: string[],
-  startDate?: Date,
-  endDate?: Date,
-  types?: string[],
-  limit = 50,
-  dueStatus?: string,
-): Promise<{
-  items: Awaited<ReturnType<typeof findAllEntries>>;
-  totalCount: number;
-}> {
-  const [items, totalCount] = await Promise.all([
-    findAllEntries(
-      userId,
-      text,
-      tagsList,
-      startDate,
-      endDate,
-      types,
-      limit,
-      dueStatus,
-    ),
-    countAllEntries(
-      userId,
-      text,
-      tagsList,
-      startDate,
-      endDate,
-      types,
-      dueStatus,
-    ),
-  ]);
-  return { items, totalCount };
+/**
+ * Find all entries with count (first page only includes totalCount).
+ */
+export async function findAllEntriesPaginated(
+  params: FindAllParams,
+): Promise<CursorPaginatedAll> {
+  const isFirstPage = !params.cursor;
+
+  if (isFirstPage) {
+    const [result, totalCount] = await Promise.all([
+      findAllEntries(params),
+      countAllEntries(params),
+    ]);
+    return { ...result, totalCount };
+  }
+
+  return findAllEntries(params);
 }

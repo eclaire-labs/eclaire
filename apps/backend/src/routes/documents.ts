@@ -66,6 +66,9 @@ documentsRoutes.get(
       userId,
       text: params.text,
       tags,
+      fileTypes: params.fileTypes
+        ? params.fileTypes.split(",").map((t: string) => t.trim())
+        : undefined,
       startDate,
       endDate,
       limit: params.limit,

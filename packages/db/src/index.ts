@@ -92,14 +92,14 @@ function getDatabaseCapabilities(dbType: DbDialect): DbCapabilities {
     case "postgres":
       return {
         jsonIndexing: true, // JSONB with GIN indexes
-        fts: "none", // tsvector available but no FTS columns/indexes in schema yet
+        fts: "builtin", // tsvector GENERATED columns with GIN indexes
         notify: true, // LISTEN/NOTIFY support
         skipLocked: true, // FOR UPDATE SKIP LOCKED support
       };
     case "pglite":
       return {
         jsonIndexing: true, // JSONB with GIN indexes
-        fts: "none", // tsvector available but no FTS columns/indexes in schema yet
+        fts: "builtin", // tsvector GENERATED columns with GIN indexes
         notify: false, // No LISTEN/NOTIFY (embedded)
         skipLocked: true, // FOR UPDATE SKIP LOCKED support
       };

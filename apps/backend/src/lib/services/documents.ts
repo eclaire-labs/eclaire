@@ -10,11 +10,8 @@ import {
   eq,
   gte,
   inArray,
-  like,
   lte,
-  or,
   type SQL,
-  sql,
 } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
@@ -28,7 +25,12 @@ import {
   generateHistoryId,
 } from "@eclaire/core";
 import type { ProcessingStatus } from "../../types/assets.js";
-import { batchGetTags, getOrCreateTags } from "../db-helpers.js";
+import {
+  batchGetTags,
+  buildTagFilterCondition,
+  getOrCreateTags,
+} from "../db-helpers.js";
+import { buildTextSearchCondition } from "../search.js";
 import {
   buildCursorCondition,
   encodeCursor,
@@ -145,13 +147,8 @@ async function getDocumentWithDetails(
   const [result] = await db
     .select({
       document: schemaDocuments,
-      status: queueJobs.status,
     })
     .from(schemaDocuments)
-    .leftJoin(
-      queueJobs,
-      eq(queueJobs.key, sql`'documents:' || ${schemaDocuments.id}`),
-    )
     .where(
       and(
         eq(schemaDocuments.id, documentId),
@@ -199,8 +196,7 @@ async function getDocumentWithDetails(
     pdfUrl,
     contentUrl,
     extractedText: document.extractedText,
-    processingStatus:
-      result.status && typeof result.status === "string" ? result.status : null,
+    processingStatus: document.processingStatus || null,
     reviewStatus: document.reviewStatus || "pending",
     flagColor: document.flagColor,
     isPinned: document.isPinned || false,
@@ -211,24 +207,34 @@ async function getDocumentWithDetails(
 function _buildDocumentQueryConditions({
   userId,
   text,
+  fileTypes,
   startDate,
   endDate,
   dueDateStart,
   dueDateEnd,
 }: Pick<
   FindDocumentsParams,
-  "userId" | "text" | "startDate" | "endDate" | "dueDateStart" | "dueDateEnd"
+  | "userId"
+  | "text"
+  | "fileTypes"
+  | "startDate"
+  | "endDate"
+  | "dueDateStart"
+  | "dueDateEnd"
 >): SQL<unknown>[] {
   const conditions: SQL<unknown>[] = [eq(schemaDocuments.userId, userId)];
   if (text?.trim()) {
-    const searchTerm = `%${text.trim()}%`;
     conditions.push(
-      or(
-        like(schemaDocuments.title, searchTerm),
-        like(schemaDocuments.description, searchTerm),
-        like(schemaDocuments.originalFilename, searchTerm),
-      ) as SQL<unknown>,
+      buildTextSearchCondition(text, schemaDocuments.searchVector, [
+        schemaDocuments.title,
+        schemaDocuments.description,
+        schemaDocuments.originalFilename,
+        schemaDocuments.extractedText,
+      ]),
     );
+  }
+  if (fileTypes && fileTypes.length > 0) {
+    conditions.push(inArray(schemaDocuments.mimeType, fileTypes));
   }
   if (startDate) {
     if (!Number.isNaN(startDate.getTime()))
@@ -295,6 +301,20 @@ export async function createDocument(
     // Pre-generate history ID for transaction
     const historyId = generateHistoryId();
 
+    // Strip fields that are already in dedicated columns from metadata
+    const {
+      tags: _tags,
+      title: _title,
+      description: _desc,
+      dueDate: _due,
+      processingEnabled: _pe,
+      originalFilename: _of,
+      reviewStatus: _rs,
+      flagColor: _fc,
+      isPinned: _ip,
+      ...metadataRest
+    } = metadata;
+
     // Atomic transaction: insert document, tags, and history together
     await txManager.withTransaction(async (tx) => {
       await tx.documents.insert({
@@ -307,10 +327,11 @@ export async function createDocument(
         originalFilename,
         mimeType: verifiedMimeType,
         fileSize,
-        rawMetadata: metadata,
+        rawMetadata: metadataRest,
         originalMimeType: originalMimeType,
         userAgent: userAgent,
         processingEnabled: processingEnabled,
+        processingStatus: processingEnabled ? "pending" : null,
         reviewStatus: metadata.reviewStatus || "pending",
         flagColor: metadata.flagColor || null,
         isPinned: metadata.isPinned || false,
@@ -558,85 +579,6 @@ export async function deleteDocument(
   }
 }
 
-export async function getAllDocuments(
-  userId: string,
-): Promise<DocumentDetails[]> {
-  try {
-    const documentsList = await db
-      .select({
-        document: schemaDocuments,
-        status: queueJobs.status,
-      })
-      .from(schemaDocuments)
-      .leftJoin(
-        queueJobs,
-        eq(queueJobs.key, sql`'documents:' || ${schemaDocuments.id}`),
-      )
-      .where(eq(schemaDocuments.userId, userId))
-      .orderBy(desc(schemaDocuments.createdAt));
-
-    // Batch-load tags for all documents in a single query
-    const docIds = documentsList.map((r) => r.document.id);
-    const tagMap = await batchGetTags(
-      documentsTags,
-      documentsTags.documentId,
-      documentsTags.tagId,
-      docIds,
-    );
-
-    const results = documentsList.map((result) => {
-      const document = result.document;
-
-      const fileUrl = document.storageId
-        ? `/api/documents/${document.id}/file`
-        : null;
-      const thumbnailUrl = document.thumbnailStorageId
-        ? `/api/documents/${document.id}/thumbnail`
-        : null;
-      const screenshotUrl = document.screenshotStorageId
-        ? `/api/documents/${document.id}/screenshot`
-        : null;
-      const pdfUrl = document.pdfStorageId
-        ? `/api/documents/${document.id}/pdf`
-        : null;
-      const contentUrl = document.extractedMdStorageId
-        ? `/api/documents/${document.id}/content`
-        : null;
-
-      return {
-        id: document.id,
-        title: document.title,
-        description: document.description || null,
-        dueDate: document.dueDate ? formatToISO8601(document.dueDate) : null,
-        originalFilename: document.originalFilename,
-        mimeType: document.mimeType,
-        fileSize: document.fileSize,
-        fileUrl,
-        createdAt: formatRequiredTimestamp(document.createdAt),
-        updatedAt: formatRequiredTimestamp(document.updatedAt),
-        tags: tagMap.get(document.id) ?? [],
-        thumbnailUrl,
-        screenshotUrl,
-        pdfUrl,
-        contentUrl,
-        extractedText: document.extractedText,
-        processingStatus:
-          result.status && typeof result.status === "string"
-            ? result.status
-            : null,
-        reviewStatus: document.reviewStatus || "pending",
-        flagColor: document.flagColor,
-        isPinned: document.isPinned || false,
-        processingEnabled: document.processingEnabled || false,
-      };
-    });
-    return results;
-  } catch (error) {
-    logger.error({ err: error, userId }, "Error getting all documents");
-    throw new Error("Failed to fetch documents");
-  }
-}
-
 export async function getDocumentById(
   documentId: string,
   userId: string,
@@ -654,7 +596,7 @@ export async function findDocuments({
   userId,
   text,
   tags: filterTags,
-  fileTypes: _fileTypes,
+  fileTypes,
   startDate,
   endDate,
   limit = 50,
@@ -668,6 +610,7 @@ export async function findDocuments({
     const conditions = _buildDocumentQueryConditions({
       userId,
       text,
+      fileTypes,
       startDate,
       endDate,
       dueDateStart,
@@ -692,51 +635,27 @@ export async function findDocuments({
       );
     }
 
-    let finalDocIds: string[];
-    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
-
+    // Add tag filter as a subquery condition
     if (filterTags && filterTags.length > 0) {
-      const baseMatchedDocs = await db
-        .select({ id: schemaDocuments.id })
-        .from(schemaDocuments)
-        .where(and(...conditions));
-      const baseDocIds = baseMatchedDocs.map((d) => d.id);
-      if (baseDocIds.length === 0)
-        return { items: [], nextCursor: null, hasMore: false };
-
-      const docsWithAllTags = await db
-        .select({ documentId: documentsTags.documentId })
-        .from(documentsTags)
-        .innerJoin(tags, eq(documentsTags.tagId, tags.id))
-        .where(
-          and(
-            inArray(documentsTags.documentId, baseDocIds),
-            eq(tags.userId, userId),
-            inArray(tags.name, filterTags),
-          ),
-        )
-        .groupBy(documentsTags.documentId)
-        .having(sql`COUNT(DISTINCT ${tags.name}) = ${filterTags.length}`);
-      const taggedDocIds = docsWithAllTags.map((d) => d.documentId);
-      if (taggedDocIds.length === 0)
-        return { items: [], nextCursor: null, hasMore: false };
-
-      const finalDocs = await db
-        .select({ id: schemaDocuments.id })
-        .from(schemaDocuments)
-        .where(inArray(schemaDocuments.id, taggedDocIds))
-        .orderBy(orderDir(sortColumn), orderDir(schemaDocuments.id))
-        .limit(fetchLimit);
-      finalDocIds = finalDocs.map((d) => d.id);
-    } else {
-      const matchedDocs = await db
-        .select({ id: schemaDocuments.id })
-        .from(schemaDocuments)
-        .where(and(...conditions))
-        .orderBy(orderDir(sortColumn), orderDir(schemaDocuments.id))
-        .limit(fetchLimit);
-      finalDocIds = matchedDocs.map((d) => d.id);
+      conditions.push(
+        buildTagFilterCondition(
+          documentsTags,
+          documentsTags.documentId,
+          documentsTags.tagId,
+          filterTags,
+          userId,
+        ),
+      );
     }
+
+    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+    const matchedDocs = await db
+      .select({ id: schemaDocuments.id })
+      .from(schemaDocuments)
+      .where(and(...conditions))
+      .orderBy(orderDir(sortColumn), orderDir(schemaDocuments.id))
+      .limit(fetchLimit);
+    let finalDocIds: string[] = matchedDocs.map((d) => d.id);
 
     if (finalDocIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -745,17 +664,12 @@ export async function findDocuments({
     const hasMore = finalDocIds.length > limit;
     if (hasMore) finalDocIds = finalDocIds.slice(0, limit);
 
-    // Efficiently fetch all documents with processing status in a single query
+    // Efficiently fetch all documents in a single query
     const documentsWithStatus = await db
       .select({
         document: schemaDocuments,
-        status: queueJobs.status,
       })
       .from(schemaDocuments)
-      .leftJoin(
-        queueJobs,
-        eq(queueJobs.key, sql`'documents:' || ${schemaDocuments.id}`),
-      )
       .where(inArray(schemaDocuments.id, finalDocIds))
       .orderBy(orderDir(sortColumn), orderDir(schemaDocuments.id));
 
@@ -804,10 +718,7 @@ export async function findDocuments({
         pdfUrl,
         contentUrl,
         extractedText: document.extractedText,
-        processingStatus:
-          result.status && typeof result.status === "string"
-            ? result.status
-            : null,
+        processingStatus: document.processingStatus || null,
         reviewStatus: document.reviewStatus || "pending",
         flagColor: document.flagColor,
         isPinned: document.isPinned || false,
@@ -842,7 +753,7 @@ export async function countDocuments({
   userId,
   text,
   tags: filterTags,
-  fileTypes: _fileTypes,
+  fileTypes,
   startDate,
   endDate,
   dueDateStart,
@@ -852,38 +763,28 @@ export async function countDocuments({
     const conditions = _buildDocumentQueryConditions({
       userId,
       text,
+      fileTypes,
       startDate,
       endDate,
       dueDateStart,
       dueDateEnd,
     });
-    if (!filterTags || filterTags.length === 0) {
-      const countResult = await db
-        .select({ value: count() })
-        .from(schemaDocuments)
-        .where(and(...conditions));
-      return countResult[0]?.value ?? 0;
+    if (filterTags && filterTags.length > 0) {
+      conditions.push(
+        buildTagFilterCondition(
+          documentsTags,
+          documentsTags.documentId,
+          documentsTags.tagId,
+          filterTags,
+          userId,
+        ),
+      );
     }
-    const baseMatchedDocs = await db
-      .select({ id: schemaDocuments.id })
+    const [result] = await db
+      .select({ value: count() })
       .from(schemaDocuments)
       .where(and(...conditions));
-    const baseDocIds = baseMatchedDocs.map((d) => d.id);
-    if (baseDocIds.length === 0) return 0;
-    const docsWithAllTags = await db
-      .select({ documentId: documentsTags.documentId })
-      .from(documentsTags)
-      .innerJoin(tags, eq(documentsTags.tagId, tags.id))
-      .where(
-        and(
-          inArray(documentsTags.documentId, baseDocIds),
-          eq(tags.userId, userId),
-          inArray(tags.name, filterTags),
-        ),
-      )
-      .groupBy(documentsTags.documentId)
-      .having(sql`COUNT(DISTINCT ${tags.name}) = ${filterTags.length}`);
-    return docsWithAllTags.length;
+    return result?.value ?? 0;
   } catch (error) {
     logger.error({ err: error, userId }, "Error counting documents");
     throw new Error("Failed to count documents");

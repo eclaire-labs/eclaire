@@ -78,6 +78,15 @@ export type ArtifactProcessor = (
 /**
  * Configuration for creating event callbacks
  */
+/**
+ * Callback for entity processing status changes (e.g., "processing", "failed").
+ */
+export type StatusChangeCallback = (
+  assetType: string,
+  assetId: string,
+  status: string,
+) => Promise<void>;
+
 export interface EventCallbacksConfig {
   /**
    * Function to publish SSE events
@@ -88,6 +97,12 @@ export interface EventCallbacksConfig {
    * Optional function to process artifacts when a stage completes.
    */
   artifactProcessor?: ArtifactProcessor;
+
+  /**
+   * Optional callback when processing status changes (failed, etc.).
+   * Called so the application can update the entity's own status column.
+   */
+  statusChangeCallback?: StatusChangeCallback;
 
   /**
    * Optional logger for debugging
@@ -154,7 +169,7 @@ function extractAssetMetadata(
 export function createEventCallbacks(
   config: EventCallbacksConfig,
 ): JobEventCallbacks {
-  const { publisher, artifactProcessor, logger } = config;
+  const { publisher, artifactProcessor, statusChangeCallback, logger } = config;
 
   /**
    * Safely publish an event, catching any errors
@@ -280,6 +295,30 @@ export function createEventCallbacks(
         type: "job_failed",
         error,
       });
+
+      // Update entity processing status to "failed"
+      if (statusChangeCallback) {
+        const assetMetadata = extractAssetMetadata(metadata);
+        if (assetMetadata) {
+          try {
+            await statusChangeCallback(
+              assetMetadata.assetType,
+              assetMetadata.assetId,
+              "failed",
+            );
+          } catch (err) {
+            logger?.error(
+              {
+                jobId,
+                assetType: assetMetadata.assetType,
+                assetId: assetMetadata.assetId,
+                error: getErrorMessage(err),
+              },
+              "Failed to update entity processing status",
+            );
+          }
+        }
+      }
     },
   };
 }

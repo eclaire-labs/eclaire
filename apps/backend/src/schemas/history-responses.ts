@@ -1,5 +1,4 @@
 import z from "zod/v4";
-import { paginatedResponseSchema } from "./common.js";
 
 // Single history record response
 export const HistoryRecordResponseSchema = z.object({
@@ -15,12 +14,21 @@ export const HistoryRecordResponseSchema = z.object({
   userId: z.string().nullable(),
 });
 
-// Paginated list response (used for both full listing and search results)
-export const HistoryListResponseSchema = paginatedResponseSchema(
-  HistoryRecordResponseSchema,
-  "HistoryListResponse",
-  "history records",
-);
+// History uses offset-based pagination (not cursor-based like content endpoints)
+export const HistoryListResponseSchema = z
+  .object({
+    items: z
+      .array(HistoryRecordResponseSchema)
+      .meta({ description: "Array of history records" }),
+    totalCount: z
+      .number()
+      .meta({ description: "Total number of items matching the query" }),
+    limit: z
+      .number()
+      .meta({ description: "Maximum number of results returned" }),
+    offset: z.number().meta({ description: "Number of results skipped" }),
+  })
+  .meta({ ref: "HistoryListResponse" });
 
 // Error responses specific to history
 export const HistoryNotFoundSchema = z.object({

@@ -68,9 +68,13 @@ photosRoutes.get(
 
     const result = await findPhotosPaginated({
       userId,
+      text: params.text,
       tags,
       startDate,
       endDate,
+      locationCity: params.locationCity,
+      deviceId: params.deviceId,
+      dateField: params.dateField,
       limit: params.limit,
       cursor: params.cursor,
       sortBy: params.sortBy,

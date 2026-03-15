@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  customType,
   doublePrecision,
   foreignKey,
   index,
@@ -16,6 +17,16 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
+
+/**
+ * Custom tsvector column type for PostgreSQL full-text search.
+ * Used with GENERATED ALWAYS AS (...) STORED columns and GIN indexes.
+ */
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 
 // Enums
 export const taskStatusEnum = pgEnum("task_status", [
@@ -326,6 +337,9 @@ export const tasks = pgTable(
     }),
     priority: integer("priority").notNull().default(0),
     processingEnabled: boolean("processing_enabled").notNull().default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
     }),
@@ -345,6 +359,13 @@ export const tasks = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      (): ReturnType<typeof sql> => sql`(
+        setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(description, '')), 'B')
+      )`,
+    ),
   },
   (table) => ({
     userIdx: index("tasks_user_id_idx").on(table.userId),
@@ -356,11 +377,9 @@ export const tasks = pgTable(
     isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
     completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
     parentIdx: index("tasks_parent_id_idx").on(table.parentId),
-    // Partial index: most queries filter for processing-enabled records
     userProcessingEnabledIdx: index("tasks_user_id_processing_enabled_idx")
       .on(table.userId)
       .where(sql`processing_enabled = true`),
-    // Composite indexes for cursor pagination
     userCreatedAtIdx: index("tasks_user_id_created_at_idx").on(
       table.userId,
       table.createdAt,
@@ -383,12 +402,14 @@ export const tasks = pgTable(
       table.userId,
       table.sortOrder,
     ),
-    // Trigram index for LIKE '%text%' search
     titleTrgmIdx: index("tasks_title_trgm_idx").using(
       "gin",
       sql`${table.title} gin_trgm_ops`,
     ),
-    // Self-referencing FK for sub-tasks (defined here to avoid circular type inference)
+    searchVectorIdx: index("tasks_search_vector_idx").using(
+      "gin",
+      table.searchVector,
+    ),
     parentFk: foreignKey({
       columns: [table.parentId],
       foreignColumns: [table.id],
@@ -480,6 +501,9 @@ export const bookmarks = pgTable(
     extractedText: text("extracted_text"),
 
     processingEnabled: boolean("processing_enabled").notNull().default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
 
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
@@ -488,6 +512,16 @@ export const bookmarks = pgTable(
       enum: ["red", "yellow", "orange", "green", "blue"],
     }),
     isPinned: boolean("is_pinned").default(false),
+
+    // Full-text search vector (auto-populated, never written directly)
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      (): ReturnType<typeof sql> => sql`(
+        setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(extracted_text, '')), 'C') ||
+        setweight(to_tsvector('english', coalesce(original_url, '')), 'D')
+      )`,
+    ),
   },
   (table) => ({
     userIdx: index("bookmarks_user_id_idx").on(table.userId),
@@ -513,6 +547,11 @@ export const bookmarks = pgTable(
     titleTrgmIdx: index("bookmarks_title_trgm_idx").using(
       "gin",
       sql`${table.title} gin_trgm_ops`,
+    ),
+    // GIN index for full-text search
+    searchVectorIdx: index("bookmarks_search_vector_idx").using(
+      "gin",
+      table.searchVector,
     ),
   }),
 );
@@ -540,6 +579,9 @@ export const documents = pgTable(
     originalMimeType: text("original_mime_type"),
     userAgent: text("user_agent"),
     processingEnabled: boolean("processing_enabled").notNull().default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
     extractedMdStorageId: text("extracted_md_storage_id"),
     extractedTxtStorageId: text("extracted_txt_storage_id"),
 
@@ -559,15 +601,21 @@ export const documents = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      (): ReturnType<typeof sql> => sql`(
+        setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(extracted_text, '')), 'C')
+      )`,
+    ),
   },
   (table) => ({
     userIdx: index("documents_user_id_idx").on(table.userId),
     isPinnedIdx: index("documents_is_pinned_idx").on(table.isPinned),
-    // Partial index: most queries filter for processing-enabled records
     userProcessingEnabledIdx: index("documents_user_id_processing_enabled_idx")
       .on(table.userId)
       .where(sql`processing_enabled = true`),
-    // Composite indexes for cursor pagination
     userCreatedAtIdx: index("documents_user_id_created_at_idx").on(
       table.userId,
       table.createdAt,
@@ -576,7 +624,6 @@ export const documents = pgTable(
       table.userId,
       table.title,
     ),
-    // Trigram index for LIKE '%text%' search
     titleTrgmIdx: index("documents_title_trgm_idx").using(
       "gin",
       sql`${table.title} gin_trgm_ops`,
@@ -584,6 +631,10 @@ export const documents = pgTable(
     userUpdatedAtIdx: index("documents_user_id_updated_at_idx").on(
       table.userId,
       table.updatedAt,
+    ),
+    searchVectorIdx: index("documents_search_vector_idx").using(
+      "gin",
+      table.searchVector,
     ),
   }),
 );
@@ -636,6 +687,9 @@ export const photos = pgTable(
     userAgent: text("user_agent"),
 
     processingEnabled: boolean("processing_enabled").notNull().default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
 
     reviewStatus: text("review_status", {
       enum: ["pending", "accepted", "rejected"],
@@ -651,16 +705,22 @@ export const photos = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      (): ReturnType<typeof sql> => sql`(
+        setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(ocr_text, '')), 'C')
+      )`,
+    ),
   },
   (table) => ({
     userIdx: index("photos_user_id_idx").on(table.userId),
     isPinnedIdx: index("photos_is_pinned_idx").on(table.isPinned),
     dateTakenIdx: index("photos_date_taken_idx").on(table.dateTaken),
-    // Partial index: most queries filter for processing-enabled records
     userProcessingEnabledIdx: index("photos_user_id_processing_enabled_idx")
       .on(table.userId)
       .where(sql`processing_enabled = true`),
-    // Composite indexes for cursor pagination
     userCreatedAtIdx: index("photos_user_id_created_at_idx").on(
       table.userId,
       table.createdAt,
@@ -673,10 +733,13 @@ export const photos = pgTable(
       table.userId,
       table.title,
     ),
-    // Trigram index for LIKE '%text%' search
     titleTrgmIdx: index("photos_title_trgm_idx").using(
       "gin",
       sql`${table.title} gin_trgm_ops`,
+    ),
+    searchVectorIdx: index("photos_search_vector_idx").using(
+      "gin",
+      table.searchVector,
     ),
   }),
 );
@@ -697,6 +760,9 @@ export const notes = pgTable(
     originalMimeType: text("original_mime_type"),
     userAgent: text("user_agent"),
     processingEnabled: boolean("processing_enabled").notNull().default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
     dueDate: timestamp("due_date", { withTimezone: true }),
 
     reviewStatus: text("review_status", {
@@ -713,15 +779,20 @@ export const notes = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      (): ReturnType<typeof sql> => sql`(
+        setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(content, '')), 'B')
+      )`,
+    ),
   },
   (table) => ({
     userIdx: index("notes_user_id_idx").on(table.userId),
     isPinnedIdx: index("notes_is_pinned_idx").on(table.isPinned),
-    // Partial index: most queries filter for processing-enabled records
     userProcessingEnabledIdx: index("notes_user_id_processing_enabled_idx")
       .on(table.userId)
       .where(sql`processing_enabled = true`),
-    // Composite indexes for cursor pagination
     userCreatedAtIdx: index("notes_user_id_created_at_idx").on(
       table.userId,
       table.createdAt,
@@ -730,10 +801,13 @@ export const notes = pgTable(
       table.userId,
       table.title,
     ),
-    // Trigram index for LIKE '%text%' search
     titleTrgmIdx: index("notes_title_trgm_idx").using(
       "gin",
       sql`${table.title} gin_trgm_ops`,
+    ),
+    searchVectorIdx: index("notes_search_vector_idx").using(
+      "gin",
+      table.searchVector,
     ),
   }),
 );

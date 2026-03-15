@@ -23,7 +23,10 @@ import {
 import { db, dbCapabilities, dbType } from "../../db/index.js";
 import { createChildLogger } from "../../lib/logger.js";
 import { getNotifyListener } from "../../lib/queue/notify.js";
-import { processArtifacts } from "../../lib/services/artifact-processor.js";
+import {
+  processArtifacts,
+  setEntityProcessingStatus,
+} from "../../lib/services/artifact-processor.js";
 import { publishDirectSSEEvent } from "../../routes/processing-events.js";
 import type { AssetType } from "../../types/assets.js";
 
@@ -75,6 +78,12 @@ function createSSEEventCallbacks(): JobEventCallbacks {
     publisher: publishDirectSSEEvent,
     artifactProcessor: (assetType, assetId, artifacts) =>
       processArtifacts(assetType as AssetType, assetId, artifacts),
+    statusChangeCallback: (assetType, assetId, status) =>
+      setEntityProcessingStatus(
+        assetType,
+        assetId,
+        status as "pending" | "processing" | "completed" | "failed",
+      ),
     logger,
   });
 }
