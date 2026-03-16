@@ -5,12 +5,17 @@ import { type AILogger, setConfigPath, setLoggerFactory } from "@eclaire/ai";
 import boxen from "boxen";
 import chalk from "chalk";
 import { Command } from "commander";
+import { registerAgentCommands } from "./lib/commands/agent/index.js";
+import { registerApiKeyCommands } from "./lib/commands/api-key/index.js";
 import { registerChannelCommands } from "./lib/commands/channel/index.js";
 import { registerChatCommand } from "./lib/commands/chat/index.js";
 import { registerConfigCommands } from "./lib/commands/config/index.js";
 import { registerEngineCommands } from "./lib/commands/engine/index.js";
+import { registerMcpCommands } from "./lib/commands/mcp/index.js";
 import { registerModelCommands } from "./lib/commands/model/index.js";
 import { registerProviderCommands } from "./lib/commands/provider/index.js";
+import { registerSettingsCommands } from "./lib/commands/settings/index.js";
+import { registerUserCommands } from "./lib/commands/user/index.js";
 import { setConfigDir } from "./lib/config/models.js";
 
 // Logger factories for --verbose flag
@@ -71,6 +76,11 @@ registerModelCommands(program);
 registerChannelCommands(program);
 registerConfigCommands(program);
 registerChatCommand(program);
+registerMcpCommands(program);
+registerSettingsCommands(program);
+registerUserCommands(program);
+registerAgentCommands(program);
+registerApiKeyCommands(program);
 
 // Only register engine commands if not in container
 // (engine runs on host, not accessible from container)

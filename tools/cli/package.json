@@ -44,6 +44,7 @@
   "author": "Eclaire Labs",
   "license": "MIT",
   "dependencies": {
+    "@clack/prompts": "^1.1.0",
     "@eclaire/ai": "workspace:*",
     "@eclaire/channels-core": "workspace:*",
     "@eclaire/channels-discord": "workspace:*",
@@ -63,6 +64,7 @@
     "ink-text-input": "^6.0.0",
     "inquirer": "13.3.0",
     "marked": "17.0.4",
+    "nanoid": "5.1.6",
     "ora": "9.3.0",
     "react": "^19.1.0"
   },
