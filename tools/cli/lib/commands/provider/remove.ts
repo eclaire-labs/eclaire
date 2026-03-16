@@ -3,6 +3,7 @@ import {
   getProviderById,
   removeProvider,
 } from "../../config/providers.js";
+import { closeDb } from "../../db/index.js";
 import type { CommandOptions } from "../../types/index.js";
 import { colors, icons } from "../../ui/colors.js";
 import { promptConfirmation } from "../../ui/prompts.js";
@@ -13,7 +14,7 @@ export async function removeCommand(
   options: CommandOptions,
 ): Promise<void> {
   try {
-    const provider = getProviderById(id);
+    const provider = await getProviderById(id);
 
     if (!provider) {
       console.log(colors.error(`${icons.error} Provider not found: ${id}`));
@@ -26,7 +27,7 @@ export async function removeCommand(
     console.log(createProviderInfoTable(id, provider));
 
     // Check for models using this provider
-    const affectedModels = getModelsUsingProvider(id);
+    const affectedModels = await getModelsUsingProvider(id);
 
     if (affectedModels.length > 0) {
       console.log(
@@ -58,7 +59,8 @@ export async function removeCommand(
     }
 
     // Remove provider
-    const removedAffectedModels = removeProvider(id);
+    const removedAffectedModels = await removeProvider(id);
+    await closeDb();
 
     console.log(colors.success(`${icons.success} Removed provider: ${id}`));
 

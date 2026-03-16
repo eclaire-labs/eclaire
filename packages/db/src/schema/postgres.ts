@@ -84,6 +84,7 @@ export const users = pgTable(
     timezone: text("time_zone"),
     city: text("city"),
     country: text("country"),
+    isInstanceAdmin: boolean("is_instance_admin").notNull().default(false),
 
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -1366,6 +1367,117 @@ export const feedback = pgTable(
 export const feedbackRelations = relations(feedback, ({ one }) => ({
   user: one(users, { fields: [feedback.userId], references: [users.id] }),
 }));
+
+// =============================================================================
+// AI Configuration (system-wide, admin-managed)
+// =============================================================================
+
+export const aiProviders = pgTable("ai_providers", {
+  id: text("id").primaryKey(),
+  dialect: text("dialect", {
+    enum: [
+      "openai_compatible",
+      "anthropic_messages",
+      "cli_jsonl",
+      "mlx_native",
+    ],
+  }).notNull(),
+  baseUrl: text("base_url"),
+  auth: jsonb("auth").notNull().default(sql`'{"type":"none"}'::jsonb`),
+  headers: jsonb("headers"),
+  engine: jsonb("engine"),
+  overrides: jsonb("overrides"),
+  cli: jsonb("cli"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedBy: text("updated_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
+
+export const aiModels = pgTable(
+  "ai_models",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    providerId: text("provider_id")
+      .notNull()
+      .references(() => aiProviders.id, { onDelete: "cascade" }),
+    providerModel: text("provider_model").notNull(),
+    capabilities: jsonb("capabilities").notNull().default(sql`'{}'::jsonb`),
+    tokenizer: jsonb("tokenizer"),
+    source: jsonb("source"),
+    pricing: jsonb("pricing"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedBy: text("updated_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => ({
+    providerIdx: index("ai_models_provider_id_idx").on(table.providerId),
+  }),
+);
+
+export const aiModelSelection = pgTable("ai_model_selection", {
+  context: text("context").primaryKey(),
+  modelId: text("model_id")
+    .notNull()
+    .references(() => aiModels.id, { onDelete: "cascade" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedBy: text("updated_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
+
+export const mcpServers = pgTable("mcp_servers", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  transport: text("transport", {
+    enum: ["stdio", "sse", "http"],
+  }).notNull(),
+  command: text("command"),
+  args: jsonb("args"),
+  connectTimeout: integer("connect_timeout"),
+  enabled: boolean("enabled").notNull().default(true),
+  toolMode: text("tool_mode").default("managed"),
+  availability: jsonb("availability"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedBy: text("updated_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
+
+// =============================================================================
+// Instance Settings (system-wide key-value config, admin-managed)
+// =============================================================================
+
+export const instanceSettings = pgTable("instance_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedBy: text("updated_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
 
 // =============================================================================
 // App Metadata (for upgrade system)

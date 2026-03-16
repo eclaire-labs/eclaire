@@ -10,6 +10,7 @@ const validTabs = [
   "appearance",
   "assistant",
   "channels",
+  "system",
   "api-keys",
   "about",
 ] as const;

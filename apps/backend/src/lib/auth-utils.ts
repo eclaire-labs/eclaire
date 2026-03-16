@@ -1,8 +1,10 @@
+import { eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { config } from "../config/index.js";
-import { db } from "../db/index.js";
+import { db, schema } from "../db/index.js";
 import { parseApiKey, verifyApiKeyHash } from "./api-key-security.js";
 import type { AuthPrincipal } from "./auth-principal.js";
+import { ForbiddenError } from "./errors.js";
 import { createChildLogger } from "./logger.js";
 import { ensureHumanActorForUserId } from "./services/actors.js";
 import {
@@ -162,4 +164,18 @@ export async function getAuthenticatedUserId(
 ): Promise<string | null> {
   const principal = await getAuthenticatedPrincipal(c);
   return principal?.ownerUserId ?? null;
+}
+
+/**
+ * Asserts that the given user is an instance admin.
+ * @throws ForbiddenError if the user is not an admin
+ */
+export async function assertInstanceAdmin(userId: string): Promise<void> {
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.id, userId),
+    columns: { isInstanceAdmin: true },
+  });
+  if (!user?.isInstanceAdmin) {
+    throw new ForbiddenError("Instance admin access required");
+  }
 }

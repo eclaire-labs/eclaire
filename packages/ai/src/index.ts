@@ -56,6 +56,7 @@
 import {
   clearConfigCaches,
   clearConfigPath,
+  interpolateEnvVars,
   setConfigPath,
   setInlineConfig,
 } from "./config.js";
@@ -263,6 +264,8 @@ export {
   hasAllInputModalities,
   // Engine helpers
   hasEngine,
+  // Env var interpolation
+  interpolateEnvVars,
   // Modality helpers (generic)
   hasInputModality,
   isManaged,
@@ -284,6 +287,8 @@ export {
   setActiveModel,
   // Config path management
   setConfigPath,
+  // Inline config (for DB-backed initialization)
+  setInlineConfig,
   updateModel,
   validateAIConfig,
   validateAIConfigForModelId,

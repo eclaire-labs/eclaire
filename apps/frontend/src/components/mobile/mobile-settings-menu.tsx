@@ -7,11 +7,14 @@ import {
   LayoutDashboard,
   Radio,
   Settings,
+  Shield,
   User,
 } from "lucide-react";
+import { useMemo } from "react";
 
 const routeApi = getRouteApi("/_authenticated/settings");
 
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 interface SettingsMenuItem {
@@ -20,6 +23,7 @@ interface SettingsMenuItem {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
+  adminOnly?: boolean;
 }
 
 const settingsMenuItems: SettingsMenuItem[] = [
@@ -59,6 +63,14 @@ const settingsMenuItems: SettingsMenuItem[] = [
     href: "/settings?tab=assistant",
   },
   {
+    id: "system",
+    label: "System",
+    description: "Instance-wide configuration (admin only)",
+    icon: Shield,
+    href: "/settings?tab=system",
+    adminOnly: true,
+  },
+  {
     id: "api-keys",
     label: "API Keys",
     description: "Manage actor keys and external systems",
@@ -78,10 +90,19 @@ export function MobileSettingsMenu() {
   const { pathname: _pathname } = useLocation();
   const { tab } = routeApi.useSearch();
   const currentTab = tab || "profile";
+  const { data: authData } = useAuth();
+  const isAdmin =
+    (authData?.user as Record<string, unknown> | undefined)?.isInstanceAdmin ===
+    true;
+
+  const visibleItems = useMemo(
+    () => settingsMenuItems.filter((item) => !item.adminOnly || isAdmin),
+    [isAdmin],
+  );
 
   return (
     <div className="space-y-1">
-      {settingsMenuItems.map((item) => {
+      {visibleItems.map((item) => {
         const isActive = currentTab === item.id;
         const Icon = item.icon;
 

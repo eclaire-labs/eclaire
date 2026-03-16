@@ -7,6 +7,7 @@ import {
   isModelSuitableForBackend,
   isModelSuitableForWorkers,
 } from "../../config/models.js";
+import { closeDb } from "../../db/index.js";
 import { estimateModelMemory, formatMemorySize } from "../../engine/memory.js";
 import type {
   CommandOptions,
@@ -418,12 +419,13 @@ export async function importCommand(
     console.log(colors.header(`\n${icons.gear} Adding Model...`));
 
     try {
-      addModel(modelId, model);
+      await addModel(modelId, model);
       console.log(
         colors.success(
           `${icons.success} Model '${modelId}' imported successfully!`,
         ),
       );
+      await closeDb();
       console.log(
         colors.dim(
           `Run 'eclaire model activate ${modelId}' to activate this model`,

@@ -1,4 +1,5 @@
 import { findModelById, removeModel } from "../../config/models.js";
+import { closeDb } from "../../db/index.js";
 import type { CommandOptions } from "../../types/index.js";
 import { colors, icons } from "../../ui/colors.js";
 import { promptConfirmation } from "../../ui/prompts.js";
@@ -34,8 +35,9 @@ export async function removeCommand(
       }
     }
 
-    removeModel(id);
+    await removeModel(id);
     console.log(colors.success(`${icons.success} Removed model: ${id}`));
+    await closeDb();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.log(

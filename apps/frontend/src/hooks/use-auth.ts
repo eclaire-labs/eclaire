@@ -13,6 +13,7 @@ export interface User {
   timezone?: string;
   city?: string;
   country?: string;
+  isInstanceAdmin?: boolean;
   createdAt: number;
   updatedAt: number;
 }

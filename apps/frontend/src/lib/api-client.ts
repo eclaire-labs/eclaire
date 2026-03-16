@@ -122,6 +122,20 @@ export async function apiPut(endpoint: string, data?: any): Promise<Response> {
 }
 
 /**
+ * Convenience wrapper for PATCH requests
+ */
+export async function apiPatch(
+  endpoint: string,
+  // biome-ignore lint/suspicious/noExplicitAny: API request body type varies by endpoint
+  data?: any,
+): Promise<Response> {
+  return apiFetch(endpoint, {
+    method: "PATCH",
+    body: data ? JSON.stringify(data) : undefined,
+  });
+}
+
+/**
  * Convenience wrapper for DELETE requests
  */
 export async function apiDelete(endpoint: string): Promise<Response> {

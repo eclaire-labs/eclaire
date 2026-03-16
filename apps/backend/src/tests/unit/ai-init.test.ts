@@ -9,7 +9,7 @@ describe("resolveAISkillSources", () => {
       runtime: "local",
       configDir: "/app/config",
       adminSkillsDir: "/shared/admin-skills",
-      userSkillsDirs: ["/extra/skills", "/team/skills"],
+      customSkillsDirs: ["/extra/skills", "/team/skills"],
       userHomeDir,
       pathExists: (filePath) =>
         filePath === path.join(userHomeDir, ".agents", "skills"),
@@ -29,7 +29,7 @@ describe("resolveAISkillSources", () => {
       runtime: "container",
       configDir: "/app/config",
       adminSkillsDir: "/shared/admin-skills",
-      userSkillsDirs: ["/extra/skills"],
+      customSkillsDirs: ["/extra/skills"],
       userHomeDir: "/Users/tester",
       pathExists: () => true,
     });

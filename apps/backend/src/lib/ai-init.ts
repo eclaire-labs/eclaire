@@ -3,6 +3,11 @@
  *
  * Initializes the @eclaire/ai package with backend configuration.
  * Call this early in application startup, before using any AI functions.
+ *
+ * Config loading order:
+ * 1. Try loading from database (runtime source of truth)
+ * 2. If DB is empty, seed from JSON config files (first-run bootstrap)
+ * 3. Initialize AI package with inline config from DB or file path fallback
  */
 
 import * as path from "node:path";
@@ -12,6 +17,9 @@ import { initAI, registerSkillSource } from "@eclaire/ai";
 import { config } from "../config/index.js";
 import { createChildLogger } from "./logger.js";
 import { initMcpRegistry, loadMcpServersConfig } from "./mcp/index.js";
+import { loadConfigFromDb, seedFromJsonFiles } from "./services/ai-config.js";
+
+const logger = createChildLogger("ai-init");
 
 type SkillSourceScope = "admin" | "user";
 
@@ -25,7 +33,7 @@ export function resolveAISkillSources(
     runtime?: "local" | "container";
     configDir?: string;
     adminSkillsDir?: string;
-    userSkillsDirs?: string[];
+    customSkillsDirs?: string[];
     userHomeDir?: string;
     pathExists?: (filePath: string) => boolean;
   } = {},
@@ -33,7 +41,8 @@ export function resolveAISkillSources(
   const runtime = options.runtime ?? config.runtime;
   const configDir = options.configDir ?? config.dirs.config;
   const adminSkillsDir = options.adminSkillsDir ?? config.ai.skillsDir;
-  const userSkillsDirs = options.userSkillsDirs ?? config.ai.userSkillsDirs;
+  const customSkillsDirs =
+    options.customSkillsDirs ?? config.ai.customSkillsDirs;
   const userHomeDir = options.userHomeDir ?? homedir();
   const pathExists = options.pathExists ?? existsSync;
 
@@ -54,7 +63,7 @@ export function resolveAISkillSources(
       sources.push({ dir: defaultUserSkillsDir, scope: "user" });
     }
 
-    for (const dir of userSkillsDirs ?? []) {
+    for (const dir of customSkillsDirs ?? []) {
       sources.push({ dir, scope: "user" });
     }
   }
@@ -65,10 +74,39 @@ export function resolveAISkillSources(
 /**
  * Initialize the AI client with backend configuration.
  * Must be called before validateAIConfigOnStartup() or any AI calls.
+ *
+ * Config loading order:
+ * 1. Try loading from database (runtime source of truth)
+ * 2. If DB is empty, seed from JSON config files, then load from DB
+ * 3. Fall back to file-based config if DB loading fails entirely
  */
-export function initializeAI(): void {
+export async function initializeAI(): Promise<void> {
+  const configAiDir = path.join(config.dirs.config, "ai");
+
+  // Try loading from DB, seeding from JSON files if empty
+  try {
+    let loaded = await loadConfigFromDb();
+    if (!loaded) {
+      const result = await seedFromJsonFiles(configAiDir);
+      if (result.providers > 0) {
+        loaded = await loadConfigFromDb();
+      }
+    }
+    if (loaded) {
+      logger.info("AI configuration loaded from database");
+    }
+  } catch (error) {
+    logger.debug(
+      { error },
+      "Could not load AI config from database, falling back to JSON files",
+    );
+  }
+
+  // initAI sets up logger, debug path, and config path as fallback.
+  // If loadConfigFromDb succeeded, the caches are already populated via setInlineConfig
+  // and the configPath is only set as a fallback (never used while caches exist).
   initAI({
-    configPath: path.join(config.dirs.config, "ai"),
+    configPath: configAiDir,
     createChildLogger,
     debugLogPath: config.ai.debugLogPath,
   });
@@ -83,7 +121,7 @@ export function initializeAI(): void {
  * Call after initializeAI() during application startup.
  */
 export async function initializeMcp(): Promise<void> {
-  const servers = loadMcpServersConfig();
+  const servers = await loadMcpServersConfig();
   const registry = await initMcpRegistry(servers);
 
   // Register managed tool names so the registry can track their availability.

@@ -68,7 +68,7 @@ export async function startBullMQWorkers(): Promise<void> {
 
   // Initialize and validate AI configuration (skip if already initialized by API)
   if (!isAIInitialized()) {
-    initializeAI();
+    await initializeAI();
   }
   await initializeMcp();
   validateAIConfigOnStartup();
@@ -258,7 +258,7 @@ export async function startDatabaseWorkers(): Promise<void> {
 
   // Initialize and validate AI configuration (skip if already initialized by API)
   if (!isAIInitialized()) {
-    initializeAI();
+    await initializeAI();
   }
   await initializeMcp();
   validateAIConfigOnStartup();

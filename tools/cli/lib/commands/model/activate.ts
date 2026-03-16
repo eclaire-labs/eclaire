@@ -10,6 +10,7 @@ import {
   removeActiveModel,
   setActiveModel,
 } from "../../config/models.js";
+import { closeDb } from "../../db/index.js";
 import type { CommandOptions, Model } from "../../types/index.js";
 import { colors, icons, printProviderReminder } from "../../ui/colors.js";
 import { promptContext, promptModelSelection } from "../../ui/prompts.js";
@@ -38,7 +39,7 @@ export async function activateCommand(
           );
           process.exit(1);
         }
-        setActiveModel("backend", options.backend);
+        await setActiveModel("backend", options.backend);
         console.log(
           colors.success(
             `${icons.success} Backend active model set to ${options.backend}`,
@@ -63,7 +64,7 @@ export async function activateCommand(
           );
           process.exit(1);
         }
-        setActiveModel("workers", options.workers);
+        await setActiveModel("workers", options.workers);
         console.log(
           colors.success(
             `${icons.success} Workers active model set to ${options.workers}`,
@@ -71,6 +72,7 @@ export async function activateCommand(
         );
         printProviderReminder(model.provider, ["workers"]);
       }
+      await closeDb();
       return;
     }
 
@@ -116,7 +118,7 @@ export async function activateCommand(
           return;
         }
 
-        setActiveModel(context, id);
+        await setActiveModel(context, id);
         console.log(
           colors.success(
             `${icons.success} ${context} active model set to ${id}`,
@@ -131,17 +133,18 @@ export async function activateCommand(
         );
         if (context === "both") {
           // Handle both contexts
-          setActiveModel("backend", id);
-          setActiveModel("workers", id);
+          await setActiveModel("backend", id);
+          await setActiveModel("workers", id);
           console.log(
             colors.success(
               `${icons.success} Model activated for both backend and workers contexts`,
             ),
           );
           printProviderReminder(model.provider, ["backend", "workers"]);
+          await closeDb();
           return;
         }
-        setActiveModel(context as "backend" | "workers", id);
+        await setActiveModel(context as "backend" | "workers", id);
         console.log(
           colors.success(
             `${icons.success} ${context} active model set to ${id}`,
@@ -149,6 +152,7 @@ export async function activateCommand(
         );
         printProviderReminder(model.provider, [context]);
       }
+      await closeDb();
       return;
     }
 
@@ -181,6 +185,7 @@ export async function activateCommand(
     } else {
       await setActiveForContext(context, allModels);
     }
+    await closeDb();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("User force closed")) {
@@ -219,7 +224,7 @@ async function setActiveForContext(
   );
 
   // Set active model
-  setActiveModel(context, selected.id);
+  await setActiveModel(context, selected.id);
 
   console.log(
     colors.success(
@@ -284,13 +289,14 @@ export async function deactivateCommand(context?: string): Promise<void> {
     }
 
     // Deactivate the model
-    removeActiveModel(context as "backend" | "workers");
+    await removeActiveModel(context as "backend" | "workers");
 
     console.log(
       colors.success(
         `${icons.success} Deactivated ${currentModelId} from ${context} context`,
       ),
     );
+    await closeDb();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("User force closed")) {

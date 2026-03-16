@@ -1,4 +1,5 @@
 import { getAllProviders } from "../../config/providers.js";
+import { closeDb } from "../../db/index.js";
 import type { CommandOptions } from "../../types/index.js";
 import { colors, icons } from "../../ui/colors.js";
 import { createProvidersTable } from "../../ui/tables.js";
@@ -7,7 +8,8 @@ export async function listCommand(options: CommandOptions): Promise<void> {
   try {
     console.log(colors.header(`${icons.plug} Configured AI Providers\n`));
 
-    const providers = getAllProviders();
+    const providers = await getAllProviders();
+    await closeDb();
     const providerIds = Object.keys(providers);
 
     if (providerIds.length === 0) {

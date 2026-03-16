@@ -1,5 +1,6 @@
 import inquirer from "inquirer";
 import { getProviderById, updateProvider } from "../../config/providers.js";
+import { closeDb } from "../../db/index.js";
 import type { ProviderConfig } from "../../types/index.js";
 import { colors, icons } from "../../ui/colors.js";
 import { promptProviderFields } from "../../ui/prompts.js";
@@ -7,7 +8,7 @@ import { createProviderInfoTable } from "../../ui/tables.js";
 
 export async function editCommand(id: string): Promise<void> {
   try {
-    const provider = getProviderById(id);
+    const provider = await getProviderById(id);
 
     if (!provider) {
       console.log(colors.error(`${icons.error} Provider not found: ${id}`));
@@ -53,7 +54,8 @@ export async function editCommand(id: string): Promise<void> {
     }
 
     // Apply updates
-    updateProvider(id, updates);
+    await updateProvider(id, updates);
+    await closeDb();
 
     console.log(
       colors.success(

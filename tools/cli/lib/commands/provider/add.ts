@@ -5,6 +5,7 @@ import {
   PROVIDER_PRESETS,
 } from "../../config/presets.js";
 import { addProvider, isProviderIdAvailable } from "../../config/providers.js";
+import { closeDb } from "../../db/index.js";
 import type {
   CommandOptions,
   ProviderConfig,
@@ -56,21 +57,24 @@ export async function addCommand(options: CommandOptions): Promise<void> {
     console.log(colors.dim(`\n${preset.description}\n`));
 
     // Generate default provider ID
-    const defaultId = generateProviderId(preset.id);
+    const defaultId = await generateProviderId(preset.id);
 
     // Prompt for provider ID
-    const providerId = await promptProviderId(defaultId, (input: string) => {
-      if (!input || input.trim().length === 0) {
-        return "Provider ID is required";
-      }
-      if (!/^[a-z0-9-]+$/.test(input)) {
-        return "Provider ID can only contain lowercase letters, numbers, and hyphens";
-      }
-      if (!isProviderIdAvailable(input)) {
-        return `Provider ID '${input}' already exists`;
-      }
-      return true;
-    });
+    const providerId = await promptProviderId(
+      defaultId,
+      async (input: string) => {
+        if (!input || input.trim().length === 0) {
+          return "Provider ID is required";
+        }
+        if (!/^[a-z0-9-]+$/.test(input)) {
+          return "Provider ID can only contain lowercase letters, numbers, and hyphens";
+        }
+        if (!(await isProviderIdAvailable(input))) {
+          return `Provider ID '${input}' already exists`;
+        }
+        return true;
+      },
+    );
 
     // Build provider config based on preset
     const config: ProviderConfig = {
@@ -287,7 +291,8 @@ export async function addCommand(options: CommandOptions): Promise<void> {
     }
 
     // Add provider
-    addProvider(providerId, config);
+    await addProvider(providerId, config);
+    await closeDb();
 
     console.log(
       colors.success(
@@ -322,18 +327,18 @@ export async function addCommand(options: CommandOptions): Promise<void> {
   }
 }
 
-function generateProviderId(presetId: string): string {
+async function generateProviderId(presetId: string): Promise<string> {
   // Generate a unique provider ID based on preset
   const baseName = presetId === "custom" ? "custom-provider" : presetId;
 
   // Check if base name is available
-  if (isProviderIdAvailable(baseName)) {
+  if (await isProviderIdAvailable(baseName)) {
     return baseName;
   }
 
   // Add suffix if needed
   let suffix = 2;
-  while (!isProviderIdAvailable(`${baseName}-${suffix}`)) {
+  while (!(await isProviderIdAvailable(`${baseName}-${suffix}`))) {
     suffix++;
   }
   return `${baseName}-${suffix}`;

@@ -1,6 +1,7 @@
 import axios, { type AxiosError } from "axios";
 import ora from "ora";
 import { getProviderById } from "../../config/providers.js";
+import { closeDb } from "../../db/index.js";
 import type {
   CommandOptions,
   Dialect,
@@ -39,7 +40,8 @@ export async function testCommand(
   try {
     const timeout = parseInt(options.timeout || "5000", 10);
 
-    const provider = getProviderById(id);
+    const provider = await getProviderById(id);
+    await closeDb();
     if (!provider) {
       console.log(colors.error(`${icons.error} Provider not found: ${id}`));
       process.exit(1);

@@ -163,7 +163,7 @@ export async function promptPresetSelection(
  */
 export async function promptProviderId(
   defaultValue: string,
-  validateFn: (id: string) => boolean | string,
+  validateFn: (id: string) => boolean | string | Promise<boolean | string>,
 ): Promise<string> {
   const { providerId } = await inquirer.prompt([
     {

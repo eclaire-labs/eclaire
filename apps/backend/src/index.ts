@@ -149,10 +149,14 @@ const start = async () => {
   try {
     logger.info({ SERVICE_ROLE, QUEUE_BACKEND }, "Starting service");
 
+    // Ensure at least one instance admin exists (first user becomes admin)
+    const { ensureInstanceAdmin } = await import("./lib/services/admin.js");
+    await ensureInstanceAdmin();
+
     // Only start HTTP server if role includes API functionality
     if (SERVICE_ROLE === "api" || SERVICE_ROLE === "all") {
       // Initialize AI client before validation
-      initializeAI();
+      await initializeAI();
 
       // Initialize MCP server registry (connects to configured MCP servers)
       await initializeMcp();

@@ -1,49 +1,60 @@
 /**
- * Model configuration management
+ * Model configuration management (DB-backed)
  *
- * Re-exports config functions from @eclaire/ai with CLI-specific wrappers.
+ * CRUD operations use the database directly.
+ * Read-only accessors and helpers re-exported from @eclaire/ai for compatibility.
  */
 
-import path from "node:path";
-import type { AIContext, ModelConfig } from "@eclaire/ai";
+import { eq } from "drizzle-orm";
+import type {
+  AIContext,
+  ModelConfig,
+  ModelsConfiguration,
+  ProviderConfig,
+  ProvidersConfiguration,
+  SelectionConfiguration,
+} from "@eclaire/ai";
 import {
-  // Model CRUD
-  addModel,
   getActiveModelForContext,
   getActiveModelIdForContext,
   getActiveModelsAsObjects,
-  getConfigPath,
   getModelConfigById,
   getModels,
-  // Accessors
   getProviderConfig,
   getProviders,
   hasAllInputModalities,
-  // Generic modality helpers
   hasInputModality,
   loadModelsConfiguration,
-  // Config loading
   loadProvidersConfiguration,
   loadSelectionConfiguration,
-  removeActiveModel,
-  removeModel,
   saveModelsConfiguration,
-  // Config saving
   saveProvidersConfiguration,
   saveSelectionConfiguration,
-  // Selection management
-  setActiveModel,
-  // Config path
   setConfigPath,
-  updateModel,
+  setInlineConfig,
 } from "@eclaire/ai";
+import type { pgSchema } from "@eclaire/db";
+import { getDb } from "../db/index.js";
+
+import path from "node:path";
+
+type Schema = typeof pgSchema;
+
+function getTables() {
+  const { db, schema } = getDb();
+  return {
+    db: db as ReturnType<
+      typeof import("drizzle-orm/postgres-js").drizzle<Schema>
+    >,
+    models: (schema as Schema).aiModels,
+    selection: (schema as Schema).aiModelSelection,
+    providers: (schema as Schema).aiProviders,
+  };
+}
 
 // ============================================================================
 // CLI-specific config path initialization
 // ============================================================================
-
-// Note: Config path is initialized in main.ts preAction hook
-// This allows the --verbose flag to set up the logger before any config is loaded
 
 /**
  * Set a custom config directory (used by CLI --config option)
@@ -52,15 +63,177 @@ export function setConfigDir(customDir: string): void {
   setConfigPath(path.resolve(customDir));
 }
 
+// ============================================================================
+// DB-backed CRUD operations
+// ============================================================================
+
 /**
- * Get the current config directory
+ * Add a new model to the database
  */
-export function getConfigDir(): string {
-  return getConfigPath();
+export async function addModel(id: string, model: ModelConfig): Promise<void> {
+  const { db, models } = getTables();
+  const existing = await db.query.aiModels.findFirst({
+    where: eq(models.id, id),
+    columns: { id: true },
+  });
+  if (existing) {
+    throw new Error(`Model '${id}' already exists`);
+  }
+  await db.insert(models).values({
+    id,
+    name: model.name,
+    providerId: model.provider,
+    providerModel: model.providerModel,
+    capabilities: model.capabilities,
+    tokenizer: model.tokenizer ?? null,
+    source: model.source ?? null,
+    pricing: model.pricing ?? null,
+  });
+  await refreshInlineConfig();
+}
+
+/**
+ * Update an existing model in the database
+ */
+export async function updateModel(
+  id: string,
+  updates: Partial<ModelConfig>,
+): Promise<void> {
+  const { db, models } = getTables();
+  const existing = await db.query.aiModels.findFirst({
+    where: eq(models.id, id),
+    columns: { id: true },
+  });
+  if (!existing) {
+    throw new Error(`Model '${id}' not found`);
+  }
+  await db
+    .update(models)
+    .set({
+      ...(updates.name !== undefined && { name: updates.name }),
+      ...(updates.provider !== undefined && { providerId: updates.provider }),
+      ...(updates.providerModel !== undefined && {
+        providerModel: updates.providerModel,
+      }),
+      ...(updates.capabilities !== undefined && {
+        capabilities: updates.capabilities,
+      }),
+      ...(updates.tokenizer !== undefined && { tokenizer: updates.tokenizer }),
+      ...(updates.source !== undefined && { source: updates.source }),
+      ...(updates.pricing !== undefined && { pricing: updates.pricing }),
+      updatedAt: new Date(),
+    })
+    .where(eq(models.id, id));
+  await refreshInlineConfig();
+}
+
+/**
+ * Remove a model from the database.
+ * CASCADE will clean up model selection references.
+ */
+export async function removeModel(id: string): Promise<void> {
+  const { db, models } = getTables();
+  const existing = await db.query.aiModels.findFirst({
+    where: eq(models.id, id),
+    columns: { id: true },
+  });
+  if (!existing) {
+    throw new Error(`Model '${id}' not found`);
+  }
+  await db.delete(models).where(eq(models.id, id));
+  await refreshInlineConfig();
+}
+
+/**
+ * Set the active model for a context
+ */
+export async function setActiveModel(
+  context: AIContext,
+  modelId: string,
+): Promise<void> {
+  const { db, selection, models } = getTables();
+  // Verify model exists
+  const model = await db.query.aiModels.findFirst({
+    where: eq(models.id, modelId),
+    columns: { id: true },
+  });
+  if (!model) {
+    throw new Error(`Model '${modelId}' not found`);
+  }
+  await db
+    .insert(selection)
+    .values({ context, modelId })
+    .onConflictDoUpdate({
+      target: selection.context,
+      set: { modelId, updatedAt: new Date() },
+    });
+  await refreshInlineConfig();
+}
+
+/**
+ * Remove the active model for a context
+ */
+export async function removeActiveModel(context: AIContext): Promise<void> {
+  const { db, selection } = getTables();
+  await db.delete(selection).where(eq(selection.context, context));
+  await refreshInlineConfig();
+}
+
+/**
+ * Refresh the in-memory config caches from DB data.
+ * Called after write operations so that subsequent reads see the new state.
+ */
+async function refreshInlineConfig(): Promise<void> {
+  const { db } = getTables();
+
+  const providerRows = await db.query.aiProviders.findMany();
+  const modelRows = await db.query.aiModels.findMany();
+  const selectionRows = await db.query.aiModelSelection.findMany();
+
+  const providers: Record<string, ProviderConfig> = {};
+  for (const row of providerRows) {
+    providers[row.id] = {
+      dialect: row.dialect as ProviderConfig["dialect"],
+      baseUrl: row.baseUrl ?? "",
+      auth: row.auth as ProviderConfig["auth"],
+      headers: (row.headers as ProviderConfig["headers"]) ?? undefined,
+      engine: (row.engine as ProviderConfig["engine"]) ?? undefined,
+      overrides: (row.overrides as ProviderConfig["overrides"]) ?? undefined,
+      cli: (row.cli as ProviderConfig["cli"]) ?? undefined,
+    };
+  }
+
+  const models: Record<string, ModelConfig> = {};
+  for (const row of modelRows) {
+    models[row.id] = {
+      name: row.name,
+      provider: row.providerId,
+      providerModel: row.providerModel,
+      capabilities: row.capabilities as ModelConfig["capabilities"],
+      tokenizer: (row.tokenizer as ModelConfig["tokenizer"]) ?? undefined,
+      source: (row.source as ModelConfig["source"]) ?? undefined,
+      pricing: (row.pricing as ModelConfig["pricing"]) ?? undefined,
+    };
+  }
+
+  const active: Record<string, string> = {};
+  for (const row of selectionRows) {
+    active[row.context] = row.modelId;
+  }
+
+  const providersConfig: ProvidersConfiguration = { providers };
+  const modelsConfig: ModelsConfiguration = { models };
+  const selectionConfig: SelectionConfiguration = { active };
+
+  setInlineConfig({
+    providers: providersConfig,
+    models: modelsConfig,
+    selection: selectionConfig,
+  });
 }
 
 // ============================================================================
-// Re-exports with CLI-friendly names
+// Re-exports from @eclaire/ai (read-only accessors)
 // ============================================================================
 
 // Config loading (with shorter names for CLI use)
@@ -68,20 +241,12 @@ export const loadProvidersConfig = loadProvidersConfiguration;
 export const loadModelsConfig = loadModelsConfiguration;
 export const loadSelectionConfig = loadSelectionConfiguration;
 
-// Config saving (with shorter names for CLI use)
+// Config saving (keep for backward compat / config import-export)
 export const saveProvidersConfig = saveProvidersConfiguration;
 export const saveModelsConfig = saveModelsConfiguration;
 export const saveSelectionConfig = saveSelectionConfiguration;
 
-// Re-export everything else
 export {
-  // Model CRUD
-  addModel,
-  updateModel,
-  removeModel,
-  // Selection management
-  setActiveModel,
-  removeActiveModel,
   // Accessors (with CLI-friendly aliases)
   getProviderConfig as getProvider,
   getModelConfigById as findModelById,
@@ -126,10 +291,12 @@ export function isModelSuitableForContext(
   return false;
 }
 
-// Provide getActiveModel helper
+/**
+ * Get the active model for a context with its ID
+ */
 export function getActiveModel(
   context: "backend" | "workers",
-): { id: string; model: import("@eclaire/ai").ModelConfig } | undefined {
+): { id: string; model: ModelConfig } | undefined {
   const result = getActiveModelForContext(context);
   if (!result) return undefined;
 

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { assertInstanceAdmin } from "../lib/auth-utils.js";
 import { browserRuntime } from "../lib/browser/index.js";
 import { createChildLogger } from "../lib/logger.js";
 import { withAuth } from "../middleware/with-auth.js";
@@ -26,7 +27,8 @@ browserRoutes.get(
 browserRoutes.post(
   "/attach",
   withAuth(
-    async (c) => {
+    async (c, userId) => {
+      await assertInstanceAdmin(userId);
       const status = await browserRuntime.attach(SETTINGS_CONTEXT.requestId);
       return c.json(status);
     },
@@ -38,7 +40,8 @@ browserRoutes.post(
 browserRoutes.post(
   "/detach",
   withAuth(
-    async (c) => {
+    async (c, userId) => {
+      await assertInstanceAdmin(userId);
       const status = await browserRuntime.detach(SETTINGS_CONTEXT.requestId);
       return c.json(status);
     },

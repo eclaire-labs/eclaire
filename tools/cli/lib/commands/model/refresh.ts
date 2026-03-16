@@ -8,6 +8,7 @@ import axios from "axios";
 import inquirer from "inquirer";
 import ora from "ora";
 import { getModels, updateModel } from "../../config/models.js";
+import { closeDb } from "../../db/index.js";
 import { colors, icons } from "../../ui/colors.js";
 
 interface ArchitectureInfo {
@@ -314,7 +315,7 @@ export async function refreshCommand(modelId?: string): Promise<void> {
           };
         }
 
-        updateModel(id, updatedModel);
+        await updateModel(id, updatedModel);
 
         // Build success message
         let successMsg = `${id}: Updated (${architecture.layers} layers, ${architecture.kvHeads} KV heads`;
@@ -360,6 +361,7 @@ export async function refreshCommand(modelId?: string): Promise<void> {
         colors.dim("Run `eclaire model list` to see updated estimates."),
       );
     }
+    await closeDb();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.log(colors.error(`${icons.error} Refresh failed: ${message}`));

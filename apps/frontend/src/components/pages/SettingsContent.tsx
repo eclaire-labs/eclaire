@@ -12,6 +12,8 @@ import AppearanceSettings from "@/components/settings/AppearanceSettings";
 import AssistantDisplaySettings from "@/components/settings/AssistantDisplaySettings";
 import ChannelSettings from "@/components/settings/ChannelSettings";
 import ProfileSettings from "@/components/settings/ProfileSettings";
+import SystemSettings from "@/components/settings/SystemSettings";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Card,
   CardContent,
@@ -56,6 +58,7 @@ type SettingsTab =
   | "appearance"
   | "assistant"
   | "channels"
+  | "system"
   | "api-keys"
   | "about";
 
@@ -66,6 +69,10 @@ export default function SettingsContent() {
     tabParam || "profile",
   );
   const isMobile = useIsMobile();
+  const { data: authData } = useAuth();
+  const isAdmin =
+    (authData?.user as Record<string, unknown> | undefined)?.isInstanceAdmin ===
+    true;
   const [healthData, setHealthData] = useState({
     version: "Loading...",
     fullVersion: null,
@@ -86,6 +93,7 @@ export default function SettingsContent() {
         "appearance",
         "assistant",
         "channels",
+        "system",
         "api-keys",
         "about",
       ].includes(tabParam)
@@ -127,6 +135,8 @@ export default function SettingsContent() {
         return <AssistantDisplaySettings />;
       case "channels":
         return <ChannelSettings />;
+      case "system":
+        return isAdmin ? <SystemSettings /> : null;
       case "api-keys":
         return (
           <Card>
@@ -273,11 +283,13 @@ export default function SettingsContent() {
                     ? "Assistant"
                     : tabParam === "channels"
                       ? "Channels"
-                      : tabParam === "api-keys"
-                        ? "API Keys"
-                        : tabParam === "about"
-                          ? "About"
-                          : "Profile"}
+                      : tabParam === "system"
+                        ? "System"
+                        : tabParam === "api-keys"
+                          ? "API Keys"
+                          : tabParam === "about"
+                            ? "About"
+                            : "Profile"}
             </h1>
             <p className="text-muted-foreground mt-1 hidden md:block">
               Manage your {tabParam === "api-keys" ? "API keys" : tabParam}{" "}
@@ -312,7 +324,12 @@ export default function SettingsContent() {
         }}
         className="space-y-4"
       >
-        <TabsList className="grid w-full md:w-auto md:inline-flex grid-cols-7 h-auto p-1">
+        <TabsList
+          className="grid w-full md:w-auto md:inline-flex h-auto p-1"
+          style={{
+            gridTemplateColumns: `repeat(${isAdmin ? 8 : 7}, minmax(0, 1fr))`,
+          }}
+        >
           <TabsTrigger value="profile" className="py-2.5">
             Profile
           </TabsTrigger>
@@ -328,6 +345,11 @@ export default function SettingsContent() {
           <TabsTrigger value="channels" className="py-2.5">
             Channels
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="system" className="py-2.5">
+              System
+            </TabsTrigger>
+          )}
           <TabsTrigger value="api-keys" className="py-2.5">
             API Keys
           </TabsTrigger>
@@ -355,6 +377,12 @@ export default function SettingsContent() {
         <TabsContent value="channels">
           <ChannelSettings />
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="system">
+            <SystemSettings />
+          </TabsContent>
+        )}
 
         <TabsContent value="api-keys">
           <Card>

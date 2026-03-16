@@ -61,6 +61,9 @@ export const users = sqliteTable(
     timezone: text("time_zone"),
     city: text("city"),
     country: text("country"),
+    isInstanceAdmin: integer("is_instance_admin", { mode: "boolean" })
+      .notNull()
+      .default(false),
 
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
@@ -1268,6 +1271,135 @@ export const channelsRelations = relations(channels, ({ one }) => ({
 export const feedbackRelations = relations(feedback, ({ one }) => ({
   user: one(users, { fields: [feedback.userId], references: [users.id] }),
 }));
+
+// =============================================================================
+// AI Configuration (system-wide, admin-managed)
+// =============================================================================
+
+type ProviderAuth = { type: string; header?: string; value?: string };
+type ProviderHeaders = Record<string, string>;
+type ProviderEngine = Record<string, unknown>;
+type ProviderOverrides = Record<string, unknown>;
+type ProviderCli = Record<string, unknown>;
+type ModelCapabilities = Record<string, unknown>;
+type TokenizerConfig = Record<string, unknown>;
+type ModelSource = Record<string, unknown>;
+type ModelPricing = Record<string, unknown>;
+type McpArgs = string[];
+type McpAvailability = Record<string, unknown>;
+
+export const aiProviders = sqliteTable("ai_providers", {
+  id: text("id").primaryKey(),
+  dialect: text("dialect", {
+    enum: [
+      "openai_compatible",
+      "anthropic_messages",
+      "cli_jsonl",
+      "mlx_native",
+    ],
+  }).notNull(),
+  baseUrl: text("base_url"),
+  auth: text("auth", { mode: "json" })
+    .$type<ProviderAuth>()
+    .notNull()
+    .default(sql`'{"type":"none"}'`),
+  headers: text("headers", { mode: "json" }).$type<ProviderHeaders>(),
+  engine: text("engine", { mode: "json" }).$type<ProviderEngine>(),
+  overrides: text("overrides", { mode: "json" }).$type<ProviderOverrides>(),
+  cli: text("cli", { mode: "json" }).$type<ProviderCli>(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  updatedBy: text("updated_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
+
+export const aiModels = sqliteTable(
+  "ai_models",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    providerId: text("provider_id")
+      .notNull()
+      .references(() => aiProviders.id, { onDelete: "cascade" }),
+    providerModel: text("provider_model").notNull(),
+    capabilities: text("capabilities", { mode: "json" })
+      .$type<ModelCapabilities>()
+      .notNull()
+      .default(sql`'{}'`),
+    tokenizer: text("tokenizer", { mode: "json" }).$type<TokenizerConfig>(),
+    source: text("source", { mode: "json" }).$type<ModelSource>(),
+    pricing: text("pricing", { mode: "json" }).$type<ModelPricing>(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+    updatedBy: text("updated_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => ({
+    providerIdx: index("ai_models_provider_id_idx").on(table.providerId),
+  }),
+);
+
+export const aiModelSelection = sqliteTable("ai_model_selection", {
+  context: text("context").primaryKey(),
+  modelId: text("model_id")
+    .notNull()
+    .references(() => aiModels.id, { onDelete: "cascade" }),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  updatedBy: text("updated_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
+
+export const mcpServers = sqliteTable("mcp_servers", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  transport: text("transport", {
+    enum: ["stdio", "sse", "http"],
+  }).notNull(),
+  command: text("command"),
+  args: text("args", { mode: "json" }).$type<McpArgs>(),
+  connectTimeout: integer("connect_timeout"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  toolMode: text("tool_mode").default("managed"),
+  availability: text("availability", { mode: "json" }).$type<McpAvailability>(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  updatedBy: text("updated_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
+
+// =============================================================================
+// Instance Settings (system-wide key-value config, admin-managed)
+// =============================================================================
+
+export const instanceSettings = sqliteTable("instance_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  updatedBy: text("updated_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
 
 // =============================================================================
 // App Metadata (for upgrade system)

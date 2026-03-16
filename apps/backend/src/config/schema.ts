@@ -77,7 +77,7 @@ export interface EclaireConfig {
     debugLogPath?: string;
     timeout: number;
     skillsDir?: string;
-    userSkillsDirs?: string[];
+    customSkillsDirs?: string[];
   };
 
   // Audio (STT/TTS via mlx-audio)
@@ -375,7 +375,9 @@ export function buildConfig(): EclaireConfig {
       debugLogPath: env.AI_DEBUG_LOG_PATH || undefined,
       timeout: int(env.AI_TIMEOUT, 180000),
       skillsDir: env.AI_SKILLS_DIR || undefined,
-      userSkillsDirs: stringList(env.AI_USER_SKILLS_DIRS),
+      customSkillsDirs: stringList(
+        env.AI_CUSTOM_SKILLS_DIRS || env.AI_USER_SKILLS_DIRS,
+      ),
     },
 
     // Audio (STT/TTS via mlx-audio)
