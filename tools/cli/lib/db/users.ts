@@ -4,7 +4,7 @@
  */
 
 import { count, eq, sql } from "drizzle-orm";
-import inquirer from "inquirer";
+import { selectOne } from "../ui/clack.js";
 import { getDb } from "./index.js";
 
 interface UserRow {
@@ -43,20 +43,16 @@ export async function getDefaultUser(): Promise<UserRow> {
     return users[0] as UserRow;
   }
 
-  // Multiple users — prompt for selection
-  const { selected } = await inquirer.prompt([
-    {
-      type: "select",
-      name: "selected",
-      message: "Select user:",
-      choices: users.map((u) => ({
-        name: `${u.displayName || u.email} (${u.id})`,
-        value: u,
-      })),
-    },
-  ]);
+  // Multiple users — prompt for selection (use index-based for complex objects)
+  const selectedIndex = await selectOne<string>({
+    message: "Select user:",
+    options: users.map((u, i) => ({
+      value: String(i),
+      label: `${u.displayName || u.email} (${u.id})`,
+    })),
+  });
 
-  return selected;
+  return users[Number.parseInt(selectedIndex, 10)] as UserRow;
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type

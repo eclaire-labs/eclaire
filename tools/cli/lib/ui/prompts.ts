@@ -1,4 +1,3 @@
-import inquirer from "inquirer";
 import type {
   Context,
   Dialect,
@@ -6,7 +5,15 @@ import type {
   ProviderConfig,
   ProviderPreset,
 } from "../types/index.js";
-import { colors, formatProvider, truncateString } from "./colors.js";
+import {
+  confirm,
+  log,
+  passwordInput,
+  selectMany,
+  selectOne,
+  textInput,
+} from "./clack.js";
+import { formatProvider, truncateString } from "./colors.js";
 
 interface ModelWithId {
   id: string;
@@ -25,34 +32,22 @@ export async function promptContext(
   message: string = "Select context:",
   availableContexts: string[] | null = null,
 ): Promise<Context> {
-  let choices = [
-    { name: "Backend", value: "backend" as const },
-    { name: "Workers", value: "workers" as const },
-    { name: "Both", value: "both" as const },
+  let options = [
+    { value: "backend" as const, label: "Backend" },
+    { value: "workers" as const, label: "Workers" },
+    { value: "both" as const, label: "Both" },
   ];
 
-  // If specific contexts are provided, filter the choices
   if (availableContexts && Array.isArray(availableContexts)) {
-    choices = choices.filter(
-      (choice) =>
-        availableContexts.includes(choice.value) || choice.value === "both",
+    options = options.filter(
+      (opt) => availableContexts.includes(opt.value) || opt.value === "both",
     );
-    // Remove 'both' option if only one context is available
     if (availableContexts.length === 1) {
-      choices = choices.filter((choice) => choice.value !== "both");
+      options = options.filter((opt) => opt.value !== "both");
     }
   }
 
-  const { context } = await inquirer.prompt([
-    {
-      type: "select",
-      name: "context",
-      message,
-      choices,
-    },
-  ]);
-
-  return context;
+  return selectOne<Context>({ message, options });
 }
 
 /**
@@ -66,23 +61,17 @@ export async function promptModelSelection(
     throw new Error("No models available for selection");
   }
 
-  const choices = models.map(({ id, model }) => ({
-    name: `${formatProvider(model.provider)}:${id}${colors.dim(` - ${truncateString(model.name, 60)}`)}`,
-    value: { id, model },
-    short: `${model.provider}:${id}`,
+  // selectOne requires primitive values, so use index-based selection
+  const options = models.map(({ id, model }, index) => ({
+    value: String(index),
+    label: `${formatProvider(model.provider)}:${id}`,
+    hint: truncateString(model.name, 60),
   }));
 
-  const { selected } = await inquirer.prompt([
-    {
-      type: "select",
-      name: "selected",
-      message,
-      choices,
-      pageSize: 10,
-    },
-  ]);
-
-  return selected;
+  const selectedIndex = await selectOne<string>({ message, options });
+  const idx = Number.parseInt(selectedIndex, 10);
+  const selected = models[idx] as (typeof models)[0];
+  return { id: selected.id, model: selected.model };
 }
 
 /**
@@ -92,16 +81,7 @@ export async function promptConfirmation(
   message: string,
   defaultValue: boolean = false,
 ): Promise<boolean> {
-  const { confirmed } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "confirmed",
-      message,
-      default: defaultValue,
-    },
-  ]);
-
-  return confirmed;
+  return confirm({ message, initialValue: defaultValue });
 }
 
 /**
@@ -115,21 +95,12 @@ export async function promptProviderSelection(
     throw new Error("No providers available for selection");
   }
 
-  const choices = providers.map((provider) => ({
-    name: formatProvider(provider),
+  const options = providers.map((provider) => ({
     value: provider,
+    label: formatProvider(provider),
   }));
 
-  const { selected } = await inquirer.prompt([
-    {
-      type: "select",
-      name: "selected",
-      message,
-      choices,
-    },
-  ]);
-
-  return selected;
+  return selectOne<string>({ message, options });
 }
 
 /**
@@ -139,23 +110,15 @@ export async function promptPresetSelection(
   presets: ProviderPreset[],
   message: string = "Select provider type:",
 ): Promise<ProviderPreset> {
-  const choices = presets.map((preset) => ({
-    name: `${preset.isCloud ? "\u2601\uFE0F" : "\uD83D\uDDA5\uFE0F"} ${preset.name}${colors.dim(` - ${preset.description}`)}`,
-    value: preset,
-    short: preset.name,
+  // Use index-based selection for complex objects
+  const options = presets.map((preset, index) => ({
+    value: String(index),
+    label: `${preset.isCloud ? "\u2601\uFE0F" : "\uD83D\uDDA5\uFE0F"} ${preset.name}`,
+    hint: preset.description,
   }));
 
-  const { selected } = await inquirer.prompt([
-    {
-      type: "select",
-      name: "selected",
-      message,
-      choices,
-      pageSize: 10,
-    },
-  ]);
-
-  return selected;
+  const selectedIndex = await selectOne<string>({ message, options });
+  return presets[Number.parseInt(selectedIndex, 10)] as ProviderPreset;
 }
 
 /**
@@ -165,17 +128,21 @@ export async function promptProviderId(
   defaultValue: string,
   validateFn: (id: string) => boolean | string | Promise<boolean | string>,
 ): Promise<string> {
-  const { providerId } = await inquirer.prompt([
-    {
-      type: "input",
-      name: "providerId",
+  // clack's text validate doesn't support async, so we loop manually
+  // biome-ignore lint/correctness/noConstantCondition: intentional retry loop
+  while (true) {
+    const value = await textInput({
       message: "Provider ID (unique identifier):",
-      default: defaultValue,
-      validate: validateFn,
-    },
-  ]);
-
-  return providerId;
+      defaultValue,
+    });
+    const result = await validateFn(value);
+    if (result === true) return value;
+    if (typeof result === "string") {
+      log.warn(result);
+      continue;
+    }
+    return value;
+  }
 }
 
 /**
@@ -184,17 +151,13 @@ export async function promptProviderId(
 export async function promptApiKey(
   message: string = "Enter API key:",
 ): Promise<string> {
-  const { apiKey } = await inquirer.prompt([
-    {
-      type: "password",
-      name: "apiKey",
-      message,
-      mask: "*",
-      validate: (input: string) => input.length > 0 || "API key is required",
+  return passwordInput({
+    message,
+    validate: (input: string) => {
+      if (input.length === 0) return "API key is required";
+      return undefined;
     },
-  ]);
-
-  return apiKey;
+  });
 }
 
 /**
@@ -204,22 +167,18 @@ export async function promptPort(
   message: string = "Enter port number:",
   defaultValue: number = 11500,
 ): Promise<number> {
-  const { port } = await inquirer.prompt([
-    {
-      type: "number",
-      name: "port",
-      message,
-      default: defaultValue,
-      validate: (input: number) => {
-        if (Number.isNaN(input) || input < 1 || input > 65535) {
-          return "Please enter a valid port number (1-65535)";
-        }
-        return true;
-      },
+  const value = await textInput({
+    message,
+    defaultValue: String(defaultValue),
+    validate: (input: string) => {
+      const num = Number.parseInt(input, 10);
+      if (Number.isNaN(num) || num < 1 || num > 65535) {
+        return "Please enter a valid port number (1-65535)";
+      }
+      return undefined;
     },
-  ]);
-
-  return port;
+  });
+  return Number.parseInt(value, 10);
 }
 
 /**
@@ -229,24 +188,18 @@ export async function promptBaseUrl(
   message: string = "Enter base URL:",
   defaultValue: string = "http://127.0.0.1:11500",
 ): Promise<string> {
-  const { baseUrl } = await inquirer.prompt([
-    {
-      type: "input",
-      name: "baseUrl",
-      message,
-      default: defaultValue,
-      validate: (input: string) => {
-        try {
-          new URL(input);
-          return true;
-        } catch {
-          return "Please enter a valid URL";
-        }
-      },
+  return textInput({
+    message,
+    defaultValue,
+    validate: (input: string) => {
+      try {
+        new URL(input);
+        return undefined;
+      } catch {
+        return "Please enter a valid URL";
+      }
     },
-  ]);
-
-  return baseUrl;
+  });
 }
 
 /**
@@ -254,29 +207,24 @@ export async function promptBaseUrl(
  */
 export async function promptDialect(
   message: string = "Select API dialect:",
-  defaultValue: Dialect = "openai_compatible",
+  _defaultValue: Dialect = "openai_compatible",
 ): Promise<Dialect> {
-  const { dialect } = await inquirer.prompt([
-    {
-      type: "select",
-      name: "dialect",
-      message,
-      choices: [
-        {
-          name: "OpenAI-compatible (OpenAI, OpenRouter, llama.cpp, etc.)",
-          value: "openai_compatible",
-        },
-        {
-          name: "Anthropic Messages API (Claude)",
-          value: "anthropic_messages",
-        },
-        { name: "MLX Native (for mlx-vlm)", value: "mlx_native" },
-      ],
-      default: defaultValue,
-    },
-  ]);
-
-  return dialect;
+  return selectOne<Dialect>({
+    message,
+    options: [
+      {
+        value: "openai_compatible",
+        label: "OpenAI-compatible",
+        hint: "OpenAI, OpenRouter, llama.cpp, etc.",
+      },
+      {
+        value: "anthropic_messages",
+        label: "Anthropic Messages API",
+        hint: "Claude",
+      },
+      { value: "mlx_native", label: "MLX Native", hint: "for mlx-vlm" },
+    ],
+  });
 }
 
 /**
@@ -284,23 +232,20 @@ export async function promptDialect(
  */
 export async function promptAuthType(
   message: string = "Select authentication type:",
-  defaultValue: "none" | "bearer" | "header" = "none",
+  _defaultValue: "none" | "bearer" | "header" = "none",
 ): Promise<"none" | "bearer" | "header"> {
-  const { authType } = await inquirer.prompt([
-    {
-      type: "select",
-      name: "authType",
-      message,
-      choices: [
-        { name: "None (local servers)", value: "none" },
-        { name: "Bearer token (Authorization: Bearer ...)", value: "bearer" },
-        { name: "Custom header (e.g., x-api-key)", value: "header" },
-      ],
-      default: defaultValue,
-    },
-  ]);
-
-  return authType;
+  return selectOne<"none" | "bearer" | "header">({
+    message,
+    options: [
+      { value: "none", label: "None", hint: "Local servers" },
+      {
+        value: "bearer",
+        label: "Bearer token",
+        hint: "Authorization: Bearer ...",
+      },
+      { value: "header", label: "Custom header", hint: "e.g., x-api-key" },
+    ],
+  });
 }
 
 /**
@@ -310,18 +255,14 @@ export async function promptHeaderName(
   message: string = "Enter header name for API key:",
   defaultValue: string = "X-API-Key",
 ): Promise<string> {
-  const { headerName } = await inquirer.prompt([
-    {
-      type: "input",
-      name: "headerName",
-      message,
-      default: defaultValue,
-      validate: (input: string) =>
-        input.length > 0 || "Header name is required",
+  return textInput({
+    message,
+    defaultValue,
+    validate: (input: string) => {
+      if (input.length === 0) return "Header name is required";
+      return undefined;
     },
-  ]);
-
-  return headerName;
+  });
 }
 
 /**
@@ -330,20 +271,15 @@ export async function promptHeaderName(
 export async function promptProviderFields(
   currentConfig: ProviderConfig,
 ): Promise<Partial<ProviderConfig>> {
-  const { fieldsToEdit } = await inquirer.prompt([
-    {
-      type: "checkbox",
-      name: "fieldsToEdit",
-      message: "Select fields to edit:",
-      choices: [
-        { name: "Base URL", value: "baseUrl" },
-        { name: "Endpoint", value: "endpoint" },
-        { name: "Dialect", value: "dialect" },
-        { name: "Authentication", value: "auth" },
-        { name: "Engine", value: "engine" },
-      ],
-    },
-  ]);
+  const fieldsToEdit = await selectMany<string>({
+    message: "Select fields to edit:",
+    options: [
+      { value: "baseUrl", label: "Base URL" },
+      { value: "dialect", label: "Dialect" },
+      { value: "auth", label: "Authentication" },
+      { value: "engine", label: "Engine" },
+    ],
+  });
 
   const updates: Partial<ProviderConfig> = {};
 
@@ -383,16 +319,16 @@ export async function promptProviderFields(
         break;
       }
       case "engine": {
-        const { engine } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "engine",
-            message: "New engine (or empty to remove):",
-            default: currentConfig.engine || "",
-          },
-        ]);
+        const engine = await textInput({
+          message: "New engine (or empty to remove):",
+          defaultValue:
+            typeof currentConfig.engine === "string"
+              ? currentConfig.engine
+              : currentConfig.engine?.name || "",
+        });
         if (engine) {
-          updates.engine = engine;
+          // biome-ignore lint/suspicious/noExplicitAny: engine field accepts string or object
+          updates.engine = engine as any;
         }
         break;
       }

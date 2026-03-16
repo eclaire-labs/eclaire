@@ -1,5 +1,4 @@
 import axios from "axios";
-import inquirer from "inquirer";
 import ora from "ora";
 import {
   addModel,
@@ -14,6 +13,15 @@ import type {
   InputModality,
   Model,
 } from "../../types/index.js";
+import {
+  cancel,
+  confirm,
+  intro,
+  isCancelled,
+  outro,
+  selectOne,
+  textInput,
+} from "../../ui/clack.js";
 import { colors, icons, printProviderReminder } from "../../ui/colors.js";
 import { promptProviderSelection } from "../../ui/prompts.js";
 
@@ -84,9 +92,7 @@ export async function importCommand(
       process.exit(1);
     }
 
-    console.log(
-      colors.header(`${icons.robot} Importing Model from ${urlType}\n`),
-    );
+    intro(`Import Model from ${urlType}`);
     console.log(colors.dim(`URL: ${url}`));
 
     const spinner = ora("Fetching model information...").start();
@@ -203,27 +209,25 @@ export async function importCommand(
       }
 
       // Prompt user to select quantization
-      const quantChoice = await inquirer.prompt([
-        {
-          type: "select",
-          name: "selectedQuantization",
-          message: "Select quantization (affects model size and quality):",
-          choices: modelInfo.quantizations.map((q) => {
-            const memInfo = canEstimateMemory
-              ? ` | ${getMemoryEstimate(q.size)}`
-              : "";
-            return {
-              name: `${q.quantization} (${q.sizeFormatted}${memInfo}) - ${q.filename}`,
-              value: q,
-              short: q.quantization,
-            };
-          }),
-          default: 0,
-        },
-      ]);
+      const selectedQuantIndex = await selectOne<string>({
+        message: "Select quantization (affects model size and quality):",
+        options: modelInfo.quantizations.map((q, index) => {
+          const memInfo = canEstimateMemory
+            ? ` | ${getMemoryEstimate(q.size)}`
+            : "";
+          return {
+            value: String(index),
+            label: `${q.quantization} (${q.sizeFormatted}${memInfo})`,
+            hint: q.filename,
+          };
+        }),
+      });
 
-      modelInfo.selectedQuantization = quantChoice.selectedQuantization;
-      modelInfo.fileSize = quantChoice.selectedQuantization.size;
+      const selectedQuant =
+        // biome-ignore lint/style/noNonNullAssertion: index is from the same array
+        modelInfo.quantizations[Number.parseInt(selectedQuantIndex, 10)]!;
+      modelInfo.selectedQuantization = selectedQuant;
+      modelInfo.fileSize = selectedQuant.size;
     }
 
     // Get available providers
@@ -288,17 +292,13 @@ export async function importCommand(
           colors.dim("For vision support, consider using mlx-vlm instead."),
         );
 
-        const confirmMLXLM = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "continue",
-            message: "Continue with mlx-lm anyway?",
-            default: false,
-          },
-        ]);
+        const continueWithMlx = await confirm({
+          message: "Continue with mlx-lm anyway?",
+          initialValue: false,
+        });
 
-        if (!confirmMLXLM.continue) {
-          console.log(colors.dim("Import cancelled"));
+        if (!continueWithMlx) {
+          cancel("Import cancelled");
           process.exit(0);
         }
       }
@@ -313,18 +313,14 @@ export async function importCommand(
 
     // Interactive configuration
     if (options.interactive !== false) {
-      const answers = await inquirer.prompt([
-        {
-          type: "input",
-          name: "modelId",
-          message: "Model ID (unique identifier):",
-          default: modelId,
-          validate: (input: string) =>
-            input.trim().length > 0 || "Model ID is required",
+      modelId = await textInput({
+        message: "Model ID (unique identifier):",
+        defaultValue: modelId,
+        validate: (input: string) => {
+          if (input.trim().length === 0) return "Model ID is required";
+          return undefined;
         },
-      ]);
-
-      modelId = answers.modelId;
+      });
     }
 
     // Build the new schema model object
@@ -401,17 +397,13 @@ export async function importCommand(
       );
     }
 
-    const confirm = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "proceed",
-        message: "Proceed with importing this model?",
-        default: true,
-      },
-    ]);
+    const proceed = await confirm({
+      message: "Proceed with importing this model?",
+      initialValue: true,
+    });
 
-    if (!confirm.proceed) {
-      console.log(colors.dim("Import cancelled"));
+    if (!proceed) {
+      cancel("Import cancelled");
       process.exit(0);
     }
 
@@ -420,12 +412,8 @@ export async function importCommand(
 
     try {
       await addModel(modelId, model);
-      console.log(
-        colors.success(
-          `${icons.success} Model '${modelId}' imported successfully!`,
-        ),
-      );
       await closeDb();
+      outro(`Model '${modelId}' imported successfully!`);
       console.log(
         colors.dim(
           `Run 'eclaire model activate ${modelId}' to activate this model`,
@@ -443,6 +431,10 @@ export async function importCommand(
       process.exit(1);
     }
   } catch (error: unknown) {
+    if (isCancelled(error)) {
+      cancel("Import cancelled");
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     console.log(colors.error(`${icons.error} Import failed: ${message}`));
     process.exit(1);

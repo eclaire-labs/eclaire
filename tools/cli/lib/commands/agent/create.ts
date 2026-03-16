@@ -3,11 +3,16 @@ import { getDefaultUser } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
 import { colors, icons } from "../../ui/colors.js";
 import {
+  getAvailableTools,
+  getAvailableSkills,
+} from "../../config/agent-catalog.js";
+import {
   intro,
   outro,
   cancel,
   note,
   textInput,
+  selectMany,
   confirm,
   isCancelled,
   CancelledError,
@@ -78,19 +83,47 @@ export async function createCommand(): Promise<void> {
       },
     });
 
-    // 5. Tools (comma-separated, optional)
-    const toolsRaw = await textInput({
-      message: "Tool names (comma-separated, optional)",
-      placeholder: "web_search, calculator",
-    });
-    const toolNames = parseCommaSeparated(toolsRaw);
+    // 5. Tools (multi-select or fallback to text input)
+    const availableTools = await getAvailableTools();
+    let toolNames: string[] = [];
+    if (availableTools.length > 0) {
+      toolNames = await selectMany<string>({
+        message: "Select tools to enable:",
+        options: availableTools.map((t) => ({
+          value: t.name,
+          label: t.label,
+          hint: t.hint,
+        })),
+        required: false,
+      });
+    } else {
+      const toolsRaw = await textInput({
+        message: "Tool names (comma-separated, optional)",
+        placeholder: "web_search, calculator",
+      });
+      toolNames = parseCommaSeparated(toolsRaw);
+    }
 
-    // 6. Skills (comma-separated, optional)
-    const skillsRaw = await textInput({
-      message: "Skill names (comma-separated, optional)",
-      placeholder: "summarize, translate",
-    });
-    const skillNames = parseCommaSeparated(skillsRaw);
+    // 6. Skills (multi-select or fallback to text input)
+    const availableSkills = getAvailableSkills();
+    let skillNames: string[] = [];
+    if (availableSkills.length > 0) {
+      skillNames = await selectMany<string>({
+        message: "Select skills to enable:",
+        options: availableSkills.map((s) => ({
+          value: s.name,
+          label: s.label,
+          hint: s.hint,
+        })),
+        required: false,
+      });
+    } else {
+      const skillsRaw = await textInput({
+        message: "Skill names (comma-separated, optional)",
+        placeholder: "summarize, translate",
+      });
+      skillNames = parseCommaSeparated(skillsRaw);
+    }
 
     // 7. Summary
     const summaryLines = [

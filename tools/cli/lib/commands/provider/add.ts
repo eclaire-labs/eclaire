@@ -1,4 +1,3 @@
-import inquirer from "inquirer";
 import {
   getPresetById,
   getPresetsForSelection,
@@ -11,6 +10,16 @@ import type {
   ProviderConfig,
   ProviderPreset,
 } from "../../types/index.js";
+import {
+  cancel,
+  CancelledError,
+  confirm,
+  intro,
+  isCancelled,
+  log,
+  outro,
+  textInput,
+} from "../../ui/clack.js";
 import { colors, icons } from "../../ui/colors.js";
 import {
   promptApiKey,
@@ -26,7 +35,7 @@ import { createProviderInfoTable } from "../../ui/tables.js";
 
 export async function addCommand(options: CommandOptions): Promise<void> {
   try {
-    console.log(colors.header(`${icons.plug} Add New Provider\n`));
+    intro(`${icons.plug} Add Provider`);
 
     let preset: ProviderPreset;
 
@@ -34,10 +43,8 @@ export async function addCommand(options: CommandOptions): Promise<void> {
     if (options.preset) {
       const foundPreset = getPresetById(options.preset);
       if (!foundPreset) {
-        console.log(
-          colors.error(`${icons.error} Unknown preset: ${options.preset}`),
-        );
-        console.log(
+        cancel(`Unknown preset: ${options.preset}`);
+        log.info(
           colors.dim(
             "Available presets: " +
               PROVIDER_PRESETS.map((p) => p.id).join(", "),
@@ -46,7 +53,7 @@ export async function addCommand(options: CommandOptions): Promise<void> {
         process.exit(1);
       }
       preset = foundPreset;
-      console.log(colors.info(`Using preset: ${preset.name}`));
+      log.info(`Using preset: ${preset.name}`);
     } else {
       preset = await promptPresetSelection(
         getPresetsForSelection(),
@@ -54,7 +61,7 @@ export async function addCommand(options: CommandOptions): Promise<void> {
       );
     }
 
-    console.log(colors.dim(`\n${preset.description}\n`));
+    log.info(colors.dim(preset.description));
 
     // Generate default provider ID
     const defaultId = await generateProviderId(preset.id);
@@ -93,7 +100,7 @@ export async function addCommand(options: CommandOptions): Promise<void> {
 
     // Handle custom configuration
     if (preset.id === "custom") {
-      console.log(colors.subheader("\nCustom Configuration:"));
+      log.info(colors.subheader("Custom Configuration:"));
 
       config.baseUrl = await promptBaseUrl(
         "Base URL (include /v1 for OpenAI-compatible):",
@@ -116,34 +123,22 @@ export async function addCommand(options: CommandOptions): Promise<void> {
       }
 
       // Ask if this is a local provider
-      const { isLocal } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "isLocal",
-          message: "Is this a local inference server?",
-          default: false,
-        },
-      ]);
+      const isLocal = await confirm({
+        message: "Is this a local inference server?",
+        initialValue: false,
+      });
 
       if (isLocal) {
         // Ask for engine configuration
-        const { engineName } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "engineName",
-            message: "Engine name (e.g., llama-cpp, ollama):",
-            default: "llama-cpp",
-          },
-        ]);
+        const engineName = await textInput({
+          message: "Engine name (e.g., llama-cpp, ollama):",
+          defaultValue: "llama-cpp",
+        });
 
-        const { managed } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "managed",
-            message: "Should Eclaire manage this server (start/stop via CLI)?",
-            default: engineName === "llama-cpp",
-          },
-        ]);
+        const managed = await confirm({
+          message: "Should Eclaire manage this server (start/stop via CLI)?",
+          initialValue: engineName === "llama-cpp",
+        });
 
         config.engine = {
           managed,
@@ -152,20 +147,30 @@ export async function addCommand(options: CommandOptions): Promise<void> {
 
         if (managed && engineName === "llama-cpp") {
           // Prompt for llama-cpp specific settings
-          const { contextSize, gpuLayers } = await inquirer.prompt([
-            {
-              type: "number",
-              name: "contextSize",
-              message: "Context size (tokens):",
-              default: 8192,
+          const contextSizeRaw = await textInput({
+            message: "Context size (tokens):",
+            defaultValue: "8192",
+            validate: (value: string) => {
+              const num = Number.parseInt(value, 10);
+              if (Number.isNaN(num) || num < 1) {
+                return "Please enter a valid positive number";
+              }
             },
-            {
-              type: "number",
-              name: "gpuLayers",
-              message: "GPU layers (-1 for all):",
-              default: -1,
+          });
+          const contextSize = Number.parseInt(contextSizeRaw, 10);
+
+          const gpuLayersRaw = await textInput({
+            message: "GPU layers (-1 for all):",
+            defaultValue: "-1",
+            validate: (value: string) => {
+              const num = Number.parseInt(value, 10);
+              if (Number.isNaN(num)) {
+                return "Please enter a valid number";
+              }
             },
-          ]);
+          });
+          const gpuLayers = Number.parseInt(gpuLayersRaw, 10);
+
           config.engine.contextSize = contextSize;
           config.engine.gpuLayers = gpuLayers;
           config.engine.batchSize = 512;
@@ -176,16 +181,12 @@ export async function addCommand(options: CommandOptions): Promise<void> {
 
       // For local providers, ask about port
       if (!preset.isCloud && preset.defaultPort) {
-        const useDefaultPort = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "useDefault",
-            message: `Use default port ${preset.defaultPort}?`,
-            default: true,
-          },
-        ]);
+        const useDefaultPort = await confirm({
+          message: `Use default port ${preset.defaultPort}?`,
+          initialValue: true,
+        });
 
-        if (!useDefaultPort.useDefault) {
+        if (!useDefaultPort) {
           const port = await promptPort(
             "Enter port number:",
             preset.defaultPort,
@@ -199,13 +200,13 @@ export async function addCommand(options: CommandOptions): Promise<void> {
 
       // For cloud providers requiring API key
       if (preset.config.auth.requiresApiKey) {
-        console.log(colors.subheader("\nAuthentication:"));
+        log.info(colors.subheader("Authentication:"));
         const apiKey = await promptApiKey(`Enter ${preset.name} API key:`);
         // For cloud providers, we recommend using environment variables
         if (preset.config.auth.envVar) {
-          console.log(
+          log.info(
             colors.dim(
-              `\nTip: Set ${preset.config.auth.envVar} in your .env file for secure storage`,
+              `Tip: Set ${preset.config.auth.envVar} in your .env file for secure storage`,
             ),
           );
           config.auth.header =
@@ -224,21 +225,16 @@ export async function addCommand(options: CommandOptions): Promise<void> {
 
       // For local presets with defaultEngine, ask about management
       if (preset.defaultEngine) {
-        console.log(colors.subheader("\nEngine Configuration:"));
+        log.info(colors.subheader("Engine Configuration:"));
 
         // Only llama-cpp can be managed currently
         const canBeManaged = preset.defaultEngine.name === "llama-cpp";
 
         if (canBeManaged) {
-          const { managed } = await inquirer.prompt([
-            {
-              type: "confirm",
-              name: "managed",
-              message:
-                "Should Eclaire manage this server (start/stop via CLI)?",
-              default: true,
-            },
-          ]);
+          const managed = await confirm({
+            message: "Should Eclaire manage this server (start/stop via CLI)?",
+            initialValue: true,
+          });
 
           config.engine = {
             managed,
@@ -262,7 +258,7 @@ export async function addCommand(options: CommandOptions): Promise<void> {
             managed: false,
             name: preset.defaultEngine.name,
           };
-          console.log(
+          log.info(
             colors.dim(
               `Engine '${preset.defaultEngine.name}' is external - Eclaire will connect but not start/stop it`,
             ),
@@ -272,21 +268,18 @@ export async function addCommand(options: CommandOptions): Promise<void> {
     }
 
     // Show summary
-    console.log(colors.subheader("\nProvider Configuration:"));
+    log.info(colors.subheader("Provider Configuration:"));
     console.log(createProviderInfoTable(providerId, config));
 
     // Confirm
-    const { proceed } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "proceed",
-        message: "Add this provider?",
-        default: true,
-      },
-    ]);
+    const proceed = await confirm({
+      message: "Add this provider?",
+      initialValue: true,
+    });
 
     if (!proceed) {
-      console.log(colors.dim("Cancelled by user"));
+      cancel("Cancelled");
+      await closeDb();
       return;
     }
 
@@ -294,9 +287,9 @@ export async function addCommand(options: CommandOptions): Promise<void> {
     await addProvider(providerId, config);
     await closeDb();
 
-    console.log(
+    outro(
       colors.success(
-        `\n${icons.success} Provider '${providerId}' added successfully!`,
+        `${icons.success} Provider '${providerId}' added successfully!`,
       ),
     );
 
@@ -315,14 +308,21 @@ export async function addCommand(options: CommandOptions): Promise<void> {
       );
     }
   } catch (error: unknown) {
+    if (isCancelled(error) || error instanceof CancelledError) {
+      cancel("Cancelled");
+      await closeDb();
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("User force closed")) {
-      console.log(colors.dim("\nCancelled by user"));
+      cancel("Cancelled");
+      await closeDb();
       return;
     }
     console.log(
       colors.error(`${icons.error} Failed to add provider: ${message}`),
     );
+    await closeDb();
     process.exit(1);
   }
 }

@@ -1,7 +1,13 @@
-import chalk from "chalk";
 import { getChannel, deleteChannel } from "../../db/channels.js";
 import { promptConfirmation } from "../../ui/prompts.js";
 import { colors, icons } from "../../ui/colors.js";
+import {
+  intro,
+  outro,
+  cancel,
+  isCancelled,
+  CancelledError,
+} from "../../ui/clack.js";
 
 export async function removeCommand(
   id: string,
@@ -10,38 +16,40 @@ export async function removeCommand(
   try {
     const channel = await getChannel(id);
     if (!channel) {
-      console.error(
-        colors.error(`\n  ${icons.error} Channel not found: ${id}\n`),
-      );
+      cancel(`Channel not found: ${id}`);
       process.exit(1);
     }
+
+    intro(
+      colors.header(`Remove Channel: ${channel.name} (${channel.platform})`),
+    );
 
     if (!options.force) {
       const confirmed = await promptConfirmation(
         `Remove channel "${channel.name}" (${channel.platform})? This cannot be undone.`,
       );
       if (!confirmed) {
-        console.log(colors.dim("  Cancelled.\n"));
+        outro(colors.dim("Cancelled."));
         return;
       }
     }
 
     const deleted = await deleteChannel(id);
     if (deleted) {
-      console.log(
-        chalk.green(`\n  ${icons.success} Channel removed: ${channel.name}\n`),
+      outro(
+        colors.success(`${icons.success} Channel removed: ${channel.name}`),
       );
     } else {
-      console.error(
-        colors.error(`\n  ${icons.error} Failed to remove channel\n`),
-      );
+      cancel("Failed to remove channel");
       process.exit(1);
     }
   } catch (error) {
-    console.error(
-      colors.error(
-        `\n  ${icons.error} Failed to remove channel: ${error instanceof Error ? error.message : "Unknown error"}\n`,
-      ),
+    if (isCancelled(error) || error instanceof CancelledError) {
+      cancel("Cancelled");
+      return;
+    }
+    cancel(
+      `Failed to remove channel: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
     process.exit(1);
   }

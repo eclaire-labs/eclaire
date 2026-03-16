@@ -4,6 +4,10 @@ import { closeDb } from "../../db/index.js";
 import { colors, icons } from "../../ui/colors.js";
 import { createAgentInfoTable } from "../../ui/format.js";
 import {
+  getAvailableTools,
+  getAvailableSkills,
+} from "../../config/agent-catalog.js";
+import {
   intro,
   outro,
   cancel,
@@ -148,19 +152,47 @@ export async function editCommand(id: string): Promise<void> {
       }
 
       if (field === "toolNames") {
-        const toolsRaw = await textInput({
-          message: "Tool names (comma-separated, leave empty to clear)",
-          defaultValue: agent.toolNames.join(", "),
-        });
-        updates.toolNames = parseCommaSeparated(toolsRaw);
+        const availableTools = await getAvailableTools();
+        if (availableTools.length > 0) {
+          updates.toolNames = await selectMany<string>({
+            message: "Select tools to enable:",
+            options: availableTools.map((t) => ({
+              value: t.name,
+              label: t.label,
+              hint: t.hint,
+            })),
+            required: false,
+            initialValues: agent.toolNames,
+          });
+        } else {
+          const toolsRaw = await textInput({
+            message: "Tool names (comma-separated, leave empty to clear)",
+            defaultValue: agent.toolNames.join(", "),
+          });
+          updates.toolNames = parseCommaSeparated(toolsRaw);
+        }
       }
 
       if (field === "skillNames") {
-        const skillsRaw = await textInput({
-          message: "Skill names (comma-separated, leave empty to clear)",
-          defaultValue: agent.skillNames.join(", "),
-        });
-        updates.skillNames = parseCommaSeparated(skillsRaw);
+        const availableSkills = getAvailableSkills();
+        if (availableSkills.length > 0) {
+          updates.skillNames = await selectMany<string>({
+            message: "Select skills to enable:",
+            options: availableSkills.map((s) => ({
+              value: s.name,
+              label: s.label,
+              hint: s.hint,
+            })),
+            required: false,
+            initialValues: agent.skillNames,
+          });
+        } else {
+          const skillsRaw = await textInput({
+            message: "Skill names (comma-separated, leave empty to clear)",
+            defaultValue: agent.skillNames.join(", "),
+          });
+          updates.skillNames = parseCommaSeparated(skillsRaw);
+        }
       }
     }
 

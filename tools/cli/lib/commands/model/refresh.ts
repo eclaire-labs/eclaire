@@ -5,10 +5,10 @@
  */
 
 import axios from "axios";
-import inquirer from "inquirer";
 import ora from "ora";
 import { getModels, updateModel } from "../../config/models.js";
 import { closeDb } from "../../db/index.js";
+import { cancel, confirm, isCancelled } from "../../ui/clack.js";
 import { colors, icons } from "../../ui/colors.js";
 
 interface ArchitectureInfo {
@@ -221,16 +221,12 @@ export async function refreshCommand(modelId?: string): Promise<void> {
           `\n${modelsWithArch.length} model(s) already have architecture data.`,
         ),
       );
-      const { confirm } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "confirm",
-          message: "Re-fetch and overwrite existing data?",
-          default: true,
-        },
-      ]);
-      if (!confirm) {
-        console.log(colors.dim("Cancelled."));
+      const shouldOverwrite = await confirm({
+        message: "Re-fetch and overwrite existing data?",
+        initialValue: true,
+      });
+      if (!shouldOverwrite) {
+        cancel("Cancelled");
         return;
       }
     }
@@ -363,6 +359,10 @@ export async function refreshCommand(modelId?: string): Promise<void> {
     }
     await closeDb();
   } catch (error: unknown) {
+    if (isCancelled(error)) {
+      cancel("Cancelled");
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     console.log(colors.error(`${icons.error} Refresh failed: ${message}`));
     process.exit(1);

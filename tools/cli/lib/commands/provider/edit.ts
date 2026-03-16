@@ -1,7 +1,14 @@
-import inquirer from "inquirer";
 import { getProviderById, updateProvider } from "../../config/providers.js";
 import { closeDb } from "../../db/index.js";
 import type { ProviderConfig } from "../../types/index.js";
+import {
+  cancel,
+  CancelledError,
+  confirm,
+  intro,
+  isCancelled,
+  outro,
+} from "../../ui/clack.js";
 import { colors, icons } from "../../ui/colors.js";
 import { promptProviderFields } from "../../ui/prompts.js";
 import { createProviderInfoTable } from "../../ui/tables.js";
@@ -15,7 +22,7 @@ export async function editCommand(id: string): Promise<void> {
       process.exit(1);
     }
 
-    console.log(colors.header(`${icons.gear} Edit Provider: ${id}\n`));
+    intro(`${icons.gear} Edit Provider: ${id}`);
 
     // Show current configuration
     console.log(colors.subheader("Current Configuration:"));
@@ -25,7 +32,8 @@ export async function editCommand(id: string): Promise<void> {
     const updates = await promptProviderFields(provider);
 
     if (Object.keys(updates).length === 0) {
-      console.log(colors.dim("\nNo changes selected"));
+      cancel("No changes selected");
+      await closeDb();
       return;
     }
 
@@ -39,17 +47,14 @@ export async function editCommand(id: string): Promise<void> {
     console.log(createProviderInfoTable(id, updatedConfig));
 
     // Confirm changes
-    const { proceed } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "proceed",
-        message: "Save these changes?",
-        default: true,
-      },
-    ]);
+    const proceed = await confirm({
+      message: "Save these changes?",
+      initialValue: true,
+    });
 
     if (!proceed) {
-      console.log(colors.dim("Cancelled by user"));
+      cancel("Cancelled");
+      await closeDb();
       return;
     }
 
@@ -57,21 +62,26 @@ export async function editCommand(id: string): Promise<void> {
     await updateProvider(id, updates);
     await closeDb();
 
-    console.log(
-      colors.success(
-        `\n${icons.success} Provider '${id}' updated successfully!`,
-      ),
+    outro(
+      colors.success(`${icons.success} Provider '${id}' updated successfully!`),
     );
     console.log(colors.dim(`\nTest connectivity: eclaire provider test ${id}`));
   } catch (error: unknown) {
+    if (isCancelled(error) || error instanceof CancelledError) {
+      cancel("Cancelled");
+      await closeDb();
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("User force closed")) {
-      console.log(colors.dim("\nCancelled by user"));
+      cancel("Cancelled");
+      await closeDb();
       return;
     }
     console.log(
       colors.error(`${icons.error} Failed to edit provider: ${message}`),
     );
+    await closeDb();
     process.exit(1);
   }
 }

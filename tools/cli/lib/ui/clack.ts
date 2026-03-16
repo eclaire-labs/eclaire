@@ -65,6 +65,7 @@ export async function selectMany<T>(opts: {
   message: string;
   options: { value: T; label: string; hint?: string }[];
   required?: boolean;
+  initialValues?: T[];
 }): Promise<T[]> {
   // biome-ignore lint/suspicious/noExplicitAny: Option type conditional generics are hard to satisfy
   const result = await p.multiselect(opts as any);

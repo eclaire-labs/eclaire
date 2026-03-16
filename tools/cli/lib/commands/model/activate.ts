@@ -1,4 +1,3 @@
-import inquirer from "inquirer";
 import {
   findModelById,
   getActiveModelIdForContext,
@@ -12,6 +11,7 @@ import {
 } from "../../config/models.js";
 import { closeDb } from "../../db/index.js";
 import type { CommandOptions, Model } from "../../types/index.js";
+import { cancel, confirm, intro, isCancelled, outro } from "../../ui/clack.js";
 import { colors, icons, printProviderReminder } from "../../ui/colors.js";
 import { promptContext, promptModelSelection } from "../../ui/prompts.js";
 import { createActiveModelsTable } from "../../ui/tables.js";
@@ -21,6 +21,8 @@ export async function activateCommand(
   options: CommandOptions = {},
 ): Promise<void> {
   try {
+    intro("Activate Model");
+
     // If specific options provided, set active models directly by ID
     if (options.backend || options.workers) {
       if (options.backend) {
@@ -72,6 +74,7 @@ export async function activateCommand(
         );
         printProviderReminder(model.provider, ["workers"]);
       }
+      outro("Done");
       await closeDb();
       return;
     }
@@ -104,17 +107,13 @@ export async function activateCommand(
         // Model supports only one context - confirm and activate it
         const context = supportedContexts[0] as "backend" | "workers";
 
-        const confirm = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "proceed",
-            message: `Activate this model for ${context} context?`,
-            default: true,
-          },
-        ]);
+        const proceed = await confirm({
+          message: `Activate this model for ${context} context?`,
+          initialValue: true,
+        });
 
-        if (!confirm.proceed) {
-          console.log(colors.dim("Activation cancelled"));
+        if (!proceed) {
+          cancel("Activation cancelled");
           return;
         }
 
@@ -141,6 +140,7 @@ export async function activateCommand(
             ),
           );
           printProviderReminder(model.provider, ["backend", "workers"]);
+          outro("Done");
           await closeDb();
           return;
         }
@@ -152,6 +152,7 @@ export async function activateCommand(
         );
         printProviderReminder(model.provider, [context]);
       }
+      outro("Done");
       await closeDb();
       return;
     }
@@ -185,13 +186,14 @@ export async function activateCommand(
     } else {
       await setActiveForContext(context, allModels);
     }
+    outro("Done");
     await closeDb();
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("User force closed")) {
-      console.log(colors.dim("\nCancelled by user"));
+    if (isCancelled(error)) {
+      cancel("Cancelled");
       return;
     }
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
       colors.error(`${icons.error} Failed to activate model: ${message}`),
     );
@@ -298,11 +300,11 @@ export async function deactivateCommand(context?: string): Promise<void> {
     );
     await closeDb();
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("User force closed")) {
-      console.log(colors.dim("\nCancelled by user"));
+    if (isCancelled(error)) {
+      cancel("Cancelled");
       return;
     }
+    const message = error instanceof Error ? error.message : String(error);
     console.log(
       colors.error(`${icons.error} Failed to deactivate model: ${message}`),
     );

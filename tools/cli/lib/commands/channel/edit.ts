@@ -1,16 +1,23 @@
-import inquirer from "inquirer";
-import chalk from "chalk";
 import { getChannelRegistry } from "../../db/adapters.js";
 import { getChannel, updateChannel } from "../../db/channels.js";
 import { colors, icons } from "../../ui/colors.js";
+import {
+  intro,
+  outro,
+  cancel,
+  textInput,
+  passwordInput,
+  selectOne,
+  selectMany,
+  isCancelled,
+  CancelledError,
+} from "../../ui/clack.js";
 
 export async function editCommand(id: string): Promise<void> {
   try {
     const channel = await getChannel(id);
     if (!channel) {
-      console.error(
-        colors.error(`\n  ${icons.error} Channel not found: ${id}\n`),
-      );
+      cancel(`Channel not found: ${id}`);
       process.exit(1);
     }
 
@@ -21,28 +28,20 @@ export async function editCommand(id: string): Promise<void> {
     );
     const decrypted = adapter.decryptConfig(channel.config);
 
-    console.log(
-      colors.header(
-        `\n  Editing channel: ${channel.name} (${channel.platform})\n`,
-      ),
-    );
+    intro(colors.header(`Edit Channel: ${channel.name} (${channel.platform})`));
 
     // Prompt for fields to edit
-    const { fieldsToEdit } = await inquirer.prompt([
-      {
-        type: "checkbox",
-        name: "fieldsToEdit",
-        message: "Select fields to edit:",
-        choices: [
-          { name: "Name", value: "name" },
-          { name: "Capability", value: "capability" },
-          { name: "Platform config", value: "config" },
-        ],
-      },
-    ]);
+    const fieldsToEdit = await selectMany<string>({
+      message: "Select fields to edit:",
+      options: [
+        { value: "name", label: "Name" },
+        { value: "capability", label: "Capability" },
+        { value: "config", label: "Platform config" },
+      ],
+    });
 
     if (fieldsToEdit.length === 0) {
-      console.log(colors.dim("  No changes made.\n"));
+      outro(colors.dim("No changes made."));
       return;
     }
 
@@ -50,32 +49,26 @@ export async function editCommand(id: string): Promise<void> {
 
     for (const field of fieldsToEdit) {
       if (field === "name") {
-        const { name } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "name",
-            message: "New name:",
-            default: channel.name,
-            validate: (input: string) => input.length > 0 || "Name is required",
+        const name = await textInput({
+          message: "New name:",
+          defaultValue: channel.name,
+          validate: (input: string) => {
+            if (input.length === 0) return "Name is required";
+            return undefined;
           },
-        ]);
+        });
         updates.name = name;
       }
 
       if (field === "capability") {
-        const { capability } = await inquirer.prompt([
-          {
-            type: "select",
-            name: "capability",
-            message: "New capability:",
-            choices: [
-              { name: "Notification", value: "notification" },
-              { name: "Chat", value: "chat" },
-              { name: "Bidirectional", value: "bidirectional" },
-            ],
-            default: channel.capability,
-          },
-        ]);
+        const capability = await selectOne<string>({
+          message: "New capability:",
+          options: [
+            { value: "notification", label: "Notification" },
+            { value: "chat", label: "Chat" },
+            { value: "bidirectional", label: "Bidirectional" },
+          ],
+        });
         updates.capability = capability;
       }
 
@@ -92,19 +85,22 @@ export async function editCommand(id: string): Promise<void> {
             ? `${String(currentValue).substring(0, 8)}...`
             : String(currentValue);
 
-          const { value } = await inquirer.prompt([
-            {
-              type: isSecret ? "password" : "input",
-              name: "value",
+          if (isSecret) {
+            const value = await passwordInput({
               message: `${key} (current: ${displayValue}):`,
-              ...(isSecret ? { mask: "*" } : {}),
-              default: isSecret ? "" : String(currentValue),
-            },
-          ]);
+            });
 
-          // Keep current value if empty (for secrets)
-          if (value === "" && isSecret) continue;
-          if (value !== "") configUpdates[key] = value;
+            // Keep current value if empty (for secrets)
+            if (value === "") continue;
+            configUpdates[key] = value;
+          } else {
+            const value = await textInput({
+              message: `${key}:`,
+              defaultValue: String(currentValue),
+            });
+
+            if (value !== "") configUpdates[key] = value;
+          }
         }
 
         // Re-encrypt the updated config
@@ -115,20 +111,20 @@ export async function editCommand(id: string): Promise<void> {
     }
 
     if (Object.keys(updates).length === 0) {
-      console.log(colors.dim("  No changes made.\n"));
+      outro(colors.dim("No changes made."));
       return;
     }
 
     await updateChannel(id, updates as Parameters<typeof updateChannel>[1]);
 
-    console.log(
-      chalk.green(`\n  ${icons.success} Channel updated: ${channel.name}\n`),
-    );
+    outro(colors.success(`${icons.success} Channel updated: ${channel.name}`));
   } catch (error) {
-    console.error(
-      colors.error(
-        `\n  ${icons.error} Failed to edit channel: ${error instanceof Error ? error.message : "Unknown error"}\n`,
-      ),
+    if (isCancelled(error) || error instanceof CancelledError) {
+      cancel("Cancelled");
+      return;
+    }
+    cancel(
+      `Failed to edit channel: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
     process.exit(1);
   }
