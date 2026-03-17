@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import React, { useCallback, useRef, useState } from "react";
+import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,16 +29,16 @@ interface FileItem {
   relativePath?: string;
 }
 
+const generateFileId = () =>
+  `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 export function FileUpload() {
   const [files, setFiles] = useState<FileItem[]>([]);
-  const [dragOver, setDragOver] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [pasteIndicatorVisible, setPasteIndicatorVisible] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const uploadAreaRef = useRef<HTMLDivElement>(null);
 
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith("image/")) return <Image className="h-4 w-4" />;
@@ -58,52 +59,55 @@ export function FileUpload() {
   };
 
   const addFiles = useCallback((newFiles: File[], basePath = "") => {
-    const generateFileId = () =>
-      `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
     const fileItems: FileItem[] = newFiles.map((file) => ({
       file,
       status: "pending" as const,
       id: generateFileId(),
-      relativePath: basePath ? `${basePath}/${file.name}` : file.name,
+      relativePath: basePath
+        ? `${basePath}/${file.name}`
+        : (file as File & { webkitRelativePath?: string }).webkitRelativePath ||
+          file.name,
     }));
 
     setFiles((prev) => [...prev, ...fileItems]);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "copy";
-    setDragOver(true);
+  // Drag & drop via react-dropzone (handles folder traversal via file-selector)
+  const handleDroppedFiles = useCallback((acceptedFiles: File[]) => {
+    const fileItems: FileItem[] = acceptedFiles.map((file) => {
+      // file-selector attaches .path for directory entries (e.g., "/folder/sub/file.txt")
+      const rawPath = (file as File & { path?: string }).path;
+      const relativePath =
+        rawPath && rawPath !== file.name && rawPath !== `./${file.name}`
+          ? rawPath.replace(/^\//, "")
+          : file.name;
+      return {
+        file,
+        status: "pending" as const,
+        id: generateFileId(),
+        relativePath,
+      };
+    });
+
+    setFiles((prev) => [...prev, ...fileItems]);
+    toast.success("Files Added", {
+      description: `Added ${fileItems.length} file(s) for upload`,
+    });
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!uploadAreaRef.current?.contains(e.relatedTarget as Node)) {
-      setDragOver(false);
-    }
-  }, []);
+  const {
+    getRootProps,
+    getInputProps,
+    isDragActive,
+    open: openFileDialog,
+  } = useDropzone({
+    onDrop: handleDroppedFiles,
+    multiple: true,
+    noClick: true,
+    noKeyboard: true,
+  });
 
-  const handleDrop = useCallback(
-    async (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDragOver(false);
-
-      const droppedFiles = Array.from(e.dataTransfer.files);
-      if (droppedFiles.length > 0) {
-        addFiles(droppedFiles);
-        toast.success("Files Added", {
-          description: `Added ${droppedFiles.length} file(s) for upload`,
-        });
-      }
-    },
-    [addFiles],
-  );
-
-  const handleFileSelect = useCallback(
+  const handleFolderSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const selectedFiles = Array.from(e.target.files || []);
       addFiles(selectedFiles);
@@ -113,24 +117,26 @@ export function FileUpload() {
   );
 
   const handlePaste = useCallback(
-    async (e: ClipboardEvent) => {
+    (e: ClipboardEvent) => {
+      const clipboardData = e.clipboardData;
+      if (!clipboardData) return;
+
+      const items = Array.from(clipboardData.items);
+      const fileItems = items.filter((item) => item.kind === "file");
+
+      // Only intercept paste when there are actual files — let text pastes through
+      if (fileItems.length === 0) return;
+
       e.preventDefault();
 
       setPasteIndicatorVisible(true);
       setTimeout(() => setPasteIndicatorVisible(false), 2000);
 
-      const clipboardData = e.clipboardData;
-      if (!clipboardData) return;
-
-      const items = Array.from(clipboardData.items);
       const pastedFiles: File[] = [];
-
-      for (const item of items) {
-        if (item.kind === "file") {
-          const file = item.getAsFile();
-          if (file) {
-            pastedFiles.push(file);
-          }
+      for (const item of fileItems) {
+        const file = item.getAsFile();
+        if (file) {
+          pastedFiles.push(file);
         }
       }
 
@@ -197,7 +203,6 @@ export function FileUpload() {
     const formData = new FormData();
     formData.append("content", file);
 
-    // Create metadata object with file properties
     const metadata = {
       name: file.name,
       size: file.size,
@@ -210,7 +215,6 @@ export function FileUpload() {
       uploadTimestamp: new Date().toISOString(),
       fileExtension: file.name.split(".").pop()?.toLowerCase() || "",
       baseName: file.name.substring(0, file.name.lastIndexOf(".")) || file.name,
-      isDirectory: file.type === "" && file.size === 0,
       isPastedContent: relativePath?.startsWith("pasted") || false,
       contentSource: relativePath?.startsWith("pasted")
         ? "clipboard"
@@ -229,49 +233,13 @@ export function FileUpload() {
     }
   };
 
-  // Set up paste event listener and prevent default drag/drop on document
+  // Paste listener only — react-dropzone handles drag/drop document-level events
   React.useEffect(() => {
-    const handleDocumentDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = "copy";
-      }
-    };
-
-    const handleDocumentDragEnter = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    const handleDocumentDrop = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      // Only handle files if they're dropped outside the upload area
-      if (!uploadAreaRef.current?.contains(e.target as Node)) {
-        const droppedFiles = Array.from(e.dataTransfer?.files || []);
-        if (droppedFiles.length > 0) {
-          addFiles(droppedFiles);
-          toast.success("Files Added", {
-            description: `Added ${droppedFiles.length} file(s) for upload`,
-          });
-        }
-      }
-    };
-
     document.addEventListener("paste", handlePaste);
-    document.addEventListener("dragover", handleDocumentDragOver);
-    document.addEventListener("dragenter", handleDocumentDragEnter);
-    document.addEventListener("drop", handleDocumentDrop);
-
     return () => {
       document.removeEventListener("paste", handlePaste);
-      document.removeEventListener("dragover", handleDocumentDragOver);
-      document.removeEventListener("dragenter", handleDocumentDragEnter);
-      document.removeEventListener("drop", handleDocumentDrop);
     };
-  }, [handlePaste, addFiles]);
+  }, [handlePaste]);
 
   const totalSize = files.reduce((sum, item) => sum + item.file.size, 0);
   const successCount = files.filter((item) => item.status === "success").length;
@@ -296,19 +264,16 @@ export function FileUpload() {
       {/* Upload Area */}
       <Card>
         <CardContent className="p-0">
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop target zone with button triggers inside */}
           <div
-            ref={uploadAreaRef}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+            {...getRootProps()}
             className={cn(
               "border-2 border-dashed rounded-lg p-12 text-center transition-all duration-300",
-              dragOver
+              isDragActive
                 ? "border-primary bg-primary/5 scale-[1.02]"
                 : "border-muted-foreground/25 hover:border-muted-foreground/50",
             )}
           >
+            <input {...getInputProps()} />
             <Cloud className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">
               Drop your files and folders here
@@ -319,7 +284,7 @@ export function FileUpload() {
 
             <div className="flex flex-wrap gap-3 justify-center">
               <Button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={openFileDialog}
                 variant="default"
                 className="flex items-center gap-2"
               >
@@ -339,21 +304,14 @@ export function FileUpload() {
         </CardContent>
       </Card>
 
-      {/* Hidden Inputs */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={handleFileSelect}
-      />
+      {/* Hidden folder input (webkitdirectory not supported by react-dropzone) */}
       <input
         ref={folderInputRef}
         type="file"
         multiple
         {...({ webkitdirectory: "" } as Record<string, unknown>)}
         className="hidden"
-        onChange={handleFileSelect}
+        onChange={handleFolderSelect}
       />
 
       {/* Upload Summary */}
