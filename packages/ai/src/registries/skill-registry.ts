@@ -7,12 +7,15 @@
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { createLazyLogger } from "../logger.js";
 import type {
   Skill,
   SkillFrontmatter,
   SkillScope,
   SkillSource,
 } from "../runtime/skills/types.js";
+
+const getLogger = createLazyLogger("skill-registry");
 
 // =============================================================================
 // CONSTANTS
@@ -101,6 +104,7 @@ export function discoverSkills(): Skill[] {
   if (cachedSkills) return cachedSkills;
 
   const skills: Skill[] = [];
+  const seenNames = new Map<string, SkillScope>();
 
   for (const source of sources) {
     if (!existsSync(source.dir)) continue;
@@ -114,7 +118,19 @@ export function discoverSkills(): Skill[] {
         if (!existsSync(skillFile)) continue;
 
         const skill = loadSkillFile(skillFile, source);
-        if (skill) skills.push(skill);
+        if (!skill) continue;
+
+        const existingScope = seenNames.get(skill.name);
+        if (existingScope) {
+          getLogger().warn(
+            { name: skill.name, existingScope, newScope: source.scope },
+            `Duplicate skill "${skill.name}" from ${source.scope} source ignored (already registered from ${existingScope} source)`,
+          );
+          continue;
+        }
+
+        seenNames.set(skill.name, source.scope);
+        skills.push(skill);
       }
     } catch {
       // Skip inaccessible directories
@@ -152,7 +168,7 @@ function loadSkillFile(filePath: string, source: SkillSource): Skill | null {
       name,
       description,
       filePath,
-      baseDir: source.dir,
+      baseDir: dirname(filePath),
       scope: source.scope,
       alwaysInclude: frontmatter.alwaysInclude === true,
       tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : undefined,

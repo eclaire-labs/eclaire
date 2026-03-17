@@ -61,6 +61,8 @@ import {
   getSkill,
   getSkillSummary,
   loadSkillContent,
+  getAlwaysIncludeSkills,
+  invalidateSkillCache,
   clearSkillSources,
 } from "../registries/skill-registry.js";
 
@@ -542,6 +544,91 @@ describe("Skill Registry", () => {
   it("returns empty summary when no skills", () => {
     const summary = getSkillSummary();
     expect(summary).toBe("");
+  });
+
+  it("sets baseDir to the skill's own directory, not the source directory", () => {
+    createSkillDir(
+      "my-skill",
+      { name: "my-skill", description: "A skill" },
+      "Content",
+    );
+
+    registerSkillSource(tempDir, "workspace");
+    const skill = getSkill("my-skill");
+    expect(skill).toBeDefined();
+    expect(skill!.baseDir).toBe(path.join(tempDir, "my-skill"));
+    expect(skill!.baseDir).not.toBe(tempDir);
+  });
+
+  it("skips duplicate skill names from later sources with first-registered winning", () => {
+    const tempDir2 = createTempDir();
+
+    // Create same-named skill in both directories
+    createSkillDir(
+      "shared-skill",
+      { name: "shared-skill", description: "From first source" },
+      "First",
+    );
+
+    const skillDir2 = path.join(tempDir2, "shared-skill");
+    fs.mkdirSync(skillDir2, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir2, "SKILL.md"),
+      "---\nname: shared-skill\ndescription: From second source\n---\nSecond",
+    );
+
+    registerSkillSource(tempDir, "admin");
+    registerSkillSource(tempDir2, "user");
+
+    const skills = discoverSkills();
+    const matches = skills.filter((s) => s.name === "shared-skill");
+    expect(matches).toHaveLength(1);
+    expect(matches[0]!.description).toBe("From first source");
+    expect(matches[0]!.scope).toBe("admin");
+  });
+
+  it("returns alwaysInclude skills", () => {
+    createSkillDir(
+      "always-on",
+      {
+        name: "always-on",
+        description: "Always included",
+        alwaysInclude: true,
+      },
+      "Always on content",
+    );
+    createSkillDir(
+      "on-demand",
+      { name: "on-demand", description: "On demand only" },
+      "On demand content",
+    );
+
+    registerSkillSource(tempDir, "workspace");
+    const always = getAlwaysIncludeSkills();
+    expect(always).toHaveLength(1);
+    expect(always[0]!.name).toBe("always-on");
+  });
+
+  it("invalidateSkillCache forces re-discovery", () => {
+    registerSkillSource(tempDir, "workspace");
+
+    // Initially empty
+    expect(discoverSkills()).toHaveLength(0);
+
+    // Add a skill after initial discovery
+    createSkillDir(
+      "late-skill",
+      { name: "late-skill", description: "Added later" },
+      "Content",
+    );
+
+    // Still cached as empty
+    expect(discoverSkills()).toHaveLength(0);
+
+    // Invalidate and re-discover
+    invalidateSkillCache();
+    expect(discoverSkills()).toHaveLength(1);
+    expect(discoverSkills()[0]!.name).toBe("late-skill");
   });
 });
 
