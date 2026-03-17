@@ -38,6 +38,7 @@ const routeApi = getRouteApi("/_authenticated/bookmarks/$id");
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ContentViewer } from "@/components/detail-page/ContentViewer";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
@@ -49,6 +50,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useBookmark } from "@/hooks/use-bookmarks";
@@ -118,6 +120,7 @@ export function BookmarkDetailClient() {
   const navigate = useNavigate();
   const [localBookmark, setLocalBookmark] = useState<Bookmark | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [activeTab, setActiveTab] = useState("screenshot");
 
   // Use React Query hook for data fetching
   const { bookmark, isLoading, error, refresh } = useBookmark(bookmarkId);
@@ -378,21 +381,46 @@ export function BookmarkDetailClient() {
               </CardContent>
             </Card>
 
-            {/* Screenshot Section */}
-            {mainScreenshotUrl && (
+            {/* Screenshot / Content Section */}
+            {(mainScreenshotUrl || bookmark.contentUrl) && (
               <Card>
-                <CardHeader>
-                  <CardTitle>Screenshot</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="aspect-video w-full bg-muted overflow-hidden rounded-lg">
-                    <img
-                      src={mainScreenshotUrl}
-                      alt={`Screenshot of ${bookmark.title}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </CardContent>
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <CardHeader>
+                    <TabsList>
+                      <TabsTrigger
+                        value="screenshot"
+                        disabled={!mainScreenshotUrl}
+                      >
+                        Screenshot
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="content"
+                        disabled={!bookmark.contentUrl}
+                      >
+                        Content
+                      </TabsTrigger>
+                    </TabsList>
+                  </CardHeader>
+                  <CardContent>
+                    <TabsContent value="screenshot" className="mt-0">
+                      {mainScreenshotUrl && (
+                        <div className="aspect-video w-full bg-muted overflow-hidden rounded-lg">
+                          <img
+                            src={mainScreenshotUrl}
+                            alt={`Screenshot of ${bookmark.title}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </TabsContent>
+                    <TabsContent value="content" className="mt-0">
+                      <ContentViewer
+                        contentUrl={bookmark.contentUrl}
+                        isActive={activeTab === "content"}
+                      />
+                    </TabsContent>
+                  </CardContent>
+                </Tabs>
               </Card>
             )}
           </div>

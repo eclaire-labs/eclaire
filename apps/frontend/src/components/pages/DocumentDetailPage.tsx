@@ -19,6 +19,7 @@ const routeApi = getRouteApi("/_authenticated/documents/$id");
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ContentViewer } from "@/components/detail-page/ContentViewer";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
@@ -31,6 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
@@ -57,6 +59,7 @@ export function DocumentDetailClient() {
     onDeleted: () => navigate({ to: "/documents" }),
   });
 
+  const [activeTab, setActiveTab] = useState("preview");
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -325,35 +328,67 @@ export function DocumentDetailClient() {
                   </CardContent>
                 </Card>
 
-                {/* Document Preview */}
-                {(document.screenshotUrl || document.thumbnailUrl) && (
+                {/* Document Preview / Content */}
+                {(document.screenshotUrl ||
+                  document.thumbnailUrl ||
+                  document.contentUrl) && (
                   <Card>
-                    <CardHeader>
-                      <CardTitle>Document Preview</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <a
-                        href={
-                          document.pdfUrl
-                            ? normalizeApiUrl(document.pdfUrl)
-                            : document.screenshotUrl
-                              ? normalizeApiUrl(document.screenshotUrl)
-                              : normalizeApiUrl(document.thumbnailUrl || "")
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <img
-                          src={normalizeApiUrl(
-                            document.screenshotUrl ||
-                              document.thumbnailUrl ||
-                              "",
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                      <CardHeader>
+                        <TabsList>
+                          <TabsTrigger
+                            value="preview"
+                            disabled={
+                              !document.screenshotUrl && !document.thumbnailUrl
+                            }
+                          >
+                            Preview
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="content"
+                            disabled={!document.contentUrl}
+                          >
+                            Content
+                          </TabsTrigger>
+                        </TabsList>
+                      </CardHeader>
+                      <CardContent>
+                        <TabsContent value="preview" className="mt-0">
+                          {(document.screenshotUrl ||
+                            document.thumbnailUrl) && (
+                            <a
+                              href={
+                                document.pdfUrl
+                                  ? normalizeApiUrl(document.pdfUrl)
+                                  : document.screenshotUrl
+                                    ? normalizeApiUrl(document.screenshotUrl)
+                                    : normalizeApiUrl(
+                                        document.thumbnailUrl || "",
+                                      )
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <img
+                                src={normalizeApiUrl(
+                                  document.screenshotUrl ||
+                                    document.thumbnailUrl ||
+                                    "",
+                                )}
+                                alt={`Preview of ${document.title}`}
+                                className="w-full rounded-lg object-contain"
+                              />
+                            </a>
                           )}
-                          alt={`Preview of ${document.title}`}
-                          className="w-full rounded-lg object-contain"
-                        />
-                      </a>
-                    </CardContent>
+                        </TabsContent>
+                        <TabsContent value="content" className="mt-0">
+                          <ContentViewer
+                            contentUrl={document.contentUrl}
+                            isActive={activeTab === "content"}
+                          />
+                        </TabsContent>
+                      </CardContent>
+                    </Tabs>
                   </Card>
                 )}
               </>
@@ -548,22 +583,6 @@ export function DocumentDetailClient() {
                     >
                       <File className="mr-2 h-4 w-4" />
                       PDF
-                    </a>
-                  </Button>
-                )}
-                {document.contentUrl && (
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    asChild
-                  >
-                    <a
-                      href={normalizeApiUrl(document.contentUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Extracted Markdown
                     </a>
                   </Button>
                 )}
