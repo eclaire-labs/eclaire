@@ -71,7 +71,7 @@ export function PhotoTileItem({
       onDoubleClick={() => onEditClick(photo)}
     >
       <CardHeader className="p-0">
-        <div className="aspect-video relative overflow-hidden bg-muted">
+        <div className="aspect-square relative overflow-hidden bg-muted">
           {photo.thumbnailUrl ? (
             <img
               src={photo.thumbnailUrl}

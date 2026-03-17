@@ -396,7 +396,7 @@ export function PhotoDetailClient() {
                     </Button>
                   </div>
 
-                  <div className="relative h-[70vh] bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
+                  <div className="relative h-[70vh] bg-muted rounded-lg flex items-center justify-center overflow-hidden">
                     <img
                       src={normalizeApiUrl(photo.imageUrl)}
                       alt={photo.title || "Photo"}
@@ -744,13 +744,13 @@ export function PhotoDetailClient() {
           // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-close overlay
           <div
             role="presentation"
-            className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
             onClick={() => setShowFullscreen(false)}
           >
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="absolute top-4 right-4 z-10"
+              className="absolute top-4 right-4 z-10 text-white hover:bg-white/20 hover:text-white"
               onClick={() => setShowFullscreen(false)}
             >
               <X className="h-4 w-4" />
