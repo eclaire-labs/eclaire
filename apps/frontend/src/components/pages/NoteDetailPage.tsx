@@ -1,5 +1,6 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
+  AlertCircle,
   ArrowLeft,
   Calendar,
   Edit,
@@ -139,6 +140,7 @@ export function NoteDetailClient() {
           <h1 className="text-2xl font-bold">Note not found</h1>
         </div>
         <div className="flex flex-col items-center justify-center py-16 text-center">
+          <AlertCircle className="h-16 w-16 text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">{errorMessage}</h2>
           <p className="text-muted-foreground mb-4">
             The note you're looking for doesn't exist or couldn't be loaded.
@@ -271,7 +273,7 @@ export function NoteDetailClient() {
           </div>
 
           {/* Sidebar - Note Details */}
-          <div className="w-full lg:w-80">
+          <div className="w-full lg:w-80 space-y-6">
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-4 text-sm">
@@ -350,7 +352,7 @@ export function NoteDetailClient() {
                         <div className="flex flex-wrap gap-2 mt-1">
                           {note.tags.length > 0 ? (
                             note.tags.map((tag) => (
-                              <Badge key={tag} variant="secondary">
+                              <Badge key={tag} variant="outline">
                                 {tag}
                               </Badge>
                             ))

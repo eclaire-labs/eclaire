@@ -26,10 +26,12 @@ import {
   Shield,
   Smartphone,
   Star,
+  Save,
   Tag,
   Trash2,
   User,
   Users,
+  X,
 } from "lucide-react";
 
 const routeApi = getRouteApi("/_authenticated/bookmarks/$id");
@@ -288,9 +290,13 @@ export function BookmarkDetailClient() {
             {isEditMode ? (
               <>
                 <Button variant="outline" onClick={() => setIsEditMode(false)}>
+                  <X className="mr-2 h-4 w-4" />
                   Cancel
                 </Button>
-                <Button onClick={handleUpdateBookmark}>Save Changes</Button>
+                <Button onClick={handleUpdateBookmark}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save
+                </Button>
               </>
             ) : (
               <>
@@ -500,7 +506,7 @@ export function BookmarkDetailClient() {
                     <div className="flex flex-wrap gap-2 mt-1">
                       {bookmark.tags.length > 0 ? (
                         bookmark.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary">
+                          <Badge key={tag} variant="outline">
                             {tag}
                           </Badge>
                         ))

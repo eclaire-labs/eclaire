@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
+  AlertCircle,
   ArrowLeft,
   Calendar,
   Camera,
@@ -41,7 +42,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
@@ -239,7 +240,7 @@ export function PhotoDetailClient() {
           <h1 className="text-2xl font-bold">Photo not found</h1>
         </div>
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Camera className="h-16 w-16 text-muted-foreground mb-4" />
+          <AlertCircle className="h-16 w-16 text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">{errorMessage}</h2>
           <p className="text-muted-foreground mb-4">
             The photo you're looking for doesn't exist or couldn't be loaded.
@@ -260,7 +261,7 @@ export function PhotoDetailClient() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
@@ -269,25 +270,25 @@ export function PhotoDetailClient() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                {isEditing ? (
-                  <Input
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="text-3xl font-bold border-none p-0 h-auto bg-transparent"
-                    placeholder="Photo title"
-                  />
-                ) : (
-                  photo.title || "Untitled Photo"
-                )}
-              </h1>
+              {isEditing ? (
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Enter photo title..."
+                  className="text-2xl font-bold h-auto py-2 px-3 border-dashed"
+                />
+              ) : (
+                <h1 className="text-2xl font-bold">
+                  {photo.title || "Untitled Photo"}
+                </h1>
+              )}
               <p className="text-muted-foreground mt-1">
                 {photo.originalFilename}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <PinFlagControls
               isPinned={photo.isPinned || false}
               flagColor={photo.flagColor}
@@ -304,17 +305,6 @@ export function PhotoDetailClient() {
             >
               <MessageCircle className="h-4 w-4" />
             </Button>
-            <Button variant="outline" asChild>
-              <a
-                href={normalizeApiUrl(photo.imageUrl)}
-                download
-                title="Download photo"
-                aria-label="Download photo"
-              >
-                <Download className="h-4 w-4 mr-0 md:mr-2" />
-                <span className="hidden md:inline">Download</span>
-              </a>
-            </Button>
 
             {isEditing ? (
               <>
@@ -323,33 +313,44 @@ export function PhotoDetailClient() {
                   onClick={handleCancel}
                   disabled={isSubmitting}
                 >
-                  <X className="h-4 w-4 mr-2" />
+                  <X className="mr-2 h-4 w-4" />
                   Cancel
                 </Button>
                 <Button onClick={handleSave} disabled={isSubmitting}>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="mr-2 h-4 w-4" />
                   {isSubmitting ? "Saving..." : "Save"}
                 </Button>
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(true)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
                 <Button
                   variant="destructive"
                   onClick={actions.openDeleteDialog}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Delete
+                </Button>
+                <Button variant="outline" asChild>
+                  <a
+                    href={normalizeApiUrl(photo.imageUrl)}
+                    download
+                    title="Download photo"
+                    aria-label="Download photo"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                  </a>
+                </Button>
+                <Button onClick={() => setIsEditing(true)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
                 </Button>
               </>
             )}
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6 md:h-[calc(100vh-12rem)]">
+        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-12rem)]">
           {/* Main Content */}
           <div className="flex-1 flex flex-col space-y-6">
             {/* Photo Viewer */}
@@ -431,145 +432,145 @@ export function PhotoDetailClient() {
 
           {/* Sidebar */}
           <div className="w-full lg:w-80 space-y-6">
-            {/* Photo Information */}
+            {/* Photo Details */}
             <Card>
-              <CardContent className="pt-6 space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Camera className="h-4 w-4 text-muted-foreground" />
+              <CardContent className="pt-6">
+                <div className="space-y-4 text-sm">
                   <div>
-                    <Label className="text-sm font-medium">File Type</Label>
-                    <p className="text-sm text-muted-foreground">
+                    <Label className="flex items-center gap-2">
+                      <Camera className="h-4 w-4" />
+                      File Type
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
                       {photo.mimeType}
                     </p>
                   </div>
-                </div>
 
-                <div className="flex items-center space-x-2">
-                  <Camera className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <Label className="text-sm font-medium">File Size</Label>
-                    <p className="text-sm text-muted-foreground">
+                    <Label className="flex items-center gap-2">
+                      <Camera className="h-4 w-4" />
+                      File Size
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
                       {formatFileSize(photo.fileSize)}
                     </p>
                   </div>
-                </div>
 
-                {photo.imageWidth && photo.imageHeight && (
-                  <div className="flex items-center space-x-2">
-                    <Camera className="h-4 w-4 text-muted-foreground" />
+                  {photo.imageWidth && photo.imageHeight && (
                     <div>
-                      <Label className="text-sm font-medium">Dimensions</Label>
-                      <p className="text-sm text-muted-foreground">
+                      <Label className="flex items-center gap-2">
+                        <Camera className="h-4 w-4" />
+                        Dimensions
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
                         {photo.imageWidth} × {photo.imageHeight}
                       </p>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <Separator />
-
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <Label className="text-sm font-medium">Date Taken</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(photo.dateTaken)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label className="text-sm font-medium">Uploaded</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(photo.createdAt)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label className="text-sm font-medium">Updated</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(photo.updatedAt)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1">
-                    <Label className="text-sm font-medium">Due Date</Label>
+                    <Label>Due Date</Label>
                     {isEditing ? (
-                      <DueDatePicker
-                        value={editDueDate}
-                        onChange={setEditDueDate}
-                      />
+                      <div className="mt-1">
+                        <DueDatePicker
+                          value={editDueDate}
+                          onChange={setEditDueDate}
+                        />
+                      </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground mt-1">
                         {photo.dueDate
                           ? formatDate(photo.dueDate)
                           : "No due date set"}
                       </p>
                     )}
                   </div>
+
+                  {/* Tags Section */}
+                  <div>
+                    {isEditing ? (
+                      <TagEditor
+                        tags={editTags}
+                        onAddTag={(tag) =>
+                          setEditTags((prev) => [...prev, tag])
+                        }
+                        onRemoveTag={(tag) =>
+                          setEditTags((prev) => prev.filter((t) => t !== tag))
+                        }
+                      />
+                    ) : (
+                      <div>
+                        <Label>Tags</Label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {photo.tags && photo.tags.length > 0 ? (
+                            photo.tags.map((tag) => (
+                              <Badge key={tag} variant="outline">
+                                {tag}
+                              </Badge>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              No tags
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {!isEditing && (
+                    <>
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Date Taken
+                        </Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {formatDate(photo.dateTaken)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Uploaded
+                        </Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {formatDate(photo.createdAt)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Updated
+                        </Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {formatDate(photo.updatedAt)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label>Processing Status</Label>
+                        <div className="mt-1">
+                          <ProcessingStatusBadge
+                            contentType="photos"
+                            itemId={photo.id}
+                            processingStatus={photo.processingStatus}
+                            processingEnabled={photo.processingEnabled}
+                            isJobStuck={actions.isJobStuck}
+                            isReprocessing={actions.isReprocessing}
+                            onReprocessClick={() =>
+                              actions.setShowReprocessDialog(true)
+                            }
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
-
-            {/* Tags */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Tags</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isEditing ? (
-                  <TagEditor
-                    tags={editTags}
-                    onAddTag={(tag) => setEditTags((prev) => [...prev, tag])}
-                    onRemoveTag={(tag) =>
-                      setEditTags((prev) => prev.filter((t) => t !== tag))
-                    }
-                  />
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {photo.tags && photo.tags.length > 0 ? (
-                      photo.tags.map((tag) => (
-                        <Badge key={tag} variant="outline">
-                          {tag}
-                        </Badge>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No tags</p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Processing Status */}
-            {!isEditing && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Processing Status</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ProcessingStatusBadge
-                    contentType="photos"
-                    itemId={photo.id}
-                    processingStatus={photo.processingStatus}
-                    processingEnabled={photo.processingEnabled}
-                    isJobStuck={actions.isJobStuck}
-                    isReprocessing={actions.isReprocessing}
-                    onReprocessClick={() =>
-                      actions.setShowReprocessDialog(true)
-                    }
-                  />
-                </CardContent>
-              </Card>
-            )}
 
             {/* Photo Assets */}
             <Card>
