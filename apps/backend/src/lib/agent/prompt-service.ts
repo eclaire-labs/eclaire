@@ -12,6 +12,7 @@ import type {
 import {
   convertFromLlm,
   createRuntimeContext,
+  getAgentRuntimeKindForModel,
   RuntimeAgent,
   selectTools,
   type RuntimeStreamEvent,
@@ -27,7 +28,10 @@ import {
   loadConversationMessages,
   saveConversationMessages,
 } from "./conversation-adapter.js";
-import { buildSystemPrompt } from "./system-prompt-builder.js";
+import {
+  buildExternalHarnessPrompt,
+  buildSystemPrompt,
+} from "./system-prompt-builder.js";
 import { getBackendTools } from "./tools/index.js";
 import type { AgentDefinition, UserContext } from "./types.js";
 
@@ -101,6 +105,42 @@ export function createBackendAgent(options: {
   assetContents?: Array<{ type: string; id: string; content: string }>;
   enableThinking?: boolean;
 }) {
+  // Branch on runtime kind: external harnesses get a minimal prompt, no tools
+  const runtimeKind = options.agent.modelId
+    ? getAgentRuntimeKindForModel(options.agent.modelId)
+    : "native";
+
+  if (runtimeKind === "external_harness") {
+    return new RuntimeAgent({
+      aiContext: "backend",
+      modelOverride: options.agent.modelId ?? undefined,
+      toolCallingMode: "off",
+      toolExecution: "parallel",
+
+      instructions: (context) => {
+        const userContext = context.extra?.userContext as
+          | UserContext
+          | undefined;
+        return buildExternalHarnessPrompt({
+          userContext,
+          agent: options.agent,
+          assetContents: options.assetContents,
+          isBackgroundTaskExecution: options.isBackgroundTask,
+        });
+      },
+
+      tools: {},
+      maxSteps: 1,
+
+      aiOptions: {
+        temperature: 0.1,
+        maxTokens: 2000,
+        timeout: 300000, // Longer timeout for external harnesses
+        enableThinking: options.enableThinking,
+      },
+    });
+  }
+
   const agentTools = selectAgentTools(options.agent);
   const promptTools = options.includeTools ? agentTools : {};
   const toolCallingMode = options.includeTools ? "native" : "off";
@@ -195,6 +235,10 @@ export async function processPromptRequest(
       }
     }
 
+    const agentRuntimeKind = agentDefinition.modelId
+      ? getAgentRuntimeKindForModel(agentDefinition.modelId)
+      : "native";
+
     const agent = createBackendAgent({
       agent: agentDefinition,
       includeTools,
@@ -210,7 +254,9 @@ export async function processPromptRequest(
       extra: {
         userContext,
         agent: agentDefinition,
-        allowedSkillNames: agentDefinition.skillNames,
+        ...(agentRuntimeKind === "native"
+          ? { allowedSkillNames: agentDefinition.skillNames }
+          : {}),
         callerAuthMethod,
         callerActorKind,
         backgroundTaskExecution: isBackgroundTask,
@@ -450,6 +496,10 @@ export async function processPromptRequestStream(
     }
   }
 
+  const streamAgentRuntimeKind = agentDefinition.modelId
+    ? getAgentRuntimeKindForModel(agentDefinition.modelId)
+    : "native";
+
   const agent = createBackendAgent({
     agent: agentDefinition,
     includeTools,
@@ -465,7 +515,9 @@ export async function processPromptRequestStream(
     extra: {
       userContext,
       agent: agentDefinition,
-      allowedSkillNames: agentDefinition.skillNames,
+      ...(streamAgentRuntimeKind === "native"
+        ? { allowedSkillNames: agentDefinition.skillNames }
+        : {}),
       callerAuthMethod,
       callerActorKind,
       backgroundTaskExecution: isBackgroundTask,

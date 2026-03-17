@@ -98,6 +98,120 @@ CRITICAL RULES:
 
 REMEMBER: These /content-type/id links become clickable buttons in the user interface for easy navigation.`;
 
+// =============================================================================
+// SHARED HELPERS
+// =============================================================================
+
+function buildDateSection(): { dateString: string; timeString: string } {
+  const currentDate = new Date();
+  return {
+    dateString: currentDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }),
+    timeString: currentDate.toISOString(),
+  };
+}
+
+function buildBaseInstruction(
+  userContext?: UserContext | null,
+  agent?: AgentDefinition,
+): string {
+  const fallback = userContext?.displayName
+    ? `You are a helpful assistant talking to ${userContext.displayName}.`
+    : "You are a helpful assistant.";
+  return agent?.systemPrompt?.trim() || fallback;
+}
+
+function buildUserContextSection(userContext?: UserContext | null): string {
+  if (!userContext) return "";
+
+  const hasContext =
+    userContext.displayName ||
+    userContext.fullName ||
+    userContext.bio ||
+    userContext.city ||
+    userContext.country;
+
+  if (!hasContext) return "";
+
+  let section = "\n\nUser Profile Information:";
+  if (userContext.displayName)
+    section += `\n- Display Name: ${userContext.displayName}`;
+  if (userContext.fullName) section += `\n- Full Name: ${userContext.fullName}`;
+  if (userContext.bio) section += `\n- About: ${userContext.bio}`;
+  if (userContext.city) section += `\n- City: ${userContext.city}`;
+  if (userContext.country) section += `\n- Country: ${userContext.country}`;
+  if (userContext.timezone) section += `\n- Timezone: ${userContext.timezone}`;
+  return section;
+}
+
+function buildAssetContentSection(assetContents?: AssetContent[]): string {
+  if (!assetContents || assetContents.length === 0) return "";
+
+  let section =
+    "\n\n## Referenced Content\n\nThe user has provided the following specific content for you to reference:\n\n";
+
+  for (const asset of assetContents) {
+    section += `### ${asset.type.charAt(0).toUpperCase() + asset.type.slice(1)} (ID: ${asset.id})\n`;
+    if (asset.content) {
+      const truncatedContent =
+        asset.content.length > 4000
+          ? `${asset.content.substring(0, 4000)}\n\n[Content truncated - showing first 4000 characters]`
+          : asset.content;
+      section += `${truncatedContent}\n\n`;
+    } else {
+      section += "[No content available]\n\n";
+    }
+  }
+
+  section +=
+    "When answering the user's question, please reference and use the content above as the primary source. Focus on providing a helpful response based on this content.\n";
+  return section;
+}
+
+// =============================================================================
+// EXTERNAL HARNESS PROMPT
+// =============================================================================
+
+export interface BuildExternalHarnessPromptOptions {
+  userContext?: UserContext | null;
+  agent?: AgentDefinition;
+  assetContents?: AssetContent[];
+  isBackgroundTaskExecution?: boolean;
+}
+
+/**
+ * Build a minimal prompt for external harness agents.
+ * Includes only task context — no tool signatures, skills, MCP, or Eclaire-specific instructions.
+ */
+export function buildExternalHarnessPrompt(
+  options: BuildExternalHarnessPromptOptions,
+): string {
+  const { userContext, agent, assetContents, isBackgroundTaskExecution } =
+    options;
+
+  const { dateString, timeString } = buildDateSection();
+  const baseInstruction = buildBaseInstruction(userContext, agent);
+  const userContextInfo = buildUserContextSection(userContext);
+  const assetContentSection = buildAssetContentSection(assetContents);
+
+  let prompt = `${baseInstruction}\n\nCurrent Date & Time: ${dateString} (${timeString})${userContextInfo}${assetContentSection}`;
+
+  if (isBackgroundTaskExecution) {
+    prompt +=
+      "\n\nYou are working on a background task. Complete the task described above.";
+  }
+
+  return prompt;
+}
+
+// =============================================================================
+// NATIVE PROMPT
+// =============================================================================
+
 export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
   const {
     userContext,
@@ -110,77 +224,14 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
 
   const includeToolSignatures = toolCallingMode === "text";
 
-  const currentDate = new Date();
-  const currentTimeString = currentDate.toISOString();
-  const currentDateString = currentDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const fallbackInstruction = userContext?.displayName
-    ? `You are a helpful assistant talking to ${userContext.displayName}.`
-    : "You are a helpful assistant.";
-  const baseInstruction = agent?.systemPrompt?.trim() || fallbackInstruction;
-
-  let userContextInfo = "";
-  if (userContext) {
-    const hasContext =
-      userContext.displayName ||
-      userContext.fullName ||
-      userContext.bio ||
-      userContext.city ||
-      userContext.country;
-
-    if (hasContext) {
-      userContextInfo = "\n\nUser Profile Information:";
-      if (userContext.displayName) {
-        userContextInfo += `\n- Display Name: ${userContext.displayName}`;
-      }
-      if (userContext.fullName) {
-        userContextInfo += `\n- Full Name: ${userContext.fullName}`;
-      }
-      if (userContext.bio) {
-        userContextInfo += `\n- About: ${userContext.bio}`;
-      }
-      if (userContext.city) {
-        userContextInfo += `\n- City: ${userContext.city}`;
-      }
-      if (userContext.country) {
-        userContextInfo += `\n- Country: ${userContext.country}`;
-      }
-      if (userContext.timezone) {
-        userContextInfo += `\n- Timezone: ${userContext.timezone}`;
-      }
-    }
-  }
-
-  let assetContentSection = "";
-  if (assetContents && assetContents.length > 0) {
-    assetContentSection =
-      "\n\n## Referenced Content\n\nThe user has provided the following specific content for you to reference:\n\n";
-
-    for (const asset of assetContents) {
-      assetContentSection += `### ${asset.type.charAt(0).toUpperCase() + asset.type.slice(1)} (ID: ${asset.id})\n`;
-      if (asset.content) {
-        const truncatedContent =
-          asset.content.length > 4000
-            ? `${asset.content.substring(0, 4000)}\n\n[Content truncated - showing first 4000 characters]`
-            : asset.content;
-        assetContentSection += `${truncatedContent}\n\n`;
-      } else {
-        assetContentSection += "[No content available]\n\n";
-      }
-    }
-
-    assetContentSection +=
-      "When answering the user's question, please reference and use the content above as the primary source. Focus on providing a helpful response based on this content.\n";
-  }
+  const { dateString, timeString } = buildDateSection();
+  const baseInstruction = buildBaseInstruction(userContext, agent);
+  const userContextInfo = buildUserContextSection(userContext);
+  const assetContentSection = buildAssetContentSection(assetContents);
 
   const basePrompt = `${baseInstruction}
 
-Current Date & Time: ${currentDateString} (${currentTimeString})${userContextInfo}${assetContentSection}`;
+Current Date & Time: ${dateString} (${timeString})${userContextInfo}${assetContentSection}`;
 
   if (isBackgroundTaskExecution) {
     const toolSignaturesSection = includeToolSignatures

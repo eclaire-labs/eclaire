@@ -225,12 +225,17 @@ export function createAgentsTable(agents: AgentDisplay[]): string {
 }
 
 export function createAgentInfoTable(
-  agent: AgentDisplay & { systemPrompt: string },
+  agent: AgentDisplay & {
+    systemPrompt: string;
+    agentRuntimeKind?: "native" | "external_harness";
+  },
 ): string {
   const table = new Table({
     style: { head: [], border: ["gray"] },
     colWidths: [20, 60],
   });
+
+  const isExternalHarness = agent.agentRuntimeKind === "external_harness";
 
   table.push([colors.emphasis("ID"), agent.id]);
   table.push([colors.emphasis("Name"), agent.name]);
@@ -242,18 +247,30 @@ export function createAgentInfoTable(
     colors.emphasis("Model"),
     agent.modelId ? chalk.blue(agent.modelId) : colors.dim("system default"),
   ]);
-  table.push([
-    colors.emphasis("Tools"),
-    agent.toolNames.length > 0
-      ? agent.toolNames.join(", ")
-      : colors.dim("none"),
-  ]);
-  table.push([
-    colors.emphasis("Skills"),
-    agent.skillNames.length > 0
-      ? agent.skillNames.join(", ")
-      : colors.dim("none"),
-  ]);
+  if (isExternalHarness) {
+    table.push([colors.emphasis("Runtime"), chalk.yellow("external harness")]);
+    table.push([
+      colors.emphasis("Tools"),
+      colors.dim("N/A (external harness)"),
+    ]);
+    table.push([
+      colors.emphasis("Skills"),
+      colors.dim("N/A (external harness)"),
+    ]);
+  } else {
+    table.push([
+      colors.emphasis("Tools"),
+      agent.toolNames.length > 0
+        ? agent.toolNames.join(", ")
+        : colors.dim("none"),
+    ]);
+    table.push([
+      colors.emphasis("Skills"),
+      agent.skillNames.length > 0
+        ? agent.skillNames.join(", ")
+        : colors.dim("none"),
+    ]);
+  }
   table.push([
     colors.emphasis("System Prompt"),
     truncate(agent.systemPrompt, 200),

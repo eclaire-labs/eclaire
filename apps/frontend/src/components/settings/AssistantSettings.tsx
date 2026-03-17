@@ -242,15 +242,22 @@ export default function AssistantSettings({
     clearTools,
   } = useToolExecutionTracker();
 
+  const [runtimeKind, setRuntimeKind] = useState<"native" | "external_harness">(
+    "native",
+  );
+
   const selectedAgentName = selectedAgent?.name || draft.name;
-  const loadSkillRequired = (draft.skillNames ?? []).length > 0;
+  const isExternalHarness = runtimeKind === "external_harness";
+  const loadSkillRequired =
+    !isExternalHarness && (draft.skillNames ?? []).length > 0;
   const effectiveToolNames = useMemo(() => {
+    if (isExternalHarness) return [];
     const names = new Set(draft.toolNames ?? []);
     if (loadSkillRequired) {
       names.add(LOAD_SKILL_TOOL_NAME);
     }
     return Array.from(names);
-  }, [draft.toolNames, loadSkillRequired]);
+  }, [draft.toolNames, loadSkillRequired, isExternalHarness]);
 
   const refreshAgents = useCallback(async () => {
     const [agentList, agentCatalog] = await Promise.all([
@@ -535,8 +542,8 @@ export default function AssistantSettings({
         name: draft.name.trim(),
         description: draft.description?.trim() || null,
         systemPrompt: draft.systemPrompt.trim(),
-        toolNames: effectiveToolNames,
-        skillNames: draft.skillNames ?? [],
+        toolNames: isExternalHarness ? [] : effectiveToolNames,
+        skillNames: isExternalHarness ? [] : (draft.skillNames ?? []),
         modelId: draft.modelId ?? null,
       };
 
@@ -662,17 +669,23 @@ export default function AssistantSettings({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">
-              {effectiveToolNames.length} tools enabled
-            </Badge>
-            <Badge variant="secondary">
-              {(draft.skillNames ?? []).length} skills enabled
-            </Badge>
-            {selectedTools.map((tool) => (
-              <Badge key={tool} variant="outline">
-                {tool}
-              </Badge>
-            ))}
+            {isExternalHarness ? (
+              <Badge variant="outline">External harness</Badge>
+            ) : (
+              <>
+                <Badge variant="secondary">
+                  {effectiveToolNames.length} tools enabled
+                </Badge>
+                <Badge variant="secondary">
+                  {(draft.skillNames ?? []).length} skills enabled
+                </Badge>
+                {selectedTools.map((tool) => (
+                  <Badge key={tool} variant="outline">
+                    {tool}
+                  </Badge>
+                ))}
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -818,9 +831,16 @@ export default function AssistantSettings({
                   <Label htmlFor="agent-model">Model</Label>
                   <ModelPicker
                     value={draft.modelId ?? null}
-                    onChange={(modelId) =>
-                      setDraft((prev) => ({ ...prev, modelId }))
-                    }
+                    onChange={(modelId, kind) => {
+                      setRuntimeKind(kind);
+                      setDraft((prev) => ({
+                        ...prev,
+                        modelId,
+                        ...(kind === "external_harness"
+                          ? { toolNames: [], skillNames: [] }
+                          : {}),
+                      }));
+                    }}
                     disabled={isReadOnly || isSaving}
                   />
                   <p className="text-xs text-muted-foreground">
@@ -874,28 +894,43 @@ export default function AssistantSettings({
             </Card>
 
             <div className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-              <AgentChecklist
-                title="Tools"
-                description="These are the actions the agent can take inside the workspace."
-                items={catalog.tools}
-                selectedNames={effectiveToolNames}
-                lockedNames={loadSkillRequired ? [LOAD_SKILL_TOOL_NAME] : []}
-                onToggle={(name, checked) =>
-                  toggleDraftArray("toolNames", name, checked)
-                }
-                disabled={isReadOnly || isSaving}
-              />
+              {isExternalHarness ? (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>External harness runtime</AlertTitle>
+                  <AlertDescription>
+                    This model runs through an external harness. Eclaire tools,
+                    skills, and MCP selection are not used here.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <AgentChecklist
+                    title="Tools"
+                    description="These are the actions the agent can take inside the workspace."
+                    items={catalog.tools}
+                    selectedNames={effectiveToolNames}
+                    lockedNames={
+                      loadSkillRequired ? [LOAD_SKILL_TOOL_NAME] : []
+                    }
+                    onToggle={(name, checked) =>
+                      toggleDraftArray("toolNames", name, checked)
+                    }
+                    disabled={isReadOnly || isSaving}
+                  />
 
-              <AgentChecklist
-                title="Skills"
-                description="Skills shape the prompt and can be loaded on demand by compatible agents."
-                items={catalog.skills}
-                selectedNames={draft.skillNames ?? []}
-                onToggle={(name, checked) =>
-                  toggleDraftArray("skillNames", name, checked)
-                }
-                disabled={isReadOnly || isSaving}
-              />
+                  <AgentChecklist
+                    title="Skills"
+                    description="Skills shape the prompt and can be loaded on demand by compatible agents."
+                    items={catalog.skills}
+                    selectedNames={draft.skillNames ?? []}
+                    onToggle={(name, checked) =>
+                      toggleDraftArray("skillNames", name, checked)
+                    }
+                    disabled={isReadOnly || isSaving}
+                  />
+                </>
+              )}
             </div>
           </div>
         </TabsContent>

@@ -1,4 +1,4 @@
-import { getModels } from "@eclaire/ai";
+import { getAgentRuntimeKindForModel, getModels } from "@eclaire/ai";
 import { Hono } from "hono";
 import { createChildLogger } from "../lib/logger.js";
 import { withAuth } from "../middleware/with-auth.js";
@@ -18,6 +18,7 @@ modelsRoutes.get(
       id,
       name: model.name,
       provider: model.provider,
+      agentRuntimeKind: getAgentRuntimeKindForModel(id),
       capabilities: {
         tools: model.capabilities.tools,
         streaming: model.capabilities.streaming,

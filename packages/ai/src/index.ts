@@ -249,6 +249,9 @@ export {
   // Config accessors
   getActiveModelIdForContext,
   getActiveModelsAsObjects,
+  // Runtime kind
+  getAgentRuntimeKind,
+  getAgentRuntimeKindForModel,
   getConfigPath,
   getCurrentModelConfig,
   getEngineConfig,
@@ -569,6 +572,8 @@ export type {
   // Adapter types
   AdapterRequestParams,
   AdapterResponse,
+  // Runtime kind
+  AgentRuntimeKind,
   AICallOptions,
   AICallTrace,
   // Selection types

@@ -20,6 +20,13 @@ export type Dialect =
   | "cli_jsonl";
 
 /**
+ * Agent runtime classification.
+ * - "native": Eclaire owns the tool loop (HTTP API providers)
+ * - "external_harness": An external CLI harness owns the tool loop (codex, claude, opencode, pi)
+ */
+export type AgentRuntimeKind = "native" | "external_harness";
+
+/**
  * Provider authentication configuration.
  * Uses environment variable interpolation: ${ENV:VAR_NAME}
  */

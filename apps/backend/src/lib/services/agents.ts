@@ -1,5 +1,6 @@
 import {
   discoverSkills,
+  getAgentRuntimeKindForModel,
   getModelConfigById,
   isValidModelIdFormat,
   resolveProviderForModel,
@@ -136,17 +137,59 @@ function validateAgentCapabilities(input: {
   }
 }
 
+function validateRuntimeCapabilityPolicy(
+  modelId: string | null | undefined,
+  toolNames: string[],
+  skillNames: string[],
+): void {
+  if (!modelId) return;
+
+  const runtimeKind = getAgentRuntimeKindForModel(modelId);
+  if (runtimeKind !== "external_harness") return;
+
+  if (toolNames.length > 0) {
+    throw new ValidationError(
+      "External harness models do not support Eclaire tools. Remove toolNames or choose a native model.",
+      "toolNames",
+    );
+  }
+  if (skillNames.length > 0) {
+    throw new ValidationError(
+      "External harness models do not support Eclaire skills. Remove skillNames or choose a native model.",
+      "skillNames",
+    );
+  }
+}
+
 function normalizeAgentRecord(
   record: typeof agents.$inferSelect,
 ): AgentDefinition {
+  let toolNames = Array.isArray(record.toolNames) ? record.toolNames : [];
+  let skillNames = Array.isArray(record.skillNames) ? record.skillNames : [];
+
+  // Sanitize capabilities for external harness models (handles pre-existing data)
+  if (record.modelId) {
+    const runtimeKind = getAgentRuntimeKindForModel(record.modelId);
+    if (runtimeKind === "external_harness") {
+      if (toolNames.length > 0 || skillNames.length > 0) {
+        logger.warn(
+          { agentId: record.id, modelId: record.modelId },
+          "Sanitizing tools/skills for external harness agent on read",
+        );
+        toolNames = [];
+        skillNames = [];
+      }
+    }
+  }
+
   return {
     id: record.id,
     kind: "custom",
     name: record.name,
     description: record.description,
     systemPrompt: record.systemPrompt,
-    toolNames: Array.isArray(record.toolNames) ? record.toolNames : [],
-    skillNames: Array.isArray(record.skillNames) ? record.skillNames : [],
+    toolNames,
+    skillNames,
     modelId: record.modelId ?? null,
     isEditable: true,
     createdAt: record.createdAt,
@@ -215,6 +258,11 @@ export async function createAgent(
   const capabilities = normalizeCreateAgentCapabilities(input);
   validateAgentCapabilities(capabilities);
   validateAgentModelId(input.modelId);
+  validateRuntimeCapabilityPolicy(
+    input.modelId,
+    capabilities.toolNames,
+    capabilities.skillNames,
+  );
 
   const trimmedName = input.name.trim();
 
@@ -262,6 +310,19 @@ export async function updateAgent(
   if (updates.modelId !== undefined) {
     validateAgentModelId(updates.modelId);
   }
+
+  // Validate runtime capability policy against the effective modelId
+  const effectiveModelId =
+    updates.modelId !== undefined ? updates.modelId : existingAgent.modelId;
+  const effectiveToolNames =
+    capabilityUpdates.toolNames ?? existingAgent.toolNames;
+  const effectiveSkillNames =
+    capabilityUpdates.skillNames ?? existingAgent.skillNames;
+  validateRuntimeCapabilityPolicy(
+    effectiveModelId,
+    effectiveToolNames,
+    effectiveSkillNames,
+  );
 
   const trimmedName = updates.name?.trim();
 

@@ -1,3 +1,4 @@
+import { getAgentRuntimeKindForModel } from "@eclaire/ai";
 import { createAgent } from "../../db/agents.js";
 import { getDefaultUser } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
@@ -83,56 +84,81 @@ export async function createCommand(): Promise<void> {
       },
     });
 
-    // 5. Tools (multi-select or fallback to text input)
-    const availableTools = await getAvailableTools();
-    let toolNames: string[] = [];
-    if (availableTools.length > 0) {
-      toolNames = await selectMany<string>({
-        message: "Select tools to enable:",
-        options: availableTools.map((t) => ({
-          value: t.name,
-          label: t.label,
-          hint: t.hint,
-        })),
-        required: false,
-      });
-    } else {
-      const toolsRaw = await textInput({
-        message: "Tool names (comma-separated, optional)",
-        placeholder: "web_search, calculator",
-      });
-      toolNames = parseCommaSeparated(toolsRaw);
-    }
+    // 5. Tools & Skills (skip for external harness models)
+    const trimmedModelId = modelId.trim() || null;
+    const runtimeKind = trimmedModelId
+      ? getAgentRuntimeKindForModel(trimmedModelId)
+      : "native";
 
-    // 6. Skills (multi-select or fallback to text input)
-    const availableSkills = getAvailableSkills();
+    let toolNames: string[] = [];
     let skillNames: string[] = [];
-    if (availableSkills.length > 0) {
-      skillNames = await selectMany<string>({
-        message: "Select skills to enable:",
-        options: availableSkills.map((s) => ({
-          value: s.name,
-          label: s.label,
-          hint: s.hint,
-        })),
-        required: false,
-      });
+
+    if (runtimeKind === "external_harness") {
+      note(
+        "Tools and skills are not applicable for external harness runtimes.",
+        "Skipped",
+      );
     } else {
-      const skillsRaw = await textInput({
-        message: "Skill names (comma-separated, optional)",
-        placeholder: "summarize, translate",
-      });
-      skillNames = parseCommaSeparated(skillsRaw);
+      const availableTools = await getAvailableTools();
+      if (availableTools.length > 0) {
+        toolNames = await selectMany<string>({
+          message: "Select tools to enable:",
+          options: availableTools.map((t) => ({
+            value: t.name,
+            label: t.label,
+            hint: t.hint,
+          })),
+          required: false,
+        });
+      } else {
+        const toolsRaw = await textInput({
+          message: "Tool names (comma-separated, optional)",
+          placeholder: "web_search, calculator",
+        });
+        toolNames = parseCommaSeparated(toolsRaw);
+      }
+
+      // 6. Skills (multi-select or fallback to text input)
+      const availableSkills = getAvailableSkills();
+      if (availableSkills.length > 0) {
+        skillNames = await selectMany<string>({
+          message: "Select skills to enable:",
+          options: availableSkills.map((s) => ({
+            value: s.name,
+            label: s.label,
+            hint: s.hint,
+          })),
+          required: false,
+        });
+      } else {
+        const skillsRaw = await textInput({
+          message: "Skill names (comma-separated, optional)",
+          placeholder: "summarize, translate",
+        });
+        skillNames = parseCommaSeparated(skillsRaw);
+      }
     }
 
     // 7. Summary
+    const toolsSummary =
+      runtimeKind === "external_harness"
+        ? "N/A (external harness)"
+        : toolNames.length > 0
+          ? toolNames.join(", ")
+          : "(none)";
+    const skillsSummary =
+      runtimeKind === "external_harness"
+        ? "N/A (external harness)"
+        : skillNames.length > 0
+          ? skillNames.join(", ")
+          : "(none)";
     const summaryLines = [
       `Name:          ${name}`,
       `Description:   ${description || "(none)"}`,
       `System Prompt: ${systemPrompt.length > 80 ? `${systemPrompt.substring(0, 77)}...` : systemPrompt}`,
-      `Model:         ${modelId.trim() || "(system default)"}`,
-      `Tools:         ${toolNames.length > 0 ? toolNames.join(", ") : "(none)"}`,
-      `Skills:        ${skillNames.length > 0 ? skillNames.join(", ") : "(none)"}`,
+      `Model:         ${trimmedModelId || "(system default)"}`,
+      `Tools:         ${toolsSummary}`,
+      `Skills:        ${skillsSummary}`,
     ].join("\n");
 
     note(summaryLines, "New Agent");
@@ -157,7 +183,7 @@ export async function createCommand(): Promise<void> {
       systemPrompt: systemPrompt.trim(),
       toolNames,
       skillNames,
-      modelId: modelId.trim() || null,
+      modelId: trimmedModelId,
     });
     await closeDb();
 

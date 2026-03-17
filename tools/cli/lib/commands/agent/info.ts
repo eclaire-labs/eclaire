@@ -1,3 +1,4 @@
+import { getAgentRuntimeKindForModel } from "@eclaire/ai";
 import { getAgent } from "../../db/agents.js";
 import { getDefaultUser } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
@@ -17,8 +18,12 @@ export async function infoCommand(id: string): Promise<void> {
       process.exit(1);
     }
 
+    const agentRuntimeKind = agent.modelId
+      ? getAgentRuntimeKindForModel(agent.modelId)
+      : "native";
+
     console.log(colors.header(`\n  ${icons.robot} Agent: ${agent.name}\n`));
-    console.log(createAgentInfoTable(agent));
+    console.log(createAgentInfoTable({ ...agent, agentRuntimeKind }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(

@@ -1,3 +1,4 @@
+import { getAgentRuntimeKindForModel } from "@eclaire/ai";
 import { getAgent, updateAgent } from "../../db/agents.js";
 import { getDefaultUser } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
@@ -11,6 +12,7 @@ import {
   intro,
   outro,
   cancel,
+  note,
   textInput,
   selectMany,
   isCancelled,
@@ -43,29 +45,36 @@ export async function editCommand(id: string): Promise<void> {
     console.log(createAgentInfoTable(agent));
     console.log();
 
-    // Select fields to edit
-    const fieldsToEdit = await selectMany<string>({
-      message: "Select fields to edit",
-      options: [
-        { value: "name", label: "Name", hint: agent.name },
-        {
-          value: "description",
-          label: "Description",
-          hint: agent.description || "(none)",
-        },
-        {
-          value: "systemPrompt",
-          label: "System Prompt",
-          hint:
-            agent.systemPrompt.length > 40
-              ? `${agent.systemPrompt.substring(0, 37)}...`
-              : agent.systemPrompt,
-        },
-        {
-          value: "modelId",
-          label: "Model",
-          hint: agent.modelId || "(system default)",
-        },
+    // Determine runtime kind
+    let runtimeKind = agent.modelId
+      ? getAgentRuntimeKindForModel(agent.modelId)
+      : "native";
+
+    // Select fields to edit (exclude tools/skills for external harness)
+    const fieldOptions = [
+      { value: "name", label: "Name", hint: agent.name },
+      {
+        value: "description",
+        label: "Description",
+        hint: agent.description || "(none)",
+      },
+      {
+        value: "systemPrompt",
+        label: "System Prompt",
+        hint:
+          agent.systemPrompt.length > 40
+            ? `${agent.systemPrompt.substring(0, 37)}...`
+            : agent.systemPrompt,
+      },
+      {
+        value: "modelId",
+        label: "Model",
+        hint: agent.modelId || "(system default)",
+      },
+    ];
+
+    if (runtimeKind === "native") {
+      fieldOptions.push(
         {
           value: "toolNames",
           label: "Tools",
@@ -80,7 +89,12 @@ export async function editCommand(id: string): Promise<void> {
               ? agent.skillNames.join(", ")
               : "(none)",
         },
-      ],
+      );
+    }
+
+    const fieldsToEdit = await selectMany<string>({
+      message: "Select fields to edit",
+      options: fieldOptions,
     });
 
     if (fieldsToEdit.length === 0) {
@@ -148,7 +162,26 @@ export async function editCommand(id: string): Promise<void> {
             }
           },
         });
-        updates.modelId = modelId.trim() || null;
+        const newModelId = modelId.trim() || null;
+        updates.modelId = newModelId;
+
+        // Re-check runtime kind after model change
+        const newRuntimeKind = newModelId
+          ? getAgentRuntimeKindForModel(newModelId)
+          : "native";
+        if (
+          newRuntimeKind === "external_harness" &&
+          runtimeKind === "native" &&
+          (agent.toolNames.length > 0 || agent.skillNames.length > 0)
+        ) {
+          note(
+            "Switching to external harness — clearing tools and skills.",
+            "Info",
+          );
+          updates.toolNames = [];
+          updates.skillNames = [];
+        }
+        runtimeKind = newRuntimeKind;
       }
 
       if (field === "toolNames") {

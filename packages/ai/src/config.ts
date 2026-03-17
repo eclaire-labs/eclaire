@@ -12,6 +12,7 @@ import * as path from "node:path";
 import { createLazyLogger, getErrorMessage } from "./logger.js";
 import type {
   AIContext,
+  AgentRuntimeKind,
   Dialect,
   EngineConfig,
   InputModality,
@@ -440,6 +441,32 @@ export function getProviderConfig(providerId: string): ProviderConfig | null {
     );
     return null;
   }
+}
+
+// =============================================================================
+// RUNTIME KIND
+// =============================================================================
+
+/**
+ * Determine the agent runtime kind from a provider configuration.
+ * CLI providers (with a `cli` field) are external harnesses; all others are native.
+ */
+export function getAgentRuntimeKind(
+  providerConfig: ProviderConfig,
+): AgentRuntimeKind {
+  return providerConfig.cli ? "external_harness" : "native";
+}
+
+/**
+ * Determine the agent runtime kind for a given model ID.
+ * Returns "native" if the model or provider cannot be resolved.
+ */
+export function getAgentRuntimeKindForModel(modelId: string): AgentRuntimeKind {
+  const modelConfig = getModelConfigById(modelId);
+  if (!modelConfig) return "native";
+  const providerConfig = getProviderConfig(modelConfig.provider);
+  if (!providerConfig) return "native";
+  return getAgentRuntimeKind(providerConfig);
 }
 
 // =============================================================================

@@ -4,6 +4,7 @@ export interface ModelSummary {
   id: string;
   name: string;
   provider: string;
+  agentRuntimeKind: "native" | "external_harness";
   capabilities: {
     tools: boolean;
     streaming: boolean;
