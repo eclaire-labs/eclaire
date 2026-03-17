@@ -40,7 +40,7 @@ interface ChatPanelProps {
 export function ChatPanel({
   messages,
   isLoading,
-  currentConversation: _currentConversation,
+  currentConversation,
   input,
   setInput,
   handleSend,
@@ -99,6 +99,7 @@ export function ChatPanel({
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
           showThinkingTokens={showThinkingTokens}
+          sessionId={currentConversation?.id}
         />
       </div>
 

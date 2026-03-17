@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { validator as zValidator } from "hono-openapi";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
+import { getAgentSteps } from "../lib/services/agent-steps.js";
 import {
   abortExecution,
   createSession,
@@ -195,6 +196,24 @@ sessionsRoutes.post(
         "Access-Control-Allow-Headers": "*",
       },
     });
+  }, logger),
+);
+
+// GET /api/sessions/:id/messages/:messageId/steps - Get agent execution steps
+sessionsRoutes.get(
+  "/:id/messages/:messageId/steps",
+  withAuth(async (c, userId) => {
+    const sessionId = c.req.param("id");
+    const messageId = c.req.param("messageId");
+
+    // Verify the session belongs to this user
+    const session = await getSession(sessionId, userId);
+    if (!session) {
+      throw new NotFoundError("Session");
+    }
+
+    const steps = await getAgentSteps(messageId);
+    return c.json({ items: steps });
   }, logger),
 );
 

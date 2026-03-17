@@ -45,6 +45,7 @@ interface MessageListProps {
   streamingText?: string;
   streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
+  sessionId?: string;
 }
 
 export function MessageList({
@@ -55,6 +56,7 @@ export function MessageList({
   streamingText,
   streamingToolCalls = [],
   showThinkingTokens = true,
+  sessionId,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -92,6 +94,7 @@ export function MessageList({
           key={msg.id}
           message={msg}
           showThinkingTokens={showThinkingTokens}
+          sessionId={sessionId}
         />
       ))}
 

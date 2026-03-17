@@ -1,9 +1,9 @@
 // components/chat/message-item.tsx
 
 import { User } from "lucide-react";
+import { AgentActivityView } from "@/components/assistant/agent-activity-view";
 import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { AudioPlaybackButton } from "@/components/assistant/audio-playback-button";
-import { ToolExecutionTracker } from "@/components/assistant/tool-execution-tracker";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,11 +16,13 @@ import { ThinkingAccordion } from "./thinking-accordion";
 interface MessageItemProps {
   message: Message;
   showThinkingTokens?: boolean;
+  sessionId?: string;
 }
 
 export function MessageItem({
   message,
   showThinkingTokens = true,
+  sessionId,
 }: MessageItemProps) {
   const isUser = message.role === "user";
   const { data: auth } = useAuth();
@@ -51,10 +53,13 @@ export function MessageItem({
           </div>
         )}
 
-        {/* Show tool calls for assistant messages if available */}
+        {/* Show agent activity for assistant messages if available */}
         {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
           <div className="mb-3">
-            <ToolExecutionTracker
+            <AgentActivityView
+              sessionId={sessionId}
+              messageId={message.id}
+              executionSummary={message.executionSummary}
               toolCalls={message.toolCalls.map((summary, index) =>
                 convertToToolCall(summary, index),
               )}

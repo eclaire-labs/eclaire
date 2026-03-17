@@ -30,6 +30,10 @@ export interface RecordHistoryParams {
   userId?: string; // The resource owner (whose data was affected)
   // biome-ignore lint/suspicious/noExplicitAny: JSON blob for audit trail
   metadata?: Record<string, any> | null; // Additional metadata for events
+  /** Link to the conversation that triggered this action (if any) */
+  conversationId?: string | null;
+  /** Link to the specific message that triggered this action (if any) */
+  messageId?: string | null;
   // biome-ignore lint/suspicious/noExplicitAny: optional transaction parameter
   tx?: any; // Optional transaction parameter
 }
@@ -47,6 +51,8 @@ export async function recordHistory({
   grantId,
   userId,
   metadata,
+  conversationId,
+  messageId,
   tx,
 }: RecordHistoryParams) {
   try {
@@ -67,6 +73,8 @@ export async function recordHistory({
       grantId: grantId || null,
       userId: userId || null,
       metadata: metadata || null, // No JSON.stringify needed - Drizzle handles it
+      conversationId: conversationId || null,
+      messageId: messageId || null,
       // timestamp is handled by .$defaultFn in schema
     });
   } catch (error) {
@@ -95,6 +103,7 @@ export interface GetHistoryParams {
   action?: HistoryAction;
   itemType?: HistoryItemType;
   actor?: HistoryActor;
+  conversationId?: string;
   startDate?: Date;
   endDate?: Date;
   limit?: number;
@@ -135,6 +144,7 @@ export async function findHistory(params: GetHistoryParams) {
       action,
       itemType,
       actor,
+      conversationId,
       startDate,
       endDate,
       limit = 50,
@@ -153,6 +163,9 @@ export async function findHistory(params: GetHistoryParams) {
         }
         if (actor) {
           conditions.push(eq(history.actor, actor));
+        }
+        if (conversationId) {
+          conditions.push(eq(history.conversationId, conversationId));
         }
         if (startDate) {
           conditions.push(gte(history.timestamp, startDate));
@@ -188,7 +201,15 @@ export async function countHistory(
 ) {
   // Count function for pagination
   try {
-    const { userId, action, itemType, actor, startDate, endDate } = params;
+    const {
+      userId,
+      action,
+      itemType,
+      actor,
+      conversationId,
+      startDate,
+      endDate,
+    } = params;
 
     const result = await db.query.history.findMany({
       where: (history, { eq, and, gte, lte }) => {
@@ -202,6 +223,9 @@ export async function countHistory(
         }
         if (actor) {
           conditions.push(eq(history.actor, actor));
+        }
+        if (conversationId) {
+          conditions.push(eq(history.conversationId, conversationId));
         }
         if (startDate) {
           conditions.push(gte(history.timestamp, startDate));

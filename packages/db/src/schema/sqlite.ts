@@ -14,6 +14,7 @@ import {
   generateSecurityId,
   generateTagId,
   generateTaskCommentId,
+  generateAgentStepId,
   generateTaskExecutionId,
   generateTaskId,
   generateUserId,
@@ -886,6 +887,12 @@ export const history = sqliteTable(
     userId: text("user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    conversationId: text("conversation_id").references(() => conversations.id, {
+      onDelete: "set null",
+    }),
+    messageId: text("message_id").references(() => messages.id, {
+      onDelete: "set null",
+    }),
   },
   (table) => ({
     itemIdx: index("history_item_idx").on(table.itemType, table.itemId),
@@ -895,6 +902,9 @@ export const history = sqliteTable(
       table.authorizedByActorId,
     ),
     grantIdx: index("history_grant_id_idx").on(table.grantId),
+    conversationIdx: index("history_conversation_id_idx").on(
+      table.conversationId,
+    ),
   }),
 );
 
@@ -1001,6 +1011,46 @@ export const messages = sqliteTable(
       table.authorActorId,
     ),
     createdAtIdx: index("messages_created_at_idx").on(table.createdAt),
+  }),
+);
+
+export const agentSteps = sqliteTable(
+  "agent_steps",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateAgentStepId()),
+    messageId: text("message_id")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    stepNumber: integer("step_number").notNull(),
+    timestamp: integer("timestamp", { mode: "timestamp_ms" }).notNull(),
+    thinkingContent: text("thinking_content"),
+    textContent: text("text_content"),
+    isTerminal: integer("is_terminal", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    stopReason: text("stop_reason"),
+    promptTokens: integer("prompt_tokens"),
+    completionTokens: integer("completion_tokens"),
+    toolExecutions: text("tool_executions", {
+      mode: "json",
+    }).$type<Record<string, unknown>[]>(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  },
+  (table) => ({
+    messageIdx: index("agent_steps_message_id_idx").on(table.messageId),
+    conversationIdx: index("agent_steps_conversation_id_idx").on(
+      table.conversationId,
+    ),
+    conversationStepIdx: index(
+      "agent_steps_conversation_id_step_number_idx",
+    ).on(table.conversationId, table.stepNumber),
   }),
 );
 
@@ -1240,6 +1290,10 @@ export const photosTagsRelations = relations(photosTags, ({ one }) => ({
 
 export const historyRelations = relations(history, ({ one }) => ({
   user: one(users, { fields: [history.userId], references: [users.id] }),
+  conversation: one(conversations, {
+    fields: [history.conversationId],
+    references: [conversations.id],
+  }),
 }));
 
 export const conversationsRelations = relations(
@@ -1253,9 +1307,21 @@ export const conversationsRelations = relations(
   }),
 );
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const messagesRelations = relations(messages, ({ one, many }) => ({
   conversation: one(conversations, {
     fields: [messages.conversationId],
+    references: [conversations.id],
+  }),
+  agentSteps: many(agentSteps),
+}));
+
+export const agentStepsRelations = relations(agentSteps, ({ one }) => ({
+  message: one(messages, {
+    fields: [agentSteps.messageId],
+    references: [messages.id],
+  }),
+  conversation: one(conversations, {
+    fields: [agentSteps.conversationId],
     references: [conversations.id],
   }),
 }));

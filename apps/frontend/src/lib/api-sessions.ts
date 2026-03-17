@@ -9,6 +9,7 @@ import type {
   ConversationSummary,
   ConversationWithMessages,
 } from "@/types/conversation";
+import type { AgentStep } from "@/types/message";
 
 // Type aliases — the backend returns the same DB rows as before
 export type Session = ConversationSummary;
@@ -108,4 +109,23 @@ export async function getSessionStatuses(): Promise<{
  */
 export async function markSessionRead(id: string): Promise<void> {
   await apiPost(`/api/sessions/${id}/mark-read`);
+}
+
+// ============================================================================
+// Agent execution steps
+// ============================================================================
+
+/**
+ * Get the step-by-step execution trace for a specific assistant message.
+ * Loaded on-demand when the user expands the activity view.
+ */
+export async function getAgentSteps(
+  sessionId: string,
+  messageId: string,
+): Promise<AgentStep[]> {
+  const response = await apiGet(
+    `/api/sessions/${sessionId}/messages/${messageId}/steps`,
+  );
+  const data = await response.json();
+  return data.items;
 }

@@ -60,6 +60,7 @@ import {
   generateSecurityId,
   generateTagId,
   generateTaskCommentId,
+  generateAgentStepId,
   generateTaskExecutionId,
   generateTaskId,
   generateUserId,
@@ -979,6 +980,12 @@ export const history = pgTable(
     userId: text("user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    conversationId: text("conversation_id").references(() => conversations.id, {
+      onDelete: "set null",
+    }),
+    messageId: text("message_id").references(() => messages.id, {
+      onDelete: "set null",
+    }),
   },
   (table) => ({
     itemIdx: index("history_item_idx").on(table.itemType, table.itemId),
@@ -988,6 +995,9 @@ export const history = pgTable(
       table.authorizedByActorId,
     ),
     grantIdx: index("history_grant_id_idx").on(table.grantId),
+    conversationIdx: index("history_conversation_id_idx").on(
+      table.conversationId,
+    ),
   }),
 );
 
@@ -1162,6 +1172,10 @@ export const photosTagsRelations = relations(photosTags, ({ one }) => ({
 
 export const historyRelations = relations(history, ({ one }) => ({
   user: one(users, { fields: [history.userId], references: [users.id] }),
+  conversation: one(conversations, {
+    fields: [history.conversationId],
+    references: [conversations.id],
+  }),
 }));
 
 export const conversations = pgTable(
@@ -1268,6 +1282,42 @@ export const messages = pgTable(
   }),
 );
 
+export const agentSteps = pgTable(
+  "agent_steps",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateAgentStepId()),
+    messageId: text("message_id")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    stepNumber: integer("step_number").notNull(),
+    timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+    thinkingContent: text("thinking_content"),
+    textContent: text("text_content"),
+    isTerminal: boolean("is_terminal").notNull().default(false),
+    stopReason: text("stop_reason"),
+    promptTokens: integer("prompt_tokens"),
+    completionTokens: integer("completion_tokens"),
+    toolExecutions: jsonb("tool_executions"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    messageIdx: index("agent_steps_message_id_idx").on(table.messageId),
+    conversationIdx: index("agent_steps_conversation_id_idx").on(
+      table.conversationId,
+    ),
+    conversationStepIdx: index(
+      "agent_steps_conversation_id_step_number_idx",
+    ).on(table.conversationId, table.stepNumber),
+  }),
+);
+
 export const conversationsRelations = relations(
   conversations,
   ({ one, many }) => ({
@@ -1286,9 +1336,21 @@ export const agentsRelations = relations(agents, ({ one }) => ({
   }),
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const messagesRelations = relations(messages, ({ one, many }) => ({
   conversation: one(conversations, {
     fields: [messages.conversationId],
+    references: [conversations.id],
+  }),
+  agentSteps: many(agentSteps),
+}));
+
+export const agentStepsRelations = relations(agentSteps, ({ one }) => ({
+  message: one(messages, {
+    fields: [agentSteps.messageId],
+    references: [messages.id],
+  }),
+  conversation: one(conversations, {
+    fields: [agentSteps.conversationId],
     references: [conversations.id],
   }),
 }));

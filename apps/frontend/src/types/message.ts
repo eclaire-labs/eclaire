@@ -29,6 +29,46 @@ export interface AssetReference {
   title?: string;
 }
 
+/** Summary of execution metadata stored on each assistant message */
+export interface AgentExecutionSummary {
+  stepCount: number;
+  totalToolCalls: number;
+  totalDurationMs?: number;
+}
+
+/** A single step in the agent execution trace (loaded on-demand) */
+export interface AgentStep {
+  id: string;
+  messageId: string;
+  conversationId: string;
+  stepNumber: number;
+  timestamp: string;
+  thinkingContent?: string | null;
+  textContent?: string | null;
+  isTerminal: boolean;
+  stopReason?: string | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  toolExecutions?: Array<{
+    toolName: string;
+    toolCallId: string;
+    input: Record<string, unknown>;
+    result: {
+      content?: Array<{
+        type: string;
+        text?: string;
+        data?: string;
+        mimeType?: string;
+      }>;
+      details?: Record<string, unknown>;
+      isError?: boolean;
+      _truncated?: boolean;
+      _originalSize?: string;
+    };
+    durationMs: number;
+  }> | null;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -39,6 +79,7 @@ export interface Message {
   contentLinks?: ContentLink[];
   thinkingContent?: string | null;
   toolCalls?: ToolCallSummary[];
+  executionSummary?: AgentExecutionSummary;
 }
 
 export interface TextResponse {

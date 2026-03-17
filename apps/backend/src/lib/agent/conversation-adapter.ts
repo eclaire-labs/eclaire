@@ -4,9 +4,14 @@
  * Handles loading and saving conversation messages for the agent.
  */
 
-import type { AIMessage, ToolCallSummaryOutput } from "@eclaire/ai";
+import type {
+  AIMessage,
+  RuntimeAgentStep,
+  ToolCallSummaryOutput,
+} from "@eclaire/ai";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import { saveAgentSteps } from "../services/agent-steps.js";
 import {
   type ConversationWithMessages,
   createConversation,
@@ -65,6 +70,36 @@ export interface SaveableResult {
   text: string;
   thinking?: string;
   toolCallSummaries: ToolCallSummaryOutput[];
+  /** Full step-by-step execution trace (persisted to agent_steps table) */
+  steps?: RuntimeAgentStep[];
+  /** Aggregate token usage */
+  usage?: {
+    totalPromptTokens: number;
+    totalCompletionTokens: number;
+    totalTokens: number;
+  };
+}
+
+/** Compute execution summary metadata from agent steps */
+function buildExecutionMetadata(
+  result: SaveableResult,
+  startTime?: number,
+): Record<string, unknown> {
+  const steps = result.steps ?? [];
+  if (steps.length === 0) return {};
+
+  let totalToolCalls = 0;
+  for (const step of steps) {
+    totalToolCalls += step.toolExecutions?.length ?? 0;
+  }
+
+  const totalDurationMs = startTime ? Date.now() - startTime : undefined;
+
+  return {
+    stepCount: steps.length,
+    totalToolCalls,
+    ...(totalDurationMs !== undefined && { totalDurationMs }),
+  };
 }
 
 export interface SaveConversationOptions {
@@ -126,7 +161,8 @@ export async function saveConversationMessages(
     });
 
     // Add assistant response
-    await createMessage({
+    const executionMeta = buildExecutionMetadata(result);
+    const assistantMsg = await createMessage({
       conversationId: newConversation.id,
       role: "assistant",
       authorActorId: agentActorId ?? newConversation.agentActorId,
@@ -136,8 +172,20 @@ export async function saveConversationMessages(
         result.toolCallSummaries.length > 0
           ? result.toolCallSummaries
           : undefined,
-      metadata: { requestId },
+      metadata: { requestId, ...executionMeta },
     });
+
+    // Persist step-by-step execution trace
+    if (result.steps && result.steps.length > 0) {
+      saveAgentSteps(assistantMsg.id, newConversation.id, result.steps).catch(
+        (err) => {
+          logger.error(
+            { err, messageId: assistantMsg.id },
+            "Failed to save agent steps",
+          );
+        },
+      );
+    }
 
     await updateConversationActivity(newConversation.id, userId);
 
@@ -162,7 +210,8 @@ export async function saveConversationMessages(
     },
   });
 
-  await createMessage({
+  const executionMeta2 = buildExecutionMetadata(result);
+  const assistantMsg2 = await createMessage({
     conversationId,
     role: "assistant",
     authorActorId: agentActorId,
@@ -172,8 +221,20 @@ export async function saveConversationMessages(
       result.toolCallSummaries.length > 0
         ? result.toolCallSummaries
         : undefined,
-    metadata: { requestId },
+    metadata: { requestId, ...executionMeta2 },
   });
+
+  // Persist step-by-step execution trace
+  if (result.steps && result.steps.length > 0) {
+    saveAgentSteps(assistantMsg2.id, conversationId, result.steps).catch(
+      (err) => {
+        logger.error(
+          { err, messageId: assistantMsg2.id },
+          "Failed to save agent steps",
+        );
+      },
+    );
+  }
 
   await updateConversationActivity(conversationId, userId);
 

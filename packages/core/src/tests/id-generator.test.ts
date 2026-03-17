@@ -35,8 +35,10 @@ import {
   isValidUserId,
   isValidApiKeyId,
   isValidTaskExecutionId,
+  isValidAgentStepId,
   generateApiKeyId,
   generateTaskExecutionId,
+  generateAgentStepId,
 } from "../id-generator.js";
 
 describe("generateCleanId", () => {
@@ -111,6 +113,11 @@ const entityGenerators = [
     name: "generateTaskExecutionId",
     fn: generateTaskExecutionId,
     prefix: "txe-",
+  },
+  {
+    name: "generateAgentStepId",
+    fn: generateAgentStepId,
+    prefix: "step-",
   },
 ] as const;
 
@@ -251,6 +258,12 @@ const validatorPairs = [
     generator: generateTaskExecutionId,
     prefix: "txe",
   },
+  {
+    name: "isValidAgentStepId",
+    validator: isValidAgentStepId,
+    generator: generateAgentStepId,
+    prefix: "step",
+  },
 ] as const;
 
 describe.each(validatorPairs)("$name", ({ validator, generator, prefix }) => {
@@ -315,8 +328,8 @@ describe("ID_CONSTANTS", () => {
     expect(ID_CONSTANTS.STANDARD_LENGTH).toBe(15);
   });
 
-  it("PREFIXES contains all 18 entity prefixes", () => {
-    expect(Object.keys(ID_CONSTANTS.PREFIXES).length).toBe(18);
+  it("PREFIXES contains all 19 entity prefixes", () => {
+    expect(Object.keys(ID_CONSTANTS.PREFIXES).length).toBe(19);
   });
 
   it("all PREFIXES end with a dash", () => {
