@@ -51,6 +51,7 @@ import {
   deleteSession,
   getSessionWithMessages,
   listSessions,
+  markSessionRead,
 } from "@/lib/api-sessions";
 import { convertBackendMessage } from "@/lib/message-utils";
 import {
@@ -410,6 +411,11 @@ export default function AssistantSettings({
       setCurrentConversation(session);
       setMessages(loaded.messages.map(convertBackendMessage));
       setActiveMode("chat");
+
+      // Clear unread indicator if the session had one
+      if (session.hasUnreadResponse) {
+        markSessionRead(session.id).catch(() => {});
+      }
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to load session",

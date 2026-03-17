@@ -81,3 +81,31 @@ export async function abortSession(id: string): Promise<boolean> {
   const data = await response.json();
   return data.aborted;
 }
+
+// ============================================================================
+// Session execution status
+// ============================================================================
+
+export interface SessionStatus {
+  id: string;
+  agentActorId: string;
+  executionStatus: string;
+  hasUnreadResponse: boolean;
+}
+
+/**
+ * Get execution status for all sessions with activity (running, error, or unread)
+ */
+export async function getSessionStatuses(): Promise<{
+  items: SessionStatus[];
+}> {
+  const response = await apiGet("/api/sessions/status");
+  return response.json();
+}
+
+/**
+ * Mark a session's response as read (clears the unread indicator)
+ */
+export async function markSessionRead(id: string): Promise<void> {
+  await apiPost(`/api/sessions/${id}/mark-read`);
+}

@@ -11,6 +11,10 @@ import {
   sendMessage,
   updateSession,
 } from "../lib/services/sessions.js";
+import {
+  clearUnreadResponse,
+  getSessionStatuses,
+} from "../lib/services/conversations.js";
 import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {
@@ -68,6 +72,15 @@ sessionsRoutes.get(
       limit,
       offset,
     });
+  }, logger),
+);
+
+// GET /api/sessions/status - Get execution status for all sessions with activity
+sessionsRoutes.get(
+  "/status",
+  withAuth(async (c, userId) => {
+    const items = await getSessionStatuses(userId);
+    return c.json({ items });
   }, logger),
 );
 
@@ -182,6 +195,16 @@ sessionsRoutes.post(
         "Access-Control-Allow-Headers": "*",
       },
     });
+  }, logger),
+);
+
+// POST /api/sessions/:id/mark-read - Clear unread response indicator
+sessionsRoutes.post(
+  "/:id/mark-read",
+  withAuth(async (c, userId) => {
+    const sessionId = c.req.param("id");
+    await clearUnreadResponse(sessionId, userId);
+    return c.json({ ok: true });
   }, logger),
 );
 

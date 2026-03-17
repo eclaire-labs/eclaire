@@ -39,6 +39,8 @@ import { MobileLayout } from "@/components/mobile/mobile-layout";
 import type { MobileTab } from "@/components/mobile/mobile-tab-bar";
 import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAgentExecutionStatus } from "@/hooks/use-session-status";
+import { AgentStatusDot } from "@/components/assistant/agent-status-dot";
 import { listAgents } from "@/lib/api-agents";
 import { apiFetch } from "@/lib/api-client";
 import {
@@ -47,6 +49,7 @@ import {
   deleteSession,
   getSessionWithMessages,
   listSessions,
+  markSessionRead,
   updateSession,
 } from "@/lib/api-sessions";
 import {
@@ -122,6 +125,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [agentRailItems, setAgentRailItems] = useState<Agent[]>([]);
+  const agentStatuses = useAgentExecutionStatus();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -459,6 +463,11 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
       setMessages(convertedMessages);
       setAttachedAssets([]);
+
+      // Clear unread indicator if the conversation had one
+      if (conversation.hasUnreadResponse) {
+        markSessionRead(conversation.id).catch(() => {});
+      }
     } catch (error) {
       console.error("Failed to load conversation:", error);
     } finally {
@@ -1002,31 +1011,35 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
                 </Link>
               </div>
               <div className="space-y-1">
-                {agentRailItems.map((agent) => (
-                  <Link
-                    key={agent.id}
-                    to="/agents/$agentId"
-                    params={{ agentId: agent.id }}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${
-                      activeAgentId === agent.id
-                        ? "font-medium"
-                        : "text-muted-foreground hover:bg-[hsl(var(--hover-bg))]"
-                    }`}
-                    style={
-                      activeAgentId === agent.id
-                        ? {
-                            backgroundColor: `hsl(var(--sidebar-active-bg) / var(--sidebar-active-bg-opacity))`,
-                            color: `hsl(var(--sidebar-active-text))`,
-                          }
-                        : undefined
-                    }
-                  >
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full border bg-background text-[11px] font-semibold">
-                      {agent.name.slice(0, 1).toUpperCase()}
-                    </span>
-                    <span className="truncate">{agent.name}</span>
-                  </Link>
-                ))}
+                {agentRailItems.map((agent) => {
+                  const agentStatus = agentStatuses.get(agent.id);
+                  return (
+                    <Link
+                      key={agent.id}
+                      to="/agents/$agentId"
+                      params={{ agentId: agent.id }}
+                      className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${
+                        activeAgentId === agent.id
+                          ? "font-medium"
+                          : "text-muted-foreground hover:bg-[hsl(var(--hover-bg))]"
+                      }`}
+                      style={
+                        activeAgentId === agent.id
+                          ? {
+                              backgroundColor: `hsl(var(--sidebar-active-bg) / var(--sidebar-active-bg-opacity))`,
+                              color: `hsl(var(--sidebar-active-text))`,
+                            }
+                          : undefined
+                      }
+                    >
+                      <span className="relative flex h-6 w-6 items-center justify-center rounded-full border bg-background text-[11px] font-semibold">
+                        {agent.name.slice(0, 1).toUpperCase()}
+                        {agentStatus && <AgentStatusDot status={agentStatus} />}
+                      </span>
+                      <span className="truncate">{agent.name}</span>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
             <PopularTagsSection />

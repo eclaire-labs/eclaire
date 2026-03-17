@@ -15,6 +15,13 @@
       "when": 1773667597802,
       "tag": "0001_flashy_green_goblin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773750393644,
+      "tag": "0002_fair_stardust",
+      "breakpoints": true
     }
   ]
 }

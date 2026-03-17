@@ -53,7 +53,10 @@ export interface ProcessingEvent {
     | "stage_completed" // Stage finished successfully
     | "stage_failed" // Stage failed
     | "job_completed" // All stages done, job succeeded
-    | "job_failed"; // Job in terminal failure state
+    | "job_failed" // Job in terminal failure state
+    | "session_running" // Agent session execution started
+    | "session_completed" // Agent session execution completed
+    | "session_error"; // Agent session execution failed
 
   // Asset identity (for processing events)
   assetType?: AssetType;
@@ -67,6 +70,10 @@ export interface ProcessingEvent {
 
   // Error message (for *_failed events)
   error?: string;
+
+  // Session identity (for session_* events)
+  sessionId?: string;
+  agentActorId?: string;
 
   timestamp: number;
   userId?: string;
@@ -134,6 +141,23 @@ export function ProcessingEventsProvider({
 
             // Skip system events (connected, ping)
             if (type === "connected" || type === "ping") {
+              return;
+            }
+
+            // Handle session execution events (no assetType/assetId required)
+            if (
+              type === "session_running" ||
+              type === "session_completed" ||
+              type === "session_error"
+            ) {
+              queryClient.invalidateQueries({
+                queryKey: ["session-status"],
+              });
+              if (data.sessionId) {
+                queryClient.invalidateQueries({
+                  queryKey: ["sessions", data.sessionId],
+                });
+              }
               return;
             }
 

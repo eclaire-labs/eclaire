@@ -153,6 +153,12 @@ const start = async () => {
     const { ensureInstanceAdmin } = await import("./lib/services/admin.js");
     await ensureInstanceAdmin();
 
+    // Reset any stale "running" session executions from a previous crash/restart
+    const { resetStaleExecutions } = await import(
+      "./lib/services/conversations.js"
+    );
+    await resetStaleExecutions();
+
     // Only start HTTP server if role includes API functionality
     if (SERVICE_ROLE === "api" || SERVICE_ROLE === "all") {
       // Initialize AI client before validation

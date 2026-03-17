@@ -917,6 +917,10 @@ export const conversations = sqliteTable(
       .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
     lastMessageAt: integer("last_message_at", { mode: "timestamp_ms" }),
     messageCount: integer("message_count").notNull().default(0),
+    executionStatus: text("execution_status").notNull().default("idle"),
+    hasUnreadResponse: integer("has_unread_response", { mode: "boolean" })
+      .notNull()
+      .default(false),
   },
   (table) => ({
     userIdx: index("conversations_user_id_idx").on(table.userId),

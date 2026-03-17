@@ -14,6 +14,8 @@ export interface ConversationSummary {
   updatedAt: Date | string;
   lastMessageAt: Date | string | null;
   messageCount: number;
+  executionStatus?: "idle" | "running" | "error";
+  hasUnreadResponse?: boolean;
 }
 
 // For API responses, we need a version that uses backend message format

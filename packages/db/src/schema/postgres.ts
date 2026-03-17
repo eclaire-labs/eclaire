@@ -1183,6 +1183,8 @@ export const conversations = pgTable(
       .defaultNow(),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
     messageCount: integer("message_count").notNull().default(0),
+    executionStatus: text("execution_status").notNull().default("idle"),
+    hasUnreadResponse: boolean("has_unread_response").notNull().default(false),
   },
   (table) => ({
     userIdx: index("conversations_user_id_idx").on(table.userId),

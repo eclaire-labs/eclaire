@@ -1,5 +1,5 @@
 import { generateConversationId } from "@eclaire/core";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, ne, or } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 
 const { conversations, messages } = schema;
@@ -17,6 +17,8 @@ export interface CreateConversationParams {
 
 export interface UpdateConversationParams {
   title?: string;
+  executionStatus?: string;
+  hasUnreadResponse?: boolean;
 }
 
 export interface ConversationWithMessages {
@@ -28,6 +30,8 @@ export interface ConversationWithMessages {
   updatedAt: Date;
   lastMessageAt: Date | null;
   messageCount: number;
+  executionStatus: string;
+  hasUnreadResponse: boolean;
   messages: Array<{
     id: string;
     role: "user" | "assistant";
@@ -50,6 +54,8 @@ export interface ConversationSummary {
   updatedAt: Date;
   lastMessageAt: Date | null;
   messageCount: number;
+  executionStatus: string;
+  hasUnreadResponse: boolean;
 }
 
 /**
@@ -337,4 +343,76 @@ export function generateConversationTitle(firstMessage: string): string {
   }
 
   return `${truncated}...`;
+}
+
+/**
+ * Get sessions with active execution or unread responses for a user.
+ * Used by the session status API endpoint.
+ */
+export async function getSessionStatuses(userId: string): Promise<
+  Array<{
+    id: string;
+    agentActorId: string;
+    executionStatus: string;
+    hasUnreadResponse: boolean;
+  }>
+> {
+  return db
+    .select({
+      id: conversations.id,
+      agentActorId: conversations.agentActorId,
+      executionStatus: conversations.executionStatus,
+      hasUnreadResponse: conversations.hasUnreadResponse,
+    })
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.userId, userId),
+        or(
+          ne(conversations.executionStatus, "idle"),
+          eq(conversations.hasUnreadResponse, true),
+        ),
+      ),
+    );
+}
+
+/**
+ * Clear the unread response flag for a conversation.
+ */
+export async function clearUnreadResponse(
+  conversationId: string,
+  userId: string,
+): Promise<void> {
+  await db
+    .update(conversations)
+    .set({ hasUnreadResponse: false, updatedAt: new Date() })
+    .where(
+      and(
+        eq(conversations.id, conversationId),
+        eq(conversations.userId, userId),
+      ),
+    );
+}
+
+/**
+ * Reset stale running executions (e.g., after server restart).
+ */
+export async function resetStaleExecutions(): Promise<number> {
+  const result = await db
+    .update(conversations)
+    .set({
+      executionStatus: "error",
+      hasUnreadResponse: true,
+      updatedAt: new Date(),
+    })
+    .where(eq(conversations.executionStatus, "running"))
+    .returning({ id: conversations.id });
+
+  if (result.length > 0) {
+    logger.info(
+      { count: result.length },
+      "Reset stale running executions to error state",
+    );
+  }
+  return result.length;
 }

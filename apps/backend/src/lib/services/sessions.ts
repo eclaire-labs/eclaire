@@ -6,8 +6,14 @@
  *
  * Delegates persistence to the existing conversations/messages services
  * (the DB tables are the same — only the API naming changes).
+ *
+ * Agent execution is decoupled from the HTTP stream via an EventEmitter.
+ * The execution runs to completion (saving messages) even if the client
+ * disconnects. The HTTP SSE stream subscribes to the emitter and can
+ * be cancelled without affecting the execution.
  */
 
+import { EventEmitter } from "node:events";
 import type { AIMessage } from "@eclaire/ai";
 import { convertFromLlm, createRuntimeContext } from "@eclaire/ai";
 import type { Context } from "../../schemas/prompt-params.js";
@@ -38,6 +44,7 @@ import {
   listConversations,
   updateConversation,
 } from "./conversations.js";
+import { publishProcessingEvent } from "../../routes/processing-events.js";
 import { recordHistory } from "./history.js";
 import {
   callerActorId,
@@ -69,19 +76,25 @@ export interface SendMessageOptions {
 }
 
 // ============================================================================
-// Abort mechanism
+// Execution tracking
 // ============================================================================
 
-const runningExecutions = new Map<string, AbortController>();
+interface ExecutionEntry {
+  abortController: AbortController;
+  emitter: EventEmitter;
+  startedAt: number;
+}
+
+const runningExecutions = new Map<string, ExecutionEntry>();
 
 /**
  * Abort a running execution for a session.
  * Returns true if an execution was found and aborted.
  */
 export function abortExecution(sessionId: string): boolean {
-  const controller = runningExecutions.get(sessionId);
-  if (!controller) return false;
-  controller.abort();
+  const entry = runningExecutions.get(sessionId);
+  if (!entry) return false;
+  entry.abortController.abort();
   runningExecutions.delete(sessionId);
   return true;
 }
@@ -202,8 +215,234 @@ export async function deleteSession(
 }
 
 // ============================================================================
-// Send message — always returns streaming SSE
+// Send message — decoupled execution + streaming SSE
 // ============================================================================
+
+/**
+ * Create a ReadableStream that subscribes to execution events via EventEmitter.
+ * The stream can be cancelled (client disconnect) without affecting the execution.
+ */
+function createClientStream(
+  emitter: EventEmitter,
+): ReadableStream<StreamEvent> {
+  return new ReadableStream<StreamEvent>({
+    start(controller) {
+      const onEvent = (event: StreamEvent) => {
+        try {
+          controller.enqueue(event);
+        } catch {
+          // Client disconnected — remove listeners, execution continues
+          cleanup();
+        }
+      };
+
+      const onDone = () => {
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
+        cleanup();
+      };
+
+      const cleanup = () => {
+        emitter.off("event", onEvent);
+        emitter.off("done", onDone);
+      };
+
+      emitter.on("event", onEvent);
+      emitter.on("done", onDone);
+    },
+    cancel() {
+      // Client disconnected — execution continues independently
+    },
+  });
+}
+
+interface RunExecutionParams {
+  sessionId: string;
+  userId: string;
+  prompt: string;
+  // biome-ignore lint/suspicious/noExplicitAny: runtime stream result type varies
+  streamResult: any;
+  emitter: EventEmitter;
+  abortController: AbortController;
+  session: ConversationSummary;
+  callerActor: string;
+  callerAuthorizedByActorId: string | null;
+  callerGrantId: string | null;
+  requestId?: string;
+  startTime: number;
+}
+
+/**
+ * Run agent execution independently of the HTTP stream.
+ * Reads from the agent's event stream, emits events to the EventEmitter,
+ * and ALWAYS saves messages on completion — even if no client is listening.
+ */
+async function runExecution(params: RunExecutionParams): Promise<void> {
+  const {
+    sessionId,
+    userId,
+    prompt,
+    streamResult,
+    emitter,
+    abortController,
+    session,
+    callerActor,
+    callerAuthorizedByActorId,
+    callerGrantId,
+    requestId,
+    startTime,
+  } = params;
+
+  const reader = streamResult.eventStream.getReader();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      if (value.type === "turn_complete") {
+        const result = await streamResult.result;
+
+        const finalConversationId = await saveConversationMessages({
+          conversationId: sessionId,
+          userId,
+          agentActorId: session.agentActorId,
+          userAuthorActorId: callerActor,
+          userAuthorizedByActorId: callerAuthorizedByActorId,
+          userGrantId: callerGrantId,
+          prompt,
+          result,
+          requestId,
+        });
+
+        // Auto-generate title from first message
+        if (!session.title) {
+          const title = generateConversationTitle(prompt);
+          updateConversation(sessionId, userId, { title }).catch((err) => {
+            logger.error({ err, sessionId }, "Failed to auto-title session");
+          });
+        }
+
+        const endTime = Date.now();
+
+        // Emit done event to any connected clients
+        emitter.emit("event", {
+          type: "done",
+          requestId: requestId || `req_session_${Date.now()}`,
+          conversationId: finalConversationId,
+          totalTokens: result.usage.totalTokens,
+          executionTimeMs: endTime - startTime,
+          responseType: "text_response",
+          thinkingContent: result.thinking,
+          toolCalls:
+            result.toolCallSummaries.length > 0
+              ? result.toolCallSummaries
+              : undefined,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Update DB status — execution completed, mark as unread
+        await updateConversation(sessionId, userId, {
+          executionStatus: "idle",
+          hasUnreadResponse: true,
+        }).catch((err) => {
+          logger.error(
+            { err, sessionId },
+            "Failed to update execution status to idle",
+          );
+        });
+
+        // Publish SSE notification for status indicators
+        await publishProcessingEvent(userId, {
+          type: "session_completed",
+          sessionId,
+          agentActorId: session.agentActorId,
+        }).catch((err) => {
+          logger.error(
+            { err, sessionId },
+            "Failed to publish session_completed event",
+          );
+        });
+
+        logger.info(
+          {
+            sessionId,
+            userId,
+            totalExecutionTimeMs: endTime - startTime,
+            totalSteps: result.steps.length,
+          },
+          "Session message completed",
+        );
+        continue;
+      }
+
+      const event = transformRuntimeEvent(value);
+      if (event) emitter.emit("event", event);
+    }
+  } catch (error) {
+    const isAborted = abortController.signal.aborted;
+
+    if (isAborted) {
+      // Intentional abort — reset to idle, don't mark as unread
+      await updateConversation(sessionId, userId, {
+        executionStatus: "idle",
+      }).catch((err) => {
+        logger.error(
+          { err, sessionId },
+          "Failed to reset execution status after abort",
+        );
+      });
+
+      emitter.emit("event", {
+        type: "error",
+        error: "Execution aborted",
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      logger.error(
+        { sessionId, userId, error },
+        "Error in session message execution",
+      );
+
+      // Mark as error with unread flag
+      await updateConversation(sessionId, userId, {
+        executionStatus: "error",
+        hasUnreadResponse: true,
+      }).catch((err) => {
+        logger.error(
+          { err, sessionId },
+          "Failed to update execution status to error",
+        );
+      });
+
+      // Publish SSE notification
+      await publishProcessingEvent(userId, {
+        type: "session_error",
+        sessionId,
+        agentActorId: session.agentActorId,
+      }).catch((err) => {
+        logger.error(
+          { err, sessionId },
+          "Failed to publish session_error event",
+        );
+      });
+
+      emitter.emit("event", {
+        type: "error",
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  } finally {
+    reader.releaseLock();
+    runningExecutions.delete(sessionId);
+    emitter.emit("done");
+    emitter.removeAllListeners();
+  }
+}
 
 export async function sendMessage(
   options: SendMessageOptions,
@@ -229,15 +468,10 @@ export async function sendMessage(
     });
   }
 
-  // Create abort controller
-  const abortController = new AbortController();
-  runningExecutions.set(sessionId, abortController);
-
   logger.info({ sessionId, userId, requestId }, "Processing session message");
 
   const session = await getConversation(sessionId, userId);
   if (!session) {
-    runningExecutions.delete(sessionId);
     return new ReadableStream<StreamEvent>({
       start(controller) {
         controller.enqueue({
@@ -254,7 +488,6 @@ export async function sendMessage(
     context?.agentActorId ?? session.agentActorId ?? DEFAULT_AGENT_ID;
 
   if (requestedAgentActorId !== session.agentActorId) {
-    runningExecutions.delete(sessionId);
     return new ReadableStream<StreamEvent>({
       start(controller) {
         controller.enqueue({
@@ -287,7 +520,6 @@ export async function sendMessage(
     previousMessages = await loadConversationMessages(sessionId, userId);
   } catch (error) {
     if (error instanceof ConversationNotFoundError) {
-      runningExecutions.delete(sessionId);
       return new ReadableStream<StreamEvent>({
         start(controller) {
           controller.enqueue({
@@ -354,97 +586,52 @@ export async function sendMessage(
     messages: previousRuntimeMessages,
   });
 
-  return new ReadableStream<StreamEvent>({
-    async start(controller) {
-      const reader = streamResult.eventStream.getReader();
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          if (value.type === "turn_complete") {
-            const result = await streamResult.result;
-
-            const finalConversationId = await saveConversationMessages({
-              conversationId: sessionId,
-              userId,
-              agentActorId: session.agentActorId,
-              userAuthorActorId: callerActor,
-              userAuthorizedByActorId:
-                options.caller.authorizedByActorId ?? null,
-              userGrantId: options.caller.grantId ?? null,
-              prompt,
-              result,
-              requestId,
-            });
-
-            // Auto-generate title from first message
-            if (!session.title) {
-              const title = generateConversationTitle(prompt);
-              updateConversation(sessionId, userId, { title }).catch((err) => {
-                logger.error(
-                  { err, sessionId },
-                  "Failed to auto-title session",
-                );
-              });
-            }
-
-            const endTime = Date.now();
-
-            controller.enqueue({
-              type: "done",
-              requestId: requestId || `req_session_${Date.now()}`,
-              conversationId: finalConversationId,
-              totalTokens: result.usage.totalTokens,
-              executionTimeMs: endTime - startTime,
-              responseType: "text_response",
-              thinkingContent: result.thinking,
-              toolCalls:
-                result.toolCallSummaries.length > 0
-                  ? result.toolCallSummaries
-                  : undefined,
-              timestamp: new Date().toISOString(),
-            });
-
-            logger.info(
-              {
-                sessionId,
-                userId,
-                totalExecutionTimeMs: endTime - startTime,
-                totalSteps: result.steps.length,
-              },
-              "Session message completed",
-            );
-            continue;
-          }
-
-          const event = transformRuntimeEvent(value);
-          if (event) controller.enqueue(event);
-        }
-      } catch (error) {
-        if (abortController.signal.aborted) {
-          controller.enqueue({
-            type: "error",
-            error: "Execution aborted",
-            timestamp: new Date().toISOString(),
-          });
-        } else {
-          logger.error(
-            { sessionId, userId, error },
-            "Error in session message stream",
-          );
-          controller.enqueue({
-            type: "error",
-            error: error instanceof Error ? error.message : "Unknown error",
-            timestamp: new Date().toISOString(),
-          });
-        }
-      } finally {
-        reader.releaseLock();
-        runningExecutions.delete(sessionId);
-        controller.close();
-      }
-    },
+  // Set up execution tracking
+  const emitter = new EventEmitter();
+  const abortController = new AbortController();
+  runningExecutions.set(sessionId, {
+    abortController,
+    emitter,
+    startedAt: startTime,
   });
+
+  // Mark session as running in DB
+  updateConversation(sessionId, userId, { executionStatus: "running" }).catch(
+    (err) => {
+      logger.error(
+        { err, sessionId },
+        "Failed to set execution status to running",
+      );
+    },
+  );
+
+  // Publish SSE notification for status indicators
+  publishProcessingEvent(userId, {
+    type: "session_running",
+    sessionId,
+    agentActorId: session.agentActorId,
+  }).catch((err) => {
+    logger.error({ err, sessionId }, "Failed to publish session_running event");
+  });
+
+  // Fire-and-forget execution — runs independently of the HTTP stream
+  runExecution({
+    sessionId,
+    userId,
+    prompt,
+    streamResult,
+    emitter,
+    abortController,
+    session,
+    callerActor,
+    callerAuthorizedByActorId: options.caller.authorizedByActorId ?? null,
+    callerGrantId: options.caller.grantId ?? null,
+    requestId,
+    startTime,
+  }).catch((err) => {
+    logger.error({ err, sessionId }, "Uncaught error in runExecution");
+  });
+
+  // Return a stream that subscribes to the emitter
+  return createClientStream(emitter);
 }
