@@ -157,7 +157,7 @@ async function executeThumbnailGeneration(
   try {
     const thumbnailBuffer = await sharp(imageBuffer)
       .rotate() // Auto-apply EXIF orientation
-      .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+      .resize(800, 800, { fit: "cover", position: "attention" })
       .webp({ quality: 80 })
       .toBuffer();
 
