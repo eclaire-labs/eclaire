@@ -265,17 +265,17 @@ function StepTimeline({ steps }: StepTimelineProps) {
 
             {/* Tool executions */}
             {step.toolExecutions?.map((exec, idx) => (
-                <StepToolItem
-                  key={exec.toolCallId || `${step.stepNumber}-${idx}`}
-                  exec={exec}
-                  isExpanded={expandedTools.has(
-                    exec.toolCallId || `${step.stepNumber}-${idx}`,
-                  )}
-                  onToggle={() =>
-                    toggleTool(exec.toolCallId || `${step.stepNumber}-${idx}`)
-                  }
-                />
-              ))}
+              <StepToolItem
+                key={exec.toolCallId || `${step.stepNumber}-${idx}`}
+                exec={exec}
+                isExpanded={expandedTools.has(
+                  exec.toolCallId || `${step.stepNumber}-${idx}`,
+                )}
+                onToggle={() =>
+                  toggleTool(exec.toolCallId || `${step.stepNumber}-${idx}`)
+                }
+              />
+            ))}
 
             {/* Terminal step */}
             {step.isTerminal && (
