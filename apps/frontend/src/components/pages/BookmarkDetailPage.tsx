@@ -382,16 +382,16 @@ export function BookmarkDetailClient() {
             </Card>
 
             {/* Screenshot / Content Section */}
-            {(mainScreenshotUrl || bookmark.contentUrl) && (
+            {(bookmark.pdfUrl || mainScreenshotUrl || bookmark.contentUrl) && (
               <Card>
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                   <CardHeader>
                     <TabsList>
                       <TabsTrigger
                         value="screenshot"
-                        disabled={!mainScreenshotUrl}
+                        disabled={!bookmark.pdfUrl && !mainScreenshotUrl}
                       >
-                        Screenshot
+                        Preview
                       </TabsTrigger>
                       <TabsTrigger
                         value="content"
@@ -403,7 +403,29 @@ export function BookmarkDetailClient() {
                   </CardHeader>
                   <CardContent>
                     <TabsContent value="screenshot" className="mt-0">
-                      {mainScreenshotUrl && (
+                      {bookmark.pdfUrl ? (
+                        <object
+                          data={`${normalizeApiUrl(bookmark.pdfUrl)}?view=inline`}
+                          type="application/pdf"
+                          className="w-full h-[60vh] rounded-lg"
+                        >
+                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                            <FileText className="h-8 w-8 mb-2" />
+                            <p className="text-sm mb-2">
+                              PDF preview not supported in this browser.
+                            </p>
+                            <Button variant="outline" asChild>
+                              <a
+                                href={normalizeApiUrl(bookmark.pdfUrl)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                Open PDF
+                              </a>
+                            </Button>
+                          </div>
+                        </object>
+                      ) : mainScreenshotUrl ? (
                         <div className="aspect-video w-full bg-muted overflow-hidden rounded-lg">
                           <img
                             src={mainScreenshotUrl}
@@ -411,7 +433,7 @@ export function BookmarkDetailClient() {
                             className="w-full h-full object-cover"
                           />
                         </div>
-                      )}
+                      ) : null}
                     </TabsContent>
                     <TabsContent value="content" className="mt-0">
                       <ContentViewer
