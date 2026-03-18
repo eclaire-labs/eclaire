@@ -63,6 +63,25 @@ export async function detectAndVerifyMimeType(
     }
   }
 
+  // Special handling for text-based formats that file-type cannot detect from magic bytes
+  if (verifiedMimeType === "application/octet-stream" && filename) {
+    const lowerFilename = filename.toLowerCase();
+    const textExtensionMap: Record<string, string> = {
+      ".md": "text/markdown",
+      ".csv": "text/csv",
+      ".txt": "text/plain",
+      ".html": "text/html",
+      ".htm": "text/html",
+      ".json": "application/json",
+      ".xml": "application/xml",
+      ".rtf": "text/rtf",
+    };
+    const ext = lowerFilename.slice(lowerFilename.lastIndexOf("."));
+    if (ext in textExtensionMap) {
+      verifiedMimeType = textExtensionMap[ext];
+    }
+  }
+
   return verifiedMimeType;
 }
 
