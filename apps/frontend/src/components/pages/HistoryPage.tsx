@@ -94,9 +94,9 @@ export default function HistoryPage() {
   const filteredHistory = (history || []).filter((item) => {
     // Search filter
     const matchesSearch =
-      item.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.itemType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.action.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.itemName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.itemType || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.action || "").toLowerCase().includes(searchQuery.toLowerCase());
 
     // Action filter
     const matchesAction =
@@ -299,21 +299,23 @@ export default function HistoryPage() {
   };
 
   const getChangeDescription = (item: HistoryItem) => {
+    const name = item.itemName || "unknown";
+    const type = (item.itemType || "item").toLowerCase();
     if (item.action === "create") {
-      return `Created ${item.itemType.toLowerCase()} "${item.itemName}"`;
+      return `Created ${type} "${name}"`;
     } else if (item.action === "update") {
-      const beforeTitle = item.beforeData?.title || item.itemName;
-      const afterTitle = item.afterData?.title || item.itemName;
+      const beforeTitle = item.beforeData?.title || name;
+      const afterTitle = item.afterData?.title || name;
 
       if (beforeTitle !== afterTitle) {
         return `Updated title from "${beforeTitle}" to "${afterTitle}"`;
       } else {
-        return `Updated ${item.itemType.toLowerCase()} "${item.itemName}"`;
+        return `Updated ${type} "${name}"`;
       }
     } else if (item.action === "delete") {
-      return `Deleted ${item.itemType.toLowerCase()} "${item.itemName}"`;
+      return `Deleted ${type} "${name}"`;
     } else {
-      return `Performed ${item.action} on ${item.itemType.toLowerCase()} "${item.itemName}"`;
+      return `Performed ${item.action} on ${type} "${name}"`;
     }
   };
 
@@ -558,7 +560,7 @@ export default function HistoryPage() {
                   </div>
                 </div>
                 <CardTitle className="text-base font-medium mt-2">
-                  {item.itemName}
+                  {item.itemName || "Untitled"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
