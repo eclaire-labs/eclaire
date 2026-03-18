@@ -24,7 +24,10 @@ import {
   CancelledError,
 } from "../../ui/clack.js";
 
-const AUDIO_MODEL_KEYS = new Set(["audio.defaultSttModel", "audio.defaultTtsModel"]);
+const AUDIO_MODEL_KEYS = new Set([
+  "audio.defaultSttModel",
+  "audio.defaultTtsModel",
+]);
 
 async function interactiveSettings(): Promise<void> {
   try {
