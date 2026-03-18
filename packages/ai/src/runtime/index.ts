@@ -41,6 +41,9 @@ export type {
   ToolContext,
   ToolUpdateCallback,
   ToolProgressInfo,
+  ApprovalRequest,
+  ApprovalResponse,
+  OnApprovalRequired,
 } from "./tools/index.js";
 
 export { textResult, errorResult } from "./tools/index.js";

@@ -33,6 +33,8 @@ interface MobileChatInterfaceProps {
   streamingThought: string;
   streamingText: string;
   streamingToolCalls: ToolCall[];
+  onApproveToolCall?: (toolCallId: string) => void;
+  onDenyToolCall?: (toolCallId: string) => void;
   showThinkingTokens: boolean;
   slashPalette?: {
     open: boolean;
@@ -63,6 +65,8 @@ export function MobileChatInterface({
   streamingThought,
   streamingText,
   streamingToolCalls,
+  onApproveToolCall,
+  onDenyToolCall,
   showThinkingTokens,
   slashPalette,
 }: MobileChatInterfaceProps) {
@@ -242,6 +246,8 @@ export function MobileChatInterface({
           streamingThought={streamingThought}
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
+          onApproveToolCall={onApproveToolCall}
+          onDenyToolCall={onDenyToolCall}
           showThinkingTokens={showThinkingTokens}
           slashPalette={slashPalette}
         />

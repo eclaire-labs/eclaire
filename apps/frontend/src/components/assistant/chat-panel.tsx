@@ -33,6 +33,8 @@ interface ChatPanelProps {
   streamingText?: string;
   streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
+  onApproveToolCall?: (toolCallId: string) => void;
+  onDenyToolCall?: (toolCallId: string) => void;
 
   // Slash palette
   slashPalette?: {
@@ -61,6 +63,8 @@ export function ChatPanel({
   streamingText,
   streamingToolCalls = [],
   showThinkingTokens = true,
+  onApproveToolCall,
+  onDenyToolCall,
   slashPalette,
   className,
 }: ChatPanelProps) {
@@ -110,6 +114,8 @@ export function ChatPanel({
           streamingToolCalls={streamingToolCalls}
           showThinkingTokens={showThinkingTokens}
           sessionId={currentConversation?.id}
+          onApproveToolCall={onApproveToolCall}
+          onDenyToolCall={onDenyToolCall}
         />
       </div>
 

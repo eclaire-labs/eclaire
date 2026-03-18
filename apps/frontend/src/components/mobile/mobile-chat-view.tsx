@@ -26,6 +26,8 @@ interface MobileChatViewProps {
   streamingThought: string;
   streamingText: string;
   streamingToolCalls: ToolCall[];
+  onApproveToolCall?: (toolCallId: string) => void;
+  onDenyToolCall?: (toolCallId: string) => void;
   showThinkingTokens: boolean;
   slashPalette?: {
     open: boolean;

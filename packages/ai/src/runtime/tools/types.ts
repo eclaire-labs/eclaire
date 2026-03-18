@@ -123,6 +123,29 @@ export interface RuntimeToolDefinition<TInput extends AnyZodType = AnyZodType> {
 }
 
 // =============================================================================
+// TOOL APPROVAL
+// =============================================================================
+
+/** Approval request sent when a tool needs user confirmation */
+export interface ApprovalRequest {
+  toolCallId: string;
+  toolName: string;
+  toolLabel: string;
+  arguments: Record<string, unknown>;
+}
+
+/** Approval response from the user */
+export interface ApprovalResponse {
+  approved: boolean;
+  reason?: string;
+}
+
+/** Callback invoked when a tool requires approval before execution */
+export type OnApprovalRequired = (
+  request: ApprovalRequest,
+) => Promise<ApprovalResponse>;
+
+// =============================================================================
 // HELPERS
 // =============================================================================
 

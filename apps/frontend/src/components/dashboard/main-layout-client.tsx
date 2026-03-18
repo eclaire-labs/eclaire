@@ -243,6 +243,33 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     ) => {
       addOrUpdateTool(id, name, status, args, result, error);
     },
+    onApprovalRequired: (
+      id: string,
+      name: string,
+      _label: string,
+      args: Record<string, unknown>,
+    ) => {
+      addOrUpdateTool(id, name, "awaiting_approval", args);
+    },
+    onApprovalResolved: (
+      id: string,
+      name: string,
+      approved: boolean,
+      reason?: string,
+    ) => {
+      if (approved) {
+        addOrUpdateTool(id, name, "executing");
+      } else {
+        addOrUpdateTool(
+          id,
+          name,
+          "error",
+          undefined,
+          undefined,
+          reason || "Denied by user",
+        );
+      }
+    },
     onTextChunk: (content: string, _timestamp?: string) => {
       finalStreamingTextRef.current += content;
       processBatchedChunk(content);
@@ -343,6 +370,33 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
       // This prevents premature clearing of loading state
     },
   });
+
+  // Tool approval handlers
+  const handleApproveToolCall = useCallback((toolCallId: string) => {
+    const sessionId = currentConversationRef.current?.id;
+    if (!sessionId) return;
+    fetch(`/api/sessions/${sessionId}/approve-tool`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toolCallId, approved: true }),
+      credentials: "include",
+    }).catch((err) => {
+      console.error("Failed to approve tool execution:", err);
+    });
+  }, []);
+
+  const handleDenyToolCall = useCallback((toolCallId: string) => {
+    const sessionId = currentConversationRef.current?.id;
+    if (!sessionId) return;
+    fetch(`/api/sessions/${sessionId}/approve-tool`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toolCallId, approved: false }),
+      credentials: "include",
+    }).catch((err) => {
+      console.error("Failed to deny tool execution:", err);
+    });
+  }, []);
 
   useEffect(() => {
     if (assistantOpen && !currentConversation) {
@@ -961,6 +1015,8 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               streamingThought={streamingThought}
               streamingText={streamingText}
               streamingToolCalls={streamingToolCalls}
+              onApproveToolCall={handleApproveToolCall}
+              onDenyToolCall={handleDenyToolCall}
               showThinkingTokens={assistantPreferences.showThinkingTokens}
               slashPalette={slashPaletteConfig}
             />
@@ -1185,6 +1241,8 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               streamingThought={streamingThought}
               streamingText={streamingText}
               streamingToolCalls={streamingToolCalls}
+              onApproveToolCall={handleApproveToolCall}
+              onDenyToolCall={handleDenyToolCall}
               showThinkingTokens={assistantPreferences.showThinkingTokens}
               slashPalette={slashPaletteConfig}
             />

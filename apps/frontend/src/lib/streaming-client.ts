@@ -2,7 +2,14 @@ import React from "react";
 
 // Streaming event types from backend
 export interface StreamEvent {
-  type: "thought" | "tool-call" | "text-chunk" | "error" | "done";
+  type:
+    | "thought"
+    | "tool-call"
+    | "text-chunk"
+    | "error"
+    | "done"
+    | "approval-required"
+    | "approval-resolved";
   timestamp?: string;
   content?: string;
   /** Tool call ID — used for tracking parallel tool executions */
@@ -18,6 +25,12 @@ export interface StreamEvent {
   conversationId?: string;
   totalTokens?: number;
   executionTimeMs?: number;
+  /** Human-readable tool label (for approval events) */
+  label?: string;
+  /** Whether the approval was granted (for approval-resolved events) */
+  approved?: boolean;
+  /** Reason for approval/denial */
+  reason?: string;
 }
 
 // Streaming request interface
@@ -46,6 +59,19 @@ export interface StreamEventHandlers {
     // biome-ignore lint/suspicious/noExplicitAny: tool call results vary by tool type
     result?: any,
     error?: string,
+  ) => void;
+  onApprovalRequired?: (
+    id: string,
+    name: string,
+    label: string,
+    // biome-ignore lint/suspicious/noExplicitAny: tool call arguments are arbitrary JSON from AI tools
+    args: Record<string, any>,
+  ) => void;
+  onApprovalResolved?: (
+    id: string,
+    name: string,
+    approved: boolean,
+    reason?: string,
   ) => void;
   onTextChunk?: (content: string, timestamp?: string) => void;
   onError?: (error: string, timestamp?: string) => void;
@@ -214,6 +240,28 @@ export class StreamingClient {
         }
         break;
 
+      case "approval-required":
+        if (event.id && event.name) {
+          this.handlers.onApprovalRequired?.(
+            event.id,
+            event.name,
+            event.label ?? event.name,
+            event.arguments ?? {},
+          );
+        }
+        break;
+
+      case "approval-resolved":
+        if (event.id && event.name) {
+          this.handlers.onApprovalResolved?.(
+            event.id,
+            event.name,
+            event.approved ?? false,
+            event.reason,
+          );
+        }
+        break;
+
       case "text-chunk":
         if (event.content) {
           this.handlers.onTextChunk?.(event.content, event.timestamp);
@@ -284,6 +332,10 @@ export function useStreamingClient(handlers: StreamEventHandlers = {}) {
     clientRef.current = new StreamingClient({
       onThought: (...args) => handlersRef.current.onThought?.(...args),
       onToolCall: (...args) => handlersRef.current.onToolCall?.(...args),
+      onApprovalRequired: (...args) =>
+        handlersRef.current.onApprovalRequired?.(...args),
+      onApprovalResolved: (...args) =>
+        handlersRef.current.onApprovalResolved?.(...args),
       onTextChunk: (...args) => handlersRef.current.onTextChunk?.(...args),
       onError: (...args) => handlersRef.current.onError?.(...args),
       onDone: (...args) => handlersRef.current.onDone?.(...args),

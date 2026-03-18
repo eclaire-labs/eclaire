@@ -61,6 +61,8 @@ interface GlobalAssistantProps {
   streamingThought?: string;
   streamingText?: string;
   streamingToolCalls?: ToolCall[];
+  onApproveToolCall?: (toolCallId: string) => void;
+  onDenyToolCall?: (toolCallId: string) => void;
   showThinkingTokens?: boolean;
   // Slash commands
   slashPalette?: SlashPaletteConfig;
@@ -90,6 +92,8 @@ interface AssistantContentProps {
   streamingThought?: string;
   streamingText?: string;
   streamingToolCalls?: ToolCall[];
+  onApproveToolCall?: (toolCallId: string) => void;
+  onDenyToolCall?: (toolCallId: string) => void;
   showThinkingTokens?: boolean;
   // Slash commands
   slashPalette?: SlashPaletteConfig;
@@ -117,6 +121,8 @@ const AssistantContent = ({
   streamingThought,
   streamingText,
   streamingToolCalls = [],
+  onApproveToolCall,
+  onDenyToolCall,
   showThinkingTokens = true,
   slashPalette,
 }: AssistantContentProps) => {
@@ -255,6 +261,8 @@ const AssistantContent = ({
           streamingThought={streamingThought}
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
+          onApproveToolCall={onApproveToolCall}
+          onDenyToolCall={onDenyToolCall}
           showThinkingTokens={showThinkingTokens}
           slashPalette={slashPalette}
           className="border-0 h-full"
@@ -295,6 +303,8 @@ export function GlobalAssistant({
   streamingThought,
   streamingText,
   streamingToolCalls = [],
+  onApproveToolCall,
+  onDenyToolCall,
   showThinkingTokens = true,
   slashPalette,
 }: GlobalAssistantProps) {
@@ -323,6 +333,8 @@ export function GlobalAssistant({
     streamingThought,
     streamingText,
     streamingToolCalls,
+    onApproveToolCall,
+    onDenyToolCall,
     showThinkingTokens,
     // Slash commands
     slashPalette,

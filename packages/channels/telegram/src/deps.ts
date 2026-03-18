@@ -10,7 +10,14 @@ import type { ChannelRecord } from "@eclaire/channels-core";
 
 /** Minimal stream event shape consumed by the Telegram adapter. */
 export interface StreamEvent {
-  type: "thought" | "tool-call" | "text-chunk" | "error" | "done";
+  type:
+    | "thought"
+    | "tool-call"
+    | "text-chunk"
+    | "error"
+    | "done"
+    | "approval-required"
+    | "approval-resolved";
   content?: string;
   error?: string;
 }

@@ -8,7 +8,11 @@ import type { z } from "zod";
 import type { AICallOptions, AIContext } from "../../types.js";
 import type { ToolCallSummaryOutput } from "../../tools/types.js";
 import type { RuntimeMessage, RuntimeStreamEvent } from "../messages.js";
-import type { RuntimeToolDefinition, ToolContext } from "../tools/types.js";
+import type {
+  OnApprovalRequired,
+  RuntimeToolDefinition,
+  ToolContext,
+} from "../tools/types.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: intentional — Zod requires any for generic schema type alias
 type AnyZodType = z.ZodType<any, any, any>;
@@ -85,6 +89,16 @@ export interface RuntimeAgentConfig {
 
   /** Default AI call options */
   aiOptions?: Partial<AICallOptions>;
+
+  /**
+   * Callback invoked when a tool with `needsApproval` is about to execute.
+   * The agent loop pauses until the returned Promise resolves.
+   * If not provided, tools requiring approval return an error (backwards compat).
+   */
+  onApprovalRequired?: OnApprovalRequired;
+
+  /** Timeout in ms for approval requests. Default: 300_000 (5 minutes). */
+  approvalTimeoutMs?: number;
 }
 
 // =============================================================================

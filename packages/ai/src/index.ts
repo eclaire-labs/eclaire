@@ -440,6 +440,9 @@ export type {
   ToolContext,
   ToolUpdateCallback,
   ToolProgressInfo,
+  ApprovalRequest,
+  ApprovalResponse,
+  OnApprovalRequired,
   // Skill types
   Skill,
   SkillFrontmatter,

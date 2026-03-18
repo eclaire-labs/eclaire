@@ -6,6 +6,7 @@
 
 import type {
   AIMessage,
+  OnApprovalRequired,
   RuntimeToolDefinition,
   ToolCallSummaryOutput,
 } from "@eclaire/ai";
@@ -61,10 +62,15 @@ function getRequestedAgentActorId(context?: Context): string {
   return context?.agentActorId ?? DEFAULT_AGENT_ID;
 }
 
+const ADMIN_ONLY_TOOLS = new Set(["manageAdmin"]);
+const ADMIN_ONLY_SKILLS = new Set(["admin-guide"]);
+
 function selectAgentTools(
   agent: AgentDefinition,
+  userContext?: UserContext | null,
 ): Record<string, RuntimeToolDefinition> {
   const selected = selectTools(getBackendTools(), agent.toolNames);
+  const isAdmin = userContext?.isInstanceAdmin === true;
 
   let registry: ReturnType<typeof getMcpRegistry> | null = null;
   try {
@@ -73,21 +79,24 @@ function selectAgentTools(
     // Registry not initialized yet
   }
 
-  if (!registry) return selected;
-
   return Object.fromEntries(
     Object.entries(selected).filter(([toolName]) => {
-      const mcpAvailability = registry.getToolAvailability(toolName);
-      if (mcpAvailability && mcpAvailability.availability !== "available") {
-        logger.debug(
-          {
-            toolName,
-            availability: mcpAvailability.availability,
-            reason: mcpAvailability.availabilityReason,
-          },
-          "MCP tool filtered out — not available",
-        );
-        return false;
+      // Filter admin-only tools for non-admin users
+      if (!isAdmin && ADMIN_ONLY_TOOLS.has(toolName)) return false;
+
+      if (registry) {
+        const mcpAvailability = registry.getToolAvailability(toolName);
+        if (mcpAvailability && mcpAvailability.availability !== "available") {
+          logger.debug(
+            {
+              toolName,
+              availability: mcpAvailability.availability,
+              reason: mcpAvailability.availabilityReason,
+            },
+            "MCP tool filtered out — not available",
+          );
+          return false;
+        }
       }
 
       return true;
@@ -96,14 +105,28 @@ function selectAgentTools(
 }
 
 /**
+ * Filter skill names based on user context (e.g., admin-only skills).
+ */
+function filterSkillNames(
+  skillNames: string[],
+  userContext?: UserContext | null,
+): string[] {
+  const isAdmin = userContext?.isInstanceAdmin === true;
+  if (isAdmin) return skillNames;
+  return skillNames.filter((name) => !ADMIN_ONLY_SKILLS.has(name));
+}
+
+/**
  * Create a configured RuntimeAgent for the backend.
  */
 export function createBackendAgent(options: {
   agent: AgentDefinition;
+  userContext?: UserContext | null;
   includeTools: boolean;
   isBackgroundTask: boolean;
   assetContents?: Array<{ type: string; id: string; content: string }>;
   enableThinking?: boolean;
+  onApprovalRequired?: OnApprovalRequired;
 }) {
   // Branch on runtime kind: external harnesses get a minimal prompt, no tools
   const runtimeKind = options.agent.modelId
@@ -141,7 +164,12 @@ export function createBackendAgent(options: {
     });
   }
 
-  const agentTools = selectAgentTools(options.agent);
+  // Filter tools and skills based on user context (e.g., admin-only)
+  const agentTools = selectAgentTools(options.agent, options.userContext);
+  const effectiveSkillNames = filterSkillNames(
+    options.agent.skillNames,
+    options.userContext,
+  );
   const promptTools = options.includeTools ? agentTools : {};
   const toolCallingMode = options.includeTools ? "native" : "off";
 
@@ -155,7 +183,7 @@ export function createBackendAgent(options: {
       const userContext = context.extra?.userContext as UserContext | undefined;
       return buildSystemPrompt({
         userContext,
-        agent: options.agent,
+        agent: { ...options.agent, skillNames: effectiveSkillNames },
         assetContents: options.assetContents,
         tools: promptTools,
         toolCallingMode,
@@ -173,6 +201,8 @@ export function createBackendAgent(options: {
       timeout: 180000,
       enableThinking: options.enableThinking,
     },
+
+    onApprovalRequired: options.onApprovalRequired,
   });
 }
 
@@ -239,8 +269,14 @@ export async function processPromptRequest(
       ? getAgentRuntimeKindForModel(agentDefinition.modelId)
       : "native";
 
+    const effectiveSkillNames = filterSkillNames(
+      agentDefinition.skillNames,
+      userContext,
+    );
+
     const agent = createBackendAgent({
       agent: agentDefinition,
+      userContext,
       includeTools,
       isBackgroundTask,
       assetContents,
@@ -255,7 +291,7 @@ export async function processPromptRequest(
         userContext,
         agent: agentDefinition,
         ...(agentRuntimeKind === "native"
-          ? { allowedSkillNames: agentDefinition.skillNames }
+          ? { allowedSkillNames: effectiveSkillNames }
           : {}),
         callerAuthMethod,
         callerActorKind,
@@ -323,7 +359,14 @@ export async function processPromptRequest(
 
 // Streaming event types for API compatibility
 export interface StreamEvent {
-  type: "thought" | "tool-call" | "text-chunk" | "error" | "done";
+  type:
+    | "thought"
+    | "tool-call"
+    | "text-chunk"
+    | "error"
+    | "done"
+    | "approval-required"
+    | "approval-resolved";
   timestamp?: string;
   content?: string;
   /** Tool call ID — used for tracking parallel tool executions */
@@ -340,6 +383,12 @@ export interface StreamEvent {
   responseType?: string;
   thinkingContent?: string;
   toolCalls?: ToolCallSummaryOutput[];
+  /** Human-readable tool label (for approval events) */
+  label?: string;
+  /** Whether the approval was granted (for approval-resolved events) */
+  approved?: boolean;
+  /** Reason for approval/denial */
+  reason?: string;
 }
 
 /**
@@ -412,6 +461,26 @@ export function transformRuntimeEvent(
         timestamp,
       };
     }
+
+    case "tool_approval_required":
+      return {
+        type: "approval-required",
+        id: event.id,
+        name: event.name,
+        label: event.label,
+        arguments: event.arguments,
+        timestamp,
+      };
+
+    case "tool_approval_resolved":
+      return {
+        type: "approval-resolved",
+        id: event.id,
+        name: event.name,
+        approved: event.approved,
+        reason: event.reason,
+        timestamp,
+      };
 
     case "error":
       return { type: "error", error: event.error, timestamp };
@@ -500,8 +569,14 @@ export async function processPromptRequestStream(
     ? getAgentRuntimeKindForModel(agentDefinition.modelId)
     : "native";
 
+  const streamEffectiveSkillNames = filterSkillNames(
+    agentDefinition.skillNames,
+    userContext,
+  );
+
   const agent = createBackendAgent({
     agent: agentDefinition,
+    userContext,
     includeTools,
     isBackgroundTask,
     assetContents,
@@ -516,7 +591,7 @@ export async function processPromptRequestStream(
       userContext,
       agent: agentDefinition,
       ...(streamAgentRuntimeKind === "native"
-        ? { allowedSkillNames: agentDefinition.skillNames }
+        ? { allowedSkillNames: streamEffectiveSkillNames }
         : {}),
       callerAuthMethod,
       callerActorKind,

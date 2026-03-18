@@ -6,6 +6,7 @@ import {
   Clock,
   Loader2,
   Settings,
+  ShieldAlert,
 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,12 @@ import {
 } from "@/components/ui/collapsible";
 
 // Tool execution status
-export type ToolStatus = "starting" | "executing" | "completed" | "error";
+export type ToolStatus =
+  | "starting"
+  | "executing"
+  | "completed"
+  | "error"
+  | "awaiting_approval";
 
 // Tool call information
 export interface ToolCall {
@@ -35,12 +41,16 @@ interface ToolExecutionItemProps {
   toolCall: ToolCall;
   isExpanded?: boolean;
   onToggleExpanded?: () => void;
+  onApprove?: (toolCallId: string) => void;
+  onDeny?: (toolCallId: string) => void;
 }
 
 function ToolExecutionItem({
   toolCall,
   isExpanded = false,
   onToggleExpanded,
+  onApprove,
+  onDeny,
 }: ToolExecutionItemProps) {
   const getStatusIcon = () => {
     switch (toolCall.status) {
@@ -52,6 +62,8 @@ function ToolExecutionItem({
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case "error":
         return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case "awaiting_approval":
+        return <ShieldAlert className="h-4 w-4 text-amber-500" />;
       default:
         return <Settings className="h-4 w-4 text-muted-foreground" />;
     }
@@ -131,6 +143,35 @@ function ToolExecutionItem({
               </div>
             )}
 
+            {/* Approval buttons */}
+            {toolCall.status === "awaiting_approval" && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="flex-1 text-xs text-muted-foreground">
+                  Requires approval to execute
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeny?.(toolCall.id);
+                  }}
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  Deny
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onApprove?.(toolCall.id);
+                  }}
+                >
+                  Approve
+                </Button>
+              </div>
+            )}
+
             {/* Error details */}
             {toolCall.error && (
               <div>
@@ -152,11 +193,15 @@ function ToolExecutionItem({
 interface ToolExecutionTrackerProps {
   toolCalls: ToolCall[];
   className?: string;
+  onApprove?: (toolCallId: string) => void;
+  onDeny?: (toolCallId: string) => void;
 }
 
 export function ToolExecutionTracker({
   toolCalls,
   className = "",
+  onApprove,
+  onDeny,
 }: ToolExecutionTrackerProps) {
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [isMainSectionExpanded, setIsMainSectionExpanded] = useState(false);
@@ -182,7 +227,14 @@ export function ToolExecutionTracker({
     totalTools > 0 ? (completedTools / totalTools) * 100 : 0;
 
   const hasActiveTools = toolCalls.some(
-    (t) => t.status === "starting" || t.status === "executing",
+    (t) =>
+      t.status === "starting" ||
+      t.status === "executing" ||
+      t.status === "awaiting_approval",
+  );
+
+  const hasPendingApprovals = toolCalls.some(
+    (t) => t.status === "awaiting_approval",
   );
 
   const hasErrors = toolCalls.some((t) => t.status === "error");
@@ -194,7 +246,7 @@ export function ToolExecutionTracker({
   return (
     <div className={`${className}`}>
       <Collapsible
-        open={isMainSectionExpanded}
+        open={isMainSectionExpanded || hasPendingApprovals}
         onOpenChange={setIsMainSectionExpanded}
       >
         {/* Collapsible header */}
@@ -239,8 +291,13 @@ export function ToolExecutionTracker({
               <ToolExecutionItem
                 key={toolCall.id}
                 toolCall={toolCall}
-                isExpanded={expandedTools.has(toolCall.id)}
+                isExpanded={
+                  expandedTools.has(toolCall.id) ||
+                  toolCall.status === "awaiting_approval"
+                }
                 onToggleExpanded={() => toggleExpanded(toolCall.id)}
+                onApprove={onApprove}
+                onDeny={onDeny}
               />
             ))}
           </div>

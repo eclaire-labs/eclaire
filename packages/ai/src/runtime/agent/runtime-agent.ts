@@ -41,6 +41,7 @@ import {
   getToolCalls,
 } from "../messages.js";
 import type {
+  OnApprovalRequired,
   RuntimeToolDefinition,
   RuntimeToolResult,
 } from "../tools/types.js";
@@ -513,6 +514,35 @@ export class RuntimeAgent {
   }
 
   /**
+   * Create an approval callback that wraps the config callback with stream
+   * event emission. For non-streaming paths, pass no controller.
+   */
+  private _createApprovalCallback(
+    controller?: ReadableStreamDefaultController<RuntimeStreamEvent>,
+  ): OnApprovalRequired | undefined {
+    const configCallback = this.config.onApprovalRequired;
+    if (!configCallback) return undefined;
+    return async (request) => {
+      controller?.enqueue({
+        type: "tool_approval_required",
+        id: request.toolCallId,
+        name: request.toolName,
+        label: request.toolLabel,
+        arguments: request.arguments,
+      });
+      const response = await configCallback(request);
+      controller?.enqueue({
+        type: "tool_approval_resolved",
+        id: request.toolCallId,
+        name: request.toolName,
+        approved: response.approved,
+        reason: response.reason,
+      });
+      return response;
+    };
+  }
+
+  /**
    * Execute tools (non-streaming path).
    */
   private async _executeTools(
@@ -558,6 +588,9 @@ export class RuntimeAgent {
         tc.id,
         tc.arguments,
         context,
+        undefined,
+        this._createApprovalCallback(),
+        this.config.approvalTimeoutMs,
       );
       const durationMs = Date.now() - startTime;
 
@@ -658,7 +691,7 @@ export class RuntimeAgent {
         continue;
       }
 
-      // Execute with progress callback
+      // Execute with progress callback and approval support
       const result = await executeRuntimeTool(
         toolDef,
         tc.id,
@@ -676,6 +709,8 @@ export class RuntimeAgent {
             },
           });
         },
+        this._createApprovalCallback(controller),
+        this.config.approvalTimeoutMs,
       );
 
       const durationMs = Date.now() - startTime;
@@ -769,7 +804,15 @@ export class RuntimeAgent {
       return {
         tc,
         startTime: Date.now(),
-        promise: executeRuntimeTool(toolDef, tc.id, tc.arguments, context),
+        promise: executeRuntimeTool(
+          toolDef,
+          tc.id,
+          tc.arguments,
+          context,
+          undefined,
+          this._createApprovalCallback(),
+          this.config.approvalTimeoutMs,
+        ),
       };
     });
 
@@ -896,6 +939,8 @@ export class RuntimeAgent {
               },
             });
           },
+          this._createApprovalCallback(controller),
+          this.config.approvalTimeoutMs,
         ),
       };
     });

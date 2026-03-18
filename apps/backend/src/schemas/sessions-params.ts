@@ -17,6 +17,12 @@ export const UpdateSessionSchema = z.object({
   title: z.string().min(1).max(200).optional(),
 });
 
+export const ApproveToolSchema = z.object({
+  toolCallId: z.string().min(1),
+  approved: z.boolean(),
+  reason: z.string().optional(),
+});
+
 export const ListSessionsSchema = z.object({
   agentActorId: z.string().optional(),
   limit: z.string().regex(/^\d+$/).transform(Number).optional(),

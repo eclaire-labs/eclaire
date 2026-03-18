@@ -14,7 +14,8 @@
  */
 
 import { EventEmitter } from "node:events";
-import type { AIMessage } from "@eclaire/ai";
+import type { AIMessage, ApprovalResponse } from "@eclaire/ai";
+import type { OnApprovalRequired } from "@eclaire/ai";
 import { convertFromLlm, createRuntimeContext } from "@eclaire/ai";
 import type { Context } from "../../schemas/prompt-params.js";
 import { fetchAssetContents } from "../agent/asset-fetcher.js";
@@ -79,10 +80,16 @@ export interface SendMessageOptions {
 // Execution tracking
 // ============================================================================
 
+interface PendingApproval {
+  resolve: (response: ApprovalResponse) => void;
+  toolName: string;
+}
+
 interface ExecutionEntry {
   abortController: AbortController;
   emitter: EventEmitter;
   startedAt: number;
+  pendingApprovals: Map<string, PendingApproval>;
 }
 
 const runningExecutions = new Map<string, ExecutionEntry>();
@@ -94,8 +101,36 @@ const runningExecutions = new Map<string, ExecutionEntry>();
 export function abortExecution(sessionId: string): boolean {
   const entry = runningExecutions.get(sessionId);
   if (!entry) return false;
+
+  // Deny all pending tool approvals before aborting
+  for (const [, pending] of entry.pendingApprovals) {
+    pending.resolve({ approved: false, reason: "Execution aborted" });
+  }
+  entry.pendingApprovals.clear();
+
   entry.abortController.abort();
   runningExecutions.delete(sessionId);
+  return true;
+}
+
+/**
+ * Approve or deny a pending tool execution for a session.
+ * Returns true if a pending approval was found and resolved.
+ */
+export function approveToolExecution(
+  sessionId: string,
+  toolCallId: string,
+  approved: boolean,
+  reason?: string,
+): boolean {
+  const entry = runningExecutions.get(sessionId);
+  if (!entry) return false;
+
+  const pending = entry.pendingApprovals.get(toolCallId);
+  if (!pending) return false;
+
+  pending.resolve({ approved, reason });
+  entry.pendingApprovals.delete(toolCallId);
   return true;
 }
 
@@ -302,6 +337,39 @@ async function runExecution(params: RunExecutionParams): Promise<void> {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+
+      // Track approval state transitions in DB
+      if (value.type === "tool_approval_required") {
+        updateConversation(sessionId, userId, {
+          executionStatus: "awaiting_approval",
+        }).catch((err) => {
+          logger.error(
+            { err, sessionId },
+            "Failed to set execution status to awaiting_approval",
+          );
+        });
+        publishProcessingEvent(userId, {
+          type: "session_awaiting_approval",
+          sessionId,
+          agentActorId: session.agentActorId,
+        }).catch((err) => {
+          logger.error(
+            { err, sessionId },
+            "Failed to publish session_awaiting_approval event",
+          );
+        });
+      }
+
+      if (value.type === "tool_approval_resolved") {
+        updateConversation(sessionId, userId, {
+          executionStatus: "running",
+        }).catch((err) => {
+          logger.error(
+            { err, sessionId },
+            "Failed to reset execution status to running after approval",
+          );
+        });
+      }
 
       if (value.type === "turn_complete") {
         const result = await streamResult.result;
@@ -554,12 +622,28 @@ export async function sendMessage(
     logger.error({ err }, "Failed to record session message history");
   });
 
+  // Set up execution tracking early so the approval callback can reference it
+  const emitter = new EventEmitter();
+  const abortController = new AbortController();
+  const pendingApprovals = new Map<string, PendingApproval>();
+
+  // Approval callback — stores a Promise resolver so the approval API can unblock execution
+  const onApprovalRequired: OnApprovalRequired = (request) => {
+    return new Promise<ApprovalResponse>((resolve) => {
+      pendingApprovals.set(request.toolCallId, {
+        resolve,
+        toolName: request.toolName,
+      });
+    });
+  };
+
   const agent = createBackendAgent({
     agent: agentDefinition,
     includeTools,
     isBackgroundTask,
     assetContents,
     enableThinking,
+    onApprovalRequired: isBackgroundTask ? undefined : onApprovalRequired,
   });
 
   const runtimeContext = createRuntimeContext({
@@ -586,13 +670,11 @@ export async function sendMessage(
     messages: previousRuntimeMessages,
   });
 
-  // Set up execution tracking
-  const emitter = new EventEmitter();
-  const abortController = new AbortController();
   runningExecutions.set(sessionId, {
     abortController,
     emitter,
     startedAt: startTime,
+    pendingApprovals,
   });
 
   // Mark session as running in DB

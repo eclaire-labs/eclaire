@@ -46,6 +46,8 @@ interface MessageListProps {
   streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
   sessionId?: string;
+  onApproveToolCall?: (toolCallId: string) => void;
+  onDenyToolCall?: (toolCallId: string) => void;
 }
 
 export function MessageList({
@@ -57,6 +59,8 @@ export function MessageList({
   streamingToolCalls = [],
   showThinkingTokens = true,
   sessionId,
+  onApproveToolCall,
+  onDenyToolCall,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -119,6 +123,8 @@ export function MessageList({
                   <ToolExecutionTracker
                     toolCalls={streamingToolCalls}
                     className="mb-3"
+                    onApprove={onApproveToolCall}
+                    onDeny={onDenyToolCall}
                   />
                 )}
 

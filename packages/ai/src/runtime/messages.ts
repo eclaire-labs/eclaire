@@ -139,6 +139,20 @@ export type RuntimeStreamEvent =
       durationMs: number;
     }
   | {
+      type: "tool_approval_required";
+      id: string;
+      name: string;
+      label: string;
+      arguments: Record<string, unknown>;
+    }
+  | {
+      type: "tool_approval_resolved";
+      id: string;
+      name: string;
+      approved: boolean;
+      reason?: string;
+    }
+  | {
       type: "message_complete";
       message: AssistantMessage;
     }

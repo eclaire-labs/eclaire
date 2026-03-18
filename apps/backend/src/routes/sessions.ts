@@ -5,6 +5,7 @@ import { createChildLogger } from "../lib/logger.js";
 import { getAgentSteps } from "../lib/services/agent-steps.js";
 import {
   abortExecution,
+  approveToolExecution,
   createSession,
   deleteSession,
   getSession,
@@ -19,6 +20,7 @@ import {
 import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {
+  ApproveToolSchema,
   CreateSessionSchema,
   ListSessionsSchema,
   SendMessageSchema,
@@ -223,6 +225,29 @@ sessionsRoutes.post(
   withAuth(async (c, userId) => {
     const sessionId = c.req.param("id");
     await clearUnreadResponse(sessionId, userId);
+    return c.json({ ok: true });
+  }, logger),
+);
+
+// POST /api/sessions/:id/approve-tool - Approve or deny a tool execution
+sessionsRoutes.post(
+  "/:id/approve-tool",
+  zValidator("json", ApproveToolSchema),
+  withAuth(async (c, _userId) => {
+    const sessionId = c.req.param("id");
+    const body = c.req.valid("json");
+
+    const resolved = approveToolExecution(
+      sessionId,
+      body.toolCallId,
+      body.approved,
+      body.reason,
+    );
+
+    if (!resolved) {
+      return c.json({ error: "No pending approval found" }, 404);
+    }
+
     return c.json({ ok: true });
   }, logger),
 );
