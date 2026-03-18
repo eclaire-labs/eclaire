@@ -329,7 +329,8 @@ export function DocumentDetailClient() {
                 </Card>
 
                 {/* Document Preview / Content */}
-                {(document.screenshotUrl ||
+                {(document.pdfUrl ||
+                  document.screenshotUrl ||
                   document.thumbnailUrl ||
                   document.contentUrl) && (
                   <Card>
@@ -339,7 +340,9 @@ export function DocumentDetailClient() {
                           <TabsTrigger
                             value="preview"
                             disabled={
-                              !document.screenshotUrl && !document.thumbnailUrl
+                              !document.pdfUrl &&
+                              !document.screenshotUrl &&
+                              !document.thumbnailUrl
                             }
                           >
                             Preview
@@ -354,18 +357,36 @@ export function DocumentDetailClient() {
                       </CardHeader>
                       <CardContent>
                         <TabsContent value="preview" className="mt-0">
-                          {(document.screenshotUrl ||
-                            document.thumbnailUrl) && (
+                          {document.pdfUrl ? (
+                            <object
+                              data={`${normalizeApiUrl(document.pdfUrl)}?view=inline`}
+                              type="application/pdf"
+                              className="w-full h-[60vh] rounded-lg"
+                            >
+                              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                                <FileText className="h-8 w-8 mb-2" />
+                                <p className="text-sm mb-2">
+                                  PDF preview not supported in this browser.
+                                </p>
+                                <Button variant="outline" asChild>
+                                  <a
+                                    href={normalizeApiUrl(document.pdfUrl)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    Open PDF
+                                  </a>
+                                </Button>
+                              </div>
+                            </object>
+                          ) : document.screenshotUrl ||
+                            document.thumbnailUrl ? (
                             <a
-                              href={
-                                document.pdfUrl
-                                  ? normalizeApiUrl(document.pdfUrl)
-                                  : document.screenshotUrl
-                                    ? normalizeApiUrl(document.screenshotUrl)
-                                    : normalizeApiUrl(
-                                        document.thumbnailUrl || "",
-                                      )
-                              }
+                              href={normalizeApiUrl(
+                                document.screenshotUrl ||
+                                  document.thumbnailUrl ||
+                                  "",
+                              )}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
@@ -379,7 +400,7 @@ export function DocumentDetailClient() {
                                 className="w-full rounded-lg object-contain"
                               />
                             </a>
-                          )}
+                          ) : null}
                         </TabsContent>
                         <TabsContent value="content" className="mt-0">
                           <ContentViewer
