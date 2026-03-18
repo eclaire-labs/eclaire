@@ -12,7 +12,10 @@ export const detectContentLinks = (text: string): ContentLink[] => {
   const matches = text.match(linkPattern);
 
   if (matches) {
+    const seen = new Set<string>();
     matches.forEach((match) => {
+      if (seen.has(match)) return;
+      seen.add(match);
       const [, type, id] = match.split("/");
       if (type && id) {
         links.push({

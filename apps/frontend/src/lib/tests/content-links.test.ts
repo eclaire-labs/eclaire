@@ -75,6 +75,13 @@ describe("detectContentLinks", () => {
     ]);
   });
 
+  it("deduplicates repeated references to the same asset", () => {
+    const text = "title /photos/p1, tag1 /photos/p1, tag2 /photos/p1";
+    const links = detectContentLinks(text);
+    expect(links).toHaveLength(1);
+    expect(links[0]!.url).toBe("/photos/p1");
+  });
+
   it("handles IDs containing hyphens", () => {
     const links = detectContentLinks("/bookmarks/abc-123-def");
     expect(links).toHaveLength(1);

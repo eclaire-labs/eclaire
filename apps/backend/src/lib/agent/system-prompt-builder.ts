@@ -78,7 +78,7 @@ const CONTENT_LINKING_INSTRUCTIONS = `
 
 **CRITICAL: Content Linking Requirements**
 
-WHENEVER you reference ANY content item found through tool calls, you MUST include the internal app link in this EXACT format:
+WHENEVER you reference a content item found through tool calls, you MUST include the internal app link in this EXACT format:
 
 FORMAT: /{content-type}/{exact-id-from-tool}
 
@@ -95,6 +95,7 @@ CRITICAL RULES:
 3. NEVER use external URLs when referencing internal content
 4. Include the app link DIRECTLY in your response text
 5. These are internal app navigation links, NOT web URLs
+6. Include each content link only ONCE — do NOT repeat the same link multiple times in a single response
 
 REMEMBER: These /content-type/id links become clickable buttons in the user interface for easy navigation.`;
 
