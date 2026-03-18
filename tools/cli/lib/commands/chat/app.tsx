@@ -1,12 +1,21 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { render, Box, Text, useInput, useApp } from "ink";
+import {
+  buildSlashItems,
+  generateHelpText,
+  parseSlashInput,
+  type SlashContext,
+  type SlashItem,
+} from "@eclaire/core";
 import {
   getModelInfo,
   createSession,
   getSession as getSessionApi,
+  listAgents,
   listSessions,
   sendMessage,
   abortSession,
+  type AgentSummary,
 } from "../../backend-client.js";
 import { ChatInput } from "./components/ChatInput.js";
 import { MessageList } from "./components/MessageList.js";
@@ -22,138 +31,6 @@ interface ChatOptions {
   thinking: boolean;
   tools: boolean;
   verbose: boolean;
-}
-
-// ============================================================================
-// Slash Commands
-// ============================================================================
-
-interface CommandContext {
-  setMessages: React.Dispatch<React.SetStateAction<DisplayMessage[]>>;
-  setError: React.Dispatch<React.SetStateAction<string | null>>;
-  setSessionId: React.Dispatch<React.SetStateAction<string | undefined>>;
-  sessionIdRef: React.MutableRefObject<string | undefined>;
-  setSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  modelName: string;
-  exit: () => void;
-}
-
-interface SlashCommand {
-  name: string;
-  description: string;
-  handler: (args: string, ctx: CommandContext) => void | Promise<void>;
-}
-
-const SLASH_COMMANDS: SlashCommand[] = [
-  {
-    name: "help",
-    description: "Show available commands",
-    handler: (_args, ctx) => {
-      const helpText = SLASH_COMMANDS.map(
-        (cmd) => `/${cmd.name} — ${cmd.description}`,
-      ).join("\n");
-      ctx.setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: helpText },
-      ]);
-    },
-  },
-  {
-    name: "clear",
-    description: "Clear message history",
-    handler: (_args, ctx) => {
-      ctx.setMessages([]);
-      ctx.setError(null);
-    },
-  },
-  {
-    name: "new",
-    description: "Start a new session",
-    handler: async (_args, ctx) => {
-      try {
-        const session = await createSession();
-        ctx.setSessionId(session.id);
-        ctx.sessionIdRef.current = session.id;
-        ctx.setMessages([]);
-        ctx.setError(null);
-      } catch (err) {
-        ctx.setError(
-          err instanceof Error ? err.message : "Failed to create session",
-        );
-      }
-    },
-  },
-  {
-    name: "model",
-    description: "Show current model",
-    handler: (_args, ctx) => {
-      ctx.setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `Current model: ${ctx.modelName}` },
-      ]);
-    },
-  },
-  {
-    name: "history",
-    description: "Show recent sessions",
-    handler: async (_args, ctx) => {
-      try {
-        const sessions = await listSessions(10);
-        if (sessions.length === 0) {
-          ctx.setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: "No sessions found." },
-          ]);
-          return;
-        }
-        const lines = sessions.map(
-          (s) =>
-            `${s.id.slice(0, 8)} — ${s.title || "(untitled)"} (${s.messageCount} msgs)`,
-        );
-        ctx.setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: lines.join("\n") },
-        ]);
-      } catch (err) {
-        ctx.setError(
-          err instanceof Error ? err.message : "Failed to list sessions",
-        );
-      }
-    },
-  },
-  {
-    name: "settings",
-    description: "Toggle display settings",
-    handler: (_args, ctx) => {
-      ctx.setSettingsOpen(true);
-    },
-  },
-  {
-    name: "exit",
-    description: "Exit the chat",
-    handler: (_args, ctx) => {
-      ctx.exit();
-    },
-  },
-];
-
-function findCommand(
-  input: string,
-): { command: SlashCommand; args: string } | null {
-  if (!input.startsWith("/")) return null;
-  const spaceIdx = input.indexOf(" ");
-  const name = spaceIdx === -1 ? input.slice(1) : input.slice(1, spaceIdx);
-  const args = spaceIdx === -1 ? "" : input.slice(spaceIdx + 1).trim();
-  const command = SLASH_COMMANDS.find((c) => c.name === name);
-  if (!command) return null;
-  return { command, args };
-}
-
-export function getCommands(): { name: string; description: string }[] {
-  return SLASH_COMMANDS.map((c) => ({
-    name: c.name,
-    description: c.description,
-  }));
 }
 
 function findToolMessageIndex(
@@ -223,13 +100,37 @@ function ChatApp({ options }: { options: ChatOptions }) {
   });
   const [enableThinking, setEnableThinking] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [agents, setAgents] = useState<AgentSummary[]>([]);
+  const [activeAgentId, setActiveAgentId] = useState("eclaire");
 
-  // Initialize: fetch model info and create/load session
+  // Build slash context and items for the CLI surface
+  const slashCtx: SlashContext = useMemo(
+    () => ({
+      activeAgentId,
+      agents: agents.map((a) => ({
+        id: a.id,
+        name: a.name,
+        skillNames: a.skillNames,
+      })),
+      surface: "cli" as const,
+    }),
+    [activeAgentId, agents],
+  );
+
+  const slashItems: SlashItem[] = useMemo(
+    () => buildSlashItems(slashCtx),
+    [slashCtx],
+  );
+
+  // Initialize: fetch model info, agents, and create/load session
   useEffect(() => {
     const init = async () => {
       try {
         const [info] = await Promise.all([
           getModelInfo().catch(() => null),
+          listAgents()
+            .then((items) => setAgents(items))
+            .catch(() => {}),
           (async () => {
             if (options.conversation) {
               // Load existing session
@@ -287,20 +188,121 @@ function ChatApp({ options }: { options: ChatOptions }) {
     async (input: string) => {
       if (!input.trim() || isStreaming) return;
 
-      // Handle slash commands
-      const cmd = findCommand(input);
-      if (cmd) {
-        const ctx: CommandContext = {
-          setMessages,
-          setError,
-          setSessionId,
-          sessionIdRef,
-          setSettingsOpen,
-          modelName,
-          exit,
-        };
-        await cmd.command.handler(cmd.args, ctx);
-        return;
+      // Handle slash commands via shared registry
+      const resolved = parseSlashInput(input, slashCtx);
+      if (resolved) {
+        switch (resolved.type) {
+          case "execute-command":
+            switch (resolved.commandId) {
+              case "help": {
+                const helpText = generateHelpText(slashItems);
+                setMessages((prev) => [
+                  ...prev,
+                  { role: "assistant", content: helpText },
+                ]);
+                return;
+              }
+              case "clear":
+                setMessages([]);
+                setError(null);
+                return;
+              case "new":
+                try {
+                  const session = await createSession(undefined, activeAgentId);
+                  setSessionId(session.id);
+                  sessionIdRef.current = session.id;
+                  setMessages([]);
+                  setError(null);
+                } catch (err) {
+                  setError(
+                    err instanceof Error
+                      ? err.message
+                      : "Failed to create session",
+                  );
+                }
+                return;
+              case "model":
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    role: "assistant",
+                    content: `Current model: ${modelName}`,
+                  },
+                ]);
+                return;
+              case "history":
+                try {
+                  const sessions = await listSessions(10);
+                  if (sessions.length === 0) {
+                    setMessages((prev) => [
+                      ...prev,
+                      { role: "assistant", content: "No sessions found." },
+                    ]);
+                    return;
+                  }
+                  const lines = sessions.map(
+                    (s) =>
+                      `${s.id.slice(0, 8)} — ${s.title || "(untitled)"} (${s.messageCount} msgs)`,
+                  );
+                  setMessages((prev) => [
+                    ...prev,
+                    { role: "assistant", content: lines.join("\n") },
+                  ]);
+                } catch (err) {
+                  setError(
+                    err instanceof Error
+                      ? err.message
+                      : "Failed to list sessions",
+                  );
+                }
+                return;
+              case "thinking":
+                setEnableThinking((prev) => !prev);
+                return;
+              case "exit":
+                exit();
+                return;
+            }
+            return;
+          case "switch-agent":
+            setActiveAgentId(resolved.agentId);
+            try {
+              const session = await createSession(undefined, resolved.agentId);
+              setSessionId(session.id);
+              sessionIdRef.current = session.id;
+              setMessages([]);
+              setError(null);
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: `Switched to ${resolved.agentName}. New session started.`,
+                },
+              ]);
+            } catch (err) {
+              setError(
+                err instanceof Error ? err.message : "Failed to switch agent",
+              );
+            }
+            return;
+          case "send-rewritten":
+            // Fall through to send the rewritten text as a normal message
+            input = resolved.text;
+            break;
+          case "insert-scaffold":
+            // CLI: just show a message since we can't insert into the input
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: `Type: ${resolved.text}<your task>`,
+              },
+            ]);
+            return;
+          case "error":
+            setError(resolved.message);
+            return;
+        }
       }
 
       if (!sessionIdRef.current) return;
@@ -435,7 +437,15 @@ function ChatApp({ options }: { options: ChatOptions }) {
         setIsStreaming(false);
       }
     },
-    [isStreaming, modelName, exit, enableThinking],
+    [
+      isStreaming,
+      modelName,
+      exit,
+      enableThinking,
+      slashCtx,
+      slashItems,
+      activeAgentId,
+    ],
   );
 
   return (
@@ -498,6 +508,7 @@ function ChatApp({ options }: { options: ChatOptions }) {
         <ChatInput
           onSubmit={handleSubmit}
           isDisabled={isStreaming || isInitializing}
+          slashItems={slashItems}
         />
       )}
     </Box>

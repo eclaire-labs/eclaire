@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@eclaire/channels-core": "workspace:*",
+    "@eclaire/core": "workspace:*",
     "telegraf": "4.16.3"
   },
   "peerDependencies": {

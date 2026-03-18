@@ -1,3 +1,4 @@
+import type { SlashItem } from "@eclaire/core";
 import {
   CheckSquare,
   Edit2,
@@ -22,6 +23,13 @@ import {
 import { Input } from "@/components/ui/input";
 import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
+
+interface SlashPaletteConfig {
+  open: boolean;
+  items: SlashItem[];
+  onSelect: (item: SlashItem) => void;
+  onClose: () => void;
+}
 
 interface GlobalAssistantProps {
   open: boolean;
@@ -54,6 +62,8 @@ interface GlobalAssistantProps {
   streamingText?: string;
   streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
+  // Slash commands
+  slashPalette?: SlashPaletteConfig;
 }
 
 // --- Helper Component: AssistantContent ---
@@ -81,6 +91,8 @@ interface AssistantContentProps {
   streamingText?: string;
   streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
+  // Slash commands
+  slashPalette?: SlashPaletteConfig;
 }
 
 const AssistantContent = ({
@@ -106,6 +118,7 @@ const AssistantContent = ({
   streamingText,
   streamingToolCalls = [],
   showThinkingTokens = true,
+  slashPalette,
 }: AssistantContentProps) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -243,6 +256,7 @@ const AssistantContent = ({
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
           showThinkingTokens={showThinkingTokens}
+          slashPalette={slashPalette}
           className="border-0 h-full"
         />
       </div>
@@ -282,6 +296,7 @@ export function GlobalAssistant({
   streamingText,
   streamingToolCalls = [],
   showThinkingTokens = true,
+  slashPalette,
 }: GlobalAssistantProps) {
   if (!open) return null;
 
@@ -309,6 +324,8 @@ export function GlobalAssistant({
     streamingText,
     streamingToolCalls,
     showThinkingTokens,
+    // Slash commands
+    slashPalette,
   };
 
   if (fullScreen) {

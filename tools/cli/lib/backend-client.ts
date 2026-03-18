@@ -94,10 +94,16 @@ export interface SendOptions {
   enableThinking?: boolean;
 }
 
-export async function createSession(title?: string): Promise<Session> {
+export async function createSession(
+  title?: string,
+  agentActorId?: string,
+): Promise<Session> {
+  const body: Record<string, string> = {};
+  if (title) body.title = title;
+  if (agentActorId) body.agentActorId = agentActorId;
   const response = await backendFetch("/api/sessions", {
     method: "POST",
-    body: JSON.stringify(title ? { title } : {}),
+    body: JSON.stringify(body),
   });
   if (!response.ok) {
     throw new Error(`Failed to create session: ${response.status}`);
@@ -155,4 +161,24 @@ export async function abortSession(sessionId: string): Promise<boolean> {
   }
   const data = (await response.json()) as { aborted: boolean };
   return data.aborted;
+}
+
+// ============================================================================
+// Agent API
+// ============================================================================
+
+export interface AgentSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  skillNames: string[];
+}
+
+export async function listAgents(): Promise<AgentSummary[]> {
+  const response = await backendFetch("/api/agents");
+  if (!response.ok) {
+    throw new Error(`Failed to list agents: ${response.status}`);
+  }
+  const data = (await response.json()) as { items: AgentSummary[] };
+  return data.items;
 }

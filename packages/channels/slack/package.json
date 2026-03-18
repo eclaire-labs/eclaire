@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@eclaire/channels-core": "workspace:*",
+    "@eclaire/core": "workspace:*",
     "@slack/bolt": "^4.1.0",
     "@slack/web-api": "^7.0.0"
   },

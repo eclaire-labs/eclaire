@@ -1,3 +1,4 @@
+import type { SlashItem } from "@eclaire/core";
 import type { RefObject } from "react";
 import type { ToolCall } from "@/components/assistant/tool-execution-tracker";
 import type { ConversationSummary } from "@/types/conversation";
@@ -26,6 +27,12 @@ interface MobileChatViewProps {
   streamingText: string;
   streamingToolCalls: ToolCall[];
   showThinkingTokens: boolean;
+  slashPalette?: {
+    open: boolean;
+    items: SlashItem[];
+    onSelect: (item: SlashItem) => void;
+    onClose: () => void;
+  };
 }
 
 export function MobileChatView(props: MobileChatViewProps) {

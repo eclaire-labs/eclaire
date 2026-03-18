@@ -1,5 +1,6 @@
 // components/chat/message-input.tsx
 
+import type { SlashItem } from "@eclaire/core";
 import {
   Bookmark,
   CheckSquare,
@@ -13,11 +14,19 @@ import {
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { PushToTalkButton } from "@/components/assistant/push-to-talk-button";
+import { SlashPalette } from "@/components/assistant/slash-palette";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 import type { AssetReference } from "@/types/message";
+
+interface SlashPaletteProps {
+  open: boolean;
+  items: SlashItem[];
+  onSelect: (item: SlashItem) => void;
+  onClose: () => void;
+}
 
 interface MessageInputProps {
   value: string;
@@ -28,6 +37,7 @@ interface MessageInputProps {
   attachedAssets: AssetReference[];
   setAttachedAssets: React.Dispatch<React.SetStateAction<AssetReference[]>>;
   onStopAutoPlay?: () => void;
+  slashPalette?: SlashPaletteProps;
 }
 
 export function MessageInput({
@@ -39,6 +49,7 @@ export function MessageInput({
   attachedAssets,
   setAttachedAssets,
   onStopAutoPlay,
+  slashPalette,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [partialTranscription, setPartialTranscription] = useState<
@@ -124,42 +135,52 @@ export function MessageInput({
         </div>
       )}
 
-      {/* Input form */}
-      <form onSubmit={handleSubmit} className="flex items-end gap-2">
-        <Textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="Type your message..."
-          disabled={isLoading}
-          className="flex-1 min-h-[40px] max-h-[120px] resize-none py-2.5 text-sm"
-          rows={1}
-        />
-        <PushToTalkButton
-          onTranscription={(text) => {
-            setPartialTranscription(null);
-            if (preferences.voiceMode) {
-              // Auto-send: submit transcription directly
-              onSubmit(text);
-            } else {
-              // Manual mode: append to input for review
-              onChange(value + (value ? " " : "") + text);
-            }
-          }}
-          onPartialTranscription={setPartialTranscription}
-          disabled={isLoading}
-          onStopAutoPlay={onStopAutoPlay}
-        />
-        <Button
-          type="submit"
-          size="icon"
-          disabled={isLoading || !value.trim()}
-          className="flex-shrink-0 h-10 w-10 rounded-full"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+      {/* Input form with slash palette */}
+      <div className="relative">
+        {slashPalette && (
+          <SlashPalette
+            open={slashPalette.open}
+            items={slashPalette.items}
+            onSelect={slashPalette.onSelect}
+            onClose={slashPalette.onClose}
+          />
+        )}
+        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+          <Textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Type your message..."
+            disabled={isLoading}
+            className="flex-1 min-h-[40px] max-h-[120px] resize-none py-2.5 text-sm"
+            rows={1}
+          />
+          <PushToTalkButton
+            onTranscription={(text) => {
+              setPartialTranscription(null);
+              if (preferences.voiceMode) {
+                // Auto-send: submit transcription directly
+                onSubmit(text);
+              } else {
+                // Manual mode: append to input for review
+                onChange(value + (value ? " " : "") + text);
+              }
+            }}
+            onPartialTranscription={setPartialTranscription}
+            disabled={isLoading}
+            onStopAutoPlay={onStopAutoPlay}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isLoading || !value.trim()}
+            className="flex-shrink-0 h-10 w-10 rounded-full"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

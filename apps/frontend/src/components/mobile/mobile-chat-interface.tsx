@@ -1,3 +1,4 @@
+import type { SlashItem } from "@eclaire/core";
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { Bot, Edit2, History, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -33,6 +34,12 @@ interface MobileChatInterfaceProps {
   streamingText: string;
   streamingToolCalls: ToolCall[];
   showThinkingTokens: boolean;
+  slashPalette?: {
+    open: boolean;
+    items: SlashItem[];
+    onSelect: (item: SlashItem) => void;
+    onClose: () => void;
+  };
 }
 
 export function MobileChatInterface({
@@ -57,6 +64,7 @@ export function MobileChatInterface({
   streamingText,
   streamingToolCalls,
   showThinkingTokens,
+  slashPalette,
 }: MobileChatInterfaceProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -235,6 +243,7 @@ export function MobileChatInterface({
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
           showThinkingTokens={showThinkingTokens}
+          slashPalette={slashPalette}
         />
       </div>
     </div>

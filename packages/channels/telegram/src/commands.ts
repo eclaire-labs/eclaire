@@ -1,4 +1,5 @@
 import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
+import { BUILTIN_COMMANDS, generateHelpText } from "@eclaire/core";
 import type { Context, Telegraf } from "telegraf";
 import { getDeps } from "./deps.js";
 
@@ -56,10 +57,11 @@ const COMMANDS: TelegramCommand[] = [
     handler: async (ctx) => {
       const { logger } = getDeps();
       try {
-        const lines = COMMANDS.map(
-          (cmd) => `/${cmd.name} — ${cmd.description}`,
+        const channelCommands = BUILTIN_COMMANDS.filter(
+          (c) => !c.surfaces || c.surfaces.includes("channel"),
         );
-        await ctx.reply(`Available commands:\n\n${lines.join("\n")}`);
+        const helpText = generateHelpText(channelCommands);
+        await ctx.reply(`Available commands:\n\n${helpText}`);
       } catch (error) {
         logger.error(
           { error: error instanceof Error ? error.message : "Unknown error" },

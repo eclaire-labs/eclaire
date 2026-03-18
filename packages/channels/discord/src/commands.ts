@@ -4,6 +4,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
+import { BUILTIN_COMMANDS, generateHelpText } from "@eclaire/core";
 import { getDeps } from "./deps.js";
 
 /** Per-channel session state (in-memory, resets on bot restart). */
@@ -45,10 +46,11 @@ const COMMANDS: CommandDef[] = [
       .setName("eclaire-help")
       .setDescription("Show available Eclaire commands"),
     handler: async (interaction) => {
-      const lines = COMMANDS.map(
-        (cmd) => `/${cmd.builder.name} — ${cmd.builder.description}`,
+      const channelCommands = BUILTIN_COMMANDS.filter(
+        (c) => !c.surfaces || c.surfaces.includes("channel"),
       );
-      await interaction.editReply(`Available commands:\n\n${lines.join("\n")}`);
+      const helpText = generateHelpText(channelCommands, "eclaire-");
+      await interaction.editReply(`Available commands:\n\n${helpText}`);
     },
   },
   {

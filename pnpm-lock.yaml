@@ -324,6 +324,9 @@ importers:
       '@eclaire/api-types':
         specifier: workspace:*
         version: link:../../packages/api-types
+      '@eclaire/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@hookform/resolvers':
         specifier: 5.2.2
         version: 5.2.2(react-hook-form@7.71.2(react@19.2.4))
@@ -667,6 +670,9 @@ importers:
       '@eclaire/channels-core':
         specifier: workspace:*
         version: link:../core
+      '@eclaire/core':
+        specifier: workspace:*
+        version: link:../../core
       discord.js:
         specifier: 14.18.0
         version: 14.18.0
@@ -698,6 +704,9 @@ importers:
       '@eclaire/channels-core':
         specifier: workspace:*
         version: link:../core
+      '@eclaire/core':
+        specifier: workspace:*
+        version: link:../../core
       '@slack/bolt':
         specifier: ^4.1.0
         version: 4.6.0(@types/express@5.0.6)
@@ -729,6 +738,9 @@ importers:
       '@eclaire/channels-core':
         specifier: workspace:*
         version: link:../core
+      '@eclaire/core':
+        specifier: workspace:*
+        version: link:../../core
       telegraf:
         specifier: 4.16.3
         version: 4.16.3(encoding@0.1.13)

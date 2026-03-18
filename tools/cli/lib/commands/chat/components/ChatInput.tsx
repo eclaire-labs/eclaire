@@ -1,24 +1,29 @@
 import { useState, useCallback } from "react";
 import { Box, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { getCommands } from "../app.js";
+import { filterSlashItems, type SlashItem } from "@eclaire/core";
 import { CommandMenu } from "./CommandMenu.js";
 
 interface ChatInputProps {
   onSubmit: (value: string) => void;
   isDisabled: boolean;
+  slashItems: SlashItem[];
 }
 
-export function ChatInput({ onSubmit, isDisabled }: ChatInputProps) {
+export function ChatInput({
+  onSubmit,
+  isDisabled,
+  slashItems,
+}: ChatInputProps) {
   const [value, setValue] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [menuDismissed, setMenuDismissed] = useState(false);
 
-  // Compute matching commands
+  // Compute matching items from the shared slash registry
   const menuItems = (() => {
     if (!value.startsWith("/") || isDisabled || menuDismissed) return [];
-    const prefix = value.slice(1).toLowerCase();
-    return getCommands().filter((cmd) => cmd.name.startsWith(prefix));
+    const query = value.slice(1);
+    return filterSlashItems(slashItems, query);
   })();
 
   const menuVisible = menuItems.length > 0;
@@ -26,7 +31,6 @@ export function ChatInput({ onSubmit, isDisabled }: ChatInputProps) {
   const handleChange = useCallback((newValue: string) => {
     setValue(newValue);
     setSelectedIndex(0);
-    // Re-show menu when user types
     if (newValue.startsWith("/")) {
       setMenuDismissed(false);
     }
@@ -34,19 +38,33 @@ export function ChatInput({ onSubmit, isDisabled }: ChatInputProps) {
 
   const completeSelection = useCallback(() => {
     if (!menuVisible || !menuItems[selectedIndex]) return;
-    const cmd = menuItems[selectedIndex];
-    if (!cmd) return;
-    setValue(`/${cmd.name}`);
+    const item = menuItems[selectedIndex];
+    if (!item) return;
+    if (item.insertsText) {
+      // Skills: insert scaffold text
+      setValue(`/skill ${item.id} `);
+    } else {
+      setValue(`/${item.id}`);
+    }
     setMenuDismissed(true);
   }, [menuVisible, menuItems, selectedIndex]);
 
   const handleSubmit = useCallback(
     (input: string) => {
       if (!input.trim() || isDisabled) return;
-      // If menu is visible, execute the selected command directly
-      const cmd = menuVisible ? menuItems[selectedIndex] : undefined;
-      if (cmd) {
-        onSubmit(`/${cmd.name}`);
+      // If menu is visible, execute the selected item directly
+      const item = menuVisible ? menuItems[selectedIndex] : undefined;
+      if (item) {
+        if (item.insertsText) {
+          // Skill: insert scaffold and keep editing
+          setValue(`/skill ${item.id} `);
+          setMenuDismissed(true);
+          return;
+        }
+        // Command or agent: submit for execution
+        const submitText =
+          item.kind === "agent" ? `/agent ${item.id}` : `/${item.id}`;
+        onSubmit(submitText);
         setValue("");
         setSelectedIndex(0);
         setMenuDismissed(false);

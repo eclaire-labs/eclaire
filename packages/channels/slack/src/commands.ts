@@ -1,5 +1,6 @@
 import type { App } from "@slack/bolt";
 import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
+import { BUILTIN_COMMANDS, generateHelpText } from "@eclaire/core";
 import { getDeps } from "./deps.js";
 
 /** Per-channel session state (in-memory, resets on bot restart). */
@@ -36,8 +37,12 @@ const COMMANDS: SlackCommand[] = [
     name: "eclaire-help",
     description: "Show available Eclaire commands",
     handler: async (respond) => {
-      const lines = COMMANDS.map((cmd) => `/${cmd.name} — ${cmd.description}`);
-      await respond(`Available commands:\n\n${lines.join("\n")}`);
+      // Filter builtin commands to those available on channel surface
+      const channelCommands = BUILTIN_COMMANDS.filter(
+        (c) => !c.surfaces || c.surfaces.includes("channel"),
+      );
+      const helpText = generateHelpText(channelCommands, "eclaire-");
+      await respond(`Available commands:\n\n${helpText}`);
     },
   },
   {

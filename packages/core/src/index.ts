@@ -5,4 +5,5 @@ export * from "./encryption.js";
 export { ENV_LOADED, envLoadInfo } from "./env-loader.js";
 export * from "./id-generator.js";
 export * from "./types.js";
+export * from "./slash.js";
 export * from "./utils.js";

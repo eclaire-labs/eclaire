@@ -1,5 +1,6 @@
 // components/assistant/chat-panel.tsx
 
+import type { SlashItem } from "@eclaire/core";
 import { useEffect, useRef } from "react";
 import type { ToolCall } from "@/components/assistant/tool-execution-tracker";
 import { Card } from "@/components/ui/card";
@@ -33,6 +34,14 @@ interface ChatPanelProps {
   streamingToolCalls?: ToolCall[];
   showThinkingTokens?: boolean;
 
+  // Slash palette
+  slashPalette?: {
+    open: boolean;
+    items: SlashItem[];
+    onSelect: (item: SlashItem) => void;
+    onClose: () => void;
+  };
+
   // Layout control
   className?: string;
 }
@@ -52,6 +61,7 @@ export function ChatPanel({
   streamingText,
   streamingToolCalls = [],
   showThinkingTokens = true,
+  slashPalette,
   className,
 }: ChatPanelProps) {
   const [preferences] = useAssistantPreferences();
@@ -115,6 +125,7 @@ export function ChatPanel({
           attachedAssets={attachedAssets}
           setAttachedAssets={setAttachedAssets}
           onStopAutoPlay={autoPlayback.stop}
+          slashPalette={slashPalette}
         />
       </div>
     </Card>

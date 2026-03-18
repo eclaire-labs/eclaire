@@ -22,6 +22,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -40,6 +41,7 @@ import type { MobileTab } from "@/components/mobile/mobile-tab-bar";
 import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAgentExecutionStatus } from "@/hooks/use-session-status";
+import { useSlashCommands } from "@/hooks/use-slash-commands";
 import { AgentStatusDot } from "@/components/assistant/agent-status-dot";
 import { listAgents } from "@/lib/api-agents";
 import { apiFetch } from "@/lib/api-client";
@@ -125,6 +127,9 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [agentRailItems, setAgentRailItems] = useState<Agent[]>([]);
+  const [assistantAgentId, setAssistantAgentId] = useState<string>(
+    DEFAULT_AGENT_ACTOR_ID,
+  );
   const agentStatuses = useAgentExecutionStatus();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -505,7 +510,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   const handleDeleteAllConversations = async () => {
     try {
-      const response = await listSessions(1000, 0, DEFAULT_AGENT_ACTOR_ID);
+      const response = await listSessions(1000, 0, assistantAgentId);
       await Promise.all(response.items.map((c) => deleteSession(c.id)));
       startNewConversation();
     } catch (error) {
@@ -722,7 +727,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
       let sessionId = currentConversation?.id;
       if (!sessionId) {
         const session = await createSession({
-          agentActorId: DEFAULT_AGENT_ACTOR_ID,
+          agentActorId: assistantAgentId,
         });
         sessionId = session.id;
         setCurrentConversation(session);
@@ -735,13 +740,13 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
         context:
           attachedAssets.length > 0
             ? {
-                agentActorId: DEFAULT_AGENT_ACTOR_ID,
+                agentActorId: assistantAgentId,
                 assets: attachedAssets.map((asset) => ({
                   type: asset.type,
                   id: asset.id,
                 })),
               }
-            : { agentActorId: DEFAULT_AGENT_ACTOR_ID },
+            : { agentActorId: assistantAgentId },
       };
 
       await streamingClient.startStream?.(streamingRequest);
@@ -760,7 +765,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDownBase = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -798,6 +803,68 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     resetBatchingState();
     clearTools();
   };
+
+  // Slash commands
+  const slashAgents = useMemo(
+    () =>
+      agentRailItems.map((a) => ({
+        id: a.id,
+        name: a.name,
+        skillNames: a.skillNames,
+      })),
+    [agentRailItems],
+  );
+
+  // Use refs for callbacks to keep slashActions stable across renders
+  const handleSendRef = useRef(handleSend);
+  handleSendRef.current = handleSend;
+  const startNewConversationRef = useRef(startNewConversation);
+  startNewConversationRef.current = startNewConversation;
+
+  const slashActions = useMemo(
+    () => ({
+      onNewConversation: () => startNewConversationRef.current(),
+      onClearConversation: () => startNewConversationRef.current(),
+      onShowHistory: () => setShowHistory(true),
+      onToggleThinking: () => {},
+      onShowModel: () => {},
+      onShowHelp: () => {},
+      onSwitchAgent: (agentId: string) => {
+        setAssistantAgentId(agentId);
+        startNewConversationRef.current();
+      },
+      onSendMessage: (text: string) => handleSendRef.current(text),
+    }),
+    [],
+  );
+
+  const slash = useSlashCommands({
+    assistantAgentId,
+    agents: slashAgents,
+    input,
+    setInput,
+    actions: slashActions,
+  });
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (slash.interceptKeyDown(e)) return;
+    handleKeyDownBase(e);
+  };
+
+  const handleSendWithSlash = (textOverride?: string) => {
+    const text = textOverride || input;
+    if (slash.interceptSend(text)) return;
+    handleSend(textOverride);
+  };
+
+  const slashPaletteConfig = slash.palette.open
+    ? {
+        open: true as const,
+        items: slash.palette.items,
+        onSelect: slash.handleSelect,
+        onClose: slash.closePalette,
+      }
+    : undefined;
 
   // Make this function available globally
   if (typeof window !== "undefined") {
@@ -871,7 +938,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               inputRef={inputRef}
               setInput={setInput}
               handleKeyDown={handleKeyDown}
-              handleSend={handleSend}
+              handleSend={handleSendWithSlash}
               startNewConversation={startNewConversation}
               currentConversation={currentConversation}
               onEditConversationTitle={handleEditConversationTitle}
@@ -883,6 +950,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               streamingText={streamingText}
               streamingToolCalls={streamingToolCalls}
               showThinkingTokens={assistantPreferences.showThinkingTokens}
+              slashPalette={slashPaletteConfig}
             />
           );
         case "folders":
@@ -1090,7 +1158,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               inputRef={inputRef}
               setInput={setInput}
               handleKeyDown={handleKeyDown}
-              handleSend={handleSend}
+              handleSend={handleSendWithSlash}
               startNewConversation={startNewConversation}
               currentConversation={currentConversation}
               onEditConversationTitle={handleEditConversationTitle}
@@ -1106,6 +1174,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               streamingText={streamingText}
               streamingToolCalls={streamingToolCalls}
               showThinkingTokens={assistantPreferences.showThinkingTokens}
+              slashPalette={slashPaletteConfig}
             />
           </div>
         )}
@@ -1128,7 +1197,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
           inputRef={inputRef}
           setInput={setInput}
           handleKeyDown={handleKeyDown}
-          handleSend={handleSend}
+          handleSend={handleSendWithSlash}
           startNewConversation={startNewConversation}
           currentConversation={currentConversation}
           onEditConversationTitle={handleEditConversationTitle}
@@ -1144,6 +1213,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
           streamingText={streamingText}
           streamingToolCalls={streamingToolCalls}
           showThinkingTokens={assistantPreferences.showThinkingTokens}
+          slashPalette={slashPaletteConfig}
         />
       )}
 
