@@ -899,7 +899,7 @@ export default function PhotosPage() {
           items={state.sortedItems}
           isGrouped={state.isGrouped}
           getGroupDate={(item) => photosConfig.getGroupDate(item, state.sortBy)}
-          className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+          className="grid gap-4 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
           containerRef={containerRef}
           onKeyDown={handleKeyDown}
           renderItem={renderTileItem}

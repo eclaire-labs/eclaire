@@ -1,4 +1,5 @@
 import {
+  CalendarDays,
   Edit,
   ExternalLink,
   FileText,
@@ -27,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { FlagColor } from "@/hooks/use-list-page-state";
+import { formatDate } from "@/lib/list-page-utils";
 import type { Bookmark } from "@/types/bookmark";
 import { getDomainFromUrl } from "./bookmarks-config";
 import { Favicon } from "./Favicon";
@@ -60,7 +62,7 @@ export function BookmarkTileItem({
     <Card
       data-index={index}
       tabIndex={-1}
-      className={`flex flex-col cursor-pointer hover:shadow-md transition-shadow group w-full h-full ${isFocused ? "ring-2 ring-ring ring-offset-2" : ""}`}
+      className={`group cursor-pointer overflow-hidden transition-all duration-200 ease-in-out hover:shadow-md flex flex-col bg-card outline-none h-full ${isFocused ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
       onClick={onClick}
       onDoubleClick={() => onEditClick(entry)}
     >
@@ -99,11 +101,11 @@ export function BookmarkTileItem({
           />
         </div>
       </div>
-      <CardHeader className="pb-2 flex-grow">
+      <CardHeader className="p-4 pb-2">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <CardTitle
-              className="line-clamp-2 text-base font-semibold"
+              className="text-sm font-semibold line-clamp-2"
               title={entry.title || entry.url}
             >
               {entry.title || entry.url}
@@ -171,7 +173,7 @@ export function BookmarkTileItem({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => onDeleteClick(entry)}
-                  className="text-red-500"
+                  className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/50"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
@@ -181,19 +183,32 @@ export function BookmarkTileItem({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <p className="line-clamp-2 text-sm text-muted-foreground">
-          {entry.description || "No description available."}
-        </p>
+      <CardContent className="p-4 pt-1 flex-grow space-y-1.5">
+        {entry.description && (
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {entry.description}
+          </p>
+        )}
+        <div className="text-xs flex items-center gap-1 text-muted-foreground">
+          <CalendarDays className="h-3 w-3 flex-shrink-0" />
+          <span>{formatDate(entry.createdAt)}</span>
+        </div>
       </CardContent>
-      <CardFooter className="flex flex-wrap gap-1 pt-2">
+      <CardFooter className="flex flex-wrap gap-1 p-4 pt-0">
         {entry.tags.slice(0, 3).map((tag) => (
-          <Badge key={tag} variant="secondary" className="text-xs">
+          <Badge
+            key={tag}
+            variant="secondary"
+            className="text-xs px-1.5 py-0.5 font-normal"
+          >
             {tag}
           </Badge>
         ))}
         {entry.tags.length > 3 && (
-          <Badge variant="outline" className="text-xs">
+          <Badge
+            variant="outline"
+            className="text-xs px-1.5 py-0.5 font-normal"
+          >
             +{entry.tags.length - 3}
           </Badge>
         )}

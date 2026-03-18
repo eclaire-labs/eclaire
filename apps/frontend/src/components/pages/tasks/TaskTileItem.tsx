@@ -1,5 +1,5 @@
 import {
-  Calendar,
+  CalendarDays,
   Edit,
   FileText,
   GitBranch,
@@ -93,7 +93,7 @@ export function TaskTileItem({
     <Card
       data-index={index}
       tabIndex={-1}
-      className={`cursor-pointer transition-shadow hover:shadow-md flex flex-col ${isFocused ? "ring-2 ring-ring ring-offset-2" : ""}`}
+      className={`group cursor-pointer overflow-hidden transition-all duration-200 ease-in-out hover:shadow-md flex flex-col bg-card outline-none h-full ${isFocused ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
       onClick={onClick}
       onDoubleClick={() => onEditClick(task)}
     >
@@ -101,7 +101,7 @@ export function TaskTileItem({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 space-y-1">
             <div className="flex items-start gap-2">
-              <CardTitle className="text-base line-clamp-2 flex-1 flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold line-clamp-2 flex-1 flex items-center gap-2">
                 {task.title}
                 {task.isRecurring && (
                   <RefreshCw className="h-3 w-3 text-blue-500 flex-shrink-0" />
@@ -129,12 +129,12 @@ export function TaskTileItem({
             <CardDescription className="flex items-center text-xs">
               {task.dueDate ? (
                 <span className="flex items-center text-muted-foreground">
-                  <Calendar className="mr-1 h-3 w-3" />{" "}
+                  <CalendarDays className="mr-1 h-3 w-3" />{" "}
                   {formatDate(task.dueDate)}
                 </span>
               ) : (
                 <span className="flex items-center text-muted-foreground italic">
-                  <Calendar className="mr-1 h-3 w-3" /> No due date
+                  <CalendarDays className="mr-1 h-3 w-3" /> No due date
                 </span>
               )}
               <div className="ml-2">
@@ -161,7 +161,7 @@ export function TaskTileItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 flex-shrink-0"
+              className="h-6 w-6 flex-shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
                 onChatClick(task);
@@ -172,16 +172,16 @@ export function TaskTileItem({
                   : "Chat with AI about this task"
               }
             >
-              <MessageCircle className="h-4 w-4 text-muted-foreground" />
+              <MessageCircle className="h-3 w-3 text-muted-foreground" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 flex-shrink-0"
+                  className="h-6 w-6 flex-shrink-0"
                 >
-                  <MoreHorizontal className="h-4 w-4" />
+                  <MoreHorizontal className="h-3 w-3" />
                   <span className="sr-only">Actions</span>
                 </Button>
               </DropdownMenuTrigger>
@@ -225,7 +225,7 @@ export function TaskTileItem({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-2 flex-grow flex flex-col justify-between">
+      <CardContent className="p-4 pt-1 flex-grow flex flex-col justify-between">
         <div>
           <div className="line-clamp-3 text-sm text-muted-foreground mb-3">
             <MarkdownPreview
@@ -240,13 +240,16 @@ export function TaskTileItem({
                 <Badge
                   key={tag}
                   variant="secondary"
-                  className="text-xs font-normal"
+                  className="text-xs px-1.5 py-0.5 font-normal"
                 >
                   {tag}
                 </Badge>
               ))}
               {task.tags.length > 3 && (
-                <Badge variant="outline" className="text-xs font-normal">
+                <Badge
+                  variant="outline"
+                  className="text-xs px-1.5 py-0.5 font-normal"
+                >
                   +{task.tags.length - 3}
                 </Badge>
               )}

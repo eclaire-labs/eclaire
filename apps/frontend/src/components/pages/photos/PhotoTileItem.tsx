@@ -66,7 +66,7 @@ export function PhotoTileItem({
     <Card
       data-index={index}
       tabIndex={-1}
-      className={`group cursor-pointer overflow-hidden transition-all duration-200 ease-in-out hover:shadow-lg flex flex-col bg-card outline-none ${isFocused ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
+      className={`group cursor-pointer overflow-hidden transition-all duration-200 ease-in-out hover:shadow-md flex flex-col bg-card outline-none h-full ${isFocused ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
       onClick={onClick}
       onDoubleClick={() => onEditClick(photo)}
     >
@@ -106,11 +106,11 @@ export function PhotoTileItem({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-3 space-y-1.5 flex-grow">
+      <CardContent className="p-4 pt-1 space-y-1.5 flex-grow">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 overflow-hidden">
             <CardTitle
-              className="text-sm font-semibold line-clamp-1"
+              className="text-sm font-semibold line-clamp-2"
               title={photo.title}
             >
               {photo.title}
@@ -160,9 +160,9 @@ export function PhotoTileItem({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-foreground"
+                  className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-foreground"
                 >
-                  <MoreHorizontal className="h-4 w-4" />
+                  <MoreHorizontal className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent

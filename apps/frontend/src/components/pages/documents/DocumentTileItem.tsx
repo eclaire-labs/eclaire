@@ -109,7 +109,7 @@ export function DocumentTileItem({
     <Card
       data-index={index}
       tabIndex={-1}
-      className={`group cursor-pointer overflow-hidden transition-all duration-200 ease-in-out hover:shadow-lg flex flex-col bg-card outline-none relative ${isFocused ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
+      className={`group cursor-pointer overflow-hidden transition-all duration-200 ease-in-out hover:shadow-md flex flex-col bg-card outline-none h-full ${isFocused ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
       onClick={onClick}
       onDoubleClick={() => onEditClick(doc)}
     >
@@ -163,7 +163,7 @@ export function DocumentTileItem({
         {/* Title & Meta */}
         <div className="flex-1 overflow-hidden">
           <CardTitle
-            className="text-sm font-semibold line-clamp-1"
+            className="text-sm font-semibold line-clamp-2"
             title={doc.title}
           >
             {doc.title}
@@ -242,7 +242,7 @@ export function DocumentTileItem({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => onDeleteClick(doc)}
-                className="text-red-500"
+                className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/50"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
