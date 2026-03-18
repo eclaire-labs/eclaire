@@ -82,8 +82,8 @@ export function CreateBookmarkDialog({
               <Label htmlFor="url">URL</Label>
               <Input
                 id="url"
-                type="url"
-                placeholder="https://example.com"
+                type="text"
+                placeholder="example.com"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />
