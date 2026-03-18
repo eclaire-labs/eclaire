@@ -1,4 +1,5 @@
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bot,
@@ -205,6 +206,7 @@ export default function AssistantSettings({
   selectedAgentId,
 }: AssistantSettingsProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [preferences, , isLoaded] = useAssistantPreferences();
 
   const [_agents, setAgents] = useState<Agent[]>([]);
@@ -235,6 +237,8 @@ export default function AssistantSettings({
   const inputRef = useRef<HTMLInputElement>(null);
   const finalStreamingTextRef = useRef("");
   const finalStreamingThoughtRef = useRef("");
+  const currentConversationRef = useRef(currentConversation);
+  currentConversationRef.current = currentConversation;
 
   const {
     toolCalls: streamingToolCalls,
@@ -334,9 +338,32 @@ export default function AssistantSettings({
           skillNames: agent.skillNames,
           modelId: agent.modelId ?? null,
         });
-        setMessages([buildWelcomeMessage(agent.name)]);
-        setCurrentConversation(null);
-        await refreshSessions(agent.id);
+        const response = await listSessions(20, 0, agent.id);
+        if (cancelled) return;
+        setSessions(response.items);
+
+        // Auto-restore the most recent conversation
+        const mostRecent = response.items[0];
+        if (mostRecent) {
+          const loaded = await getSessionWithMessages(mostRecent.id);
+          if (cancelled) return;
+          setCurrentConversation(mostRecent);
+          setMessages(loaded.messages.map(convertBackendMessage));
+        } else {
+          setMessages([buildWelcomeMessage(agent.name)]);
+          setCurrentConversation(null);
+        }
+
+        // Clear unread indicators for all sessions when navigating to the agent page
+        const unreadSessions = response.items.filter(
+          (s) => s.hasUnreadResponse,
+        );
+        if (unreadSessions.length > 0) {
+          await Promise.all(
+            unreadSessions.map((s) => markSessionRead(s.id).catch(() => {})),
+          );
+          queryClient.invalidateQueries({ queryKey: ["session-status"] });
+        }
       } catch (error) {
         if (!cancelled) {
           toast.error(
@@ -351,7 +378,7 @@ export default function AssistantSettings({
     return () => {
       cancelled = true;
     };
-  }, [draftTemplate, refreshSessions, selectedAgentId]);
+  }, [draftTemplate, queryClient, selectedAgentId]);
 
   const streamingClient = useStreamingClient({
     onThought: (content) => {
@@ -407,6 +434,12 @@ export default function AssistantSettings({
       clearTools();
       if (selectedAgentId !== "new") {
         await refreshSessions(selectedAgentId);
+        // User was watching the response — mark as read immediately
+        const sessionId = currentConversationRef.current?.id;
+        if (sessionId) {
+          markSessionRead(sessionId).catch(() => {});
+          queryClient.invalidateQueries({ queryKey: ["session-status"] });
+        }
       }
     },
   });
@@ -422,6 +455,7 @@ export default function AssistantSettings({
       // Clear unread indicator if the session had one
       if (session.hasUnreadResponse) {
         markSessionRead(session.id).catch(() => {});
+        queryClient.invalidateQueries({ queryKey: ["session-status"] });
       }
     } catch (error) {
       toast.error(

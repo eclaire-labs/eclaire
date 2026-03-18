@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import {
@@ -96,6 +97,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const location = useLocation();
   const { pathname } = location;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const search = location.search as {
     tab?: string;
@@ -133,6 +135,8 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const agentStatuses = useAgentExecutionStatus();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const currentConversationRef = useRef(currentConversation);
+  currentConversationRef.current = currentConversation;
 
   // Streaming state (always enabled)
   const [isStreaming, setIsStreaming] = useState(false);
@@ -325,6 +329,13 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
       finalStreamingTextRef.current = ""; // <-- CRUCIAL: Reset the ref for the next message.
       resetBatchingState();
       clearTools();
+
+      // User was watching the response — mark as read immediately
+      const sessionId = currentConversationRef.current?.id;
+      if (sessionId) {
+        markSessionRead(sessionId).catch(() => {});
+        queryClient.invalidateQueries({ queryKey: ["session-status"] });
+      }
     },
     onConnect: () => {},
     onDisconnect: () => {
@@ -472,6 +483,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
       // Clear unread indicator if the conversation had one
       if (conversation.hasUnreadResponse) {
         markSessionRead(conversation.id).catch(() => {});
+        queryClient.invalidateQueries({ queryKey: ["session-status"] });
       }
     } catch (error) {
       console.error("Failed to load conversation:", error);
