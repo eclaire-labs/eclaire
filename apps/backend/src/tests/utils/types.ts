@@ -71,7 +71,6 @@ export interface Document {
 
   // Content metadata
   extractedText: string | null;
-  pageCount: number | null;
 }
 
 export interface DocumentListResponse {

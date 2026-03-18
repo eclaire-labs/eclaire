@@ -14,7 +14,6 @@ import { DocumentResponseSchema } from "@eclaire/api-types/documents";
 export const CreatedDocumentResponseSchema = DocumentResponseSchema.omit({
   updatedAt: true,
   extractedText: true,
-  pageCount: true,
   processingStatus: true,
 })
   .extend({

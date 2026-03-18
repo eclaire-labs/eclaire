@@ -25,7 +25,6 @@ export const DocumentResponseSchema = z
     contentUrl: z.string().nullable(),
     fileUrl: z.string().nullable(),
     extractedText: z.string().nullable(),
-    pageCount: z.number().nullable().optional(),
     processingEnabled: z.boolean(),
   })
   .meta({ ref: "DocumentResponse" });

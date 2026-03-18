@@ -174,10 +174,13 @@ async function getDocumentWithDetails(
     : null;
   const pdfUrl = document.pdfStorageId
     ? `/api/documents/${document.id}/pdf`
-    : null;
-  const contentUrl = document.extractedMdStorageId
-    ? `/api/documents/${document.id}/content`
-    : null;
+    : document.mimeType === "application/pdf" && document.storageId
+      ? `/api/documents/${document.id}/file`
+      : null;
+  const contentUrl =
+    document.extractedMdStorageId || document.extractedTxtStorageId
+      ? `/api/documents/${document.id}/content`
+      : null;
 
   return {
     id: document.id,
@@ -696,10 +699,13 @@ export async function findDocuments({
         : null;
       const pdfUrl = document.pdfStorageId
         ? `/api/documents/${document.id}/pdf`
-        : null;
-      const contentUrl = document.extractedMdStorageId
-        ? `/api/documents/${document.id}/content`
-        : null;
+        : document.mimeType === "application/pdf" && document.storageId
+          ? `/api/documents/${document.id}/file`
+          : null;
+      const contentUrl =
+        document.extractedMdStorageId || document.extractedTxtStorageId
+          ? `/api/documents/${document.id}/content`
+          : null;
 
       return {
         id: document.id,
@@ -976,11 +982,14 @@ export async function getDocumentAsset(
       mimeType = "application/pdf";
       filename = `${document.id}.pdf`;
       break;
-    case "content": // This can point to the markdown version
+    case "content":
     case "extracted-md":
-      storageId = document.extractedMdStorageId;
-      mimeType = "text/markdown";
-      filename = `${document.id}-extracted.md`;
+      storageId =
+        document.extractedMdStorageId || document.extractedTxtStorageId;
+      mimeType = document.extractedMdStorageId ? "text/markdown" : "text/plain";
+      filename = document.extractedMdStorageId
+        ? `${document.id}-extracted.md`
+        : `${document.id}-extracted.txt`;
       break;
     case "extracted-txt":
       storageId = document.extractedTxtStorageId;

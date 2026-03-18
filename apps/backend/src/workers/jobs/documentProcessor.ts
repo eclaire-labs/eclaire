@@ -514,6 +514,23 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
         { contentType: "text/plain" },
       );
       allArtifacts.extractedTxtStorageId = txtKey;
+
+      // Also generate a markdown version for richer Content tab display and AI consumption
+      const mdContent = generateMarkdownContent(
+        documentBuffer,
+        extractedText,
+        mimeType,
+        originalFilename,
+      );
+      if (mdContent) {
+        const mdKey = buildKey(userId, "documents", documentId, "extracted.md");
+        await storage.write(
+          mdKey,
+          Readable.from([mdContent]) as unknown as NodeJS.ReadableStream,
+          { contentType: "text/markdown" },
+        );
+        allArtifacts.extractedMdStorageId = mdKey;
+      }
     }
     // Complete the final stage with all artifacts - job completion is implicit when handler returns
     await ctx.completeStage(
@@ -1358,4 +1375,86 @@ function extractTextFromJson(jsonString: string): string {
     );
     return jsonString;
   }
+}
+
+/**
+ * Generates a markdown representation of document content for the Content tab and AI.
+ * For text-based formats processed via the standard (non-Docling) path, this produces
+ * a richer version than plain text: markdown files pass through as-is, CSVs become tables,
+ * JSON/XML get fenced code blocks, and other formats use the extracted text directly.
+ */
+function generateMarkdownContent(
+  originalBuffer: Buffer,
+  extractedText: string,
+  mimeType: string,
+  filename: string,
+): string | null {
+  try {
+    switch (mimeType) {
+      // Markdown files: the original IS the markdown — use it directly
+      case "text/markdown":
+        return originalBuffer.toString("utf-8");
+
+      // CSV: parse into a markdown table
+      case "text/csv":
+        return csvToMarkdownTable(originalBuffer);
+
+      // JSON: wrap in a fenced code block
+      case "application/json":
+        return `\`\`\`json\n${originalBuffer.toString("utf-8").trim()}\n\`\`\``;
+
+      // XML: wrap in a fenced code block
+      case "application/xml":
+      case "text/xml":
+        return `\`\`\`xml\n${originalBuffer.toString("utf-8").trim()}\n\`\`\``;
+
+      // HTML: use the extracted text (Readability-cleaned) as-is
+      // Plain text, RTF, and Office docs: extracted text is already usable
+      default:
+        return extractedText || null;
+    }
+  } catch (error) {
+    logger.warn(
+      {
+        mimeType,
+        filename,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "Failed to generate markdown content, skipping",
+    );
+    return null;
+  }
+}
+
+/**
+ * Converts a CSV buffer into a markdown table.
+ * Falls back to the raw CSV text if parsing fails.
+ */
+function csvToMarkdownTable(csvBuffer: Buffer): string {
+  const MAX_ROWS = 10_000;
+  const records: Record<string, string>[] = parseCsv(csvBuffer, {
+    columns: true,
+    skip_empty_lines: true,
+    bom: true,
+    relax_column_count: true,
+    trim: true,
+    to: MAX_ROWS,
+  });
+
+  if (records.length === 0 || !records[0]) return csvBuffer.toString("utf-8");
+
+  const headers = Object.keys(records[0]);
+  if (headers.length === 0) return csvBuffer.toString("utf-8");
+
+  const escapeCell = (val: string) =>
+    val.replace(/\|/g, "\\|").replace(/\n/g, " ");
+
+  const headerRow = `| ${headers.map(escapeCell).join(" | ")} |`;
+  const separatorRow = `| ${headers.map(() => "---").join(" | ")} |`;
+  const dataRows = records.map(
+    (record) =>
+      `| ${headers.map((h) => escapeCell(record[h] || "")).join(" | ")} |`,
+  );
+
+  return [headerRow, separatorRow, ...dataRows].join("\n");
 }
