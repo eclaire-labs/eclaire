@@ -172,10 +172,10 @@ async function getDocumentWithDetails(
   const screenshotUrl = document.screenshotStorageId
     ? `/api/documents/${document.id}/screenshot`
     : null;
-  const pdfUrl = document.pdfStorageId
-    ? `/api/documents/${document.id}/pdf`
-    : document.mimeType === "application/pdf" && document.storageId
-      ? `/api/documents/${document.id}/file`
+  const pdfUrl =
+    document.pdfStorageId ||
+    (document.mimeType === "application/pdf" && document.storageId)
+      ? `/api/documents/${document.id}/pdf`
       : null;
   const contentUrl =
     document.extractedMdStorageId || document.extractedTxtStorageId
@@ -697,10 +697,10 @@ export async function findDocuments({
       const screenshotUrl = document.screenshotStorageId
         ? `/api/documents/${document.id}/screenshot`
         : null;
-      const pdfUrl = document.pdfStorageId
-        ? `/api/documents/${document.id}/pdf`
-        : document.mimeType === "application/pdf" && document.storageId
-          ? `/api/documents/${document.id}/file`
+      const pdfUrl =
+        document.pdfStorageId ||
+        (document.mimeType === "application/pdf" && document.storageId)
+          ? `/api/documents/${document.id}/pdf`
           : null;
       const contentUrl =
         document.extractedMdStorageId || document.extractedTxtStorageId
@@ -979,6 +979,11 @@ export async function getDocumentAsset(
       break;
     case "pdf":
       storageId = document.pdfStorageId;
+      // Native PDFs (uploaded as PDF) won't have a separate pdfStorageId —
+      // fall back to the original file so /pdf serves them consistently.
+      if (!storageId && document.mimeType === "application/pdf") {
+        storageId = document.storageId;
+      }
       mimeType = "application/pdf";
       filename = `${document.id}.pdf`;
       break;

@@ -50,7 +50,7 @@ export function createAssetResponse(
 
   // Security headers — always set
   headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("X-Frame-Options", "DENY");
+  headers.set("X-Frame-Options", "SAMEORIGIN");
 
   // Sandbox dangerous content types to prevent script execution
   const baseType = (options.contentType.split(";")[0] ?? "").trim();
