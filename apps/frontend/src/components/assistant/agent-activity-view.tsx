@@ -119,7 +119,7 @@ function StepToolItem({ exec, isExpanded, onToggle }: StepToolItemProps) {
       <CollapsibleTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 w-full text-left py-0.5 px-1 rounded hover:bg-muted/50 text-xs"
+          className="flex items-center gap-2 w-full text-left py-0.5 px-1 rounded hover:bg-muted/50 text-xs cursor-pointer"
         >
           {isError ? (
             <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />
@@ -130,6 +130,11 @@ function StepToolItem({ exec, isExpanded, onToggle }: StepToolItemProps) {
           <span className="text-muted-foreground ml-auto shrink-0">
             {formatDuration(exec.durationMs)}
           </span>
+          {isExpanded ? (
+            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+          )}
         </button>
       </CollapsibleTrigger>
 
@@ -326,7 +331,7 @@ function FlatToolList({ toolCalls }: FlatToolListProps) {
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-2 w-full text-left py-0.5 px-1 rounded hover:bg-muted/50 text-xs"
+                className="flex items-center gap-2 w-full text-left py-0.5 px-1 rounded hover:bg-muted/50 text-xs cursor-pointer"
               >
                 {isActive ? (
                   <Loader2 className="h-3 w-3 text-blue-500 animate-spin shrink-0" />
@@ -340,6 +345,11 @@ function FlatToolList({ toolCalls }: FlatToolListProps) {
                   <span className="text-destructive truncate text-[11px]">
                     {tc.error}
                   </span>
+                )}
+                {isExpanded ? (
+                  <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-auto" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0 ml-auto" />
                 )}
               </button>
             </CollapsibleTrigger>
