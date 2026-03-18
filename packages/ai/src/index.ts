@@ -56,7 +56,6 @@
 import {
   clearConfigCaches,
   clearConfigPath,
-  interpolateEnvVars,
   setConfigPath,
   setInlineConfig,
 } from "./config.js";

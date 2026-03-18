@@ -38,11 +38,14 @@ export interface CreateApiKeyInput {
   expiresAt?: Date | null;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type, queries work across all dialects
 type DbQuery = {
+  // biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type, queries work across all dialects
   db: any;
+  // biome-ignore lint/suspicious/noExplicitAny: schema table refs are dialect-polymorphic
   actorCredentials: any;
+  // biome-ignore lint/suspicious/noExplicitAny: schema table refs are dialect-polymorphic
   actorGrants: any;
+  // biome-ignore lint/suspicious/noExplicitAny: schema table refs are dialect-polymorphic
   actors: any;
 };
 

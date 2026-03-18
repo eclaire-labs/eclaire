@@ -24,7 +24,7 @@ import {
   CancelledError,
 } from "../../ui/clack.js";
 
-const AUDIO_MODEL_KEYS = ["audio.defaultSttModel", "audio.defaultTtsModel"];
+const AUDIO_MODEL_KEYS = new Set(["audio.defaultSttModel", "audio.defaultTtsModel"]);
 
 async function interactiveSettings(): Promise<void> {
   try {
@@ -56,7 +56,7 @@ async function interactiveSettings(): Promise<void> {
         message: `${selectedKey}`,
         initialValue: currentValue === true,
       });
-    } else if (AUDIO_MODEL_KEYS.includes(selectedKey)) {
+    } else if (AUDIO_MODEL_KEYS.has(selectedKey)) {
       const models = await discoverAudioModels();
       if (models && models.length > 0) {
         newValue = await selectOne<string>({

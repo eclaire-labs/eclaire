@@ -129,7 +129,6 @@ export async function promptProviderId(
   validateFn: (id: string) => boolean | string | Promise<boolean | string>,
 ): Promise<string> {
   // clack's text validate doesn't support async, so we loop manually
-  // biome-ignore lint/correctness/noConstantCondition: intentional retry loop
   while (true) {
     const value = await textInput({
       message: "Provider ID (unique identifier):",

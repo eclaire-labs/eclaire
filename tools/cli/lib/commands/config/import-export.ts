@@ -8,7 +8,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import ora from "ora";
-import { eq } from "drizzle-orm";
+
 import type { pgSchema } from "@eclaire/db";
 import type {
   ModelsConfiguration,
@@ -162,7 +162,7 @@ export async function exportCommand(options: { dir?: string }): Promise<void> {
   );
   console.log(colors.dim(`  Destination: ${outputDir}\n`));
 
-  const { db, schema } = getDb();
+  const { db } = getDb();
   const d = db as ReturnType<
     typeof import("drizzle-orm/postgres-js").drizzle<Schema>
   >;
@@ -190,7 +190,7 @@ export async function exportCommand(options: { dir?: string }): Promise<void> {
     }
     fs.writeFileSync(
       path.join(outputDir, "providers.json"),
-      JSON.stringify({ providers }, null, 2) + "\n",
+      `${JSON.stringify({ providers }, null, 2)}\n`,
     );
 
     // Export models
@@ -210,7 +210,7 @@ export async function exportCommand(options: { dir?: string }): Promise<void> {
     }
     fs.writeFileSync(
       path.join(outputDir, "models.json"),
-      JSON.stringify({ models }, null, 2) + "\n",
+      `${JSON.stringify({ models }, null, 2)}\n`,
     );
 
     // Export selection
@@ -221,7 +221,7 @@ export async function exportCommand(options: { dir?: string }): Promise<void> {
     }
     fs.writeFileSync(
       path.join(outputDir, "selection.json"),
-      JSON.stringify({ active }, null, 2) + "\n",
+      `${JSON.stringify({ active }, null, 2)}\n`,
     );
 
     spinner.succeed("Configuration exported successfully");
