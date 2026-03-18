@@ -1,5 +1,5 @@
-import type { SlashItem } from "@eclaire/core";
-import { groupSlashItems } from "@eclaire/core";
+import type { SlashItem } from "@eclaire/core/slash";
+import { groupSlashItems } from "@eclaire/core/slash";
 import {
   Bot,
   Brain,

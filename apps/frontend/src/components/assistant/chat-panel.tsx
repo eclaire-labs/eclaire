@@ -1,6 +1,6 @@
 // components/assistant/chat-panel.tsx
 
-import type { SlashItem } from "@eclaire/core";
+import type { SlashItem } from "@eclaire/core/slash";
 import { useEffect, useRef } from "react";
 import type { ToolCall } from "@/components/assistant/tool-execution-tracker";
 import { Card } from "@/components/ui/card";

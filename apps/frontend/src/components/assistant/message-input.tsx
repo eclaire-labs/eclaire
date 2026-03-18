@@ -1,6 +1,6 @@
 // components/chat/message-input.tsx
 
-import type { SlashItem } from "@eclaire/core";
+import type { SlashItem } from "@eclaire/core/slash";
 import {
   Bookmark,
   CheckSquare,

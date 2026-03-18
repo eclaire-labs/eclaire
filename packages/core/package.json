@@ -36,6 +36,11 @@
       "types": "./src/utils.ts",
       "default": "./dist/utils.js"
     },
+    "./slash": {
+      "development": "./src/slash.ts",
+      "types": "./src/slash.ts",
+      "default": "./dist/slash.js"
+    },
     "./env-loader": {
       "development": "./src/env-loader.ts",
       "types": "./src/env-loader.ts",

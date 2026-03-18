@@ -1,4 +1,4 @@
-import type { SlashItem } from "@eclaire/core";
+import type { SlashItem } from "@eclaire/core/slash";
 import {
   CheckSquare,
   Edit2,
