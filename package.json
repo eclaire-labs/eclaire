@@ -1,6 +1,6 @@
 {
   "name": "@eclaire/monorepo",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "private": true,
   "packageManager": "pnpm@10.30.3",
   "license": "MIT",

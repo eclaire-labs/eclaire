@@ -64,7 +64,7 @@ services:
   # Document Processing
   # ===========================================================================
   docling:
-    image: ghcr.io/docling-project/docling-serve:1.14.3
+    image: ghcr.io/docling-project/docling-serve:latest
     ports:
       - "5001:5001"
     # CPU mode by default (no GPU passthrough needed)

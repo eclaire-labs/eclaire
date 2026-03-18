@@ -8,8 +8,8 @@
  * Useful for debugging configuration issues.
  */
 
-// Load environment first
-import "../lib/env-loader.js";
+// Load environment first (side-effect import from @eclaire/core)
+import "@eclaire/core";
 
 import { config, getConfigSummary } from "../config/index.js";
 

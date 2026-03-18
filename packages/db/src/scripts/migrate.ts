@@ -174,6 +174,9 @@ async function runPostgresMigrations(statusFlag: boolean, forceFlag: boolean) {
     } else {
       checkProductionSafety(forceFlag);
 
+      // Ensure pg_trgm extension exists (needed for trigram indexes)
+      await client`CREATE EXTENSION IF NOT EXISTS pg_trgm;`;
+
       console.log("Running database migrations on PostgreSQL...");
       console.log(`   Migrations folder: ${POSTGRES_MIGRATIONS}`);
 

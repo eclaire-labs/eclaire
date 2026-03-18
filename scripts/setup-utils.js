@@ -748,7 +748,6 @@ function printSummary(results) {
     { name: "AI models check", key: "models" },
     { name: "NPM dependencies", key: "npmDependencies" },
     { name: "Database initialized", key: "database" },
-    { name: "Demo data seeded", key: "demoSeed" },
   ];
 
   let hasFailures = false;

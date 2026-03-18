@@ -1,5 +1,5 @@
 // Load environment variables before anything else
-import "../src/lib/env-loader";
+import "@eclaire/core";
 
 import {
   createPgliteClient,

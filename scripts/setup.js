@@ -10,7 +10,6 @@ const {
   checkModels,
   installDependencies,
   initDatabase,
-  seedDemoData,
   printSummary,
   colors,
 } = require("./setup-utils");
@@ -85,9 +84,6 @@ async function showPreflightSummary() {
     console.log(
       `  7. ${colors.blue}Initialize database${colors.reset} (migrations + version)`,
     );
-    console.log(
-      `  8. ${colors.blue}Seed demo data${colors.reset} (optional, for PostgreSQL)`,
-    );
   }
 
   const proceed = await question(
@@ -123,7 +119,6 @@ async function setup() {
     models: false,
     npmDependencies: false,
     database: false,
-    demoSeed: false,
     // Failed states
     dependenciesFailed: false,
     envFilesFailed: false,
@@ -131,7 +126,6 @@ async function setup() {
     modelsFailed: false,
     npmDependenciesFailed: false,
     databaseFailed: false,
-    demoSeedFailed: false,
   };
 
   try {
@@ -274,39 +268,6 @@ async function setup() {
       console.log(
         `${colors.yellow}Skipping database initialization (pnpm dependencies not installed)${colors.reset}`,
       );
-    }
-
-    // Step 8: Seed demo data (optional, for PostgreSQL)
-    if (
-      !flags.skipDb &&
-      results.database &&
-      results.databaseType === "postgres"
-    ) {
-      if (
-        await confirm(
-          "\nStep 8: Seed demo data? (creates test users and sample data)",
-        )
-      ) {
-        console.log(`\n${colors.blue}Seeding demo data...${colors.reset}`);
-        try {
-          results.demoSeed = await seedDemoData();
-          if (!results.demoSeed) {
-            results.demoSeedFailed = true;
-          }
-        } catch (error) {
-          console.log(
-            `  ${colors.red}❌ Demo seeding failed: ${error.message}${colors.reset}`,
-          );
-          results.demoSeedFailed = true;
-        }
-      } else {
-        console.log(
-          `${colors.yellow}Skipping demo data seeding${colors.reset}`,
-        );
-        console.log(
-          `${colors.cyan}You can seed later with: pnpm --filter @eclaire/backend db:seed:demo${colors.reset}`,
-        );
-      }
     }
 
     // Print summary

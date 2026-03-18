@@ -23,8 +23,8 @@ process.on("uncaughtException", (error) => {
   process.exit(1);
 });
 
-// Load environment first
-import "../lib/env-loader.js";
+// Load environment first (side-effect import from @eclaire/core)
+import "@eclaire/core";
 
 // Suppress noisy db initialization logs for this script
 process.env.LOG_LEVEL = "error";

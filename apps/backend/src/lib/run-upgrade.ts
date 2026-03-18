@@ -244,7 +244,7 @@ async function runMigrations(): Promise<void> {
       import.meta.dirname,
       "../../../../packages/db/src/scripts/migrate.ts",
     );
-    cmd = `pnpm exec tsx ${scriptPath} --force`;
+    cmd = `NODE_OPTIONS='--conditions=development' pnpm exec tsx ${scriptPath} --force`;
   }
 
   if (!existsSync(scriptPath)) {
