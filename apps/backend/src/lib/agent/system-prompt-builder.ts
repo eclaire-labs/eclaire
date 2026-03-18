@@ -74,6 +74,20 @@ function hasContentTools(
   return CONTENT_TOOL_NAMES.some((name) => name in tools);
 }
 
+const COMMUNICATION_STYLE_INSTRUCTIONS = `
+
+**Communication Style**
+
+Never mention tool names, function calls, or internal mechanics in your responses.
+The user does not need to know how you work internally.
+- Say "Let me check your settings" — not "I'll use the getUserSettings tool"
+- Say "Let me look into that" — not "I'll use getProcessingStatus to check"
+When directing users to the UI, use natural navigation language like "You can find this in Settings > Channels".
+
+**CRITICAL: Never claim to have performed an action unless you actually called the appropriate tool and received a successful result.**
+You MUST use a tool to perform any create, update, or delete action. Reading data also requires a tool call.
+Do not say "I've updated X" or "Done" unless the tool was actually called and succeeded in the current turn.`;
+
 const CONTENT_LINKING_INSTRUCTIONS = `
 
 **CRITICAL: Content Linking Requirements**
@@ -146,6 +160,8 @@ function buildUserContextSection(userContext?: UserContext | null): string {
   if (userContext.city) section += `\n- City: ${userContext.city}`;
   if (userContext.country) section += `\n- Country: ${userContext.country}`;
   if (userContext.timezone) section += `\n- Timezone: ${userContext.timezone}`;
+  if (userContext.isInstanceAdmin)
+    section += "\n- Role: Instance Administrator";
   return section;
 }
 
@@ -322,7 +338,7 @@ ${getToolSignatures(tools)}
     : "";
 
   return appendAgentCapabilities(
-    `${basePrompt}${contentLinkingNormal}${schedulingNormal}
+    `${basePrompt}${COMMUNICATION_STYLE_INSTRUCTIONS}${contentLinkingNormal}${schedulingNormal}
 ${toolSignaturesSection}`,
     { skillNames: agent?.skillNames, tools },
   );

@@ -47,6 +47,13 @@ import { listTagsTool } from "./list-tags.js";
 import { updateBookmarkTool } from "./update-bookmark.js";
 import { updateNoteTool } from "./update-note.js";
 import { updateTaskTool } from "./update-task.js";
+// User settings tools
+import { getUserSettingsTool } from "./get-user-settings.js";
+import { updateUserSettingsTool } from "./update-user-settings.js";
+// Processing status tools
+import { getProcessingStatusTool } from "./get-processing-status.js";
+// Admin tools
+import { manageAdminTool } from "./manage-admin.js";
 
 /**
  * Static backend tools (always available).
@@ -88,6 +95,13 @@ const staticTools: Record<string, RuntimeToolDefinition> = {
   listTags: listTagsTool,
   // Skill tools
   loadSkill: loadSkillTool,
+  // User settings tools
+  getUserSettings: getUserSettingsTool,
+  updateUserSettings: updateUserSettingsTool,
+  // Processing status tools
+  getProcessingStatus: getProcessingStatusTool,
+  // Admin tools (filtered by user role in selectAgentTools)
+  manageAdmin: manageAdminTool,
 };
 
 /**
@@ -151,3 +165,10 @@ export { updateTaskTool } from "./update-task.js";
 // Audio tools
 export { synthesizeSpeechTool } from "./synthesize-speech.js";
 export { transcribeAudioTool } from "./transcribe-audio.js";
+// User settings tools
+export { getUserSettingsTool } from "./get-user-settings.js";
+export { updateUserSettingsTool } from "./update-user-settings.js";
+// Processing status tools
+export { getProcessingStatusTool } from "./get-processing-status.js";
+// Admin tools
+export { manageAdminTool } from "./manage-admin.js";

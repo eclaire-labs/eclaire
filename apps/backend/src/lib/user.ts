@@ -61,6 +61,7 @@ export async function getUserContextForPrompt(userId: string) {
         timezone: null,
         city: null,
         country: null,
+        isInstanceAdmin: false,
       };
     }
 
@@ -71,6 +72,7 @@ export async function getUserContextForPrompt(userId: string) {
       timezone: user.timezone || null,
       city: user.city || null,
       country: user.country || null,
+      isInstanceAdmin: user.isInstanceAdmin === true,
     };
   } catch (error) {
     logger.error(
@@ -89,6 +91,7 @@ export async function getUserContextForPrompt(userId: string) {
       timezone: null,
       city: null,
       country: null,
+      isInstanceAdmin: false,
     };
   }
 }

@@ -16,6 +16,7 @@ export interface UserContext {
   timezone: string | null;
   city: string | null;
   country: string | null;
+  isInstanceAdmin: boolean;
 }
 
 export interface AgentDefinition extends AgentDefinitionBase {
