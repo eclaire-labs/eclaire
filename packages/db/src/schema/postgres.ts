@@ -719,12 +719,14 @@ export const photos = pgTable(
     locationCountryName: text("location_country_name"),
 
     photoType: text("photo_type"),
-    ocrText: text("ocr_text"),
+    extractedText: text("extracted_text"),
     dominantColors: jsonb("dominant_colors"),
 
     thumbnailStorageId: text("thumbnail_storage_id"),
     screenshotStorageId: text("screenshot_storage_id"),
     convertedJpgStorageId: text("converted_jpg_storage_id"),
+    extractedMdStorageId: text("extracted_md_storage_id"),
+    extractedTxtStorageId: text("extracted_txt_storage_id"),
 
     rawMetadata: jsonb("raw_metadata"),
     originalMimeType: text("original_mime_type"),
@@ -754,7 +756,7 @@ export const photos = pgTable(
       (): ReturnType<typeof sql> => sql`(
         setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
         setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
-        setweight(to_tsvector('english', coalesce(ocr_text, '')), 'C')
+        setweight(to_tsvector('english', coalesce(extracted_text, '')), 'C')
       )`,
     ),
   },

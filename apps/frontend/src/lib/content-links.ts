@@ -117,7 +117,7 @@ export const fetchContentMetadata = async (
             locationCity: photo.locationCity,
             locationCountryName: photo.locationCountryName,
             photoType: photo.photoType,
-            ocrText: photo.ocrText,
+            extractedText: photo.extractedText,
             dominantColors: photo.dominantColors,
             tags: photo.tags,
             status: photo.processingStatus,

@@ -71,7 +71,7 @@ function makeRawPhoto(overrides: Record<string, unknown> = {}) {
     locationCountryIso2: "FR",
     locationCountryName: "France",
     photoType: "landscape",
-    ocrText: "No text",
+    extractedText: "No text",
     dominantColors: ["#ff6600", "#003366"],
     processingStatus: "completed",
     createdAt: "2026-01-01T00:00:00Z",
@@ -173,17 +173,17 @@ describe("transformPhotoData", () => {
     expect(result.dateTaken).toBe(raw.dateTaken);
   });
 
-  it("defaults photoType, ocrText, and dominantColors to null when missing", () => {
+  it("defaults photoType, extractedText, and dominantColors to null when missing", () => {
     const result = transformPhotoData(
       makeRawPhoto({
         photoType: undefined,
-        ocrText: undefined,
+        extractedText: undefined,
         dominantColors: undefined,
       }),
     );
 
     expect(result.photoType).toBeNull();
-    expect(result.ocrText).toBeNull();
+    expect(result.extractedText).toBeNull();
     expect(result.dominantColors).toBeNull();
   });
 

@@ -73,6 +73,27 @@ CREATE TABLE `actors` (
 --> statement-breakpoint
 CREATE INDEX `actors_owner_user_id_idx` ON `actors` (`owner_user_id`);--> statement-breakpoint
 CREATE INDEX `actors_owner_user_id_kind_idx` ON `actors` (`owner_user_id`,`kind`);--> statement-breakpoint
+CREATE TABLE `agent_steps` (
+	`id` text PRIMARY KEY NOT NULL,
+	`message_id` text NOT NULL,
+	`conversation_id` text NOT NULL,
+	`step_number` integer NOT NULL,
+	`timestamp` integer NOT NULL,
+	`thinking_content` text,
+	`text_content` text,
+	`is_terminal` integer DEFAULT false NOT NULL,
+	`stop_reason` text,
+	`prompt_tokens` integer,
+	`completion_tokens` integer,
+	`tool_executions` text,
+	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	FOREIGN KEY (`message_id`) REFERENCES `messages`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`conversation_id`) REFERENCES `conversations`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `agent_steps_message_id_idx` ON `agent_steps` (`message_id`);--> statement-breakpoint
+CREATE INDEX `agent_steps_conversation_id_idx` ON `agent_steps` (`conversation_id`);--> statement-breakpoint
+CREATE INDEX `agent_steps_conversation_id_step_number_idx` ON `agent_steps` (`conversation_id`,`step_number`);--> statement-breakpoint
 CREATE TABLE `agents` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -90,6 +111,47 @@ CREATE TABLE `agents` (
 CREATE INDEX `agents_user_id_idx` ON `agents` (`user_id`);--> statement-breakpoint
 CREATE INDEX `agents_user_id_updated_at_idx` ON `agents` (`user_id`,`updated_at`);--> statement-breakpoint
 CREATE UNIQUE INDEX `agents_user_id_name_lower_idx` ON `agents` (`user_id`,lower("name"));--> statement-breakpoint
+CREATE TABLE `ai_model_selection` (
+	`context` text PRIMARY KEY NOT NULL,
+	`model_id` text NOT NULL,
+	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	`updated_by` text,
+	FOREIGN KEY (`model_id`) REFERENCES `ai_models`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
+CREATE TABLE `ai_models` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`provider_id` text NOT NULL,
+	`provider_model` text NOT NULL,
+	`capabilities` text DEFAULT '{}' NOT NULL,
+	`tokenizer` text,
+	`source` text,
+	`pricing` text,
+	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	`updated_by` text,
+	FOREIGN KEY (`provider_id`) REFERENCES `ai_providers`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
+CREATE INDEX `ai_models_provider_id_idx` ON `ai_models` (`provider_id`);--> statement-breakpoint
+CREATE TABLE `ai_providers` (
+	`id` text PRIMARY KEY NOT NULL,
+	`dialect` text NOT NULL,
+	`base_url` text,
+	`auth` text DEFAULT '{"type":"none"}' NOT NULL,
+	`headers` text,
+	`engine` text,
+	`overrides` text,
+	`cli` text,
+	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	`updated_by` text,
+	FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
 CREATE TABLE `api_keys` (
 	`id` text PRIMARY KEY NOT NULL,
 	`key_id` text NOT NULL,
@@ -192,6 +254,8 @@ CREATE TABLE `conversations` (
 	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
 	`last_message_at` integer,
 	`message_count` integer DEFAULT 0 NOT NULL,
+	`execution_status` text DEFAULT 'idle' NOT NULL,
+	`has_unread_response` integer DEFAULT false NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
@@ -268,7 +332,11 @@ CREATE TABLE `history` (
 	`metadata` text,
 	`timestamp` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
 	`user_id` text,
-	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
+	`conversation_id` text,
+	`message_id` text,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (`conversation_id`) REFERENCES `conversations`(`id`) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (`message_id`) REFERENCES `messages`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
 CREATE INDEX `history_item_idx` ON `history` (`item_type`,`item_id`);--> statement-breakpoint
@@ -276,6 +344,7 @@ CREATE INDEX `history_user_id_idx` ON `history` (`user_id`);--> statement-breakp
 CREATE INDEX `history_actor_id_idx` ON `history` (`actor_id`);--> statement-breakpoint
 CREATE INDEX `history_authorized_by_actor_id_idx` ON `history` (`authorized_by_actor_id`);--> statement-breakpoint
 CREATE INDEX `history_grant_id_idx` ON `history` (`grant_id`);--> statement-breakpoint
+CREATE INDEX `history_conversation_id_idx` ON `history` (`conversation_id`);--> statement-breakpoint
 CREATE TABLE `human_actors` (
 	`actor_id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -284,6 +353,31 @@ CREATE TABLE `human_actors` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `human_actors_user_id_idx` ON `human_actors` (`user_id`);--> statement-breakpoint
+CREATE TABLE `instance_settings` (
+	`key` text PRIMARY KEY NOT NULL,
+	`value` text NOT NULL,
+	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	`updated_by` text,
+	FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
+CREATE TABLE `mcp_servers` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`description` text,
+	`transport` text NOT NULL,
+	`command` text,
+	`args` text,
+	`connect_timeout` integer,
+	`enabled` integer DEFAULT true NOT NULL,
+	`tool_mode` text DEFAULT 'managed',
+	`availability` text,
+	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	`updated_by` text,
+	FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
 CREATE TABLE `messages` (
 	`id` text PRIMARY KEY NOT NULL,
 	`conversation_id` text NOT NULL,
@@ -360,11 +454,13 @@ CREATE TABLE `photos` (
 	`location_country_iso2` text,
 	`location_country_name` text,
 	`photo_type` text,
-	`ocr_text` text,
+	`extracted_text` text,
 	`dominant_colors` text,
 	`thumbnail_storage_id` text,
 	`screenshot_storage_id` text,
 	`converted_jpg_storage_id` text,
+	`extracted_md_storage_id` text,
+	`extracted_txt_storage_id` text,
 	`raw_metadata` text,
 	`original_mime_type` text,
 	`user_agent` text,
@@ -513,6 +609,7 @@ CREATE TABLE `users` (
 	`time_zone` text,
 	`city` text,
 	`country` text,
+	`is_instance_admin` integer DEFAULT false NOT NULL,
 	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
 	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL
 );

@@ -478,6 +478,105 @@ async function prepareImageForAI(
 }
 
 /**
+ * Generate a consolidated markdown document from all AI analysis results.
+ * This serves as the LLM-friendly text representation of the image,
+ * analogous to extractedMd for documents.
+ */
+function generatePhotoContentMarkdown(
+  // biome-ignore lint/suspicious/noExplicitAny: extractedData contains dynamic AI analysis results
+  extractedData: Record<string, any>,
+): string {
+  const analysis = extractedData.aiAnalysis || {};
+  const sections: string[] = [];
+
+  // Header
+  const classification = analysis.classification;
+  const imageType = classification?.image_type || "image";
+  const typeLabel = imageType.replace(/_/g, " ");
+  sections.push(`# ${typeLabel}`);
+
+  if (classification?.description) {
+    sections.push(`\n${classification.description}`);
+  }
+
+  // OCR / Extracted Text
+  const contentExtraction = analysis.content_extraction;
+  if (contentExtraction?.has_text && contentExtraction.extracted_text) {
+    sections.push(`\n## Extracted Text\n\n${contentExtraction.extracted_text}`);
+  }
+
+  // Visual Analysis
+  const visualAnalysis = analysis.visual_analysis;
+  if (visualAnalysis) {
+    const lines: string[] = [];
+    if (visualAnalysis.dominant_colors?.length) {
+      lines.push(
+        `- **Dominant Colors:** ${visualAnalysis.dominant_colors.join(", ")}`,
+      );
+    }
+    if (visualAnalysis.mood_setting) {
+      lines.push(`- **Mood/Setting:** ${visualAnalysis.mood_setting}`);
+    }
+    if (lines.length > 0) {
+      sections.push(`\n## Visual Analysis\n\n${lines.join("\n")}`);
+    }
+  }
+
+  // Object Detection
+  const objectDetection = analysis.object_detection;
+  if (objectDetection?.objects?.length) {
+    const items = objectDetection.objects
+      .map((o: string) => `- ${o}`)
+      .join("\n");
+    sections.push(`\n## Detected Objects\n\n${items}`);
+  }
+
+  // Document Analysis
+  const documentAnalysis = analysis.document_analysis;
+  if (documentAnalysis) {
+    const lines: string[] = [];
+    if (documentAnalysis.document_type) {
+      lines.push(`- **Type:** ${documentAnalysis.document_type}`);
+    }
+    if (documentAnalysis.purpose) {
+      lines.push(`- **Purpose:** ${documentAnalysis.purpose}`);
+    }
+    if (lines.length > 0) {
+      sections.push(`\n## Document Analysis\n\n${lines.join("\n")}`);
+    }
+  }
+
+  // Technical Analysis
+  const technicalAnalysis = analysis.technical_analysis;
+  if (technicalAnalysis) {
+    const lines: string[] = [];
+    if (technicalAnalysis.diagram_type) {
+      lines.push(`- **Diagram Type:** ${technicalAnalysis.diagram_type}`);
+    }
+    if (technicalAnalysis.main_concepts?.length) {
+      lines.push(
+        `- **Main Concepts:** ${technicalAnalysis.main_concepts.join(", ")}`,
+      );
+    }
+    if (technicalAnalysis.components?.length) {
+      lines.push(
+        `- **Components:** ${technicalAnalysis.components.join(", ")}`,
+      );
+    }
+    if (lines.length > 0) {
+      sections.push(`\n## Technical Analysis\n\n${lines.join("\n")}`);
+    }
+  }
+
+  // Tags
+  if (extractedData.processedTags?.length) {
+    sections.push(`\n## Tags\n\n${extractedData.processedTags.join(", ")}`);
+  }
+
+  return sections.join("\n");
+}
+
+/**
  * Main processing function for an image.
  */
 async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
@@ -627,7 +726,7 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
       switch (stepName) {
         case STAGES.CONTENT_EXTRACTION:
           if (stepArtifacts.has_text)
-            allArtifacts.ocrText = stepArtifacts.extracted_text;
+            allArtifacts.extractedText = stepArtifacts.extracted_text;
           break;
         case STAGES.VISUAL_ANALYSIS:
           tags.push(...(stepArtifacts.tags || []));
@@ -667,6 +766,34 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
     logger.info(
       { photoId, storageId: extractedJsonKey },
       "Successfully saved extracted analysis data as JSON",
+    );
+
+    // Generate extracted.md — a consolidated LLM-friendly markdown representation
+    const contentMd = generatePhotoContentMarkdown(extractedData);
+    const extractedMdKey = buildKey(userId, "photos", photoId, "extracted.md");
+    await storage.writeBuffer(extractedMdKey, Buffer.from(contentMd), {
+      contentType: "text/markdown",
+    });
+    allArtifacts.extractedMdStorageId = extractedMdKey;
+
+    // Generate extracted.txt — plain text version for search and fallback
+    const plainText = allArtifacts.extractedText || "";
+    if (plainText) {
+      const extractedTxtKey = buildKey(
+        userId,
+        "photos",
+        photoId,
+        "extracted.txt",
+      );
+      await storage.writeBuffer(extractedTxtKey, Buffer.from(plainText), {
+        contentType: "text/plain",
+      });
+      allArtifacts.extractedTxtStorageId = extractedTxtKey;
+    }
+
+    logger.info(
+      { photoId, storageId: extractedMdKey },
+      "Successfully saved extracted content artifacts",
     );
 
     // Complete the final stage with all artifacts - job completion is implicit when handler returns

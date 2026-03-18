@@ -47,6 +47,7 @@ export async function fetchAssetContent(
       case "bookmark": {
         const [bookmark] = await db
           .select({
+            extractedMdStorageId: bookmarks.extractedMdStorageId,
             extractedTxtStorageId: bookmarks.extractedTxtStorageId,
             extractedText: bookmarks.extractedText,
             title: bookmarks.title,
@@ -62,12 +63,29 @@ export async function fetchAssetContent(
           return null;
         }
 
-        // Try to get content from extractedText field first (faster)
-        if (bookmark.extractedText) {
-          return bookmark.extractedText;
+        // Try markdown content first (richest format)
+        if (bookmark.extractedMdStorageId) {
+          try {
+            const storage = getStorage();
+            const { buffer } = await storage.readBuffer(
+              bookmark.extractedMdStorageId,
+            );
+            return buffer.toString("utf-8");
+          } catch (markdownError) {
+            logger.warn(
+              {
+                assetId: assetRef.id,
+                storageError:
+                  markdownError instanceof Error
+                    ? markdownError.message
+                    : "Unknown error",
+              },
+              "Failed to retrieve bookmark markdown, trying plain text",
+            );
+          }
         }
 
-        // Try to get content from storage file
+        // Try plain text from storage
         if (bookmark.extractedTxtStorageId) {
           try {
             const storage = getStorage();
@@ -84,12 +102,17 @@ export async function fetchAssetContent(
                     ? storageError.message
                     : "Unknown error",
               },
-              "Failed to retrieve bookmark content from storage, falling back to title/description",
+              "Failed to retrieve bookmark text, falling back to database field",
             );
           }
         }
 
-        // Fallback to title and description
+        // Fallback to extracted text in database
+        if (bookmark.extractedText) {
+          return bookmark.extractedText;
+        }
+
+        // Final fallback to title and description
         const fallbackContent = [bookmark.title, bookmark.description]
           .filter(Boolean)
           .join("\n\n");
@@ -174,7 +197,9 @@ export async function fetchAssetContent(
       case "photo": {
         const [photo] = await db
           .select({
-            ocrText: photos.ocrText,
+            extractedMdStorageId: photos.extractedMdStorageId,
+            extractedTxtStorageId: photos.extractedTxtStorageId,
+            extractedText: photos.extractedText,
             title: photos.title,
             description: photos.description,
           })
@@ -186,12 +211,60 @@ export async function fetchAssetContent(
           return null;
         }
 
-        const contentParts = [
-          photo.title,
-          photo.description,
-          photo.ocrText,
-        ].filter(Boolean);
-        return contentParts.length > 0 ? contentParts.join("\n\n") : null;
+        // Try markdown content first (richest format — includes AI analysis)
+        if (photo.extractedMdStorageId) {
+          try {
+            const storage = getStorage();
+            const { buffer } = await storage.readBuffer(
+              photo.extractedMdStorageId,
+            );
+            return buffer.toString("utf-8");
+          } catch (markdownError) {
+            logger.warn(
+              {
+                assetId: assetRef.id,
+                storageError:
+                  markdownError instanceof Error
+                    ? markdownError.message
+                    : "Unknown error",
+              },
+              "Failed to retrieve photo markdown, trying plain text",
+            );
+          }
+        }
+
+        // Try plain text from storage
+        if (photo.extractedTxtStorageId) {
+          try {
+            const storage = getStorage();
+            const { buffer } = await storage.readBuffer(
+              photo.extractedTxtStorageId,
+            );
+            return buffer.toString("utf-8");
+          } catch (textError) {
+            logger.warn(
+              {
+                assetId: assetRef.id,
+                storageError:
+                  textError instanceof Error
+                    ? textError.message
+                    : "Unknown error",
+              },
+              "Failed to retrieve photo text, falling back to database field",
+            );
+          }
+        }
+
+        // Fallback to extracted text in database
+        if (photo.extractedText) {
+          return photo.extractedText;
+        }
+
+        // Final fallback to title and description
+        const fallbackContent = [photo.title, photo.description]
+          .filter(Boolean)
+          .join("\n\n");
+        return fallbackContent || null;
       }
 
       case "task": {

@@ -24,6 +24,7 @@ const routeApi = getRouteApi("/_authenticated/photos/$id");
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ContentViewer } from "@/components/detail-page/ContentViewer";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
@@ -43,6 +44,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
@@ -110,6 +112,7 @@ export function PhotoDetailClient() {
       }),
   });
 
+  const [activeTab, setActiveTab] = useState("preview");
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -353,62 +356,79 @@ export function PhotoDetailClient() {
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-12rem)]">
           {/* Main Content */}
           <div className="flex-1 flex flex-col space-y-6">
-            {/* Photo Viewer */}
             <Card>
-              <CardContent className="p-6">
-                <div className="relative">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleZoomOut}
-                        disabled={imageScale <= 0.5}
-                      >
-                        <ZoomOut className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm text-muted-foreground">
-                        {Math.round(imageScale * 100)}%
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleZoomIn}
-                        disabled={imageScale >= 3}
-                      >
-                        <ZoomIn className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleResetZoom}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowFullscreen(true)}
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Fullscreen
-                    </Button>
-                  </div>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <CardHeader>
+                  <TabsList>
+                    <TabsTrigger value="preview">Preview</TabsTrigger>
+                    <TabsTrigger value="content" disabled={!photo.contentUrl}>
+                      Content
+                    </TabsTrigger>
+                  </TabsList>
+                </CardHeader>
+                <CardContent>
+                  <TabsContent value="preview" className="mt-0">
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleZoomOut}
+                            disabled={imageScale <= 0.5}
+                          >
+                            <ZoomOut className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            {Math.round(imageScale * 100)}%
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleZoomIn}
+                            disabled={imageScale >= 3}
+                          >
+                            <ZoomIn className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleResetZoom}
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowFullscreen(true)}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Fullscreen
+                        </Button>
+                      </div>
 
-                  <div className="relative h-[70vh] bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                    <img
-                      src={normalizeApiUrl(photo.imageUrl)}
-                      alt={photo.title || "Photo"}
-                      className="w-full h-full object-contain transition-transform duration-200"
-                      style={{
-                        transform: `scale(${imageScale})`,
-                        transformOrigin: "center",
-                      }}
+                      <div className="relative h-[70vh] bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                        <img
+                          src={normalizeApiUrl(photo.imageUrl)}
+                          alt={photo.title || "Photo"}
+                          className="w-full h-full object-contain transition-transform duration-200"
+                          style={{
+                            transform: `scale(${imageScale})`,
+                            transformOrigin: "center",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="content" className="mt-0">
+                    <ContentViewer
+                      contentUrl={photo.contentUrl}
+                      isActive={activeTab === "content"}
                     />
-                  </div>
-                </div>
-              </CardContent>
+                  </TabsContent>
+                </CardContent>
+              </Tabs>
             </Card>
 
             {/* AI Analysis */}
@@ -595,7 +615,7 @@ export function PhotoDetailClient() {
                     <Button size="sm" variant="outline" asChild>
                       <a
                         href={normalizeApiUrl(photo.thumbnailUrl)}
-                        download={`${photo.title || "photo"}-thumbnail.jpg`}
+                        download={`${photo.title || "photo"}-thumbnail.webp`}
                       >
                         <Camera className="mr-2 h-4 w-4" />
                         Thumbnail
@@ -615,13 +635,26 @@ export function PhotoDetailClient() {
                   )}
                   <Button size="sm" variant="outline" asChild>
                     <a
-                      href={`/api/photos/${photo.id}/analysis`}
+                      href={normalizeApiUrl(`/api/photos/${photo.id}/analysis`)}
                       download={`${photo.title || photo.id}-analysis.json`}
                     >
                       <Eye className="mr-2 h-4 w-4" />
                       Analysis Report
                     </a>
                   </Button>
+                  {photo.processingStatus === "completed" && (
+                    <Button size="sm" variant="outline" asChild>
+                      <a
+                        href={normalizeApiUrl(
+                          `/api/photos/${photo.id}/content`,
+                        )}
+                        download={`${photo.title || photo.id}-content.md`}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Content
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -36,8 +36,9 @@ export const PhotoResponseSchema = z
     locationCountryName: z.string().nullable(),
     // AI
     photoType: z.string().nullable(),
-    ocrText: z.string().nullable(),
+    extractedText: z.string().nullable(),
     dominantColors: z.array(z.string()).nullable(),
+    contentUrl: z.string().nullable(),
     // Review
     reviewStatus: reviewStatusSchema,
     flagColor: z.enum(["red", "yellow", "orange", "green", "blue"]).nullable(),

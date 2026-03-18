@@ -109,8 +109,9 @@ export interface Photo {
 
   // AI Generated Data
   photoType: string | null;
-  ocrText: string | null;
+  extractedText: string | null;
   dominantColors: string[] | null; // Array of color names
+  contentUrl: string | null;
 
   // Processing control
   processingEnabled: boolean;
@@ -455,7 +456,7 @@ export async function createPhoto(
 
         // --- AI Generated Data (initially null, populated by AI worker) ---
         photoType: null,
-        ocrText: null,
+        extractedText: null,
         dominantColors: null,
 
         // --- Generated Files (initially null, populated by background worker) ---
@@ -865,12 +866,16 @@ async function getPhotoWithDetails(photoId: string, userId: string) {
 
     // --- AI Generated Data ---
     photoType: photo.photoType,
-    ocrText: photo.ocrText,
+    extractedText: photo.extractedText,
     dominantColors: photo.dominantColors,
+    contentUrl:
+      photo.extractedMdStorageId || photo.extractedTxtStorageId
+        ? `/api/photos/${photo.id}/content`
+        : null,
 
     // For client-side logic, it might be useful to know if a conversion *should* exist
     // or if the original is directly viewable.
-    isOriginalViewable: !["image/heic", "image/heif"].includes(
+    isOriginalViewable: !["image/heic", "image/heif", "image/tiff"].includes(
       photo.mimeType || "",
     ),
 
@@ -944,7 +949,7 @@ function _buildPhotoQueryConditions({
       buildTextSearchCondition(text, photos.searchVector, [
         photos.title,
         photos.description,
-        photos.ocrText,
+        photos.extractedText,
       ]),
     );
   }
@@ -1161,14 +1166,20 @@ export async function findPhotos({
 
         // --- AI Generated Data ---
         photoType: photo.photoType,
-        ocrText: photo.ocrText,
+        extractedText: photo.extractedText,
         dominantColors: photo.dominantColors,
+        contentUrl:
+          photo.extractedMdStorageId || photo.extractedTxtStorageId
+            ? `/api/photos/${photo.id}/content`
+            : null,
 
         // For client-side logic, it might be useful to know if a conversion *should* exist
         // or if the original is directly viewable.
-        isOriginalViewable: !["image/heic", "image/heif"].includes(
-          photo.mimeType || "",
-        ),
+        isOriginalViewable: ![
+          "image/heic",
+          "image/heif",
+          "image/tiff",
+        ].includes(photo.mimeType || ""),
 
         // Processing status
         processingStatus: photo.processingStatus || null,
@@ -1608,9 +1619,11 @@ export async function updatePhotoArtifacts(
   artifacts: {
     thumbnailStorageId?: string;
     convertedJpgStorageId?: string;
+    extractedMdStorageId?: string;
+    extractedTxtStorageId?: string;
     description?: string | null;
     photoType?: string | null;
-    ocrText?: string | null;
+    extractedText?: string | null;
     dominantColors?: string[] | null;
     tags?: string[];
   },
@@ -1629,6 +1642,12 @@ export async function updatePhotoArtifacts(
     if (artifacts.convertedJpgStorageId !== undefined) {
       updatePayload.convertedJpgStorageId = artifacts.convertedJpgStorageId;
     }
+    if (artifacts.extractedMdStorageId !== undefined) {
+      updatePayload.extractedMdStorageId = artifacts.extractedMdStorageId;
+    }
+    if (artifacts.extractedTxtStorageId !== undefined) {
+      updatePayload.extractedTxtStorageId = artifacts.extractedTxtStorageId;
+    }
 
     // Handle AI-generated content
     if (artifacts.description !== undefined) {
@@ -1637,8 +1656,8 @@ export async function updatePhotoArtifacts(
     if (artifacts.photoType !== undefined) {
       updatePayload.photoType = artifacts.photoType;
     }
-    if (artifacts.ocrText !== undefined) {
-      updatePayload.ocrText = artifacts.ocrText;
+    if (artifacts.extractedText !== undefined) {
+      updatePayload.extractedText = artifacts.extractedText;
     }
     if (artifacts.dominantColors !== undefined) {
       updatePayload.dominantColors = artifacts.dominantColors;
@@ -1689,145 +1708,6 @@ export async function updatePhotoArtifacts(
     );
     throw new Error(`Database error updating photo artifacts for ${photoId}`);
   }
-}
-
-/**
- * Gets the necessary details to stream a photo, intelligently choosing
- * between original and converted JPG for browser compatibility.
- * @param photoId The ID of the photo.
- * @param userId The ID of the user requesting (for authorization).
- * @returns Object with storageId and mimeType for the file to be served.
- * @throws {NotFoundError} if photo not found or user not authorized.
- * @throws {Error} if essential storageId is missing.
- */
-// Internal helper - use getViewStream() for external access
-async function _getPhotoStreamDetailsForViewing(
-  photoId: string,
-  userId: string,
-): Promise<PhotoStreamDetails> {
-  const [result] = await db
-    .select({
-      storageId: photos.storageId,
-      userId: photos.userId,
-      mimeType: photos.mimeType,
-      convertedJpgStorageId: photos.convertedJpgStorageId,
-      processingStatus: photos.processingStatus,
-    })
-    .from(photos)
-    .where(and(eq(photos.id, photoId), eq(photos.userId, userId)))
-    .limit(1);
-
-  if (!result) {
-    throw new NotFoundError("Photo");
-  }
-
-  const photoMeta = result;
-  const processingStatus = result.processingStatus;
-
-  if (photoMeta.userId !== userId) {
-    // Double check, though query should handle
-    throw new ForbiddenError("Access denied");
-  }
-
-  // If the photo has failed processing and has no storageId, return a specific error
-  if (processingStatus === "failed" && !photoMeta.storageId) {
-    throw new NotFoundError("Photo file");
-  }
-
-  const originalMimeType = photoMeta.mimeType || "application/octet-stream";
-
-  // If it's HEIC/HEIF and a converted JPG exists, serve the JPG
-  if (
-    (originalMimeType === "image/heic" || originalMimeType === "image/heif") &&
-    photoMeta.convertedJpgStorageId
-  ) {
-    return {
-      storageId: photoMeta.convertedJpgStorageId,
-      mimeType: "image/jpeg",
-      userId: photoMeta.userId,
-    };
-  }
-
-  // AVIF can be served directly - Sharp handles it natively
-  if (originalMimeType === "image/avif") {
-    if (!photoMeta.storageId) {
-      logger.error({ photoId }, "AVIF photo is missing its primary storageId");
-      throw new Error("File reference missing for AVIF photo.");
-    }
-    return {
-      storageId: photoMeta.storageId,
-      mimeType: "image/avif",
-      userId: photoMeta.userId,
-    };
-  }
-
-  // SVG: prefer the rasterized JPEG to avoid serving raw SVG (XSS risk)
-  if (originalMimeType === "image/svg+xml") {
-    if (photoMeta.convertedJpgStorageId) {
-      return {
-        storageId: photoMeta.convertedJpgStorageId,
-        mimeType: "image/jpeg",
-        userId: photoMeta.userId,
-      };
-    }
-    // Fallback to raw SVG if not yet processed (CSP sandbox headers protect against XSS)
-    if (!photoMeta.storageId) {
-      logger.error({ photoId }, "SVG photo is missing its primary storageId");
-      throw new Error("File reference missing for SVG photo.");
-    }
-    return {
-      storageId: photoMeta.storageId,
-      mimeType: "image/svg+xml",
-      userId: photoMeta.userId,
-    };
-  }
-
-  // Otherwise, serve the original
-  if (!photoMeta.storageId) {
-    logger.error({ photoId }, "Photo is missing its primary storageId");
-    throw new Error("File reference missing for original photo.");
-  }
-  return {
-    storageId: photoMeta.storageId,
-    mimeType: originalMimeType,
-    userId: photoMeta.userId,
-  };
-}
-
-/**
- * Gets the necessary details to stream a photo's thumbnail.
- * @param photoId The ID of the photo.
- * @param userId The ID of the user requesting (for authorization).
- * @returns Object with storageId and mimeType for the thumbnail.
- * @throws {NotFoundError} if photo/thumbnail not found or user not authorized.
- */
-// Internal helper - use getThumbnailStream() for external access
-async function _getThumbnailStreamDetails(
-  photoId: string,
-  userId: string,
-): Promise<PhotoStreamDetails> {
-  const photoMeta = await db.query.photos.findFirst({
-    columns: { thumbnailStorageId: true, userId: true },
-    where: and(eq(photos.id, photoId), eq(photos.userId, userId)), // Auth check
-  });
-
-  if (!photoMeta) {
-    throw new NotFoundError("Photo");
-  }
-  if (photoMeta.userId !== userId) {
-    throw new ForbiddenError("Access denied");
-  }
-  if (!photoMeta.thumbnailStorageId) {
-    throw new NotFoundError("Photo thumbnail");
-  }
-
-  // Assuming thumbnails are JPEGs. If not, you might need to store thumbnailMimeType
-  // or derive it more reliably.
-  return {
-    storageId: photoMeta.thumbnailStorageId,
-    mimeType: "image/jpeg", // Or derive from thumbnailStorageId extension
-    userId: photoMeta.userId,
-  };
 }
 
 /**
@@ -2048,7 +1928,13 @@ export async function getContentStream(
   userId: string,
 ): Promise<PhotoStreamResult & { title: string }> {
   const photo = await db.query.photos.findFirst({
-    columns: { id: true, userId: true, title: true },
+    columns: {
+      id: true,
+      userId: true,
+      title: true,
+      extractedMdStorageId: true,
+      extractedTxtStorageId: true,
+    },
     where: and(eq(photos.id, photoId), eq(photos.userId, userId)),
   });
 
@@ -2056,18 +1942,27 @@ export async function getContentStream(
     throw new NotFoundError("Photo");
   }
 
+  const storageId = photo.extractedMdStorageId || photo.extractedTxtStorageId;
+  if (!storageId) {
+    throw new NotFoundError("Photo content");
+  }
+
+  const mimeType = photo.extractedMdStorageId ? "text/markdown" : "text/plain";
+  const filename = photo.extractedMdStorageId
+    ? `${photo.title || photo.id}-content.md`
+    : `${photo.title || photo.id}-content.txt`;
+
   try {
-    const contentStorageId = `${userId}/photos/${photoId}/content.md`;
     const storage = getStorage();
-    const { stream, metadata } = await storage.read(contentStorageId);
+    const { stream, metadata } = await storage.read(storageId);
 
     return {
       stream,
       metadata: {
         size: metadata.size,
-        contentType: "text/markdown",
+        contentType: mimeType,
       },
-      filename: `${photo.title || photo.id}-content.md`,
+      filename,
       title: photo.title,
     };
   } catch (error: unknown) {
@@ -2129,6 +2024,7 @@ export async function getViewStream(
   if (
     (originalMimeType === "image/heic" ||
       originalMimeType === "image/heif" ||
+      originalMimeType === "image/tiff" ||
       originalMimeType === "image/svg+xml") &&
     photoMeta.convertedJpgStorageId
   ) {

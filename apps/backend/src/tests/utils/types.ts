@@ -157,7 +157,7 @@ export interface Photo {
 
   // AI Generated Data
   photoType: string | null;
-  ocrText: string | null;
+  extractedText: string | null;
   dominantColors: string[] | null;
 
   // Review and Workflow

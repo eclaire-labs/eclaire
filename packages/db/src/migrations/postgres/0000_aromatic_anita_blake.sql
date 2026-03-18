@@ -58,6 +58,22 @@ CREATE TABLE "actors" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "agent_steps" (
+	"id" text PRIMARY KEY NOT NULL,
+	"message_id" text NOT NULL,
+	"conversation_id" text NOT NULL,
+	"step_number" integer NOT NULL,
+	"timestamp" timestamp with time zone NOT NULL,
+	"thinking_content" text,
+	"text_content" text,
+	"is_terminal" boolean DEFAULT false NOT NULL,
+	"stop_reason" text,
+	"prompt_tokens" integer,
+	"completion_tokens" integer,
+	"tool_executions" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "agents" (
 	"id" text PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
@@ -69,6 +85,41 @@ CREATE TABLE "agents" (
 	"model_id" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "ai_model_selection" (
+	"context" text PRIMARY KEY NOT NULL,
+	"model_id" text NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_by" text
+);
+--> statement-breakpoint
+CREATE TABLE "ai_models" (
+	"id" text PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"provider_id" text NOT NULL,
+	"provider_model" text NOT NULL,
+	"capabilities" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"tokenizer" jsonb,
+	"source" jsonb,
+	"pricing" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_by" text
+);
+--> statement-breakpoint
+CREATE TABLE "ai_providers" (
+	"id" text PRIMARY KEY NOT NULL,
+	"dialect" text NOT NULL,
+	"base_url" text,
+	"auth" jsonb DEFAULT '{"type":"none"}'::jsonb NOT NULL,
+	"headers" jsonb,
+	"engine" jsonb,
+	"overrides" jsonb,
+	"cli" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_by" text
 );
 --> statement-breakpoint
 CREATE TABLE "api_keys" (
@@ -161,7 +212,9 @@ CREATE TABLE "conversations" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"last_message_at" timestamp with time zone,
-	"message_count" integer DEFAULT 0 NOT NULL
+	"message_count" integer DEFAULT 0 NOT NULL,
+	"execution_status" text DEFAULT 'idle' NOT NULL,
+	"has_unread_response" boolean DEFAULT false NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "documents" (
@@ -226,12 +279,37 @@ CREATE TABLE "history" (
 	"grant_id" text,
 	"metadata" jsonb,
 	"timestamp" timestamp with time zone DEFAULT now() NOT NULL,
-	"user_id" text
+	"user_id" text,
+	"conversation_id" text,
+	"message_id" text
 );
 --> statement-breakpoint
 CREATE TABLE "human_actors" (
 	"actor_id" text PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "instance_settings" (
+	"key" text PRIMARY KEY NOT NULL,
+	"value" text NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_by" text
+);
+--> statement-breakpoint
+CREATE TABLE "mcp_servers" (
+	"id" text PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"description" text,
+	"transport" text NOT NULL,
+	"command" text,
+	"args" jsonb,
+	"connect_timeout" integer,
+	"enabled" boolean DEFAULT true NOT NULL,
+	"tool_mode" text DEFAULT 'managed',
+	"availability" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_by" text
 );
 --> statement-breakpoint
 CREATE TABLE "messages" (
@@ -302,11 +380,13 @@ CREATE TABLE "photos" (
 	"location_country_iso2" text,
 	"location_country_name" text,
 	"photo_type" text,
-	"ocr_text" text,
+	"extracted_text" text,
 	"dominant_colors" jsonb,
 	"thumbnail_storage_id" text,
 	"screenshot_storage_id" text,
 	"converted_jpg_storage_id" text,
+	"extracted_md_storage_id" text,
+	"extracted_txt_storage_id" text,
 	"raw_metadata" jsonb,
 	"original_mime_type" text,
 	"user_agent" text,
@@ -320,7 +400,7 @@ CREATE TABLE "photos" (
 	"search_vector" "tsvector" GENERATED ALWAYS AS ((
         setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
         setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
-        setweight(to_tsvector('english', coalesce(ocr_text, '')), 'C')
+        setweight(to_tsvector('english', coalesce(extracted_text, '')), 'C')
       )) STORED
 );
 --> statement-breakpoint
@@ -420,6 +500,7 @@ CREATE TABLE "users" (
 	"time_zone" text,
 	"city" text,
 	"country" text,
+	"is_instance_admin" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -488,7 +569,14 @@ ALTER TABLE "actor_grants" ADD CONSTRAINT "actor_grants_actor_id_actors_id_fk" F
 ALTER TABLE "actor_grants" ADD CONSTRAINT "actor_grants_owner_user_id_users_id_fk" FOREIGN KEY ("owner_user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "actor_grants" ADD CONSTRAINT "actor_grants_granted_by_actor_id_actors_id_fk" FOREIGN KEY ("granted_by_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "actors" ADD CONSTRAINT "actors_owner_user_id_users_id_fk" FOREIGN KEY ("owner_user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "agent_steps" ADD CONSTRAINT "agent_steps_message_id_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "agent_steps" ADD CONSTRAINT "agent_steps_conversation_id_conversations_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agents" ADD CONSTRAINT "agents_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ai_model_selection" ADD CONSTRAINT "ai_model_selection_model_id_ai_models_id_fk" FOREIGN KEY ("model_id") REFERENCES "public"."ai_models"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ai_model_selection" ADD CONSTRAINT "ai_model_selection_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ai_models" ADD CONSTRAINT "ai_models_provider_id_ai_providers_id_fk" FOREIGN KEY ("provider_id") REFERENCES "public"."ai_providers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ai_models" ADD CONSTRAINT "ai_models_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ai_providers" ADD CONSTRAINT "ai_providers_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bookmarks" ADD CONSTRAINT "bookmarks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bookmarks_tags" ADD CONSTRAINT "bookmarks_tags_bookmark_id_bookmarks_id_fk" FOREIGN KEY ("bookmark_id") REFERENCES "public"."bookmarks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -501,8 +589,12 @@ ALTER TABLE "documents_tags" ADD CONSTRAINT "documents_tags_document_id_document
 ALTER TABLE "documents_tags" ADD CONSTRAINT "documents_tags_tag_id_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "feedback" ADD CONSTRAINT "feedback_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "history" ADD CONSTRAINT "history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "history" ADD CONSTRAINT "history_conversation_id_conversations_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversations"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "history" ADD CONSTRAINT "history_message_id_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."messages"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "human_actors" ADD CONSTRAINT "human_actors_actor_id_actors_id_fk" FOREIGN KEY ("actor_id") REFERENCES "public"."actors"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "human_actors" ADD CONSTRAINT "human_actors_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "instance_settings" ADD CONSTRAINT "instance_settings_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "mcp_servers" ADD CONSTRAINT "mcp_servers_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_conversations_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notes" ADD CONSTRAINT "notes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notes_tags" ADD CONSTRAINT "notes_tags_note_id_notes_id_fk" FOREIGN KEY ("note_id") REFERENCES "public"."notes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -531,9 +623,13 @@ CREATE INDEX "actor_grants_owner_user_id_idx" ON "actor_grants" USING btree ("ow
 CREATE INDEX "actor_grants_granted_by_actor_id_idx" ON "actor_grants" USING btree ("granted_by_actor_id");--> statement-breakpoint
 CREATE INDEX "actors_owner_user_id_idx" ON "actors" USING btree ("owner_user_id");--> statement-breakpoint
 CREATE INDEX "actors_owner_user_id_kind_idx" ON "actors" USING btree ("owner_user_id","kind");--> statement-breakpoint
+CREATE INDEX "agent_steps_message_id_idx" ON "agent_steps" USING btree ("message_id");--> statement-breakpoint
+CREATE INDEX "agent_steps_conversation_id_idx" ON "agent_steps" USING btree ("conversation_id");--> statement-breakpoint
+CREATE INDEX "agent_steps_conversation_id_step_number_idx" ON "agent_steps" USING btree ("conversation_id","step_number");--> statement-breakpoint
 CREATE INDEX "agents_user_id_idx" ON "agents" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "agents_user_id_updated_at_idx" ON "agents" USING btree ("user_id","updated_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "agents_user_id_name_lower_idx" ON "agents" USING btree ("user_id",lower("name"));--> statement-breakpoint
+CREATE INDEX "ai_models_provider_id_idx" ON "ai_models" USING btree ("provider_id");--> statement-breakpoint
 CREATE INDEX "api_keys_user_id_idx" ON "api_keys" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "bookmarks_user_id_idx" ON "bookmarks" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "bookmarks_is_pinned_idx" ON "bookmarks" USING btree ("is_pinned");--> statement-breakpoint
@@ -568,6 +664,7 @@ CREATE INDEX "history_user_id_idx" ON "history" USING btree ("user_id");--> stat
 CREATE INDEX "history_actor_id_idx" ON "history" USING btree ("actor_id");--> statement-breakpoint
 CREATE INDEX "history_authorized_by_actor_id_idx" ON "history" USING btree ("authorized_by_actor_id");--> statement-breakpoint
 CREATE INDEX "history_grant_id_idx" ON "history" USING btree ("grant_id");--> statement-breakpoint
+CREATE INDEX "history_conversation_id_idx" ON "history" USING btree ("conversation_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "human_actors_user_id_idx" ON "human_actors" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "messages_conversation_id_idx" ON "messages" USING btree ("conversation_id");--> statement-breakpoint
 CREATE INDEX "messages_author_actor_id_idx" ON "messages" USING btree ("author_actor_id");--> statement-breakpoint

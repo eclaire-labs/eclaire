@@ -1,2 +1,0 @@
-ALTER TABLE "conversations" ADD COLUMN "execution_status" text DEFAULT 'idle' NOT NULL;--> statement-breakpoint
-ALTER TABLE "conversations" ADD COLUMN "has_unread_response" boolean DEFAULT false NOT NULL;

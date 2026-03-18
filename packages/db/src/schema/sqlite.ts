@@ -653,7 +653,7 @@ export const photos = sqliteTable(
     locationCountryName: text("location_country_name"),
 
     photoType: text("photo_type"),
-    ocrText: text("ocr_text"),
+    extractedText: text("extracted_text"),
     dominantColors: text("dominant_colors", {
       mode: "json",
     }).$type<DominantColors>(),
@@ -661,6 +661,8 @@ export const photos = sqliteTable(
     thumbnailStorageId: text("thumbnail_storage_id"),
     screenshotStorageId: text("screenshot_storage_id"),
     convertedJpgStorageId: text("converted_jpg_storage_id"),
+    extractedMdStorageId: text("extracted_md_storage_id"),
+    extractedTxtStorageId: text("extracted_txt_storage_id"),
 
     rawMetadata: text("raw_metadata", { mode: "json" }).$type<RawMetadata>(),
     originalMimeType: text("original_mime_type"),

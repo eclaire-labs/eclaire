@@ -265,11 +265,13 @@ export interface PhotoInsert {
   locationCountryIso2?: string;
   locationCountryName?: string;
   photoType?: string;
-  ocrText?: string;
+  extractedText?: string;
   dominantColors?: Record<string, unknown>;
   thumbnailStorageId?: string;
   screenshotStorageId?: string;
   convertedJpgStorageId?: string;
+  extractedMdStorageId?: string;
+  extractedTxtStorageId?: string;
   rawMetadata?: Record<string, unknown>;
   originalMimeType?: string;
   userAgent?: string;
