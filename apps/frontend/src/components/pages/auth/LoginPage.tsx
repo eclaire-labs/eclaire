@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useSearch } from "@tanstack/react-router";
 import { Github, Globe, Twitter } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { signIn } from "@/lib/auth";
+import { signIn, useSession } from "@/lib/auth";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -29,8 +29,16 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const { callbackUrl } = useSearch({ from: "/auth/login" });
+  const { data: session, isPending: isSessionPending } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Redirect already-authenticated users (e.g., navigated here after login via stale callbackUrl)
+  useEffect(() => {
+    if (!isSessionPending && session?.user) {
+      window.location.href = callbackUrl;
+    }
+  }, [session, isSessionPending, callbackUrl]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

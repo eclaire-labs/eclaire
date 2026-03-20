@@ -1,16 +1,13 @@
-import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { signOut } from "@/lib/auth";
 
 export default function LogoutPage() {
-  const navigate = useNavigate();
-
   useEffect(() => {
-    // Sign out using Better Auth and redirect to the home page
     signOut().then(() => {
-      navigate({ to: "/" });
+      // Full page reload to clear all React state and query caches
+      window.location.href = "/auth/login";
     });
-  }, [navigate]);
+  }, []);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">

@@ -2,12 +2,15 @@ import {
   createFileRoute,
   Outlet,
   redirect,
+  useLocation,
+  useNavigate,
   useRouter,
 } from "@tanstack/react-router";
 import { AlertCircle, Home, RefreshCw } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { AuthLoadingSkeleton } from "@/components/auth/AuthLoadingSkeleton";
 import { MainLayoutClient } from "@/components/dashboard/main-layout-client";
+import { useSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 function RouteErrorComponent({ error }: { error: Error }) {
@@ -53,13 +56,32 @@ export const Route = createFileRoute("/_authenticated")({
       });
     }
   },
-  component: () => (
-    <MainLayoutClient>
-      <Suspense fallback={<AuthLoadingSkeleton />}>
-        <Outlet />
-      </Suspense>
-    </MainLayoutClient>
-  ),
+  component: function AuthenticatedLayout() {
+    const { data: session, isPending } = useSession();
+    const navigate = useNavigate();
+    const { pathname } = useLocation();
+
+    useEffect(() => {
+      if (!isPending && !session?.user && !pathname.startsWith("/auth/")) {
+        navigate({
+          to: "/auth/login",
+          search: { callbackUrl: pathname },
+          replace: true,
+        });
+      }
+    }, [session, isPending, navigate, pathname]);
+
+    if (isPending || !session?.user) {
+      return <AuthLoadingSkeleton />;
+    }
+    return (
+      <MainLayoutClient>
+        <Suspense fallback={<AuthLoadingSkeleton />}>
+          <Outlet />
+        </Suspense>
+      </MainLayoutClient>
+    );
+  },
   pendingComponent: AuthLoadingSkeleton,
   errorComponent: RouteErrorComponent,
 });

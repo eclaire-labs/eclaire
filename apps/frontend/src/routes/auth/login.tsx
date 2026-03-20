@@ -17,7 +17,9 @@ export const Route = createFileRoute("/auth/login")({
     const raw = (search.callbackUrl as string) || "/dashboard";
     // Prevent open redirect: only allow relative paths
     const callbackUrl =
-      raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";
+      raw.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/auth/")
+        ? raw
+        : "/dashboard";
     return { callbackUrl };
   },
   component: () => (
