@@ -5,14 +5,13 @@ import {
   Bookmark,
   CheckSquare,
   FileText,
-  Mic,
   Monitor,
   Send,
   StickyNote,
   X,
 } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { PushToTalkButton } from "@/components/assistant/push-to-talk-button";
 import { SlashPalette } from "@/components/assistant/slash-palette";
 import { Badge } from "@/components/ui/badge";
@@ -52,10 +51,10 @@ export function MessageInput({
   slashPalette,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [partialTranscription, setPartialTranscription] = useState<
-    string | null
-  >(null);
   const [preferences] = useAssistantPreferences();
+  // Tracks the textarea value before recording started, so partial
+  // transcriptions can stream into the textbox without losing existing text.
+  const baseTextRef = useRef<string | null>(null);
 
   // Auto-grow textarea based on content
   // biome-ignore lint/correctness/useExhaustiveDependencies: value triggers resize recalculation
@@ -127,14 +126,6 @@ export function MessageInput({
         </div>
       )}
 
-      {/* Partial transcription display */}
-      {partialTranscription && (
-        <div className="px-3 pb-2 text-sm text-muted-foreground italic flex items-center gap-1.5">
-          <Mic className="h-3 w-3 animate-pulse text-destructive flex-shrink-0" />
-          <span>{partialTranscription}</span>
-        </div>
-      )}
-
       {/* Input form with slash palette */}
       <div className="relative">
         {slashPalette && (
@@ -158,16 +149,27 @@ export function MessageInput({
           />
           <PushToTalkButton
             onTranscription={(text) => {
-              setPartialTranscription(null);
+              const base = baseTextRef.current ?? "";
+              baseTextRef.current = null;
               if (preferences.voiceMode) {
                 // Auto-send: submit transcription directly
                 onSubmit(text);
               } else {
-                // Manual mode: append to input for review
-                onChange(value + (value ? " " : "") + text);
+                // Final text into textbox (replaces the partial that was streaming)
+                onChange(base + (base ? " " : "") + text);
               }
             }}
-            onPartialTranscription={setPartialTranscription}
+            onPartialTranscription={(partial) => {
+              if (partial) {
+                // Save the textarea value before we start overwriting it
+                if (baseTextRef.current === null) {
+                  baseTextRef.current = value;
+                }
+                const base = baseTextRef.current;
+                onChange(base + (base ? " " : "") + partial);
+              }
+              // On null: do nothing — onTranscription will set the final value
+            }}
             disabled={isLoading}
             onStopAutoPlay={onStopAutoPlay}
           />

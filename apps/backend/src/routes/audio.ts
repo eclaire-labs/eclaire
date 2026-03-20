@@ -225,12 +225,12 @@ audioRoutes.get(
           } else if (Buffer.isBuffer(data)) {
             mlxClient.sendAudio(data);
           } else if (typeof data === "string") {
-            // Try to handle as binary if it's a string representation
+            // JSON control message (e.g. {"action": "stop"})
             try {
-              const buf = Buffer.from(data, "binary");
-              mlxClient.sendAudio(buf);
+              JSON.parse(data); // validate it's JSON
+              mlxClient.sendJson(JSON.parse(data));
             } catch {
-              // Ignore non-binary string messages
+              // Not valid JSON — ignore
             }
           }
         },

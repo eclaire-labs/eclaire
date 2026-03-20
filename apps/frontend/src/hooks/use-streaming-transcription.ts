@@ -36,6 +36,10 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resolveStopRef = useRef<((text: string | null) => void) | null>(null);
   const statusRef = useRef<StreamingStatus>("idle");
+  // Running transcript accumulated across all completed chunks in this session
+  const sessionTextRef = useRef("");
+  // Delta text within the current processing chunk (reset on each complete)
+  const chunkDeltaRef = useRef("");
 
   // Keep ref in sync for use in callbacks
   statusRef.current = status;
@@ -74,6 +78,8 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
     setErrorMessage(null);
     setPartialText("");
     setFinalText(null);
+    sessionTextRef.current = "";
+    chunkDeltaRef.current = "";
     setStatus("connecting");
 
     (async () => {
@@ -163,12 +169,23 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
           try {
             const msg = JSON.parse(event.data as string);
             if (msg.type === "delta" && msg.delta !== undefined) {
-              setPartialText(msg.delta);
+              // Accumulate delta within the current chunk
+              chunkDeltaRef.current += msg.delta;
+              // Show full session text so far + current chunk partial
+              const display = sessionTextRef.current
+                ? `${sessionTextRef.current} ${chunkDeltaRef.current}`
+                : chunkDeltaRef.current;
+              setPartialText(display);
             } else if (msg.type === "complete" && msg.text !== undefined) {
-              setFinalText(msg.text);
-              setPartialText("");
+              // Append completed chunk to session transcript
+              sessionTextRef.current = sessionTextRef.current
+                ? `${sessionTextRef.current} ${msg.text}`
+                : msg.text;
+              chunkDeltaRef.current = "";
+              setPartialText(sessionTextRef.current);
+              // Resolve stop() if it's waiting
               if (resolveStopRef.current) {
-                resolveStopRef.current(msg.text);
+                resolveStopRef.current(sessionTextRef.current);
                 resolveStopRef.current = null;
               }
             } else if (msg.type === "error") {
@@ -183,10 +200,11 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
         };
 
         ws.onclose = () => {
+          // Guard against stale close events from a previous connection
+          if (wsRef.current !== ws) return;
           if (statusRef.current === "streaming") {
-            // If we didn't get a complete event, resolve with partial text
             if (resolveStopRef.current) {
-              resolveStopRef.current(null);
+              resolveStopRef.current(sessionTextRef.current || null);
               resolveStopRef.current = null;
             }
           }
@@ -195,6 +213,7 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
         };
 
         ws.onerror = () => {
+          if (wsRef.current !== ws) return;
           setErrorMessage("WebSocket error");
           toast.error("Audio streaming error", {
             description: "WebSocket connection lost",
@@ -236,9 +255,9 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
       return null;
     }
 
-    // Stop mic and audio pipeline, but keep WebSocket open
-    // to receive the final "complete" event
+    // Flush any remaining buffered audio in the worklet, then disconnect
     if (workletNodeRef.current) {
+      workletNodeRef.current.port.postMessage("flush");
       workletNodeRef.current.disconnect();
       workletNodeRef.current = null;
     }
@@ -257,15 +276,24 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
       timerRef.current = null;
     }
 
-    // Wait for the "complete" event from mlx-audio (with timeout)
+    // Signal the server to process remaining audio and send final result
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ action: "stop" }));
+    }
+
+    // Wait for the final "complete" event (with timeout).
+    // If we already have session text and no more audio to process,
+    // give the server a short window to send a final chunk.
     const result = await new Promise<string | null>((resolve) => {
       resolveStopRef.current = resolve;
 
-      // Timeout: if no complete event in 5 seconds, close and use partial
+      // Short timeout: the stop signal triggers final processing which
+      // should be fast since the model is already loaded.
       setTimeout(() => {
         if (resolveStopRef.current) {
           resolveStopRef.current = null;
-          resolve(null);
+          // Return whatever we've accumulated so far
+          resolve(sessionTextRef.current || null);
         }
       }, 5_000);
     });
@@ -276,6 +304,8 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
       wsRef.current = null;
     }
 
+    setFinalText(result);
+    setPartialText("");
     setStatus("idle");
     return result;
   }, []);
@@ -288,6 +318,8 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
     cleanup();
     setPartialText("");
     setFinalText(null);
+    sessionTextRef.current = "";
+    chunkDeltaRef.current = "";
     setStatus("idle");
   }, [cleanup]);
 

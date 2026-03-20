@@ -90,11 +90,16 @@ export class MlxRealtimeClient {
             type: string;
             delta?: string;
             text?: string;
+            is_partial?: boolean;
           };
 
           if (msg.type === "delta" && msg.delta !== undefined) {
             this.deltaHandler?.(msg.delta);
-          } else if (msg.type === "complete" && msg.text !== undefined) {
+          } else if (
+            msg.type === "complete" &&
+            msg.text !== undefined &&
+            !msg.is_partial
+          ) {
             this.completeHandler?.(msg.text);
           }
         } catch {
@@ -124,6 +129,15 @@ export class MlxRealtimeClient {
   sendAudio(chunk: Buffer): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(chunk);
+    }
+  }
+
+  /**
+   * Send a JSON control message to mlx-audio (e.g. stop signal).
+   */
+  sendJson(data: Record<string, unknown>): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(data));
     }
   }
 
