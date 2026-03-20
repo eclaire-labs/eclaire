@@ -40,9 +40,13 @@ done
 
 # Load DATABASE_TYPE from .env
 if [ -f "$REPO_ROOT/.env" ]; then
-    export $(grep -v '^[[:space:]]*#' "$REPO_ROOT/.env" | grep -E '^DATABASE_TYPE=' | xargs 2>/dev/null) || true
-    export $(grep -v '^[[:space:]]*#' "$REPO_ROOT/.env" | grep -E '^SQLITE_DATA_DIR=' | xargs 2>/dev/null) || true
-    export $(grep -v '^[[:space:]]*#' "$REPO_ROOT/.env" | grep -E '^PGLITE_DATA_DIR=' | xargs 2>/dev/null) || true
+    while IFS='=' read -r key value; do
+        case "$key" in
+            DATABASE_TYPE|SQLITE_DATA_DIR|PGLITE_DATA_DIR)
+                export "$key=$value"
+                ;;
+        esac
+    done < <(grep -v '^[[:space:]]*#' "$REPO_ROOT/.env" | grep -E '^(DATABASE_TYPE|SQLITE_DATA_DIR|PGLITE_DATA_DIR)=')
 fi
 
 DB_TYPE="${DATABASE_TYPE:-postgres}"
@@ -70,15 +74,17 @@ info "Step 1: Deleting database data..."
 
 case "$DB_TYPE" in
     postgres|postgresql)
-        # Check if postgres container is running
-        if ! docker ps --format "table {{.Names}}" | grep -q "^eclaire-postgres$"; then
-            error "PostgreSQL container 'eclaire-postgres' is not running. Start it with: docker compose -f compose.yaml -f compose.dev.yaml up -d postgres"
+        # Find the postgres container (handles both "eclaire-postgres" and "eclaire-postgres-1" naming)
+        PG_CONTAINER=$(docker ps --format "{{.Names}}" | grep -E "^eclaire-postgres(-[0-9]+)?$" | head -n1)
+        if [ -z "$PG_CONTAINER" ]; then
+            error "PostgreSQL container is not running. Start it with: docker compose -f compose.yaml -f compose.dev.yaml up -d postgres"
         fi
+        info "Using container: $PG_CONTAINER"
 
         # Drop and recreate database
         info "Dropping and recreating database 'eclaire'..."
-        docker exec eclaire-postgres psql -U eclaire -d postgres -c "DROP DATABASE IF EXISTS eclaire;" 2>/dev/null || true
-        docker exec eclaire-postgres psql -U eclaire -d postgres -c "CREATE DATABASE eclaire;"
+        docker exec "$PG_CONTAINER" psql -U eclaire -d postgres -c "DROP DATABASE IF EXISTS eclaire;" 2>/dev/null || true
+        docker exec "$PG_CONTAINER" psql -U eclaire -d postgres -c "CREATE DATABASE eclaire;"
         success "PostgreSQL database reset"
         ;;
 
