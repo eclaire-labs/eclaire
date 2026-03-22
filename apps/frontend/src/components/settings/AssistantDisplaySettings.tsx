@@ -182,7 +182,6 @@ const PROVIDER_OPTIONS: Record<string, ProviderOptions> = {
         value: "mlx-community/VibeVoice-Realtime-0.5B-8bit",
         label: "VibeVoice Realtime 0.5B",
       },
-      { value: "mlx-community/Dia-1.6B-fp16", label: "Dia 1.6B" },
       {
         value: "mlx-community/Soprano-1.1-80M-bf16",
         label: "Soprano 80M",
