@@ -9,6 +9,7 @@ import {
   Play,
   RefreshCw,
   Send,
+  Square,
   Volume2,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -37,7 +38,10 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAudio, type AudioProviderHealth } from "@/hooks/use-audio";
+import { useAudioLevel } from "@/hooks/use-audio-level";
+import { useAudioRecorder } from "@/hooks/use-audio-recorder";
 import { useModelCapabilities } from "@/hooks/use-model-capabilities";
+import { useStreamingTranscription } from "@/hooks/use-streaming-transcription";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 
 // ============================================================================
@@ -466,7 +470,45 @@ export default function AssistantDisplaySettings() {
     checkConnection,
     synthesize,
     isSynthesizing,
+    transcribe,
   } = useAudio();
+
+  const recorder = useAudioRecorder();
+  const sttStreaming = useStreamingTranscription({
+    sttProvider: preferences.sttProvider || undefined,
+  });
+  const audioLevel = useAudioLevel();
+
+  const useStreamingForTest =
+    isStreamingSttEnabled && preferences.useStreamingSTT;
+
+  // Monitor audio level during STT test recording
+  const audioLevelRef = useRef(audioLevel);
+  audioLevelRef.current = audioLevel;
+
+  const [sttTestStatus, setSttTestStatus] = useState<
+    "idle" | "recording" | "transcribing"
+  >("idle");
+  const [sttTestResult, setSttTestResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stream = useStreamingForTest ? sttStreaming.stream : recorder.stream;
+    const active = useStreamingForTest
+      ? sttStreaming.status === "streaming"
+      : recorder.status === "recording";
+
+    if (active && stream) {
+      audioLevelRef.current.startMonitoring(stream);
+    } else {
+      audioLevelRef.current.stopMonitoring();
+    }
+  }, [
+    useStreamingForTest,
+    sttStreaming.status,
+    sttStreaming.stream,
+    recorder.status,
+    recorder.stream,
+  ]);
 
   const [testStatus, setTestStatus] = useState<
     "idle" | "synthesizing" | "playing"
@@ -506,6 +548,48 @@ export default function AssistantDisplaySettings() {
       setTestStatus("idle");
     }
   }, [testStatus, synthesize]);
+
+  const handleTestMic = useCallback(async () => {
+    if (sttTestStatus === "recording") {
+      // Stop recording and transcribe
+      if (useStreamingForTest) {
+        setSttTestStatus("transcribing");
+        try {
+          const text = await sttStreaming.stop();
+          setSttTestResult(text?.trim() || "(no speech detected)");
+        } catch {
+          toast.error("Transcription failed");
+          setSttTestResult(null);
+        }
+        setSttTestStatus("idle");
+      } else {
+        setSttTestStatus("transcribing");
+        try {
+          const blob = await recorder.stopRecording();
+          if (!blob || blob.size === 0) {
+            setSttTestResult("(no audio captured)");
+            setSttTestStatus("idle");
+            return;
+          }
+          const text = await transcribe(blob);
+          setSttTestResult(text?.trim() || "(no speech detected)");
+        } catch {
+          toast.error("Transcription failed");
+          setSttTestResult(null);
+        }
+        setSttTestStatus("idle");
+      }
+    } else {
+      // Start recording
+      setSttTestResult(null);
+      setSttTestStatus("recording");
+      if (useStreamingForTest) {
+        sttStreaming.start();
+      } else {
+        recorder.startRecording();
+      }
+    }
+  }, [sttTestStatus, useStreamingForTest, sttStreaming, recorder, transcribe]);
 
   if (!isLoaded || modelLoading) {
     return (
@@ -800,6 +884,72 @@ export default function AssistantDisplaySettings() {
                   />
                 </div>
               ))}
+
+            {/* STT test */}
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={!isAudioAvailable || sttTestStatus === "transcribing"}
+                onClick={handleTestMic}
+              >
+                {sttTestStatus === "recording" ? (
+                  <>
+                    <Square className="mr-2 h-3.5 w-3.5 fill-current" />
+                    Stop recording
+                  </>
+                ) : sttTestStatus === "transcribing" ? (
+                  <>
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    Transcribing...
+                  </>
+                ) : (
+                  <>
+                    <Mic className="mr-2 h-3.5 w-3.5" />
+                    Test microphone
+                  </>
+                )}
+              </Button>
+
+              {/* Audio level bars during recording */}
+              {sttTestStatus === "recording" && (
+                <div className="flex items-center justify-center gap-0.5 h-5">
+                  {[0.15, 0.3, 0.5, 0.75].map((threshold, i) => (
+                    <div
+                      key={threshold}
+                      className="w-1 rounded-full transition-all duration-75"
+                      style={{
+                        height:
+                          audioLevel.level > threshold
+                            ? `${8 + i * 3}px`
+                            : "4px",
+                        backgroundColor:
+                          audioLevel.level > threshold
+                            ? "hsl(var(--destructive))"
+                            : "hsl(var(--muted-foreground) / 0.3)",
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Streaming partial text */}
+              {sttTestStatus === "recording" &&
+                useStreamingForTest &&
+                sttStreaming.partialText && (
+                  <p className="rounded-md border bg-muted/50 p-2 text-sm text-muted-foreground italic">
+                    {sttStreaming.partialText}
+                  </p>
+                )}
+
+              {/* Final transcription result */}
+              {sttTestResult !== null && sttTestStatus === "idle" && (
+                <p className="rounded-md border bg-muted/50 p-2 text-sm">
+                  {sttTestResult}
+                </p>
+              )}
+            </div>
           </div>
 
           <Separator />
