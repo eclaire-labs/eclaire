@@ -11,7 +11,7 @@ import {
   Send,
   Volume2,
 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import {
@@ -109,11 +109,12 @@ const QWEN3_TTS_VOICES: SelectOption[] = [
 
 /**
  * Voice options vary by TTS model for mlx-audio.
- * Kokoro has named presets. Chatterbox uses reference audio (path to a .wav file).
+ * Kokoro has named presets. Some models (e.g. Soprano) have no voice selection.
  */
 function getMlxVoiceOptions(ttsModel: string): {
   voices?: SelectOption[];
   help?: string;
+  hide?: boolean;
 } {
   const lower = ttsModel.toLowerCase();
   if (lower.includes("kokoro")) {
@@ -125,10 +126,8 @@ function getMlxVoiceOptions(ttsModel: string): {
   ) {
     return { voices: QWEN3_TTS_VOICES };
   }
-  if (lower.includes("chatterbox")) {
-    return {
-      help: "Chatterbox uses voice cloning. Enter a path to a reference .wav file, or leave empty for the default voice.",
-    };
+  if (lower.includes("soprano")) {
+    return { hide: true };
   }
   if (lower.includes("vibevoice")) {
     return {
@@ -175,7 +174,6 @@ const PROVIDER_OPTIONS: Record<string, ProviderOptions> = {
       },
     ],
     ttsModels: [
-      { value: "mlx-community/chatterbox-4bit", label: "Chatterbox 4-bit" },
       { value: "mlx-community/Kokoro-82M-bf16", label: "Kokoro 82M" },
       {
         value: "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16",
@@ -259,9 +257,20 @@ function OptionSelect({
   helpText?: string;
 }) {
   const isKnownOption = value === "" || options.some((o) => o.value === value);
-  const [showCustom, setShowCustom] = useState(!isKnownOption && value !== "");
+  const [showCustom, setShowCustom] = useState(false);
 
-  const selectValue = showCustom ? CUSTOM_VALUE : value ? value : DEFAULT_VALUE;
+  // Auto-clear stored values that no longer match any known option
+  useEffect(() => {
+    if (!isKnownOption && value !== "" && !showCustom) {
+      onChange("");
+    }
+  }, [isKnownOption, value, showCustom, onChange]);
+
+  const selectValue = showCustom
+    ? CUSTOM_VALUE
+    : isKnownOption && value
+      ? value
+      : DEFAULT_VALUE;
 
   return (
     <div className="space-y-1.5">
@@ -313,7 +322,7 @@ function OptionSelect({
 
 /**
  * TTS voice field — adapts based on provider and model.
- * mlx-audio voices depend on the selected TTS model (Kokoro has presets, Chatterbox uses reference audio).
+ * mlx-audio voices depend on the selected TTS model (e.g. Kokoro has named presets, Soprano has none).
  */
 function TtsVoiceField({
   activeTtsProvider,
@@ -350,6 +359,7 @@ function TtsVoiceField({
   if (activeTtsProvider === "mlx-audio") {
     const modelKey = ttsModel || ttsVoiceDefault || "";
     const mlxVoice = getMlxVoiceOptions(modelKey);
+    if (mlxVoice.hide) return null;
     if (mlxVoice.voices) {
       return (
         <OptionSelect
