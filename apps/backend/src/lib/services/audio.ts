@@ -1,15 +1,26 @@
 /**
  * Audio Service
  *
- * Thin service layer over @eclaire/audio. Creates and holds the audio provider
- * singleton. Other modules call these functions to transcribe/synthesize.
+ * Manages a registry of audio providers (mlx-audio, ElevenLabs, etc.).
+ * Routes STT/TTS requests to the appropriate provider based on the caller's
+ * selection, falling back to "mlx-audio" if none is specified.
  */
 
 import {
   MlxAudioProvider,
+  MlxRealtimeClient,
+  ElevenLabsProvider,
+  WhisperCppProvider,
+  PocketTtsProvider,
   type AudioHealth,
   type AudioProvider,
   type AudioProviderConfig,
+  type AudioProviderId,
+  type AudioProviderHealth,
+  type ElevenLabsProviderConfig,
+  type WhisperCppProviderConfig,
+  type PocketTtsProviderConfig,
+  type RealtimeTranscriptionClient,
   type SynthesizeInput,
   type TranscribeInput,
   type TranscriptionResult,
@@ -18,24 +29,93 @@ import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("services:audio");
 
-let provider: AudioProvider | null = null;
-let audioConfig: AudioProviderConfig | null = null;
+const providers = new Map<AudioProviderId, AudioProvider>();
+const configs = new Map<AudioProviderId, unknown>();
 
-/**
- * Initialize the audio service with the given config.
- * Creates the provider but does not verify connectivity.
- */
-export function initAudioService(cfg: AudioProviderConfig): void {
-  audioConfig = cfg;
-  provider = new MlxAudioProvider(cfg);
-  logger.info({ baseUrl: cfg.baseUrl }, "Audio provider created");
+const DEFAULT_PROVIDER: AudioProviderId = "mlx-audio";
+
+// ============================================================================
+// Initialization
+// ============================================================================
+
+export interface AudioServiceConfig {
+  mlxAudio?: AudioProviderConfig;
+  elevenLabs?: ElevenLabsProviderConfig;
+  whisperCpp?: WhisperCppProviderConfig;
+  pocketTts?: PocketTtsProviderConfig;
 }
 
 /**
- * Whether the audio service has been initialized.
+ * Initialize all configured audio providers.
+ */
+export function initAudioProviders(cfg: AudioServiceConfig): void {
+  if (cfg.mlxAudio) {
+    providers.set("mlx-audio", new MlxAudioProvider(cfg.mlxAudio));
+    configs.set("mlx-audio", cfg.mlxAudio);
+    logger.info(
+      { baseUrl: cfg.mlxAudio.baseUrl },
+      "mlx-audio provider created",
+    );
+  }
+  if (cfg.elevenLabs) {
+    providers.set("elevenlabs", new ElevenLabsProvider(cfg.elevenLabs));
+    configs.set("elevenlabs", cfg.elevenLabs);
+    logger.info("ElevenLabs provider created");
+  }
+  if (cfg.whisperCpp) {
+    providers.set("whisper-cpp", new WhisperCppProvider(cfg.whisperCpp));
+    configs.set("whisper-cpp", cfg.whisperCpp);
+    logger.info(
+      { baseUrl: cfg.whisperCpp.baseUrl },
+      "whisper-cpp provider created",
+    );
+  }
+  if (cfg.pocketTts) {
+    providers.set("pocket-tts", new PocketTtsProvider(cfg.pocketTts));
+    configs.set("pocket-tts", cfg.pocketTts);
+    logger.info(
+      { baseUrl: cfg.pocketTts.baseUrl },
+      "pocket-tts provider created",
+    );
+  }
+}
+
+/**
+ * @deprecated Use initAudioProviders instead. Kept for backwards compatibility.
+ */
+export function initAudioService(cfg: AudioProviderConfig): void {
+  initAudioProviders({ mlxAudio: cfg });
+}
+
+// ============================================================================
+// Provider Resolution
+// ============================================================================
+
+function resolveProvider(requestedId?: string): AudioProvider {
+  const id = (requestedId as AudioProviderId) || DEFAULT_PROVIDER;
+  const p = providers.get(id);
+  if (!p) {
+    throw new Error(`Audio provider "${id}" is not configured`);
+  }
+  return p;
+}
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+/**
+ * Whether any audio provider has been initialized.
  */
 export function isAudioAvailable(): boolean {
-  return provider !== null;
+  return providers.size > 0;
+}
+
+/**
+ * Get the list of configured provider IDs.
+ */
+export function getAvailableProviders(): AudioProviderId[] {
+  return [...providers.keys()];
 }
 
 /**
@@ -43,9 +123,11 @@ export function isAudioAvailable(): boolean {
  */
 export async function transcribe(
   input: TranscribeInput,
+  sttProvider?: string,
 ): Promise<TranscriptionResult> {
-  if (!provider) {
-    throw new Error("Audio service is not enabled");
+  const provider = resolveProvider(sttProvider);
+  if (!provider.capabilities.stt) {
+    throw new Error(`Provider "${provider.providerId}" does not support STT`);
   }
   return provider.transcribe(input);
 }
@@ -53,9 +135,13 @@ export async function transcribe(
 /**
  * Synthesize text to audio.
  */
-export async function synthesize(input: SynthesizeInput): Promise<Buffer> {
-  if (!provider) {
-    throw new Error("Audio service is not enabled");
+export async function synthesize(
+  input: SynthesizeInput,
+  ttsProvider?: string,
+): Promise<Buffer> {
+  const provider = resolveProvider(ttsProvider);
+  if (!provider.capabilities.tts) {
+    throw new Error(`Provider "${provider.providerId}" does not support TTS`);
   }
   return provider.synthesize(input);
 }
@@ -65,39 +151,86 @@ export async function synthesize(input: SynthesizeInput): Promise<Buffer> {
  */
 export async function synthesizeStream(
   input: SynthesizeInput,
+  ttsProvider?: string,
 ): Promise<Response> {
-  if (!provider) {
-    throw new Error("Audio service is not enabled");
+  const provider = resolveProvider(ttsProvider);
+  if (!provider.capabilities.tts) {
+    throw new Error(`Provider "${provider.providerId}" does not support TTS`);
   }
   return provider.synthesizeStream(input);
 }
 
 /**
- * Check audio server health.
+ * Aggregate health across all configured providers.
+ * Top-level fields are from the default provider for backwards compatibility.
  */
 export async function getAudioHealth(): Promise<AudioHealth> {
-  if (!provider) {
+  if (providers.size === 0) {
     return { status: "unavailable" };
   }
-  const health = await provider.checkHealth();
-  if (health.status === "ready") {
-    health.streamingEnabled = true;
-    if (audioConfig) {
-      health.defaults = {
-        sttModel: audioConfig.defaultSttModel,
-        ttsModel: audioConfig.defaultTtsModel,
-        ttsVoice: audioConfig.defaultTtsVoice,
-      };
-    }
-  }
-  return health;
+
+  const healthResults: AudioProviderHealth[] = await Promise.all(
+    [...providers.values()].map((p) => p.checkHealth()),
+  );
+
+  // Top-level status: "ready" if any provider is ready
+  const anyReady = healthResults.some((h) => h.status === "ready");
+
+  // Top-level defaults come from the default provider (mlx-audio) for backwards compat
+  const defaultHealth = healthResults.find(
+    (h) => h.providerId === DEFAULT_PROVIDER,
+  );
+
+  return {
+    status: anyReady ? "ready" : "unavailable",
+    streamingEnabled: defaultHealth?.capabilities.streamingStt === true,
+    defaults: defaultHealth?.defaults,
+    providers: healthResults,
+  };
 }
 
 /**
- * Get the audio provider config (for WebSocket proxy).
+ * Get the raw config for a provider (used for WebSocket proxy).
+ */
+export function getProviderConfig(id: AudioProviderId): unknown | null {
+  return configs.get(id) ?? null;
+}
+
+/**
+ * @deprecated Use getProviderConfig("mlx-audio") instead.
  */
 export function getAudioConfig(): AudioProviderConfig | null {
-  return audioConfig;
+  return (configs.get("mlx-audio") as AudioProviderConfig) ?? null;
+}
+
+/**
+ * Create a realtime streaming STT client for the given provider.
+ * Returns null if the provider doesn't support streaming STT.
+ */
+export function createRealtimeClient(
+  sttProvider?: string,
+  model?: string,
+  language?: string,
+): RealtimeTranscriptionClient | null {
+  const id = (sttProvider as AudioProviderId) || DEFAULT_PROVIDER;
+  const provider = providers.get(id);
+
+  if (!provider?.capabilities.streamingStt) {
+    return null;
+  }
+
+  if (id === "mlx-audio") {
+    const cfg = configs.get("mlx-audio") as AudioProviderConfig;
+    if (!cfg) return null;
+    return new MlxRealtimeClient({
+      baseUrl: cfg.baseUrl,
+      model: model || cfg.defaultSttModel,
+      language,
+    });
+  }
+
+  // Other providers: not yet supported
+  return null;
 }
 
 /**

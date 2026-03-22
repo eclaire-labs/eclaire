@@ -7,6 +7,7 @@
  */
 
 import WebSocket from "ws";
+import type { RealtimeTranscriptionClient } from "./types.js";
 
 export interface MlxRealtimeConfig {
   /** Base URL of the mlx-audio server (e.g. "http://127.0.0.1:9100") */
@@ -31,7 +32,7 @@ export type MlxRealtimeErrorHandler = (error: Error) => void;
  *   client.sendAudio(pcmBuffer);
  *   client.close();
  */
-export class MlxRealtimeClient {
+export class MlxRealtimeClient implements RealtimeTranscriptionClient {
   private ws: WebSocket | null = null;
   private readonly config: MlxRealtimeConfig;
 

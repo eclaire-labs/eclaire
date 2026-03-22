@@ -80,13 +80,33 @@ export interface EclaireConfig {
     customSkillsDirs?: string[];
   };
 
-  // Audio (STT/TTS via mlx-audio)
+  // Audio (STT/TTS providers)
   audio: {
-    baseUrl: string;
-    requestTimeoutMs: number;
-    defaultSttModel: string;
-    defaultTtsModel: string;
-    defaultTtsVoice: string;
+    mlxAudio: {
+      baseUrl: string;
+      requestTimeoutMs: number;
+      defaultSttModel: string;
+      defaultTtsModel: string;
+      defaultTtsVoice: string;
+    };
+    elevenLabs: {
+      apiKey: string;
+      requestTimeoutMs: number;
+      defaultSttModel: string;
+      defaultTtsModel: string;
+      defaultTtsVoice: string;
+    } | null;
+    whisperCpp: {
+      baseUrl: string;
+      requestTimeoutMs: number;
+      defaultSttModel: string;
+    } | null;
+    pocketTts: {
+      baseUrl: string;
+      requestTimeoutMs: number;
+      defaultTtsModel: string;
+      defaultTtsVoice: string;
+    } | null;
   };
 
   // Browser automation
@@ -380,14 +400,41 @@ export function buildConfig(): EclaireConfig {
       ),
     },
 
-    // Audio (STT/TTS via mlx-audio)
+    // Audio (STT/TTS providers)
     audio: {
-      baseUrl: env.AUDIO_BASE_URL || "http://127.0.0.1:9100",
-      requestTimeoutMs: int(env.AUDIO_REQUEST_TIMEOUT, 30000),
-      defaultSttModel:
-        env.AUDIO_STT_MODEL || "mlx-community/parakeet-tdt-0.6b-v3",
-      defaultTtsModel: env.AUDIO_TTS_MODEL || "mlx-community/chatterbox-4bit",
-      defaultTtsVoice: env.AUDIO_TTS_VOICE || "",
+      mlxAudio: {
+        baseUrl: env.AUDIO_BASE_URL || "http://127.0.0.1:9100",
+        requestTimeoutMs: int(env.AUDIO_REQUEST_TIMEOUT, 30000),
+        defaultSttModel:
+          env.AUDIO_STT_MODEL || "mlx-community/parakeet-tdt-0.6b-v3",
+        defaultTtsModel: env.AUDIO_TTS_MODEL || "mlx-community/chatterbox-4bit",
+        defaultTtsVoice: env.AUDIO_TTS_VOICE || "",
+      },
+      elevenLabs: env.ELEVENLABS_API_KEY
+        ? {
+            apiKey: env.ELEVENLABS_API_KEY,
+            requestTimeoutMs: int(env.ELEVENLABS_REQUEST_TIMEOUT, 30000),
+            defaultSttModel: env.ELEVENLABS_STT_MODEL || "scribe_v1",
+            defaultTtsModel:
+              env.ELEVENLABS_TTS_MODEL || "eleven_multilingual_v2",
+            defaultTtsVoice: env.ELEVENLABS_TTS_VOICE || "",
+          }
+        : null,
+      whisperCpp: env.WHISPER_CPP_BASE_URL
+        ? {
+            baseUrl: env.WHISPER_CPP_BASE_URL,
+            requestTimeoutMs: int(env.WHISPER_CPP_REQUEST_TIMEOUT, 30000),
+            defaultSttModel: env.WHISPER_CPP_STT_MODEL || "",
+          }
+        : null,
+      pocketTts: env.POCKET_TTS_BASE_URL
+        ? {
+            baseUrl: env.POCKET_TTS_BASE_URL,
+            requestTimeoutMs: int(env.POCKET_TTS_REQUEST_TIMEOUT, 30000),
+            defaultTtsModel: env.POCKET_TTS_MODEL || "",
+            defaultTtsVoice: env.POCKET_TTS_VOICE || "alba",
+          }
+        : null,
     },
 
     // Browser automation

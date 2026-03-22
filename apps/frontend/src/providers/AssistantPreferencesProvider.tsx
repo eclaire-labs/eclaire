@@ -11,13 +11,17 @@ import {
 interface AssistantPreferences {
   showThinkingTokens: boolean;
   showAssistantOverlay: boolean;
+  sttProvider: string;
   useStreamingSTT: boolean;
+  autoSendSTT: boolean;
+  ttsProvider: string;
   useStreamingTTS: boolean;
-  voiceMode: boolean;
+  autoPlayTTS: boolean;
   sttModel: string;
   ttsModel: string;
   ttsVoice: string;
   ttsSpeed: number;
+  ttsInstruct: string;
 }
 
 type PreferenceValue = AssistantPreferences[keyof AssistantPreferences];
@@ -25,13 +29,17 @@ type PreferenceValue = AssistantPreferences[keyof AssistantPreferences];
 const DEFAULT_PREFERENCES: AssistantPreferences = {
   showThinkingTokens: true,
   showAssistantOverlay: true,
+  sttProvider: "",
   useStreamingSTT: true,
+  autoSendSTT: false,
+  ttsProvider: "",
   useStreamingTTS: true,
-  voiceMode: false,
+  autoPlayTTS: false,
   sttModel: "",
   ttsModel: "",
   ttsVoice: "",
   ttsSpeed: 1.0,
+  ttsInstruct: "",
 };
 
 const STORAGE_KEY = "assistant-preferences";
@@ -59,7 +67,20 @@ function readStoredAssistantPreferences(): AssistantPreferences {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        return { ...DEFAULT_PREFERENCES, ...JSON.parse(stored) };
+        const parsed = JSON.parse(stored);
+        // Migrate legacy voiceMode → autoSendSTT + autoPlayTTS
+        if ("voiceMode" in parsed) {
+          if (parsed.voiceMode) {
+            parsed.autoSendSTT ??= true;
+            parsed.autoPlayTTS ??= true;
+          }
+          delete parsed.voiceMode;
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ ...DEFAULT_PREFERENCES, ...parsed }),
+          );
+        }
+        return { ...DEFAULT_PREFERENCES, ...parsed };
       }
     } catch {
       // Fall through to defaults

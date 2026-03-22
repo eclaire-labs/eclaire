@@ -38,8 +38,12 @@ export function PushToTalkButton({
   disabled = false,
   onStopAutoPlay,
 }: PushToTalkButtonProps) {
-  const { transcribe, isTranscribing, isAudioAvailable, isStreamingEnabled } =
-    useAudio();
+  const {
+    transcribe,
+    isTranscribing,
+    isAudioAvailable,
+    isStreamingSttEnabled,
+  } = useAudio();
   const {
     status: recorderStatus,
     startRecording,
@@ -47,13 +51,15 @@ export function PushToTalkButton({
     isSupported,
     stream: recorderStream,
   } = useAudioRecorder();
-  const streaming = useStreamingTranscription();
-  const audioLevel = useAudioLevel();
   const [preferences] = useAssistantPreferences();
+  const streaming = useStreamingTranscription({
+    sttProvider: preferences.sttProvider || undefined,
+  });
+  const audioLevel = useAudioLevel();
   const isActiveRef = useRef(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const useStreaming = isStreamingEnabled && preferences.useStreamingSTT;
+  const useStreaming = isStreamingSttEnabled && preferences.useStreamingSTT;
 
   // Start/stop audio level monitoring when recording state changes
   const audioLevelRef = useRef(audioLevel);

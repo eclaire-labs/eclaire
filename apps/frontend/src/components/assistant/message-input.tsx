@@ -151,7 +151,7 @@ export function MessageInput({
             onTranscription={(text) => {
               const base = baseTextRef.current ?? "";
               baseTextRef.current = null;
-              if (preferences.voiceMode) {
+              if (preferences.autoSendSTT) {
                 // Auto-send: submit transcription directly
                 onSubmit(text);
               } else {

@@ -1,45 +1,53 @@
 /**
- * MLX Audio Provider
+ * ElevenLabs Audio Provider
  *
- * Implements AudioProvider using the mlx-audio REST server.
- * Applies default model/voice from config and translates between
- * our clean types and the mlx-audio wire format.
+ * Implements AudioProvider using the ElevenLabs REST API.
+ * Supports batch STT, buffered TTS, and streaming TTS.
+ * Does NOT support streaming STT (realtime WebSocket).
  */
 
-import { MlxAudioClient, readAudioFile } from "./mlx-client.js";
+import { readAudioFile } from "./mlx-client.js";
+import { ElevenLabsClient } from "./elevenlabs-client.js";
 import type {
   AudioProvider,
   AudioProviderCapabilities,
-  AudioProviderId,
-  AudioProviderConfig,
   AudioProviderHealth,
+  AudioProviderId,
+  ElevenLabsProviderConfig,
   SynthesizeInput,
   TranscribeInput,
   TranscriptionResult,
 } from "./types.js";
 
-export class MlxAudioProvider implements AudioProvider {
-  readonly providerId: AudioProviderId = "mlx-audio";
+/**
+ * Map our simple format names to ElevenLabs output format strings.
+ * mp3 → high quality MP3, wav → raw PCM 16kHz (for streaming playback compatibility).
+ */
+function toElevenLabsFormat(format: "mp3" | "wav"): string {
+  return format === "wav" ? "pcm_16000" : "mp3_44100_128";
+}
+
+export class ElevenLabsProvider implements AudioProvider {
+  readonly providerId: AudioProviderId = "elevenlabs";
   readonly capabilities: AudioProviderCapabilities = {
     stt: true,
     tts: true,
-    streamingStt: true,
+    streamingStt: false,
     streamingTts: true,
   };
 
-  private readonly client: MlxAudioClient;
-  private readonly config: AudioProviderConfig;
+  private readonly client: ElevenLabsClient;
+  private readonly config: ElevenLabsProviderConfig;
 
-  constructor(config: AudioProviderConfig) {
+  constructor(config: ElevenLabsProviderConfig) {
     this.config = config;
-    this.client = new MlxAudioClient({
-      baseUrl: config.baseUrl,
+    this.client = new ElevenLabsClient({
+      apiKey: config.apiKey,
       timeoutMs: config.requestTimeoutMs,
     });
   }
 
   async transcribe(input: TranscribeInput): Promise<TranscriptionResult> {
-    // Resolve file to Buffer
     let file: Buffer;
     let fileName: string;
 
@@ -54,62 +62,59 @@ export class MlxAudioProvider implements AudioProvider {
 
     const model = input.model ?? this.config.defaultSttModel;
 
-    // model, fileName, language logged at service layer if needed
-
     const result = await this.client.transcribe({
       file,
       fileName,
       model,
-      language: input.language,
     });
 
     return result;
   }
 
   async synthesize(input: SynthesizeInput): Promise<Buffer> {
-    const model = input.model ?? this.config.defaultTtsModel;
-    let voice = input.voice ?? (this.config.defaultTtsVoice || undefined);
-    // VibeVoice requires an explicit voice cache — default to en-Emma_woman
-    if (!voice && model?.toLowerCase().includes("vibevoice")) {
-      voice = "en-Emma_woman";
-    }
+    const modelId = input.model ?? this.config.defaultTtsModel;
+    const voiceId = input.voice ?? this.config.defaultTtsVoice;
     const format = input.format ?? "mp3";
 
-    const buffer = await this.client.synthesize({
-      model,
-      text: input.text,
-      voice,
-      speed: input.speed,
-      format,
-      instruct: input.instruct,
-    });
+    if (!voiceId) {
+      throw new Error(
+        "ElevenLabs requires a voice ID. Set a default voice or pass one in the request.",
+      );
+    }
 
-    return buffer;
+    return this.client.synthesize({
+      text: input.text,
+      voiceId,
+      modelId,
+      speed: input.speed,
+      outputFormat: toElevenLabsFormat(format),
+    });
   }
 
   async synthesizeStream(input: SynthesizeInput): Promise<Response> {
-    const model = input.model ?? this.config.defaultTtsModel;
-    let voice = input.voice ?? (this.config.defaultTtsVoice || undefined);
-    // VibeVoice requires an explicit voice cache — default to en-Emma_woman
-    if (!voice && model?.toLowerCase().includes("vibevoice")) {
-      voice = "en-Emma_woman";
-    }
+    const modelId = input.model ?? this.config.defaultTtsModel;
+    const voiceId = input.voice ?? this.config.defaultTtsVoice;
     const format = input.format ?? "wav";
 
+    if (!voiceId) {
+      throw new Error(
+        "ElevenLabs requires a voice ID. Set a default voice or pass one in the request.",
+      );
+    }
+
     return this.client.synthesizeStream({
-      model,
       text: input.text,
-      voice,
+      voiceId,
+      modelId,
       speed: input.speed,
-      format,
-      instruct: input.instruct,
+      outputFormat: toElevenLabsFormat(format),
     });
   }
 
   async checkHealth(): Promise<AudioProviderHealth> {
     try {
-      const alive = await this.client.ping();
-      if (!alive) {
+      const valid = await this.client.checkSubscription();
+      if (!valid) {
         return {
           providerId: this.providerId,
           status: "unavailable",

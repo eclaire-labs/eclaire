@@ -23,7 +23,9 @@ interface UseStreamingTranscriptionReturn {
   cancel: () => void;
 }
 
-export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
+export function useStreamingTranscription(options?: {
+  sttProvider?: string;
+}): UseStreamingTranscriptionReturn {
   const [status, setStatus] = useState<StreamingStatus>("idle");
   const [partialText, setPartialText] = useState("");
   const [finalText, setFinalText] = useState<string | null>(null);
@@ -90,6 +92,9 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
           window.location.href,
         );
         wsUrl.protocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";
+        if (options?.sttProvider) {
+          wsUrl.searchParams.set("provider", options.sttProvider);
+        }
 
         const ws = new WebSocket(wsUrl.toString());
         ws.binaryType = "arraybuffer";
@@ -248,7 +253,7 @@ export function useStreamingTranscription(): UseStreamingTranscriptionReturn {
         setStatus("error");
       }
     })();
-  }, [cleanup]);
+  }, [cleanup, options?.sttProvider]);
 
   const stop = useCallback(async (): Promise<string | null> => {
     if (statusRef.current !== "streaming") {

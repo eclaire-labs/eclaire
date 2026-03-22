@@ -167,18 +167,26 @@ const start = async () => {
       // Initialize MCP server registry (connects to configured MCP servers)
       await initializeMcp();
 
-      // Initialize audio service (STT/TTS via mlx-audio — auto-detects server availability at runtime)
-      const { initAudioService } = await import("./lib/services/audio.js");
-      initAudioService({
-        baseUrl: config.audio.baseUrl,
-        requestTimeoutMs: config.audio.requestTimeoutMs,
-        defaultSttModel: config.audio.defaultSttModel,
-        defaultTtsModel: config.audio.defaultTtsModel,
-        defaultTtsVoice: config.audio.defaultTtsVoice,
+      // Initialize audio providers (mlx-audio, ElevenLabs — auto-detect availability at runtime)
+      const { initAudioProviders } = await import("./lib/services/audio.js");
+      initAudioProviders({
+        mlxAudio: config.audio.mlxAudio,
+        elevenLabs: config.audio.elevenLabs ?? undefined,
+        whisperCpp: config.audio.whisperCpp ?? undefined,
+        pocketTts: config.audio.pocketTts ?? undefined,
       });
       logger.info(
-        { baseUrl: config.audio.baseUrl },
-        "Audio service initialized",
+        {
+          mlxAudio: config.audio.mlxAudio.baseUrl,
+          elevenLabs: config.audio.elevenLabs ? "configured" : "not configured",
+          whisperCpp: config.audio.whisperCpp
+            ? config.audio.whisperCpp.baseUrl
+            : "not configured",
+          pocketTts: config.audio.pocketTts
+            ? config.audio.pocketTts.baseUrl
+            : "not configured",
+        },
+        "Audio providers initialized",
       );
 
       // Validate configurations first - fail fast if not properly configured

@@ -1,7 +1,7 @@
 /**
  * @eclaire/audio - Audio provider abstraction for STT/TTS
  *
- * Provides a typed client for mlx-audio-compatible servers.
+ * Provides typed clients for multiple audio backends (mlx-audio, ElevenLabs).
  *
  * ## Usage
  *
@@ -24,10 +24,23 @@
 export { MlxAudioProvider } from "./mlx-provider.js";
 export { MlxAudioClient, readAudioFile } from "./mlx-client.js";
 export { MlxRealtimeClient } from "./mlx-ws-client.js";
+export { ElevenLabsProvider } from "./elevenlabs-provider.js";
+export { ElevenLabsClient } from "./elevenlabs-client.js";
+export { WhisperCppProvider } from "./whisper-cpp-provider.js";
+export { WhisperCppClient } from "./whisper-cpp-client.js";
+export { PocketTtsProvider } from "./pocket-tts-provider.js";
+export { PocketTtsClient } from "./pocket-tts-client.js";
 export type {
   AudioHealth,
   AudioProvider,
+  AudioProviderCapabilities,
   AudioProviderConfig,
+  AudioProviderHealth,
+  AudioProviderId,
+  ElevenLabsProviderConfig,
+  WhisperCppProviderConfig,
+  PocketTtsProviderConfig,
+  RealtimeTranscriptionClient,
   StreamingTranscriptionEvent,
   SynthesizeInput,
   TranscribeInput,

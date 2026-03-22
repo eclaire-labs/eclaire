@@ -88,7 +88,7 @@ export function ChatPanel({
     if (
       prevStreamingRef.current &&
       !isStreaming &&
-      preferencesRef.current.voiceMode &&
+      preferencesRef.current.autoPlayTTS &&
       messagesRef.current.length > 0
     ) {
       const lastMsg = messagesRef.current[messagesRef.current.length - 1];

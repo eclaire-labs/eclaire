@@ -30,14 +30,14 @@ interface AudioPlaybackButtonProps {
 }
 
 export function AudioPlaybackButton({ text }: AudioPlaybackButtonProps) {
-  const { synthesize, isAudioAvailable, isStreamingEnabled } = useAudio();
+  const { synthesize, isAudioAvailable, isStreamingTtsEnabled } = useAudio();
   const streamingPlayback = useStreamingPlayback();
   const [preferences] = useAssistantPreferences();
   const [status, setStatus] = useState<PlaybackStatus>("idle");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const cachedUrlRef = useRef<string | null>(null);
 
-  const useStreaming = isStreamingEnabled && preferences.useStreamingTTS;
+  const useStreaming = isStreamingTtsEnabled && preferences.useStreamingTTS;
 
   // Derive combined status from both modes
   const combinedStatus = useStreaming

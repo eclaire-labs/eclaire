@@ -3,7 +3,7 @@
  *
  * Provides transcribe/synthesize functions and audio service availability check.
  * Uses the backend audio endpoints at /api/audio/*.
- * Reads model/voice/speed preferences and passes them through API calls.
+ * Reads model/voice/speed/provider preferences and passes them through API calls.
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -18,11 +18,24 @@ interface AudioHealthDefaults {
   ttsVoice: string;
 }
 
+export interface AudioProviderHealth {
+  providerId: string;
+  status: "ready" | "unavailable";
+  capabilities: {
+    stt: boolean;
+    tts: boolean;
+    streamingStt: boolean;
+    streamingTts: boolean;
+  };
+  defaults?: AudioHealthDefaults;
+}
+
 interface AudioHealth {
   status: "ready" | "unavailable";
   models?: Array<{ id: string }>;
   streamingEnabled?: boolean;
   defaults?: AudioHealthDefaults;
+  providers?: AudioProviderHealth[];
 }
 
 interface UseAudioReturn {
@@ -39,18 +52,32 @@ interface UseAudioReturn {
     text: string,
   ) => Promise<ReadableStreamDefaultReader<Uint8Array>>;
 
-  /** Whether the audio service is available and ready. */
+  /** Whether any audio provider is available and ready. */
   isAudioAvailable: boolean;
   isCheckingAvailability: boolean;
 
-  /** Whether the backend supports streaming STT via WebSocket. */
+  /** Whether the selected STT provider supports streaming. */
+  isStreamingSttEnabled: boolean;
+  /** Whether the selected TTS provider supports streaming. */
+  isStreamingTtsEnabled: boolean;
+  /** @deprecated Use isStreamingSttEnabled. Kept for backwards compat. */
   isStreamingEnabled: boolean;
 
-  /** Server default models (from health check). */
+  /** Defaults for the selected STT provider. */
+  sttDefaults: AudioHealthDefaults | null;
+  /** Defaults for the selected TTS provider. */
+  ttsDefaults: AudioHealthDefaults | null;
+  /** @deprecated Use sttDefaults/ttsDefaults. */
   defaults: AudioHealthDefaults | null;
 
   /** Currently loaded models on the audio server. */
   models: Array<{ id: string }>;
+
+  /** Available audio providers from the health check. */
+  providers: AudioProviderHealth[];
+
+  /** Re-run the health check to test connectivity. */
+  checkConnection: () => Promise<void>;
 }
 
 /**
@@ -128,37 +155,70 @@ export function useAudio(): UseAudioReturn {
   }, []);
 
   // Health check — polls every 60s, no retry on failure
-  const { data: health, isLoading: isCheckingAvailability } =
-    useQuery<AudioHealth>({
-      queryKey: ["audio", "health"],
-      queryFn: async () => {
-        try {
-          const response = await apiGet("/api/audio/health");
-          return await response.json();
-        } catch {
-          return { status: "unavailable" as const };
-        }
-      },
-      staleTime: 60_000,
-      refetchInterval: 60_000,
-      retry: false,
-    });
+  const {
+    data: health,
+    isLoading: isCheckingAvailability,
+    refetch,
+  } = useQuery<AudioHealth>({
+    queryKey: ["audio", "health"],
+    queryFn: async () => {
+      try {
+        const response = await apiGet("/api/audio/health");
+        return await response.json();
+      } catch {
+        return { status: "unavailable" as const };
+      }
+    },
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    retry: false,
+  });
 
   const isAudioAvailable = health?.status === "ready";
-  const isStreamingEnabled = health?.streamingEnabled === true;
-  const defaults = health?.defaults ?? null;
+  const providersList = health?.providers ?? [];
+
+  // Resolve selected providers and their capabilities
+  const sttProviderHealth = preferences.sttProvider
+    ? providersList.find((p) => p.providerId === preferences.sttProvider)
+    : providersList.find((p) => p.capabilities.stt);
+  const ttsProviderHealth = preferences.ttsProvider
+    ? providersList.find((p) => p.providerId === preferences.ttsProvider)
+    : providersList.find((p) => p.capabilities.tts);
+
+  const isStreamingSttEnabled =
+    sttProviderHealth?.capabilities.streamingStt === true;
+  const isStreamingTtsEnabled =
+    ttsProviderHealth?.capabilities.streamingTts === true;
+  // Legacy compat
+  const isStreamingEnabled = isStreamingSttEnabled;
+
+  const sttDefaults = sttProviderHealth?.defaults ?? null;
+  const ttsDefaults = ttsProviderHealth?.defaults ?? null;
+  const defaults = health?.defaults ?? sttDefaults;
   const models = health?.models ?? [];
 
-  // Build TTS body with user-selected model/voice/speed overrides
+  const checkConnection = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  // Build TTS body with user-selected model/voice/speed/provider overrides
   const buildTtsBody = useCallback(
     (text: string, extra?: Record<string, unknown>) => {
       const body: Record<string, unknown> = { text, ...extra };
       if (preferences.ttsModel) body.model = preferences.ttsModel;
       if (preferences.ttsVoice) body.voice = preferences.ttsVoice;
       if (preferences.ttsSpeed !== 1.0) body.speed = preferences.ttsSpeed;
+      if (preferences.ttsInstruct) body.instruct = preferences.ttsInstruct;
+      if (preferences.ttsProvider) body.provider = preferences.ttsProvider;
       return body;
     },
-    [preferences.ttsModel, preferences.ttsVoice, preferences.ttsSpeed],
+    [
+      preferences.ttsModel,
+      preferences.ttsVoice,
+      preferences.ttsSpeed,
+      preferences.ttsInstruct,
+      preferences.ttsProvider,
+    ],
   );
 
   const transcribe = useCallback(
@@ -166,12 +226,14 @@ export function useAudio(): UseAudioReturn {
       setIsTranscribing(true);
       try {
         // Convert to WAV for maximum backend compatibility
-        // (mlx-audio doesn't support WebM/Opus format)
         const wavBlob = await blobToWav(blob);
         const formData = new FormData();
         formData.append("file", wavBlob, "recording.wav");
         if (preferences.sttModel) {
           formData.append("model", preferences.sttModel);
+        }
+        if (preferences.sttProvider) {
+          formData.append("provider", preferences.sttProvider);
         }
 
         const response = await apiPost("/api/audio/transcriptions", formData);
@@ -185,7 +247,7 @@ export function useAudio(): UseAudioReturn {
         setIsTranscribing(false);
       }
     },
-    [preferences.sttModel],
+    [preferences.sttModel, preferences.sttProvider],
   );
 
   const synthesize = useCallback(
@@ -245,8 +307,14 @@ export function useAudio(): UseAudioReturn {
     synthesizeStream,
     isAudioAvailable,
     isCheckingAvailability,
+    isStreamingSttEnabled,
+    isStreamingTtsEnabled,
     isStreamingEnabled,
+    sttDefaults,
+    ttsDefaults,
     defaults,
     models,
+    providers: providersList,
+    checkConnection,
   };
 }

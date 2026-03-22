@@ -121,6 +121,7 @@ export class MlxAudioClient {
     voice?: string;
     speed?: number;
     format?: string;
+    instruct?: string;
   }): Promise<Buffer> {
     const body: Record<string, unknown> = {
       model: input.model,
@@ -129,6 +130,7 @@ export class MlxAudioClient {
     if (input.voice) body.voice = input.voice;
     if (input.speed !== undefined) body.speed = input.speed;
     if (input.format) body.response_format = input.format; // mlx-audio uses "response_format"
+    if (input.instruct) body.instruct = input.instruct;
 
     const response = await this.fetch("/v1/audio/speech", {
       method: "POST",
@@ -158,6 +160,7 @@ export class MlxAudioClient {
     voice?: string;
     speed?: number;
     format?: string;
+    instruct?: string;
   }): Promise<Response> {
     const body: Record<string, unknown> = {
       model: input.model,
@@ -167,6 +170,7 @@ export class MlxAudioClient {
     if (input.voice) body.voice = input.voice;
     if (input.speed !== undefined) body.speed = input.speed;
     if (input.format) body.response_format = input.format;
+    if (input.instruct) body.instruct = input.instruct;
 
     const response = await this.fetch("/v1/audio/speech", {
       method: "POST",
