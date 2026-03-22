@@ -96,7 +96,7 @@ const KOKORO_VOICES: SelectOption[] = [
   { value: "zm_yunxi", label: "Yunxi (ZH, M)" },
 ];
 
-/** Qwen3-TTS voice presets (Base and CustomVoice variants) */
+/** Qwen3-TTS voice presets (CustomVoice variants only — Base has no spk_id) */
 const QWEN3_TTS_VOICES: SelectOption[] = [
   { value: "Vivian", label: "Vivian (EN, F)" },
   { value: "Serena", label: "Serena (EN, F)" },
@@ -119,7 +119,10 @@ function getMlxVoiceOptions(ttsModel: string): {
   if (lower.includes("kokoro")) {
     return { voices: KOKORO_VOICES };
   }
-  if (lower.includes("qwen3-tts") || lower.includes("qwen3_tts")) {
+  if (
+    lower.includes("customvoice") &&
+    (lower.includes("qwen3-tts") || lower.includes("qwen3_tts"))
+  ) {
     return { voices: QWEN3_TTS_VOICES };
   }
   if (lower.includes("chatterbox")) {
@@ -175,8 +178,8 @@ const PROVIDER_OPTIONS: Record<string, ProviderOptions> = {
       { value: "mlx-community/chatterbox-4bit", label: "Chatterbox 4-bit" },
       { value: "mlx-community/Kokoro-82M-bf16", label: "Kokoro 82M" },
       {
-        value: "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16",
-        label: "Qwen3 TTS 0.6B",
+        value: "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16",
+        label: "Qwen3 TTS 0.6B CustomVoice",
       },
       {
         value: "mlx-community/VibeVoice-Realtime-0.5B-8bit",
@@ -867,16 +870,19 @@ export default function AssistantDisplaySettings() {
                     onChange={(val) => {
                       updatePreference("ttsModel", val);
                       // Reset voice when model changes — voice sets differ per model
-                      if (preferences.ttsVoice) {
-                        const newVoices = getMlxVoiceOptions(val);
-                        if (
-                          !newVoices.voices ||
-                          !newVoices.voices.some(
-                            (v) => v.value === preferences.ttsVoice,
-                          )
-                        ) {
-                          updatePreference("ttsVoice", "");
-                        }
+                      const newVoices = getMlxVoiceOptions(val);
+                      if (
+                        newVoices.voices &&
+                        !newVoices.voices.some(
+                          (v) => v.value === preferences.ttsVoice,
+                        )
+                      ) {
+                        updatePreference(
+                          "ttsVoice",
+                          newVoices.voices[0]?.value ?? "",
+                        );
+                      } else if (!newVoices.voices && preferences.ttsVoice) {
+                        updatePreference("ttsVoice", "");
                       }
                     }}
                     placeholder={ttsDefaults?.ttsModel}
@@ -891,16 +897,19 @@ export default function AssistantDisplaySettings() {
                       value={preferences.ttsModel}
                       onChange={(e) => {
                         updatePreference("ttsModel", e.target.value);
-                        if (preferences.ttsVoice) {
-                          const newVoices = getMlxVoiceOptions(e.target.value);
-                          if (
-                            !newVoices.voices ||
-                            !newVoices.voices.some(
-                              (v) => v.value === preferences.ttsVoice,
-                            )
-                          ) {
-                            updatePreference("ttsVoice", "");
-                          }
+                        const newVoices = getMlxVoiceOptions(e.target.value);
+                        if (
+                          newVoices.voices &&
+                          !newVoices.voices.some(
+                            (v) => v.value === preferences.ttsVoice,
+                          )
+                        ) {
+                          updatePreference(
+                            "ttsVoice",
+                            newVoices.voices[0]?.value ?? "",
+                          );
+                        } else if (!newVoices.voices && preferences.ttsVoice) {
+                          updatePreference("ttsVoice", "");
                         }
                       }}
                       placeholder={ttsDefaults?.ttsModel || "Server default"}
