@@ -11,8 +11,8 @@ export const SpeechRequestSchema = z.object({
   voice: z.string().optional().describe("Voice identifier"),
   speed: z
     .number()
-    .min(0.25)
-    .max(4.0)
+    .min(0.5)
+    .max(1.5)
     .optional()
     .describe("Speech speed multiplier"),
   format: z

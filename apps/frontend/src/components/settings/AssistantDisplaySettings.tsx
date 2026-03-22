@@ -108,6 +108,24 @@ const QWEN3_TTS_VOICES: SelectOption[] = [
 ];
 
 /**
+ * Whether the selected TTS provider + model supports speed control.
+ * Based on inspecting each model's implementation in mlx-audio source.
+ */
+function isTtsSpeedSupported(provider: string, model: string): boolean {
+  switch (provider) {
+    case "elevenlabs":
+      return true;
+    case "mlx-audio":
+      return model.toLowerCase().includes("kokoro");
+    default:
+      return false;
+  }
+}
+
+/** Fixed speed steps: 0.50x to 1.50x in 0.25 increments, 1.0x centered. */
+const SPEED_STEPS = [0.5, 0.75, 1.0, 1.25, 1.5];
+
+/**
  * Voice options vary by TTS model for mlx-audio.
  * Kokoro has named presets. Some models (e.g. Soprano) have no voice selection.
  */
@@ -247,6 +265,7 @@ function OptionSelect({
   onChange,
   placeholder,
   helpText,
+  hideDefault,
 }: {
   id: string;
   label: string;
@@ -255,6 +274,8 @@ function OptionSelect({
   onChange: (val: string) => void;
   placeholder?: string;
   helpText?: string;
+  /** Hide the "Default" option — auto-selects the first option when value is empty. */
+  hideDefault?: boolean;
 }) {
   const isKnownOption = value === "" || options.some((o) => o.value === value);
   const [showCustom, setShowCustom] = useState(false);
@@ -266,11 +287,21 @@ function OptionSelect({
     }
   }, [isKnownOption, value, showCustom, onChange]);
 
+  // When hideDefault is set and value is empty, auto-select the first option
+  const firstValue = options[0]?.value ?? "";
+  useEffect(() => {
+    if (hideDefault && value === "" && firstValue) {
+      onChange(firstValue);
+    }
+  }, [hideDefault, value, firstValue, onChange]);
+
   const selectValue = showCustom
     ? CUSTOM_VALUE
     : isKnownOption && value
       ? value
-      : DEFAULT_VALUE;
+      : hideDefault
+        ? firstValue
+        : DEFAULT_VALUE;
 
   return (
     <div className="space-y-1.5">
@@ -295,9 +326,11 @@ function OptionSelect({
           <SelectValue placeholder={placeholder || "Default"} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={DEFAULT_VALUE}>
-            Default{placeholder ? ` (${placeholder})` : ""}
-          </SelectItem>
+          {!hideDefault && (
+            <SelectItem value={DEFAULT_VALUE}>
+              Default{placeholder ? ` (${placeholder})` : ""}
+            </SelectItem>
+          )}
           {options.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>
               {opt.label}
@@ -791,9 +824,10 @@ export default function AssistantDisplaySettings() {
                   value={preferences.ttsProvider || ttsProviders[0]?.providerId}
                   onValueChange={(val) => {
                     updatePreference("ttsProvider", val);
-                    // Reset model and voice — they differ across providers
+                    // Reset model, voice, and speed — they differ across providers
                     updatePreference("ttsModel", "");
                     updatePreference("ttsVoice", "");
+                    updatePreference("ttsSpeed", 1.0);
                   }}
                 >
                   <SelectTrigger className="h-8 text-sm">
@@ -894,8 +928,16 @@ export default function AssistantDisplaySettings() {
                       } else if (!newVoices.voices && preferences.ttsVoice) {
                         updatePreference("ttsVoice", "");
                       }
+                      // Reset speed when switching to a model that doesn't support it
+                      if (
+                        !isTtsSpeedSupported(activeTtsProvider, val) &&
+                        preferences.ttsSpeed !== 1.0
+                      ) {
+                        updatePreference("ttsSpeed", 1.0);
+                      }
                     }}
                     placeholder={ttsDefaults?.ttsModel}
+                    hideDefault
                   />
                 ) : (
                   <div className="space-y-1.5">
@@ -937,29 +979,38 @@ export default function AssistantDisplaySettings() {
                 onChange={(val) => updatePreference("ttsVoice", val)}
               />
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-normal">TTS speed</Label>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {preferences.ttsSpeed.toFixed(2)}x
-                  </span>
+              {isTtsSpeedSupported(
+                activeTtsProvider,
+                preferences.ttsModel || ttsDefaults?.ttsModel || "",
+              ) && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-normal">TTS speed</Label>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {preferences.ttsSpeed.toFixed(2)}x
+                    </span>
+                  </div>
+                  <Slider
+                    value={[
+                      SPEED_STEPS.indexOf(preferences.ttsSpeed) !== -1
+                        ? SPEED_STEPS.indexOf(preferences.ttsSpeed)
+                        : 2,
+                    ]}
+                    onValueChange={([idx]) =>
+                      updatePreference("ttsSpeed", SPEED_STEPS[idx ?? 2] ?? 1.0)
+                    }
+                    min={0}
+                    max={SPEED_STEPS.length - 1}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>0.5x</span>
+                    <span>1x</span>
+                    <span>1.5x</span>
+                  </div>
                 </div>
-                <Slider
-                  value={[preferences.ttsSpeed]}
-                  onValueChange={([val]) =>
-                    updatePreference("ttsSpeed", val ?? 1.0)
-                  }
-                  min={0.25}
-                  max={4.0}
-                  step={0.25}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>0.25x</span>
-                  <span>1x</span>
-                  <span>4x</span>
-                </div>
-              </div>
+              )}
 
               <Button
                 variant="outline"
