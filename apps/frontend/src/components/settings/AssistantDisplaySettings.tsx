@@ -781,7 +781,12 @@ export default function AssistantDisplaySettings() {
                 </Label>
                 <Select
                   value={preferences.ttsProvider || ttsProviders[0]?.providerId}
-                  onValueChange={(val) => updatePreference("ttsProvider", val)}
+                  onValueChange={(val) => {
+                    updatePreference("ttsProvider", val);
+                    // Reset model and voice — they differ across providers
+                    updatePreference("ttsModel", "");
+                    updatePreference("ttsVoice", "");
+                  }}
                 >
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue />
@@ -864,7 +869,21 @@ export default function AssistantDisplaySettings() {
                     label="TTS model"
                     options={ttsOpts.ttsModels}
                     value={preferences.ttsModel}
-                    onChange={(val) => updatePreference("ttsModel", val)}
+                    onChange={(val) => {
+                      updatePreference("ttsModel", val);
+                      // Reset voice when model changes — voice sets differ per model
+                      if (preferences.ttsVoice) {
+                        const newVoices = getMlxVoiceOptions(val);
+                        if (
+                          !newVoices.voices ||
+                          !newVoices.voices.some(
+                            (v) => v.value === preferences.ttsVoice,
+                          )
+                        ) {
+                          updatePreference("ttsVoice", "");
+                        }
+                      }
+                    }}
                     placeholder={ttsDefaults?.ttsModel}
                   />
                 ) : (
@@ -875,9 +894,20 @@ export default function AssistantDisplaySettings() {
                     <Input
                       id="tts-model"
                       value={preferences.ttsModel}
-                      onChange={(e) =>
-                        updatePreference("ttsModel", e.target.value)
-                      }
+                      onChange={(e) => {
+                        updatePreference("ttsModel", e.target.value);
+                        if (preferences.ttsVoice) {
+                          const newVoices = getMlxVoiceOptions(e.target.value);
+                          if (
+                            !newVoices.voices ||
+                            !newVoices.voices.some(
+                              (v) => v.value === preferences.ttsVoice,
+                            )
+                          ) {
+                            updatePreference("ttsVoice", "");
+                          }
+                        }
+                      }}
                       placeholder={ttsDefaults?.ttsModel || "Server default"}
                       className="h-8 text-sm"
                     />
