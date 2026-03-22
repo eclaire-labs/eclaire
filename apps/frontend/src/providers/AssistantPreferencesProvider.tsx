@@ -21,7 +21,6 @@ interface AssistantPreferences {
   ttsModel: string;
   ttsVoice: string;
   ttsSpeed: number;
-  ttsInstruct: string;
 }
 
 type PreferenceValue = AssistantPreferences[keyof AssistantPreferences];
@@ -39,7 +38,6 @@ const DEFAULT_PREFERENCES: AssistantPreferences = {
   ttsModel: "",
   ttsVoice: "",
   ttsSpeed: 1.0,
-  ttsInstruct: "",
 };
 
 const STORAGE_KEY = "assistant-preferences";

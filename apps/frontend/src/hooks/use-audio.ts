@@ -208,7 +208,6 @@ export function useAudio(): UseAudioReturn {
       if (preferences.ttsModel) body.model = preferences.ttsModel;
       if (preferences.ttsVoice) body.voice = preferences.ttsVoice;
       if (preferences.ttsSpeed !== 1.0) body.speed = preferences.ttsSpeed;
-      if (preferences.ttsInstruct) body.instruct = preferences.ttsInstruct;
       if (preferences.ttsProvider) body.provider = preferences.ttsProvider;
       return body;
     },
@@ -216,7 +215,6 @@ export function useAudio(): UseAudioReturn {
       preferences.ttsModel,
       preferences.ttsVoice,
       preferences.ttsSpeed,
-      preferences.ttsInstruct,
       preferences.ttsProvider,
     ],
   );

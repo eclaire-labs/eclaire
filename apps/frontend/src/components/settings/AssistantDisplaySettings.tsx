@@ -179,10 +179,6 @@ const PROVIDER_OPTIONS: Record<string, ProviderOptions> = {
         label: "Qwen3 TTS 0.6B",
       },
       {
-        value: "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16",
-        label: "Qwen3 TTS 0.6B CustomVoice",
-      },
-      {
         value: "mlx-community/VibeVoice-Realtime-0.5B-8bit",
         label: "VibeVoice Realtime 0.5B",
       },
@@ -922,29 +918,6 @@ export default function AssistantDisplaySettings() {
                 ttsVoiceDefault={ttsDefaults?.ttsVoice}
                 onChange={(val) => updatePreference("ttsVoice", val)}
               />
-
-              {(preferences.ttsModel || ttsDefaults?.ttsModel || "")
-                .toLowerCase()
-                .includes("customvoice") && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="tts-instruct" className="text-sm font-normal">
-                    Style instruction
-                  </Label>
-                  <Input
-                    id="tts-instruct"
-                    value={preferences.ttsInstruct}
-                    onChange={(e) =>
-                      updatePreference("ttsInstruct", e.target.value)
-                    }
-                    placeholder="e.g., speak cheerfully"
-                    className="h-8 text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Control emotion and speaking style (e.g., &quot;speak
-                    cheerfully&quot;, &quot;whisper softly&quot;)
-                  </p>
-                </div>
-              )}
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
