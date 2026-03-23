@@ -1,21 +1,17 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   Bell,
-  CreditCard,
-  Info,
-  Key,
   LogOut,
   Maximize2,
   MessageCircle,
   Minimize2,
-  Palette,
-  Radio,
-  User,
+  Settings,
 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Logo } from "@/components/shared/logo";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -170,48 +166,34 @@ export function TopBar({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">
+                    {(auth?.user as { displayName?: string })?.displayName ??
+                      auth?.user?.name ??
+                      "User"}
+                  </span>
+                  {(auth?.user as { isInstanceAdmin?: boolean })
+                    ?.isInstanceAdmin && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1.5 py-0"
+                    >
+                      Admin
+                    </Badge>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {auth?.user?.email}
+                </span>
+              </div>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/settings" search={{ tab: "profile" }}>
-                <User className="mr-2 h-4 w-4" />
-                Profile
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/settings" search={{ tab: "account" }}>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Account
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/settings" search={{ tab: "appearance" }}>
-                <Palette className="mr-2 h-4 w-4" />
-                Appearance
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/settings" search={{ tab: "assistant" }}>
-                <MessageCircle className="mr-2 h-4 w-4" />
-                Assistant
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/settings" search={{ tab: "channels" }}>
-                <Radio className="mr-2 h-4 w-4" />
-                Channels
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/settings" search={{ tab: "api-keys" }}>
-                <Key className="mr-2 h-4 w-4" />
-                API Keys
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/settings" search={{ tab: "about" }}>
-                <Info className="mr-2 h-4 w-4" />
-                About
+              <Link to="/settings">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

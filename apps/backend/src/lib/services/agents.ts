@@ -35,9 +35,17 @@ const DEFAULT_AGENT_SYSTEM_PROMPT = [
   "Prefer using tools when they can improve accuracy or act on the user's behalf.",
 ].join(" ");
 
+export interface SkillCatalogItem {
+  name: string;
+  description: string;
+  scope: "workspace" | "user" | "admin";
+  alwaysInclude: boolean;
+  tags: string[];
+}
+
 export interface AgentCatalog {
   tools: AgentCatalogItem[];
-  skills: Array<Pick<AgentCatalogItem, "name" | "description">>;
+  skills: SkillCatalogItem[];
 }
 
 export interface CreateAgentInput {
@@ -80,11 +88,14 @@ function listToolCatalog(): AgentCatalogItem[] {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function listSkillCatalog(): AgentCatalog["skills"] {
+function listSkillCatalog(): SkillCatalogItem[] {
   return discoverSkills()
     .map((skill) => ({
       name: skill.name,
       description: skill.description,
+      scope: skill.scope,
+      alwaysInclude: skill.alwaysInclude,
+      tags: skill.tags ?? [],
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }

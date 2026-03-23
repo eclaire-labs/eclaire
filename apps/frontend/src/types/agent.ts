@@ -20,7 +20,15 @@ export interface AgentCatalogItem {
   availabilityReason?: string;
 }
 
+export interface SkillCatalogItem {
+  name: string;
+  description: string;
+  scope: "workspace" | "user" | "admin";
+  alwaysInclude: boolean;
+  tags: string[];
+}
+
 export interface AgentCatalog {
   tools: AgentCatalogItem[];
-  skills: AgentCatalogItem[];
+  skills: SkillCatalogItem[];
 }

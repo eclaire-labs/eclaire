@@ -99,10 +99,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
-  const search = location.search as {
-    tab?: string;
-    agentActorId?: string;
-  };
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantFullScreen, setAssistantFullScreen] = useState(false);
   const [preAttachedAssets, setPreAttachedAssets] = useState<AssetReference[]>(
@@ -487,9 +483,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   const activeAgentId = pathname.startsWith("/agents/")
     ? pathname.split("/")[2] || DEFAULT_AGENT_ACTOR_ID
-    : pathname === "/settings" && search.tab === "assistant"
-      ? search.agentActorId || DEFAULT_AGENT_ACTOR_ID
-      : null;
+    : null;
 
   // Function to open assistant with pre-attached assets
   const openAssistantWithAssets = (assets: AssetReference[]) => {

@@ -5,7 +5,7 @@
  * set as the instance admin if no admin exists.
  */
 
-import { asc, eq } from "drizzle-orm";
+import { asc, count, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 
@@ -48,4 +48,74 @@ export async function ensureInstanceAdmin(): Promise<void> {
     { userId: firstUser.id, email: firstUser.email },
     "First user set as instance admin",
   );
+}
+
+// =============================================================================
+// User Management
+// =============================================================================
+
+export interface UserAdminRow {
+  id: string;
+  email: string;
+  displayName: string | null;
+  isInstanceAdmin: boolean;
+  createdAt: Date | string;
+}
+
+/**
+ * List all users with admin-relevant fields.
+ */
+export async function listUsersAdmin(): Promise<UserAdminRow[]> {
+  const rows = await db
+    .select({
+      id: schema.users.id,
+      email: schema.users.email,
+      displayName: schema.users.displayName,
+      isInstanceAdmin: schema.users.isInstanceAdmin,
+      createdAt: schema.users.createdAt,
+    })
+    .from(schema.users)
+    .orderBy(asc(schema.users.createdAt));
+  return rows as UserAdminRow[];
+}
+
+/**
+ * Count the number of instance admins.
+ */
+export async function countAdmins(): Promise<number> {
+  const result = await db
+    .select({ count: count() })
+    .from(schema.users)
+    .where(eq(schema.users.isInstanceAdmin, true));
+  return result[0]?.count ?? 0;
+}
+
+/**
+ * Update a user's admin role.
+ * Prevents demoting the last admin.
+ */
+export async function setUserRole(
+  userId: string,
+  isAdmin: boolean,
+): Promise<void> {
+  if (!isAdmin) {
+    const adminCount = await countAdmins();
+    if (adminCount <= 1) {
+      // Check if this user IS the last admin
+      const user = await db.query.users.findFirst({
+        where: eq(schema.users.id, userId),
+        columns: { isInstanceAdmin: true },
+      });
+      if (user?.isInstanceAdmin) {
+        throw new Error("Cannot demote the last instance admin");
+      }
+    }
+  }
+
+  await db
+    .update(schema.users)
+    .set({ isInstanceAdmin: isAdmin, updatedAt: new Date() })
+    .where(eq(schema.users.id, userId));
+
+  logger.info({ userId, isAdmin }, "User role updated");
 }

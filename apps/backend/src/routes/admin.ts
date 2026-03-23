@@ -21,6 +21,7 @@ import {
   updateModel,
   updateProvider,
 } from "../lib/services/ai-config.js";
+import { listUsersAdmin, setUserRole } from "../lib/services/admin.js";
 import {
   getAllInstanceSettings,
   setInstanceSettings,
@@ -364,5 +365,43 @@ adminRoutes.delete(
     await assertInstanceAdmin(userId);
     await deleteMcpServer(c.req.param("id"));
     return c.json({ deleted: true });
+  }, logger),
+);
+
+// =============================================================================
+// User Management
+// =============================================================================
+
+// GET /api/admin/users - List all users
+adminRoutes.get(
+  "/users",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    const users = await listUsersAdmin();
+    return c.json({ items: users });
+  }, logger),
+);
+
+// PATCH /api/admin/users/:id - Update user role
+adminRoutes.patch(
+  "/users/:id",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    const body = (await c.req.json()) as { isInstanceAdmin?: boolean };
+    if (typeof body.isInstanceAdmin !== "boolean") {
+      return c.json({ error: "isInstanceAdmin (boolean) is required" }, 400);
+    }
+    try {
+      await setUserRole(c.req.param("id"), body.isInstanceAdmin);
+      return c.json({ updated: true });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes("last instance admin")
+      ) {
+        return c.json({ error: error.message }, 400);
+      }
+      throw error;
+    }
   }, logger),
 );

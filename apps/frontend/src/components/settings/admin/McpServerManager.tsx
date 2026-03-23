@@ -344,8 +344,10 @@ export default function McpServerManager() {
         <div>
           <h3 className="text-lg font-semibold">MCP Servers</h3>
           <p className="text-sm text-muted-foreground">
-            Model Context Protocol servers that provide tools and resources to
-            agents.
+            External tool servers using Model Context Protocol (MCP). Tools from
+            connected servers appear automatically in the Tools catalog.
+            Built-in integrations like Chrome Browser Control also use MCP
+            internally.
           </p>
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>

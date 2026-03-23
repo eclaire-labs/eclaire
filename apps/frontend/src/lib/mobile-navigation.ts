@@ -4,7 +4,7 @@ import type { MobileTab } from "@/components/mobile/mobile-tab-bar";
  * Get the appropriate mobile tab based on the current pathname
  */
 export function getMobileTabFromPathname(pathname: string): MobileTab {
-  if (pathname === "/settings") {
+  if (pathname === "/settings" || pathname.startsWith("/settings/")) {
     return "settings";
   }
 

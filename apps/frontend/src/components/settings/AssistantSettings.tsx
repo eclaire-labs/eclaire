@@ -60,7 +60,7 @@ import {
   useStreamingClient,
 } from "@/lib/streaming-client";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
-import type { Agent, AgentCatalogItem } from "@/types/agent";
+import type { Agent, AgentCatalog } from "@/types/agent";
 import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
 import { convertToToolCallSummary } from "@/types/message";
@@ -88,6 +88,14 @@ function createEmptyDraft(): AgentPayload {
 
 const LOAD_SKILL_TOOL_NAME = "loadSkill";
 
+interface ChecklistItem {
+  name: string;
+  label?: string;
+  description: string;
+  availability?: "available" | "setup_required" | "disabled";
+  availabilityReason?: string;
+}
+
 export function AgentChecklist({
   title,
   description,
@@ -99,7 +107,7 @@ export function AgentChecklist({
 }: {
   title: string;
   description: string;
-  items: AgentCatalogItem[];
+  items: ChecklistItem[];
   selectedNames: string[];
   lockedNames?: string[];
   onToggle: (name: string, checked: boolean) => void;
@@ -210,10 +218,10 @@ export default function AssistantSettings({
   const [preferences, , isLoaded] = useAssistantPreferences();
 
   const [_agents, setAgents] = useState<Agent[]>([]);
-  const [catalog, setCatalog] = useState<{
-    tools: AgentCatalogItem[];
-    skills: AgentCatalogItem[];
-  }>({ tools: [], skills: [] });
+  const [catalog, setCatalog] = useState<AgentCatalog>({
+    tools: [],
+    skills: [],
+  });
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [draft, setDraft] = useState<AgentPayload>(createEmptyDraft());
   const [draftTemplate, setDraftTemplate] = useState<AgentPayload | null>(null);
