@@ -3,6 +3,10 @@ import { describeRoute, validator as zValidator } from "hono-openapi";
 import { ValidationError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
+  getUserPreferences,
+  setUserPreferences,
+} from "../lib/services/user-preferences.js";
+import {
   createApiKey,
   // Dashboard & data functions (already delegated)
   deleteAllUserData,
@@ -63,6 +67,25 @@ userRoutes.patch(
   withAuth(async (c, userId) => {
     const updatedUser = await updateUserProfile(userId, c.req.valid("json"));
     return c.json(updatedUser);
+  }, logger),
+);
+
+// GET /api/user/preferences - Get user preferences
+userRoutes.get(
+  "/preferences",
+  withAuth(async (c, userId) => {
+    const prefs = await getUserPreferences(userId);
+    return c.json(prefs);
+  }, logger),
+);
+
+// PATCH /api/user/preferences - Update user preferences
+userRoutes.patch(
+  "/preferences",
+  withAuth(async (c, userId) => {
+    const body = await c.req.json();
+    const updated = await setUserPreferences(userId, body);
+    return c.json(updated);
   }, logger),
 );
 

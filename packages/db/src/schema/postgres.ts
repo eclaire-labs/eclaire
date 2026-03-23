@@ -1546,6 +1546,20 @@ export const instanceSettings = pgTable("instance_settings", {
 });
 
 // =============================================================================
+// User Preferences (per-user settings, stored as JSON)
+// =============================================================================
+
+export const userPreferences = pgTable("user_preferences", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  preferences: jsonb("preferences").notNull().default({}),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// =============================================================================
 // App Metadata (for upgrade system)
 // =============================================================================
 

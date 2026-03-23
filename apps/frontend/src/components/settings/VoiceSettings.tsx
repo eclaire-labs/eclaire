@@ -19,15 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -38,12 +30,9 @@ import { useAudioRecorder } from "@/hooks/use-audio-recorder";
 import { useStreamingTranscription } from "@/hooks/use-streaming-transcription";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 import {
-  getMlxVoiceOptions,
   isTtsSpeedSupported,
-  OptionSelect,
   PROVIDER_OPTIONS,
   providerLabel,
-  ProviderStatusDot,
   SPEED_STEPS,
   TtsVoiceField,
 } from "./audio-helpers";
@@ -58,8 +47,6 @@ export default function VoiceSettings() {
     isAudioAvailable,
     isCheckingAvailability,
     isStreamingSttEnabled,
-    isStreamingTtsEnabled,
-    sttDefaults,
     ttsDefaults,
     providers,
     checkConnection,
@@ -196,15 +183,11 @@ export default function VoiceSettings() {
     );
   }
 
-  const sttProviders = providers.filter((p) => p.capabilities.stt);
-  const ttsProviders = providers.filter((p) => p.capabilities.tts);
+  const firstTtsProvider = providers.find((p) => p.capabilities.tts);
 
-  const activeSttProvider =
-    preferences.sttProvider || sttProviders[0]?.providerId || "";
   const activeTtsProvider =
-    preferences.ttsProvider || ttsProviders[0]?.providerId || "";
+    preferences.ttsProvider || firstTtsProvider?.providerId || "";
 
-  const sttOpts = PROVIDER_OPTIONS[activeSttProvider];
   const ttsOpts = PROVIDER_OPTIONS[activeTtsProvider];
 
   return (
@@ -215,11 +198,11 @@ export default function VoiceSettings() {
           Voice
         </CardTitle>
         <CardDescription>
-          Configure speech-to-text and text-to-speech settings.
+          Configure your personal voice preferences.
           {isAdmin && (
             <>
               {" "}
-              Instance defaults can be configured in{" "}
+              Provider, model, and streaming settings are configured in{" "}
               <Link
                 to="/settings/$section"
                 params={{ section: "voice-defaults" }}
@@ -233,6 +216,22 @@ export default function VoiceSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Active configuration info */}
+        {(preferences.sttProvider || preferences.ttsProvider) && (
+          <div className="flex flex-wrap gap-2">
+            {preferences.sttProvider && (
+              <Badge variant="outline" className="text-xs">
+                STT: {providerLabel(preferences.sttProvider)}
+              </Badge>
+            )}
+            {preferences.ttsProvider && (
+              <Badge variant="outline" className="text-xs">
+                TTS: {providerLabel(preferences.ttsProvider)}
+              </Badge>
+            )}
+          </div>
+        )}
+
         {/* STT Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -279,61 +278,6 @@ export default function VoiceSettings() {
             </div>
           </div>
 
-          {sttProviders.length > 1 && (
-            <div className="space-y-1.5">
-              <Label htmlFor="stt-provider" className="text-sm font-normal">
-                Provider
-              </Label>
-              <Select
-                value={preferences.sttProvider || sttProviders[0]?.providerId}
-                onValueChange={(val) => updatePreference("sttProvider", val)}
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {sttProviders.map((p) => (
-                    <SelectItem key={p.providerId} value={p.providerId}>
-                      <div className="flex items-center gap-2">
-                        <ProviderStatusDot provider={p} />
-                        {providerLabel(p.providerId)}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between space-x-2">
-            <div className="flex items-center space-x-3">
-              <Mic className="h-4 w-4 text-muted-foreground" />
-              <div className="space-y-0.5">
-                <Label htmlFor="streaming-stt" className="text-sm font-normal">
-                  Streaming transcription
-                  {!isStreamingSttEnabled && (
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      (Not available)
-                    </span>
-                  )}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Stream audio in real-time for live transcription while
-                  speaking. Disable to use the simpler record-then-transcribe
-                  mode.
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="streaming-stt"
-              checked={preferences.useStreamingSTT}
-              onCheckedChange={(checked) =>
-                updatePreference("useStreamingSTT", checked)
-              }
-              disabled={!isStreamingSttEnabled}
-            />
-          </div>
-
           <div className="flex items-center justify-between space-x-2">
             <div className="flex items-center space-x-3">
               <Send className="h-4 w-4 text-muted-foreground" />
@@ -355,31 +299,6 @@ export default function VoiceSettings() {
               }
             />
           </div>
-
-          {!sttOpts?.hideSTTModel &&
-            (sttOpts?.sttModels ? (
-              <OptionSelect
-                id="stt-model"
-                label="STT model"
-                options={sttOpts.sttModels}
-                value={preferences.sttModel}
-                onChange={(val) => updatePreference("sttModel", val)}
-                placeholder={sttDefaults?.sttModel}
-              />
-            ) : (
-              <div className="space-y-1.5">
-                <Label htmlFor="stt-model" className="text-sm font-normal">
-                  STT model
-                </Label>
-                <Input
-                  id="stt-model"
-                  value={preferences.sttModel}
-                  onChange={(e) => updatePreference("sttModel", e.target.value)}
-                  placeholder={sttDefaults?.sttModel || "Server default"}
-                  className="h-8 text-sm"
-                />
-              </div>
-            ))}
 
           {/* STT test */}
           <div className="space-y-2">
@@ -454,65 +373,6 @@ export default function VoiceSettings() {
             </p>
           </div>
 
-          {ttsProviders.length > 1 && (
-            <div className="space-y-1.5">
-              <Label htmlFor="tts-provider" className="text-sm font-normal">
-                Provider
-              </Label>
-              <Select
-                value={preferences.ttsProvider || ttsProviders[0]?.providerId}
-                onValueChange={(val) => {
-                  updatePreference("ttsProvider", val);
-                  updatePreference("ttsModel", "");
-                  updatePreference("ttsVoice", "");
-                  updatePreference("ttsSpeed", 1.0);
-                }}
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ttsProviders.map((p) => (
-                    <SelectItem key={p.providerId} value={p.providerId}>
-                      <div className="flex items-center gap-2">
-                        <ProviderStatusDot provider={p} />
-                        {providerLabel(p.providerId)}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between space-x-2">
-            <div className="flex items-center space-x-3">
-              <Volume2 className="h-4 w-4 text-muted-foreground" />
-              <div className="space-y-0.5">
-                <Label htmlFor="streaming-tts" className="text-sm font-normal">
-                  Streaming speech synthesis
-                  {!isStreamingTtsEnabled && (
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      (Not available)
-                    </span>
-                  )}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Start playing audio as it's generated for faster response.
-                  Disable to wait for full synthesis before playback.
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="streaming-tts"
-              checked={preferences.useStreamingTTS}
-              onCheckedChange={(checked) =>
-                updatePreference("useStreamingTTS", checked)
-              }
-              disabled={!isStreamingTtsEnabled}
-            />
-          </div>
-
           <div className="flex items-center justify-between space-x-2">
             <div className="flex items-center space-x-3">
               <Play className="h-4 w-4 text-muted-foreground" />
@@ -536,70 +396,6 @@ export default function VoiceSettings() {
           </div>
 
           <div className="space-y-3">
-            {!ttsOpts?.hideTTSModel &&
-              (ttsOpts?.ttsModels ? (
-                <OptionSelect
-                  id="tts-model"
-                  label="TTS model"
-                  options={ttsOpts.ttsModels}
-                  value={preferences.ttsModel}
-                  onChange={(val) => {
-                    updatePreference("ttsModel", val);
-                    const newVoices = getMlxVoiceOptions(val);
-                    if (
-                      newVoices.voices &&
-                      !newVoices.voices.some(
-                        (v) => v.value === preferences.ttsVoice,
-                      )
-                    ) {
-                      updatePreference(
-                        "ttsVoice",
-                        newVoices.voices[0]?.value ?? "",
-                      );
-                    } else if (!newVoices.voices && preferences.ttsVoice) {
-                      updatePreference("ttsVoice", "");
-                    }
-                    if (
-                      !isTtsSpeedSupported(activeTtsProvider, val) &&
-                      preferences.ttsSpeed !== 1.0
-                    ) {
-                      updatePreference("ttsSpeed", 1.0);
-                    }
-                  }}
-                  placeholder={ttsDefaults?.ttsModel}
-                  hideDefault
-                />
-              ) : (
-                <div className="space-y-1.5">
-                  <Label htmlFor="tts-model" className="text-sm font-normal">
-                    TTS model
-                  </Label>
-                  <Input
-                    id="tts-model"
-                    value={preferences.ttsModel}
-                    onChange={(e) => {
-                      updatePreference("ttsModel", e.target.value);
-                      const newVoices = getMlxVoiceOptions(e.target.value);
-                      if (
-                        newVoices.voices &&
-                        !newVoices.voices.some(
-                          (v) => v.value === preferences.ttsVoice,
-                        )
-                      ) {
-                        updatePreference(
-                          "ttsVoice",
-                          newVoices.voices[0]?.value ?? "",
-                        );
-                      } else if (!newVoices.voices && preferences.ttsVoice) {
-                        updatePreference("ttsVoice", "");
-                      }
-                    }}
-                    placeholder={ttsDefaults?.ttsModel || "Server default"}
-                    className="h-8 text-sm"
-                  />
-                </div>
-              ))}
-
             <TtsVoiceField
               activeTtsProvider={activeTtsProvider}
               ttsOpts={ttsOpts}

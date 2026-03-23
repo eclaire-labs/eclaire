@@ -14,6 +14,10 @@ export const KNOWN_SETTINGS_KEYS = {
   "audio.defaultSttModel": "string",
   "audio.defaultTtsModel": "string",
   "audio.defaultTtsVoice": "string",
+  "audio.defaultSttProvider": "string",
+  "audio.defaultTtsProvider": "string",
+  "audio.useStreamingStt": "boolean",
+  "audio.useStreamingTts": "boolean",
   "instance.registrationEnabled": "boolean",
 } as const;
 

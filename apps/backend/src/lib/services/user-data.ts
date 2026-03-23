@@ -29,6 +29,7 @@ const {
   photosTags,
   tasks,
   tasksTags,
+  userPreferences,
   users,
 } = schema;
 
@@ -232,7 +233,11 @@ export async function deleteAllUserData(
     await deleteQueueJobsByUserId(userId);
     logger.info({ userId }, "Deleted history and system data");
 
-    // 5. Clean up storage (outside transactions - can be parallel)
+    // 5. Delete user preferences
+    await db.delete(userPreferences).where(eq(userPreferences.userId, userId));
+    logger.info({ userId }, "Deleted user preferences");
+
+    // 6. Clean up storage (outside transactions - can be parallel)
     // Delete the entire user folder at once for efficiency
     try {
       const storage = getStorage();

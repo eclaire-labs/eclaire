@@ -1474,6 +1474,20 @@ export const instanceSettings = sqliteTable("instance_settings", {
 });
 
 // =============================================================================
+// User Preferences (per-user settings, stored as JSON)
+// =============================================================================
+
+export const userPreferences = sqliteTable("user_preferences", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  preferences: text("preferences", { mode: "json" }).notNull().default("{}"),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+});
+
+// =============================================================================
 // App Metadata (for upgrade system)
 // =============================================================================
 
