@@ -23,6 +23,20 @@ export const KNOWN_SETTINGS_KEYS = {
 
 type SettingsKey = keyof typeof KNOWN_SETTINGS_KEYS;
 
+/**
+ * Keys that are safe for any authenticated user to read.
+ * These are runtime defaults that the frontend needs for preferences composition.
+ */
+export const PUBLIC_SETTINGS_KEYS: SettingsKey[] = [
+  "audio.defaultSttModel",
+  "audio.defaultTtsModel",
+  "audio.defaultTtsVoice",
+  "audio.defaultSttProvider",
+  "audio.defaultTtsProvider",
+  "audio.useStreamingStt",
+  "audio.useStreamingTts",
+];
+
 function validateKey(key: string): asserts key is SettingsKey {
   if (!(key in KNOWN_SETTINGS_KEYS)) {
     throw new ValidationError(
@@ -49,6 +63,22 @@ export async function getAllInstanceSettings(): Promise<
         "Failed to parse instance setting value as JSON, using raw string",
       );
       result[row.key] = row.value;
+    }
+  }
+  return result;
+}
+
+/**
+ * Fetch only public (non-sensitive) instance settings safe for any authenticated user.
+ */
+export async function getPublicInstanceDefaults(): Promise<
+  Record<string, unknown>
+> {
+  const all = await getAllInstanceSettings();
+  const result: Record<string, unknown> = {};
+  for (const key of PUBLIC_SETTINGS_KEYS) {
+    if (key in all) {
+      result[key] = all[key];
     }
   }
   return result;

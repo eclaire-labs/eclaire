@@ -21,7 +21,15 @@ import {
   updateModel,
   updateProvider,
 } from "../lib/services/ai-config.js";
-import { listUsersAdmin, setUserRole } from "../lib/services/admin.js";
+import { setUserRole } from "../lib/services/admin.js";
+import {
+  deleteUserByAdmin,
+  listUsersAdminExtended,
+  reactivateUser,
+  revokeAllUserApiKeys,
+  revokeAllUserSessions,
+  suspendUser,
+} from "../lib/services/admin-lifecycle.js";
 import {
   getAllInstanceSettings,
   setInstanceSettings,
@@ -37,10 +45,11 @@ export const adminRoutes = new Hono<{ Variables: RouteVariables }>();
 // Instance Settings
 // =============================================================================
 
-// GET /api/admin/settings - Read all instance settings (any authenticated user)
+// GET /api/admin/settings - Read all instance settings (admin only)
 adminRoutes.get(
   "/settings",
-  withAuth(async (c) => {
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
     const settings = await getAllInstanceSettings();
     return c.json(settings);
   }, logger),
@@ -62,10 +71,11 @@ adminRoutes.patch(
 // Model Selection
 // =============================================================================
 
-// GET /api/admin/model-selection - Get all context→model mappings
+// GET /api/admin/model-selection - Get all context→model mappings (admin only)
 adminRoutes.get(
   "/model-selection",
-  withAuth(async (c) => {
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
     const selections = await getAllSelections();
     return c.json(selections);
   }, logger),
@@ -372,36 +382,76 @@ adminRoutes.delete(
 // User Management
 // =============================================================================
 
-// GET /api/admin/users - List all users
+// GET /api/admin/users - List all users (extended with status & counts)
 adminRoutes.get(
   "/users",
   withAuth(async (c, userId) => {
     await assertInstanceAdmin(userId);
-    const users = await listUsersAdmin();
-    return c.json({ items: users });
+    const items = await listUsersAdminExtended();
+    return c.json({ items });
   }, logger),
 );
 
-// PATCH /api/admin/users/:id - Update user role
+// PATCH /api/admin/users/:id/role - Update user role
 adminRoutes.patch(
-  "/users/:id",
+  "/users/:id/role",
   withAuth(async (c, userId) => {
     await assertInstanceAdmin(userId);
     const body = (await c.req.json()) as { isInstanceAdmin?: boolean };
     if (typeof body.isInstanceAdmin !== "boolean") {
       return c.json({ error: "isInstanceAdmin (boolean) is required" }, 400);
     }
-    try {
-      await setUserRole(c.req.param("id"), body.isInstanceAdmin);
-      return c.json({ updated: true });
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("last instance admin")
-      ) {
-        return c.json({ error: error.message }, 400);
-      }
-      throw error;
-    }
+    await setUserRole(c.req.param("id"), body.isInstanceAdmin, userId);
+    return c.json({ updated: true });
+  }, logger),
+);
+
+// POST /api/admin/users/:id/suspend - Suspend user
+adminRoutes.post(
+  "/users/:id/suspend",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    await suspendUser(c.req.param("id"), userId);
+    return c.json({ suspended: true });
+  }, logger),
+);
+
+// POST /api/admin/users/:id/reactivate - Reactivate user
+adminRoutes.post(
+  "/users/:id/reactivate",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    await reactivateUser(c.req.param("id"), userId);
+    return c.json({ reactivated: true });
+  }, logger),
+);
+
+// POST /api/admin/users/:id/revoke-sessions - Revoke all sessions
+adminRoutes.post(
+  "/users/:id/revoke-sessions",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    await revokeAllUserSessions(c.req.param("id"), userId);
+    return c.json({ revoked: true });
+  }, logger),
+);
+
+// POST /api/admin/users/:id/revoke-api-keys - Revoke all API keys
+adminRoutes.post(
+  "/users/:id/revoke-api-keys",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    await revokeAllUserApiKeys(c.req.param("id"), userId);
+    return c.json({ revoked: true });
+  }, logger),
+);
+
+// DELETE /api/admin/users/:id - Delete user
+adminRoutes.delete(
+  "/users/:id",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    await deleteUserByAdmin(c.req.param("id"), userId);
+    return c.json({ deleted: true });
   }, logger),
 );

@@ -237,11 +237,11 @@ export function AssistantPreferencesProvider({
     return () => window.removeEventListener("storage", handler);
   }, []);
 
-  // Tier 1: Instance settings (admin)
+  // Tier 1: Instance defaults (public endpoint for any authenticated user)
   const { data: instanceRaw } = useQuery({
-    queryKey: ["instance-settings"],
+    queryKey: ["instance-defaults"],
     queryFn: async () => {
-      const res = await apiGet("/api/admin/settings");
+      const res = await apiGet("/api/instance/defaults");
       return (await res.json()) as Record<string, unknown>;
     },
     staleTime: 60 * 1000,

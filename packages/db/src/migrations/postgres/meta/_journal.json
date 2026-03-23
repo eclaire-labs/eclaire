@@ -15,6 +15,13 @@
       "when": 1774269208339,
       "tag": "0001_rich_cloak",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774271504870,
+      "tag": "0002_same_hawkeye",
+      "breakpoints": true
     }
   ]
 }

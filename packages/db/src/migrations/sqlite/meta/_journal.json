@@ -15,6 +15,13 @@
       "when": 1774269207611,
       "tag": "0001_motionless_sheva_callister",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1774271510814,
+      "tag": "0002_perfect_gambit",
+      "breakpoints": true
     }
   ]
 }

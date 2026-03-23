@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "account_status" text DEFAULT 'active' NOT NULL;

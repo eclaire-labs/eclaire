@@ -10,6 +10,7 @@ export interface RouterContext {
       email: string;
       name?: string | null;
       displayName?: string | null;
+      isInstanceAdmin?: boolean;
     } | null;
   };
 }

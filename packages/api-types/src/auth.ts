@@ -25,6 +25,8 @@ export const ApiKeyScopeSchema = z.enum([
   "feedback:read",
   "feedback:write",
   "model:read",
+  "admin:read",
+  "admin:write",
 ]);
 
 export const ApiKeyScopeCatalogItemSchema = z

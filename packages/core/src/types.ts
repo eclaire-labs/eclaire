@@ -103,6 +103,12 @@ export const HISTORY_ACTIONS = [
   "discord_message_processed",
   "discord_voice_message_processed",
   "send_notification",
+  "admin.role_change",
+  "admin.suspend",
+  "admin.reactivate",
+  "admin.revoke_sessions",
+  "admin.revoke_api_keys",
+  "admin.delete_user",
 ] as const;
 export type HistoryAction = (typeof HISTORY_ACTIONS)[number];
 
@@ -126,6 +132,7 @@ export const HISTORY_ITEM_TYPES = [
   "discord_chat",
   "discord_voice",
   "feedback",
+  "user_account",
 ] as const;
 export type HistoryItemType = (typeof HISTORY_ITEM_TYPES)[number];
 

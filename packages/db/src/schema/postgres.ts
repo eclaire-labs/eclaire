@@ -86,6 +86,11 @@ export const users = pgTable(
     city: text("city"),
     country: text("country"),
     isInstanceAdmin: boolean("is_instance_admin").notNull().default(false),
+    accountStatus: text("account_status", {
+      enum: ["active", "suspended"],
+    })
+      .notNull()
+      .default("active"),
 
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

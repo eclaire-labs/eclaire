@@ -15,6 +15,18 @@ import {
 const logger = createChildLogger("auth-utils");
 
 /**
+ * Check if a user's account is active (not suspended).
+ * Returns false if the user is suspended or not found.
+ */
+async function isAccountActive(userId: string): Promise<boolean> {
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.id, userId),
+    columns: { accountStatus: true },
+  });
+  return user?.accountStatus !== "suspended";
+}
+
+/**
  * Verifies an API key and returns validation result with resolved principal fields
  * @param apiKey The API key to verify
  * @returns Object with isValid boolean and principal if valid
@@ -67,6 +79,7 @@ export async function verifyApiKey(
 /**
  * Gets the authenticated principal from Hono context, supporting both Better Auth sessions and API keys.
  * Session resolution is lazy — the DB is only hit if an API key isn't present.
+ * Suspended users are rejected regardless of auth method.
  * @param c The Hono context
  * @returns The authenticated principal or null if not authenticated
  */
@@ -86,6 +99,10 @@ export async function getAuthenticatedPrincipal(
       const { isValid, principal } = await verifyApiKey(keyToVerify);
 
       if (isValid && principal) {
+        // Block suspended users
+        if (!(await isAccountActive(principal.ownerUserId))) {
+          return null;
+        }
         return principal;
       }
     } catch (_error) {}
@@ -95,6 +112,10 @@ export async function getAuthenticatedPrincipal(
   if (resolveSession) {
     const session = await resolveSession();
     if (session?.user?.id) {
+      // Block suspended users
+      if (!(await isAccountActive(session.user.id))) {
+        return null;
+      }
       await ensureHumanActorForUserId(session.user.id);
       return {
         actorId: session.user.id,

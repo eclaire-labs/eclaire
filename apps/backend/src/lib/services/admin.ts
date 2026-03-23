@@ -6,8 +6,10 @@
  */
 
 import { asc, count, eq } from "drizzle-orm";
-import { db, schema } from "../../db/index.js";
+import { db, schema, txManager } from "../../db/index.js";
+import { ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
 
 const logger = createChildLogger("services:admin");
 
@@ -92,30 +94,46 @@ export async function countAdmins(): Promise<number> {
 
 /**
  * Update a user's admin role.
- * Prevents demoting the last admin.
+ * Prevents demoting the last admin. Uses a transaction to prevent
+ * concurrent demotion requests from leaving zero admins.
  */
 export async function setUserRole(
   userId: string,
   isAdmin: boolean,
+  adminUserId?: string,
 ): Promise<void> {
-  if (!isAdmin) {
-    const adminCount = await countAdmins();
-    if (adminCount <= 1) {
-      // Check if this user IS the last admin
-      const user = await db.query.users.findFirst({
-        where: eq(schema.users.id, userId),
-        columns: { isInstanceAdmin: true },
-      });
-      if (user?.isInstanceAdmin) {
-        throw new Error("Cannot demote the last instance admin");
+  await txManager.withTransaction(async (tx) => {
+    if (!isAdmin) {
+      // Count admins inside the transaction to prevent race conditions
+      const admins = await tx.users.findMany(
+        eq(schema.users.isInstanceAdmin, true),
+      );
+      if (admins.length <= 1) {
+        const target = admins.find((a) => a.id === userId);
+        if (target) {
+          throw new ValidationError("Cannot demote the last instance admin");
+        }
       }
     }
-  }
 
-  await db
-    .update(schema.users)
-    .set({ isInstanceAdmin: isAdmin, updatedAt: new Date() })
-    .where(eq(schema.users.id, userId));
+    await tx.users.update(eq(schema.users.id, userId), {
+      isInstanceAdmin: isAdmin,
+      updatedAt: new Date(),
+    });
+  });
+
+  // Record history outside the transaction (non-critical side effect)
+  if (adminUserId) {
+    await recordHistory({
+      action: "admin.role_change",
+      itemType: "user_account",
+      itemId: userId,
+      actor: "human",
+      actorId: adminUserId,
+      userId,
+      metadata: { isAdmin },
+    });
+  }
 
   logger.info({ userId, isAdmin }, "User role updated");
 }

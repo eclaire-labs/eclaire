@@ -68,47 +68,15 @@ export async function deleteQueueJobsByUserId(userId: string): Promise<void> {
 }
 
 /**
- * Bulk delete all user data but keep the account intact
- * This function efficiently removes all user assets and data
- * @param userId - The ID of the user whose data should be deleted
- * @param password - The user's password for confirmation
+ * Internal: purge all user-owned data (assets, history, preferences, storage).
+ * Does NOT verify credentials or delete the user account itself.
+ * Shared by self-service delete (password-gated) and admin delete.
  */
-export async function deleteAllUserData(
-  userId: string,
-  password: string,
-): Promise<void> {
+export async function purgeUserData(userId: string): Promise<void> {
   try {
     logger.info({ userId }, "Starting bulk data deletion for user");
 
-    // 1. Verify password first
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
-
-    if (!user) {
-      throw new NotFoundError("User");
-    }
-
-    // Get the password hash from accounts table (Better Auth stores it there)
-    const account = await db.query.accounts.findFirst({
-      where: eq(accounts.userId, userId),
-      columns: { passwordHash: true },
-    });
-
-    if (!account?.passwordHash) {
-      throw new Error("Invalid password");
-    }
-
-    const isValidPassword = await verifyPassword({
-      password,
-      hash: account.passwordHash,
-    });
-
-    if (!isValidPassword) {
-      throw new Error("Invalid password");
-    }
-
-    // 2. Get all user asset IDs for bulk deletion (needed for storage cleanup)
+    // 1. Get all user asset IDs for bulk deletion (needed for storage cleanup)
     const [userBookmarks, userDocuments, userPhotos, userNotes, userTasks] =
       await Promise.all([
         db
@@ -266,6 +234,43 @@ export async function deleteAllUserData(
     );
     throw error;
   }
+}
+
+/**
+ * Bulk delete all user data but keep the account intact.
+ * Requires the user's password for confirmation (self-service path).
+ */
+export async function deleteAllUserData(
+  userId: string,
+  password: string,
+): Promise<void> {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (!user) {
+    throw new NotFoundError("User");
+  }
+
+  const account = await db.query.accounts.findFirst({
+    where: eq(accounts.userId, userId),
+    columns: { passwordHash: true },
+  });
+
+  if (!account?.passwordHash) {
+    throw new Error("Invalid password");
+  }
+
+  const isValidPassword = await verifyPassword({
+    password,
+    hash: account.passwordHash,
+  });
+
+  if (!isValidPassword) {
+    throw new Error("Invalid password");
+  }
+
+  await purgeUserData(userId);
 }
 
 /**

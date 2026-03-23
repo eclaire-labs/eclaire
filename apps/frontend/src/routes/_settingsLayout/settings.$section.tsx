@@ -1,7 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { VALID_SECTIONS } from "@/components/settings/settings-nav-config";
+import {
+  SETTINGS_NAV,
+  VALID_SECTIONS,
+  isSeparator,
+  type SettingsNavItem,
+} from "@/components/settings/settings-nav-config";
 
 /** Redirects for renamed/removed sections */
 const SECTION_REDIRECTS: Record<string, string> = {
@@ -61,7 +66,7 @@ function SectionLoading() {
 }
 
 export const Route = createFileRoute("/_settingsLayout/settings/$section")({
-  beforeLoad: ({ params }) => {
+  beforeLoad: ({ params, context }) => {
     // Handle redirects for renamed sections
     const redirectTo = SECTION_REDIRECTS[params.section];
     if (redirectTo) {
@@ -71,6 +76,13 @@ export const Route = createFileRoute("/_settingsLayout/settings/$section")({
       });
     }
     if (!VALID_SECTIONS.includes(params.section)) {
+      throw redirect({ to: "/settings" });
+    }
+    // Block non-admins from admin-only sections
+    const navItem = SETTINGS_NAV.find(
+      (e): e is SettingsNavItem => !isSeparator(e) && e.id === params.section,
+    );
+    if (navItem?.adminOnly && !context.auth?.user?.isInstanceAdmin) {
       throw redirect({ to: "/settings" });
     }
   },

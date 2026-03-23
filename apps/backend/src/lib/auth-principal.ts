@@ -139,6 +139,18 @@ export const API_KEY_SCOPE_CATALOG: ApiKeyScopeCatalogItem[] = [
     label: "Read model config",
     description: "Read the currently active model configuration metadata.",
   },
+  {
+    scope: "admin:read",
+    label: "Read admin config",
+    description:
+      "Read instance admin configuration: providers, models, MCP servers, settings, and users.",
+  },
+  {
+    scope: "admin:write",
+    label: "Write admin config",
+    description:
+      "Modify instance admin configuration and manage users (suspend, delete, role changes).",
+  },
 ];
 
 const IMPLIED_SCOPE_MAP: Partial<Record<ApiKeyScope, ApiKeyScope[]>> = {
@@ -151,6 +163,7 @@ const IMPLIED_SCOPE_MAP: Partial<Record<ApiKeyScope, ApiKeyScope[]>> = {
   "agents:write": ["agents:read"],
   "conversations:write": ["conversations:read"],
   "feedback:write": ["feedback:read"],
+  "admin:write": ["admin:read"],
 };
 
 export function getApiKeyScopeCatalog(): ApiKeyScopeCatalogItem[] {
@@ -221,6 +234,10 @@ export function inferRequiredScopesForRequest(
   method: string,
 ): ApiKeyScope[] | null {
   const normalizedMethod = method.toUpperCase();
+
+  if (path.startsWith("/api/admin")) {
+    return normalizedMethod === "GET" ? ["admin:read"] : ["admin:write"];
+  }
 
   if (path.startsWith("/api/user/api-keys")) {
     return normalizedMethod === "GET"

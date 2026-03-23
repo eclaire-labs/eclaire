@@ -65,6 +65,11 @@ export const users = sqliteTable(
     isInstanceAdmin: integer("is_instance_admin", { mode: "boolean" })
       .notNull()
       .default(false),
+    accountStatus: text("account_status", {
+      enum: ["active", "suspended"],
+    })
+      .notNull()
+      .default("active"),
 
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()

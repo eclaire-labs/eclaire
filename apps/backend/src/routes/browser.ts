@@ -16,7 +16,8 @@ export const browserRoutes = new Hono<{ Variables: RouteVariables }>();
 browserRoutes.get(
   "/status",
   withAuth(
-    async (c) => {
+    async (c, userId) => {
+      await assertInstanceAdmin(userId);
       return c.json(browserRuntime.getStatus(SETTINGS_CONTEXT.requestId));
     },
     logger,
@@ -53,7 +54,8 @@ browserRoutes.post(
 browserRoutes.get(
   "/tabs",
   withAuth(
-    async (c) => {
+    async (c, userId) => {
+      await assertInstanceAdmin(userId);
       const items = await browserRuntime.listTabs(SETTINGS_CONTEXT);
       return c.json({ items });
     },
