@@ -2,7 +2,8 @@
  * Manage Admin Tool
  *
  * Compound admin tool for managing AI providers, models, MCP servers,
- * model selection, and instance settings. Admin-only.
+ * model selection, instance settings, users, provider presets, and model imports.
+ * Admin-only.
  */
 
 import {
@@ -23,6 +24,8 @@ import {
   createModel,
   updateModel,
   deleteModel,
+  importModels,
+  testProviderConnection,
   listMcpServers,
   getMcpServer,
   createMcpServer,
@@ -32,6 +35,21 @@ import {
   setActiveModelForContext,
 } from "../../services/ai-config.js";
 import {
+  fetchProviderCatalog,
+  inspectImportUrl,
+} from "../../services/ai-import.js";
+import { listProviderPresets } from "../../services/ai-provider-presets.js";
+import { setUserRole } from "../../services/admin.js";
+import {
+  createUserByAdmin,
+  deleteUserByAdmin,
+  listUsersAdminExtended,
+  reactivateUser,
+  revokeAllUserApiKeys,
+  revokeAllUserSessions,
+  suspendUser,
+} from "../../services/admin-lifecycle.js";
+import {
   getAllInstanceSettings,
   setInstanceSettings,
 } from "../../services/instance-settings.js";
@@ -39,25 +57,43 @@ import {
 const inputSchema = z.object({
   action: z
     .enum([
+      // Providers
       "listProviders",
       "getProvider",
       "createProvider",
       "updateProvider",
       "deleteProvider",
+      "listProviderPresets",
+      "fetchProviderCatalog",
+      "testProvider",
+      // Models
       "listModels",
       "getModel",
       "createModel",
       "updateModel",
       "deleteModel",
+      "inspectImportUrl",
+      "importModels",
+      // MCP Servers
       "listMcpServers",
       "getMcpServer",
       "createMcpServer",
       "updateMcpServer",
       "deleteMcpServer",
+      // Model Selection & Settings
       "getModelSelection",
       "setModelSelection",
       "getInstanceSettings",
       "updateInstanceSettings",
+      // User Management
+      "listUsers",
+      "createUser",
+      "setUserRole",
+      "suspendUser",
+      "reactivateUser",
+      "revokeUserSessions",
+      "revokeUserApiKeys",
+      "deleteUser",
     ])
     .describe("The admin operation to perform"),
   id: z
@@ -78,14 +114,30 @@ export const manageAdminTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "manageAdmin",
   label: "Manage Admin",
   description:
-    "Perform admin operations: manage AI providers, models, MCP servers, model selection, and instance settings. Requires instance admin role.",
+    "Perform admin operations: manage AI providers, models, MCP servers, model selection, instance settings, users, provider presets, and model imports. Requires instance admin role.",
   inputSchema,
   promptGuidelines: [
     "Only perform admin operations when the user explicitly requests them.",
     "Always show the current state before making changes.",
   ],
-  needsApproval: (input) =>
-    ["deleteProvider", "deleteModel", "deleteMcpServer"].includes(input.action),
+  needsApproval: (input) => {
+    const readOnlyActions = new Set([
+      "listProviders",
+      "getProvider",
+      "listModels",
+      "getModel",
+      "listMcpServers",
+      "getMcpServer",
+      "getModelSelection",
+      "getInstanceSettings",
+      "listUsers",
+      "listProviderPresets",
+      "fetchProviderCatalog",
+      "testProvider",
+      "inspectImportUrl",
+    ]);
+    return !readOnlyActions.has(input.action);
+  },
   execute: async (_callId, input, ctx) => {
     // Defense-in-depth: verify admin status even if tool filtering missed it
     try {
@@ -252,6 +304,115 @@ export const manageAdminTool: RuntimeToolDefinition<typeof inputSchema> = {
             return errorResult("'data' is required for updateInstanceSettings");
           await setInstanceSettings(input.data, ctx.userId);
           return textResult("Instance settings updated successfully.");
+        }
+
+        // Users
+        case "listUsers": {
+          const users = await listUsersAdminExtended();
+          return textResult(JSON.stringify(users, null, 2));
+        }
+        case "createUser": {
+          if (!input.data?.email || !input.data?.password)
+            return errorResult(
+              "'data.email' and 'data.password' are required for createUser",
+            );
+          const newUser = await createUserByAdmin(
+            input.data.email as string,
+            input.data.password as string,
+            (input.data.displayName as string | null) ?? null,
+            ctx.userId,
+          );
+          return textResult(JSON.stringify(newUser, null, 2));
+        }
+        case "setUserRole": {
+          if (!input.id) return errorResult("'id' is required for setUserRole");
+          if (input.data?.isAdmin === undefined)
+            return errorResult(
+              "'data.isAdmin' (boolean) is required for setUserRole",
+            );
+          await setUserRole(
+            input.id,
+            input.data.isAdmin as boolean,
+            ctx.userId,
+          );
+          return textResult(
+            `User "${input.id}" role updated (admin=${input.data.isAdmin}).`,
+          );
+        }
+        case "suspendUser": {
+          if (!input.id) return errorResult("'id' is required for suspendUser");
+          await suspendUser(input.id, ctx.userId);
+          return textResult(`User "${input.id}" suspended.`);
+        }
+        case "reactivateUser": {
+          if (!input.id)
+            return errorResult("'id' is required for reactivateUser");
+          await reactivateUser(input.id, ctx.userId);
+          return textResult(`User "${input.id}" reactivated.`);
+        }
+        case "revokeUserSessions": {
+          if (!input.id)
+            return errorResult("'id' is required for revokeUserSessions");
+          await revokeAllUserSessions(input.id, ctx.userId);
+          return textResult(`All sessions revoked for user "${input.id}".`);
+        }
+        case "revokeUserApiKeys": {
+          if (!input.id)
+            return errorResult("'id' is required for revokeUserApiKeys");
+          await revokeAllUserApiKeys(input.id, ctx.userId);
+          return textResult(`All API keys revoked for user "${input.id}".`);
+        }
+        case "deleteUser": {
+          if (!input.id) return errorResult("'id' is required for deleteUser");
+          await deleteUserByAdmin(input.id, ctx.userId);
+          return textResult(`User "${input.id}" deleted.`);
+        }
+
+        // Provider Test, Presets & Catalog
+        case "testProvider": {
+          if (!input.id)
+            return errorResult(
+              "'id' is required for testProvider (provider ID)",
+            );
+          const testResult = await testProviderConnection(input.id);
+          return textResult(JSON.stringify(testResult, null, 2));
+        }
+        case "listProviderPresets": {
+          const presets = listProviderPresets();
+          return textResult(JSON.stringify(presets, null, 2));
+        }
+        case "fetchProviderCatalog": {
+          if (!input.id)
+            return errorResult(
+              "'id' is required for fetchProviderCatalog (provider ID)",
+            );
+          const provider = await getProvider(input.id);
+          if (!provider) return errorResult(`Provider "${input.id}" not found`);
+          const catalog = await fetchProviderCatalog(provider);
+          return textResult(JSON.stringify(catalog, null, 2));
+        }
+
+        // Model Import
+        case "inspectImportUrl": {
+          const url = input.data?.url;
+          if (typeof url !== "string")
+            return errorResult(
+              "'data.url' (string) is required for inspectImportUrl",
+            );
+          const inspection = await inspectImportUrl(url);
+          return textResult(JSON.stringify(inspection, null, 2));
+        }
+        case "importModels": {
+          if (!input.data?.entries)
+            return errorResult(
+              "'data.entries' (array of {id, config}) is required for importModels",
+            );
+          const result = await importModels(
+            input.data.entries as Parameters<typeof importModels>[0],
+            input.data.defaults as Parameters<typeof importModels>[1],
+            ctx.userId,
+          );
+          return textResult(JSON.stringify(result, null, 2));
         }
 
         default:

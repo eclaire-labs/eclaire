@@ -101,6 +101,49 @@ export async function deleteProvider(id: string) {
   logger.info({ providerId: id }, "Provider deleted");
 }
 
+/**
+ * Test a provider connection by hitting its /models endpoint.
+ */
+export async function testProviderConnection(providerId: string): Promise<{
+  success: boolean;
+  status?: number;
+  statusText?: string;
+  error?: string;
+}> {
+  const provider = await getProvider(providerId);
+  if (!provider) {
+    throw new NotFoundError("Provider", providerId);
+  }
+  const { interpolateEnvVars } = await import("@eclaire/ai");
+  const baseUrl = provider.baseUrl
+    ? interpolateEnvVars(provider.baseUrl, false)
+    : null;
+  if (!baseUrl) {
+    return { success: false, error: "No base URL configured" };
+  }
+  const testUrl = `${baseUrl.replace(/\/+$/, "")}/models`;
+  const headers: Record<string, string> = {};
+  const auth = provider.auth as {
+    type: string;
+    header?: string;
+    value?: string;
+  };
+  if (auth?.type === "bearer" && auth.value) {
+    headers.Authorization = `Bearer ${interpolateEnvVars(auth.value, false)}`;
+  } else if (auth?.type === "header" && auth.header && auth.value) {
+    headers[auth.header] = interpolateEnvVars(auth.value, false);
+  }
+  const response = await fetch(testUrl, {
+    headers,
+    signal: AbortSignal.timeout(10000),
+  });
+  return {
+    success: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+  };
+}
+
 // =============================================================================
 // Models
 // =============================================================================

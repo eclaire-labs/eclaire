@@ -18,6 +18,7 @@ import {
   listModels,
   listProviders,
   setActiveModelForContext,
+  testProviderConnection,
   updateMcpServer,
   updateModel,
   updateProvider,
@@ -185,41 +186,13 @@ adminRoutes.post(
   "/providers/:id/test",
   withAuth(async (c, userId) => {
     await assertInstanceAdmin(userId);
-    const provider = await getProvider(c.req.param("id"));
-    if (!provider) {
-      return c.json({ error: "Provider not found" }, 404);
-    }
-    // Delegate to the AI package's provider resolution for interpolation
-    const { interpolateEnvVars } = await import("@eclaire/ai");
     try {
-      const baseUrl = provider.baseUrl
-        ? interpolateEnvVars(provider.baseUrl, false)
-        : null;
-      if (!baseUrl) {
-        return c.json({ success: false, error: "No base URL configured" });
-      }
-      const testUrl = `${baseUrl.replace(/\/+$/, "")}/models`;
-      const headers: Record<string, string> = {};
-      const auth = provider.auth as {
-        type: string;
-        header?: string;
-        value?: string;
-      };
-      if (auth?.type === "bearer" && auth.value) {
-        headers.Authorization = `Bearer ${interpolateEnvVars(auth.value, false)}`;
-      } else if (auth?.type === "header" && auth.header && auth.value) {
-        headers[auth.header] = interpolateEnvVars(auth.value, false);
-      }
-      const response = await fetch(testUrl, {
-        headers,
-        signal: AbortSignal.timeout(10000),
-      });
-      return c.json({
-        success: response.ok,
-        status: response.status,
-        statusText: response.statusText,
-      });
+      const result = await testProviderConnection(c.req.param("id"));
+      return c.json(result);
     } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return c.json({ error: "Provider not found" }, 404);
+      }
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : "Connection failed",
