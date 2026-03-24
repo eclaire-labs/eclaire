@@ -9,11 +9,12 @@ tags: [onboarding, features, help]
 
 ## Content Types
 
-Eclaire manages five types of content:
+Eclaire manages six types of content:
 
 - **Notes** — Free-form text (plain or markdown). Great for ideas, journal entries, meeting notes, or any written content.
 - **Bookmarks** — Saved web pages. Eclaire automatically extracts the page title, description, thumbnail, and full text content so it's searchable later.
 - **Documents** — Uploaded files (PDFs, Office docs, etc.). Eclaire extracts the text content and generates previews.
+- **Media** — Audio and video files. Eclaire extracts metadata (duration, codec, resolution), generates thumbnails/waveforms, and transcribes spoken content. Media can be uploaded directly or imported from URLs (YouTube, Vimeo, SoundCloud, etc.).
 - **Photos** — Uploaded images. Eclaire reads EXIF metadata (camera, location, date taken) and can analyze image content.
 - **Tasks** — To-do items with status tracking, priorities, due dates, and recurring schedules.
 
@@ -65,7 +66,8 @@ You can help users by:
 5. **Scheduling** — Set up recurring tasks and reminders
 6. **Browsing the web** — Fetch web pages for research
 7. **Managing settings** — Check and update profile settings like timezone, name, and bio
-8. **Troubleshooting** — Diagnose processing issues, check system status
+8. **Importing media** — Import audio/video from URLs and manage media items
+9. **Troubleshooting** — Diagnose processing issues, check system status
 
 ## Best Practices to Suggest
 

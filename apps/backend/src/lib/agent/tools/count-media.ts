@@ -1,40 +1,38 @@
 /**
- * Search All Tool
+ * Count Media Tool
  *
- * Search across all content types (notes, bookmarks, documents, media, photos, tasks) at once.
+ * Count media items matching criteria.
  */
 
 import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
-import { findAllEntries } from "../../services/all.js";
+import { countMedia as countMediaService } from "../../services/media.js";
 
 const inputSchema = z.object({
   text: z.string().optional().describe("Full-text search query"),
   tags: z.array(z.string()).optional().describe("Filter by tags"),
+  mediaType: z
+    .enum(["audio", "video"])
+    .optional()
+    .describe("Filter by media type"),
   startDate: z.string().optional().describe("Start of date range (ISO format)"),
   endDate: z.string().optional().describe("End of date range (ISO format)"),
-  limit: z
-    .number()
-    .optional()
-    .default(10)
-    .describe("Maximum number of results"),
 });
 
-export const searchAllTool: RuntimeToolDefinition<typeof inputSchema> = {
-  name: "searchAll",
-  label: "Search All",
-  description:
-    "Search across all content types (notes, bookmarks, documents, media, photos, tasks) at once.",
+export const countMediaTool: RuntimeToolDefinition<typeof inputSchema> = {
+  name: "countMedia",
+  label: "Count Media",
+  description: "Count audio and video media items matching criteria.",
   inputSchema,
   execute: async (_callId, input, ctx) => {
-    const results = await findAllEntries({
+    const count = await countMediaService({
       userId: ctx.userId,
       text: input.text,
-      tagsList: input.tags,
+      tags: input.tags,
+      mediaType: input.mediaType,
       startDate: input.startDate ? new Date(input.startDate) : undefined,
       endDate: input.endDate ? new Date(input.endDate) : undefined,
-      limit: input.limit,
     });
-    return textResult(JSON.stringify(results.items, null, 2));
+    return textResult(JSON.stringify({ count }));
   },
 };
