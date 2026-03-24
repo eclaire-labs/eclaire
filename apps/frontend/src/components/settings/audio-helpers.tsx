@@ -354,6 +354,7 @@ export function TtsVoiceField({
   activeTtsProvider,
   ttsOpts,
   ttsModel,
+  ttsModelDefault,
   ttsVoice,
   ttsVoiceDefault,
   onChange,
@@ -361,6 +362,7 @@ export function TtsVoiceField({
   activeTtsProvider: string;
   ttsOpts: ProviderOptions | undefined;
   ttsModel: string;
+  ttsModelDefault?: string;
   ttsVoice: string;
   ttsVoiceDefault: string | undefined;
   onChange: (val: string) => void;
@@ -383,7 +385,7 @@ export function TtsVoiceField({
 
   // mlx-audio: model-dependent voice options
   if (activeTtsProvider === "mlx-audio") {
-    const modelKey = ttsModel || ttsVoiceDefault || "";
+    const modelKey = ttsModel || ttsModelDefault || "";
     const mlxVoice = getMlxVoiceOptions(modelKey);
     if (mlxVoice.hide) return null;
 
@@ -396,6 +398,8 @@ export function TtsVoiceField({
           value={ttsVoice}
           onChange={onChange}
           placeholder={ttsVoiceDefault}
+          hideDefault
+          hideCustom
         />
       );
     }

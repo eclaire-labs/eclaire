@@ -7,7 +7,6 @@ import {
   Settings2,
   Square,
   Volume2,
-  X,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -105,24 +104,6 @@ function ttsModelOptionsForProvider(providerId: string): SelectOption[] {
       if (!seen.has(m.value)) {
         seen.add(m.value);
         opts.push(m);
-      }
-    }
-  }
-  return opts;
-}
-
-/** Return TTS voice options filtered by provider (or all if no provider set) */
-function ttsVoiceOptionsForProvider(providerId: string): SelectOption[] {
-  if (providerId && PROVIDER_OPTIONS[providerId]) {
-    return PROVIDER_OPTIONS[providerId].ttsVoices ?? [];
-  }
-  const seen = new Set<string>();
-  const opts: SelectOption[] = [];
-  for (const [, prov] of Object.entries(PROVIDER_OPTIONS)) {
-    for (const v of prov.ttsVoices ?? []) {
-      if (!seen.has(v.value)) {
-        seen.add(v.value);
-        opts.push(v);
       }
     }
   }
@@ -371,7 +352,6 @@ export default function VoiceSettings() {
   const activeTtsProvider =
     preferences.ttsProvider || firstTtsProvider?.providerId || "";
   const ttsOpts = PROVIDER_OPTIONS[activeTtsProvider];
-  const hasVoiceOverride = preferences.ttsVoice !== "";
 
   // Instance-level values for admin controls
   const instSttProvider =
@@ -689,12 +669,6 @@ export default function VoiceSettings() {
                   "Default",
               },
               {
-                label: "Voice",
-                value:
-                  (instanceSettings["audio.defaultTtsVoice"] as string) ||
-                  "Default",
-              },
-              {
                 label: "Streaming",
                 value:
                   (instanceSettings["audio.useStreamingTts"] as boolean) !==
@@ -704,7 +678,7 @@ export default function VoiceSettings() {
               },
             ]}
           >
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <OptionSelect
                 id="default-tts-provider"
                 label="Provider"
@@ -730,20 +704,9 @@ export default function VoiceSettings() {
                     handleSettingChange("audio.defaultTtsModel", val)
                   }
                   placeholder={ttsModelPlaceholder}
+                  hideDefault
                 />
               )}
-              <OptionSelect
-                id="default-tts-voice"
-                label="Default voice"
-                options={ttsVoiceOptionsForProvider(instTtsProvider)}
-                value={
-                  (instanceSettings["audio.defaultTtsVoice"] as string) ?? ""
-                }
-                onChange={(val) =>
-                  handleSettingChange("audio.defaultTtsVoice", val)
-                }
-                placeholder={ttsVoicePlaceholder}
-              />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -802,20 +765,11 @@ export default function VoiceSettings() {
                   activeTtsProvider={activeTtsProvider}
                   ttsOpts={ttsOpts}
                   ttsModel={preferences.ttsModel}
+                  ttsModelDefault={ttsDefaults?.ttsModel}
                   ttsVoice={preferences.ttsVoice}
                   ttsVoiceDefault={ttsDefaults?.ttsVoice}
                   onChange={(val) => updatePreference("ttsVoice", val)}
                 />
-                {hasVoiceOverride && (
-                  <button
-                    type="button"
-                    className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => updatePreference("ttsVoice", "")}
-                  >
-                    <X className="h-3 w-3" />
-                    Reset to workspace default
-                  </button>
-                )}
               </div>
 
               {isTtsSpeedSupported(
