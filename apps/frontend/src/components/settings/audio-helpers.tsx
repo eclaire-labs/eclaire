@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -249,20 +249,25 @@ export function OptionSelect({
   const isKnownOption = value === "" || options.some((o) => o.value === value);
   const [showCustom, setShowCustom] = useState(false);
 
+  // Stable ref for onChange to avoid infinite re-render loops when callers
+  // pass inline arrow functions (new reference every render).
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   // Auto-clear stored values that no longer match any known option
   useEffect(() => {
     if (!isKnownOption && value !== "" && !showCustom) {
-      onChange("");
+      onChangeRef.current("");
     }
-  }, [isKnownOption, value, showCustom, onChange]);
+  }, [isKnownOption, value, showCustom]);
 
   // When hideDefault is set and value is empty, auto-select the first option
   const firstValue = options[0]?.value ?? "";
   useEffect(() => {
     if (hideDefault && value === "" && firstValue) {
-      onChange(firstValue);
+      onChangeRef.current(firstValue);
     }
-  }, [hideDefault, value, firstValue, onChange]);
+  }, [hideDefault, value, firstValue]);
 
   const selectValue = showCustom
     ? CUSTOM_VALUE

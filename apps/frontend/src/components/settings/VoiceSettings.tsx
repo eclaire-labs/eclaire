@@ -9,6 +9,7 @@ import {
   Volume2,
   X,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -184,6 +185,7 @@ function AdminConfigSection({
 // ---------------------------------------------------------------------------
 
 export default function VoiceSettings() {
+  const queryClient = useQueryClient();
   const { data: authData } = useAuth();
   const isAdmin =
     (authData?.user as Record<string, unknown> | undefined)?.isInstanceAdmin ===
@@ -220,12 +222,15 @@ export default function VoiceSettings() {
       try {
         await apiPatch("/api/admin/settings", { [key]: value });
         setInstanceSettings((prev) => ({ ...prev, [key]: value }));
+        await queryClient.invalidateQueries({
+          queryKey: ["instance-defaults"],
+        });
         toast.success("Setting updated");
       } catch {
         toast.error("Failed to update setting");
       }
     },
-    [],
+    [queryClient],
   );
 
   // --- Audio recording & test hooks ---
