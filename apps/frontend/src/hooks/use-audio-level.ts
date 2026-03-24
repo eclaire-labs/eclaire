@@ -2,10 +2,21 @@
  * useAudioLevel — Monitor microphone input level via AnalyserNode.
  *
  * Returns a normalized level (0-1) updated ~15fps while monitoring.
- * Used to display a visual recording indicator during PTT.
+ * Uses a dB scale for perceptually linear response and EMA smoothing
+ * to avoid jitter.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+
+/** dB range mapped to [0, 1]. -60 dB ≈ silence, 0 dB = full scale. */
+const MIN_DB = -60;
+const DB_RANGE = 60; // 0 - (-60)
+
+/** EMA smoothing factor (0–1). Higher = more responsive, lower = smoother. */
+const SMOOTHING_ALPHA = 0.3;
+
+/** Only push React state every N rAF frames (~60 fps / 4 ≈ 15 fps). */
+const UPDATE_EVERY_N_FRAMES = 4;
 
 interface UseAudioLevelReturn {
   level: number;
@@ -19,25 +30,39 @@ export function useAudioLevel(): UseAudioLevelReturn {
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const rafRef = useRef<number | null>(null);
-  const dataRef = useRef<Uint8Array | null>(null);
+  const dataRef = useRef<Float32Array | null>(null);
+  const smoothedRef = useRef(0);
+  const frameRef = useRef(0);
 
   const poll = useCallback(() => {
     if (!analyserRef.current || !dataRef.current) return;
 
-    analyserRef.current.getByteTimeDomainData(
-      dataRef.current as Uint8Array<ArrayBuffer>,
+    analyserRef.current.getFloatTimeDomainData(
+      dataRef.current as Float32Array<ArrayBuffer>,
     );
 
-    // Compute RMS from time-domain data (values centered at 128)
+    // Compute RMS from float time-domain data (values in [-1, 1])
     let sumSq = 0;
     for (let i = 0; i < dataRef.current.length; i++) {
-      const v = ((dataRef.current[i] ?? 128) - 128) / 128;
+      const v = dataRef.current[i] ?? 0;
       sumSq += v * v;
     }
     const rms = Math.sqrt(sumSq / dataRef.current.length);
 
-    // Normalize: multiply by ~3 to make normal speech fill the meter
-    setLevel(Math.min(1, rms * 3));
+    // Convert to dB and map [-60 dB, 0 dB] → [0, 1]
+    const db = rms > 0 ? 20 * Math.log10(rms) : MIN_DB;
+    const raw = Math.max(0, Math.min(1, (db - MIN_DB) / DB_RANGE));
+
+    // Exponential moving average for smooth visual response
+    smoothedRef.current =
+      SMOOTHING_ALPHA * raw + (1 - SMOOTHING_ALPHA) * smoothedRef.current;
+
+    // Throttle React state updates to ~15 fps
+    frameRef.current++;
+    if (frameRef.current >= UPDATE_EVERY_N_FRAMES) {
+      frameRef.current = 0;
+      setLevel(smoothedRef.current);
+    }
 
     rafRef.current = requestAnimationFrame(poll);
   }, []);
@@ -60,6 +85,8 @@ export function useAudioLevel(): UseAudioLevelReturn {
       audioContextRef.current = null;
     }
     dataRef.current = null;
+    smoothedRef.current = 0;
+    frameRef.current = 0;
     setLevel(0);
   }, []);
 
@@ -78,7 +105,7 @@ export function useAudioLevel(): UseAudioLevelReturn {
       sourceRef.current = source;
       source.connect(analyser);
 
-      dataRef.current = new Uint8Array(analyser.fftSize);
+      dataRef.current = new Float32Array(analyser.fftSize);
       rafRef.current = requestAnimationFrame(poll);
     },
     [stopMonitoring, poll],
