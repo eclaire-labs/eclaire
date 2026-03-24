@@ -66,12 +66,6 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
   { id: "models", label: "Models", icon: Cpu, adminOnly: true },
   { id: "providers", label: "Providers", icon: Server, adminOnly: true },
   {
-    id: "voice-defaults",
-    label: "Voice Defaults",
-    icon: Volume2,
-    adminOnly: true,
-  },
-  {
     id: "users",
     label: "Users",
     icon: Users,
@@ -96,7 +90,8 @@ export const TAB_TO_SECTION: Record<string, string> = {
   system: "models",
   "api-keys": "api-keys",
   about: "about",
-  "audio-defaults": "voice-defaults",
+  "audio-defaults": "voice",
+  "voice-defaults": "voice",
   "model-defaults": "models",
   registration: "users",
 };
