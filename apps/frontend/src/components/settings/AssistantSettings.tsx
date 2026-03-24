@@ -3,9 +3,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bot,
+  Eye,
   History,
   Info,
   MessageSquare,
+  Pencil,
   Plus,
   Save,
   Settings2,
@@ -93,6 +95,7 @@ interface ChecklistItem {
   name: string;
   label?: string;
   description: string;
+  accessLevel?: "read" | "write";
   availability?: "available" | "setup_required" | "disabled";
   availabilityReason?: string;
 }
@@ -164,6 +167,23 @@ export function AgentChecklist({
                           Required
                         </Badge>
                       )}
+                      {item.accessLevel === "read" ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] gap-0.5"
+                        >
+                          <Eye className="h-2.5 w-2.5" />
+                          Read
+                        </Badge>
+                      ) : item.accessLevel === "write" ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] gap-0.5"
+                        >
+                          <Pencil className="h-2.5 w-2.5" />
+                          Write
+                        </Badge>
+                      ) : null}
                       {item.name === "browseChrome" && (
                         <>
                           <Badge variant="outline" className="text-[10px]">

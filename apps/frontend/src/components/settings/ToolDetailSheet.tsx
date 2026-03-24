@@ -1,4 +1,4 @@
-import { ShieldCheck, Wrench } from "lucide-react";
+import { Eye, Pencil, ShieldCheck, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -146,6 +146,20 @@ export function ToolDetailSheet({
                 className="border-green-500/50 text-green-700 dark:text-green-400"
               >
                 Available
+              </Badge>
+            )}
+            {tool.accessLevel === "read" ? (
+              <Badge
+                variant="outline"
+                className="gap-1 border-blue-500/50 text-blue-700 dark:text-blue-400"
+              >
+                <Eye className="h-3 w-3" />
+                Read-only
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1">
+                <Pencil className="h-3 w-3" />
+                Read & Write
               </Badge>
             )}
             {tool.needsApproval && (

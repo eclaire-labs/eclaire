@@ -16,6 +16,7 @@ export interface AgentCatalogItem {
   name: string;
   label?: string;
   description: string;
+  accessLevel?: "read" | "write";
   availability?: "available" | "setup_required" | "disabled";
   availabilityReason?: string;
   parameters?: Record<string, unknown>;

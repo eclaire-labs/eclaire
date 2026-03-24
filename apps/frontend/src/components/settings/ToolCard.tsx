@@ -1,4 +1,4 @@
-import { ShieldCheck, Wrench } from "lucide-react";
+import { Eye, Pencil, ShieldCheck, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { AgentCatalogItem } from "@/types/agent";
 
@@ -47,6 +47,17 @@ export function ToolCard({ tool, onClick }: ToolCardProps) {
           <Badge variant="outline" className="text-[10px] font-mono">
             {tool.name}
           </Badge>
+          {tool.accessLevel === "read" ? (
+            <Badge variant="outline" className="text-[10px] gap-0.5">
+              <Eye className="h-2.5 w-2.5" />
+              Read
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px] gap-0.5">
+              <Pencil className="h-2.5 w-2.5" />
+              Write
+            </Badge>
+          )}
           {style.label && (
             <Badge variant="outline" className={`text-[10px] ${style.badge}`}>
               {style.label}

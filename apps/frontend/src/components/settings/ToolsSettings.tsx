@@ -41,6 +41,13 @@ const FILTER_DIMENSIONS: CatalogFilterDimension<AgentCatalogItem>[] = [
     extract: (item) =>
       AVAILABILITY_LABELS[item.availability ?? "available"] ?? "Available",
   },
+  {
+    key: "accessLevel",
+    label: "Access",
+    allLabel: "All Access Levels",
+    extract: (item) =>
+      item.accessLevel === "read" ? "Read-only" : "Read & Write",
+  },
 ];
 
 export default function ToolsSettings() {
