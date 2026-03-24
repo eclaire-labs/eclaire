@@ -18,6 +18,12 @@ import { countTasksTool } from "./count-tasks.js";
 import { createBookmarkTool } from "./create-bookmark.js";
 import { createNoteTool } from "./create-note.js";
 import { createTaskTool } from "./create-task.js";
+// Delete tools
+import { deleteBookmarkTool } from "./delete-bookmark.js";
+import { deleteDocumentTool } from "./delete-document.js";
+import { deleteNoteTool } from "./delete-note.js";
+import { deletePhotoTool } from "./delete-photo.js";
+import { deleteTaskTool } from "./delete-task.js";
 // Find tools
 import { findBookmarksTool } from "./find-bookmarks.js";
 import { findDocumentsTool } from "./find-documents.js";
@@ -26,14 +32,21 @@ import { findPhotosTool } from "./find-photos.js";
 import { findTasksTool } from "./find-tasks.js";
 // Get tools
 import { getBookmarkTool } from "./get-bookmark.js";
+import { getDocumentTool } from "./get-document.js";
 import { getDueItemsTool } from "./get-due-items.js";
+import { getHistoryTool } from "./get-history.js";
 import { getNoteTool } from "./get-note.js";
+import { getPhotoTool } from "./get-photo.js";
 import { getTaskTool } from "./get-task.js";
 import { getTaskCommentsTool } from "./get-task-comments.js";
 // Skill tools
 import { loadSkillTool } from "./load-skill.js";
+// Quick action tools
+import { quickActionTool } from "./quick-action.js";
 // Search tools
 import { searchAllTool } from "./search-all.js";
+// Notification tools
+import { sendNotificationTool } from "./send-notification.js";
 // Task comment tools
 import { addTaskCommentTool } from "./add-task-comment.js";
 import { browseChromeTool } from "./browse-chrome.js";
@@ -45,7 +58,9 @@ import { transcribeAudioTool } from "./transcribe-audio.js";
 import { listTagsTool } from "./list-tags.js";
 // Update tools
 import { updateBookmarkTool } from "./update-bookmark.js";
+import { updateDocumentTool } from "./update-document.js";
 import { updateNoteTool } from "./update-note.js";
+import { updatePhotoTool } from "./update-photo.js";
 import { updateTaskTool } from "./update-task.js";
 // User settings tools
 import { getUserSettingsTool } from "./get-user-settings.js";
@@ -79,8 +94,11 @@ const staticTools: Record<string, RuntimeToolDefinition> = {
   getTask: getTaskTool,
   getNote: getNoteTool,
   getBookmark: getBookmarkTool,
+  getDocument: getDocumentTool,
+  getPhoto: getPhotoTool,
   getTaskComments: getTaskCommentsTool,
   getDueItems: getDueItemsTool,
+  getHistory: getHistoryTool,
   // Create tools
   createNote: createNoteTool,
   createTask: createTaskTool,
@@ -89,6 +107,18 @@ const staticTools: Record<string, RuntimeToolDefinition> = {
   updateTask: updateTaskTool,
   updateNote: updateNoteTool,
   updateBookmark: updateBookmarkTool,
+  updateDocument: updateDocumentTool,
+  updatePhoto: updatePhotoTool,
+  // Delete tools
+  deleteBookmark: deleteBookmarkTool,
+  deleteNote: deleteNoteTool,
+  deleteTask: deleteTaskTool,
+  deleteDocument: deleteDocumentTool,
+  deletePhoto: deletePhotoTool,
+  // Quick action tools
+  quickAction: quickActionTool,
+  // Notification tools
+  sendNotification: sendNotificationTool,
   // Task comment tools
   addTaskComment: addTaskCommentTool,
   // Tag tools
@@ -146,21 +176,33 @@ export { countTasksTool } from "./count-tasks.js";
 export { createBookmarkTool } from "./create-bookmark.js";
 export { createNoteTool } from "./create-note.js";
 export { createTaskTool } from "./create-task.js";
+export { deleteBookmarkTool } from "./delete-bookmark.js";
+export { deleteDocumentTool } from "./delete-document.js";
+export { deleteNoteTool } from "./delete-note.js";
+export { deletePhotoTool } from "./delete-photo.js";
+export { deleteTaskTool } from "./delete-task.js";
 export { findBookmarksTool } from "./find-bookmarks.js";
 export { findDocumentsTool } from "./find-documents.js";
 export { findNotesTool } from "./find-notes.js";
 export { findPhotosTool } from "./find-photos.js";
 export { findTasksTool } from "./find-tasks.js";
 export { getBookmarkTool } from "./get-bookmark.js";
+export { getDocumentTool } from "./get-document.js";
 export { getDueItemsTool } from "./get-due-items.js";
+export { getHistoryTool } from "./get-history.js";
 export { getNoteTool } from "./get-note.js";
+export { getPhotoTool } from "./get-photo.js";
 export { getTaskTool } from "./get-task.js";
 export { getTaskCommentsTool } from "./get-task-comments.js";
 export { listTagsTool } from "./list-tags.js";
 export { loadSkillTool } from "./load-skill.js";
+export { quickActionTool } from "./quick-action.js";
 export { searchAllTool } from "./search-all.js";
+export { sendNotificationTool } from "./send-notification.js";
 export { updateBookmarkTool } from "./update-bookmark.js";
+export { updateDocumentTool } from "./update-document.js";
 export { updateNoteTool } from "./update-note.js";
+export { updatePhotoTool } from "./update-photo.js";
 export { updateTaskTool } from "./update-task.js";
 // Audio tools
 export { synthesizeSpeechTool } from "./synthesize-speech.js";
