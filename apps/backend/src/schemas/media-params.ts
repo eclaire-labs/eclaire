@@ -273,6 +273,59 @@ export const MediaSearchParamsSchema = z.object({
     }),
 });
 
+// Import from URL schema
+export const MediaImportSchema = z
+  .object({
+    url: z.url("Must be a valid URL").meta({
+      description:
+        "URL to import media from (YouTube, Vimeo, direct file link, etc.)",
+      examples: [
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "https://example.com/video.mp4",
+      ],
+    }),
+
+    title: z
+      .string()
+      .optional()
+      .meta({
+        description:
+          "Title for the media (will be auto-populated from source metadata if not provided)",
+        examples: ["My Video", "Podcast Episode 42"],
+      }),
+
+    description: z
+      .string()
+      .nullable()
+      .optional()
+      .meta({
+        description: "Optional description or notes about the media",
+        examples: ["Downloaded from YouTube for transcription"],
+      }),
+
+    tags: z
+      .array(z.string())
+      .optional()
+      .default([])
+      .meta({
+        description: "Array of tags to categorize the media",
+        examples: [["youtube", "tutorial"], ["podcast"]],
+      }),
+
+    processingEnabled: z
+      .boolean()
+      .optional()
+      .default(true)
+      .meta({
+        description: "Whether background processing is enabled",
+        examples: [true, false],
+      }),
+  })
+  .meta({
+    ref: "MediaImport",
+    description: "Import media from a URL",
+  });
+
 // Path parameters
 export const MediaIdParam = z
   .object({

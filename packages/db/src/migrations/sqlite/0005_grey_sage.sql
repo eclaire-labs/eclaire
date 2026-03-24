@@ -1,0 +1,1 @@
+ALTER TABLE `media` ADD `source_url` text;

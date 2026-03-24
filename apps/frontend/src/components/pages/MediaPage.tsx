@@ -3,6 +3,7 @@ import {
   AlertCircle,
   AudioWaveform,
   LayoutGrid,
+  Link2,
   List,
   Loader2,
   UploadCloud,
@@ -38,6 +39,7 @@ import { useMedia } from "@/hooks/use-media";
 import { useTags } from "@/hooks/use-tags";
 import { apiFetch } from "@/lib/api-client";
 import type { EditMediaState, Media } from "@/types/media";
+import { ImportUrlDialog } from "./media/ImportUrlDialog";
 import { MediaListItem } from "./media/MediaListItem";
 import { MediaTileItem } from "./media/MediaTileItem";
 import { mediaConfig } from "./media/media-config";
@@ -124,6 +126,12 @@ export default function MediaPage() {
   const [isEditMediaDialogOpen, setIsEditMediaDialogOpen] = useState(false);
   const [editingMedia, setEditingMedia] = useState<EditMediaState | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+
+  const [isImportUrlDialogOpen, setIsImportUrlDialogOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importUrlDefault, setImportUrlDefault] = useState<string | undefined>(
+    undefined,
+  );
 
   const containerRef = useRef<HTMLElement | null>(null);
 
@@ -291,6 +299,43 @@ export default function MediaPage() {
     [refresh],
   );
 
+  const handleImportUrl = useCallback(
+    async (data: {
+      url: string;
+      title?: string;
+      description?: string;
+      tags: string[];
+    }) => {
+      setIsImporting(true);
+      try {
+        const response = await apiFetch("/api/media/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+          const errorData = await response
+            .json()
+            .catch(() => ({ error: "Import failed" }));
+          throw new Error(errorData.error || "Failed to import media from URL");
+        }
+        const createdMedia = (await response.json()) as Media;
+        refresh();
+        setIsImportUrlDialogOpen(false);
+        toast.success("Import Started", {
+          description: `"${createdMedia.title}" is being downloaded and processed.`,
+        });
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "An unknown error occurred.";
+        toast.error("Import Error", { description: message });
+      } finally {
+        setIsImporting(false);
+      }
+    },
+    [refresh],
+  );
+
   const {
     getRootProps,
     getInputProps,
@@ -361,12 +406,41 @@ export default function MediaPage() {
       }))}
       viewModes={mediaViewModes}
       headerAction={
-        <Button onClick={openFileDialog}>
-          <UploadCloud className="mr-2 h-4 w-4" />
-          Upload Media
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setImportUrlDefault(undefined);
+              setIsImportUrlDialogOpen(true);
+            }}
+          >
+            <Link2 className="mr-2 h-4 w-4" />
+            Import URL
+          </Button>
+          <Button onClick={openFileDialog}>
+            <UploadCloud className="mr-2 h-4 w-4" />
+            Upload File
+          </Button>
+        </div>
       }
-      dropzoneRootProps={getRootProps()}
+      dropzoneRootProps={{
+        ...getRootProps(),
+        onDrop: (e: React.DragEvent<HTMLElement>) => {
+          // Intercept URL drops before react-dropzone handles them as files
+          const uriList = e.dataTransfer?.getData("text/uri-list");
+          const plainText = e.dataTransfer?.getData("text/plain");
+          const droppedUrl = uriList || plainText;
+          if (droppedUrl && /^https?:\/\//i.test(droppedUrl.trim())) {
+            e.preventDefault();
+            e.stopPropagation();
+            setImportUrlDefault(droppedUrl.trim());
+            setIsImportUrlDialogOpen(true);
+            return;
+          }
+          // Otherwise let react-dropzone handle it
+          getRootProps().onDrop?.(e);
+        },
+      }}
       dropzoneInputProps={getInputProps()}
       isDragActive={isDragActive}
       dragOverlay={
@@ -420,6 +494,15 @@ export default function MediaPage() {
       isDeleting={isDeleting}
       dialogs={
         <>
+          {/* Import URL Dialog */}
+          <ImportUrlDialog
+            open={isImportUrlDialogOpen}
+            onOpenChange={setIsImportUrlDialogOpen}
+            onSubmit={handleImportUrl}
+            isSubmitting={isImporting}
+            defaultUrl={importUrlDefault}
+          />
+
           {/* Edit Media Metadata Dialog */}
           <Dialog
             open={isEditMediaDialogOpen}

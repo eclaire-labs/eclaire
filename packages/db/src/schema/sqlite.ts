@@ -728,6 +728,7 @@ export const media = sqliteTable(
     title: text("title").notNull(),
     description: text("description"),
     originalFilename: text("original_filename"),
+    sourceUrl: text("source_url"),
     storageId: text("storage_id").notNull(),
     mimeType: text("mime_type"),
     fileSize: integer("file_size"),

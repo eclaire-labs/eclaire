@@ -23,7 +23,11 @@ export const MediaPinUpdateSchema = isPinnedUpdateSchema(
   "media",
   "MediaPinUpdate",
 );
-import { MediaSchema, PartialMediaSchema } from "./media-params.js";
+import {
+  MediaSchema,
+  MediaImportSchema,
+  PartialMediaSchema,
+} from "./media-params.js";
 import {
   CreatedMediaResponseSchema,
   MediaFileNotFoundSchema,
@@ -84,6 +88,33 @@ export const postMediaRouteDescription = {
   responses: {
     201: {
       description: "Media uploaded successfully",
+      content: {
+        "application/json": {
+          schema: resolver(CreatedMediaResponseSchema),
+        },
+      },
+    },
+    ...commonErrorsWithValidation,
+  },
+};
+
+// POST /api/media/import - Import media from URL
+export const postMediaImportRouteDescription = {
+  tags: ["Media"],
+  summary: "Import media from URL",
+  description:
+    "Import media from a URL (YouTube, Vimeo, SoundCloud, direct file link, etc.). The media will be downloaded and processed in the background.",
+  requestBody: {
+    description: "URL and optional metadata",
+    content: {
+      "application/json": {
+        schema: requestBodyResolver(MediaImportSchema),
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: "Media import started",
       content: {
         "application/json": {
           schema: resolver(CreatedMediaResponseSchema),

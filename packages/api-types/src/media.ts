@@ -8,6 +8,7 @@ export const MediaResponseSchema = z
     description: z.string().nullable(),
     mediaType: z.enum(["audio", "video"]),
     mediaUrl: z.string(),
+    sourceUrl: z.string().nullable(),
     thumbnailUrl: z.string().nullable(),
     tags: z.array(z.string()),
     createdAt: z.string(),

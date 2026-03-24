@@ -68,7 +68,8 @@ export interface Media {
   id: string;
   title: string;
   description: string | null;
-  originalUrl: string;
+  mediaUrl: string;
+  sourceUrl: string | null;
   thumbnailUrl: string | null;
   waveformUrl: string | null;
 
@@ -122,6 +123,18 @@ export interface CreateMediaData {
     [key: string]: any;
   };
   originalMimeType: string;
+  userAgent: string;
+}
+
+export interface CreateMediaFromUrlData {
+  url: string;
+  metadata: {
+    title?: string | null;
+    description?: string | null;
+    dueDate?: string | null;
+    tags?: string[];
+    processingEnabled?: boolean;
+  };
   userAgent: string;
 }
 
@@ -205,7 +218,7 @@ async function getMediaWithDetails(mediaId: string, userId: string) {
 
   const mediaTags = await getMediaTags(mediaId);
 
-  const originalUrl = `/api/media/${row.id}/original`;
+  const mediaUrl = `/api/media/${row.id}/original`;
   const thumbnailUrl = row.thumbnailStorageId
     ? `/api/media/${row.id}/thumbnail`
     : null;
@@ -218,7 +231,8 @@ async function getMediaWithDetails(mediaId: string, userId: string) {
     title: row.title,
     description: row.description,
     dueDate: row.dueDate ? formatToISO8601(row.dueDate) : null,
-    originalUrl,
+    mediaUrl,
+    sourceUrl: row.sourceUrl || null,
     thumbnailUrl,
     waveformUrl,
     originalFilename: row.originalFilename || "",
@@ -494,6 +508,154 @@ export async function createMedia(
       }
     }
     handleServiceError(error, "Failed to create media");
+  }
+}
+
+/**
+ * Creates a new media record from a URL. The actual download and processing
+ * happen in the background worker. The record is created with a placeholder
+ * storageId that will be updated after download completes.
+ */
+export async function createMediaFromUrl(
+  data: CreateMediaFromUrlData,
+  userId: string,
+  caller: CallerContext,
+) {
+  const actorId = callerActorId(caller);
+  const mediaId = generateMediaId();
+  const { url, metadata, userAgent } = data;
+  const processingEnabled = metadata.processingEnabled !== false;
+
+  const dueDateValue = metadata.dueDate ? new Date(metadata.dueDate) : null;
+  const tagNames = metadata.tags || [];
+
+  // Use URL hostname + path as a fallback title
+  const fallbackTitle = (() => {
+    try {
+      const parsed = new URL(url);
+      return parsed.hostname + parsed.pathname.slice(0, 60);
+    } catch {
+      return url.slice(0, 60);
+    }
+  })();
+
+  try {
+    const historyId = generateHistoryId();
+
+    await txManager.withTransaction(async (tx) => {
+      await tx.media.insert({
+        id: mediaId,
+        userId,
+        title: metadata.title || fallbackTitle,
+        description: metadata.description || null,
+        dueDate: dueDateValue,
+        originalFilename: null,
+        sourceUrl: url,
+        storageId: `pending://${mediaId}`,
+        mimeType: null,
+        fileSize: null,
+        mediaType: "video", // Default — corrected by worker after download
+        duration: null,
+        channels: null,
+        sampleRate: null,
+        bitrate: null,
+        codec: null,
+        language: null,
+        width: null,
+        height: null,
+        frameRate: null,
+        videoCodec: null,
+        extractedText: null,
+        thumbnailStorageId: null,
+        waveformStorageId: null,
+        rawMetadata: {},
+        originalMimeType: null,
+        userAgent,
+        reviewStatus: "pending",
+        flagColor: null,
+        isPinned: false,
+        processingEnabled,
+        processingStatus: processingEnabled ? "pending" : null,
+      });
+
+      if (tagNames.length > 0) {
+        const tagList = await tx.getOrCreateTags(tagNames, userId);
+        for (const tag of tagList) {
+          await tx.mediaTags.insert({ mediaId, tagId: tag.id });
+        }
+      }
+
+      await tx.history.insert({
+        id: historyId,
+        action: "create",
+        itemType: "media",
+        itemId: mediaId,
+        itemName: metadata.title || fallbackTitle,
+        beforeData: null,
+        afterData: {
+          id: mediaId,
+          title: metadata.title || fallbackTitle,
+          sourceUrl: url,
+          tags: tagNames,
+        },
+        actor: caller.actor,
+        actorId,
+        userId,
+        metadata: null,
+        timestamp: new Date(),
+      });
+    });
+
+    // Initialize processing job status tracking
+    if (processingEnabled) {
+      const stages: string[] = ["media_processing"];
+      await createOrUpdateProcessingJob("media", mediaId, userId, stages).catch(
+        (error) => {
+          logger.error(
+            { mediaId, userId, error: error.message },
+            "Failed to initialize processing job for URL import",
+          );
+        },
+      );
+    }
+
+    // Queue background processing (includes URL download)
+    if (processingEnabled) {
+      try {
+        const queueAdapter = await getQueueAdapter();
+        await queueAdapter.enqueueMedia({
+          mediaId,
+          userId,
+          sourceUrl: url,
+        });
+        logger.info(
+          { mediaId, userId, sourceUrl: url },
+          "Enqueued media URL import job",
+        );
+      } catch (error) {
+        logger.error(
+          {
+            mediaId,
+            error: error instanceof Error ? error.message : "Unknown error",
+          },
+          "Failed to enqueue media URL import job",
+        );
+      }
+    }
+
+    const newMediaDetails = await getMediaWithDetails(mediaId, userId);
+    return newMediaDetails;
+  } catch (error) {
+    logger.error(
+      {
+        userId,
+        url,
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+      "Error creating media from URL",
+    );
+    handleServiceError(error, "Failed to create media from URL");
   }
 }
 
@@ -840,7 +1002,7 @@ export async function findMedia({
     );
 
     const items = entriesList.map((row) => {
-      const originalUrl = `/api/media/${row.id}/original`;
+      const mediaUrl = `/api/media/${row.id}/original`;
       const thumbnailUrl = row.thumbnailStorageId
         ? `/api/media/${row.id}/thumbnail`
         : null;
@@ -853,7 +1015,8 @@ export async function findMedia({
         title: row.title,
         description: row.description,
         dueDate: row.dueDate ? formatToISO8601(row.dueDate) : null,
-        originalUrl,
+        mediaUrl,
+        sourceUrl: row.sourceUrl || null,
         thumbnailUrl,
         waveformUrl,
         originalFilename: row.originalFilename || "",

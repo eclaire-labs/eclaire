@@ -3,6 +3,7 @@ import {
   Download,
   Edit,
   FileText,
+  Link2,
   MessageCircle,
   MoreHorizontal,
   Trash2,
@@ -103,7 +104,13 @@ export function MediaListItem({
       </div>
       {/* Title & Tags */}
       <div className="flex-1 min-w-0 mr-4">
-        <p className="text-sm font-medium truncate" title={media.title}>
+        <p
+          className="text-sm font-medium truncate flex items-center gap-1"
+          title={media.title}
+        >
+          {media.sourceUrl && (
+            <Link2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          )}
           {media.title}
         </p>
         {media.tags.length > 0 && (

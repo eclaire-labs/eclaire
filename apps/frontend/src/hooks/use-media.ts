@@ -13,6 +13,7 @@ export const transformMediaData = (raw: any): Media => ({
   tags: raw.tags || [],
   mediaType: raw.mediaType,
   mediaUrl: raw.mediaUrl ? normalizeApiUrl(raw.mediaUrl) : "",
+  sourceUrl: raw.sourceUrl || null,
   thumbnailUrl: raw.thumbnailUrl ? normalizeApiUrl(raw.thumbnailUrl) : null,
   duration: raw.duration,
   channels: raw.channels,

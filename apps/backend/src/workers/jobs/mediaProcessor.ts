@@ -1,5 +1,8 @@
 import { Buffer } from "node:buffer";
 import { spawn } from "node:child_process";
+import { readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Readable } from "node:stream";
 import { type AIMessage, callAI } from "@eclaire/ai";
 import type { JobContext } from "@eclaire/queue/core";
@@ -7,18 +10,28 @@ import { createChildLogger } from "../../lib/logger.js";
 import { isAudioAvailable, transcribe } from "../../lib/services/audio.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
 import { config } from "../config.js";
+import { directDownload } from "../lib/direct-download.js";
+import {
+  type YtdlpSubtitleResult,
+  downloadMedia as ytdlpDownload,
+  extractSubtitles,
+  fetchMediaInfo,
+  isYtdlpAvailable,
+} from "../lib/ytdlp.js";
 
 const logger = createChildLogger("media-processor");
 
 export interface MediaJobData {
   mediaId: string;
-  storageId: string;
-  mimeType: string;
   userId: string;
+  storageId?: string;
+  mimeType?: string;
   originalFilename?: string;
+  sourceUrl?: string;
 }
 
 const STAGES = {
+  URL_DOWNLOAD: "url_download",
   PREPARATION: "media_preparation",
   METADATA_EXTRACTION: "metadata_extraction",
   WAVEFORM_GENERATION: "waveform_generation", // also used for video thumbnail
@@ -385,13 +398,185 @@ function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// --- Embedded subtitle extraction via ffmpeg ---
+
+interface EmbeddedSubtitleResult {
+  text: string;
+  language: string | undefined;
+}
+
+async function extractEmbeddedSubtitles(
+  mediaBuffer: Buffer,
+): Promise<EmbeddedSubtitleResult | null> {
+  // First, check if there are subtitle streams using ffprobe
+  const hasSubtitles = await new Promise<boolean>((resolve) => {
+    let resolved = false;
+    const resolveOnce = (value: boolean) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(value);
+      }
+    };
+
+    const proc = spawn(
+      "ffprobe",
+      [
+        "-i",
+        "pipe:0",
+        "-show_entries",
+        "stream=codec_type,codec_name",
+        "-select_streams",
+        "s",
+        "-v",
+        "quiet",
+        "-of",
+        "json",
+      ],
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
+
+    let output = "";
+    proc.stdout.on("data", (chunk: Buffer) => {
+      output += chunk.toString();
+    });
+    proc.on("close", (code) => {
+      if (code !== 0) {
+        resolveOnce(false);
+        return;
+      }
+      try {
+        const data = JSON.parse(output);
+        resolveOnce(data.streams && data.streams.length > 0);
+      } catch {
+        resolveOnce(false);
+      }
+    });
+    proc.on("error", () => resolveOnce(false));
+
+    const inputStream = Readable.from(mediaBuffer);
+    inputStream.pipe(proc.stdin);
+    proc.stdin.on("error", () => {
+      /* ignore broken pipe */
+    });
+  });
+
+  if (!hasSubtitles) return null;
+
+  // Extract the first subtitle stream as SRT
+  return new Promise((resolve) => {
+    let resolved = false;
+    const resolveOnce = (value: EmbeddedSubtitleResult | null) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(value);
+      }
+    };
+
+    const proc = spawn(
+      "ffmpeg",
+      ["-i", "pipe:0", "-map", "0:s:0", "-f", "srt", "pipe:1"],
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
+
+    const chunks: Buffer[] = [];
+    proc.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
+    proc.on("close", (code) => {
+      if (code !== 0 || chunks.length === 0) {
+        resolveOnce(null);
+        return;
+      }
+      const srtContent = Buffer.concat(chunks).toString("utf-8");
+      // Parse SRT: strip sequence numbers, timestamps, and blank lines
+      const text = srtContent
+        .split("\n")
+        .filter((line) => {
+          const trimmed = line.trim();
+          if (!trimmed) return false;
+          if (/^\d+$/.test(trimmed)) return false; // sequence number
+          if (/^\d{2}:\d{2}:\d{2}[.,]\d{3}\s*-->/.test(trimmed)) return false; // timestamp
+          return true;
+        })
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (!text) {
+        resolveOnce(null);
+        return;
+      }
+      resolveOnce({ text, language: undefined });
+    });
+    proc.on("error", () => resolveOnce(null));
+
+    const inputStream = Readable.from(mediaBuffer);
+    inputStream.pipe(proc.stdin);
+    proc.stdin.on("error", () => {
+      /* ignore broken pipe */
+    });
+  });
+}
+
+// --- DB update helper for URL imports ---
+
+async function updateMediaRecordAfterDownload(
+  mediaId: string,
+  updates: {
+    storageId: string;
+    mimeType: string;
+    fileSize: number;
+    mediaType: "audio" | "video";
+    originalFilename: string;
+    title?: string;
+  },
+): Promise<void> {
+  const { db, schema } = await import("../../db/index.js");
+  const { eq } = await import("drizzle-orm");
+
+  // Only update title if the current title looks like a URL-derived placeholder
+  const [existing] = await db
+    .select({ title: schema.media.title })
+    .from(schema.media)
+    .where(eq(schema.media.id, mediaId));
+
+  const shouldUpdateTitle =
+    updates.title &&
+    existing &&
+    (existing.title.includes("/") || existing.title.includes("://"));
+
+  await db
+    .update(schema.media)
+    .set({
+      storageId: updates.storageId,
+      mimeType: updates.mimeType,
+      fileSize: updates.fileSize,
+      mediaType: updates.mediaType,
+      originalFilename: updates.originalFilename,
+      ...(shouldUpdateTitle ? { title: updates.title } : {}),
+    })
+    .where(eq(schema.media.id, mediaId));
+}
+
 // --- Main processor ---
 
 async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
-  const { mediaId, storageId, mimeType, userId, originalFilename } =
-    ctx.job.data;
+  const {
+    mediaId,
+    userId,
+    sourceUrl,
+    storageId: jobStorageId,
+    mimeType: jobMimeType,
+    originalFilename: jobOriginalFilename,
+  } = ctx.job.data;
+
   logger.info(
-    { mediaId, jobId: ctx.job.id, userId, mimeType, storageId },
+    {
+      mediaId,
+      jobId: ctx.job.id,
+      userId,
+      mimeType: jobMimeType,
+      storageId: jobStorageId,
+      sourceUrl,
+    },
     "Starting media processing job",
   );
 
@@ -400,15 +585,30 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
       `Missing required job data: mediaId=${mediaId}, userId=${userId}`,
     );
   }
-  if (!storageId || storageId.trim() === "") {
-    throw new Error(
-      `Invalid or missing storageId for media ${mediaId}. Received: ${storageId}`,
-    );
+
+  const isUrlImport = !!sourceUrl;
+
+  // For file uploads, storageId is required
+  if (!isUrlImport) {
+    if (!jobStorageId || jobStorageId.trim() === "") {
+      throw new Error(
+        `Invalid or missing storageId for media ${mediaId}. Received: ${jobStorageId}`,
+      );
+    }
   }
 
-  const isVideo = mimeType.startsWith("video/");
+  // Mutable state: these will be set by URL_DOWNLOAD for URL imports,
+  // or come directly from job data for file uploads
+  let effectiveStorageId = jobStorageId || "";
+  let effectiveMimeType = jobMimeType || "";
+  let effectiveOriginalFilename = jobOriginalFilename;
+  let preExtractedSubtitles: YtdlpSubtitleResult | null = null;
 
+  const isVideo = () => effectiveMimeType.startsWith("video/");
+
+  // Build stage list dynamically
   const allStages: Stage[] = [
+    ...(isUrlImport ? [STAGES.URL_DOWNLOAD] : []),
     STAGES.PREPARATION,
     STAGES.METADATA_EXTRACTION,
     STAGES.WAVEFORM_GENERATION,
@@ -424,26 +624,197 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
   // biome-ignore lint/suspicious/noExplicitAny: parsed AI model output
   const extractedData: Record<string, any> = {
     mediaId,
-    mimeType,
-    originalFilename,
+    mimeType: effectiveMimeType,
+    originalFilename: effectiveOriginalFilename,
     processedAt: new Date().toISOString(),
     aiAnalysis: {},
   };
 
   try {
+    // --- URL DOWNLOAD (only for URL imports) ---
+    if (isUrlImport) {
+      await ctx.startStage(STAGES.URL_DOWNLOAD);
+      const tempDir = join(tmpdir(), `eclaire-media-${mediaId}`);
+      const { mkdir } = await import("node:fs/promises");
+      await mkdir(tempDir, { recursive: true });
+
+      try {
+        const MAX_MEDIA_SIZE = 500 * 1024 * 1024; // 500MB
+
+        if (await isYtdlpAvailable()) {
+          logger.info({ mediaId, sourceUrl }, "Using yt-dlp for URL download");
+
+          // Fetch metadata first (cache for title update later)
+          await ctx.updateStageProgress(STAGES.URL_DOWNLOAD, 10);
+          let ytdlpInfo: Awaited<ReturnType<typeof fetchMediaInfo>> | null =
+            null;
+          try {
+            ytdlpInfo = await fetchMediaInfo(sourceUrl);
+            if (
+              ytdlpInfo.estimatedFileSize &&
+              ytdlpInfo.estimatedFileSize > MAX_MEDIA_SIZE
+            ) {
+              throw new Error(
+                `Estimated file size ${Math.round(ytdlpInfo.estimatedFileSize / 1024 / 1024)}MB exceeds 500MB limit`,
+              );
+            }
+            logger.info(
+              {
+                mediaId,
+                title: ytdlpInfo.title,
+                duration: ytdlpInfo.duration,
+                mediaType: ytdlpInfo.mediaType,
+              },
+              "yt-dlp metadata fetched",
+            );
+          } catch (metaError) {
+            logger.warn(
+              {
+                mediaId,
+                error:
+                  metaError instanceof Error
+                    ? metaError.message
+                    : String(metaError),
+              },
+              "yt-dlp metadata fetch failed, continuing with download",
+            );
+          }
+
+          // Download media
+          await ctx.updateStageProgress(STAGES.URL_DOWNLOAD, 30);
+          const downloadResult = await ytdlpDownload(sourceUrl, tempDir, {
+            maxFileSize: MAX_MEDIA_SIZE,
+          });
+          effectiveMimeType = downloadResult.mimeType;
+          effectiveOriginalFilename = downloadResult.filename;
+
+          // Extract subtitles
+          await ctx.updateStageProgress(STAGES.URL_DOWNLOAD, 80);
+          try {
+            preExtractedSubtitles = await extractSubtitles(sourceUrl, tempDir);
+            if (preExtractedSubtitles) {
+              logger.info(
+                {
+                  mediaId,
+                  language: preExtractedSubtitles.language,
+                  source: preExtractedSubtitles.source,
+                },
+                "Subtitles extracted via yt-dlp",
+              );
+            }
+          } catch (subError) {
+            logger.warn(
+              {
+                mediaId,
+                error:
+                  subError instanceof Error
+                    ? subError.message
+                    : String(subError),
+              },
+              "Subtitle extraction failed, will fall back to STT",
+            );
+          }
+
+          // Store downloaded file
+          const fileContent = await readFile(downloadResult.filePath);
+          const storage = getStorage();
+          const ext =
+            downloadResult.filename.split(".").pop()?.toLowerCase() || "mp4";
+          const storageKey = buildKey(
+            userId,
+            "media",
+            mediaId,
+            `original.${ext}`,
+          );
+          await storage.writeBuffer(storageKey, fileContent, {
+            contentType: downloadResult.mimeType,
+          });
+          effectiveStorageId = storageKey;
+
+          // Update DB record with download results and yt-dlp metadata
+          await updateMediaRecordAfterDownload(mediaId, {
+            storageId: storageKey,
+            mimeType: downloadResult.mimeType,
+            fileSize: downloadResult.fileSize,
+            mediaType: downloadResult.mimeType.startsWith("audio/")
+              ? "audio"
+              : "video",
+            originalFilename: downloadResult.filename,
+            title: ytdlpInfo?.title,
+          });
+        } else {
+          // Fallback: direct HTTP download
+          logger.info(
+            { mediaId, sourceUrl },
+            "yt-dlp not available, using direct HTTP download",
+          );
+          await ctx.updateStageProgress(STAGES.URL_DOWNLOAD, 20);
+
+          const downloadResult = await directDownload(sourceUrl, tempDir, {
+            maxFileSize: MAX_MEDIA_SIZE,
+          });
+          effectiveMimeType = downloadResult.mimeType;
+          effectiveOriginalFilename = downloadResult.filename;
+
+          // Store downloaded file
+          const fileContent = await readFile(downloadResult.filePath);
+          const storage = getStorage();
+          const ext =
+            downloadResult.filename.split(".").pop()?.toLowerCase() || "mp4";
+          const storageKey = buildKey(
+            userId,
+            "media",
+            mediaId,
+            `original.${ext}`,
+          );
+          await storage.writeBuffer(storageKey, fileContent, {
+            contentType: downloadResult.mimeType,
+          });
+          effectiveStorageId = storageKey;
+
+          // Update DB record
+          await updateMediaRecordAfterDownload(mediaId, {
+            storageId: storageKey,
+            mimeType: downloadResult.mimeType,
+            fileSize: downloadResult.fileSize,
+            mediaType: downloadResult.mimeType.startsWith("audio/")
+              ? "audio"
+              : "video",
+            originalFilename: downloadResult.filename,
+          });
+        }
+      } finally {
+        // Clean up temp dir
+        await rm(tempDir, { recursive: true, force: true }).catch((err) =>
+          logger.warn(
+            { tempDir, error: err.message },
+            "Failed to clean up temp dir",
+          ),
+        );
+      }
+
+      // Update extracted data with actual values
+      extractedData.mimeType = effectiveMimeType;
+      extractedData.originalFilename = effectiveOriginalFilename;
+      extractedData.sourceUrl = sourceUrl;
+
+      await ctx.completeStage(STAGES.URL_DOWNLOAD);
+    }
+
     // --- PREPARATION ---
     await ctx.startStage(STAGES.PREPARATION);
     const storage = getStorage();
 
     const MAX_MEDIA_SIZE = 500 * 1024 * 1024; // 500MB
-    const meta = await storage.head(storageId);
+    const meta = await storage.head(effectiveStorageId);
     if (meta && meta.size > MAX_MEDIA_SIZE) {
       throw new Error(
         `Media too large: ${meta.size} bytes exceeds ${MAX_MEDIA_SIZE} byte limit`,
       );
     }
 
-    const { buffer: mediaBuffer } = await storage.readBuffer(storageId);
+    const { buffer: mediaBuffer } =
+      await storage.readBuffer(effectiveStorageId);
     if (mediaBuffer.length === 0)
       throw new Error("Fetched media file is empty.");
     await ctx.completeStage(STAGES.PREPARATION);
@@ -453,7 +824,7 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
     try {
       if (await isFFprobeAvailable()) {
         await ctx.updateStageProgress(STAGES.METADATA_EXTRACTION, 30);
-        if (isVideo) {
+        if (isVideo()) {
           const videoMeta = await extractVideoMetadata(mediaBuffer);
           Object.assign(allArtifacts, {
             duration: videoMeta.duration,
@@ -502,7 +873,7 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
     try {
       if (await isFFmpegAvailable()) {
         await ctx.updateStageProgress(STAGES.WAVEFORM_GENERATION, 30);
-        if (isVideo) {
+        if (isVideo()) {
           const thumbnailBuffer = await generateThumbnail(mediaBuffer);
           const thumbnailKey = buildKey(
             userId,
@@ -558,41 +929,90 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
       waveformStorageId: allArtifacts.waveformStorageId,
     });
 
-    // --- TRANSCRIPTION ---
+    // --- TRANSCRIPTION (3-tier precedence) ---
     await ctx.startStage(STAGES.TRANSCRIPTION);
     let transcriptText = "";
     let detectedLanguage: string | undefined;
+    let transcriptSource:
+      | "provider_captions"
+      | "embedded_subtitles"
+      | "stt"
+      | null = null;
     try {
-      if (isAudioAvailable()) {
+      // Tier 1: yt-dlp provider captions (from URL_DOWNLOAD stage)
+      if (preExtractedSubtitles && preExtractedSubtitles.text) {
+        transcriptText = preExtractedSubtitles.text;
+        detectedLanguage = preExtractedSubtitles.language;
+        transcriptSource = "provider_captions";
+        logger.info(
+          {
+            mediaId,
+            language: detectedLanguage,
+            source: preExtractedSubtitles.source,
+          },
+          "Using provider captions from yt-dlp",
+        );
+      }
+
+      // Tier 2: Embedded subtitle streams via ffmpeg
+      if (!transcriptText && (await isFFprobeAvailable())) {
+        await ctx.updateStageProgress(STAGES.TRANSCRIPTION, 10);
+        try {
+          const embeddedSubs = await extractEmbeddedSubtitles(mediaBuffer);
+          if (embeddedSubs) {
+            transcriptText = embeddedSubs.text;
+            detectedLanguage = embeddedSubs.language;
+            transcriptSource = "embedded_subtitles";
+            logger.info({ mediaId }, "Using embedded subtitle stream");
+          }
+        } catch (embedError) {
+          logger.warn(
+            {
+              mediaId,
+              error:
+                embedError instanceof Error
+                  ? embedError.message
+                  : String(embedError),
+            },
+            "Embedded subtitle extraction failed, continuing",
+          );
+        }
+      }
+
+      // Tier 3: Whisper STT fallback
+      if (!transcriptText && isAudioAvailable()) {
         await ctx.updateStageProgress(STAGES.TRANSCRIPTION, 20);
         const result = await transcribe({
           file: mediaBuffer,
-          fileName: originalFilename || (isVideo ? "video.mp4" : "audio.wav"),
+          fileName:
+            effectiveOriginalFilename ||
+            (isVideo() ? "video.mp4" : "audio.wav"),
         });
         transcriptText = result.text || "";
         detectedLanguage = (result as unknown as Record<string, unknown>)
           .language as string | undefined;
         if (transcriptText) {
-          allArtifacts.extractedText = transcriptText;
-          allArtifacts.language = detectedLanguage;
-          extractedData.transcript = transcriptText;
-          extractedData.language = detectedLanguage;
-          logger.info(
-            {
-              mediaId,
-              textLength: transcriptText.length,
-              language: detectedLanguage,
-            },
-            "Transcription complete",
-          );
-        } else {
-          logger.info({ mediaId }, "Transcription returned empty text");
+          transcriptSource = "stt";
         }
-      } else {
-        logger.warn(
-          { mediaId },
-          "Audio service not available, skipping transcription",
+      }
+
+      if (transcriptText) {
+        allArtifacts.extractedText = transcriptText;
+        allArtifacts.language = detectedLanguage;
+        extractedData.transcript = transcriptText;
+        extractedData.language = detectedLanguage;
+        extractedData.transcriptSource = transcriptSource;
+        logger.info(
+          {
+            mediaId,
+            textLength: transcriptText.length,
+            language: detectedLanguage,
+            transcriptSource,
+          },
+          "Transcription complete",
         );
+      } else {
+        logger.info({ mediaId }, "No transcript obtained from any source");
       }
     } catch (error) {
       logger.warn(
@@ -606,6 +1026,7 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
     await ctx.completeStage(STAGES.TRANSCRIPTION, {
       extractedText: transcriptText || undefined,
       language: detectedLanguage,
+      transcriptSource,
     });
 
     // --- AI ANALYSIS ---
@@ -619,8 +1040,8 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
             ? `${transcriptText.slice(0, 8000)}\n\n[Transcript truncated — ${transcriptText.length} characters total]`
             : transcriptText;
 
-        const mediaLabel = isVideo ? "video" : "audio";
-        const categoryList = isVideo
+        const mediaLabel = isVideo() ? "video" : "audio";
+        const categoryList = isVideo()
           ? "tutorial, presentation, interview, vlog, screencast, music_video, meeting, short_clip, other"
           : "speech, podcast, interview, lecture, meeting, voice_memo, music, audiobook, sound_effect, other";
 

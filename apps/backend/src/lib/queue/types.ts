@@ -64,6 +64,7 @@ export interface MediaJobData extends JobData {
   storageId?: string;
   mimeType?: string;
   originalFilename?: string;
+  sourceUrl?: string;
 }
 
 // --- Queue Adapter Interface ---

@@ -6,6 +6,7 @@ import {
   Calendar,
   Download,
   Edit,
+  ExternalLink,
   Loader2,
   MessageCircle,
   Save,
@@ -444,6 +445,63 @@ export function MediaDetailClient() {
                           </div>
                         </CardContent>
                       </Card>
+
+                      {/* Source Card (URL-imported media) */}
+                      {media.sourceUrl && (
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Source</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">
+                                  URL:
+                                </span>
+                                <a
+                                  href={media.sourceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline truncate flex items-center gap-1"
+                                >
+                                  {media.sourceUrl}
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                </a>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">
+                                  Platform:
+                                </span>
+                                <span>
+                                  {(() => {
+                                    try {
+                                      const hostname = new URL(
+                                        media.sourceUrl,
+                                      ).hostname.replace("www.", "");
+                                      if (
+                                        hostname.includes("youtube") ||
+                                        hostname.includes("youtu.be")
+                                      )
+                                        return "YouTube";
+                                      if (hostname.includes("vimeo"))
+                                        return "Vimeo";
+                                      if (hostname.includes("soundcloud"))
+                                        return "SoundCloud";
+                                      if (hostname.includes("twitch"))
+                                        return "Twitch";
+                                      if (hostname.includes("tiktok"))
+                                        return "TikTok";
+                                      return hostname;
+                                    } catch {
+                                      return "Unknown";
+                                    }
+                                  })()}
+                                </span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
 
                       {/* Transcript Card */}
                       <Card>

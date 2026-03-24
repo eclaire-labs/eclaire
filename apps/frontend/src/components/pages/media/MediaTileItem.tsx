@@ -5,6 +5,7 @@ import {
   Download,
   Edit,
   FileText,
+  Link2,
   MessageCircle,
   MoreHorizontal,
   Trash2,
@@ -124,9 +125,12 @@ export function MediaTileItem({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 overflow-hidden">
             <CardTitle
-              className="text-sm font-semibold line-clamp-2"
+              className="text-sm font-semibold line-clamp-2 flex items-center gap-1"
               title={media.title}
             >
+              {media.sourceUrl && (
+                <Link2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              )}
               {media.title}
             </CardTitle>
             <CardDescription

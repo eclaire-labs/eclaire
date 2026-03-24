@@ -5,6 +5,7 @@ import { createChildLogger } from "../lib/logger.js";
 import { parseDeleteStorage, parseSearchFields } from "../lib/search-params.js";
 import {
   createMedia,
+  createMediaFromUrl,
   deleteMedia,
   findMediaPaginated,
   getAnalysisStream,
@@ -23,6 +24,7 @@ import {
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {
+  MediaImportSchema,
   MediaMetadataSchema,
   MediaSchema,
   MediaSearchParamsSchema,
@@ -41,6 +43,7 @@ import {
   patchMediaPinRouteDescription,
   patchMediaReviewRouteDescription,
   patchMediaRouteDescription,
+  postMediaImportRouteDescription,
   postMediaRouteDescription,
   putMediaRouteDescription,
 } from "../schemas/media-routes.js";
@@ -125,6 +128,33 @@ mediaRoutes.post(
           originalFilename: metadata.originalFilename || contentPart.name,
         },
         originalMimeType: finalMimeType,
+        userAgent: c.req.header("User-Agent") || "",
+      },
+      userId,
+      caller,
+    );
+    return c.json(newMedia, 201);
+  }, logger),
+);
+
+// POST /api/media/import - Import media from URL
+mediaRoutes.post(
+  "/import",
+  describeRoute(postMediaImportRouteDescription),
+  zValidator("json", MediaImportSchema),
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
+    const data = c.req.valid("json");
+
+    const newMedia = await createMediaFromUrl(
+      {
+        url: data.url,
+        metadata: {
+          title: data.title,
+          description: data.description,
+          tags: data.tags,
+          processingEnabled: data.processingEnabled,
+        },
         userAgent: c.req.header("User-Agent") || "",
       },
       userId,
