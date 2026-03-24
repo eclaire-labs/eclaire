@@ -21,12 +21,15 @@ export const ApiKeyScopeSchema = z.enum([
   "conversations:write",
   "history:read",
   "processing:read",
+  "processing:write",
   "notifications:write",
   "feedback:read",
   "feedback:write",
   "model:read",
   "admin:read",
   "admin:write",
+  "audio:read",
+  "audio:write",
 ]);
 
 export const ApiKeyScopeCatalogItemSchema = z

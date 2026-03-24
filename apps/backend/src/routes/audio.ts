@@ -11,7 +11,9 @@
 
 import { Hono } from "hono";
 import { validator as zValidator } from "hono-openapi";
+import { assertPrincipalScopes } from "../lib/auth-principal.js";
 import { getAuthenticatedPrincipal } from "../lib/auth-utils.js";
+import { ForbiddenError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
   createRealtimeClient,
@@ -149,10 +151,18 @@ audioRoutes.post(
 audioRoutes.get(
   "/transcriptions/stream",
   async (c, next) => {
-    // Authenticate before upgrading to WebSocket
+    // Authenticate and enforce scopes before upgrading to WebSocket
     const principal = await getAuthenticatedPrincipal(c);
     if (!principal) {
       return c.json({ error: "Unauthorized" }, 401);
+    }
+    try {
+      assertPrincipalScopes(principal, ["audio:write"]);
+    } catch (error) {
+      if (error instanceof ForbiddenError) {
+        return c.json({ error: error.message }, 403);
+      }
+      throw error;
     }
     c.set("principal", principal);
     return next();

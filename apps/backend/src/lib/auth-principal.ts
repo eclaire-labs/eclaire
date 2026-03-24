@@ -120,6 +120,11 @@ export const API_KEY_SCOPE_CATALOG: ApiKeyScopeCatalogItem[] = [
     description: "Read processing status and subscribe to processing events.",
   },
   {
+    scope: "processing:write",
+    label: "Write processing",
+    description: "Retry and reprocess assets.",
+  },
+  {
     scope: "notifications:write",
     label: "Send notifications",
     description: "Send outbound notifications through configured channels.",
@@ -151,6 +156,16 @@ export const API_KEY_SCOPE_CATALOG: ApiKeyScopeCatalogItem[] = [
     description:
       "Modify instance admin configuration and manage users (suspend, delete, role changes).",
   },
+  {
+    scope: "audio:read",
+    label: "Read audio",
+    description: "Read audio service health and transcription results.",
+  },
+  {
+    scope: "audio:write",
+    label: "Write audio",
+    description: "Transcribe audio and synthesize speech.",
+  },
 ];
 
 const IMPLIED_SCOPE_MAP: Partial<Record<ApiKeyScope, ApiKeyScope[]>> = {
@@ -164,6 +179,8 @@ const IMPLIED_SCOPE_MAP: Partial<Record<ApiKeyScope, ApiKeyScope[]>> = {
   "conversations:write": ["conversations:read"],
   "feedback:write": ["feedback:read"],
   "admin:write": ["admin:read"],
+  "processing:write": ["processing:read"],
+  "audio:write": ["audio:read"],
 };
 
 export function getApiKeyScopeCatalog(): ApiKeyScopeCatalogItem[] {
@@ -216,7 +233,17 @@ export function assertPrincipalScopes(
   principal: AuthPrincipal,
   requiredScopes: ApiKeyScope[] | null | undefined,
 ): void {
-  if (principal.authMethod !== "api_key" || !requiredScopes?.length) {
+  if (principal.authMethod !== "api_key") {
+    return;
+  }
+
+  if (requiredScopes === null || requiredScopes === undefined) {
+    throw new ForbiddenError(
+      "API key access is not permitted for this endpoint",
+    );
+  }
+
+  if (!requiredScopes.length) {
     return;
   }
 
@@ -289,7 +316,9 @@ export function inferRequiredScopesForRequest(
     path.startsWith("/api/processing-status") ||
     path.startsWith("/api/processing-events")
   ) {
-    return ["processing:read"];
+    return normalizedMethod === "GET"
+      ? ["processing:read"]
+      : ["processing:write"];
   }
 
   if (path.startsWith("/api/feedback")) {
@@ -313,6 +342,14 @@ export function inferRequiredScopesForRequest(
     path.startsWith("/api/all")
   ) {
     return normalizedMethod === "GET" ? ["assets:read"] : ["assets:write"];
+  }
+
+  if (path.startsWith("/api/audio")) {
+    return normalizedMethod === "GET" ? ["audio:read"] : ["audio:write"];
+  }
+
+  if (path.startsWith("/api/instance")) {
+    return ["profile:read"];
   }
 
   return null;
