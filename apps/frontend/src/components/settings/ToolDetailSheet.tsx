@@ -2,12 +2,12 @@ import { ShieldCheck, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -109,21 +109,21 @@ export function ToolDetailSheet({
   const status = tool.availability ?? "available";
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
-        <SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted">
               <Wrench className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <SheetTitle>{tool.label ?? tool.name}</SheetTitle>
-              <SheetDescription className="font-mono text-xs">
+              <DialogTitle>{tool.label ?? tool.name}</DialogTitle>
+              <DialogDescription className="font-mono text-xs">
                 {tool.name}
-              </SheetDescription>
+              </DialogDescription>
             </div>
           </div>
-        </SheetHeader>
+        </DialogHeader>
 
         <div className="mt-6 space-y-6">
           {/* Status badges */}
@@ -190,7 +190,7 @@ export function ToolDetailSheet({
               </>
             )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

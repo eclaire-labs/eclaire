@@ -56,7 +56,7 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
   },
   {
     id: "browser",
-    label: "Browser Control",
+    label: "Browser",
     icon: Sliders,
     adminOnly: true,
   },

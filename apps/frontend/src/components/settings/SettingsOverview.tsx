@@ -69,7 +69,7 @@ const quickLinks: QuickLink[] = [
   },
   {
     id: "browser",
-    label: "Browser Control",
+    label: "Browser",
     description: "Chrome browser integration",
     icon: Sliders,
     adminOnly: true,
