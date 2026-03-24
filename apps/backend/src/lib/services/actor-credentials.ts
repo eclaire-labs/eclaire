@@ -60,15 +60,13 @@ type CredentialRow = {
 
 export interface CreateActorApiKeyInput {
   name?: string | null;
-  scopes?: ApiKeyScope[];
-  dataAccess?: DataAccessLevel;
-  adminAccess?: AdminAccessLevel;
+  dataAccess: DataAccessLevel;
+  adminAccess: AdminAccessLevel;
   expiresAt?: Date | null;
 }
 
 export interface UpdateActorApiKeyInput {
   name?: string;
-  scopes?: ApiKeyScope[];
   dataAccess?: DataAccessLevel;
   adminAccess?: AdminAccessLevel;
   expiresAt?: Date | null;
@@ -93,15 +91,14 @@ function normalizeApiKeyName(name?: string | null): string {
     : `API Key ${new Date().toISOString().split("T")[0]}`;
 }
 
-function resolveScopesFromInput(input: {
-  scopes?: ApiKeyScope[];
+function resolveScopesFromPermissionLevels(input: {
   dataAccess?: DataAccessLevel;
   adminAccess?: AdminAccessLevel;
 }): ApiKeyScope[] | undefined {
   if (input.dataAccess !== undefined && input.adminAccess !== undefined) {
     return resolvePermissionScopes(input.dataAccess, input.adminAccess);
   }
-  return input.scopes;
+  return undefined;
 }
 
 function validateAndNormalizeScopes(
@@ -237,7 +234,10 @@ export async function createActorApiKey(
   grantedByActorId: string | null = ownerUserId,
 ): Promise<CreatedActorApiKey> {
   const actor = await resolveOwnedActor(ownerUserId, actorId);
-  const resolvedScopes = resolveScopesFromInput(input);
+  const resolvedScopes = resolvePermissionScopes(
+    input.dataAccess,
+    input.adminAccess,
+  );
   const scopes = validateAndNormalizeScopes(resolvedScopes);
   const keyName = normalizeApiKeyName(input.name);
   const { fullKey, keyId, hash, hashVersion, suffix } = generateFullApiKey();
@@ -371,7 +371,7 @@ export async function updateActorApiKey(
 
   const nextName =
     input.name !== undefined ? normalizeApiKeyName(input.name) : existing.name;
-  const resolvedScopes = resolveScopesFromInput(input);
+  const resolvedScopes = resolveScopesFromPermissionLevels(input);
   const nextScopes =
     resolvedScopes !== undefined
       ? validateAndNormalizeScopes(resolvedScopes)

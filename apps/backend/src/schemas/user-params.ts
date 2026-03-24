@@ -1,5 +1,8 @@
 import z from "zod/v4";
-import { ApiKeyScopeSchema } from "@eclaire/api-types";
+import {
+  AdminAccessLevelSchema,
+  DataAccessLevelSchema,
+} from "@eclaire/api-types";
 
 // User profile schema (complete user record)
 export const UserProfileSchema = z.object({
@@ -70,7 +73,8 @@ export const DeleteAllUserDataSchema = z.object({
 // Create API key request schema
 export const CreateApiKeySchema = z.object({
   name: z.string().min(1, "Name is required").max(100).optional(),
-  scopes: z.array(ApiKeyScopeSchema).optional(),
+  dataAccess: DataAccessLevelSchema,
+  adminAccess: AdminAccessLevelSchema,
   expiresAt: z.coerce.date().nullable().optional(),
 });
 

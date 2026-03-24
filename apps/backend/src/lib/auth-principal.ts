@@ -22,11 +22,6 @@ export const FULL_ACCESS_SCOPE: ApiKeyScope = "*";
 
 export const API_KEY_SCOPE_CATALOG: ApiKeyScopeCatalogItem[] = [
   {
-    scope: FULL_ACCESS_SCOPE,
-    label: "Full access",
-    description: "Allows the key to call any authenticated API route.",
-  },
-  {
     scope: "profile:read",
     label: "Read profile",
     description: "Read profile, dashboard, and account-scoped metadata.",

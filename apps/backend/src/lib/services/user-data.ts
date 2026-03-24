@@ -988,11 +988,9 @@ export async function getUserApiKeys(userId: string) {
  */
 export async function createApiKey(
   userId: string,
-  input: string | CreateActorApiKeyInput,
+  input: CreateActorApiKeyInput,
 ) {
-  const normalizedInput =
-    typeof input === "string" || input === undefined ? { name: input } : input;
-  return createActorApiKey(userId, userId, normalizedInput);
+  return createActorApiKey(userId, userId, input);
 }
 
 /**

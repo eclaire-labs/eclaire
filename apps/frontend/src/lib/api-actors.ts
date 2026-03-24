@@ -48,14 +48,12 @@ export interface ActorApiKeyListResponse {
 
 export interface CreateActorApiKeyPayload {
   name?: string;
-  scopes?: string[];
-  dataAccess?: DataAccessLevel;
-  adminAccess?: AdminAccessLevel;
+  dataAccess: DataAccessLevel;
+  adminAccess: AdminAccessLevel;
 }
 
 export interface UpdateActorApiKeyPayload {
   name?: string;
-  scopes?: string[];
   dataAccess?: DataAccessLevel;
   adminAccess?: AdminAccessLevel;
 }

@@ -106,7 +106,6 @@ export default function ApiKeyManager() {
   const [editTarget, setEditTarget] = useState<{
     actorId: string;
     keyId: string;
-    isLegacy: boolean;
   } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     actorId: string;
@@ -196,19 +195,11 @@ export default function ApiKeyManager() {
       return;
     }
 
-    const payload = editTarget.isLegacy
-      ? { name: editKeyName.trim() }
-      : {
-          name: editKeyName.trim(),
-          dataAccess: editKeyDataAccess,
-          adminAccess: editKeyAdminAccess,
-        };
-
-    const success = await updateApiKey(
-      editTarget.actorId,
-      editTarget.keyId,
-      payload,
-    );
+    const success = await updateApiKey(editTarget.actorId, editTarget.keyId, {
+      name: editKeyName.trim(),
+      dataAccess: editKeyDataAccess,
+      adminAccess: editKeyAdminAccess,
+    });
 
     if (success) {
       toast.success("API key updated", {
@@ -525,8 +516,6 @@ export default function ApiKeyManager() {
                 <div className="space-y-3">
                   {apiKeys.map((key) => {
                     const isLegacy = key.dataAccess === null;
-                    const isFullAccess =
-                      key.scopes.length === 1 && key.scopes[0] === "*";
                     return (
                       <div key={key.id} className="rounded-lg border p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -559,12 +548,10 @@ export default function ApiKeyManager() {
                               </Button>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                              {isFullAccess ? (
-                                <Badge variant="outline">
-                                  Full access (legacy)
+                              {isLegacy ? (
+                                <Badge variant="destructive">
+                                  Outdated — please delete and recreate
                                 </Badge>
-                              ) : isLegacy ? (
-                                <Badge variant="outline">Custom (legacy)</Badge>
                               ) : (
                                 <Badge variant="secondary">
                                   {getPermissionLabel(
@@ -602,27 +589,27 @@ export default function ApiKeyManager() {
                           </div>
 
                           <div className="flex gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => {
-                                const keyIsLegacy = key.dataAccess === null;
-                                setEditTarget({
-                                  actorId: actor.id,
-                                  keyId: key.id,
-                                  isLegacy: keyIsLegacy,
-                                });
-                                setEditKeyName(key.name);
-                                if (!keyIsLegacy && key.dataAccess) {
-                                  setEditKeyDataAccess(key.dataAccess);
+                            {!isLegacy && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditTarget({
+                                    actorId: actor.id,
+                                    keyId: key.id,
+                                  });
+                                  setEditKeyName(key.name);
+                                  setEditKeyDataAccess(
+                                    key.dataAccess ?? "read",
+                                  );
                                   setEditKeyAdminAccess(
                                     key.adminAccess ?? "none",
                                   );
-                                }
-                              }}
-                            >
-                              <EditIcon className="h-4 w-4" />
-                            </Button>
+                                }}
+                              >
+                                <EditIcon className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               size="icon"
                               variant="ghost"
@@ -736,9 +723,7 @@ export default function ApiKeyManager() {
           <DialogHeader>
             <DialogTitle>Edit API Key</DialogTitle>
             <DialogDescription>
-              {editTarget?.isLegacy
-                ? "This key has custom scopes. Only the name can be edited."
-                : "Update the key name and permission level."}
+              Update the key name and permission level.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
@@ -750,14 +735,13 @@ export default function ApiKeyManager() {
                 onChange={(event) => setEditKeyName(event.target.value)}
               />
             </div>
-            {!editTarget?.isLegacy &&
-              renderPermissionSelectors(
-                "edit",
-                editKeyDataAccess,
-                setEditKeyDataAccess,
-                editKeyAdminAccess,
-                setEditKeyAdminAccess,
-              )}
+            {renderPermissionSelectors(
+              "edit",
+              editKeyDataAccess,
+              setEditKeyDataAccess,
+              editKeyAdminAccess,
+              setEditKeyAdminAccess,
+            )}
           </div>
           <DialogFooter>
             <Button
