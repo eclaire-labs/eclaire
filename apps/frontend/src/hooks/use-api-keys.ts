@@ -10,9 +10,14 @@ import {
   listActorCredentialScopes,
   listActors,
   updateActorApiKey,
+  type AccessLevelInfo,
   type ActorApiKey,
   type ActorSummary,
+  type AdminAccessLevel,
   type ApiKeyScopeCatalogItem,
+  type CreateActorApiKeyPayload,
+  type DataAccessLevel,
+  type UpdateActorApiKeyPayload,
 } from "@/lib/api-actors";
 
 export interface ActorApiKeyGroup {
@@ -23,16 +28,18 @@ export interface ActorApiKeyGroup {
 interface UseApiKeysResult {
   actorGroups: ActorApiKeyGroup[];
   scopeCatalog: ApiKeyScopeCatalogItem[];
+  dataAccessLevels: Record<DataAccessLevel, AccessLevelInfo>;
+  adminAccessLevels: Record<AdminAccessLevel, AccessLevelInfo>;
   isLoading: boolean;
   error: Error | null;
   createApiKey: (
     actorId: string,
-    payload: { name?: string; scopes?: string[] },
+    payload: CreateActorApiKeyPayload,
   ) => Promise<ActorApiKey | null>;
   updateApiKey: (
     actorId: string,
     keyId: string,
-    payload: { name?: string; scopes?: string[] },
+    payload: UpdateActorApiKeyPayload,
   ) => Promise<boolean>;
   deleteApiKey: (actorId: string, keyId: string) => Promise<boolean>;
   createExternalSystem: (displayName: string) => Promise<ActorSummary | null>;
@@ -58,11 +65,13 @@ export function useApiKeys(): UseApiKeysResult {
     queryFn: async (): Promise<{
       actorGroups: ActorApiKeyGroup[];
       scopeCatalog: ApiKeyScopeCatalogItem[];
+      dataAccessLevels: Record<DataAccessLevel, AccessLevelInfo>;
+      adminAccessLevels: Record<AdminAccessLevel, AccessLevelInfo>;
     }> => {
-      const [{ items: actors }, { items: scopeCatalog }] = await Promise.all([
-        listActors(),
-        listActorCredentialScopes(),
-      ]);
+      const [
+        { items: actors },
+        { items: scopeCatalog, dataAccessLevels, adminAccessLevels },
+      ] = await Promise.all([listActors(), listActorCredentialScopes()]);
 
       const manageableActors = actors.filter(
         (actor) =>
@@ -80,7 +89,7 @@ export function useApiKeys(): UseApiKeysResult {
         }),
       );
 
-      return { actorGroups, scopeCatalog };
+      return { actorGroups, scopeCatalog, dataAccessLevels, adminAccessLevels };
     },
     enabled: !!session?.user && !authLoading,
     retry: (failureCount, error) => {
@@ -100,7 +109,7 @@ export function useApiKeys(): UseApiKeysResult {
       payload,
     }: {
       actorId: string;
-      payload: { name?: string; scopes?: string[] };
+      payload: CreateActorApiKeyPayload;
     }) => createActorApiKey(actorId, payload),
     onSuccess: invalidateActorKeys,
   });
@@ -113,7 +122,7 @@ export function useApiKeys(): UseApiKeysResult {
     }: {
       actorId: string;
       keyId: string;
-      payload: { name?: string; scopes?: string[] };
+      payload: UpdateActorApiKeyPayload;
     }) => updateActorApiKey(actorId, keyId, payload),
     onSuccess: invalidateActorKeys,
   });
@@ -137,6 +146,15 @@ export function useApiKeys(): UseApiKeysResult {
   return {
     actorGroups: data?.actorGroups ?? [],
     scopeCatalog: data?.scopeCatalog ?? [],
+    dataAccessLevels: data?.dataAccessLevels ?? {
+      read: { label: "Read only", description: "" },
+      read_write: { label: "Read & write", description: "" },
+    },
+    adminAccessLevels: data?.adminAccessLevels ?? {
+      none: { label: "None", description: "" },
+      read: { label: "Read only", description: "" },
+      read_write: { label: "Read & write", description: "" },
+    },
     isLoading:
       authLoading ||
       isQueryLoading ||

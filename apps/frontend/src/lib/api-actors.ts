@@ -18,6 +18,14 @@ export interface ApiKeyScopeCatalogItem {
   description: string;
 }
 
+export type DataAccessLevel = "read" | "read_write";
+export type AdminAccessLevel = "none" | "read" | "read_write";
+
+export interface AccessLevelInfo {
+  label: string;
+  description: string;
+}
+
 export interface ActorApiKey {
   id: string;
   actor: ActorSummary;
@@ -25,6 +33,8 @@ export interface ActorApiKey {
   displayKey: string;
   name: string;
   scopes: string[];
+  dataAccess: DataAccessLevel | null;
+  adminAccess: AdminAccessLevel | null;
   createdAt: string;
   lastUsedAt: string | null;
   expiresAt: string | null;
@@ -39,11 +49,15 @@ export interface ActorApiKeyListResponse {
 export interface CreateActorApiKeyPayload {
   name?: string;
   scopes?: string[];
+  dataAccess?: DataAccessLevel;
+  adminAccess?: AdminAccessLevel;
 }
 
 export interface UpdateActorApiKeyPayload {
   name?: string;
   scopes?: string[];
+  dataAccess?: DataAccessLevel;
+  adminAccess?: AdminAccessLevel;
 }
 
 export async function listActors(): Promise<ActorListResponse> {
@@ -53,6 +67,8 @@ export async function listActors(): Promise<ActorListResponse> {
 
 export async function listActorCredentialScopes(): Promise<{
   items: ApiKeyScopeCatalogItem[];
+  dataAccessLevels: Record<DataAccessLevel, AccessLevelInfo>;
+  adminAccessLevels: Record<AdminAccessLevel, AccessLevelInfo>;
 }> {
   const response = await apiGet("/api/actors/credential-scopes");
   return response.json();

@@ -16,11 +16,57 @@ import {
   log,
   textInput,
   selectOne,
-  selectMany,
   confirm,
   isCancelled,
   CancelledError,
 } from "../../ui/clack.js";
+
+type DataAccessLevel = "read" | "read_write";
+type AdminAccessLevel = "none" | "read" | "read_write";
+
+const DATA_READ_SCOPES = [
+  "profile:read",
+  "assets:read",
+  "tasks:read",
+  "channels:read",
+  "agents:read",
+  "conversations:read",
+  "history:read",
+  "processing:read",
+  "feedback:read",
+  "model:read",
+  "audio:read",
+];
+
+const DATA_WRITE_SCOPES = [
+  "profile:write",
+  "assets:write",
+  "tasks:write",
+  "channels:write",
+  "agents:write",
+  "conversations:write",
+  "feedback:write",
+  "notifications:write",
+  "processing:write",
+  "audio:write",
+];
+
+const ADMIN_SCOPES: Record<AdminAccessLevel, string[]> = {
+  none: [],
+  read: ["admin:read"],
+  read_write: ["admin:read", "admin:write"],
+};
+
+function resolvePermissionScopes(
+  data: DataAccessLevel,
+  admin: AdminAccessLevel,
+): string[] {
+  const dataScopes =
+    data === "read"
+      ? DATA_READ_SCOPES
+      : [...DATA_READ_SCOPES, ...DATA_WRITE_SCOPES];
+  return [...dataScopes, ...ADMIN_SCOPES[admin]];
+}
 
 export async function createCommand(): Promise<void> {
   try {
@@ -68,46 +114,59 @@ export async function createCommand(): Promise<void> {
       placeholder: "My API Key",
     });
 
-    // 4. Scopes
-    const scopeOptions = [
-      { value: "*", label: "Full access", hint: "All permissions" },
-      {
-        value: "assets:read",
-        label: "Read assets",
-        hint: "Bookmarks, documents, photos",
-      },
-      {
-        value: "assets:write",
-        label: "Write assets",
-        hint: "Create/update/delete assets",
-      },
-      { value: "tasks:read", label: "Read tasks" },
-      { value: "tasks:write", label: "Write tasks" },
-      { value: "conversations:read", label: "Read conversations" },
-      {
-        value: "conversations:write",
-        label: "Write conversations",
-        hint: "Send messages",
-      },
-      { value: "agents:read", label: "Read agents" },
-      { value: "agents:write", label: "Write agents" },
-      { value: "channels:read", label: "Read channels" },
-      { value: "channels:write", label: "Write channels" },
-      { value: "profile:read", label: "Read profile" },
-      { value: "profile:write", label: "Write profile" },
-    ];
-
-    const scopes = await selectMany<string>({
-      message: "Select scopes",
-      options: scopeOptions,
-      required: true,
+    // 4. Permission levels
+    const dataAccess = await selectOne<string>({
+      message: "Data access",
+      options: [
+        {
+          value: "read",
+          label: "Read only",
+          hint: "Read all workspace data",
+        },
+        {
+          value: "read_write",
+          label: "Read & write",
+          hint: "Read and modify all workspace data",
+        },
+      ],
     });
+
+    const adminAccess = await selectOne<string>({
+      message: "Admin access",
+      options: [
+        { value: "none", label: "None", hint: "No admin access" },
+        {
+          value: "read",
+          label: "Read only",
+          hint: "Read admin config",
+        },
+        {
+          value: "read_write",
+          label: "Read & write",
+          hint: "Full admin access",
+        },
+      ],
+    });
+
+    const scopes = resolvePermissionScopes(
+      dataAccess as DataAccessLevel,
+      adminAccess as AdminAccessLevel,
+    );
+
+    const dataLabel = dataAccess === "read" ? "Read only" : "Read & write";
+    const adminLabel =
+      adminAccess === "none"
+        ? "None"
+        : adminAccess === "read"
+          ? "Read only"
+          : "Read & write";
 
     // 5. Summary
     const summaryLines = [
-      `Actor:   ${actorLabel} (${actorKind})`,
-      `Name:    ${name}`,
-      `Scopes:  ${scopes.includes("*") ? "Full access (*)" : scopes.join(", ")}`,
+      `Actor:        ${actorLabel} (${actorKind})`,
+      `Name:         ${name}`,
+      `Data access:  ${dataLabel}`,
+      `Admin access: ${adminLabel}`,
     ].join("\n");
 
     note(summaryLines, "New API Key");

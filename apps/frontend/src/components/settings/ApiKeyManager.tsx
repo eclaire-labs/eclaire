@@ -1,5 +1,6 @@
 import {
   CheckIcon,
+  ChevronDown,
   CopyIcon,
   EditIcon,
   Loader2,
@@ -7,7 +8,7 @@ import {
   ShieldCheck,
   TrashIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -22,7 +23,11 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +39,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useAuth } from "@/hooks/use-auth";
 import { useApiKeys } from "@/hooks/use-api-keys";
+import type { AdminAccessLevel, DataAccessLevel } from "@/lib/api-actors";
 
 function getActorKindLabel(kind: "human" | "agent" | "service" | "system") {
   switch (kind) {
@@ -62,33 +70,28 @@ function getActorDescription(kind: "human" | "agent" | "service" | "system") {
   }
 }
 
-function toggleScopeSelection(
-  currentScopes: string[],
-  scope: string,
-): string[] {
-  const hasScope = currentScopes.includes(scope);
-
-  if (scope === "*") {
-    return hasScope ? currentScopes : ["*"];
-  }
-
-  if (currentScopes.includes("*")) {
-    return [scope];
-  }
-
-  if (hasScope) {
-    return currentScopes.length === 1
-      ? currentScopes
-      : currentScopes.filter((item) => item !== scope);
-  }
-
-  return [...currentScopes, scope];
+function getPermissionLabel(
+  dataAccess: DataAccessLevel | null,
+  adminAccess: AdminAccessLevel | null,
+): string {
+  if (dataAccess === null) return "Custom";
+  const dataLabel = dataAccess === "read" ? "Read only" : "Read & write";
+  if (!adminAccess || adminAccess === "none") return dataLabel;
+  const adminLabel =
+    adminAccess === "read" ? "Admin: read" : "Admin: read & write";
+  return `${dataLabel} + ${adminLabel}`;
 }
 
 export default function ApiKeyManager() {
+  const { data: authData } = useAuth();
+  const isAdmin =
+    (authData?.user as Record<string, unknown> | undefined)?.isInstanceAdmin ===
+    true;
+
   const {
     actorGroups,
-    scopeCatalog,
+    dataAccessLevels,
+    adminAccessLevels,
     isLoading,
     error,
     createApiKey,
@@ -98,16 +101,12 @@ export default function ApiKeyManager() {
     deleteExternalSystem,
   } = useApiKeys();
 
-  const scopeLabels = useMemo(
-    () => new Map(scopeCatalog.map((item) => [item.scope, item.label])),
-    [scopeCatalog],
-  );
-
   const [copied, setCopied] = useState<string | null>(null);
   const [createActorId, setCreateActorId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<{
     actorId: string;
     keyId: string;
+    isLegacy: boolean;
   } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     actorId: string;
@@ -120,9 +119,15 @@ export default function ApiKeyManager() {
   } | null>(null);
   const [showCreateSystemDialog, setShowCreateSystemDialog] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
-  const [newKeyScopes, setNewKeyScopes] = useState<string[]>(["*"]);
+  const [newKeyDataAccess, setNewKeyDataAccess] =
+    useState<DataAccessLevel>("read");
+  const [newKeyAdminAccess, setNewKeyAdminAccess] =
+    useState<AdminAccessLevel>("none");
   const [editKeyName, setEditKeyName] = useState("");
-  const [editKeyScopes, setEditKeyScopes] = useState<string[]>(["*"]);
+  const [editKeyDataAccess, setEditKeyDataAccess] =
+    useState<DataAccessLevel>("read");
+  const [editKeyAdminAccess, setEditKeyAdminAccess] =
+    useState<AdminAccessLevel>("none");
   const [newSystemName, setNewSystemName] = useState("");
   const [createdKey, setCreatedKey] = useState<{
     key: string;
@@ -157,7 +162,8 @@ export default function ApiKeyManager() {
     const group = actorGroups.find((item) => item.actor.id === createActorId);
     const result = await createApiKey(createActorId, {
       name: newKeyName.trim() || undefined,
-      scopes: newKeyScopes,
+      dataAccess: newKeyDataAccess,
+      adminAccess: newKeyAdminAccess,
     });
 
     if (result) {
@@ -169,7 +175,8 @@ export default function ApiKeyManager() {
       });
       setCreateActorId(null);
       setNewKeyName("");
-      setNewKeyScopes(["*"]);
+      setNewKeyDataAccess("read");
+      setNewKeyAdminAccess("none");
       toast.success("API key created", {
         description: "Copy the full key now. It will not be shown again.",
       });
@@ -189,10 +196,19 @@ export default function ApiKeyManager() {
       return;
     }
 
-    const success = await updateApiKey(editTarget.actorId, editTarget.keyId, {
-      name: editKeyName.trim(),
-      scopes: editKeyScopes,
-    });
+    const payload = editTarget.isLegacy
+      ? { name: editKeyName.trim() }
+      : {
+          name: editKeyName.trim(),
+          dataAccess: editKeyDataAccess,
+          adminAccess: editKeyAdminAccess,
+        };
+
+    const success = await updateApiKey(
+      editTarget.actorId,
+      editTarget.keyId,
+      payload,
+    );
 
     if (success) {
       toast.success("API key updated", {
@@ -200,7 +216,6 @@ export default function ApiKeyManager() {
       });
       setEditTarget(null);
       setEditKeyName("");
-      setEditKeyScopes(["*"]);
       return;
     }
 
@@ -273,6 +288,88 @@ export default function ApiKeyManager() {
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString();
+
+  const renderPermissionSelectors = (
+    prefix: string,
+    dataAccess: DataAccessLevel,
+    setDataAccess: (v: DataAccessLevel) => void,
+    adminAccess: AdminAccessLevel,
+    setAdminAccess: (v: AdminAccessLevel) => void,
+  ) => (
+    <div className="grid gap-4">
+      <div className="grid gap-2">
+        <Label>Data access</Label>
+        <RadioGroup
+          value={dataAccess}
+          onValueChange={(v) => setDataAccess(v as DataAccessLevel)}
+          className="grid gap-2"
+        >
+          {(
+            Object.entries(dataAccessLevels) as [
+              DataAccessLevel,
+              { label: string; description: string },
+            ][]
+          ).map(([value, info]) => (
+            <div key={value} className="flex items-start gap-3">
+              <RadioGroupItem
+                value={value}
+                id={`${prefix}-data-${value}`}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <Label
+                  htmlFor={`${prefix}-data-${value}`}
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  {info.label}
+                </Label>
+                <div className="text-xs text-muted-foreground">
+                  {info.description}
+                </div>
+              </div>
+            </div>
+          ))}
+        </RadioGroup>
+      </div>
+
+      {isAdmin && (
+        <div className="grid gap-2">
+          <Label>Admin access</Label>
+          <RadioGroup
+            value={adminAccess}
+            onValueChange={(v) => setAdminAccess(v as AdminAccessLevel)}
+            className="grid gap-2"
+          >
+            {(
+              Object.entries(adminAccessLevels) as [
+                AdminAccessLevel,
+                { label: string; description: string },
+              ][]
+            ).map(([value, info]) => (
+              <div key={value} className="flex items-start gap-3">
+                <RadioGroupItem
+                  value={value}
+                  id={`${prefix}-admin-${value}`}
+                  className="mt-0.5"
+                />
+                <div className="space-y-0.5">
+                  <Label
+                    htmlFor={`${prefix}-admin-${value}`}
+                    className="cursor-pointer text-sm font-medium"
+                  >
+                    {info.label}
+                  </Label>
+                  <div className="text-xs text-muted-foreground">
+                    {info.description}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="w-full space-y-6">
@@ -410,7 +507,8 @@ export default function ApiKeyManager() {
                     onClick={() => {
                       setCreateActorId(actor.id);
                       setNewKeyName("");
-                      setNewKeyScopes(["*"]);
+                      setNewKeyDataAccess("read");
+                      setNewKeyAdminAccess("none");
                     }}
                   >
                     <PlusIcon className="h-4 w-4" />
@@ -425,84 +523,125 @@ export default function ApiKeyManager() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {apiKeys.map((key) => (
-                    <div key={key.id} className="rounded-lg border p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <h5 className="font-medium">{key.name}</h5>
-                            {!key.isActive && (
-                              <Badge variant="secondary">Inactive</Badge>
-                            )}
+                  {apiKeys.map((key) => {
+                    const isLegacy = key.dataAccess === null;
+                    const isFullAccess =
+                      key.scopes.length === 1 && key.scopes[0] === "*";
+                    return (
+                      <div key={key.id} className="rounded-lg border p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-medium">{key.name}</h5>
+                              {!key.isActive && (
+                                <Badge variant="secondary">Inactive</Badge>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Input
+                                type="text"
+                                value={key.displayKey}
+                                readOnly
+                                className="w-64 font-mono text-xs"
+                              />
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8"
+                                onClick={() => handleCopyKey(key.displayKey)}
+                                title="Copy display key"
+                              >
+                                {copied === key.displayKey ? (
+                                  <CheckIcon className="h-4 w-4" />
+                                ) : (
+                                  <CopyIcon className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {isFullAccess ? (
+                                <Badge variant="outline">
+                                  Full access (legacy)
+                                </Badge>
+                              ) : isLegacy ? (
+                                <Badge variant="outline">Custom (legacy)</Badge>
+                              ) : (
+                                <Badge variant="secondary">
+                                  {getPermissionLabel(
+                                    key.dataAccess,
+                                    key.adminAccess,
+                                  )}
+                                </Badge>
+                              )}
+                            </div>
+                            <Collapsible>
+                              <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                                <ChevronDown className="h-3 w-3" />
+                                {key.scopes.length} scope
+                                {key.scopes.length !== 1 ? "s" : ""}
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {key.scopes.map((scope) => (
+                                    <Badge
+                                      key={scope}
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
+                                      {scope}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                            <div className="text-xs text-muted-foreground">
+                              Created: {formatDate(key.createdAt)}
+                              {key.lastUsedAt &&
+                                ` • Last used: ${formatDate(key.lastUsedAt)}`}
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            <Input
-                              type="text"
-                              value={key.displayKey}
-                              readOnly
-                              className="w-64 font-mono text-xs"
-                            />
+
+                          <div className="flex gap-1">
                             <Button
                               size="icon"
-                              variant="outline"
-                              className="h-8"
-                              onClick={() => handleCopyKey(key.displayKey)}
-                              title="Copy display key"
+                              variant="ghost"
+                              onClick={() => {
+                                const keyIsLegacy = key.dataAccess === null;
+                                setEditTarget({
+                                  actorId: actor.id,
+                                  keyId: key.id,
+                                  isLegacy: keyIsLegacy,
+                                });
+                                setEditKeyName(key.name);
+                                if (!keyIsLegacy && key.dataAccess) {
+                                  setEditKeyDataAccess(key.dataAccess);
+                                  setEditKeyAdminAccess(
+                                    key.adminAccess ?? "none",
+                                  );
+                                }
+                              }}
                             >
-                              {copied === key.displayKey ? (
-                                <CheckIcon className="h-4 w-4" />
-                              ) : (
-                                <CopyIcon className="h-4 w-4" />
-                              )}
+                              <EditIcon className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() =>
+                                setDeleteTarget({
+                                  actorId: actor.id,
+                                  keyId: key.id,
+                                  name: key.name,
+                                })
+                              }
+                            >
+                              <TrashIcon className="h-4 w-4" />
                             </Button>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            {key.scopes.map((scope) => (
-                              <Badge key={scope} variant="secondary">
-                                {scopeLabels.get(scope) || scope}
-                              </Badge>
-                            ))}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Created: {formatDate(key.createdAt)}
-                            {key.lastUsedAt &&
-                              ` • Last used: ${formatDate(key.lastUsedAt)}`}
-                          </div>
-                        </div>
-
-                        <div className="flex gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditTarget({
-                                actorId: actor.id,
-                                keyId: key.id,
-                              });
-                              setEditKeyName(key.name);
-                              setEditKeyScopes(key.scopes);
-                            }}
-                          >
-                            <EditIcon className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() =>
-                              setDeleteTarget({
-                                actorId: actor.id,
-                                keyId: key.id,
-                                name: key.name,
-                              })
-                            }
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </Button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -519,7 +658,7 @@ export default function ApiKeyManager() {
             <li>
               Keys act as the selected actor, not always as you personally.
             </li>
-            <li>External systems should get the narrowest scopes they need.</li>
+            <li>External systems should get the narrowest access they need.</li>
             <li>
               Revoke unused keys instead of sharing one credential broadly.
             </li>
@@ -527,13 +666,15 @@ export default function ApiKeyManager() {
         </AlertDescription>
       </Alert>
 
+      {/* Create Key Dialog */}
       <Dialog
         open={!!createActorId}
         onOpenChange={(open) => {
           if (!open) {
             setCreateActorId(null);
             setNewKeyName("");
-            setNewKeyScopes(["*"]);
+            setNewKeyDataAccess("read");
+            setNewKeyAdminAccess("none");
           }
         }}
       >
@@ -541,7 +682,7 @@ export default function ApiKeyManager() {
           <DialogHeader>
             <DialogTitle>Create API Key</DialogTitle>
             <DialogDescription>
-              Choose a name and scopes for this actor credential.
+              Choose a name and permission level for this key.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
@@ -554,35 +695,13 @@ export default function ApiKeyManager() {
                 onChange={(event) => setNewKeyName(event.target.value)}
               />
             </div>
-            <div className="grid gap-2">
-              <Label>Scopes</Label>
-              <div className="max-h-72 space-y-3 overflow-y-auto rounded-md border p-3">
-                {scopeCatalog.map((scope) => (
-                  <div key={scope.scope} className="flex items-start gap-3">
-                    <Checkbox
-                      id={`create-scope-${scope.scope}`}
-                      checked={newKeyScopes.includes(scope.scope)}
-                      onCheckedChange={() =>
-                        setNewKeyScopes((current) =>
-                          toggleScopeSelection(current, scope.scope),
-                        )
-                      }
-                    />
-                    <div className="space-y-1">
-                      <Label
-                        htmlFor={`create-scope-${scope.scope}`}
-                        className="cursor-pointer text-sm font-medium"
-                      >
-                        {scope.label}
-                      </Label>
-                      <div className="text-xs text-muted-foreground">
-                        {scope.description}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {renderPermissionSelectors(
+              "create",
+              newKeyDataAccess,
+              setNewKeyDataAccess,
+              newKeyAdminAccess,
+              setNewKeyAdminAccess,
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -590,7 +709,8 @@ export default function ApiKeyManager() {
               onClick={() => {
                 setCreateActorId(null);
                 setNewKeyName("");
-                setNewKeyScopes(["*"]);
+                setNewKeyDataAccess("read");
+                setNewKeyAdminAccess("none");
               }}
             >
               Cancel
@@ -602,13 +722,13 @@ export default function ApiKeyManager() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Key Dialog */}
       <Dialog
         open={!!editTarget}
         onOpenChange={(open) => {
           if (!open) {
             setEditTarget(null);
             setEditKeyName("");
-            setEditKeyScopes(["*"]);
           }
         }}
       >
@@ -616,7 +736,9 @@ export default function ApiKeyManager() {
           <DialogHeader>
             <DialogTitle>Edit API Key</DialogTitle>
             <DialogDescription>
-              Update the key name and granted scopes.
+              {editTarget?.isLegacy
+                ? "This key has custom scopes. Only the name can be edited."
+                : "Update the key name and permission level."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
@@ -628,35 +750,14 @@ export default function ApiKeyManager() {
                 onChange={(event) => setEditKeyName(event.target.value)}
               />
             </div>
-            <div className="grid gap-2">
-              <Label>Scopes</Label>
-              <div className="max-h-72 space-y-3 overflow-y-auto rounded-md border p-3">
-                {scopeCatalog.map((scope) => (
-                  <div key={scope.scope} className="flex items-start gap-3">
-                    <Checkbox
-                      id={`edit-scope-${scope.scope}`}
-                      checked={editKeyScopes.includes(scope.scope)}
-                      onCheckedChange={() =>
-                        setEditKeyScopes((current) =>
-                          toggleScopeSelection(current, scope.scope),
-                        )
-                      }
-                    />
-                    <div className="space-y-1">
-                      <Label
-                        htmlFor={`edit-scope-${scope.scope}`}
-                        className="cursor-pointer text-sm font-medium"
-                      >
-                        {scope.label}
-                      </Label>
-                      <div className="text-xs text-muted-foreground">
-                        {scope.description}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {!editTarget?.isLegacy &&
+              renderPermissionSelectors(
+                "edit",
+                editKeyDataAccess,
+                setEditKeyDataAccess,
+                editKeyAdminAccess,
+                setEditKeyAdminAccess,
+              )}
           </div>
           <DialogFooter>
             <Button
@@ -664,7 +765,6 @@ export default function ApiKeyManager() {
               onClick={() => {
                 setEditTarget(null);
                 setEditKeyName("");
-                setEditKeyScopes(["*"]);
               }}
             >
               Cancel
@@ -676,6 +776,7 @@ export default function ApiKeyManager() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Key Dialog */}
       <AlertDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
@@ -700,6 +801,7 @@ export default function ApiKeyManager() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Delete System Dialog */}
       <AlertDialog
         open={!!deleteSystemTarget}
         onOpenChange={(open) => !open && setDeleteSystemTarget(null)}

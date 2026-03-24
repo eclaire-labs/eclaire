@@ -1,5 +1,9 @@
 import z from "zod/v4";
 import { ActorSummarySchema } from "./actors.js";
+import {
+  AdminAccessLevelSchema,
+  DataAccessLevelSchema,
+} from "./api-key-permissions.js";
 
 export const ApiKeyScopeSchema = z.enum([
   "*",
@@ -48,6 +52,8 @@ export const ActorApiKeySchema = z
     displayKey: z.string(),
     name: z.string(),
     scopes: z.array(ApiKeyScopeSchema),
+    dataAccess: DataAccessLevelSchema.nullable(),
+    adminAccess: AdminAccessLevelSchema.nullable(),
     createdAt: z.string(),
     lastUsedAt: z.string().nullable(),
     expiresAt: z.string().nullable(),

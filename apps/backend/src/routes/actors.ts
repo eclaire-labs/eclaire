@@ -1,5 +1,8 @@
+import { ADMIN_ACCESS_INFO, DATA_ACCESS_INFO } from "@eclaire/api-types";
 import { Hono } from "hono";
 import { validator as zValidator } from "hono-openapi";
+import { getApiKeyScopeCatalog } from "../lib/auth-principal.js";
+import { assertInstanceAdmin } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
   assertActorCredentialAccess,
@@ -15,7 +18,6 @@ import {
   listActorSummaries,
   updateServiceActor,
 } from "../lib/services/actors.js";
-import { getApiKeyScopeCatalog } from "../lib/auth-principal.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {
   CreateActorApiKeySchema,
@@ -31,9 +33,18 @@ export const actorsRoutes = new Hono<{ Variables: RouteVariables }>();
 
 actorsRoutes.get(
   "/credential-scopes",
-  withAuth(async (c) => c.json({ items: getApiKeyScopeCatalog() }), logger, {
-    requiredScopes: ["credentials:read"],
-  }),
+  withAuth(
+    async (c) =>
+      c.json({
+        items: getApiKeyScopeCatalog(),
+        dataAccessLevels: DATA_ACCESS_INFO,
+        adminAccessLevels: ADMIN_ACCESS_INFO,
+      }),
+    logger,
+    {
+      requiredScopes: ["credentials:read"],
+    },
+  ),
 );
 
 actorsRoutes.post(
@@ -110,10 +121,14 @@ actorsRoutes.post(
     async (c, userId, principal) => {
       const actorId = c.req.param("id");
       await assertActorCredentialAccess(userId, actorId, principal.actorId);
+      const body = c.req.valid("json");
+      if (body.adminAccess && body.adminAccess !== "none") {
+        await assertInstanceAdmin(userId);
+      }
       const key = await createActorApiKey(
         userId,
         actorId,
-        c.req.valid("json"),
+        body,
         principal.actorId,
       );
       return c.json(key, 201);
@@ -132,11 +147,15 @@ actorsRoutes.patch(
     async (c, userId, principal) => {
       const actorId = c.req.param("id");
       await assertActorCredentialAccess(userId, actorId, principal.actorId);
+      const body = c.req.valid("json");
+      if (body.adminAccess && body.adminAccess !== "none") {
+        await assertInstanceAdmin(userId);
+      }
       const key = await updateActorApiKey(
         userId,
         actorId,
         c.req.param("keyId"),
-        c.req.valid("json"),
+        body,
       );
       return c.json(key);
     },

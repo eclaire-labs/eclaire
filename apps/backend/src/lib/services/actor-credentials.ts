@@ -1,8 +1,14 @@
 import type {
   ActorApiKey,
   ActorSummary,
+  AdminAccessLevel,
   ApiKeyScope,
   CreatedActorApiKey,
+  DataAccessLevel,
+} from "@eclaire/api-types";
+import {
+  derivePermissionLevels,
+  resolvePermissionScopes,
 } from "@eclaire/api-types";
 import { and, desc, eq, gte, isNull, or } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
@@ -55,12 +61,16 @@ type CredentialRow = {
 export interface CreateActorApiKeyInput {
   name?: string | null;
   scopes?: ApiKeyScope[];
+  dataAccess?: DataAccessLevel;
+  adminAccess?: AdminAccessLevel;
   expiresAt?: Date | null;
 }
 
 export interface UpdateActorApiKeyInput {
   name?: string;
   scopes?: ApiKeyScope[];
+  dataAccess?: DataAccessLevel;
+  adminAccess?: AdminAccessLevel;
   expiresAt?: Date | null;
 }
 
@@ -81,6 +91,17 @@ function normalizeApiKeyName(name?: string | null): string {
   return trimmed?.length
     ? trimmed
     : `API Key ${new Date().toISOString().split("T")[0]}`;
+}
+
+function resolveScopesFromInput(input: {
+  scopes?: ApiKeyScope[];
+  dataAccess?: DataAccessLevel;
+  adminAccess?: AdminAccessLevel;
+}): ApiKeyScope[] | undefined {
+  if (input.dataAccess !== undefined && input.adminAccess !== undefined) {
+    return resolvePermissionScopes(input.dataAccess, input.adminAccess);
+  }
+  return input.scopes;
 }
 
 function validateAndNormalizeScopes(
@@ -129,6 +150,8 @@ async function resolveOwnedActor(
 }
 
 function mapCredentialRowToApiKey(row: CredentialRow): ActorApiKey {
+  const scopes = validateAndNormalizeScopes(row.scopes as ApiKeyScope[]);
+  const permissionLevels = derivePermissionLevels(scopes);
   return {
     id: row.id,
     actor: {
@@ -142,7 +165,9 @@ function mapCredentialRowToApiKey(row: CredentialRow): ActorApiKey {
     grantId: row.grantId,
     displayKey: formatApiKeyForDisplay(row.keyId, row.keySuffix),
     name: row.name,
-    scopes: validateAndNormalizeScopes(row.scopes as ApiKeyScope[]),
+    scopes,
+    dataAccess: permissionLevels?.dataAccess ?? null,
+    adminAccess: permissionLevels?.adminAccess ?? null,
     createdAt: row.createdAt.toISOString(),
     lastUsedAt: row.lastUsedAt?.toISOString() ?? null,
     expiresAt: row.expiresAt?.toISOString() ?? null,
@@ -212,7 +237,8 @@ export async function createActorApiKey(
   grantedByActorId: string | null = ownerUserId,
 ): Promise<CreatedActorApiKey> {
   const actor = await resolveOwnedActor(ownerUserId, actorId);
-  const scopes = validateAndNormalizeScopes(input.scopes);
+  const resolvedScopes = resolveScopesFromInput(input);
+  const scopes = validateAndNormalizeScopes(resolvedScopes);
   const keyName = normalizeApiKeyName(input.name);
   const { fullKey, keyId, hash, hashVersion, suffix } = generateFullApiKey();
 
@@ -267,6 +293,7 @@ export async function createActorApiKey(
     "Created actor API key",
   );
 
+  const permissionLevels = derivePermissionLevels(scopes);
   return {
     id: credential.id,
     key: fullKey,
@@ -275,6 +302,8 @@ export async function createActorApiKey(
     displayKey: formatApiKeyForDisplay(credential.keyId, credential.keySuffix),
     name: credential.name,
     scopes,
+    dataAccess: permissionLevels?.dataAccess ?? null,
+    adminAccess: permissionLevels?.adminAccess ?? null,
     createdAt: credential.createdAt.toISOString(),
     lastUsedAt: null,
     expiresAt: credential.expiresAt?.toISOString() ?? null,
@@ -342,9 +371,10 @@ export async function updateActorApiKey(
 
   const nextName =
     input.name !== undefined ? normalizeApiKeyName(input.name) : existing.name;
+  const resolvedScopes = resolveScopesFromInput(input);
   const nextScopes =
-    input.scopes !== undefined
-      ? validateAndNormalizeScopes(input.scopes)
+    resolvedScopes !== undefined
+      ? validateAndNormalizeScopes(resolvedScopes)
       : validateAndNormalizeScopes(existing.scopes as ApiKeyScope[]);
   const nextExpiresAt =
     input.expiresAt !== undefined ? input.expiresAt : existing.expiresAt;

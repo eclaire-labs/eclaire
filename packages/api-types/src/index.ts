@@ -20,6 +20,19 @@ export {
 } from "./auth.js";
 
 export {
+  DataAccessLevelSchema,
+  AdminAccessLevelSchema,
+  DATA_ACCESS_SCOPES,
+  ADMIN_ACCESS_SCOPES,
+  DATA_ACCESS_INFO,
+  ADMIN_ACCESS_INFO,
+  resolvePermissionScopes,
+  derivePermissionLevels,
+  type DataAccessLevel,
+  type AdminAccessLevel,
+} from "./api-key-permissions.js";
+
+export {
   reviewStatusSchema,
   flagColorSchema,
   taskStatusSchema,
