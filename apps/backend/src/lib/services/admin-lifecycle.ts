@@ -5,7 +5,9 @@
  * revoke sessions, revoke API keys, and delete user.
  */
 
-import { count, eq } from "drizzle-orm";
+import { generateUserId } from "@eclaire/core";
+import { hashPassword } from "better-auth/crypto";
+import { count, eq, sql } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import { ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
@@ -14,7 +16,7 @@ import { purgeUserData } from "./user-data.js";
 
 const logger = createChildLogger("services:admin-lifecycle");
 
-const { users, sessions, actorCredentials, actorGrants } = schema;
+const { users, accounts, sessions, actorCredentials, actorGrants } = schema;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,6 +49,7 @@ async function assertUserExists(
 
 function recordAdminAction(
   action:
+    | "admin.create_user"
     | "admin.suspend"
     | "admin.reactivate"
     | "admin.revoke_sessions"
@@ -225,6 +228,64 @@ export async function deleteUserByAdmin(
     { targetUserId, adminUserId, email: target.email },
     "User account deleted by admin",
   );
+}
+
+// ---------------------------------------------------------------------------
+// Create User
+// ---------------------------------------------------------------------------
+
+export async function createUserByAdmin(
+  email: string,
+  password: string,
+  displayName: string | null,
+  adminUserId: string,
+): Promise<{ id: string; email: string; displayName: string | null }> {
+  // Check for duplicate email (case-insensitive)
+  const existing = await db.query.users.findFirst({
+    where: eq(sql`lower(${users.email})`, email.toLowerCase()),
+    columns: { id: true },
+  });
+  if (existing) {
+    throw new ValidationError("A user with this email already exists");
+  }
+
+  const userId = generateUserId();
+  const now = new Date();
+  const hashed = await hashPassword(password);
+
+  // Insert user row
+  // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
+  await (db as any).insert(users).values({
+    id: userId,
+    email,
+    displayName,
+    userType: "user",
+    isInstanceAdmin: false,
+    accountStatus: "active",
+    emailVerified: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  // Insert credential account (matches Better Auth's email+password provider)
+  // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
+  await (db as any).insert(accounts).values({
+    accountId: email,
+    providerId: "credential",
+    userId,
+    passwordHash: hashed,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await recordAdminAction("admin.create_user", userId, adminUserId, {
+    email,
+    displayName,
+  });
+
+  logger.info({ userId, email, adminUserId }, "User created by admin");
+
+  return { id: userId, email, displayName };
 }
 
 // ---------------------------------------------------------------------------

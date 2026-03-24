@@ -103,6 +103,7 @@ export const HISTORY_ACTIONS = [
   "discord_message_processed",
   "discord_voice_message_processed",
   "send_notification",
+  "admin.create_user",
   "admin.role_change",
   "admin.suspend",
   "admin.reactivate",

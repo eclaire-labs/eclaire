@@ -23,6 +23,7 @@ import {
 } from "../lib/services/ai-config.js";
 import { setUserRole } from "../lib/services/admin.js";
 import {
+  createUserByAdmin,
   deleteUserByAdmin,
   listUsersAdminExtended,
   reactivateUser,
@@ -381,6 +382,39 @@ adminRoutes.delete(
 // =============================================================================
 // User Management
 // =============================================================================
+
+// POST /api/admin/users - Create a new user (admin only)
+adminRoutes.post(
+  "/users",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    const body = (await c.req.json()) as {
+      email?: string;
+      password?: string;
+      displayName?: string;
+    };
+    if (!body.email || typeof body.email !== "string") {
+      return c.json({ error: "email is required" }, 400);
+    }
+    if (
+      !body.password ||
+      typeof body.password !== "string" ||
+      body.password.length < 8
+    ) {
+      return c.json(
+        { error: "password is required (minimum 8 characters)" },
+        400,
+      );
+    }
+    const created = await createUserByAdmin(
+      body.email.trim(),
+      body.password,
+      body.displayName?.trim() || null,
+      userId,
+    );
+    return c.json(created, 201);
+  }, logger),
+);
 
 // GET /api/admin/users - List all users (extended with status & counts)
 adminRoutes.get(

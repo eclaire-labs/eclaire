@@ -6,6 +6,7 @@ import {
   MoreHorizontal,
   ShieldCheck,
   Trash2,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,12 +30,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -88,6 +97,13 @@ export default function UserManager() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(
     null,
   );
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [addUserForm, setAddUserForm] = useState({
+    email: "",
+    displayName: "",
+    password: "",
+  });
+  const [addUserSubmitting, setAddUserSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -125,6 +141,26 @@ export default function UserManager() {
     }
   }, []);
 
+  const handleAddUser = useCallback(async () => {
+    if (!addUserForm.email || addUserForm.password.length < 8) return;
+    setAddUserSubmitting(true);
+    try {
+      await apiPost("/api/admin/users", {
+        email: addUserForm.email,
+        password: addUserForm.password,
+        displayName: addUserForm.displayName || undefined,
+      });
+      toast.success("User created");
+      setAddUserOpen(false);
+      setAddUserForm({ email: "", displayName: "", password: "" });
+      await fetchData();
+    } catch {
+      toast.error("Failed to create user");
+    } finally {
+      setAddUserSubmitting(false);
+    }
+  }, [addUserForm, fetchData]);
+
   const executeAction = useCallback(
     async (action: PendingAction) => {
       try {
@@ -134,9 +170,7 @@ export default function UserManager() {
               isInstanceAdmin: action.isAdmin,
             });
             toast.success(
-              action.isAdmin
-                ? "User promoted to admin"
-                : "Admin role removed",
+              action.isAdmin ? "User promoted to admin" : "Admin role removed",
             );
             break;
           case "suspend":
@@ -148,15 +182,11 @@ export default function UserManager() {
             toast.success("User reactivated");
             break;
           case "revoke-sessions":
-            await apiPost(
-              `/api/admin/users/${action.userId}/revoke-sessions`,
-            );
+            await apiPost(`/api/admin/users/${action.userId}/revoke-sessions`);
             toast.success("All sessions revoked");
             break;
           case "revoke-api-keys":
-            await apiPost(
-              `/api/admin/users/${action.userId}/revoke-api-keys`,
-            );
+            await apiPost(`/api/admin/users/${action.userId}/revoke-api-keys`);
             toast.success("All API keys revoked");
             break;
           case "delete":
@@ -257,11 +287,17 @@ export default function UserManager() {
 
       {/* User List */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">All Users</CardTitle>
-          <CardDescription>
-            {users.length} user{users.length !== 1 ? "s" : ""} registered
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base">All Users</CardTitle>
+            <CardDescription>
+              {users.length} user{users.length !== 1 ? "s" : ""} registered
+            </CardDescription>
+          </div>
+          <Button size="sm" onClick={() => setAddUserOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add User
+          </Button>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -351,10 +387,7 @@ export default function UserManager() {
                         {!isSelf && !user.isInstanceAdmin && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
-                              >
+                              <Button variant="ghost" className="h-8 w-8 p-0">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -436,6 +469,86 @@ export default function UserManager() {
           )}
         </CardContent>
       </Card>
+
+      {/* Add User Dialog */}
+      <Dialog
+        open={addUserOpen}
+        onOpenChange={(open) => {
+          setAddUserOpen(open);
+          if (!open)
+            setAddUserForm({ email: "", displayName: "", password: "" });
+        }}
+      >
+        <DialogContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddUser();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Add User</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  placeholder="user@example.com"
+                  value={addUserForm.email}
+                  onChange={(e) =>
+                    setAddUserForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Display Name</Label>
+                <Input
+                  placeholder="Optional"
+                  value={addUserForm.displayName}
+                  onChange={(e) =>
+                    setAddUserForm((f) => ({
+                      ...f,
+                      displayName: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Password</Label>
+                <Input
+                  type="password"
+                  placeholder="Minimum 8 characters"
+                  value={addUserForm.password}
+                  onChange={(e) =>
+                    setAddUserForm((f) => ({ ...f, password: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddUserOpen(false)}
+                disabled={addUserSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  addUserSubmitting ||
+                  !addUserForm.email ||
+                  addUserForm.password.length < 8
+                }
+              >
+                {addUserSubmitting ? "Creating..." : "Create User"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       <AlertDialog
