@@ -1,12 +1,12 @@
 /**
- * Audio Routes
+ * Speech Routes
  *
  * REST + WebSocket endpoints for STT/TTS, routing to the appropriate audio provider.
  *
- *   GET  /api/audio/health                    → audio service health (all providers)
- *   POST /api/audio/transcriptions            → upload audio → { text }
- *   POST /api/audio/speech                    → { text } → binary audio
- *   WS   /api/audio/transcriptions/stream     → real-time streaming STT
+ *   GET  /api/speech/health                    → audio service health (all providers)
+ *   POST /api/speech/transcriptions            → upload audio → { text }
+ *   POST /api/speech/synthesis                 → { text } → binary audio
+ *   WS   /api/speech/transcriptions/stream     → real-time streaming STT
  */
 
 import { Hono } from "hono";
@@ -28,12 +28,12 @@ import { withAuth } from "../middleware/with-auth.js";
 import { SpeechRequestSchema } from "../schemas/audio-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
-const logger = createChildLogger("audio");
+const logger = createChildLogger("speech");
 
-export const audioRoutes = new Hono<{ Variables: RouteVariables }>();
+export const speechRoutes = new Hono<{ Variables: RouteVariables }>();
 
-// GET /api/audio/health — Audio service health check
-audioRoutes.get(
+// GET /api/speech/health — Audio service health check
+speechRoutes.get(
   "/health",
   withAuth(async (c) => {
     const health = await getAudioHealth();
@@ -41,8 +41,8 @@ audioRoutes.get(
   }, logger),
 );
 
-// POST /api/audio/transcriptions — Transcribe audio file to text
-audioRoutes.post(
+// POST /api/speech/transcriptions — Transcribe audio file to text
+speechRoutes.post(
   "/transcriptions",
   withAuth(async (c) => {
     if (!isAudioAvailable()) {
@@ -83,9 +83,9 @@ audioRoutes.post(
   }, logger),
 );
 
-// POST /api/audio/speech — Synthesize text to audio
-audioRoutes.post(
-  "/speech",
+// POST /api/speech/synthesis — Synthesize text to audio
+speechRoutes.post(
+  "/synthesis",
   zValidator("json", SpeechRequestSchema),
   withAuth(async (c) => {
     if (!isAudioAvailable()) {
@@ -147,8 +147,8 @@ audioRoutes.post(
   }, logger),
 );
 
-// WS /api/audio/transcriptions/stream — Real-time streaming STT
-audioRoutes.get(
+// WS /api/speech/transcriptions/stream — Real-time streaming STT
+speechRoutes.get(
   "/transcriptions/stream",
   async (c, next) => {
     // Authenticate and enforce scopes before upgrading to WebSocket
@@ -157,7 +157,7 @@ audioRoutes.get(
       return c.json({ error: "Unauthorized" }, 401);
     }
     try {
-      assertPrincipalScopes(principal, ["audio:write"]);
+      assertPrincipalScopes(principal, ["speech:write"]);
     } catch (error) {
       if (error instanceof ForbiddenError) {
         return c.json({ error: error.message }, 403);

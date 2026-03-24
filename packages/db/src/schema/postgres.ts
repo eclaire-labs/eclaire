@@ -61,6 +61,7 @@ import {
   generateTagId,
   generateTaskCommentId,
   generateAgentStepId,
+  generateMediaId,
   generateTaskExecutionId,
   generateTaskId,
   generateUserId,
@@ -795,6 +796,103 @@ export const photos = pgTable(
   }),
 );
 
+export const media = pgTable(
+  "media",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateMediaId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    originalFilename: text("original_filename"),
+    storageId: text("storage_id").notNull(),
+    mimeType: text("mime_type"),
+    fileSize: integer("file_size"),
+    dueDate: timestamp("due_date", { withTimezone: true }),
+
+    mediaType: text("media_type", {
+      enum: ["audio", "video"],
+    }).notNull(),
+
+    // Audio-specific metadata (nullable for video)
+    duration: doublePrecision("duration"),
+    channels: integer("channels"),
+    sampleRate: integer("sample_rate"),
+    bitrate: integer("bitrate"),
+    codec: text("codec"),
+    language: text("language"),
+
+    extractedText: text("extracted_text"),
+
+    thumbnailStorageId: text("thumbnail_storage_id"),
+    waveformStorageId: text("waveform_storage_id"),
+    extractedMdStorageId: text("extracted_md_storage_id"),
+    extractedTxtStorageId: text("extracted_txt_storage_id"),
+
+    rawMetadata: jsonb("raw_metadata"),
+    originalMimeType: text("original_mime_type"),
+    userAgent: text("user_agent"),
+
+    processingEnabled: boolean("processing_enabled").notNull().default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
+
+    reviewStatus: text("review_status", {
+      enum: ["pending", "accepted", "rejected"],
+    }),
+    flagColor: text("flag_color", {
+      enum: ["red", "yellow", "orange", "green", "blue"],
+    }),
+    isPinned: boolean("is_pinned").default(false),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      (): ReturnType<typeof sql> => sql`(
+        setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(extracted_text, '')), 'C')
+      )`,
+    ),
+  },
+  (table) => ({
+    userIdx: index("media_user_id_idx").on(table.userId),
+    isPinnedIdx: index("media_is_pinned_idx").on(table.isPinned),
+    userMediaTypeIdx: index("media_user_id_media_type_idx").on(
+      table.userId,
+      table.mediaType,
+    ),
+    userProcessingEnabledIdx: index("media_user_id_processing_enabled_idx")
+      .on(table.userId)
+      .where(sql`processing_enabled = true`),
+    userCreatedAtIdx: index("media_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userTitleIdx: index("media_user_id_title_idx").on(
+      table.userId,
+      table.title,
+    ),
+    titleTrgmIdx: index("media_title_trgm_idx").using(
+      "gin",
+      sql`${table.title} gin_trgm_ops`,
+    ),
+    searchVectorIdx: index("media_search_vector_idx").using(
+      "gin",
+      table.searchVector,
+    ),
+  }),
+);
+
 export const notes = pgTable(
   "notes",
   {
@@ -963,6 +1061,22 @@ export const photosTags = pgTable(
   }),
 );
 
+export const mediaTags = pgTable(
+  "media_tags",
+  {
+    mediaId: text("media_id")
+      .notNull()
+      .references(() => media.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.mediaId, t.tagId] }),
+    tagIdx: index("media_tags_tag_id_idx").on(t.tagId),
+  }),
+);
+
 export const history = pgTable(
   "history",
   {
@@ -1127,6 +1241,11 @@ export const photosRelations = relations(photos, ({ one, many }) => ({
   tags: many(photosTags),
 }));
 
+export const mediaRelations = relations(media, ({ one, many }) => ({
+  user: one(users, { fields: [media.userId], references: [users.id] }),
+  tags: many(mediaTags),
+}));
+
 export const notesRelations = relations(notes, ({ one, many }) => ({
   user: one(users, { fields: [notes.userId], references: [users.id] }),
   tags: many(notesTags),
@@ -1139,6 +1258,7 @@ export const tagsRelations = relations(tags, ({ one, many }) => ({
   documentLinks: many(documentsTags),
   noteLinks: many(notesTags),
   photoLinks: many(photosTags),
+  mediaLinks: many(mediaTags),
 }));
 
 export const tasksTagsRelations = relations(tasksTags, ({ one }) => ({
@@ -1175,6 +1295,11 @@ export const notesTagsRelations = relations(notesTags, ({ one }) => ({
 export const photosTagsRelations = relations(photosTags, ({ one }) => ({
   photo: one(photos, { fields: [photosTags.photoId], references: [photos.id] }),
   tag: one(tags, { fields: [photosTags.tagId], references: [tags.id] }),
+}));
+
+export const mediaTagsRelations = relations(mediaTags, ({ one }) => ({
+  media: one(media, { fields: [mediaTags.mediaId], references: [media.id] }),
+  tag: one(tags, { fields: [mediaTags.tagId], references: [tags.id] }),
 }));
 
 export const historyRelations = relations(history, ({ one }) => ({

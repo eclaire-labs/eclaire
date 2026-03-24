@@ -16,7 +16,8 @@ export type ContentType =
   | "bookmarks"
   | "documents"
   | "photos"
-  | "tasks";
+  | "tasks"
+  | "media";
 
 type FlagColor = "red" | "yellow" | "orange" | "green" | "blue" | null;
 

@@ -16,6 +16,7 @@ export function getMobileTabFromPathname(pathname: string): MobileTab {
     pathname.startsWith("/bookmarks") ||
     pathname.startsWith("/documents") ||
     pathname.startsWith("/photos") ||
+    pathname.startsWith("/media") ||
     pathname.startsWith("/history") ||
     pathname.startsWith("/processing") ||
     pathname.startsWith("/upload");
@@ -43,6 +44,7 @@ export function shouldShowFolders(
       pathname.startsWith("/bookmarks") ||
       pathname.startsWith("/documents") ||
       pathname.startsWith("/photos") ||
+      pathname.startsWith("/media") ||
       pathname.startsWith("/history") ||
       pathname.startsWith("/processing") ||
       pathname.startsWith("/upload"))

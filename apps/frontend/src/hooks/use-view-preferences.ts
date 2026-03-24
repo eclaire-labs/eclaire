@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 
 // Define page types that can have view preferences
-export type PageType = "bookmarks" | "tasks" | "notes" | "documents" | "photos";
+export type PageType =
+  | "bookmarks"
+  | "tasks"
+  | "notes"
+  | "documents"
+  | "photos"
+  | "media";
 
 // Base view preferences interface
 interface BaseViewPreferences {
@@ -42,13 +48,19 @@ export interface PhotosViewPreferences extends BaseViewPreferences {
   sortBy: "dateTaken" | "createdAt" | "title";
 }
 
+export interface MediaViewPreferences extends BaseViewPreferences {
+  viewMode: "tile" | "list";
+  sortBy: "createdAt" | "title" | "duration";
+}
+
 // Union type for all view preferences
 export type ViewPreferences =
   | BookmarksViewPreferences
   | TasksViewPreferences
   | NotesViewPreferences
   | DocumentsViewPreferences
-  | PhotosViewPreferences;
+  | PhotosViewPreferences
+  | MediaViewPreferences;
 
 // Default preferences for each page type
 const DEFAULT_PREFERENCES: Record<PageType, ViewPreferences> = {
@@ -77,6 +89,11 @@ const DEFAULT_PREFERENCES: Record<PageType, ViewPreferences> = {
     sortBy: "dateTaken",
     sortDir: "desc",
   } as PhotosViewPreferences,
+  media: {
+    viewMode: "tile",
+    sortBy: "createdAt",
+    sortDir: "desc",
+  } as MediaViewPreferences,
 };
 
 // Valid sortBy values per page type, used to discard stale localStorage entries
@@ -93,6 +110,7 @@ const VALID_SORT_KEYS: Record<PageType, string[]> = {
     "originalFilename",
   ],
   photos: ["dateTaken", "createdAt", "title"],
+  media: ["createdAt", "title", "duration"],
 };
 
 // Generate storage key for a page type

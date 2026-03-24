@@ -18,7 +18,8 @@ const DATA_READ_SCOPES: ApiKeyScope[] = [
   "processing:read",
   "feedback:read",
   "model:read",
-  "audio:read",
+  "speech:read",
+  "media:read",
 ];
 
 const DATA_WRITE_SCOPES: ApiKeyScope[] = [
@@ -31,7 +32,8 @@ const DATA_WRITE_SCOPES: ApiKeyScope[] = [
   "feedback:write",
   "notifications:write",
   "processing:write",
-  "audio:write",
+  "speech:write",
+  "media:write",
 ];
 
 export const DATA_ACCESS_SCOPES: Record<DataAccessLevel, ApiKeyScope[]> = {

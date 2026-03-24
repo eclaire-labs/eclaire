@@ -78,10 +78,12 @@ describe("inferRequiredScopesForRequest", () => {
       ["/api/tags", "GET", ["assets:read"]],
       ["/api/all", "GET", ["assets:read"]],
       ["/api/all", "POST", ["assets:write"]],
-      ["/api/audio/health", "GET", ["audio:read"]],
-      ["/api/audio/transcriptions", "POST", ["audio:write"]],
-      ["/api/audio/speech", "POST", ["audio:write"]],
-      ["/api/audio/transcriptions/stream", "GET", ["audio:read"]],
+      ["/api/speech/health", "GET", ["speech:read"]],
+      ["/api/speech/transcriptions", "POST", ["speech:write"]],
+      ["/api/speech/synthesis", "POST", ["speech:write"]],
+      ["/api/speech/transcriptions/stream", "GET", ["speech:read"]],
+      ["/api/media", "GET", ["media:read"]],
+      ["/api/media/123", "DELETE", ["media:write"]],
       ["/api/instance/defaults", "GET", ["profile:read"]],
       ["/api/instance/registration-status", "GET", ["profile:read"]],
     ];
@@ -172,10 +174,10 @@ describe("normalizeGrantedScopes", () => {
     expect(result).toContain("processing:read");
   });
 
-  it("expands audio:write to include audio:read", () => {
-    const result = normalizeGrantedScopes(["audio:write"]);
-    expect(result).toContain("audio:write");
-    expect(result).toContain("audio:read");
+  it("expands speech:write to include speech:read", () => {
+    const result = normalizeGrantedScopes(["speech:write"]);
+    expect(result).toContain("speech:write");
+    expect(result).toContain("speech:read");
   });
 
   it("returns full access when * is present", () => {

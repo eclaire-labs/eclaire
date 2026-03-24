@@ -33,7 +33,8 @@ export type ContentType =
   | "tasks"
   | "notes"
   | "photos"
-  | "documents";
+  | "documents"
+  | "media";
 
 export interface SortOption {
   value: string;

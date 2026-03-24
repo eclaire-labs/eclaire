@@ -1,7 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 
-type EntityType = "bookmarks" | "documents" | "notes" | "photos" | "tasks";
+type EntityType =
+  | "bookmarks"
+  | "documents"
+  | "media"
+  | "notes"
+  | "photos"
+  | "tasks";
 
 export function useTags(type?: EntityType) {
   return useQuery<string[]>({

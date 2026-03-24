@@ -58,6 +58,14 @@ export interface TaskJobData extends JobData {
   jobType?: "tag_generation" | "execution";
 }
 
+export interface MediaJobData extends JobData {
+  mediaId: string;
+  userId: string;
+  storageId?: string;
+  mimeType?: string;
+  originalFilename?: string;
+}
+
 // --- Queue Adapter Interface ---
 
 export interface QueueAdapter {
@@ -66,5 +74,6 @@ export interface QueueAdapter {
   enqueueDocument(data: DocumentJobData): Promise<void>;
   enqueueNote(data: NoteJobData): Promise<void>;
   enqueueTask(data: TaskJobData): Promise<void>;
+  enqueueMedia(data: MediaJobData): Promise<void>;
   close(): Promise<void>;
 }

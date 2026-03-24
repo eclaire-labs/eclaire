@@ -13,6 +13,7 @@ import type {
   DocumentJobData,
   ImageJobData,
   JobData,
+  MediaJobData,
   NoteJobData,
   QueueAdapter,
   TaskJobData,
@@ -122,6 +123,17 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         "process-task",
         "task",
         data.taskId,
+        data.userId,
+        data,
+      );
+    },
+
+    async enqueueMedia(data: MediaJobData): Promise<void> {
+      await enqueueToRedis(
+        QueueNames.MEDIA_PROCESSING,
+        "process-media",
+        "media",
+        data.mediaId,
         data.userId,
         data,
       );

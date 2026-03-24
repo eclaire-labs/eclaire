@@ -31,6 +31,7 @@ describe("useViewPreferences", () => {
       notes: "createdAt",
       documents: "createdAt",
       photos: "dateTaken",
+      media: "createdAt",
     };
 
     for (const [pageType, expectedSortBy] of Object.entries(expected)) {
@@ -90,6 +91,7 @@ describe("useViewPreferences", () => {
         notes: "createdAt",
         documents: "createdAt",
         photos: "dateTaken",
+        media: "createdAt",
       };
       expect(result.current[0].sortBy).toBe(defaults[pageType]);
     }

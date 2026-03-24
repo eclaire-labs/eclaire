@@ -35,6 +35,7 @@ export type {
   FlagColor,
   HistoryInsert,
   JobStatus,
+  MediaInsert,
   MessageRole,
   NoteInsert,
   PhotoInsert,
@@ -125,6 +126,8 @@ export const TX_TABLE_NAMES = [
   "documentsTags",
   "photos",
   "photosTags",
+  "media",
+  "mediaTags",
   "notes",
   "notesTags",
   "tags",
@@ -159,6 +162,9 @@ export interface Tx {
 
   photos: Repo<typeof pgSchema.photos>;
   photosTags: Repo<typeof pgSchema.photosTags>;
+
+  media: Repo<typeof pgSchema.media>;
+  mediaTags: Repo<typeof pgSchema.mediaTags>;
 
   notes: Repo<typeof pgSchema.notes>;
   notesTags: Repo<typeof pgSchema.notesTags>;

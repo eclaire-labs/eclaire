@@ -152,14 +152,24 @@ export const API_KEY_SCOPE_CATALOG: ApiKeyScopeCatalogItem[] = [
       "Modify instance admin configuration and manage users (suspend, delete, role changes).",
   },
   {
-    scope: "audio:read",
-    label: "Read audio",
-    description: "Read audio service health and transcription results.",
+    scope: "speech:read",
+    label: "Read speech",
+    description: "Read speech service health and transcription results.",
   },
   {
-    scope: "audio:write",
-    label: "Write audio",
+    scope: "speech:write",
+    label: "Write speech",
     description: "Transcribe audio and synthesize speech.",
+  },
+  {
+    scope: "media:read",
+    label: "Read media",
+    description: "Read media files (audio, video) and their metadata.",
+  },
+  {
+    scope: "media:write",
+    label: "Write media",
+    description: "Upload, update, delete, and reprocess media files.",
   },
 ];
 
@@ -175,7 +185,8 @@ const IMPLIED_SCOPE_MAP: Partial<Record<ApiKeyScope, ApiKeyScope[]>> = {
   "feedback:write": ["feedback:read"],
   "admin:write": ["admin:read"],
   "processing:write": ["processing:read"],
-  "audio:write": ["audio:read"],
+  "speech:write": ["speech:read"],
+  "media:write": ["media:read"],
 };
 
 export function getApiKeyScopeCatalog(): ApiKeyScopeCatalogItem[] {
@@ -339,8 +350,12 @@ export function inferRequiredScopesForRequest(
     return normalizedMethod === "GET" ? ["assets:read"] : ["assets:write"];
   }
 
-  if (path.startsWith("/api/audio")) {
-    return normalizedMethod === "GET" ? ["audio:read"] : ["audio:write"];
+  if (path.startsWith("/api/speech")) {
+    return normalizedMethod === "GET" ? ["speech:read"] : ["speech:write"];
+  }
+
+  if (path.startsWith("/api/media")) {
+    return normalizedMethod === "GET" ? ["media:read"] : ["media:write"];
   }
 
   if (path.startsWith("/api/instance")) {

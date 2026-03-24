@@ -34,7 +34,7 @@ const constArrays = [
   {
     name: "ASSET_TYPES",
     arr: ASSET_TYPES,
-    expected: ["photos", "documents", "bookmarks", "notes", "tasks"],
+    expected: ["photos", "documents", "bookmarks", "notes", "tasks", "media"],
   },
   {
     name: "JOB_STATUSES",
@@ -92,7 +92,7 @@ describe("HISTORY_ACTIONS", () => {
 });
 
 describe("HISTORY_ITEM_TYPES", () => {
-  it("has 20 entries", () => {
-    expect(HISTORY_ITEM_TYPES.length).toBe(20);
+  it("has 21 entries", () => {
+    expect(HISTORY_ITEM_TYPES.length).toBe(21);
   });
 });

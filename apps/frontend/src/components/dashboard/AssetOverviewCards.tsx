@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
+  AudioWaveform,
   BookOpen,
   Camera,
   CheckSquare,
@@ -13,6 +14,7 @@ interface AssetOverviewCardsProps {
     assets: {
       bookmarks: { count: number; storageSizeFormatted: string };
       documents: { count: number; storageSizeFormatted: string };
+      media: { count: number; storageSizeFormatted: string };
       photos: { count: number; storageSizeFormatted: string };
       notes: { count: number; storageSizeFormatted: string };
       tasks: { count: number; storageSizeFormatted: string };
@@ -77,6 +79,17 @@ export function AssetOverviewCards({ stats }: AssetOverviewCardsProps) {
       count: stats.assets.photos.count,
       storage: stats.assets.photos.storageSizeFormatted,
       href: "/photos",
+    },
+    {
+      name: "Media",
+      icon: AudioWaveform,
+      color: "bg-cyan-500",
+      textColor: "text-cyan-600",
+      bgColor: "bg-cyan-50",
+      darkBgColor: "dark:bg-cyan-950",
+      count: stats.assets.media?.count ?? 0,
+      storage: stats.assets.media?.storageSizeFormatted ?? "0 B",
+      href: "/media",
     },
   ];
 

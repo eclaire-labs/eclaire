@@ -2,7 +2,7 @@
  * useAudio — API communication hook for STT/TTS.
  *
  * Provides transcribe/synthesize functions and audio service availability check.
- * Uses the backend audio endpoints at /api/audio/*.
+ * Uses the backend speech endpoints at /api/speech/*.
  * Reads model/voice/speed/provider preferences and passes them through API calls.
  */
 
@@ -163,7 +163,7 @@ export function useAudio(): UseAudioReturn {
     queryKey: ["audio", "health"],
     queryFn: async () => {
       try {
-        const response = await apiGet("/api/audio/health");
+        const response = await apiGet("/api/speech/health");
         return await response.json();
       } catch {
         return { status: "unavailable" as const };
@@ -234,7 +234,7 @@ export function useAudio(): UseAudioReturn {
           formData.append("provider", preferences.sttProvider);
         }
 
-        const response = await apiPost("/api/audio/transcriptions", formData);
+        const response = await apiPost("/api/speech/transcriptions", formData);
         const data = await response.json();
         return data.text ?? "";
       } catch (err) {
@@ -252,7 +252,7 @@ export function useAudio(): UseAudioReturn {
     async (text: string): Promise<string> => {
       setIsSynthesizing(true);
       try {
-        const response = await apiFetch("/api/audio/speech", {
+        const response = await apiFetch("/api/speech/synthesis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(buildTtsBody(text, { format: "mp3" })),
@@ -276,7 +276,7 @@ export function useAudio(): UseAudioReturn {
   const synthesizeStream = useCallback(
     async (text: string): Promise<ReadableStreamDefaultReader<Uint8Array>> => {
       try {
-        const response = await apiFetch("/api/audio/speech", {
+        const response = await apiFetch("/api/speech/synthesis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(

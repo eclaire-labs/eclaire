@@ -32,8 +32,10 @@ export const ApiKeyScopeSchema = z.enum([
   "model:read",
   "admin:read",
   "admin:write",
-  "audio:read",
-  "audio:write",
+  "speech:read",
+  "speech:write",
+  "media:read",
+  "media:write",
 ]);
 
 export const ApiKeyScopeCatalogItemSchema = z

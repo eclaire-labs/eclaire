@@ -71,6 +71,13 @@ export {
 } from "./photos.js";
 
 export {
+  MediaResponseSchema,
+  MediaListResponseSchema,
+  type Media,
+  type MediaListResponse,
+} from "./media.js";
+
+export {
   TaskResponseSchema,
   TaskCommentSchema,
   CommentUserSchema,

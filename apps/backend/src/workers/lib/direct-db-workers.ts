@@ -36,6 +36,8 @@ import type { DocumentJobData } from "../jobs/documentProcessor.js";
 import { processDocumentJob } from "../jobs/documentProcessor.js";
 import type { ImageJobData } from "../jobs/imageProcessor.js";
 import processImageJob from "../jobs/imageProcessor.js";
+import type { MediaJobData } from "../jobs/mediaProcessor.js";
+import processMediaJob from "../jobs/mediaProcessor.js";
 import processNoteJob from "../jobs/noteProcessor.js";
 import type { TaskExecutionJobData } from "../jobs/taskExecutionProcessor.js";
 import processTaskExecution from "../jobs/taskExecutionProcessor.js";
@@ -192,6 +194,18 @@ export async function startDirectDbWorkers(): Promise<void> {
   );
   workers.push(taskWorker);
   logger.info({ queue: QueueNames.TASK_PROCESSING }, "Task worker started");
+
+  // Media processing worker
+  const mediaWorker = createDbWorker(
+    QueueNames.MEDIA_PROCESSING,
+    async (ctx: JobContext<MediaJobData>) => {
+      await processMediaJob(ctx);
+    },
+    config,
+    { concurrency: 1 },
+  );
+  workers.push(mediaWorker);
+  logger.info({ queue: QueueNames.MEDIA_PROCESSING }, "Media worker started");
 
   // Task execution worker
   const taskExecutionWorker = createDbWorker(

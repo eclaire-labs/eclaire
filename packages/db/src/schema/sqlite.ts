@@ -15,6 +15,7 @@ import {
   generateTagId,
   generateTaskCommentId,
   generateAgentStepId,
+  generateMediaId,
   generateTaskExecutionId,
   generateTaskId,
   generateUserId,
@@ -715,6 +716,86 @@ export const photos = sqliteTable(
   }),
 );
 
+export const media = sqliteTable(
+  "media",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateMediaId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    originalFilename: text("original_filename"),
+    storageId: text("storage_id").notNull(),
+    mimeType: text("mime_type"),
+    fileSize: integer("file_size"),
+    dueDate: integer("due_date", { mode: "timestamp_ms" }),
+
+    mediaType: text("media_type", {
+      enum: ["audio", "video"],
+    }).notNull(),
+
+    // Audio-specific metadata (nullable for video)
+    duration: real("duration"),
+    channels: integer("channels"),
+    sampleRate: integer("sample_rate"),
+    bitrate: integer("bitrate"),
+    codec: text("codec"),
+    language: text("language"),
+
+    extractedText: text("extracted_text"),
+
+    thumbnailStorageId: text("thumbnail_storage_id"),
+    waveformStorageId: text("waveform_storage_id"),
+    extractedMdStorageId: text("extracted_md_storage_id"),
+    extractedTxtStorageId: text("extracted_txt_storage_id"),
+
+    rawMetadata: text("raw_metadata", { mode: "json" }),
+    originalMimeType: text("original_mime_type"),
+    userAgent: text("user_agent"),
+
+    processingEnabled: integer("processing_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
+
+    reviewStatus: text("review_status", {
+      enum: ["pending", "accepted", "rejected"],
+    }),
+    flagColor: text("flag_color", {
+      enum: ["red", "yellow", "orange", "green", "blue"],
+    }),
+    isPinned: integer("is_pinned", { mode: "boolean" }).default(false),
+
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
+  },
+  (table) => ({
+    userIdx: index("media_user_id_idx").on(table.userId),
+    isPinnedIdx: index("media_is_pinned_idx").on(table.isPinned),
+    userMediaTypeIdx: index("media_user_id_media_type_idx").on(
+      table.userId,
+      table.mediaType,
+    ),
+    userCreatedAtIdx: index("media_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    userTitleIdx: index("media_user_id_title_idx").on(
+      table.userId,
+      table.title,
+    ),
+  }),
+);
+
 export const notes = sqliteTable(
   "notes",
   {
@@ -865,6 +946,22 @@ export const photosTags = sqliteTable(
   (t) => ({
     pk: primaryKey({ columns: [t.photoId, t.tagId] }),
     tagIdx: index("photos_tags_tag_id_idx").on(t.tagId),
+  }),
+);
+
+export const mediaTags = sqliteTable(
+  "media_tags",
+  {
+    mediaId: text("media_id")
+      .notNull()
+      .references(() => media.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.mediaId, t.tagId] }),
+    tagIdx: index("media_tags_tag_id_idx").on(t.tagId),
   }),
 );
 
@@ -1245,6 +1342,11 @@ export const photosRelations = relations(photos, ({ one, many }) => ({
   tags: many(photosTags),
 }));
 
+export const mediaRelations = relations(media, ({ one, many }) => ({
+  user: one(users, { fields: [media.userId], references: [users.id] }),
+  tags: many(mediaTags),
+}));
+
 export const notesRelations = relations(notes, ({ one, many }) => ({
   user: one(users, { fields: [notes.userId], references: [users.id] }),
   tags: many(notesTags),
@@ -1257,6 +1359,7 @@ export const tagsRelations = relations(tags, ({ one, many }) => ({
   documentLinks: many(documentsTags),
   noteLinks: many(notesTags),
   photoLinks: many(photosTags),
+  mediaLinks: many(mediaTags),
 }));
 
 export const tasksTagsRelations = relations(tasksTags, ({ one }) => ({
@@ -1293,6 +1396,11 @@ export const notesTagsRelations = relations(notesTags, ({ one }) => ({
 export const photosTagsRelations = relations(photosTags, ({ one }) => ({
   photo: one(photos, { fields: [photosTags.photoId], references: [photos.id] }),
   tag: one(tags, { fields: [photosTags.tagId], references: [tags.id] }),
+}));
+
+export const mediaTagsRelations = relations(mediaTags, ({ one }) => ({
+  media: one(media, { fields: [mediaTags.mediaId], references: [media.id] }),
+  tag: one(tags, { fields: [mediaTags.tagId], references: [tags.id] }),
 }));
 
 export const historyRelations = relations(history, ({ one }) => ({

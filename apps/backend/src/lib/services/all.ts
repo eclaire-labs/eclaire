@@ -5,6 +5,7 @@ import { ASSET_TYPE } from "../../types/assets.js";
 import {
   BOOKMARK_MIMES,
   DOCUMENT_MIMES,
+  MEDIA_AUDIO_MIMES,
   NOTE_MIMES,
   PHOTO_MIMES,
 } from "../../types/mime-types.js";
@@ -15,6 +16,7 @@ import {
   findBookmarks,
 } from "./bookmarks.js";
 import { countDocuments, createDocument, findDocuments } from "./documents.js";
+import { countMedia, createMedia, findMedia } from "./media.js";
 import { countNotes, createNoteEntry, findNotes } from "./notes.js";
 import {
   countPhotos,
@@ -335,7 +337,28 @@ export async function classifyAndCreateContent(
     return { success: true, result, assetType: "note" };
   }
 
-  // Rule 5: Image MIME types -> Photos
+  // Rule 5: Audio MIME types -> Media
+  if (MEDIA_AUDIO_MIMES.includes(mimeType)) {
+    const result = await createMedia(
+      {
+        ...servicePayload,
+        content: contentBuffer,
+        metadata: {
+          ...metadata,
+          originalFilename: metadata.originalFilename || filename,
+        },
+      },
+      userId,
+      caller,
+    );
+    logger.info(
+      { requestId, mediaId: result.id, rule: "Rule 5 (audio MIME)" },
+      "Media created",
+    );
+    return { success: true, result, assetType: "media" };
+  }
+
+  // Rule 6: Image MIME types -> Photos
   if (PHOTO_MIMES.includes(mimeType)) {
     const extractedMetadata = await extractAndGeocode(contentBuffer);
     const result = await createPhoto(
@@ -352,13 +375,13 @@ export async function classifyAndCreateContent(
       caller,
     );
     logger.info(
-      { requestId, photoId: result.id, rule: "Rule 5 (MIME-based)" },
+      { requestId, photoId: result.id, rule: "Rule 6 (MIME-based)" },
       "Photo created",
     );
     return { success: true, result, assetType: "photo" };
   }
 
-  // Rule 6: Document MIME types -> Documents
+  // Rule 7: Document MIME types -> Documents
   if (
     DOCUMENT_MIMES.SET.has(mimeType) ||
     mimeType.startsWith(DOCUMENT_MIMES.OPENXML_PREFIX)
@@ -376,13 +399,13 @@ export async function classifyAndCreateContent(
       caller,
     );
     logger.info(
-      { requestId, documentId: result.id, rule: "Rule 6 (MIME-based)" },
+      { requestId, documentId: result.id, rule: "Rule 7 (MIME-based)" },
       "Document created",
     );
     return { success: true, result, assetType: "document" };
   }
 
-  // Rule 7: Reject if no rules matched
+  // Rule 8: Reject if no rules matched
   return {
     success: false,
     error: `Unsupported content type or invalid data. Could not classify content with MIME type: ${mimeType}`,
@@ -519,7 +542,7 @@ export async function findAllEntries({
     const activeTypes = new Set(
       types && types.length > 0
         ? types
-        : ["bookmark", "document", "note", "photo", "task"],
+        : ["bookmark", "document", "media", "note", "photo", "task"],
     );
 
     // Fetch limit+1 from each active type (extra to detect hasMore after merge)
@@ -544,6 +567,13 @@ export async function findAllEntries({
       promises.push(
         findNotes({ ...commonParams, limit: fetchLimit }).then((r) =>
           r.items.map((item) => ({ ...item, type: "note" })),
+        ),
+      );
+    }
+    if (activeTypes.has("media")) {
+      promises.push(
+        findMedia({ ...commonParams, limit: fetchLimit }).then((r) =>
+          r.items.map((item) => ({ ...item, type: "media" })),
         ),
       );
     }
@@ -674,7 +704,7 @@ export async function countAllEntries({
     const activeTypes = new Set(
       types && types.length > 0
         ? types
-        : ["bookmark", "document", "note", "photo", "task"],
+        : ["bookmark", "document", "media", "note", "photo", "task"],
     );
 
     const countPromises: Promise<number>[] = [];
@@ -682,6 +712,7 @@ export async function countAllEntries({
       countPromises.push(countBookmarks(commonParams));
     if (activeTypes.has("document"))
       countPromises.push(countDocuments(commonParams));
+    if (activeTypes.has("media")) countPromises.push(countMedia(commonParams));
     if (activeTypes.has("note")) countPromises.push(countNotes(commonParams));
     if (activeTypes.has("photo")) countPromises.push(countPhotos(commonParams));
     if (activeTypes.has("task"))

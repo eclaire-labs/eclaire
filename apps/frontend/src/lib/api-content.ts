@@ -9,7 +9,13 @@ import { apiFetch } from "@/lib/api-client";
  * Toggle pin status for any content type
  */
 export async function togglePin(
-  contentType: "bookmarks" | "tasks" | "notes" | "photos" | "documents",
+  contentType:
+    | "bookmarks"
+    | "tasks"
+    | "notes"
+    | "photos"
+    | "documents"
+    | "media",
   id: string,
   isPinned: boolean,
 ): Promise<Response> {
@@ -23,7 +29,13 @@ export async function togglePin(
  * Set flag color for any content type
  */
 export async function setFlagColor(
-  contentType: "bookmarks" | "tasks" | "notes" | "photos" | "documents",
+  contentType:
+    | "bookmarks"
+    | "tasks"
+    | "notes"
+    | "photos"
+    | "documents"
+    | "media",
   id: string,
   flagColor: "red" | "yellow" | "orange" | "green" | "blue" | null,
 ): Promise<Response> {
@@ -37,7 +49,13 @@ export async function setFlagColor(
  * Update review status for any content type
  */
 export async function updateReviewStatus(
-  contentType: "bookmarks" | "tasks" | "notes" | "photos" | "documents",
+  contentType:
+    | "bookmarks"
+    | "tasks"
+    | "notes"
+    | "photos"
+    | "documents"
+    | "media",
   id: string,
   reviewStatus: "pending" | "accepted" | "rejected",
 ): Promise<Response> {

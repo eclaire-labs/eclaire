@@ -20,6 +20,20 @@ export const PHOTO_MIMES = [
   "image/avif",
 ];
 
+export const MEDIA_AUDIO_MIMES = [
+  "audio/mpeg",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/flac",
+  "audio/ogg",
+  "audio/aac",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/webm",
+  "audio/aiff",
+  "audio/x-aiff",
+];
+
 export const DOCUMENT_MIMES = {
   // A set for quick lookups
   SET: new Set([

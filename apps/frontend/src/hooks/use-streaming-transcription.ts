@@ -88,7 +88,7 @@ export function useStreamingTranscription(options?: {
       try {
         // Build WebSocket URL
         const wsUrl = new URL(
-          "/api/audio/transcriptions/stream",
+          "/api/speech/transcriptions/stream",
           window.location.href,
         );
         wsUrl.protocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";

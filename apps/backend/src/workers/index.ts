@@ -25,6 +25,7 @@ import { config } from "./config.js";
 import processBookmarkJob from "./jobs/bookmarkProcessor.js";
 import { processDocumentJob } from "./jobs/documentProcessor.js";
 import processImageJob from "./jobs/imageProcessor.js";
+import processMediaJob from "./jobs/mediaProcessor.js";
 import processNoteJob from "./jobs/noteProcessor.js";
 import processTaskExecution from "./jobs/taskExecutionProcessor.js";
 import processTaskJob from "./jobs/taskProcessor.js";
@@ -193,6 +194,15 @@ export async function startBullMQWorkers(): Promise<void> {
     shortTaskOptions,
   );
   bullmqWorkers.push(taskWorker);
+
+  // Media Worker
+  const mediaWorker = createBullMQWorker(
+    QueueNames.MEDIA_PROCESSING,
+    processMediaJob,
+    workerConfig,
+    { ...longTaskOptions, concurrency: 1 },
+  );
+  bullmqWorkers.push(mediaWorker);
 
   // Task Execution Worker
   const taskExecutionWorker = createBullMQWorker(

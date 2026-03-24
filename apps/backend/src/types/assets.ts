@@ -7,6 +7,7 @@ export const ASSET_TYPE = {
   PHOTO: "photo",
   DOCUMENT: "document",
   TASK: "task",
+  MEDIA: "media",
 } as const;
 
 // Plural - for collections, routes, processing, database operations
@@ -16,6 +17,7 @@ export const ASSET_COLLECTION_TYPE = {
   PHOTOS: "photos",
   DOCUMENTS: "documents",
   TASKS: "tasks",
+  MEDIA: "media",
 } as const satisfies Record<string, AssetType>;
 
 export type { AssetType };
@@ -27,6 +29,7 @@ export const ASSET_TYPE_LABELS = {
   [ASSET_TYPE.NOTE]: "Note",
   [ASSET_TYPE.PHOTO]: "Photo",
   [ASSET_TYPE.TASK]: "Task",
+  [ASSET_TYPE.MEDIA]: "Media",
 } as const;
 
 export const ASSET_COLLECTION_LABELS = {
@@ -35,6 +38,7 @@ export const ASSET_COLLECTION_LABELS = {
   [ASSET_COLLECTION_TYPE.NOTES]: "Notes",
   [ASSET_COLLECTION_TYPE.PHOTOS]: "Photos",
   [ASSET_COLLECTION_TYPE.TASKS]: "Tasks",
+  [ASSET_COLLECTION_TYPE.MEDIA]: "Media",
 } as const;
 
 export type ProcessingStatus = JobStatus;

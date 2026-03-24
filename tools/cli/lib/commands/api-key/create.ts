@@ -35,7 +35,8 @@ const DATA_READ_SCOPES = [
   "processing:read",
   "feedback:read",
   "model:read",
-  "audio:read",
+  "speech:read",
+  "media:read",
 ];
 
 const DATA_WRITE_SCOPES = [
@@ -48,7 +49,8 @@ const DATA_WRITE_SCOPES = [
   "feedback:write",
   "notifications:write",
   "processing:write",
-  "audio:write",
+  "speech:write",
+  "media:write",
 ];
 
 const ADMIN_SCOPES: Record<AdminAccessLevel, string[]> = {

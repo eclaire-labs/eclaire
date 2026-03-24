@@ -17,6 +17,7 @@ import type {
   BookmarkJobData,
   DocumentJobData,
   ImageJobData,
+  MediaJobData,
   NoteJobData,
   QueueAdapter,
   TaskJobData,
@@ -47,6 +48,7 @@ function getQueueName(assetType: AssetType, jobType?: string): string {
     documents: QueueNames.DOCUMENT_PROCESSING,
     notes: QueueNames.NOTE_PROCESSING,
     tasks: QueueNames.TASK_PROCESSING,
+    media: QueueNames.MEDIA_PROCESSING,
   };
 
   return mapping[assetType];
@@ -163,6 +165,10 @@ export function createDatabaseAdapter(
         scheduledFor: data.scheduledFor,
         jobType: data.jobType || "tag_generation",
       });
+    },
+
+    async enqueueMedia(data: MediaJobData): Promise<void> {
+      await enqueueJob("media", data.mediaId, data.userId, data);
     },
 
     async close(): Promise<void> {

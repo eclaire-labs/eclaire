@@ -30,6 +30,7 @@ function buildQueueName(assetType: AssetType, jobType?: string): string {
     documents: QueueNames.DOCUMENT_PROCESSING,
     notes: QueueNames.NOTE_PROCESSING,
     tasks: QueueNames.TASK_PROCESSING,
+    media: QueueNames.MEDIA_PROCESSING,
   };
 
   return mapping[assetType];

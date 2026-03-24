@@ -4,6 +4,7 @@ import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import {
   Activity,
   AlertTriangle,
+  AudioWaveform,
   BookMarked,
   Bot,
   Clock,
@@ -86,6 +87,7 @@ const navigation = [
   { name: "Bookmarks", href: "/bookmarks", icon: BookMarked },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Photos", href: "/photos", icon: ImageIcon },
+  { name: "Media", href: "/media", icon: AudioWaveform },
   { name: "History", href: "/history", icon: History },
 ];
 

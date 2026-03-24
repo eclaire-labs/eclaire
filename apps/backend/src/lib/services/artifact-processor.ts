@@ -5,6 +5,7 @@ import { createChildLogger } from "../logger.js";
 import { updateBookmarkArtifacts } from "./bookmarks.js";
 import { updateDocumentArtifacts } from "./documents.js";
 import { updateNoteArtifacts } from "./notes.js";
+import { updateMediaArtifacts } from "./media.js";
 import { updatePhotoArtifacts } from "./photos.js";
 import { updateTaskArtifacts } from "./tasks.js";
 
@@ -15,6 +16,7 @@ const assetTypeToTable: Record<string, { table: unknown; idCol: unknown }> = {
   documents: { table: schema.documents, idCol: schema.documents.id },
   notes: { table: schema.notes, idCol: schema.notes.id },
   photos: { table: schema.photos, idCol: schema.photos.id },
+  media: { table: schema.media, idCol: schema.media.id },
   tasks: { table: schema.tasks, idCol: schema.tasks.id },
 };
 
@@ -81,6 +83,9 @@ export async function processArtifacts(
       break;
     case "documents":
       await updateDocumentArtifacts(assetId, artifacts);
+      break;
+    case "media":
+      await updateMediaArtifacts(assetId, artifacts);
       break;
     default:
       logger.warn(

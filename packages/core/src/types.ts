@@ -23,6 +23,7 @@ export const ASSET_TYPES = [
   "bookmarks",
   "notes",
   "tasks",
+  "media",
 ] as const;
 export type AssetType = (typeof ASSET_TYPES)[number];
 
@@ -134,6 +135,7 @@ export const HISTORY_ITEM_TYPES = [
   "discord_voice",
   "feedback",
   "user_account",
+  "media",
 ] as const;
 export type HistoryItemType = (typeof HISTORY_ITEM_TYPES)[number];
 
@@ -278,6 +280,39 @@ export interface PhotoInsert {
   thumbnailStorageId?: string;
   screenshotStorageId?: string;
   convertedJpgStorageId?: string;
+  extractedMdStorageId?: string;
+  extractedTxtStorageId?: string;
+  rawMetadata?: Record<string, unknown>;
+  originalMimeType?: string;
+  userAgent?: string;
+  processingEnabled?: boolean;
+  reviewStatus?: ReviewStatus;
+  flagColor?: FlagColor;
+  isPinned?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MediaInsert {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  originalFilename?: string;
+  storageId: string;
+  mimeType?: string;
+  fileSize?: number;
+  dueDate?: string;
+  mediaType: "audio" | "video";
+  duration?: number;
+  channels?: number;
+  sampleRate?: number;
+  bitrate?: number;
+  codec?: string;
+  language?: string;
+  extractedText?: string;
+  thumbnailStorageId?: string;
+  waveformStorageId?: string;
   extractedMdStorageId?: string;
   extractedTxtStorageId?: string;
   rawMetadata?: Record<string, unknown>;

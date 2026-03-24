@@ -36,6 +36,11 @@
       "types": "./src/photos.ts",
       "default": "./dist/photos.js"
     },
+    "./media": {
+      "development": "./src/media.ts",
+      "types": "./src/media.ts",
+      "default": "./dist/media.js"
+    },
     "./tasks": {
       "development": "./src/tasks.ts",
       "types": "./src/tasks.ts",
