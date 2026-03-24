@@ -8,6 +8,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Trash2,
+  Video,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
@@ -87,7 +88,11 @@ export function MediaTileItem({
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
-              <AudioWaveform className="w-12 h-12 text-muted-foreground" />
+              {media.mediaType === "video" ? (
+                <Video className="w-12 h-12 text-muted-foreground" />
+              ) : (
+                <AudioWaveform className="w-12 h-12 text-muted-foreground" />
+              )}
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />

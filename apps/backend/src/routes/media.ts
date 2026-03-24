@@ -44,7 +44,7 @@ import {
   postMediaRouteDescription,
   putMediaRouteDescription,
 } from "../schemas/media-routes.js";
-import { MEDIA_AUDIO_MIMES } from "../types/mime-types.js";
+import { MEDIA_MIMES } from "../types/mime-types.js";
 import type { RouteVariables } from "../types/route-variables.js";
 import { createAssetResponse } from "./asset-response.js";
 import { registerCommonEndpoints } from "./shared-endpoints.js";
@@ -103,10 +103,10 @@ mediaRoutes.post(
     );
 
     // Validate content type for this specific endpoint
-    if (!MEDIA_AUDIO_MIMES.includes(finalMimeType)) {
+    if (!MEDIA_MIMES.includes(finalMimeType)) {
       return c.json(
         {
-          error: `Invalid content type for media. Received ${finalMimeType}, expected an audio type.`,
+          error: `Invalid content type for media. Received ${finalMimeType}, expected an audio or video type.`,
         },
         400,
       );

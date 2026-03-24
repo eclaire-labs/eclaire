@@ -23,6 +23,11 @@ export const MediaResponseSchema = z
     bitrate: z.number().nullable(),
     codec: z.string().nullable(),
     language: z.string().nullable(),
+    // Video-specific metadata
+    width: z.number().nullable(),
+    height: z.number().nullable(),
+    frameRate: z.number().nullable(),
+    videoCodec: z.string().nullable(),
     // Extracted content
     extractedText: z.string().nullable(),
     contentUrl: z.string().nullable(),

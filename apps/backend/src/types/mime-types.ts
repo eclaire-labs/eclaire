@@ -34,6 +34,20 @@ export const MEDIA_AUDIO_MIMES = [
   "audio/x-aiff",
 ];
 
+export const MEDIA_VIDEO_MIMES = [
+  "video/mp4",
+  "video/quicktime",
+  "video/x-msvideo",
+  "video/x-matroska",
+  "video/webm",
+  "video/ogg",
+  "video/mpeg",
+  "video/3gpp",
+  "video/3gpp2",
+];
+
+export const MEDIA_MIMES = [...MEDIA_AUDIO_MIMES, ...MEDIA_VIDEO_MIMES];
+
 export const DOCUMENT_MIMES = {
   // A set for quick lookups
   SET: new Set([

@@ -10,6 +10,7 @@ import {
   MessageCircle,
   Save,
   Trash2,
+  Video,
   X,
 } from "lucide-react";
 
@@ -41,7 +42,10 @@ import {
   formatCodec,
   formatDuration,
   formatFileSize,
+  formatFrameRate,
+  formatResolution,
   formatSampleRate,
+  formatVideoCodec,
 } from "./media/media-utils";
 
 export function MediaDetailClient() {
@@ -306,20 +310,36 @@ export function MediaDetailClient() {
                 </CardHeader>
                 <CardContent>
                   <TabsContent value="player" className="mt-0">
-                    <div className="flex flex-col items-center justify-center py-12 space-y-6">
-                      <AudioWaveform className="h-16 w-16 text-muted-foreground" />
-                      <audio controls className="w-full">
-                        <source src={media.mediaUrl} />
-                        <track kind="captions" />
-                      </audio>
-                    </div>
+                    {media.mediaType === "video" ? (
+                      <div className="flex flex-col items-center justify-center py-6 space-y-4">
+                        <video
+                          controls
+                          className="w-full max-h-[500px] rounded-md"
+                        >
+                          <source src={media.mediaUrl} />
+                          <track kind="captions" />
+                        </video>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 space-y-6">
+                        <AudioWaveform className="h-16 w-16 text-muted-foreground" />
+                        <audio controls className="w-full">
+                          <source src={media.mediaUrl} />
+                          <track kind="captions" />
+                        </audio>
+                      </div>
+                    )}
                   </TabsContent>
                   <TabsContent value="info" className="mt-0">
                     <div className="space-y-6">
                       {/* Metadata Card */}
                       <Card>
                         <CardHeader>
-                          <CardTitle>Audio Metadata</CardTitle>
+                          <CardTitle>
+                            {media.mediaType === "video"
+                              ? "Video Metadata"
+                              : "Audio Metadata"}
+                          </CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -331,30 +351,72 @@ export function MediaDetailClient() {
                                 {formatDuration(media.duration)}
                               </p>
                             </div>
-                            <div>
-                              <Label className="text-xs text-muted-foreground font-medium">
-                                Codec
-                              </Label>
-                              <p className="mt-0.5">
-                                {formatCodec(media.codec)}
-                              </p>
-                            </div>
-                            <div>
-                              <Label className="text-xs text-muted-foreground font-medium">
-                                Sample Rate
-                              </Label>
-                              <p className="mt-0.5">
-                                {formatSampleRate(media.sampleRate)}
-                              </p>
-                            </div>
-                            <div>
-                              <Label className="text-xs text-muted-foreground font-medium">
-                                Channels
-                              </Label>
-                              <p className="mt-0.5">
-                                {formatChannels(media.channels)}
-                              </p>
-                            </div>
+                            {media.mediaType === "video" ? (
+                              <>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground font-medium">
+                                    Resolution
+                                  </Label>
+                                  <p className="mt-0.5">
+                                    {formatResolution(
+                                      media.width,
+                                      media.height,
+                                    )}
+                                  </p>
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground font-medium">
+                                    Frame Rate
+                                  </Label>
+                                  <p className="mt-0.5">
+                                    {formatFrameRate(media.frameRate)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground font-medium">
+                                    Video Codec
+                                  </Label>
+                                  <p className="mt-0.5">
+                                    {formatVideoCodec(media.videoCodec)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground font-medium">
+                                    Audio Codec
+                                  </Label>
+                                  <p className="mt-0.5">
+                                    {formatCodec(media.codec)}
+                                  </p>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground font-medium">
+                                    Codec
+                                  </Label>
+                                  <p className="mt-0.5">
+                                    {formatCodec(media.codec)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground font-medium">
+                                    Sample Rate
+                                  </Label>
+                                  <p className="mt-0.5">
+                                    {formatSampleRate(media.sampleRate)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground font-medium">
+                                    Channels
+                                  </Label>
+                                  <p className="mt-0.5">
+                                    {formatChannels(media.channels)}
+                                  </p>
+                                </div>
+                              </>
+                            )}
                             <div>
                               <Label className="text-xs text-muted-foreground font-medium">
                                 Bitrate
@@ -434,7 +496,11 @@ export function MediaDetailClient() {
                 <div className="space-y-4 text-sm">
                   <div>
                     <Label className="flex items-center gap-2">
-                      <AudioWaveform className="h-4 w-4" />
+                      {media.mediaType === "video" ? (
+                        <Video className="h-4 w-4" />
+                      ) : (
+                        <AudioWaveform className="h-4 w-4" />
+                      )}
                       File Type
                     </Label>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -444,7 +510,11 @@ export function MediaDetailClient() {
 
                   <div>
                     <Label className="flex items-center gap-2">
-                      <AudioWaveform className="h-4 w-4" />
+                      {media.mediaType === "video" ? (
+                        <Video className="h-4 w-4" />
+                      ) : (
+                        <AudioWaveform className="h-4 w-4" />
+                      )}
                       File Size
                     </Label>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -557,7 +627,11 @@ export function MediaDetailClient() {
           isDeleting={actions.isDeleting}
         >
           <div className="my-4 flex items-start gap-3 p-3 border rounded-md bg-muted/50">
-            <AudioWaveform className="h-6 w-6 flex-shrink-0 mt-0.5" />
+            {media.mediaType === "video" ? (
+              <Video className="h-6 w-6 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AudioWaveform className="h-6 w-6 flex-shrink-0 mt-0.5" />
+            )}
             <div className="min-w-0 flex-1">
               <p className="font-medium break-words line-clamp-2 leading-tight">
                 {media.title || "Untitled Media"}
@@ -574,7 +648,7 @@ export function MediaDetailClient() {
           open={actions.showReprocessDialog}
           onOpenChange={actions.setShowReprocessDialog}
           label="Media"
-          description="This will re-extract audio metadata, regenerate transcripts, and reprocess all AI-generated data for this media file. This may take a few minutes."
+          description="This will re-extract metadata, regenerate transcripts, and reprocess all AI-generated data for this media file. This may take a few minutes."
           isReprocessing={actions.isReprocessing}
           onConfirm={actions.handleReprocess}
         />

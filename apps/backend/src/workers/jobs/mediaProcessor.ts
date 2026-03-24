@@ -21,7 +21,7 @@ export interface MediaJobData {
 const STAGES = {
   PREPARATION: "media_preparation",
   METADATA_EXTRACTION: "metadata_extraction",
-  WAVEFORM_GENERATION: "waveform_generation",
+  WAVEFORM_GENERATION: "waveform_generation", // also used for video thumbnail
   TRANSCRIPTION: "transcription",
   AI_ANALYSIS: "ai_analysis",
   FINALIZATION: "finalization",
@@ -53,6 +53,13 @@ interface AudioMetadata {
   sampleRate?: number;
   bitrate?: number;
   codec?: string;
+}
+
+interface VideoMetadata extends AudioMetadata {
+  width?: number;
+  height?: number;
+  frameRate?: number;
+  videoCodec?: string;
 }
 
 async function extractAudioMetadata(
@@ -114,6 +121,89 @@ async function extractAudioMetadata(
   });
 }
 
+async function extractVideoMetadata(
+  videoBuffer: Buffer,
+): Promise<VideoMetadata> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(
+      "ffprobe",
+      [
+        "-i",
+        "pipe:0",
+        "-show_entries",
+        "format=duration,bit_rate:stream=codec_name,width,height,r_frame_rate,channels,sample_rate,codec_type",
+        "-v",
+        "quiet",
+        "-of",
+        "json",
+      ],
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
+
+    let output = "";
+    proc.stdout.on("data", (chunk: Buffer) => {
+      output += chunk.toString();
+    });
+    proc.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`FFprobe exited with code ${code}`));
+        return;
+      }
+      try {
+        const data = JSON.parse(output);
+        const format = data.format || {};
+        const streams = data.streams || [];
+
+        const videoStream = streams.find(
+          // biome-ignore lint/suspicious/noExplicitAny: ffprobe stream output is untyped
+          (s: any) => s.codec_type === "video",
+        );
+        const audioStream = streams.find(
+          // biome-ignore lint/suspicious/noExplicitAny: ffprobe stream output is untyped
+          (s: any) => s.codec_type === "audio",
+        );
+
+        let frameRate: number | undefined;
+        if (videoStream?.r_frame_rate) {
+          const [num, den] = videoStream.r_frame_rate.split("/").map(Number);
+          if (num && den) {
+            frameRate = Math.round((num / den) * 100) / 100;
+          }
+        }
+
+        resolve({
+          duration: format.duration
+            ? Number.parseFloat(format.duration)
+            : undefined,
+          bitrate: format.bit_rate
+            ? Number.parseInt(format.bit_rate, 10)
+            : undefined,
+          // Video stream
+          width: videoStream?.width || undefined,
+          height: videoStream?.height || undefined,
+          frameRate,
+          videoCodec: videoStream?.codec_name || undefined,
+          // Audio stream
+          channels: audioStream?.channels || undefined,
+          sampleRate: audioStream?.sample_rate
+            ? Number.parseInt(audioStream.sample_rate, 10)
+            : undefined,
+          codec: audioStream?.codec_name || undefined,
+        });
+      } catch {
+        reject(new Error("Failed to parse FFprobe output"));
+      }
+    });
+    proc.on("error", (err) => reject(err));
+
+    const inputStream = Readable.from(videoBuffer);
+    inputStream.pipe(proc.stdin);
+    proc.stdin.on("error", () => {
+      /* ignore broken pipe */
+    });
+  });
+}
+
 async function generateWaveform(audioBuffer: Buffer): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const proc = spawn(
@@ -146,6 +236,44 @@ async function generateWaveform(audioBuffer: Buffer): Promise<Buffer> {
     proc.on("error", (err) => reject(err));
 
     const inputStream = Readable.from(audioBuffer);
+    inputStream.pipe(proc.stdin);
+    proc.stdin.on("error", () => {
+      /* ignore broken pipe */
+    });
+  });
+}
+
+async function generateThumbnail(videoBuffer: Buffer): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(
+      "ffmpeg",
+      [
+        "-i",
+        "pipe:0",
+        "-vframes",
+        "1",
+        "-an",
+        "-f",
+        "image2",
+        "-c:v",
+        "png",
+        "pipe:1",
+      ],
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
+
+    const chunks: Buffer[] = [];
+    proc.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolve(Buffer.concat(chunks));
+      } else {
+        reject(new Error(`FFmpeg thumbnail exited with code ${code}`));
+      }
+    });
+    proc.on("error", (err) => reject(err));
+
+    const inputStream = Readable.from(videoBuffer);
     inputStream.pipe(proc.stdin);
     proc.stdin.on("error", () => {
       /* ignore broken pipe */
@@ -199,7 +327,7 @@ function generateMediaContentMarkdown(
 ): string {
   const sections: string[] = [];
 
-  const category = extractedData.aiAnalysis?.category || "audio";
+  const category = extractedData.aiAnalysis?.category || "media";
   sections.push(`# ${category.charAt(0).toUpperCase() + category.slice(1)}`);
 
   if (extractedData.aiAnalysis?.description) {
@@ -212,7 +340,15 @@ function generateMediaContentMarkdown(
     const lines: string[] = [];
     if (meta.duration)
       lines.push(`- **Duration:** ${formatDuration(meta.duration)}`);
-    if (meta.codec) lines.push(`- **Codec:** ${meta.codec}`);
+
+    // Video-specific
+    if (meta.width && meta.height)
+      lines.push(`- **Resolution:** ${meta.width}x${meta.height}`);
+    if (meta.frameRate) lines.push(`- **Frame Rate:** ${meta.frameRate} fps`);
+    if (meta.videoCodec) lines.push(`- **Video Codec:** ${meta.videoCodec}`);
+
+    // Audio track info
+    if (meta.codec) lines.push(`- **Audio Codec:** ${meta.codec}`);
     if (meta.sampleRate) lines.push(`- **Sample Rate:** ${meta.sampleRate} Hz`);
     if (meta.channels)
       lines.push(
@@ -220,8 +356,10 @@ function generateMediaContentMarkdown(
       );
     if (meta.bitrate)
       lines.push(`- **Bitrate:** ${Math.round(meta.bitrate / 1000)} kbps`);
+
     if (lines.length > 0) {
-      sections.push(`\n## Audio Info\n\n${lines.join("\n")}`);
+      const heading = meta.width ? "Video Info" : "Audio Info";
+      sections.push(`\n## ${heading}\n\n${lines.join("\n")}`);
     }
   }
 
@@ -268,6 +406,8 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
     );
   }
 
+  const isVideo = mimeType.startsWith("video/");
+
   const allStages: Stage[] = [
     STAGES.PREPARATION,
     STAGES.METADATA_EXTRACTION,
@@ -303,27 +443,43 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
       );
     }
 
-    const { buffer: audioBuffer } = await storage.readBuffer(storageId);
-    if (audioBuffer.length === 0)
+    const { buffer: mediaBuffer } = await storage.readBuffer(storageId);
+    if (mediaBuffer.length === 0)
       throw new Error("Fetched media file is empty.");
     await ctx.completeStage(STAGES.PREPARATION);
 
     // --- METADATA EXTRACTION ---
     await ctx.startStage(STAGES.METADATA_EXTRACTION);
-    let audioMeta: AudioMetadata = {};
     try {
       if (await isFFprobeAvailable()) {
         await ctx.updateStageProgress(STAGES.METADATA_EXTRACTION, 30);
-        audioMeta = await extractAudioMetadata(audioBuffer);
-        Object.assign(allArtifacts, {
-          duration: audioMeta.duration,
-          channels: audioMeta.channels,
-          sampleRate: audioMeta.sampleRate,
-          bitrate: audioMeta.bitrate,
-          codec: audioMeta.codec,
-        });
-        extractedData.metadata = audioMeta;
-        logger.info({ mediaId, ...audioMeta }, "Audio metadata extracted");
+        if (isVideo) {
+          const videoMeta = await extractVideoMetadata(mediaBuffer);
+          Object.assign(allArtifacts, {
+            duration: videoMeta.duration,
+            channels: videoMeta.channels,
+            sampleRate: videoMeta.sampleRate,
+            bitrate: videoMeta.bitrate,
+            codec: videoMeta.codec,
+            width: videoMeta.width,
+            height: videoMeta.height,
+            frameRate: videoMeta.frameRate,
+            videoCodec: videoMeta.videoCodec,
+          });
+          extractedData.metadata = videoMeta;
+          logger.info({ mediaId, ...videoMeta }, "Video metadata extracted");
+        } else {
+          const audioMeta = await extractAudioMetadata(mediaBuffer);
+          Object.assign(allArtifacts, {
+            duration: audioMeta.duration,
+            channels: audioMeta.channels,
+            sampleRate: audioMeta.sampleRate,
+            bitrate: audioMeta.bitrate,
+            codec: audioMeta.codec,
+          });
+          extractedData.metadata = audioMeta;
+          logger.info({ mediaId, ...audioMeta }, "Audio metadata extracted");
+        }
       } else {
         logger.warn(
           { mediaId },
@@ -341,24 +497,51 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
     }
     await ctx.completeStage(STAGES.METADATA_EXTRACTION, allArtifacts);
 
-    // --- WAVEFORM GENERATION ---
+    // --- WAVEFORM / THUMBNAIL GENERATION ---
     await ctx.startStage(STAGES.WAVEFORM_GENERATION);
     try {
       if (await isFFmpegAvailable()) {
         await ctx.updateStageProgress(STAGES.WAVEFORM_GENERATION, 30);
-        const waveformBuffer = await generateWaveform(audioBuffer);
-        const waveformKey = buildKey(userId, "media", mediaId, "waveform.png");
-        await storage.writeBuffer(waveformKey, waveformBuffer, {
-          contentType: "image/png",
-        });
-        allArtifacts.thumbnailStorageId = waveformKey;
-        allArtifacts.waveformStorageId = waveformKey;
-        extractedData.waveform = { storageId: waveformKey };
-        logger.info({ mediaId, storageId: waveformKey }, "Waveform generated");
+        if (isVideo) {
+          const thumbnailBuffer = await generateThumbnail(mediaBuffer);
+          const thumbnailKey = buildKey(
+            userId,
+            "media",
+            mediaId,
+            "thumbnail.png",
+          );
+          await storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
+            contentType: "image/png",
+          });
+          allArtifacts.thumbnailStorageId = thumbnailKey;
+          extractedData.thumbnail = { storageId: thumbnailKey };
+          logger.info(
+            { mediaId, storageId: thumbnailKey },
+            "Video thumbnail generated",
+          );
+        } else {
+          const waveformBuffer = await generateWaveform(mediaBuffer);
+          const waveformKey = buildKey(
+            userId,
+            "media",
+            mediaId,
+            "waveform.png",
+          );
+          await storage.writeBuffer(waveformKey, waveformBuffer, {
+            contentType: "image/png",
+          });
+          allArtifacts.thumbnailStorageId = waveformKey;
+          allArtifacts.waveformStorageId = waveformKey;
+          extractedData.waveform = { storageId: waveformKey };
+          logger.info(
+            { mediaId, storageId: waveformKey },
+            "Waveform generated",
+          );
+        }
       } else {
         logger.warn(
           { mediaId },
-          "FFmpeg not available, skipping waveform generation",
+          "FFmpeg not available, skipping visual generation",
         );
       }
     } catch (error) {
@@ -367,7 +550,7 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
           mediaId,
           error: error instanceof Error ? error.message : String(error),
         },
-        "Waveform generation failed, continuing",
+        "Visual generation failed, continuing",
       );
     }
     await ctx.completeStage(STAGES.WAVEFORM_GENERATION, {
@@ -383,8 +566,8 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
       if (isAudioAvailable()) {
         await ctx.updateStageProgress(STAGES.TRANSCRIPTION, 20);
         const result = await transcribe({
-          file: audioBuffer,
-          fileName: originalFilename || "audio.wav",
+          file: mediaBuffer,
+          fileName: originalFilename || (isVideo ? "video.mp4" : "audio.wav"),
         });
         transcriptText = result.text || "";
         detectedLanguage = (result as unknown as Record<string, unknown>)
@@ -436,18 +619,22 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
             ? `${transcriptText.slice(0, 8000)}\n\n[Transcript truncated — ${transcriptText.length} characters total]`
             : transcriptText;
 
+        const mediaLabel = isVideo ? "video" : "audio";
+        const categoryList = isVideo
+          ? "tutorial, presentation, interview, vlog, screencast, music_video, meeting, short_clip, other"
+          : "speech, podcast, interview, lecture, meeting, voice_memo, music, audiobook, sound_effect, other";
+
         const messages: AIMessage[] = [
           {
             role: "system",
-            content:
-              "You are an audio analysis AI. Analyze the provided audio transcript and return ONLY valid JSON. Do not include explanatory text.",
+            content: `You are a media analysis AI. Analyze the provided ${mediaLabel} transcript and return ONLY valid JSON. Do not include explanatory text.`,
           },
           {
             role: "user",
-            content: `Analyze this audio transcript. Provide:
+            content: `Analyze this ${mediaLabel} transcript. Provide:
 - A brief one-sentence description of the content
 - 3-8 relevant tags (keywords)
-- Category: speech, podcast, interview, lecture, meeting, voice_memo, music, audiobook, sound_effect, other
+- Category: ${categoryList}
 
 Transcript:
 ${truncatedTranscript}

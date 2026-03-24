@@ -825,6 +825,12 @@ export const media = pgTable(
     codec: text("codec"),
     language: text("language"),
 
+    // Video-specific metadata (nullable for audio)
+    width: integer("width"),
+    height: integer("height"),
+    frameRate: doublePrecision("frame_rate"),
+    videoCodec: text("video_codec"),
+
     extractedText: text("extracted_text"),
 
     thumbnailStorageId: text("thumbnail_storage_id"),

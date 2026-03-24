@@ -6,6 +6,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Trash2,
+  Video,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
@@ -84,7 +85,11 @@ export function MediaListItem({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <AudioWaveform className="w-6 h-6 text-muted-foreground" />
+            {media.mediaType === "video" ? (
+              <Video className="w-6 h-6 text-muted-foreground" />
+            ) : (
+              <AudioWaveform className="w-6 h-6 text-muted-foreground" />
+            )}
           </div>
         )}
         {/* Processing Status Icon */}

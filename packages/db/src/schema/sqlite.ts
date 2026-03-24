@@ -745,6 +745,12 @@ export const media = sqliteTable(
     codec: text("codec"),
     language: text("language"),
 
+    // Video-specific metadata (nullable for audio)
+    width: integer("width"),
+    height: integer("height"),
+    frameRate: real("frame_rate"),
+    videoCodec: text("video_codec"),
+
     extractedText: text("extracted_text"),
 
     thumbnailStorageId: text("thumbnail_storage_id"),

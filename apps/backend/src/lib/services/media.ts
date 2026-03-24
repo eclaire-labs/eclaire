@@ -90,6 +90,12 @@ export interface Media {
   codec: string | null;
   language: string | null;
 
+  // Video-specific metadata
+  width: number | null;
+  height: number | null;
+  frameRate: number | null;
+  videoCodec: string | null;
+
   extractedText: string | null;
   contentUrl: string | null;
 
@@ -230,6 +236,11 @@ async function getMediaWithDetails(mediaId: string, userId: string) {
     codec: row.codec,
     language: row.language,
 
+    width: row.width,
+    height: row.height,
+    frameRate: row.frameRate,
+    videoCodec: row.videoCodec,
+
     extractedText: row.extractedText,
     contentUrl:
       row.extractedMdStorageId || row.extractedTxtStorageId
@@ -296,8 +307,10 @@ export async function createMedia(
   try {
     const verifiedMimeType = originalMimeType;
     const fileSize = content.length;
-    const originalFilename = metadata.originalFilename || "untitled.mp3";
     const mediaType = detectMediaType(verifiedMimeType);
+    const originalFilename =
+      metadata.originalFilename ||
+      (mediaType === "video" ? "untitled.mp4" : "untitled.mp3");
     const processingEnabled = metadata.processingEnabled !== false;
 
     const dueDateValue = metadata.dueDate ? new Date(metadata.dueDate) : null;
@@ -305,7 +318,9 @@ export async function createMedia(
     // Save file to storage
     const fileExtension = originalFilename.includes(".")
       ? originalFilename.split(".").pop()?.toLowerCase()
-      : "mp3";
+      : mediaType === "video"
+        ? "mp4"
+        : "mp3";
 
     const storage = getStorage();
     const storageKey = buildKey(
@@ -354,13 +369,19 @@ export async function createMedia(
 
         mediaType: mediaType,
 
-        // Audio-specific metadata (initially null, populated by worker)
+        // Audio/video metadata (initially null, populated by worker)
         duration: null,
         channels: null,
         sampleRate: null,
         bitrate: null,
         codec: null,
         language: null,
+
+        // Video-specific metadata (initially null, populated by worker)
+        width: null,
+        height: null,
+        frameRate: null,
+        videoCodec: null,
 
         extractedText: null,
 
@@ -850,6 +871,11 @@ export async function findMedia({
         codec: row.codec,
         language: row.language,
 
+        width: row.width,
+        height: row.height,
+        frameRate: row.frameRate,
+        videoCodec: row.videoCodec,
+
         extractedText: row.extractedText,
         contentUrl:
           row.extractedMdStorageId || row.extractedTxtStorageId
@@ -1160,6 +1186,10 @@ export async function updateMediaArtifacts(
     bitrate?: number | null;
     codec?: string | null;
     language?: string | null;
+    width?: number | null;
+    height?: number | null;
+    frameRate?: number | null;
+    videoCodec?: string | null;
     extractedText?: string | null;
     description?: string | null;
     tags?: string[];
@@ -1194,6 +1224,20 @@ export async function updateMediaArtifacts(
     }
     if (artifacts.language !== undefined) {
       updatePayload.language = artifacts.language;
+    }
+
+    // Handle video metadata
+    if (artifacts.width !== undefined) {
+      updatePayload.width = artifacts.width;
+    }
+    if (artifacts.height !== undefined) {
+      updatePayload.height = artifacts.height;
+    }
+    if (artifacts.frameRate !== undefined) {
+      updatePayload.frameRate = artifacts.frameRate;
+    }
+    if (artifacts.videoCodec !== undefined) {
+      updatePayload.videoCodec = artifacts.videoCodec;
     }
 
     // Handle storage artifacts

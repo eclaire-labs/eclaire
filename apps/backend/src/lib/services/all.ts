@@ -6,6 +6,7 @@ import {
   BOOKMARK_MIMES,
   DOCUMENT_MIMES,
   MEDIA_AUDIO_MIMES,
+  MEDIA_MIMES,
   NOTE_MIMES,
   PHOTO_MIMES,
 } from "../../types/mime-types.js";
@@ -337,8 +338,8 @@ export async function classifyAndCreateContent(
     return { success: true, result, assetType: "note" };
   }
 
-  // Rule 5: Audio MIME types -> Media
-  if (MEDIA_AUDIO_MIMES.includes(mimeType)) {
+  // Rule 5: Audio/Video MIME types -> Media
+  if (MEDIA_MIMES.includes(mimeType)) {
     const result = await createMedia(
       {
         ...servicePayload,
@@ -352,7 +353,7 @@ export async function classifyAndCreateContent(
       caller,
     );
     logger.info(
-      { requestId, mediaId: result.id, rule: "Rule 5 (audio MIME)" },
+      { requestId, mediaId: result.id, rule: "Rule 5 (media MIME)" },
       "Media created",
     );
     return { success: true, result, assetType: "media" };

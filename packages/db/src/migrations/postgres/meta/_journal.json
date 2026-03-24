@@ -29,6 +29,13 @@
       "when": 1774353178157,
       "tag": "0003_aberrant_romulus",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774355461156,
+      "tag": "0004_premium_starhawk",
+      "breakpoints": true
     }
   ]
 }

@@ -46,9 +46,10 @@ import { mediaConfig } from "./media/media-config";
 // Upload constants
 // ---------------------------------------------------------------------------
 
-const MAX_FILE_SIZE_MB = 100;
+const MAX_FILE_SIZE_MB = 500;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const ALLOWED_UPLOAD_TYPES = {
+  // Audio
   "audio/mpeg": [".mp3"],
   "audio/wav": [".wav"],
   "audio/flac": [".flac"],
@@ -58,6 +59,14 @@ const ALLOWED_UPLOAD_TYPES = {
   "audio/x-m4a": [".m4a"],
   "audio/webm": [".webm"],
   "audio/aiff": [".aiff", ".aif"],
+  // Video
+  "video/mp4": [".mp4"],
+  "video/quicktime": [".mov"],
+  "video/x-msvideo": [".avi"],
+  "video/x-matroska": [".mkv"],
+  "video/webm": [".webm"],
+  "video/ogg": [".ogv"],
+  "video/mpeg": [".mpeg", ".mpg"],
 };
 
 // ---------------------------------------------------------------------------
@@ -371,7 +380,7 @@ export default function MediaPage() {
                     Invalid file type
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Please drop audio files only
+                    Please drop audio or video files only
                   </p>
                 </>
               ) : (

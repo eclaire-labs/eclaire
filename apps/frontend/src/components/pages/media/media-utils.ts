@@ -36,3 +36,21 @@ export function formatChannels(channels: number | null | undefined): string {
   if (channels === 2) return "Stereo";
   return `${channels} ch`;
 }
+
+export function formatResolution(
+  width: number | null | undefined,
+  height: number | null | undefined,
+): string {
+  if (!width || !height) return "-";
+  return `${width} x ${height}`;
+}
+
+export function formatFrameRate(fps: number | null | undefined): string {
+  if (!fps) return "-";
+  return `${fps.toFixed(2)} fps`;
+}
+
+export function formatVideoCodec(codec: string | null | undefined): string {
+  if (!codec) return "-";
+  return codec.toUpperCase();
+}
