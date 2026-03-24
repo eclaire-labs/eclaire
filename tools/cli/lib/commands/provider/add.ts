@@ -1,8 +1,7 @@
 import {
-  getPresetById,
-  getPresetsForSelection,
-  PROVIDER_PRESETS,
-} from "../../config/presets.js";
+  fetchProviderPresets,
+  type AdminProviderPreset,
+} from "../../backend-client.js";
 import { addProvider, isProviderIdAvailable } from "../../config/providers.js";
 import { closeDb } from "../../db/index.js";
 import type {
@@ -33,21 +32,63 @@ import {
 } from "../../ui/prompts.js";
 import { createProviderInfoTable } from "../../ui/tables.js";
 
+/**
+ * Convert backend preset to CLI ProviderPreset shape.
+ */
+function toCliPreset(p: AdminProviderPreset): ProviderPreset {
+  return {
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    isCloud: p.isCloud,
+    defaultPort: p.defaultPort,
+    defaultEngine: p.defaultEngine,
+    config: {
+      dialect: p.config.dialect as ProviderPreset["config"]["dialect"],
+      baseUrl: p.config.baseUrl,
+      headers: p.config.headers,
+      auth: {
+        type: p.config.auth.type as "none" | "bearer" | "header",
+        requiresApiKey: p.config.auth.requiresApiKey,
+        envVar: p.config.auth.envVar,
+      },
+    },
+  };
+}
+
+/**
+ * Load presets from backend API with a graceful fallback message.
+ */
+async function loadPresets(): Promise<ProviderPreset[]> {
+  const apiPresets = await fetchProviderPresets();
+  if (apiPresets && apiPresets.length > 0) {
+    return apiPresets.map(toCliPreset);
+  }
+  // Backend unreachable — inform user
+  log.warn(
+    colors.warning(
+      "Could not reach backend for provider presets. Make sure the backend is running.",
+    ),
+  );
+  process.exit(1);
+}
+
 export async function addCommand(options: CommandOptions): Promise<void> {
   try {
     intro(`${icons.plug} Add Provider`);
+
+    const allPresets = await loadPresets();
 
     let preset: ProviderPreset;
 
     // Use preset from option or prompt for selection
     if (options.preset) {
-      const foundPreset = getPresetById(options.preset);
+      const foundPreset = allPresets.find((p) => p.id === options.preset);
       if (!foundPreset) {
         cancel(`Unknown preset: ${options.preset}`);
         log.info(
           colors.dim(
-            "Available presets: " +
-              PROVIDER_PRESETS.map((p) => p.id).join(", "),
+            "Available presets: " + allPresets.map((p) => p.id).join(", "),
           ),
         );
         process.exit(1);
@@ -55,10 +96,30 @@ export async function addCommand(options: CommandOptions): Promise<void> {
       preset = foundPreset;
       log.info(`Using preset: ${preset.name}`);
     } else {
-      preset = await promptPresetSelection(
-        getPresetsForSelection(),
-        "Select provider type:",
-      );
+      // Sort: common first, custom last
+      const priority = [
+        "llama-cpp",
+        "ollama",
+        "openrouter",
+        "lm-studio",
+        "mlx-lm",
+        "mlx-vlm",
+      ];
+      const sorted = [...allPresets].sort((a, b) => {
+        const aIdx = priority.indexOf(a.id);
+        const bIdx = priority.indexOf(b.id);
+        if (aIdx === -1 && bIdx === -1) return 0;
+        if (aIdx === -1) return 1;
+        if (bIdx === -1) return -1;
+        return aIdx - bIdx;
+      });
+      const customIdx = sorted.findIndex((p) => p.id === "custom");
+      if (customIdx !== -1) {
+        const [custom] = sorted.splice(customIdx, 1);
+        if (custom) sorted.push(custom);
+      }
+
+      preset = await promptPresetSelection(sorted, "Select provider type:");
     }
 
     log.info(colors.dim(preset.description));

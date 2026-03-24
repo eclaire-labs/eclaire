@@ -1,17 +1,20 @@
 /**
- * Provider preset definitions
+ * AI Provider Presets
  *
- * Common provider configurations that can be used to quickly set up providers.
+ * Canonical provider preset definitions, owned by the backend.
+ * Frontend and CLI should consume these via GET /api/admin/provider-presets
+ * instead of maintaining their own copies.
  */
 
-import type { ProviderPreset } from "../types/index.js";
+import type { ProviderPresetInfo } from "./ai-import-types.js";
 
-export const PROVIDER_PRESETS: ProviderPreset[] = [
+const PROVIDER_PRESETS: ProviderPresetInfo[] = [
   {
     id: "llama-cpp",
     name: "llama.cpp",
     description: "Local llama.cpp server with OpenAI-compatible API (managed)",
     isCloud: false,
+    supportsCatalogDiscovery: false,
     defaultPort: 11500,
     defaultEngine: {
       name: "llama-cpp",
@@ -28,6 +31,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: "Ollama",
     description: "Ollama local model server (external)",
     isCloud: false,
+    supportsCatalogDiscovery: false,
     defaultPort: 11434,
     defaultEngine: {
       name: "ollama",
@@ -43,6 +47,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: "LM Studio",
     description: "LM Studio local server (external)",
     isCloud: false,
+    supportsCatalogDiscovery: false,
     defaultPort: 1234,
     defaultEngine: {
       name: "lm-studio",
@@ -58,6 +63,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: "mlx-lm",
     description: "MLX-LM for Apple Silicon (text models)",
     isCloud: false,
+    supportsCatalogDiscovery: false,
     defaultPort: 11434,
     defaultEngine: {
       name: "mlx-lm",
@@ -73,6 +79,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: "mlx-vlm",
     description: "MLX-VLM for Apple Silicon (vision models)",
     isCloud: false,
+    supportsCatalogDiscovery: false,
     defaultPort: 11434,
     defaultEngine: {
       name: "mlx-vlm",
@@ -88,6 +95,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: "OpenRouter",
     description: "OpenRouter cloud API (requires API key)",
     isCloud: true,
+    supportsCatalogDiscovery: true,
     config: {
       dialect: "openai_compatible",
       baseUrl: "https://openrouter.ai/api/v1",
@@ -107,10 +115,15 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: "OpenAI",
     description: "OpenAI API (requires API key)",
     isCloud: true,
+    supportsCatalogDiscovery: true,
     config: {
       dialect: "openai_compatible",
       baseUrl: "https://api.openai.com/v1",
-      auth: { type: "bearer", requiresApiKey: true, envVar: "OPENAI_API_KEY" },
+      auth: {
+        type: "bearer",
+        requiresApiKey: true,
+        envVar: "OPENAI_API_KEY",
+      },
     },
   },
   {
@@ -118,6 +131,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: "Anthropic",
     description: "Anthropic Claude API (requires API key)",
     isCloud: true,
+    supportsCatalogDiscovery: false,
     config: {
       dialect: "anthropic_messages",
       baseUrl: "https://api.anthropic.com",
@@ -136,6 +150,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: "Custom",
     description: "Manually configure all provider settings",
     isCloud: false,
+    supportsCatalogDiscovery: false,
     defaultPort: 8080,
     config: {
       dialect: "openai_compatible",
@@ -146,46 +161,17 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
 ];
 
 /**
- * Get a preset by ID
+ * List all provider presets.
  */
-export function getPresetById(id: string): ProviderPreset | undefined {
+export function listProviderPresets(): ProviderPresetInfo[] {
+  return PROVIDER_PRESETS;
+}
+
+/**
+ * Get a provider preset by ID.
+ */
+export function getProviderPresetById(
+  id: string,
+): ProviderPresetInfo | undefined {
   return PROVIDER_PRESETS.find((p) => p.id === id);
-}
-
-/**
- * Get all preset IDs
- */
-export function getPresetIds(): string[] {
-  return PROVIDER_PRESETS.map((p) => p.id);
-}
-
-/**
- * Get presets sorted with recommended first
- */
-export function getPresetsForSelection(): ProviderPreset[] {
-  // Put common choices first: llama-cpp, ollama, openrouter, then others
-  const priority = [
-    "llama-cpp",
-    "ollama",
-    "openrouter",
-    "lm-studio",
-    "mlx-lm",
-    "mlx-vlm",
-  ];
-  const sorted = [...PROVIDER_PRESETS].sort((a, b) => {
-    const aIdx = priority.indexOf(a.id);
-    const bIdx = priority.indexOf(b.id);
-    if (aIdx === -1 && bIdx === -1) return 0;
-    if (aIdx === -1) return 1;
-    if (bIdx === -1) return -1;
-    return aIdx - bIdx;
-  });
-  // Always put custom last
-  const customIdx = sorted.findIndex((p) => p.id === "custom");
-  if (customIdx !== -1) {
-    const [custom] = sorted.splice(customIdx, 1);
-    // biome-ignore lint/style/noNonNullAssertion: splice guarantees element exists at customIdx
-    sorted.push(custom!);
-  }
-  return sorted;
 }

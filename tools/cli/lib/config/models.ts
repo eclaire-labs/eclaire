@@ -3,6 +3,11 @@
  *
  * CRUD operations use the database directly.
  * Read-only accessors and helpers re-exported from @eclaire/ai for compatibility.
+ *
+ * @deprecated Write operations (addModel, updateModel, removeModel) are being
+ * migrated to the backend admin API. New code should use importModelsViaApi()
+ * from backend-client.ts for imports. DB-direct functions remain for operations
+ * not yet covered by the API (activate, deactivate, refresh).
  */
 
 import { eq } from "drizzle-orm";

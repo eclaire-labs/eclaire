@@ -13,6 +13,7 @@ import {
   getMcpServer,
   getModel,
   getProvider,
+  importModels,
   listMcpServers,
   listModels,
   listProviders,
@@ -21,6 +22,13 @@ import {
   updateModel,
   updateProvider,
 } from "../lib/services/ai-config.js";
+import {
+  fetchProviderCatalog,
+  inspectImportUrl,
+  normalizeImportedModel,
+} from "../lib/services/ai-import.js";
+import type { ImportModelsRequest } from "../lib/services/ai-import-types.js";
+import { listProviderPresets } from "../lib/services/ai-provider-presets.js";
 import { setUserRole } from "../lib/services/admin.js";
 import {
   createUserByAdmin,
@@ -487,5 +495,83 @@ adminRoutes.delete(
     await assertInstanceAdmin(userId);
     await deleteUserByAdmin(c.req.param("id"), userId);
     return c.json({ deleted: true });
+  }, logger),
+);
+
+// =============================================================================
+// Provider Presets & Model Import
+// =============================================================================
+
+// GET /api/admin/provider-presets - List canonical provider presets
+adminRoutes.get(
+  "/provider-presets",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    const items = listProviderPresets();
+    return c.json({ items });
+  }, logger),
+);
+
+// POST /api/admin/providers/:id/catalog - Fetch remote models from provider
+adminRoutes.post(
+  "/providers/:id/catalog",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    const provider = await getProvider(c.req.param("id"));
+    if (!provider) {
+      return c.json({ error: "Provider not found" }, 404);
+    }
+    try {
+      const items = await fetchProviderCatalog(provider);
+      return c.json({ providerId: provider.id, items });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Catalog fetch failed";
+      return c.json({ error: message }, 400);
+    }
+  }, logger),
+);
+
+// POST /api/admin/models/inspect-url - Inspect a HuggingFace or OpenRouter URL
+adminRoutes.post(
+  "/models/inspect-url",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    const body = (await c.req.json()) as { url?: string };
+    if (!body.url || typeof body.url !== "string") {
+      return c.json({ error: "url is required" }, 400);
+    }
+    try {
+      const result = await inspectImportUrl(body.url);
+      return c.json(result);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Inspection failed";
+      return c.json({ error: message }, 400);
+    }
+  }, logger),
+);
+
+// POST /api/admin/models/import - Import one or more models with optional defaults
+adminRoutes.post(
+  "/models/import",
+  withAuth(async (c, userId) => {
+    await assertInstanceAdmin(userId);
+    const body = (await c.req.json()) as ImportModelsRequest;
+    if (
+      !body.models ||
+      !Array.isArray(body.models) ||
+      body.models.length === 0
+    ) {
+      return c.json({ error: "models array is required" }, 400);
+    }
+    try {
+      const entries = body.models.map((entry) => normalizeImportedModel(entry));
+      const result = await importModels(entries, body.setDefaults, userId);
+      return c.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Import failed";
+      return c.json({ error: message }, 400);
+    }
   }, logger),
 );

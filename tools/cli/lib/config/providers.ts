@@ -1,5 +1,10 @@
 /**
  * Provider configuration CRUD operations (DB-backed)
+ *
+ * @deprecated Provider CRUD is being migrated to the backend admin API.
+ * DB-direct functions remain as the primary path until CLI fully migrates
+ * to HTTP API calls. Provider presets are now fetched from the backend via
+ * fetchProviderPresets() in backend-client.ts.
  */
 
 import { eq } from "drizzle-orm";

@@ -8,7 +8,6 @@ import {
   Plug,
   Radio,
   Server,
-  Settings2,
   Shield,
   Sliders,
   User,
@@ -67,12 +66,6 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
   { id: "models", label: "Models", icon: Cpu, adminOnly: true },
   { id: "providers", label: "Providers", icon: Server, adminOnly: true },
   {
-    id: "model-defaults",
-    label: "Model Defaults",
-    icon: Settings2,
-    adminOnly: true,
-  },
-  {
     id: "voice-defaults",
     label: "Voice Defaults",
     icon: Volume2,
@@ -104,5 +97,6 @@ export const TAB_TO_SECTION: Record<string, string> = {
   "api-keys": "api-keys",
   about: "about",
   "audio-defaults": "voice-defaults",
+  "model-defaults": "models",
   registration: "users",
 };

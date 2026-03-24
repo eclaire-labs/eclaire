@@ -11,6 +11,7 @@ import {
 /** Redirects for renamed/removed sections */
 const SECTION_REDIRECTS: Record<string, string> = {
   "audio-defaults": "voice-defaults",
+  "model-defaults": "models",
   registration: "users",
 };
 
@@ -43,9 +44,6 @@ const SECTION_COMPONENTS: Record<
   // Administration (admin-only)
   models: lazy(() => import("@/components/settings/admin/ModelManager")),
   providers: lazy(() => import("@/components/settings/admin/ProviderManager")),
-  "model-defaults": lazy(
-    () => import("@/components/settings/admin/ModelSelectionSettings"),
-  ),
   "voice-defaults": lazy(
     () => import("@/components/settings/admin/AudioDefaultsSettings"),
   ),

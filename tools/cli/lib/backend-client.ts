@@ -182,3 +182,121 @@ export async function listAgents(): Promise<AgentSummary[]> {
   const data = (await response.json()) as { items: AgentSummary[] };
   return data.items;
 }
+
+// ============================================================================
+// Admin API — Provider Presets, Model Import, Catalog Discovery
+// ============================================================================
+
+export interface AdminProviderPreset {
+  id: string;
+  name: string;
+  description: string;
+  isCloud: boolean;
+  supportsCatalogDiscovery: boolean;
+  defaultPort?: number;
+  defaultEngine?: { name: string; gpuLayers?: number };
+  config: {
+    dialect: string;
+    baseUrl: string;
+    headers?: Record<string, string>;
+    auth: { type: string; requiresApiKey: boolean; envVar?: string };
+  };
+}
+
+export interface InspectUrlCandidate {
+  suggestedModelId: string;
+  name: string;
+  providerModel: string;
+  capabilities: {
+    modalities?: { input?: string[]; output?: string[] };
+    streaming?: boolean;
+    tools?: boolean;
+    jsonSchema?: boolean;
+    structuredOutputs?: boolean;
+    reasoning?: { supported?: boolean };
+    contextWindow?: number;
+  };
+  source: { url?: string; format?: string };
+  quantizations?: Array<{
+    id: string;
+    filename: string;
+    sizeBytes: number;
+  }>;
+  architecture?: {
+    layers: number;
+    kvHeads: number;
+    headDim?: number;
+    maxPositionEmbeddings?: number;
+    slidingWindow?: number;
+    slidingWindowPattern?: number;
+  };
+  visionSizeBytes?: number;
+}
+
+export interface InspectUrlResult {
+  sourceType: "huggingface" | "openrouter";
+  candidate: InspectUrlCandidate;
+}
+
+export interface ImportModelsResult {
+  created: string[];
+  skipped: string[];
+  defaults: Record<string, string>;
+}
+
+/**
+ * Fetch provider presets from the backend.
+ * Returns null if the backend is unreachable.
+ */
+export async function fetchProviderPresets(): Promise<
+  AdminProviderPreset[] | null
+> {
+  try {
+    const response = await backendFetch("/api/admin/provider-presets");
+    if (!response.ok) return null;
+    const data = (await response.json()) as { items: AdminProviderPreset[] };
+    return data.items;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Inspect a HuggingFace or OpenRouter URL via the backend.
+ */
+export async function inspectModelUrl(url: string): Promise<InspectUrlResult> {
+  const response = await backendFetch("/api/admin/models/inspect-url", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+  if (!response.ok) {
+    const data = (await response.json()) as { error?: string };
+    throw new Error(data.error || `Inspection failed: ${response.status}`);
+  }
+  return response.json() as Promise<InspectUrlResult>;
+}
+
+/**
+ * Import models via the backend API.
+ */
+export async function importModelsViaApi(
+  models: Array<{
+    id: string;
+    name: string;
+    provider: string;
+    providerModel: string;
+    capabilities: Record<string, unknown>;
+    source?: Record<string, unknown>;
+  }>,
+  setDefaults?: { backend?: string; workers?: string },
+): Promise<ImportModelsResult> {
+  const response = await backendFetch("/api/admin/models/import", {
+    method: "POST",
+    body: JSON.stringify({ models, setDefaults }),
+  });
+  if (!response.ok) {
+    const data = (await response.json()) as { error?: string };
+    throw new Error(data.error || `Import failed: ${response.status}`);
+  }
+  return response.json() as Promise<ImportModelsResult>;
+}

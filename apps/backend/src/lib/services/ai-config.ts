@@ -16,6 +16,7 @@ import type {
   ProvidersConfiguration,
   SelectionConfiguration,
 } from "@eclaire/ai";
+import type { ImportModelsResult } from "./ai-import-types.js";
 import { setInlineConfig } from "@eclaire/ai";
 import { db, schema } from "../../db/index.js";
 import { NotFoundError, ValidationError } from "../errors.js";
@@ -182,6 +183,95 @@ export async function deleteModel(id: string) {
   await db.delete(aiModels).where(eq(aiModels.id, id));
   await invalidateCaches();
   logger.info({ modelId: id }, "Model deleted");
+}
+
+// =============================================================================
+// Batch Import
+// =============================================================================
+
+/**
+ * Import multiple models in one operation, optionally setting defaults.
+ * Skips models that already exist instead of failing.
+ * Invalidates caches once at the end.
+ */
+export async function importModels(
+  entries: Array<{ id: string; config: ModelConfig }>,
+  defaults?: { backend?: string; workers?: string },
+  updatedBy?: string,
+): Promise<ImportModelsResult> {
+  const created: string[] = [];
+  const skipped: string[] = [];
+
+  for (const entry of entries) {
+    const existing = await getModel(entry.id);
+    if (existing) {
+      skipped.push(entry.id);
+      continue;
+    }
+    const provider = await getProvider(entry.config.provider);
+    if (!provider) {
+      logger.warn(
+        { modelId: entry.id, provider: entry.config.provider },
+        "Skipping import: provider not found",
+      );
+      skipped.push(entry.id);
+      continue;
+    }
+    await db.insert(aiModels).values({
+      id: entry.id,
+      name: entry.config.name,
+      providerId: entry.config.provider,
+      providerModel: entry.config.providerModel,
+      capabilities: entry.config.capabilities,
+      tokenizer: entry.config.tokenizer ?? null,
+      source: entry.config.source ?? null,
+      pricing: entry.config.pricing ?? null,
+      updatedBy: updatedBy ?? null,
+    });
+    created.push(entry.id);
+  }
+
+  const appliedDefaults: Record<string, string> = {};
+  if (defaults) {
+    for (const [context, modelId] of Object.entries(defaults)) {
+      if (!modelId) continue;
+      // Only set default if the model exists (either just created or pre-existing)
+      const model = await getModel(modelId);
+      if (model) {
+        await db
+          .insert(aiModelSelection)
+          .values({
+            context,
+            modelId,
+            updatedBy: updatedBy ?? null,
+          })
+          .onConflictDoUpdate({
+            target: aiModelSelection.context,
+            set: {
+              modelId,
+              updatedAt: new Date(),
+              updatedBy: updatedBy ?? null,
+            },
+          });
+        appliedDefaults[context] = modelId;
+      }
+    }
+  }
+
+  if (created.length > 0 || Object.keys(appliedDefaults).length > 0) {
+    await invalidateCaches();
+  }
+
+  logger.info(
+    {
+      created: created.length,
+      skipped: skipped.length,
+      defaults: appliedDefaults,
+    },
+    "Models imported",
+  );
+
+  return { created, skipped, defaults: appliedDefaults };
 }
 
 // =============================================================================

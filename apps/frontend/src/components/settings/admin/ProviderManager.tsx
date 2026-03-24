@@ -39,6 +39,19 @@ interface ProviderRow {
   createdAt: string;
 }
 
+interface ProviderPreset {
+  id: string;
+  name: string;
+  description: string;
+  isCloud: boolean;
+  supportsCatalogDiscovery: boolean;
+  config: {
+    dialect: string;
+    baseUrl: string;
+    auth: { type: string; requiresApiKey: boolean; envVar?: string };
+  };
+}
+
 const DIALECTS = [
   { value: "openai_compatible", label: "OpenAI Compatible" },
   { value: "anthropic_messages", label: "Anthropic Messages" },
@@ -52,55 +65,6 @@ const DIALECTS = [
 function envRef(name: string): string {
   return `\${ENV:${name}}`;
 }
-
-const PRESETS = [
-  {
-    id: "ollama",
-    name: "Ollama",
-    dialect: "openai_compatible",
-    baseUrl: "http://127.0.0.1:11434/v1",
-    auth: { type: "none" },
-  },
-  {
-    id: "openai",
-    name: "OpenAI",
-    dialect: "openai_compatible",
-    baseUrl: "https://api.openai.com/v1",
-    auth: { type: "bearer", value: envRef("OPENAI_API_KEY") },
-  },
-  {
-    id: "anthropic",
-    name: "Anthropic",
-    dialect: "anthropic_messages",
-    baseUrl: "https://api.anthropic.com",
-    auth: {
-      type: "header",
-      header: "x-api-key",
-      value: envRef("ANTHROPIC_API_KEY"),
-    },
-  },
-  {
-    id: "openrouter",
-    name: "OpenRouter",
-    dialect: "openai_compatible",
-    baseUrl: "https://openrouter.ai/api/v1",
-    auth: { type: "bearer", value: envRef("OPENROUTER_API_KEY") },
-  },
-  {
-    id: "llama-cpp",
-    name: "llama.cpp",
-    dialect: "openai_compatible",
-    baseUrl: "http://127.0.0.1:11500/v1",
-    auth: { type: "none" },
-  },
-  {
-    id: "lm-studio",
-    name: "LM Studio",
-    dialect: "openai_compatible",
-    baseUrl: "http://127.0.0.1:1234/v1",
-    auth: { type: "none" },
-  },
-];
 
 interface FormState {
   id: string;
@@ -122,6 +86,7 @@ const EMPTY_FORM: FormState = {
 
 export default function ProviderManager() {
   const [providers, setProviders] = useState<ProviderRow[]>([]);
+  const [presets, setPresets] = useState<ProviderPreset[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -131,9 +96,14 @@ export default function ProviderManager() {
 
   const load = useCallback(async () => {
     try {
-      const res = await apiGet("/api/admin/providers");
-      const data = await res.json();
-      setProviders(data.items);
+      const [providersRes, presetsRes] = await Promise.all([
+        apiGet("/api/admin/providers"),
+        apiGet("/api/admin/provider-presets"),
+      ]);
+      const providersData = await providersRes.json();
+      const presetsData = await presetsRes.json();
+      setProviders(providersData.items);
+      setPresets(presetsData.items);
     } catch {
       toast.error("Failed to load providers");
     } finally {
@@ -146,15 +116,28 @@ export default function ProviderManager() {
   }, [load]);
 
   const applyPreset = (presetId: string) => {
-    const preset = PRESETS.find((p) => p.id === presetId);
+    const preset = presets.find((p) => p.id === presetId);
     if (!preset) return;
+
+    // Build auth value with env var reference if needed
+    let authValue = "";
+    if (preset.config.auth.requiresApiKey && preset.config.auth.envVar) {
+      authValue = envRef(preset.config.auth.envVar);
+    }
+
+    // For anthropic, use custom header auth
+    let authHeader = "";
+    if (preset.config.auth.type === "header") {
+      authHeader = "x-api-key";
+    }
+
     setForm({
       id: preset.id,
-      dialect: preset.dialect,
-      baseUrl: preset.baseUrl,
-      authType: preset.auth.type,
-      authHeader: (preset.auth as Record<string, string>).header ?? "",
-      authValue: (preset.auth as Record<string, string>).value ?? "",
+      dialect: preset.config.dialect,
+      baseUrl: preset.config.baseUrl,
+      authType: preset.config.auth.type,
+      authHeader,
+      authValue,
     });
   };
 
@@ -177,7 +160,17 @@ export default function ProviderManager() {
         baseUrl: form.baseUrl || undefined,
         auth,
       });
-      toast.success(`Provider "${form.id}" created`);
+
+      // Check if the preset supports catalog discovery
+      const preset = presets.find((p) => p.id === form.id);
+      if (preset?.supportsCatalogDiscovery) {
+        toast.success(
+          `Provider "${form.id}" created. You can now add models from this provider on the Models page.`,
+        );
+      } else {
+        toast.success(`Provider "${form.id}" created`);
+      }
+
       setAddOpen(false);
       setForm(EMPTY_FORM);
       load();
@@ -269,11 +262,16 @@ export default function ProviderManager() {
               <SelectValue placeholder="Choose a preset..." />
             </SelectTrigger>
             <SelectContent>
-              {PRESETS.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
+              {presets
+                .filter((p) => p.id !== "custom")
+                .map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    <span>{p.name}</span>
+                    <span className="ml-2 text-muted-foreground text-xs">
+                      {p.description}
+                    </span>
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
