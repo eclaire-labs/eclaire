@@ -639,6 +639,7 @@ export async function sendMessage(
 
   const agent = createBackendAgent({
     agent: agentDefinition,
+    userContext,
     includeTools,
     isBackgroundTask,
     assetContents,

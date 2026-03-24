@@ -117,11 +117,12 @@ export function mcpToolToRuntimeTool(
     promptSnippet: serverConfig.promptSnippet,
     promptGuidelines: serverConfig.promptGuidelines,
 
-    execute: async (_callId, input, _ctx) => {
+    execute: async (_callId, input, ctx) => {
       try {
         const result = await connection.callTool(
           descriptor.name,
           input as Record<string, unknown>,
+          { userId: ctx.userId },
         );
         return normalizeMcpResult(result, descriptor.serverKey);
       } catch (error) {
@@ -189,7 +190,7 @@ export function mcpToolsToGroupedRuntimeTool(
     promptSnippet: serverConfig.promptSnippet,
     promptGuidelines: serverConfig.promptGuidelines,
 
-    execute: async (_callId, input, _ctx) => {
+    execute: async (_callId, input, ctx) => {
       const { action, args = {} } = input as {
         action: string;
         args?: Record<string, unknown>;
@@ -212,6 +213,7 @@ export function mcpToolsToGroupedRuntimeTool(
         const result = await connection.callTool(
           action,
           args as Record<string, unknown>,
+          { userId: ctx.userId },
         );
         return normalizeMcpResult(result, connection.getServerKey());
       } catch (error) {

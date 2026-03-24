@@ -191,10 +191,15 @@ export class McpServerConnection {
   /**
    * Call a tool on the MCP server.
    * Connects if not already connected.
+   *
+   * @param meta Optional metadata forwarded as `_meta` in the MCP request.
+   *             Use this to pass caller identity (e.g. userId) so MCP servers
+   *             can enforce per-user isolation when applicable.
    */
   async callTool(
     name: string,
     args: Record<string, unknown> = {},
+    meta?: Record<string, unknown>,
   ): Promise<unknown> {
     await this.ensureConnected();
 
@@ -203,7 +208,13 @@ export class McpServerConnection {
     }
 
     try {
-      return await this.client.callTool({ name, arguments: args });
+      const params: Record<string, unknown> = { name, arguments: args };
+      if (meta) {
+        params._meta = meta;
+      }
+      return await this.client.callTool(
+        params as Parameters<Client["callTool"]>[0],
+      );
     } catch (error) {
       this.state = "error";
       this.lastError =
