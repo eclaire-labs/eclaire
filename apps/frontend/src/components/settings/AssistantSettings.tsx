@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { ChatPanel } from "@/components/assistant/chat-panel";
+import { useSlashCommands } from "@/hooks/use-slash-commands";
 import { ConversationHistoryDialog } from "@/components/assistant/conversation-history-dialog";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import {
@@ -217,7 +218,7 @@ export default function AssistantSettings({
   const queryClient = useQueryClient();
   const [preferences, , isLoaded] = useAssistantPreferences();
 
-  const [_agents, setAgents] = useState<Agent[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [catalog, setCatalog] = useState<AgentCatalog>({
     tools: [],
     skills: [],
@@ -504,18 +505,19 @@ export default function AssistantSettings({
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || selectedAgentId === "new" || !isLoaded) {
+  const handleSend = async (textOverride?: string) => {
+    const text = textOverride || input;
+    if (!text.trim() || selectedAgentId === "new" || !isLoaded) {
       return;
     }
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
-      content: input,
+      content: text,
       timestamp: new Date(),
     };
-    const prompt = input;
+    const prompt = text;
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsStreaming(true);
@@ -559,6 +561,69 @@ export default function AssistantSettings({
       );
     }
   };
+
+  // Slash commands
+  const slashAgents = useMemo(
+    () =>
+      agents.map((a) => ({
+        id: a.id,
+        name: a.name,
+        skillNames: a.skillNames,
+      })),
+    [agents],
+  );
+
+  const handleSendRef = useRef(handleSend);
+  handleSendRef.current = handleSend;
+  const startNewChatRef = useRef(startNewChat);
+  startNewChatRef.current = startNewChat;
+
+  const slashActions = useMemo(
+    () => ({
+      onNewConversation: () => startNewChatRef.current(),
+      onClearConversation: () => startNewChatRef.current(),
+      onShowHistory: () => setShowHistory(true),
+      onToggleThinking: () => {},
+      onShowModel: () => {},
+      onShowHelp: () => {},
+      onSwitchAgent: (agentId: string) => {
+        navigate({ to: "/agents/$agentId", params: { agentId } });
+      },
+      onSendMessage: (text: string) => handleSendRef.current(text),
+    }),
+    [navigate],
+  );
+
+  const slash = useSlashCommands({
+    assistantAgentId: selectedAgentId,
+    agents: slashAgents,
+    input,
+    setInput,
+    actions: slashActions,
+  });
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (slash.interceptKeyDown(e)) return;
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendWithSlash();
+    }
+  };
+
+  const handleSendWithSlash = (textOverride?: string) => {
+    const text = textOverride || input;
+    if (slash.interceptSend(text)) return;
+    handleSend(textOverride);
+  };
+
+  const slashPaletteConfig = slash.palette.open
+    ? {
+        open: true as const,
+        items: slash.palette.items,
+        onSelect: slash.handleSelect,
+        onClose: slash.closePalette,
+      }
+    : undefined;
 
   const toggleDraftArray = (
     key: "toolNames" | "skillNames",
@@ -790,13 +855,8 @@ export default function AssistantSettings({
                   currentConversation={currentConversation}
                   input={input}
                   setInput={setInput}
-                  handleSend={handleSend}
-                  handleKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      handleSend();
-                    }
-                  }}
+                  handleSend={handleSendWithSlash}
+                  handleKeyDown={handleKeyDown}
                   attachedAssets={attachedAssets}
                   setAttachedAssets={setAttachedAssets}
                   isStreaming={isStreaming}
@@ -804,6 +864,7 @@ export default function AssistantSettings({
                   streamingText={streamingText}
                   streamingToolCalls={streamingToolCalls as ToolCall[]}
                   showThinkingTokens={preferences.showThinkingTokens}
+                  slashPalette={slashPaletteConfig}
                   className="h-full"
                 />
                 <div ref={messagesEndRef} />
