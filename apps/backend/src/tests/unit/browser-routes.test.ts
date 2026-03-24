@@ -24,6 +24,10 @@ vi.mock("../../middleware/with-auth.js", () => ({
       }),
 }));
 
+vi.mock("../../lib/auth-utils.js", () => ({
+  assertInstanceAdmin: vi.fn(),
+}));
+
 vi.mock("../../lib/browser/index.js", () => ({
   browserRuntime: browserRuntimeMock,
 }));
