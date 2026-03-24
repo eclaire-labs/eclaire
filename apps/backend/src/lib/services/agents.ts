@@ -2,9 +2,12 @@ import {
   discoverSkills,
   getAgentRuntimeKindForModel,
   getModelConfigById,
+  getSkill,
   isValidModelIdFormat,
+  loadSkillContent,
   resolveProviderForModel,
 } from "@eclaire/ai";
+import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import { getBackendTools } from "../agent/tools/index.js";
@@ -43,6 +46,10 @@ export interface SkillCatalogItem {
   tags: string[];
 }
 
+export interface SkillDetailItem extends SkillCatalogItem {
+  content: string;
+}
+
 export interface AgentCatalog {
   tools: AgentCatalogItem[];
   skills: SkillCatalogItem[];
@@ -66,6 +73,19 @@ export interface UpdateAgentInput {
   modelId?: string | null;
 }
 
+function serializeToolParameters(
+  tool: ReturnType<typeof getBackendTools>[string],
+): Record<string, unknown> | undefined {
+  try {
+    return (tool.__rawJsonSchema ?? z.toJSONSchema(tool.inputSchema)) as Record<
+      string,
+      unknown
+    >;
+  } catch {
+    return undefined;
+  }
+}
+
 function listToolCatalog(): AgentCatalogItem[] {
   const allTools = getBackendTools();
   let registry: ReturnType<typeof getMcpRegistry> | null = null;
@@ -82,6 +102,12 @@ function listToolCatalog(): AgentCatalogItem[] {
         name: tool.name,
         label: tool.label,
         description: tool.description,
+        parameters: serializeToolParameters(tool),
+        visibility: tool.visibility ?? "all",
+        needsApproval:
+          typeof tool.needsApproval === "function"
+            ? true
+            : (tool.needsApproval ?? false),
         ...mcpAvailability,
       };
     })
@@ -226,6 +252,25 @@ export function getAgentCatalog(): AgentCatalog {
   return {
     tools: listToolCatalog(),
     skills: listSkillCatalog(),
+  };
+}
+
+export function getSkillDetail(name: string): SkillDetailItem {
+  const skill = getSkill(name);
+  if (!skill) {
+    throw new NotFoundError(`Skill "${name}" not found`);
+  }
+
+  const content = loadSkillContent(name) ?? "";
+  const catalogItem = listSkillCatalog().find((s) => s.name === name);
+
+  return {
+    name: skill.name,
+    description: skill.description,
+    scope: skill.scope,
+    alwaysInclude: skill.alwaysInclude,
+    tags: catalogItem?.tags ?? skill.tags ?? [],
+    content,
   };
 }
 

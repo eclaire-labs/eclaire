@@ -5,6 +5,7 @@ import {
   deleteAgent,
   getAgent,
   getAgentCatalog,
+  getSkillDetail,
   listAgents,
   updateAgent,
 } from "../lib/services/agents.js";
@@ -31,6 +32,14 @@ agentsRoutes.get(
 agentsRoutes.get(
   "/catalog",
   withAuth(async (c) => c.json(getAgentCatalog()), logger),
+);
+
+agentsRoutes.get(
+  "/catalog/skills/:name",
+  withAuth(async (c) => {
+    const detail = getSkillDetail(c.req.param("name"));
+    return c.json(detail);
+  }, logger),
 );
 
 agentsRoutes.get(

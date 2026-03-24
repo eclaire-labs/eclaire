@@ -1,5 +1,5 @@
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api-client";
-import type { Agent, AgentCatalog } from "@/types/agent";
+import type { Agent, AgentCatalog, SkillDetail } from "@/types/agent";
 
 export interface AgentListResponse {
   items: Agent[];
@@ -44,4 +44,11 @@ export async function updateAgent(
 
 export async function deleteAgent(id: string): Promise<void> {
   await apiDelete(`/api/agents/${id}`);
+}
+
+export async function getSkillDetail(name: string): Promise<SkillDetail> {
+  const response = await apiGet(
+    `/api/agents/catalog/skills/${encodeURIComponent(name)}`,
+  );
+  return response.json();
 }

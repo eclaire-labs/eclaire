@@ -31,4 +31,7 @@ export interface AgentCatalogItem {
   description: string;
   availability?: "available" | "setup_required" | "disabled";
   availabilityReason?: string;
+  parameters?: Record<string, unknown>;
+  visibility?: "backend" | "cli" | "all";
+  needsApproval?: boolean;
 }
