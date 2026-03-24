@@ -77,8 +77,9 @@ export async function detectAndVerifyMimeType(
       ".rtf": "text/rtf",
     };
     const ext = lowerFilename.slice(lowerFilename.lastIndexOf("."));
-    if (ext in textExtensionMap) {
-      verifiedMimeType = textExtensionMap[ext];
+    const mapped = textExtensionMap[ext];
+    if (mapped) {
+      verifiedMimeType = mapped;
     }
   }
 
