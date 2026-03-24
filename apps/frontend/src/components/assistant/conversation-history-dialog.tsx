@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -92,6 +93,9 @@ export const ConversationHistoryDialog = ({
             <History className="h-5 w-5" />
             Conversation History
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Browse and manage past conversations
+          </DialogDescription>
         </DialogHeader>
         <div className="flex-1 min-h-0">
           {isLoading ? (

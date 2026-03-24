@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -433,6 +434,9 @@ export function GlobalAssistant({
           >
             <DialogHeader className="sr-only">
               <DialogTitle>AI Assistant - Full Screen</DialogTitle>
+              <DialogDescription>
+                Full screen AI assistant chat
+              </DialogDescription>
             </DialogHeader>
             <AssistantContent {...assistantContentProps} />
           </DialogContent>
