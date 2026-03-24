@@ -34,6 +34,7 @@ import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvide
 import { apiGet, apiPatch } from "@/lib/api-client";
 import {
   isTtsSpeedSupported,
+  modelLabel,
   OptionSelect,
   PROVIDER_LABELS,
   PROVIDER_OPTIONS,
@@ -378,6 +379,20 @@ export default function VoiceSettings() {
   const instTtsProvider =
     (instanceSettings["audio.defaultTtsProvider"] as string) ?? "";
 
+  // Resolve provider health for default model labels
+  const instSttHealth = instSttProvider
+    ? providers.find((p) => p.providerId === instSttProvider)
+    : providers.find((p) => p.capabilities.stt);
+  const instTtsHealth = instTtsProvider
+    ? providers.find((p) => p.providerId === instTtsProvider)
+    : providers.find((p) => p.capabilities.tts);
+  const sttModelPlaceholder =
+    modelLabel(instSttHealth?.defaults?.sttModel ?? "") || "Server default";
+  const ttsModelPlaceholder =
+    modelLabel(instTtsHealth?.defaults?.ttsModel ?? "") || "Server default";
+  const ttsVoicePlaceholder =
+    modelLabel(instTtsHealth?.defaults?.ttsVoice ?? "") || "Server default";
+
   return (
     <div className="space-y-6">
       {/* ================================================================= */}
@@ -440,7 +455,7 @@ export default function VoiceSettings() {
             readOnlyBadges={[
               {
                 label: "Provider",
-                value: providerLabel(instSttProvider) || "Auto-detect",
+                value: providerLabel(instSttProvider) || "Not configured",
               },
               {
                 label: "Model",
@@ -467,20 +482,25 @@ export default function VoiceSettings() {
                 onChange={(val) =>
                   handleSettingChange("audio.defaultSttProvider", val)
                 }
-                placeholder="Auto-detect"
+                placeholder="Select a provider"
+                hideDefault
+                hideCustom
+                autoSelectFirst={false}
               />
-              <OptionSelect
-                id="default-stt-model"
-                label="Model"
-                options={sttModelOptionsForProvider(instSttProvider)}
-                value={
-                  (instanceSettings["audio.defaultSttModel"] as string) ?? ""
-                }
-                onChange={(val) =>
-                  handleSettingChange("audio.defaultSttModel", val)
-                }
-                placeholder="Server default"
-              />
+              {!PROVIDER_OPTIONS[instSttProvider]?.hideSTTModel && (
+                <OptionSelect
+                  id="default-stt-model"
+                  label="Model"
+                  options={sttModelOptionsForProvider(instSttProvider)}
+                  value={
+                    (instanceSettings["audio.defaultSttModel"] as string) ?? ""
+                  }
+                  onChange={(val) =>
+                    handleSettingChange("audio.defaultSttModel", val)
+                  }
+                  placeholder={sttModelPlaceholder}
+                />
+              )}
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -561,23 +581,24 @@ export default function VoiceSettings() {
               </Button>
 
               {sttTestStatus === "recording" && (
-                <div className="flex h-5 items-center justify-center gap-0.5">
-                  {[0.15, 0.3, 0.5, 0.75].map((threshold, i) => (
+                <div className="space-y-1">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                      key={threshold}
-                      className="w-1 rounded-full transition-all duration-75"
+                      className="h-full rounded-full transition-all duration-75"
                       style={{
-                        height:
-                          audioLevel.level > threshold
-                            ? `${8 + i * 3}px`
-                            : "4px",
+                        width: `${Math.round(audioLevel.level * 100)}%`,
                         backgroundColor:
-                          audioLevel.level > threshold
-                            ? "hsl(var(--destructive))"
-                            : "hsl(var(--muted-foreground) / 0.3)",
+                          audioLevel.level < 0.5
+                            ? "#22c55e"
+                            : audioLevel.level < 0.8
+                              ? "#eab308"
+                              : "hsl(var(--destructive))",
                       }}
                     />
-                  ))}
+                  </div>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Listening — speak now
+                  </p>
                 </div>
               )}
 
@@ -604,13 +625,52 @@ export default function VoiceSettings() {
       {/* ================================================================= */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Volume2 className="h-5 w-5" />
-            Text-to-Speech
-          </CardTitle>
-          <CardDescription>
-            Configure how assistant responses are spoken.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2">
+                <Volume2 className="h-5 w-5" />
+                Text-to-Speech
+              </CardTitle>
+              <CardDescription>
+                Configure how assistant responses are spoken.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              {isCheckingAvailability ? (
+                <Badge variant="outline" className="gap-1.5 text-xs">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Checking
+                </Badge>
+              ) : isAudioAvailable ? (
+                <Badge
+                  variant="outline"
+                  className="gap-1.5 border-green-500/30 bg-green-500/10 text-xs text-green-600 dark:text-green-400"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  Connected
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="gap-1.5 border-red-500/30 bg-red-500/10 text-xs text-red-600 dark:text-red-400"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                  Not connected
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={checkConnection}
+                disabled={isCheckingAvailability}
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${isCheckingAvailability ? "animate-spin" : ""}`}
+                />
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Admin config zone */}
@@ -620,7 +680,7 @@ export default function VoiceSettings() {
             readOnlyBadges={[
               {
                 label: "Provider",
-                value: providerLabel(instTtsProvider) || "Auto-detect",
+                value: providerLabel(instTtsProvider) || "Not configured",
               },
               {
                 label: "Model",
@@ -653,20 +713,25 @@ export default function VoiceSettings() {
                 onChange={(val) =>
                   handleSettingChange("audio.defaultTtsProvider", val)
                 }
-                placeholder="Auto-detect"
+                placeholder="Select a provider"
+                hideDefault
+                hideCustom
+                autoSelectFirst={false}
               />
-              <OptionSelect
-                id="default-tts-model"
-                label="Model"
-                options={ttsModelOptionsForProvider(instTtsProvider)}
-                value={
-                  (instanceSettings["audio.defaultTtsModel"] as string) ?? ""
-                }
-                onChange={(val) =>
-                  handleSettingChange("audio.defaultTtsModel", val)
-                }
-                placeholder="Server default"
-              />
+              {!PROVIDER_OPTIONS[instTtsProvider]?.hideTTSModel && (
+                <OptionSelect
+                  id="default-tts-model"
+                  label="Model"
+                  options={ttsModelOptionsForProvider(instTtsProvider)}
+                  value={
+                    (instanceSettings["audio.defaultTtsModel"] as string) ?? ""
+                  }
+                  onChange={(val) =>
+                    handleSettingChange("audio.defaultTtsModel", val)
+                  }
+                  placeholder={ttsModelPlaceholder}
+                />
+              )}
               <OptionSelect
                 id="default-tts-voice"
                 label="Default voice"
@@ -677,7 +742,7 @@ export default function VoiceSettings() {
                 onChange={(val) =>
                   handleSettingChange("audio.defaultTtsVoice", val)
                 }
-                placeholder="Server default"
+                placeholder={ttsVoicePlaceholder}
               />
             </div>
             <div className="flex items-center justify-between">

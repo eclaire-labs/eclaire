@@ -16,7 +16,7 @@ import type { AudioProviderHealth } from "@/hooks/use-audio";
 
 export const PROVIDER_LABELS: Record<string, string> = {
   "mlx-audio": "mlx-audio (local)",
-  elevenlabs: "ElevenLabs",
+  elevenlabs: "ElevenLabs (cloud)",
   "whisper-cpp": "Whisper.cpp (local)",
   "pocket-tts": "Pocket TTS (local)",
 };
@@ -131,6 +131,18 @@ export function getMlxVoiceOptions(ttsModel: string): {
   return {};
 }
 
+/** Resolve a model/voice ID to its display label, or return the ID itself. */
+export function modelLabel(value: string): string {
+  if (!value) return "";
+  for (const opts of Object.values(PROVIDER_OPTIONS)) {
+    for (const list of [opts.sttModels, opts.ttsModels, opts.ttsVoices]) {
+      const match = list?.find((o) => o.value === value);
+      if (match) return match.label;
+    }
+  }
+  return value;
+}
+
 export const PROVIDER_OPTIONS: Record<string, ProviderOptions> = {
   "mlx-audio": {
     sttModels: [
@@ -236,6 +248,8 @@ export function OptionSelect({
   placeholder,
   helpText,
   hideDefault,
+  hideCustom,
+  autoSelectFirst,
 }: {
   id: string;
   label: string;
@@ -245,6 +259,9 @@ export function OptionSelect({
   placeholder?: string;
   helpText?: string;
   hideDefault?: boolean;
+  hideCustom?: boolean;
+  /** Auto-select the first option when value is empty. Defaults to `hideDefault`. */
+  autoSelectFirst?: boolean;
 }) {
   const isKnownOption = value === "" || options.some((o) => o.value === value);
   const [showCustom, setShowCustom] = useState(false);
@@ -261,13 +278,14 @@ export function OptionSelect({
     }
   }, [isKnownOption, value, showCustom]);
 
-  // When hideDefault is set and value is empty, auto-select the first option
+  // When auto-select is enabled and value is empty, pick the first option
+  const shouldAutoSelect = autoSelectFirst ?? hideDefault;
   const firstValue = options[0]?.value ?? "";
   useEffect(() => {
-    if (hideDefault && value === "" && firstValue) {
+    if (shouldAutoSelect && value === "" && firstValue) {
       onChangeRef.current(firstValue);
     }
-  }, [hideDefault, value, firstValue]);
+  }, [shouldAutoSelect, value, firstValue]);
 
   const selectValue = showCustom
     ? CUSTOM_VALUE
@@ -310,10 +328,12 @@ export function OptionSelect({
               {opt.label}
             </SelectItem>
           ))}
-          <SelectItem value={CUSTOM_VALUE}>Custom...</SelectItem>
+          {!hideCustom && (
+            <SelectItem value={CUSTOM_VALUE}>Custom...</SelectItem>
+          )}
         </SelectContent>
       </Select>
-      {showCustom && (
+      {showCustom && !hideCustom && (
         <Input
           id={id}
           value={value}
