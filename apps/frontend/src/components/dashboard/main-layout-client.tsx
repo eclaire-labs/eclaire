@@ -864,6 +864,12 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     clearTools();
   };
 
+  // Agent dropdown options for the assistant panel
+  const dropdownAgents = useMemo(
+    () => agentRailItems.map((a) => ({ id: a.id, name: a.name, kind: a.kind })),
+    [agentRailItems],
+  );
+
   // Slash commands
   const slashAgents = useMemo(
     () =>
@@ -880,6 +886,11 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   handleSendRef.current = handleSend;
   const startNewConversationRef = useRef(startNewConversation);
   startNewConversationRef.current = startNewConversation;
+
+  const handleAgentSwitch = useCallback((agentId: string) => {
+    setAssistantAgentId(agentId);
+    startNewConversationRef.current();
+  }, []);
 
   const slashActions = useMemo(
     () => ({
@@ -1210,6 +1221,9 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
               }}
               fullScreen={assistantFullScreen}
               onFullScreenToggle={toggleAssistantFullScreen}
+              agents={dropdownAgents}
+              currentAgentId={assistantAgentId}
+              onSwitchAgent={handleAgentSwitch}
               // Pass all conversation state
               messages={messages}
               isLoading={isLoadingConversation}
@@ -1251,6 +1265,9 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
           onOpenChange={closeAssistantFromFullScreen}
           fullScreen={assistantFullScreen}
           onFullScreenToggle={toggleAssistantFullScreen}
+          agents={dropdownAgents}
+          currentAgentId={assistantAgentId}
+          onSwitchAgent={handleAgentSwitch}
           // Pass all conversation state
           messages={messages}
           isLoading={isLoadingConversation}

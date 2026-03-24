@@ -1,6 +1,8 @@
 import type { SlashItem } from "@eclaire/core/slash";
 import {
+  Check,
   CheckSquare,
+  ChevronDown,
   Edit2,
   History,
   Maximize2,
@@ -20,6 +22,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
@@ -31,11 +41,21 @@ interface SlashPaletteConfig {
   onClose: () => void;
 }
 
+interface AgentOption {
+  id: string;
+  name: string;
+  kind: "builtin" | "custom";
+}
+
 interface GlobalAssistantProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   fullScreen?: boolean;
   onFullScreenToggle?: () => void;
+  // Agent selection
+  agents: AgentOption[];
+  currentAgentId: string;
+  onSwitchAgent: (agentId: string) => void;
   // Conversation state props
   messages: Message[];
   isLoading: boolean;
@@ -70,6 +90,11 @@ interface GlobalAssistantProps {
 
 // --- Helper Component: AssistantContent ---
 interface AssistantContentProps {
+  // Agent selection
+  agents: AgentOption[];
+  currentAgentId: string;
+  onSwitchAgent: (agentId: string) => void;
+  // Layout
   messages: Message[];
   isLoading: boolean;
   messagesEndRef: React.Ref<HTMLDivElement>;
@@ -100,6 +125,9 @@ interface AssistantContentProps {
 }
 
 const AssistantContent = ({
+  agents,
+  currentAgentId,
+  onSwitchAgent,
   messages,
   isLoading,
   messagesEndRef: _messagesEndRef,
@@ -129,6 +157,10 @@ const AssistantContent = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
 
+  const currentAgentName =
+    agents.find((a) => a.id === currentAgentId)?.name ??
+    currentAgentId.charAt(0).toUpperCase() + currentAgentId.slice(1);
+
   const handleStartEditTitle = () => {
     setEditTitle(currentConversation?.title || "New Conversation");
     setIsEditingTitle(true);
@@ -149,7 +181,46 @@ const AssistantContent = ({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2.5 border-b bg-background/95 backdrop-blur-sm">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-center gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-8 px-2 gap-1.5 text-sm font-semibold"
+              >
+                <span className="flex h-5 w-5 items-center justify-center rounded-full border bg-background text-[10px] font-semibold shrink-0">
+                  {currentAgentName.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="truncate max-w-[120px]">
+                  {currentAgentName}
+                </span>
+                <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuLabel>Switch Agent</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {agents.map((agent) => (
+                <DropdownMenuItem
+                  key={agent.id}
+                  onClick={() => {
+                    if (agent.id !== currentAgentId) {
+                      onSwitchAgent(agent.id);
+                    }
+                  }}
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full border bg-background text-[10px] font-semibold mr-2 shrink-0">
+                    {agent.name.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span className="truncate">{agent.name}</span>
+                  {agent.id === currentAgentId && (
+                    <Check className="h-4 w-4 ml-auto shrink-0" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {isEditingTitle ? (
             <div className="flex items-center gap-2">
               <Input
@@ -180,21 +251,22 @@ const AssistantContent = ({
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-sm truncate">
-                {currentConversation?.title || "AI Assistant"}
-              </h2>
-              {currentConversation && (
+            currentConversation && (
+              <div className="flex items-center gap-1 min-w-0">
+                <span className="text-muted-foreground text-xs">/</span>
+                <span className="text-sm truncate text-muted-foreground">
+                  {currentConversation.title}
+                </span>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={handleStartEditTitle}
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
                 >
                   <Edit2 className="h-3 w-3" />
                 </Button>
-              )}
-            </div>
+              </div>
+            )
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -278,6 +350,10 @@ export function GlobalAssistant({
   onOpenChange,
   fullScreen = false,
   onFullScreenToggle,
+  // Agent selection
+  agents,
+  currentAgentId,
+  onSwitchAgent,
   // Conversation state props
   messages,
   isLoading,
@@ -311,6 +387,9 @@ export function GlobalAssistant({
   if (!open) return null;
 
   const assistantContentProps = {
+    agents,
+    currentAgentId,
+    onSwitchAgent,
     messages,
     isLoading,
     messagesEndRef,
