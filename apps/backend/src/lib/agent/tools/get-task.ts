@@ -21,6 +21,7 @@ export const getTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Get Task",
   description:
     "Get full details of a task by ID, including comments and sub-task count.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const result = await getTaskById(input.id, ctx.userId);

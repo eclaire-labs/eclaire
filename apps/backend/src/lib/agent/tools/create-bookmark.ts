@@ -28,6 +28,7 @@ export const createBookmarkTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Create Bookmark",
   description:
     "Save a URL as a bookmark with optional title, description, and tags.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: ["Always confirm with the user before creating bookmarks."],
   execute: async (_callId, input, ctx) => {

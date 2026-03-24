@@ -23,6 +23,7 @@ export const updateBookmarkTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "updateBookmark",
   label: "Update Bookmark",
   description: "Update a bookmark's title, description, or tags.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: [
     "Always confirm with the user before modifying bookmarks.",

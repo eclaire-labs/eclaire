@@ -47,6 +47,8 @@ export interface ProcessPromptOptions {
   enableThinking?: boolean;
   callerAuthMethod?: string;
   callerActorKind?: string;
+  /** API key scopes (undefined for session/localhost callers). */
+  callerScopes?: string[];
 }
 
 export interface PromptResponse {
@@ -62,15 +64,28 @@ function getRequestedAgentActorId(context?: Context): string {
   return context?.agentActorId ?? DEFAULT_AGENT_ID;
 }
 
-const ADMIN_ONLY_TOOLS = new Set(["manageAdmin"]);
+const ADMIN_ONLY_TOOLS = new Set(["manageAdminRead", "manageAdminWrite"]);
 const ADMIN_ONLY_SKILLS = new Set(["admin-guide"]);
 
-function selectAgentTools(
+/** @internal Exported for testing. */
+export function selectAgentTools(
   agent: AgentDefinition,
   userContext?: UserContext | null,
+  callerScopes?: string[] | null,
 ): Record<string, RuntimeToolDefinition> {
   const selected = selectTools(getBackendTools(), agent.toolNames);
   const isAdmin = userContext?.isInstanceAdmin === true;
+
+  // Determine caller capabilities from API key scopes.
+  // callerScopes is null/undefined for session/localhost users → full access.
+  const hasFullAccess = !callerScopes || callerScopes.includes("*");
+  const hasDataWrite =
+    hasFullAccess || callerScopes.includes("conversations:write");
+  const hasAdminRead =
+    hasFullAccess ||
+    callerScopes.includes("admin:read") ||
+    callerScopes.includes("admin:write");
+  const hasAdminWrite = hasFullAccess || callerScopes.includes("admin:write");
 
   let registry: ReturnType<typeof getMcpRegistry> | null = null;
   try {
@@ -80,9 +95,17 @@ function selectAgentTools(
   }
 
   return Object.fromEntries(
-    Object.entries(selected).filter(([toolName]) => {
+    Object.entries(selected).filter(([toolName, tool]) => {
       // Filter admin-only tools for non-admin users
       if (!isAdmin && ADMIN_ONLY_TOOLS.has(toolName)) return false;
+
+      // Filter admin tools when API key lacks admin scopes
+      if (ADMIN_ONLY_TOOLS.has(toolName) && !hasAdminRead) return false;
+      if (toolName === "manageAdminWrite" && !hasAdminWrite) return false;
+
+      // Filter write tools for read-only API key callers
+      if (!hasDataWrite && (tool.accessLevel ?? "write") === "write")
+        return false;
 
       if (registry) {
         const mcpAvailability = registry.getToolAvailability(toolName);
@@ -127,6 +150,8 @@ export function createBackendAgent(options: {
   assetContents?: Array<{ type: string; id: string; content: string }>;
   enableThinking?: boolean;
   onApprovalRequired?: OnApprovalRequired;
+  /** API key scopes for the caller (undefined for session/localhost users). */
+  callerScopes?: string[];
 }) {
   // Branch on runtime kind: external harnesses get a minimal prompt, no tools
   const runtimeKind = options.agent.modelId
@@ -164,14 +189,22 @@ export function createBackendAgent(options: {
     });
   }
 
-  // Filter tools and skills based on user context (e.g., admin-only)
-  const agentTools = selectAgentTools(options.agent, options.userContext);
+  // Filter tools and skills based on user context and caller scopes
+  const agentTools = selectAgentTools(
+    options.agent,
+    options.userContext,
+    options.callerScopes,
+  );
   const effectiveSkillNames = filterSkillNames(
     options.agent.skillNames,
     options.userContext,
   );
   const promptTools = options.includeTools ? agentTools : {};
   const toolCallingMode = options.includeTools ? "native" : "off";
+  const isReadOnly =
+    options.callerScopes != null &&
+    !options.callerScopes.includes("*") &&
+    !options.callerScopes.includes("conversations:write");
 
   return new RuntimeAgent({
     aiContext: "backend",
@@ -188,6 +221,7 @@ export function createBackendAgent(options: {
         tools: promptTools,
         toolCallingMode,
         isBackgroundTaskExecution: options.isBackgroundTask,
+        isReadOnly,
       });
     },
 
@@ -221,6 +255,7 @@ export async function processPromptRequest(
     enableThinking,
     callerAuthMethod,
     callerActorKind,
+    callerScopes,
   } = options;
 
   const startTime = Date.now();
@@ -281,6 +316,7 @@ export async function processPromptRequest(
       isBackgroundTask,
       assetContents,
       enableThinking,
+      callerScopes,
     });
 
     const runtimeContext = createRuntimeContext({
@@ -295,6 +331,7 @@ export async function processPromptRequest(
           : {}),
         callerAuthMethod,
         callerActorKind,
+        callerScopes,
         backgroundTaskExecution: isBackgroundTask,
       },
     });
@@ -515,6 +552,7 @@ export async function processPromptRequestStream(
     enableThinking,
     callerAuthMethod,
     callerActorKind,
+    callerScopes,
   } = options;
 
   const startTime = Date.now();
@@ -581,6 +619,7 @@ export async function processPromptRequestStream(
     isBackgroundTask,
     assetContents,
     enableThinking,
+    callerScopes,
   });
 
   const runtimeContext = createRuntimeContext({
@@ -595,6 +634,7 @@ export async function processPromptRequestStream(
         : {}),
       callerAuthMethod,
       callerActorKind,
+      callerScopes,
       backgroundTaskExecution: isBackgroundTask,
     },
   });

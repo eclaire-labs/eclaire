@@ -30,6 +30,7 @@ export const listTagsTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "List Tags",
   description:
     "List the user's existing tags, optionally filtered by content type or sorted by popularity.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     if (input.popular) {

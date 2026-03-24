@@ -21,6 +21,7 @@ export const getBookmarkTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Get Bookmark",
   description:
     "Get full details of a bookmark by ID, including extracted page content.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const result = await getBookmarkById(input.id, ctx.userId);

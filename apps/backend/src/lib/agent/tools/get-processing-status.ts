@@ -34,6 +34,7 @@ export const getProcessingStatusTool: RuntimeToolDefinition<
   label: "Get Processing Status",
   description:
     "Check the processing status of a specific content item, or get an overall processing summary with counts of pending, processing, completed, and failed items.",
+  accessLevel: "read",
   inputSchema,
   promptGuidelines: [
     "When a user reports content not appearing or processing issues, check the processing status to diagnose the problem.",

@@ -21,6 +21,7 @@ export const deleteTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "deleteTask",
   label: "Delete Task",
   description: "Permanently delete a task and its comments.",
+  accessLevel: "write",
   inputSchema,
   needsApproval: true,
   promptGuidelines: ["Always confirm with the user before deleting tasks."],

@@ -27,6 +27,8 @@ export interface BuildSystemPromptOptions {
   tools?: Record<string, RuntimeToolDefinition>;
   toolCallingMode?: ToolCallingMode;
   isBackgroundTaskExecution?: boolean;
+  /** When true, the agent is operating in read-only mode (no write tools). */
+  isReadOnly?: boolean;
 }
 
 const CONTENT_TOOL_NAMES = [
@@ -237,6 +239,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
     tools = {},
     toolCallingMode = "native",
     isBackgroundTaskExecution = false,
+    isReadOnly = false,
   } = options;
 
   const includeToolSignatures = toolCallingMode === "text";
@@ -246,9 +249,13 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
   const userContextInfo = buildUserContextSection(userContext);
   const assetContentSection = buildAssetContentSection(assetContents);
 
+  const readOnlyNotice = isReadOnly
+    ? "\n\n**Read-Only Mode**: You are operating in read-only mode. You can search, retrieve, and analyze content, but you cannot create, update, or delete anything. If the user asks you to make changes, explain that this session is read-only."
+    : "";
+
   const basePrompt = `${baseInstruction}
 
-Current Date & Time: ${dateString} (${timeString})${userContextInfo}${assetContentSection}`;
+Current Date & Time: ${dateString} (${timeString})${userContextInfo}${readOnlyNotice}${assetContentSection}`;
 
   if (isBackgroundTaskExecution) {
     const toolSignaturesSection = includeToolSignatures

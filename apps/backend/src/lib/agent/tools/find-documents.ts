@@ -29,6 +29,7 @@ export const findDocumentsTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Find Documents",
   description:
     "Search documents by full-text, tags, file types, and date range.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const results = await findDocumentsService({

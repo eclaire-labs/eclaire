@@ -24,6 +24,7 @@ export const createNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Create Note",
   description:
     "Create a new note with text or markdown content, optional tags and due date.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: ["Always confirm with the user before creating notes."],
   execute: async (_callId, input, ctx) => {

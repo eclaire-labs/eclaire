@@ -41,6 +41,7 @@ export const getHistoryTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Get History",
   description:
     "Retrieve recent activity history — what was created, updated, or deleted, and when.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const results = await findHistory({

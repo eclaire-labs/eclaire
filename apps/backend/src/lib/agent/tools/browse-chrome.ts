@@ -132,6 +132,7 @@ export const browseChromeTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Browse Chrome",
   description:
     "Use the user's live Chrome session for authenticated browsing and interactive page actions.",
+  accessLevel: "read",
   inputSchema,
   promptSnippet: [
     "Use browseChrome only when a task depends on the user's existing Chrome session, authenticated pages, or interactive browser actions.",

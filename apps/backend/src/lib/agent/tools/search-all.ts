@@ -25,6 +25,7 @@ export const searchAllTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Search All",
   description:
     "Search across all content types (notes, bookmarks, documents, media, photos, tasks) at once.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const results = await findAllEntries({

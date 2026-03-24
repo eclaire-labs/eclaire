@@ -22,6 +22,7 @@ export const transcribeAudioTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Transcribe Audio",
   description:
     "Transcribe an audio file to text using local speech-to-text. Supports common audio formats (wav, mp3, m4a, etc.).",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, _ctx) => {
     try {

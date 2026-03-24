@@ -18,6 +18,7 @@ export const countPhotosTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "countPhotos",
   label: "Count Photos",
   description: "Count photos matching criteria.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const count = await countPhotosService({

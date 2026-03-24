@@ -54,7 +54,8 @@ describe("inferRequiredScopesForRequest", () => {
       ["/api/tasks", "GET", ["tasks:read"]],
       ["/api/tasks/123", "PUT", ["tasks:write"]],
       ["/api/sessions", "GET", ["conversations:read"]],
-      ["/api/sessions/123/messages", "POST", ["conversations:write"]],
+      ["/api/sessions/123/messages", "POST", ["conversations:invoke"]],
+      ["/api/sessions", "POST", ["conversations:write"]],
       ["/api/history", "GET", ["history:read"]],
       ["/api/processing-status/summary", "GET", ["processing:read"]],
       [
@@ -166,6 +167,19 @@ describe("normalizeGrantedScopes", () => {
     const result = normalizeGrantedScopes(["assets:write"]);
     expect(result).toContain("assets:write");
     expect(result).toContain("assets:read");
+  });
+
+  it("expands conversations:invoke to include conversations:read", () => {
+    const result = normalizeGrantedScopes(["conversations:invoke"]);
+    expect(result).toContain("conversations:invoke");
+    expect(result).toContain("conversations:read");
+  });
+
+  it("expands conversations:write to include conversations:invoke and conversations:read", () => {
+    const result = normalizeGrantedScopes(["conversations:write"]);
+    expect(result).toContain("conversations:write");
+    expect(result).toContain("conversations:invoke");
+    expect(result).toContain("conversations:read");
   });
 
   it("expands processing:write to include processing:read", () => {

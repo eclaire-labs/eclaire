@@ -21,6 +21,7 @@ export const getDocumentTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Get Document",
   description:
     "Get full details of a document by ID, including its extracted content.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const result = await getDocumentById(input.id, ctx.userId);

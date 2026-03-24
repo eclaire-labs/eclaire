@@ -85,6 +85,7 @@ export const createTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Create Task",
   description:
     "Create a new task with title, description, status, priority, tags, due date, and optional recurrence schedule.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: [
     "Always confirm with the user before creating tasks, especially recurring ones. Propose the title, schedule, and assignment first.",

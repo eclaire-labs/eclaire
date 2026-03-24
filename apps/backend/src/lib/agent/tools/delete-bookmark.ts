@@ -21,6 +21,7 @@ export const deleteBookmarkTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "deleteBookmark",
   label: "Delete Bookmark",
   description: "Permanently delete a bookmark and its stored assets.",
+  accessLevel: "write",
   inputSchema,
   needsApproval: true,
   promptGuidelines: ["Always confirm with the user before deleting bookmarks."],

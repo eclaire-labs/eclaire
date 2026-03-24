@@ -99,6 +99,11 @@ export const API_KEY_SCOPE_CATALOG: ApiKeyScopeCatalogItem[] = [
     description: "Read chat sessions, messages, and conversation state.",
   },
   {
+    scope: "conversations:invoke",
+    label: "Invoke agents",
+    description: "Send messages to AI agent sessions (read-only tool access).",
+  },
+  {
     scope: "conversations:write",
     label: "Write conversations",
     description:
@@ -181,7 +186,8 @@ const IMPLIED_SCOPE_MAP: Partial<Record<ApiKeyScope, ApiKeyScope[]>> = {
   "tasks:write": ["tasks:read"],
   "channels:write": ["channels:read"],
   "agents:write": ["agents:read"],
-  "conversations:write": ["conversations:read"],
+  "conversations:invoke": ["conversations:read"],
+  "conversations:write": ["conversations:read", "conversations:invoke"],
   "feedback:write": ["feedback:read"],
   "admin:write": ["admin:read"],
   "processing:write": ["processing:read"],
@@ -306,6 +312,15 @@ export function inferRequiredScopesForRequest(
 
   if (path.startsWith("/api/tasks")) {
     return normalizedMethod === "GET" ? ["tasks:read"] : ["tasks:write"];
+  }
+
+  // Sending messages to an agent session only requires invoke (available to read-only keys).
+  // The tool layer enforces read vs write within the agent.
+  if (
+    normalizedMethod === "POST" &&
+    /^\/api\/sessions\/[^/]+\/messages$/.test(path)
+  ) {
+    return ["conversations:invoke"];
   }
 
   if (path.startsWith("/api/sessions")) {

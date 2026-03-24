@@ -20,6 +20,7 @@ export const getTaskCommentsTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "getTaskComments",
   label: "Get Task Comments",
   description: "Get all comments on a task.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const results = await getTaskComments(input.taskId, ctx.userId);

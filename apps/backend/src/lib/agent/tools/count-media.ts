@@ -23,6 +23,7 @@ export const countMediaTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "countMedia",
   label: "Count Media",
   description: "Count audio and video media items matching criteria.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const count = await countMediaService({

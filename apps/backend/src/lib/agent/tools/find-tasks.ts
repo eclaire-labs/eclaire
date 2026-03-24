@@ -42,6 +42,7 @@ export const findTasksTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "findTasks",
   label: "Find Tasks",
   description: "Search tasks by keywords, tags, status, and date range.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     let validStatus: TaskStatus | undefined;

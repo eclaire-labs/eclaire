@@ -29,6 +29,7 @@ export const updateDocumentTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "updateDocument",
   label: "Update Document",
   description: "Update a document's title, description, tags, or due date.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: [
     "Always confirm with the user before modifying documents.",

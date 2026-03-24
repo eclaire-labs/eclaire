@@ -88,6 +88,10 @@ export interface McpServerConfig {
   /** Blocklist of MCP tool names (null = none blocked) */
   blockedTools?: string[] | null;
 
+  // --- access control ---
+  /** Whether this server's tools are read-only or write. Default: "write" (fail-closed). */
+  accessLevel?: "read" | "write";
+
   // --- prompt contributions ---
   /** Text snippet injected into the system prompt */
   promptSnippet?: string;

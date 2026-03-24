@@ -13,6 +13,8 @@ export interface CallerContext {
   grantId?: string | null;
   authorizedByActorId?: string | null;
   authMethod?: AuthPrincipal["authMethod"];
+  /** API key scopes (null/undefined for session/localhost callers). */
+  scopes?: string[] | null;
 }
 
 /** Create a CallerContext for a human user. */
@@ -67,6 +69,7 @@ export function principalCaller(principal: AuthPrincipal): CallerContext {
     grantId: principal.grantId,
     authorizedByActorId: principal.grantedByActorId,
     authMethod: principal.authMethod,
+    scopes: principal.authMethod === "api_key" ? principal.scopes : undefined,
   };
 }
 

@@ -21,6 +21,7 @@ export const deletePhotoTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "deletePhoto",
   label: "Delete Photo",
   description: "Permanently delete a photo and its stored files.",
+  accessLevel: "write",
   inputSchema,
   needsApproval: true,
   promptGuidelines: ["Always confirm with the user before deleting photos."],

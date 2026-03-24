@@ -21,6 +21,7 @@ export const getNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Get Note",
   description:
     "Get full details of a note by ID, including its complete content.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const result = await getNoteEntryById(input.id, ctx.userId);

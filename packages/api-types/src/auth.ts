@@ -22,6 +22,7 @@ export const ApiKeyScopeSchema = z.enum([
   "agents:read",
   "agents:write",
   "conversations:read",
+  "conversations:invoke",
   "conversations:write",
   "history:read",
   "processing:read",

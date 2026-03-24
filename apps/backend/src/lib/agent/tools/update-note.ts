@@ -28,6 +28,7 @@ export const updateNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "updateNote",
   label: "Update Note",
   description: "Update a note's title, content, tags, or due date.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: ["Always confirm with the user before modifying notes."],
   execute: async (_callId, input, ctx) => {

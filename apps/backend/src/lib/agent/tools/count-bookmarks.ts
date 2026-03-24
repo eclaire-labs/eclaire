@@ -19,6 +19,7 @@ export const countBookmarksTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "countBookmarks",
   label: "Count Bookmarks",
   description: "Count bookmarks matching criteria.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const count = await countBookmarksService({

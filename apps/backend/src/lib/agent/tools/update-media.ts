@@ -40,6 +40,7 @@ export const updateMediaTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Update Media",
   description:
     "Update a media item's title, description, tags, due date, review status, flag, or pin status.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: [
     "Always confirm with the user before modifying media items.",

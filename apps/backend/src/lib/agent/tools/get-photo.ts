@@ -21,6 +21,7 @@ export const getPhotoTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Get Photo",
   description:
     "Get full details of a photo by ID, including EXIF data and analysis.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const result = await getPhotoById(input.id, ctx.userId);

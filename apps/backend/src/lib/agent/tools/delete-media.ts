@@ -21,6 +21,7 @@ export const deleteMediaTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "deleteMedia",
   label: "Delete Media",
   description: "Permanently delete a media item and its stored files.",
+  accessLevel: "write",
   inputSchema,
   needsApproval: true,
   promptGuidelines: [

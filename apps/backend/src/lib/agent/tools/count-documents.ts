@@ -23,6 +23,7 @@ export const countDocumentsTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "countDocuments",
   label: "Count Documents",
   description: "Count documents matching criteria.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const count = await countDocumentsService({

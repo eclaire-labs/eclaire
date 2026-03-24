@@ -29,6 +29,7 @@ export const updatePhotoTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "updatePhoto",
   label: "Update Photo",
   description: "Update a photo's title, description, tags, or due date.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: ["Always confirm with the user before modifying photos."],
   execute: async (_callId, input, ctx) => {

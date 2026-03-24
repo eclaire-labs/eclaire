@@ -29,6 +29,7 @@ export const synthesizeSpeechTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Synthesize Speech",
   description:
     "Convert text to speech audio using local text-to-speech. Returns the storage path of the generated audio file.",
+  accessLevel: "write",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     try {

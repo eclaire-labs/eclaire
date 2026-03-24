@@ -21,6 +21,7 @@ export const getMediaTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Get Media",
   description:
     "Get full details of a media item by ID, including metadata, transcript, and processing status.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const result = await getMediaById(input.id, ctx.userId);

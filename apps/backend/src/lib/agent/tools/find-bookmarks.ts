@@ -24,6 +24,7 @@ export const findBookmarksTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "findBookmarks",
   label: "Find Bookmarks",
   description: "Search bookmarks by text, tags, and date range.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const results = await findBookmarksService({

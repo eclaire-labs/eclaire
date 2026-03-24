@@ -34,6 +34,7 @@ export const importMediaUrlTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Import Media from URL",
   description:
     "Import audio or video from a URL. Supports YouTube, Vimeo, SoundCloud, and direct media file URLs. The media is downloaded and processed in the background.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: [
     "Always confirm with the user before importing media from URLs.",

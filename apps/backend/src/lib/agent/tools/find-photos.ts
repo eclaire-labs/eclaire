@@ -29,6 +29,7 @@ export const findPhotosTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "findPhotos",
   label: "Find Photos",
   description: "Search photos by tags, date range, and location.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const result = await findPhotosService({

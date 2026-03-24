@@ -44,6 +44,7 @@ export const findMediaTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Find Media",
   description:
     "Search audio and video media by text, tags, type, and date range.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const result = await findMediaService({

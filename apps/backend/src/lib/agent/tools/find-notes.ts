@@ -24,6 +24,7 @@ export const findNotesTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "findNotes",
   label: "Find Notes",
   description: "Search note entries by full-text, tags, and date range.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const results = await findNotesService({

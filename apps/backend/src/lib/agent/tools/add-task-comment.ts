@@ -18,6 +18,7 @@ export const addTaskCommentTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "addTaskComment",
   label: "Add Task Comment",
   description: "Add a comment to a task.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: [
     "Always confirm with the user before adding task comments.",

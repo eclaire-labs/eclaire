@@ -21,6 +21,7 @@ export const deleteDocumentTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "deleteDocument",
   label: "Delete Document",
   description: "Permanently delete a document and its stored files.",
+  accessLevel: "write",
   inputSchema,
   needsApproval: true,
   promptGuidelines: ["Always confirm with the user before deleting documents."],

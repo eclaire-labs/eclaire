@@ -97,6 +97,18 @@ describe("derivePermissionLevels", () => {
   });
 });
 
+describe("conversations:invoke scope", () => {
+  it("is included in data read scopes", () => {
+    const scopes = resolvePermissionScopes("read", "none");
+    expect(scopes).toContain("conversations:invoke");
+  });
+
+  it("is included in data read_write scopes", () => {
+    const scopes = resolvePermissionScopes("read_write", "none");
+    expect(scopes).toContain("conversations:invoke");
+  });
+});
+
 describe("scope constants", () => {
   it("read_write data scopes are a superset of read scopes", () => {
     const readWriteSet = new Set(DATA_ACCESS_SCOPES.read_write);

@@ -58,6 +58,7 @@ export const updateTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Update Task",
   description:
     "Update a task's title, description, status, priority, tags, due date, or recurrence settings.",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: [
     "Always confirm with the user before modifying tasks.",

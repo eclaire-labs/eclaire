@@ -29,6 +29,7 @@ export const countTasksTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "countTasks",
   label: "Count Tasks",
   description: "Count tasks matching criteria.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     let validStatus: TaskStatus | undefined;

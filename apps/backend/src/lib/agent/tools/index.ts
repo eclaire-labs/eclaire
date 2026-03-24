@@ -76,7 +76,8 @@ import { updateUserSettingsTool } from "./update-user-settings.js";
 // Processing status tools
 import { getProcessingStatusTool } from "./get-processing-status.js";
 // Admin tools
-import { manageAdminTool } from "./manage-admin.js";
+import { manageAdminReadTool } from "./manage-admin-read.js";
+import { manageAdminWriteTool } from "./manage-admin-write.js";
 
 /**
  * Static backend tools (always available).
@@ -146,8 +147,9 @@ const staticTools: Record<string, RuntimeToolDefinition> = {
   updateUserSettings: updateUserSettingsTool,
   // Processing status tools
   getProcessingStatus: getProcessingStatusTool,
-  // Admin tools (filtered by user role in selectAgentTools)
-  manageAdmin: manageAdminTool,
+  // Admin tools (filtered by user role and scopes in selectAgentTools)
+  manageAdminRead: manageAdminReadTool,
+  manageAdminWrite: manageAdminWriteTool,
 };
 
 /**
@@ -236,4 +238,5 @@ export { updateUserSettingsTool } from "./update-user-settings.js";
 // Processing status tools
 export { getProcessingStatusTool } from "./get-processing-status.js";
 // Admin tools
-export { manageAdminTool } from "./manage-admin.js";
+export { manageAdminReadTool } from "./manage-admin-read.js";
+export { manageAdminWriteTool } from "./manage-admin-write.js";

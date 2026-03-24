@@ -102,6 +102,7 @@ function listToolCatalog(): AgentCatalogItem[] {
         name: tool.name,
         label: tool.label,
         description: tool.description,
+        accessLevel: tool.accessLevel ?? "write",
         parameters: serializeToolParameters(tool),
         visibility: tool.visibility ?? "all",
         needsApproval:

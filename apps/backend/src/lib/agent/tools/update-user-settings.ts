@@ -32,6 +32,7 @@ export const updateUserSettingsTool: RuntimeToolDefinition<typeof inputSchema> =
     label: "Update User Settings",
     description:
       "Update the current user's profile settings (display name, full name, bio, timezone, city, country).",
+    accessLevel: "write",
     inputSchema,
     promptGuidelines: [
       "Always confirm with the user before changing their settings.",

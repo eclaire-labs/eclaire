@@ -282,6 +282,7 @@ export const browseWebTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Browse Web",
   description:
     "Browse public websites in a read-only way: open pages, inspect accessible snapshots, wait for content, read page details, take screenshots, and close the browser session.",
+  accessLevel: "read",
   inputSchema,
   promptSnippet: [
     "When you need current public-web information, use browseWeb in short steps.",

@@ -637,6 +637,8 @@ export async function sendMessage(
     });
   };
 
+  const callerScopes = options.caller.scopes ?? undefined;
+
   const agent = createBackendAgent({
     agent: agentDefinition,
     userContext,
@@ -645,6 +647,7 @@ export async function sendMessage(
     assetContents,
     enableThinking,
     onApprovalRequired: isBackgroundTask ? undefined : onApprovalRequired,
+    callerScopes,
   });
 
   const runtimeContext = createRuntimeContext({
@@ -657,6 +660,7 @@ export async function sendMessage(
       allowedSkillNames: agentDefinition.skillNames,
       callerAuthMethod: options.caller.authMethod,
       callerActorKind: options.caller.actor,
+      callerScopes,
       backgroundTaskExecution: isBackgroundTask,
     },
   });

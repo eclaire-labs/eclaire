@@ -19,6 +19,7 @@ export const countNotesTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "countNotes",
   label: "Count Notes",
   description: "Count note entries matching criteria.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const count = await countNotesService({

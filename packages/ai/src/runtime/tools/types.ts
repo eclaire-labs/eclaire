@@ -110,6 +110,13 @@ export interface RuntimeToolDefinition<TInput extends AnyZodType = AnyZodType> {
    */
   promptGuidelines?: string[];
 
+  /**
+   * Whether this tool is read-only or performs writes.
+   * Defaults to "write" (fail-closed) so new tools without explicit
+   * classification are blocked for read-only API key callers.
+   */
+  accessLevel?: "read" | "write";
+
   /** Where this tool is available */
   visibility?: "backend" | "cli" | "all";
 

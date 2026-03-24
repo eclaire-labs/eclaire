@@ -58,6 +58,7 @@ export const quickActionTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Quick Action",
   description:
     "Flag, pin, or set review status on any content item (bookmark, note, task, document, or photo).",
+  accessLevel: "write",
   inputSchema,
   promptGuidelines: [
     "Always confirm with the user before changing flags, pins, or review status.",

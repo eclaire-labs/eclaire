@@ -19,6 +19,7 @@ export const getUserSettingsTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Get User Settings",
   description:
     "Read the current user's profile settings (display name, full name, bio, timezone, city, country, email).",
+  accessLevel: "read",
   inputSchema,
   promptGuidelines: [
     "When the user asks about their profile or personal settings, look up their current values.",

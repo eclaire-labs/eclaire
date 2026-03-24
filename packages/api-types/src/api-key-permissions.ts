@@ -14,6 +14,7 @@ const DATA_READ_SCOPES: ApiKeyScope[] = [
   "channels:read",
   "agents:read",
   "conversations:read",
+  "conversations:invoke",
   "history:read",
   "processing:read",
   "feedback:read",

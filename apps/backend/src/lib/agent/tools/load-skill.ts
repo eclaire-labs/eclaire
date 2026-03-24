@@ -24,6 +24,7 @@ export const loadSkillTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Load Skill",
   description:
     "Load the full instructions of a skill by name. See the available skills list in your system prompt.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
     const allowedSkillNames = Array.isArray(ctx.extra?.allowedSkillNames)

@@ -24,6 +24,7 @@ export const getMediaInfoTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Get Media Info",
   description:
     "Preview metadata about a media URL (title, duration, uploader, type, file size) without downloading it. Useful for checking what a URL contains before importing.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, input) => {
     if (!(await isYtdlpAvailable())) {

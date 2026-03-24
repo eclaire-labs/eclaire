@@ -15,6 +15,7 @@ export const getDueItemsTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Get Due Items",
   description:
     "Get items that are overdue, due today, or due this week across all content types.",
+  accessLevel: "read",
   inputSchema,
   execute: async (_callId, _input, ctx) => {
     const results = await getDueItems(ctx.userId);

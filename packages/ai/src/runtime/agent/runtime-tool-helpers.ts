@@ -66,6 +66,28 @@ export async function executeRuntimeTool(
     };
   }
 
+  // Defense-in-depth: block write tools for read-only API key callers.
+  // This is a safety net — write tools should already be filtered out of the
+  // tool set, but this catches edge cases like tool filtering bugs.
+  if ((toolDef.accessLevel ?? "write") === "write") {
+    const callerScopes = context.extra?.callerScopes as string[] | undefined;
+    if (
+      callerScopes &&
+      !callerScopes.includes("*") &&
+      !callerScopes.includes("conversations:write")
+    ) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "This tool is not available in read-only mode.",
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
   // Check approval
   if (toolDef.needsApproval) {
     const needsApproval =

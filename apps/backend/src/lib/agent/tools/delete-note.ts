@@ -21,6 +21,7 @@ export const deleteNoteTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "deleteNote",
   label: "Delete Note",
   description: "Permanently delete a note.",
+  accessLevel: "write",
   inputSchema,
   needsApproval: true,
   promptGuidelines: ["Always confirm with the user before deleting notes."],

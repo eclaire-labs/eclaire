@@ -28,6 +28,7 @@ export const sendNotificationTool: RuntimeToolDefinition<typeof inputSchema> = {
   label: "Send Notification",
   description:
     "Send a notification message to the user's configured channels (Telegram, Discord, Slack, etc.).",
+  accessLevel: "write",
   inputSchema,
   needsApproval: true,
   promptGuidelines: [
