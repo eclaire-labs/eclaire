@@ -7,7 +7,7 @@
 
 import type { RuntimeAgentStep } from "@eclaire/ai";
 import { generateAgentStepId } from "@eclaire/core";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 
@@ -167,12 +167,17 @@ export async function saveAgentSteps(
  * Get agent execution steps for a specific message.
  * Used for lazy-loading step detail in the frontend.
  */
-export async function getAgentSteps(messageId: string) {
+export async function getAgentSteps(messageId: string, conversationId: string) {
   try {
     const steps = await db
       .select()
       .from(agentSteps)
-      .where(eq(agentSteps.messageId, messageId))
+      .where(
+        and(
+          eq(agentSteps.messageId, messageId),
+          eq(agentSteps.conversationId, conversationId),
+        ),
+      )
       .orderBy(asc(agentSteps.stepNumber));
 
     return steps;
@@ -180,6 +185,7 @@ export async function getAgentSteps(messageId: string) {
     logger.error(
       {
         messageId,
+        conversationId,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Failed to get agent steps",

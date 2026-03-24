@@ -131,12 +131,16 @@ export async function createTaskComment(
   const actorId = callerActorId(caller);
   const ownerUserId = callerOwnerUserId(caller);
   try {
-    // Verify the task exists
+    // Verify the task exists and belongs to the caller
     const task = await db.query.tasks.findFirst({
       where: eq(tasks.id, commentData.taskId),
     });
 
     if (!task) {
+      throw new NotFoundError("Task");
+    }
+
+    if (!ownerUserId || task.userId !== ownerUserId) {
       throw new NotFoundError("Task");
     }
 

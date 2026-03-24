@@ -951,7 +951,6 @@ export async function getPublicUserProfile(userId: string) {
       id: true,
       userType: true,
       displayName: true,
-      email: true,
     },
   });
 
@@ -963,7 +962,6 @@ export async function getPublicUserProfile(userId: string) {
     id: user.id,
     userType: user.userType,
     displayName: user.displayName || "Unknown User",
-    email: user.email,
   };
 }
 

@@ -214,7 +214,7 @@ sessionsRoutes.get(
       throw new NotFoundError("Session");
     }
 
-    const steps = await getAgentSteps(messageId);
+    const steps = await getAgentSteps(messageId, sessionId);
     return c.json({ items: steps });
   }, logger),
 );
@@ -233,8 +233,15 @@ sessionsRoutes.post(
 sessionsRoutes.post(
   "/:id/approve-tool",
   zValidator("json", ApproveToolSchema),
-  withAuth(async (c, _userId) => {
+  withAuth(async (c, userId) => {
     const sessionId = c.req.param("id");
+
+    // Verify the session belongs to this user
+    const session = await getSession(sessionId, userId);
+    if (!session) {
+      throw new NotFoundError("Session");
+    }
+
     const body = c.req.valid("json");
 
     const resolved = approveToolExecution(
@@ -255,8 +262,15 @@ sessionsRoutes.post(
 // POST /api/sessions/:id/abort - Abort running execution
 sessionsRoutes.post(
   "/:id/abort",
-  withAuth(async (c, _userId) => {
+  withAuth(async (c, userId) => {
     const sessionId = c.req.param("id");
+
+    // Verify the session belongs to this user
+    const session = await getSession(sessionId, userId);
+    if (!session) {
+      throw new NotFoundError("Session");
+    }
+
     const aborted = abortExecution(sessionId);
 
     return c.json({ aborted });
