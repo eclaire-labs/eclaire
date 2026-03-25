@@ -417,6 +417,23 @@ export default function AssistantSettings({
     onToolCall: (id, name, status, args, result, error) => {
       addOrUpdateTool(id, name, status, args, result, error);
     },
+    onApprovalRequired: (id, name, _label, args) => {
+      addOrUpdateTool(id, name, "awaiting_approval", args);
+    },
+    onApprovalResolved: (id, name, approved, reason) => {
+      if (approved) {
+        addOrUpdateTool(id, name, "executing");
+      } else {
+        addOrUpdateTool(
+          id,
+          name,
+          "error",
+          undefined,
+          undefined,
+          reason || "Denied by user",
+        );
+      }
+    },
     onTextChunk: (content) => {
       finalStreamingTextRef.current += content;
       setStreamingText((prev) => prev + content);
@@ -472,6 +489,29 @@ export default function AssistantSettings({
       }
     },
   });
+
+  // Tool approval handlers
+  const handleApproveToolCall = useCallback((toolCallId: string) => {
+    const sessionId = currentConversationRef.current?.id;
+    if (!sessionId) return;
+    fetch(`/api/sessions/${sessionId}/approve-tool`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toolCallId, approved: true }),
+      credentials: "include",
+    }).catch((err) => console.error("Failed to approve tool:", err));
+  }, []);
+
+  const handleDenyToolCall = useCallback((toolCallId: string) => {
+    const sessionId = currentConversationRef.current?.id;
+    if (!sessionId) return;
+    fetch(`/api/sessions/${sessionId}/approve-tool`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toolCallId, approved: false }),
+      credentials: "include",
+    }).catch((err) => console.error("Failed to deny tool:", err));
+  }, []);
 
   const handleSessionSelect = async (session: ConversationSummary) => {
     setIsLoadingSession(true);
@@ -883,6 +923,8 @@ export default function AssistantSettings({
                   streamingThought={streamingThought}
                   streamingText={streamingText}
                   streamingToolCalls={streamingToolCalls as ToolCall[]}
+                  onApproveToolCall={handleApproveToolCall}
+                  onDenyToolCall={handleDenyToolCall}
                   showThinkingTokens={preferences.showThinkingTokens}
                   slashPalette={slashPaletteConfig}
                   className="h-full"

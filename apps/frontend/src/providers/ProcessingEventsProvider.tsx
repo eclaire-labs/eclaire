@@ -56,7 +56,8 @@ export interface ProcessingEvent {
     | "job_failed" // Job in terminal failure state
     | "session_running" // Agent session execution started
     | "session_completed" // Agent session execution completed
-    | "session_error"; // Agent session execution failed
+    | "session_error" // Agent session execution failed
+    | "session_awaiting_approval"; // Agent session awaiting tool approval
 
   // Asset identity (for processing events)
   assetType?: AssetType;
@@ -148,7 +149,8 @@ export function ProcessingEventsProvider({
             if (
               type === "session_running" ||
               type === "session_completed" ||
-              type === "session_error"
+              type === "session_error" ||
+              type === "session_awaiting_approval"
             ) {
               queryClient.invalidateQueries({
                 queryKey: ["session-status"],

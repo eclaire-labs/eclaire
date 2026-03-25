@@ -458,7 +458,7 @@ export function transformRuntimeEvent(
         type: "tool-call",
         id: event.id,
         name: event.name,
-        status: "starting",
+        status: "executing",
         arguments: event.arguments,
         timestamp,
       };
