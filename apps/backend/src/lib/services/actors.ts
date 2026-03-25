@@ -193,6 +193,11 @@ export async function getActorSummary(
   actorId: string,
 ): Promise<ActorSummary> {
   if (actorId === DEFAULT_AGENT_ACTOR_ID) {
+    await createAgentActor(
+      ownerUserId,
+      DEFAULT_AGENT_ACTOR_ID,
+      DEFAULT_AGENT_ACTOR_NAME,
+    );
     return getDefaultAgentActorSummary();
   }
 
