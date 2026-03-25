@@ -1,12 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import {
   Activity,
   AlertTriangle,
   AudioWaveform,
   BookMarked,
-  Bot,
   Clock,
   FileText,
   Flag,
@@ -16,7 +15,6 @@ import {
   ListTodo,
   Notebook,
   Pin,
-  Plus,
   Search,
   Upload,
 } from "lucide-react";
@@ -31,11 +29,10 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { AssistantOverlay } from "@/components/assistant/assistant-overlay";
+import { ChatPanel } from "@/components/assistant/chat-panel";
 import { GlobalAssistant } from "@/components/assistant/global-assistant";
 import { useToolExecutionTracker } from "@/components/assistant/tool-execution-tracker";
-import { PopularTagsSection } from "@/components/dashboard/popular-tags-section";
 import { TopBar } from "@/components/dashboard/top-bar";
-import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
 import { MobileChatView } from "@/components/mobile/mobile-chat-view";
 import { MobileFoldersView } from "@/components/mobile/mobile-folders-view";
 import { MobileLayout } from "@/components/mobile/mobile-layout";
@@ -43,8 +40,12 @@ import type { MobileTab } from "@/components/mobile/mobile-tab-bar";
 import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAgentExecutionStatus } from "@/hooks/use-session-status";
+import {
+  useSidebarMode,
+  useSidebarModeShortcut,
+} from "@/hooks/use-sidebar-mode";
 import { useSlashCommands } from "@/hooks/use-slash-commands";
-import { AgentStatusDot } from "@/components/assistant/agent-status-dot";
+import { SidebarShell } from "@/components/sidebar/sidebar-shell";
 import { listAgents } from "@/lib/api-agents";
 import { apiFetch } from "@/lib/api-client";
 import {
@@ -109,6 +110,20 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const [assistantWidth, setAssistantWidth] = useState(384); // 96 * 4 = 384px (w-96 equivalent)
   const [isResizing, setIsResizing] = useState(false);
   const _resizeRef = useRef<HTMLDivElement>(null);
+
+  // Sidebar mode
+  const [sidebarMode, setSidebarMode] = useSidebarMode();
+  useSidebarModeShortcut(sidebarMode, setSidebarMode);
+  const [showAiChat, setShowAiChat] = useState(false);
+
+  // Clear AI chat view when user navigates via links (e.g. clicking an agent)
+  const prevPathnameRef = useRef(pathname);
+  useEffect(() => {
+    if (prevPathnameRef.current !== pathname) {
+      prevPathnameRef.current = pathname;
+      setShowAiChat(false);
+    }
+  }, [pathname]);
 
   // Mobile state
   const [currentMobileTab, setCurrentMobileTab] = useState<MobileTab>("chat");
@@ -469,28 +484,44 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     setFoldersSheetOpen(!foldersSheetOpen);
   };
 
-  const isActive = (path: string) => {
-    // Handle exact matches first for specificity
-    if (pathname === path) return true;
-
-    // Special handling for nested routes under /all
-    if (path === "/all" && pathname.startsWith("/all/")) return false; // Don't show /all as active when on /all/pending or /all/pinned
-
-    // Handle other paths starting with the href (but not for /all or /dashboard)
-    if (path !== "/dashboard" && path !== "/all" && pathname.startsWith(path))
-      return true;
-
-    return false;
-  };
-
-  const activeAgentId = pathname.startsWith("/agents/")
-    ? pathname.split("/")[2] || DEFAULT_AGENT_ACTOR_ID
-    : null;
-
   // Function to open assistant with pre-attached assets
   const openAssistantWithAssets = (assets: AssetReference[]) => {
     setPreAttachedAssets(assets);
     setAssistantOpen(true);
+  };
+
+  // Sidebar AI mode handlers — open chat in main content area
+  const handleNewChatFromSidebar = () => {
+    startNewConversation();
+    setShowAiChat(true);
+  };
+
+  const handleSelectConversationFromSidebar = (conv: ConversationSummary) => {
+    handleSelectConversation(conv);
+    setShowAiChat(true);
+  };
+
+  const handleSelectActivityFromSidebar = (sessionId: string) => {
+    const conv: ConversationSummary = {
+      id: sessionId,
+      userId: "",
+      agentActorId: "",
+      title: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastMessageAt: null,
+      messageCount: 0,
+    };
+    handleSelectConversation(conv);
+    setShowAiChat(true);
+  };
+
+  // Dismiss AI chat when switching to content mode
+  const handleSidebarModeChange = (mode: "content" | "ai") => {
+    setSidebarMode(mode);
+    if (mode === "content") {
+      setShowAiChat(false);
+    }
   };
 
   // Function to toggle full-screen mode
@@ -1090,109 +1121,49 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
       {/* Main Content (3-column layout) */}
       <div className="flex flex-1 overflow-hidden main-layout-container">
-        {/* Left Sidebar */}
-        <div className="w-48 border-r bg-background overflow-y-auto flex-shrink-0">
-          <nav className="p-3">
-            <ul className="space-y-1">
-              {navigation.map((item) => (
-                <li key={item.name}>
-                  {item.separator && (
-                    <div className="h-px bg-border my-2"></div>
-                  )}
-                  {(item as Record<string, unknown>).isDialog ? (
-                    <FeedbackDialog
-                      trigger={
-                        <button
-                          type="button"
-                          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-[hsl(var(--hover-bg))] w-full text-left"
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.name}</span>
-                        </button>
-                      }
-                    />
-                  ) : (
-                    <Link
-                      to={item.href}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm ${
-                        isActive(item.href)
-                          ? "font-medium"
-                          : "text-muted-foreground hover:bg-[hsl(var(--hover-bg))]"
-                      }`}
-                      style={
-                        isActive(item.href)
-                          ? {
-                              backgroundColor: `hsl(var(--sidebar-active-bg) / var(--sidebar-active-bg-opacity))`,
-                              color: `hsl(var(--sidebar-active-text))`,
-                            }
-                          : undefined
-                      }
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.name}</span>
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-5 space-y-3">
-              <div className="flex items-center justify-between px-3">
-                <Link
-                  to="/agents/$agentId"
-                  params={{ agentId: DEFAULT_AGENT_ACTOR_ID }}
-                  className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-                >
-                  <Bot className="h-3.5 w-3.5" />
-                  Agents
-                </Link>
-                <Link
-                  to="/agents/$agentId"
-                  params={{ agentId: "new" }}
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-[hsl(var(--hover-bg))] hover:text-foreground"
-                >
-                  <Plus className="h-4 w-4" />
-                </Link>
-              </div>
-              <div className="space-y-1">
-                {agentRailItems.map((agent) => {
-                  const agentStatus = agentStatuses.get(agent.id);
-                  return (
-                    <Link
-                      key={agent.id}
-                      to="/agents/$agentId"
-                      params={{ agentId: agent.id }}
-                      className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${
-                        activeAgentId === agent.id
-                          ? "font-medium"
-                          : "text-muted-foreground hover:bg-[hsl(var(--hover-bg))]"
-                      }`}
-                      style={
-                        activeAgentId === agent.id
-                          ? {
-                              backgroundColor: `hsl(var(--sidebar-active-bg) / var(--sidebar-active-bg-opacity))`,
-                              color: `hsl(var(--sidebar-active-text))`,
-                            }
-                          : undefined
-                      }
-                    >
-                      <span className="relative flex h-6 w-6 items-center justify-center rounded-full border bg-background text-[11px] font-semibold">
-                        {agent.name.slice(0, 1).toUpperCase()}
-                        {agentStatus && <AgentStatusDot status={agentStatus} />}
-                      </span>
-                      <span className="truncate">{agent.name}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-            <PopularTagsSection />
-          </nav>
-        </div>
+        {/* Left Sidebar (Rail + Contextual Panel) */}
+        <SidebarShell
+          mode={sidebarMode}
+          onModeChange={handleSidebarModeChange}
+          navigation={navigation}
+          agents={agentRailItems}
+          agentStatuses={agentStatuses}
+          activeConversationId={currentConversation?.id ?? null}
+          showAiChat={showAiChat}
+          onNewChat={handleNewChatFromSidebar}
+          onSelectConversation={handleSelectConversationFromSidebar}
+          onSelectActivity={handleSelectActivityFromSidebar}
+        />
 
         {/* Middle Content */}
-        <div className="flex-1 overflow-y-auto">
-          <main className="p-6">{children}</main>
-        </div>
+        {showAiChat ? (
+          <div className="flex-1 flex flex-col min-h-0">
+            <ChatPanel
+              messages={messages}
+              isLoading={isLoadingConversation}
+              currentConversation={currentConversation}
+              input={input}
+              setInput={setInput}
+              handleSend={handleSendWithSlash}
+              handleKeyDown={handleKeyDown}
+              attachedAssets={attachedAssets}
+              setAttachedAssets={setAttachedAssets}
+              isStreaming={isStreaming}
+              streamingThought={streamingThought}
+              streamingText={streamingText}
+              streamingToolCalls={streamingToolCalls}
+              onApproveToolCall={handleApproveToolCall}
+              onDenyToolCall={handleDenyToolCall}
+              showThinkingTokens={assistantPreferences.showThinkingTokens}
+              slashPalette={slashPaletteConfig}
+              className="h-full"
+            />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto">
+            <main className="p-6">{children}</main>
+          </div>
+        )}
 
         {/* Right Sidebar (Assistant) - conditionally rendered only when not in full-screen */}
         {assistantOpen && !assistantFullScreen && (
