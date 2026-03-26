@@ -2,7 +2,6 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { ActorPicker } from "@/components/shared/ActorPicker";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
-import { RecurrenceToggle } from "@/components/shared/recurrence-toggle";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Button } from "@/components/ui/button";
 import {
@@ -199,32 +198,6 @@ export function CreateTaskDialog({
                   }
                 />
               </div>
-
-              {/* Recurrence — hidden for sub-tasks */}
-              {!parentId && (
-                <div className="space-y-2">
-                  <RecurrenceToggle
-                    value={{
-                      isRecurring: task.isRecurring,
-                      cronExpression: task.cronExpression,
-                      recurrenceEndDate: task.recurrenceEndDate,
-                      recurrenceLimit: task.recurrenceLimit,
-                      runImmediately: task.runImmediately,
-                    }}
-                    onChange={(config) =>
-                      setTask({
-                        ...task,
-                        isRecurring: config.isRecurring,
-                        cronExpression: config.cronExpression,
-                        recurrenceEndDate: config.recurrenceEndDate,
-                        recurrenceLimit: config.recurrenceLimit,
-                        runImmediately: config.runImmediately,
-                      })
-                    }
-                    dueDate={task.dueDate}
-                  />
-                </div>
-              )}
             </div>
             {/* Assignee */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

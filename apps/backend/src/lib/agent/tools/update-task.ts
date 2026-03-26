@@ -1,8 +1,7 @@
 /**
  * Update Task Tool
  *
- * Update an existing task's title, description, status, priority, tags, due date,
- * or recurrence settings.
+ * Update an existing task's title, description, status, priority, tags, or due date.
  */
 
 import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
@@ -30,39 +29,26 @@ const inputSchema = z.object({
     .string()
     .nullable()
     .optional()
-    .describe("New due date in ISO format (YYYY-MM-DD), or null to clear"),
-  isRecurring: z
-    .boolean()
-    .optional()
-    .describe("Set to false to stop recurrence, true to enable it"),
-  cronExpression: z
-    .string()
-    .optional()
-    .describe("New cron schedule expression"),
-  recurrenceEndDate: z
+    .describe(
+      "New due date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ), or null to clear",
+    ),
+  assigneeActorId: z
     .string()
     .nullable()
     .optional()
-    .describe("New recurrence end date in ISO format, or null to clear"),
-  recurrenceLimit: z
-    .number()
-    .int()
-    .min(1)
-    .nullable()
-    .optional()
-    .describe("New maximum execution count, or null to clear"),
+    .describe("New assignee actor ID, or null to unassign"),
 });
 
 export const updateTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "updateTask",
   label: "Update Task",
   description:
-    "Update a task's title, description, status, priority, tags, due date, or recurrence settings.",
+    "Update a task's title, description, status, priority, tags, due date, or assignee.",
   accessLevel: "write",
   inputSchema,
   promptGuidelines: [
     "Always confirm with the user before modifying tasks.",
-    "To stop a recurring task, set isRecurring to false.",
+    "For scheduling or recurring work, use scheduleAction — not updateTask.",
   ],
   execute: async (_callId, input, ctx) => {
     const { id, ...updateData } = input;

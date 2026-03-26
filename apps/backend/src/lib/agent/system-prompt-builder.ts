@@ -44,31 +44,33 @@ const CONTENT_TOOL_NAMES = [
   "getDueItems",
 ];
 
-const SCHEDULING_TOOL_NAMES = ["createTask", "updateTask"];
+const SCHEDULED_ACTION_TOOL_NAMES = ["scheduleAction"];
 
-function hasSchedulingTools(
+function hasScheduledActionTools(
   tools: Record<string, RuntimeToolDefinition>,
 ): boolean {
-  return SCHEDULING_TOOL_NAMES.some((name) => name in tools);
+  return SCHEDULED_ACTION_TOOL_NAMES.some((name) => name in tools);
 }
 
-const SCHEDULING_INSTRUCTIONS = `
+const REMINDER_INSTRUCTIONS = `
 
-**Scheduling & Recurring Work**
+**Reminders & Scheduled Actions**
 
-When users ask for reminders, recurring summaries, periodic checks, or any scheduled work:
-1. Create a recurring task using createTask with isRecurring=true, a cronExpression, and assignToSelf=true
-2. Always confirm the schedule with the user before creating it
-3. You can use getDueItems to check what needs attention and findTasks to review scheduled tasks
+Use scheduleAction for all time-based work:
 
-Common cron patterns (5-field: minute hour day-of-month month day-of-week):
-- Daily at 9am: 0 9 * * *
-- Every Monday at 9am: 0 9 * * 1
-- Weekdays at 9am: 0 9 * * 1-5
-- First of each month: 0 9 1 * *
-- Every hour: 0 * * * *
+- One-off reminders ("remind me to X in 5 minutes", "at 3pm remind me to Y"):
+  kind='reminder', triggerAt=<absolute ISO 8601 datetime>
 
-To stop a recurring task, update it with isRecurring=false.`;
+- Recurring agent work ("every morning summarize my tasks", "weekly report every Monday"):
+  kind='agent_run', cronExpression=<cron>, message=<instructions for the AI agent>
+
+- One-off agent work ("tomorrow at 8pm, send a summary of today's notes"):
+  kind='agent_run', triggerAt=<absolute ISO 8601 datetime>
+
+Convert relative times to absolute ISO 8601 datetime using the current date/time and user timezone.
+Common cron: daily at 9am = '0 9 * * *', weekdays = '0 9 * * 1-5', Monday = '0 9 * * 1'.
+
+Do NOT use createTask for reminders or scheduled work. Tasks are work items with due dates.`;
 
 function hasContentTools(
   tools: Record<string, RuntimeToolDefinition>,
@@ -340,12 +342,12 @@ ${getToolSignatures(tools)}
     ? CONTENT_LINKING_INSTRUCTIONS
     : "";
 
-  const schedulingNormal = hasSchedulingTools(tools)
-    ? SCHEDULING_INSTRUCTIONS
+  const scheduledActionNormal = hasScheduledActionTools(tools)
+    ? REMINDER_INSTRUCTIONS
     : "";
 
   return appendAgentCapabilities(
-    `${basePrompt}${COMMUNICATION_STYLE_INSTRUCTIONS}${contentLinkingNormal}${schedulingNormal}
+    `${basePrompt}${COMMUNICATION_STYLE_INSTRUCTIONS}${contentLinkingNormal}${scheduledActionNormal}
 ${toolSignaturesSection}`,
     { skillNames: agent?.skillNames, tools },
   );

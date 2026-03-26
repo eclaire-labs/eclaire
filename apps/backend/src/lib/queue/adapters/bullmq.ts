@@ -16,6 +16,7 @@ import type {
   MediaJobData,
   NoteJobData,
   QueueAdapter,
+  ScheduledActionJobData,
   TaskJobData,
 } from "../types.js";
 
@@ -136,6 +137,52 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
         data.mediaId,
         data.userId,
         data,
+      );
+    },
+
+    async enqueueScheduledAction(data: ScheduledActionJobData): Promise<void> {
+      const queue: Queue | null = queueManager.getQueue(
+        QueueNames.SCHEDULED_ACTION_EXECUTION,
+      );
+      if (!queue) {
+        logger.error(
+          { queueName: QueueNames.SCHEDULED_ACTION_EXECUTION },
+          "Queue not available",
+        );
+        throw new Error("Scheduled action queue not available");
+      }
+
+      const requestId = getRequestId();
+      const jobId = `scheduled-action:${data.scheduledActionId}`;
+
+      // Calculate delay from scheduledFor
+      const delay = data.scheduledFor
+        ? Math.max(0, data.scheduledFor.getTime() - Date.now())
+        : 0;
+
+      await queue.add(
+        "process-scheduled-action",
+        {
+          ...data,
+          requestId,
+          __metadata: {
+            assetType: "scheduled_action",
+            assetId: data.scheduledActionId,
+            userId: data.userId,
+          },
+        },
+        { jobId, delay },
+      );
+
+      logger.info(
+        {
+          scheduledActionId: data.scheduledActionId,
+          userId: data.userId,
+          queue: QueueNames.SCHEDULED_ACTION_EXECUTION,
+          jobId,
+          delay,
+        },
+        "Scheduled action enqueued to Redis",
       );
     },
 

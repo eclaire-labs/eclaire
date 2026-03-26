@@ -17,6 +17,7 @@ import {
   Pin,
   Search,
   Upload,
+  Zap,
 } from "lucide-react";
 import {
   type ReactNode,
@@ -90,6 +91,7 @@ const navigation = [
   { name: "Photos", href: "/photos", icon: ImageIcon },
   { name: "Media", href: "/media", icon: AudioWaveform },
   { name: "History", href: "/history", icon: History },
+  { name: "Automations", href: "/automations", icon: Zap, separator: true },
 ];
 
 interface MainLayoutClientProps {

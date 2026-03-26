@@ -67,6 +67,24 @@ export interface MediaJobData extends JobData {
   sourceUrl?: string;
 }
 
+export interface DeliveryTarget {
+  type: "notification_channels" | "conversation";
+  ref?: string;
+}
+
+export interface ScheduledActionJobData extends JobData {
+  scheduledActionId: string;
+  executionId: string;
+  userId: string;
+  kind: "reminder" | "agent_run";
+  prompt: string;
+  title: string;
+  deliveryTargets: DeliveryTarget[];
+  sourceConversationId?: string;
+  agentActorId?: string;
+  scheduledFor?: Date;
+}
+
 // --- Queue Adapter Interface ---
 
 export interface QueueAdapter {
@@ -76,5 +94,6 @@ export interface QueueAdapter {
   enqueueNote(data: NoteJobData): Promise<void>;
   enqueueTask(data: TaskJobData): Promise<void>;
   enqueueMedia(data: MediaJobData): Promise<void>;
+  enqueueScheduledAction(data: ScheduledActionJobData): Promise<void>;
   close(): Promise<void>;
 }

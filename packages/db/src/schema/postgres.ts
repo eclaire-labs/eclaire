@@ -57,6 +57,8 @@ import {
   generateMessageId,
   generateNoteId,
   generatePhotoId,
+  generateScheduledActionExecutionId,
+  generateScheduledActionId,
   generateSecurityId,
   generateTagId,
   generateTaskCommentId,
@@ -1707,3 +1709,167 @@ export const appMeta = pgTable("_app_meta", {
     .notNull()
     .defaultNow(),
 });
+
+// =============================================================================
+// Scheduled Actions (time-based execution: reminders, agent runs, etc.)
+// =============================================================================
+
+export const scheduledActionKindEnum = pgEnum("scheduled_action_kind", [
+  "reminder",
+  "agent_run",
+]);
+
+export const scheduledActionStatusEnum = pgEnum("scheduled_action_status", [
+  "active",
+  "paused",
+  "completed",
+  "cancelled",
+]);
+
+export const scheduledActionTriggerTypeEnum = pgEnum(
+  "scheduled_action_trigger_type",
+  ["once", "recurring"],
+);
+
+export const scheduledActionExecutionStatusEnum = pgEnum(
+  "scheduled_action_execution_status",
+  ["pending", "running", "completed", "failed", "skipped"],
+);
+
+export const scheduledActions = pgTable(
+  "scheduled_actions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateScheduledActionId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: scheduledActionKindEnum("kind").notNull(),
+    status: scheduledActionStatusEnum("status").notNull().default("active"),
+
+    // What
+    title: text("title").notNull(),
+    prompt: text("prompt").notNull(),
+
+    // When — trigger
+    triggerType: scheduledActionTriggerTypeEnum("trigger_type").notNull(),
+    runAt: timestamp("run_at", { withTimezone: true }),
+    cronExpression: text("cron_expression"),
+    timezone: text("timezone"),
+    startAt: timestamp("start_at", { withTimezone: true }),
+    endAt: timestamp("end_at", { withTimezone: true }),
+    maxRuns: integer("max_runs"),
+    runCount: integer("run_count").notNull().default(0),
+
+    // Where — delivery
+    deliveryTargets: jsonb("delivery_targets")
+      .notNull()
+      .default([{ type: "notification_channels" }]),
+
+    // Context
+    sourceConversationId: text("source_conversation_id"),
+    agentActorId: text("agent_actor_id").references(() => actors.id, {
+      onDelete: "set null",
+    }),
+    relatedTaskId: text("related_task_id").references(() => tasks.id, {
+      onDelete: "set null",
+    }),
+
+    // Lifecycle
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    nextRunAt: timestamp("next_run_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userStatusIdx: index("scheduled_actions_user_id_status_idx").on(
+      table.userId,
+      table.status,
+    ),
+    userNextRunIdx: index("scheduled_actions_user_id_next_run_at_idx").on(
+      table.userId,
+      table.nextRunAt,
+    ),
+    statusNextRunIdx: index("scheduled_actions_status_next_run_at_idx").on(
+      table.status,
+      table.nextRunAt,
+    ),
+  }),
+);
+
+export const scheduledActionExecutions = pgTable(
+  "scheduled_action_executions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateScheduledActionExecutionId()),
+    scheduledActionId: text("scheduled_action_id")
+      .notNull()
+      .references(() => scheduledActions.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    status: scheduledActionExecutionStatusEnum("status")
+      .notNull()
+      .default("pending"),
+    output: text("output"),
+    error: text("error"),
+    deliveryResult: jsonb("delivery_result"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    actionCreatedAtIdx: index("sa_executions_action_id_created_at_idx").on(
+      table.scheduledActionId,
+      table.createdAt,
+    ),
+    userCreatedAtIdx: index("sa_executions_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    statusIdx: index("sa_executions_status_idx").on(table.status),
+  }),
+);
+
+export const scheduledActionsRelations = relations(
+  scheduledActions,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [scheduledActions.userId],
+      references: [users.id],
+    }),
+    agentActor: one(actors, {
+      fields: [scheduledActions.agentActorId],
+      references: [actors.id],
+    }),
+    relatedTask: one(tasks, {
+      fields: [scheduledActions.relatedTaskId],
+      references: [tasks.id],
+    }),
+    executions: many(scheduledActionExecutions),
+  }),
+);
+
+export const scheduledActionExecutionsRelations = relations(
+  scheduledActionExecutions,
+  ({ one }) => ({
+    scheduledAction: one(scheduledActions, {
+      fields: [scheduledActionExecutions.scheduledActionId],
+      references: [scheduledActions.id],
+    }),
+    user: one(users, {
+      fields: [scheduledActionExecutions.userId],
+      references: [users.id],
+    }),
+  }),
+);

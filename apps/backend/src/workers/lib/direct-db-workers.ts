@@ -43,6 +43,8 @@ import type { TaskExecutionJobData } from "../jobs/taskExecutionProcessor.js";
 import processTaskExecution from "../jobs/taskExecutionProcessor.js";
 import type { TaskJobData } from "../jobs/taskProcessor.js";
 import processTaskJob from "../jobs/taskProcessor.js";
+import processScheduledAction from "../jobs/scheduledActionProcessor.js";
+import type { ScheduledActionJobData } from "../../lib/queue/types.js";
 import type { BookmarkJobData } from "./bookmarks/index.js";
 
 const logger = createChildLogger("direct-db-workers");
@@ -220,6 +222,21 @@ export async function startDirectDbWorkers(): Promise<void> {
   logger.info(
     { queue: QueueNames.TASK_EXECUTION_PROCESSING },
     "Task execution worker started",
+  );
+
+  // Scheduled action execution worker
+  const scheduledActionWorker = createDbWorker(
+    QueueNames.SCHEDULED_ACTION_EXECUTION,
+    async (ctx: JobContext<ScheduledActionJobData>) => {
+      await processScheduledAction(ctx);
+    },
+    config,
+    { concurrency: 1 },
+  );
+  workers.push(scheduledActionWorker);
+  logger.info(
+    { queue: QueueNames.SCHEDULED_ACTION_EXECUTION },
+    "Scheduled action worker started",
   );
 
   // Start all workers

@@ -27,9 +27,7 @@ import { MarkdownDisplayWithAssets } from "@/components/markdown-display-with-as
 import { ActorPicker } from "@/components/shared/ActorPicker";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
-import { RecurrenceToggle } from "@/components/shared/recurrence-toggle";
 import { TagEditor } from "@/components/shared/TagEditor";
-import { TaskExecutionHistory } from "@/components/pages/tasks/TaskExecutionHistory";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -114,13 +112,6 @@ export function TaskDetailClient() {
     dueDate: "",
     assigneeActorId: "",
     tags: [] as string[],
-    recurrence: {
-      isRecurring: false,
-      cronExpression: null as string | null,
-      recurrenceEndDate: null as string | null,
-      recurrenceLimit: null as number | null,
-      runImmediately: false,
-    },
   });
 
   // Initialize local state for editing when task data is available
@@ -134,13 +125,6 @@ export function TaskDetailClient() {
         dueDate: task.dueDate || "",
         assigneeActorId: task.assigneeActorId || "",
         tags: [...task.tags],
-        recurrence: {
-          isRecurring: task.isRecurring || false,
-          cronExpression: task.cronExpression || null,
-          recurrenceEndDate: task.recurrenceEndDate || null,
-          recurrenceLimit: task.recurrenceLimit || null,
-          runImmediately: task.runImmediately || false,
-        },
       });
     }
   }, [task, isEditing]);
@@ -247,13 +231,6 @@ export function TaskDetailClient() {
         dueDate: task.dueDate || "",
         assigneeActorId: task.assigneeActorId || "",
         tags: [...task.tags],
-        recurrence: {
-          isRecurring: task.isRecurring || false,
-          cronExpression: task.cronExpression || null,
-          recurrenceEndDate: task.recurrenceEndDate || null,
-          recurrenceLimit: task.recurrenceLimit || null,
-          runImmediately: task.runImmediately || false,
-        },
       });
     }
     setIsEditing(false);
@@ -274,11 +251,6 @@ export function TaskDetailClient() {
           : null,
         assigneeActorId: editForm.assigneeActorId.trim() || null,
         tags: editForm.tags,
-        isRecurring: editForm.recurrence.isRecurring,
-        cronExpression: editForm.recurrence.cronExpression,
-        recurrenceEndDate: editForm.recurrence.recurrenceEndDate,
-        recurrenceLimit: editForm.recurrence.recurrenceLimit,
-        runImmediately: editForm.recurrence.runImmediately,
       };
 
       const response = await apiFetch(`/api/tasks/${taskId}`, {
@@ -753,76 +725,6 @@ export function TaskDetailClient() {
                       </p>
                     )}
                   </div>
-
-                  {/* Recurrence */}
-                  {isEditing && (
-                    <div>
-                      <RecurrenceToggle
-                        value={editForm.recurrence}
-                        onChange={(config) =>
-                          handleInputChange("recurrence", config)
-                        }
-                        dueDate={editForm.dueDate}
-                      />
-                    </div>
-                  )}
-
-                  {!isEditing && (
-                    <div>
-                      <Label className="flex items-center gap-2">
-                        <RefreshCw className="h-4 w-4" />
-                        Recurrence
-                      </Label>
-                      <div className="text-sm text-muted-foreground">
-                        {task.isRecurring ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <RefreshCw className="h-3 w-3 text-blue-500" />
-                              <span>This task repeats</span>
-                              {task.lastExecutionStatus && (
-                                <Badge
-                                  variant={
-                                    task.lastExecutionStatus === "completed"
-                                      ? "success"
-                                      : task.lastExecutionStatus === "failed"
-                                        ? "destructive"
-                                        : "secondary"
-                                  }
-                                  className="text-[10px] px-1.5 py-0"
-                                >
-                                  Last: {task.lastExecutionStatus}
-                                </Badge>
-                              )}
-                            </div>
-                            {task.nextRunAt && (
-                              <div className="text-xs">
-                                Next run: {formatDate(task.nextRunAt)}
-                              </div>
-                            )}
-                            {task.recurrenceEndDate && (
-                              <div className="text-xs">
-                                Until: {formatDate(task.recurrenceEndDate)}
-                              </div>
-                            )}
-                            {task.recurrenceLimit && (
-                              <div className="text-xs">
-                                Max executions: {task.recurrenceLimit}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span>No recurrence</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {!isEditing && task.isRecurring && (
-                    <TaskExecutionHistory
-                      taskId={task.id}
-                      isRecurring={task.isRecurring}
-                    />
-                  )}
 
                   <div>
                     <Label>Assigned To</Label>

@@ -22,7 +22,6 @@ import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { tags, taskComments, taskExecutions, tasks, tasksTags, users } = schema;
 
-import { config } from "../../config/index.js";
 import {
   batchGetTags,
   buildTagFilterCondition,
@@ -36,17 +35,8 @@ import {
   encodeCursor,
   type CursorPaginatedResponse,
 } from "../pagination.js";
-import {
-  getNextExecutionTime,
-  getQueue,
-  getQueueAdapter,
-  getRecurringTaskScheduleKey,
-  getScheduler,
-  isValidCronExpression,
-  QueueNames,
-  RECURRING_TASK_KEY_PREFIX,
-} from "../queue/index.js";
-import { getActorSummaryOrNull, isAgentActor } from "./actors.js";
+import { getQueueAdapter } from "../queue/index.js";
+import { getActorSummaryOrNull } from "./actors.js";
 import { recordHistory } from "./history.js";
 import { formatTaskCommentForResponse } from "./taskComments.js";
 import {
@@ -132,29 +122,6 @@ async function resolveTaskAssignee(
   );
 }
 
-/**
- * Calculates delay for AI assistant job based on due date
- * @param dueDate - The task due date (Date object or null)
- * @returns number - Delay in milliseconds (0 for immediate processing)
- */
-function calculateAIAssistantJobDelay(dueDate: Date | null): number {
-  if (!dueDate) {
-    // No due date - process immediately
-    return 0;
-  }
-
-  const now = new Date();
-  const delay = dueDate.getTime() - now.getTime();
-
-  // If due date is in the past or very soon (within 1 minute), process immediately
-  if (delay <= 60000) {
-    return 0;
-  }
-
-  // Otherwise, delay until the due date
-  return delay;
-}
-
 interface CreateTaskParams {
   title: string;
   description?: string;
@@ -169,11 +136,6 @@ interface CreateTaskParams {
   processingEnabled?: boolean;
   sortOrder?: number | null;
   parentId?: string | null;
-  isRecurring?: boolean;
-  cronExpression?: string;
-  recurrenceEndDate?: string;
-  recurrenceLimit?: number;
-  runImmediately?: boolean;
 }
 
 interface UpdateTaskParams {
@@ -190,322 +152,21 @@ interface UpdateTaskParams {
   processingEnabled?: boolean;
   sortOrder?: number | null;
   parentId?: string | null;
-  isRecurring?: boolean;
-  cronExpression?: string;
-  recurrenceEndDate?: string | null;
-  recurrenceLimit?: number | null;
-  runImmediately?: boolean;
   completedAt?: string | null;
 }
 
 // Re-export TaskStatus from @eclaire/core for external use (e.g., API route)
 export type { TaskStatus };
 
-/**
- * Get user's IANA timezone (e.g., "America/New_York"). Returns null if not set.
- */
-async function getUserTimezone(userId: string): Promise<string | null> {
-  const [row] = await db
-    .select({ timezone: users.timezone })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  return row?.timezone ?? null;
-}
+// NOTE: Legacy scheduling functions (upsertTaskScheduler, cancelTaskExecutionJob,
+// removeTaskScheduler, validateRecurrenceParams, getTaskScheduleData) were removed
+// in Phase 4 of the Scheduled Actions migration. Tasks are now pure work items.
+// All scheduling goes through the ScheduledAction model.
 
 /**
- * Creates or updates a scheduler for a recurring task
- * Uses unified scheduler (works with both Redis/BullMQ and Database modes)
- *
- * @param taskId - The task ID
- * @param cronExpression - Valid cron expression
- * @param taskData - Task data for the job
- * @param endDate - Optional end date for recurrence
- * @param limit - Optional maximum number of executions
- * @param immediately - Optional flag to execute first job immediately
- * @param timezone - Optional IANA timezone for cron evaluation
- * @returns Promise<boolean> - Success status
- */
-async function upsertTaskScheduler(
-  taskId: string,
-  cronExpression: string,
-  // biome-ignore lint/suspicious/noExplicitAny: scheduler task data
-  taskData: any,
-  endDate?: Date | null,
-  limit?: number,
-  immediately?: boolean,
-  timezone?: string | null,
-): Promise<boolean> {
-  try {
-    const scheduler = await getScheduler();
-    const scheduleKey = getRecurringTaskScheduleKey(taskId);
-
-    await scheduler.upsert({
-      key: scheduleKey,
-      queue: QueueNames.TASK_EXECUTION_PROCESSING,
-      cron: cronExpression,
-      data: {
-        ...taskData,
-        isRecurringExecution: true,
-        jobType: "execution",
-      },
-      enabled: true,
-      limit: limit || undefined,
-      endDate: endDate || undefined,
-      immediately: immediately || false,
-      timezone: timezone || undefined,
-    });
-
-    logger.info(
-      { taskId, cronExpression, scheduleKey, limit, immediately },
-      "Created/updated task scheduler",
-    );
-
-    return true;
-  } catch (error) {
-    logger.error(
-      {
-        taskId,
-        cronExpression,
-        limit,
-        immediately,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Failed to create/update task scheduler",
-    );
-    return false;
-  }
-}
-
-/**
- * Cancels a task execution job
- * In Redis mode: removes the BullMQ job
- * In Database mode: deletes pending jobs from asset_processing_jobs
- *
- * @param taskId - The task ID
- * @returns Promise<boolean> - Success status
- */
-async function cancelTaskExecutionJob(taskId: string): Promise<boolean> {
-  const queueBackend = config.queueBackend;
-
-  try {
-    if (queueBackend === "redis") {
-      // Redis mode: Remove BullMQ job
-      const queue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
-      if (!queue) {
-        logger.error(
-          { taskId },
-          "Failed to get task execution queue to cancel job",
-        );
-        return false;
-      }
-
-      const jobId = `task-execution-${taskId}`;
-
-      // Try to get the job and cancel it
-      const job = await queue.getJob(jobId);
-      if (job) {
-        try {
-          await job.remove();
-          logger.info(
-            { taskId, jobId, queueBackend },
-            "Cancelled task execution job (Redis)",
-          );
-        } catch (removeError) {
-          // Job might be locked by another worker - this is expected during execution
-          const errorMessage =
-            removeError instanceof Error
-              ? removeError.message
-              : "Unknown error";
-          if (errorMessage.includes("locked by another worker")) {
-            logger.warn(
-              { taskId, jobId },
-              "Task execution job is locked by another worker, skipping removal",
-            );
-            return true; // Consider this a successful cancellation attempt
-          } else {
-            logger.error(
-              { taskId, jobId, error: errorMessage },
-              "Failed to remove task execution job",
-            );
-            return false;
-          }
-        }
-      } else {
-        logger.debug(
-          { taskId, jobId },
-          "No task execution job found to cancel",
-        );
-      }
-    } else {
-      // Database mode: Delete pending jobs for this task
-      await db
-        .delete(queueJobs)
-        .where(
-          and(
-            eq(queueJobs.key, `tasks:${taskId}`),
-            eq(queueJobs.status, "pending"),
-          ),
-        );
-
-      logger.info(
-        { taskId, queueBackend },
-        "Cancelled pending task execution jobs (Database)",
-      );
-    }
-
-    return true;
-  } catch (error) {
-    logger.error(
-      {
-        taskId,
-        queueBackend,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Failed to cancel task execution job",
-    );
-    return false;
-  }
-}
-
-/**
- * Removes a scheduler for a recurring task
- * Uses unified scheduler (works with both Redis/BullMQ and Database modes)
- *
- * @param taskId - The task ID
- * @returns Promise<boolean> - Success status
- */
-async function removeTaskScheduler(taskId: string): Promise<boolean> {
-  try {
-    const scheduler = await getScheduler();
-    const scheduleKey = getRecurringTaskScheduleKey(taskId);
-
-    logger.info({ taskId, scheduleKey }, "Starting scheduler removal process");
-
-    const removed = await scheduler.remove(scheduleKey);
-
-    if (removed) {
-      logger.info(
-        { taskId, scheduleKey },
-        "Successfully removed task scheduler",
-      );
-    } else {
-      logger.debug({ taskId, scheduleKey }, "No scheduler found to remove");
-    }
-
-    return true;
-  } catch (error) {
-    logger.error(
-      {
-        taskId,
-        error: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-      },
-      "Failed to remove task scheduler",
-    );
-    return false;
-  }
-}
-
-/**
- * Validates recurrence parameters
- * @param isRecurring - Whether task should recur
- * @param cronExpression - Cron expression for recurrence
- * @param recurrenceEndDate - Optional end date
- * @param recurrenceLimit - Optional execution limit
- * @returns Object with validation result and error message
- */
-function validateRecurrenceParams(
-  isRecurring?: boolean,
-  cronExpression?: string | null,
-  recurrenceEndDate?: string | null,
-  recurrenceLimit?: number | null,
-): { isValid: boolean; error?: string } {
-  if (!isRecurring) {
-    return { isValid: true };
-  }
-
-  if (
-    cronExpression === undefined ||
-    cronExpression === null ||
-    cronExpression === ""
-  ) {
-    return {
-      isValid: false,
-      error: "Cron expression is required when isRecurring is true",
-    };
-  }
-
-  if (!isValidCronExpression(cronExpression)) {
-    return { isValid: false, error: "Invalid cron expression" };
-  }
-
-  if (recurrenceEndDate) {
-    const endDate = new Date(recurrenceEndDate);
-    if (Number.isNaN(endDate.getTime())) {
-      return { isValid: false, error: "Invalid recurrence end date format" };
-    }
-
-    if (endDate <= new Date()) {
-      return {
-        isValid: false,
-        error: "Recurrence end date must be in the future",
-      };
-    }
-  }
-
-  if (recurrenceLimit !== undefined && recurrenceLimit !== null) {
-    if (!Number.isInteger(recurrenceLimit) || recurrenceLimit <= 0) {
-      return {
-        isValid: false,
-        error: "Recurrence limit must be a positive integer",
-      };
-    }
-  }
-
-  return { isValid: true };
-}
-
-/**
- * Fetches recurrence schedule data for a task from the scheduler
- * @param taskId - The task ID
- * @returns Schedule data or null if no schedule exists
- */
-async function getTaskScheduleData(taskId: string): Promise<{
-  isRecurring: boolean;
-  cronExpression: string | null;
-  recurrenceEndDate: Date | null;
-  recurrenceLimit: number | null;
-} | null> {
-  try {
-    const scheduler = await getScheduler();
-    const scheduleKey = getRecurringTaskScheduleKey(taskId);
-    const schedule = await scheduler.get(scheduleKey);
-
-    if (!schedule) {
-      return null;
-    }
-
-    return {
-      isRecurring: true,
-      cronExpression: schedule.cron,
-      recurrenceEndDate: schedule.endDate || null,
-      recurrenceLimit: schedule.limit || null,
-    };
-  } catch (error) {
-    logger.error(
-      {
-        taskId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Failed to fetch task schedule data",
-    );
-    return null;
-  }
-}
-
-/**
- * Schedule data for task response enrichment
+ * Schedule data for task response enrichment.
+ * Kept for API response compatibility; always returns non-recurring defaults
+ * now that scheduling lives in ScheduledAction.
  */
 interface TaskScheduleData {
   isRecurring: boolean;
@@ -514,43 +175,19 @@ interface TaskScheduleData {
   recurrenceLimit: number | null;
 }
 
-/**
- * Batch fetch schedule data for all recurring tasks
- * Returns a map of taskId -> TaskScheduleData for efficient lookup
- */
-async function getTaskSchedulesMap(): Promise<Map<string, TaskScheduleData>> {
-  try {
-    const scheduler = await getScheduler();
-    const schedules = await scheduler.list(
-      QueueNames.TASK_EXECUTION_PROCESSING,
-    );
+/** Always returns null — scheduling data now lives in ScheduledAction. */
+function getTaskScheduleData(_taskId: string): TaskScheduleData | null {
+  return null;
+}
 
-    const map = new Map<string, TaskScheduleData>();
-    for (const schedule of schedules) {
-      if (schedule.key.startsWith(RECURRING_TASK_KEY_PREFIX)) {
-        const taskId = schedule.key.slice(RECURRING_TASK_KEY_PREFIX.length);
-        map.set(taskId, {
-          isRecurring: true,
-          cronExpression: schedule.cron,
-          recurrenceEndDate: schedule.endDate || null,
-          recurrenceLimit: schedule.limit || null,
-        });
-      }
-    }
-    return map;
-  } catch (error) {
-    logger.error(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      "Failed to fetch task schedules map",
-    );
-    return new Map();
-  }
+/** Always returns an empty map — scheduling data now lives in ScheduledAction. */
+function getTaskSchedulesMap(): Map<string, TaskScheduleData> {
+  return new Map();
 }
 
 /**
  * Cleans a task object for API response by removing DB-specific fields
  * and adding properly formatted date fields.
- * Recurrence data is fetched from the scheduler (queue_schedules table).
  */
 function cleanTaskForResponse(
   // biome-ignore lint/suspicious/noExplicitAny: raw DB row formatter
@@ -611,30 +248,8 @@ export async function createTask(
   const userId = callerOwnerUserId(caller);
   const actorId = callerActorId(caller);
   try {
-    // Validate recurrence parameters first
-    const recurrenceValidation = validateRecurrenceParams(
-      taskData.isRecurring,
-      taskData.cronExpression,
-      taskData.recurrenceEndDate,
-      taskData.recurrenceLimit,
-    );
-
-    if (!recurrenceValidation.isValid) {
-      throw new ValidationError(
-        recurrenceValidation.error || "Invalid recurrence parameters",
-      );
-    }
-
-    // The task ID will be generated automatically by the schema default function
-    // No need to manually generate it here
-
     // Convert dueDate string to Date object
     const dueDateValue = taskData.dueDate ? new Date(taskData.dueDate) : null;
-
-    // Convert recurrenceEndDate string to Date object
-    const recurrenceEndDateValue = taskData.recurrenceEndDate
-      ? new Date(taskData.recurrenceEndDate)
-      : null;
 
     // Set completedAt if task is being created with "completed" status
     const taskStatus = taskData.status || "not-started";
@@ -736,62 +351,6 @@ export async function createTask(
     });
     logger.info({ taskId, userId }, "Queued task for AI tag processing");
 
-    // Queue task execution processing if task is assigned to an AI assistant
-    const isAssignedToAI = resolvedAssignee.kind === "agent";
-    if (isAssignedToAI) {
-      const delay = calculateAIAssistantJobDelay(dueDateValue);
-      const scheduledFor = delay > 0 ? new Date(Date.now() + delay) : undefined;
-      await queueAdapter.enqueueTask({
-        taskId: taskId,
-        userId: userId,
-        title: taskData.title,
-        description: taskData.description || "",
-        isAssignedToAI: true,
-        assigneeActorId: resolvedAssignee.assigneeActorId,
-        dueDate: dueDateValue ?? undefined,
-        scheduledFor,
-        jobType: "execution",
-      });
-      logger.info(
-        {
-          taskId,
-          userId,
-          assigneeActorId: resolvedAssignee.assigneeActorId,
-          delay,
-        },
-        "Queued task for execution processing",
-      );
-    }
-
-    // Set up recurring task scheduler if task is recurring
-    if (taskData.isRecurring && taskData.cronExpression) {
-      const userTimezone = await getUserTimezone(userId);
-      const success = await upsertTaskScheduler(
-        taskId,
-        taskData.cronExpression,
-        {
-          taskId: taskId,
-          title: taskData.title,
-          description: taskData.description || "",
-          userId: userId,
-          assigneeActorId: resolvedAssignee.assigneeActorId,
-          isAssignedToAI: isAssignedToAI,
-        },
-        recurrenceEndDateValue,
-        taskData.recurrenceLimit ?? undefined,
-        taskData.runImmediately ?? undefined,
-        userTimezone,
-      );
-
-      if (!success) {
-        logger.error(
-          { taskId },
-          "Failed to create task scheduler, but task was created",
-        );
-        // Task was created successfully, but scheduler failed - this is a warning, not an error
-      }
-    }
-
     // Fetch the complete task with tags to return the consistent API response format
     const taskWithTags = await getTaskWithTags(taskId);
     return taskWithTags; // This will use cleanTaskForResponse
@@ -823,50 +382,13 @@ export async function updateTask(
   const userId = callerOwnerUserId(caller);
   const actorId = callerActorId(caller);
   try {
-    // Get existing task first to check current recurrence status
+    // Get existing task first
     const existingTask = await db.query.tasks.findFirst({
       where: and(eq(tasks.id, id), eq(tasks.userId, userId)),
     });
 
     if (!existingTask) {
       throw new NotFoundError("Task");
-    }
-
-    // Validate recurrence parameters if they're being updated
-    if (
-      "isRecurring" in taskData ||
-      "cronExpression" in taskData ||
-      "recurrenceEndDate" in taskData ||
-      "recurrenceLimit" in taskData
-    ) {
-      // Fetch existing schedule data from scheduler for partial updates
-      const existingSchedule = await getTaskScheduleData(id);
-
-      // For partial updates, use existing schedule values as defaults
-      const finalIsRecurring =
-        taskData.isRecurring ?? existingSchedule?.isRecurring ?? false;
-      const finalCronExpression =
-        taskData.cronExpression ?? existingSchedule?.cronExpression ?? null;
-      const finalRecurrenceEndDate =
-        taskData.recurrenceEndDate ??
-        (existingSchedule?.recurrenceEndDate
-          ? existingSchedule.recurrenceEndDate.toISOString()
-          : null);
-      const finalRecurrenceLimit =
-        taskData.recurrenceLimit ?? existingSchedule?.recurrenceLimit ?? null;
-
-      const recurrenceValidation = validateRecurrenceParams(
-        finalIsRecurring,
-        finalCronExpression,
-        finalRecurrenceEndDate,
-        finalRecurrenceLimit,
-      );
-
-      if (!recurrenceValidation.isValid) {
-        throw new ValidationError(
-          recurrenceValidation.error || "Invalid recurrence parameters",
-        );
-      }
     }
 
     // Get current task tags before update for history
@@ -922,43 +444,6 @@ export async function updateTask(
         : null;
     }
 
-    // Handle recurrence fields
-    let recurrenceEndDateValue: Date | null = null;
-    let includeRecurrenceEndDateUpdate = false;
-    let recurrenceLimitValue: number | null = null;
-    let includeRecurrenceLimitUpdate = false;
-    let runImmediatelyValue: boolean | null = null;
-    let includeRunImmediatelyUpdate = false;
-    let nextRunAtValue: Date | null = null;
-    let includeNextRunAtUpdate = false;
-
-    if (Object.hasOwn(taskUpdateData, "recurrenceEndDate")) {
-      includeRecurrenceEndDateUpdate = true;
-      recurrenceEndDateValue = taskUpdateData.recurrenceEndDate
-        ? new Date(taskUpdateData.recurrenceEndDate)
-        : null;
-    }
-
-    if (Object.hasOwn(taskUpdateData, "recurrenceLimit")) {
-      includeRecurrenceLimitUpdate = true;
-      recurrenceLimitValue = taskUpdateData.recurrenceLimit ?? null;
-    }
-
-    if (Object.hasOwn(taskUpdateData, "runImmediately")) {
-      includeRunImmediatelyUpdate = true;
-      runImmediatelyValue = taskUpdateData.runImmediately ?? false;
-    }
-
-    // Calculate next run time if cron expression is being updated
-    if (taskUpdateData.isRecurring && taskUpdateData.cronExpression) {
-      includeNextRunAtUpdate = true;
-      nextRunAtValue = getNextExecutionTime(taskUpdateData.cronExpression);
-    } else if (taskUpdateData.isRecurring === false) {
-      // If task is being set to non-recurring, clear next run time and scheduler ID
-      includeNextRunAtUpdate = true;
-      nextRunAtValue = null;
-    }
-
     // Handle completedAt logic based on status changes
     let completedAtValue: Date | null = null;
     let includeCompletedAtUpdate = false;
@@ -1005,58 +490,13 @@ export async function updateTask(
       delete updateSet.dueDate;
     }
 
-    // Conditionally add recurrence fields to the update set
-    if (includeRecurrenceEndDateUpdate) {
-      updateSet.recurrenceEndDate = recurrenceEndDateValue;
-    }
-
-    if (includeRecurrenceLimitUpdate) {
-      updateSet.recurrenceLimit = recurrenceLimitValue;
-    }
-
-    if (includeRunImmediatelyUpdate) {
-      updateSet.runImmediately = runImmediatelyValue;
-    }
-
-    if (includeNextRunAtUpdate) {
-      updateSet.nextRunAt = nextRunAtValue;
-    }
-
     if (includeCompletedAtUpdate) {
       updateSet.completedAt = completedAtValue;
-    }
-
-    // Clear recurrence fields when disabling recurrence
-    if (taskUpdateData.isRecurring === false) {
-      updateSet.cronExpression = null;
-      updateSet.recurrenceLimit = null;
-      updateSet.runImmediately = false;
     }
 
     // Remove the original properties if they exist from taskUpdateData spread
     if (Object.hasOwn(updateSet, "dueDate") && !includeDueDateUpdate) {
       delete updateSet.dueDate;
-    }
-    if (
-      Object.hasOwn(updateSet, "recurrenceEndDate") &&
-      !includeRecurrenceEndDateUpdate
-    ) {
-      delete updateSet.recurrenceEndDate;
-    }
-    if (
-      Object.hasOwn(updateSet, "recurrenceLimit") &&
-      !includeRecurrenceLimitUpdate
-    ) {
-      delete updateSet.recurrenceLimit;
-    }
-    if (
-      Object.hasOwn(updateSet, "runImmediately") &&
-      !includeRunImmediatelyUpdate
-    ) {
-      delete updateSet.runImmediately;
-    }
-    if (Object.hasOwn(updateSet, "nextRunAt") && !includeNextRunAtUpdate) {
-      delete updateSet.nextRunAt;
     }
     if (Object.hasOwn(updateSet, "completedAt") && !includeCompletedAtUpdate) {
       delete updateSet.completedAt;
@@ -1120,179 +560,6 @@ export async function updateTask(
         timestamp: new Date(),
       });
     });
-
-    // Queue task execution processing if assignment to AI assistant has changed
-    const existingAssignedIdentity = existingTask.assigneeActorId;
-    const finalAssigneeActorId =
-      resolvedUpdatedAssignee?.assigneeActorId ?? existingTask.assigneeActorId;
-    const assignmentChanged =
-      "assigneeActorId" in taskUpdateData &&
-      finalAssigneeActorId !== existingAssignedIdentity;
-    const dueDateChanged =
-      includeDueDateUpdate &&
-      dueDateValue?.getTime() !== existingTask.dueDate?.getTime();
-    // Fetch existing schedule data from scheduler once for use throughout
-    const existingSchedule = await getTaskScheduleData(id);
-
-    if (assignmentChanged || dueDateChanged) {
-      // Cancel existing task execution job before creating new one
-      await cancelTaskExecutionJob(id);
-
-      if (finalAssigneeActorId) {
-        const isAssignedToAI = await isAgentActor(userId, finalAssigneeActorId);
-        if (isAssignedToAI) {
-          const finalDueDate = includeDueDateUpdate
-            ? dueDateValue
-            : existingTask.dueDate;
-          const delay = calculateAIAssistantJobDelay(finalDueDate);
-          const scheduledFor =
-            delay > 0 ? new Date(Date.now() + delay) : undefined;
-
-          const queueAdapter = await getQueueAdapter();
-          await queueAdapter.enqueueTask({
-            taskId: id,
-            userId: userId,
-            title: existingTask.title,
-            description: existingTask.description || "",
-            isAssignedToAI: true,
-            assigneeActorId: finalAssigneeActorId,
-            dueDate: finalDueDate ?? undefined,
-            scheduledFor,
-            jobType: "execution",
-          });
-          logger.info(
-            {
-              taskId: id,
-              userId,
-              assigneeActorId: finalAssigneeActorId,
-              delay,
-            },
-            "Queued updated task for execution processing",
-          );
-        }
-      }
-    }
-
-    // Handle recurrence scheduler updates
-    const recurrenceChanged =
-      "isRecurring" in taskUpdateData ||
-      "cronExpression" in taskUpdateData ||
-      "recurrenceEndDate" in taskUpdateData ||
-      "recurrenceLimit" in taskUpdateData ||
-      "runImmediately" in taskUpdateData;
-
-    // Determine final recurrence state using schedule data from scheduler
-    const finalIsRecurring =
-      taskUpdateData.isRecurring ?? existingSchedule?.isRecurring ?? false;
-    const finalCronExpression =
-      taskUpdateData.cronExpression ?? existingSchedule?.cronExpression ?? null;
-
-    // Check if we need to update recurring scheduler due to:
-    // 1. Recurrence parameters changed (cron, end date, recurring flag)
-    // 2. Assignment changed and task is/will be recurring
-    // 3. Task transitions from non-recurring to recurring
-    // 4. Task transitions from recurring to non-recurring
-    const shouldUpdateRecurringScheduler =
-      recurrenceChanged ||
-      (assignmentChanged &&
-        (existingSchedule?.isRecurring || finalIsRecurring) &&
-        existingSchedule?.cronExpression);
-
-    if (shouldUpdateRecurringScheduler) {
-      const finalRecurrenceEndDate = includeRecurrenceEndDateUpdate
-        ? recurrenceEndDateValue
-        : (existingSchedule?.recurrenceEndDate ?? null);
-
-      logger.info(
-        {
-          taskId: id,
-          assignmentChanged,
-          recurrenceChanged,
-          finalIsRecurring,
-          finalCronExpression,
-          existingIsRecurring: existingSchedule?.isRecurring ?? false,
-          existingCronExpression: existingSchedule?.cronExpression ?? null,
-          finalAssigneeActorId,
-          existingAssigneeActorId: existingAssignedIdentity,
-        },
-        "Processing recurring task scheduler update",
-      );
-
-      if (finalIsRecurring && finalCronExpression) {
-        // Update or create scheduler with updated assignment information
-        const isAssignedToAI = finalAssigneeActorId
-          ? await isAgentActor(userId, finalAssigneeActorId)
-          : false;
-        const finalRecurrenceLimit = includeRecurrenceLimitUpdate
-          ? recurrenceLimitValue
-          : (existingSchedule?.recurrenceLimit ?? null);
-        // Note: runImmediately is only used when first creating the schedule
-        const finalRunImmediately = includeRunImmediatelyUpdate
-          ? runImmediatelyValue
-          : false;
-
-        const userTimezone = await getUserTimezone(userId);
-        const success = await upsertTaskScheduler(
-          id,
-          finalCronExpression,
-          {
-            taskId: id,
-            title: taskData.title || existingTask.title,
-            description: taskData.description ?? existingTask.description ?? "",
-            userId: userId,
-            assigneeActorId: finalAssigneeActorId,
-            isAssignedToAI: isAssignedToAI,
-          },
-          finalRecurrenceEndDate,
-          finalRecurrenceLimit ?? undefined,
-          finalRunImmediately ?? undefined,
-          userTimezone,
-        );
-
-        if (!success) {
-          logger.error(
-            {
-              taskId: id,
-              cronExpression: finalCronExpression,
-              assigneeActorId: finalAssigneeActorId,
-            },
-            "Failed to update recurring task scheduler",
-          );
-        } else {
-          logger.info(
-            {
-              taskId: id,
-              assignmentChanged,
-              recurrenceChanged,
-              assigneeActorId: finalAssigneeActorId,
-              cronExpression: finalCronExpression,
-              isAssignedToAI,
-            },
-            "Successfully updated recurring task scheduler",
-          );
-        }
-      } else {
-        // Remove scheduler if task is no longer recurring
-        logger.info(
-          {
-            taskId: id,
-            reason: finalIsRecurring
-              ? "missing cron expression"
-              : "task no longer recurring",
-            finalIsRecurring,
-            finalCronExpression,
-          },
-          "Removing recurring task scheduler",
-        );
-        const success = await removeTaskScheduler(id);
-        if (!success) {
-          logger.error(
-            { taskId: id },
-            "Failed to remove recurring task scheduler",
-          );
-        }
-      }
-    }
 
     // Return task with updated tags using the consistent API response format
     const taskWithTags = await getTaskWithTags(id);
@@ -1662,40 +929,8 @@ export async function deleteTask(
       throw new NotFoundError("Task");
     }
 
-    // Fetch schedule data to check if task has recurring schedule
-    const existingSchedule = await getTaskScheduleData(id);
-
-    logger.info(
-      {
-        taskId: id,
-        isRecurring: existingSchedule?.isRecurring ?? false,
-        cronExpression: existingSchedule?.cronExpression ?? null,
-        recurrenceEndDate: existingSchedule?.recurrenceEndDate ?? null,
-      },
-      "Task data retrieved for deletion",
-    );
-
     // Get task tags before deletion for history
     const taskTags = await getTaskTags(id);
-
-    // Remove recurring task scheduler if exists - BEFORE deleting task data
-    // (outside transaction - external side-effect)
-    if (existingSchedule?.isRecurring) {
-      logger.info({ taskId: id }, "Removing recurring task scheduler");
-      const schedulerRemoved = await removeTaskScheduler(id);
-      logger.info({ taskId: id, schedulerRemoved }, "Scheduler removal result");
-    }
-
-    // Cancel task execution job if it exists - don't fail if job is locked
-    // (outside transaction - external side-effect)
-    logger.info({ taskId: id }, "Cancelling task execution job");
-    const cancelSuccess = await cancelTaskExecutionJob(id);
-    if (!cancelSuccess) {
-      logger.warn(
-        { taskId: id },
-        "Task execution job cancellation failed, proceeding with deletion",
-      );
-    }
 
     // Pre-generate history ID for transaction
     const historyId = generateHistoryId();

@@ -20,6 +20,7 @@ import type {
   MediaJobData,
   NoteJobData,
   QueueAdapter,
+  ScheduledActionJobData,
   TaskJobData,
 } from "../types.js";
 
@@ -169,6 +170,53 @@ export function createDatabaseAdapter(
 
     async enqueueMedia(data: MediaJobData): Promise<void> {
       await enqueueJob("media", data.mediaId, data.userId, data);
+    },
+
+    async enqueueScheduledAction(data: ScheduledActionJobData): Promise<void> {
+      const queueName = QueueNames.SCHEDULED_ACTION_EXECUTION;
+      const key = `scheduled-action:${data.scheduledActionId}`;
+      const requestId = getRequestId();
+
+      try {
+        await queueClient.enqueue(
+          queueName,
+          { ...data, requestId },
+          {
+            key,
+            priority: 0,
+            runAt: data.scheduledFor,
+            metadata: {
+              userId: data.userId,
+              assetType: "scheduled_action",
+              assetId: data.scheduledActionId,
+            },
+          },
+        );
+
+        logger.info(
+          {
+            queueName,
+            scheduledActionId: data.scheduledActionId,
+            userId: data.userId,
+            scheduledFor: data.scheduledFor,
+          },
+          "Scheduled action job enqueued",
+        );
+
+        if (notifyEmitter) {
+          await notifyEmitter.emit(queueName);
+        }
+      } catch (error) {
+        logger.error(
+          {
+            queueName,
+            scheduledActionId: data.scheduledActionId,
+            error: getErrorMessage(error),
+          },
+          "Failed to enqueue scheduled action job",
+        );
+        throw error;
+      }
     },
 
     async close(): Promise<void> {

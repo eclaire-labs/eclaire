@@ -346,14 +346,20 @@ export async function processPromptRequest(
       messages: previousRuntimeMessages,
     });
 
-    const finalConversationId = await saveConversationMessages({
-      conversationId,
-      userId,
-      agentActorId: agentDefinition.id,
-      prompt,
-      result,
-      requestId,
-    });
+    // Don't create orphan conversations for background task executions
+    // that have no originating conversation. The result is already saved
+    // as a task comment by the task execution processor.
+    const shouldSaveConversation = conversationId || !isBackgroundTask;
+    const finalConversationId = shouldSaveConversation
+      ? await saveConversationMessages({
+          conversationId,
+          userId,
+          agentActorId: agentDefinition.id,
+          prompt,
+          result,
+          requestId,
+        })
+      : undefined;
 
     const endTime = Date.now();
     logger.info(

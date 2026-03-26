@@ -4,7 +4,6 @@ import {
   GitBranch,
   MessageCircle,
   MoreHorizontal,
-  RefreshCw,
   Trash2,
   User as UserIcon,
 } from "lucide-react";
@@ -122,9 +121,6 @@ export function TaskListItem({
           title={task.title}
         >
           {task.title}
-          {task.isRecurring && (
-            <RefreshCw className="h-3 w-3 text-blue-500 flex-shrink-0" />
-          )}
           {(task.childCount ?? 0) > 0 && (
             <span
               className="flex items-center gap-0.5 text-xs text-muted-foreground flex-shrink-0"

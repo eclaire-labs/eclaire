@@ -1,0 +1,2 @@
+ALTER TABLE "scheduled_actions" ADD COLUMN "related_task_id" text;--> statement-breakpoint
+ALTER TABLE "scheduled_actions" ADD CONSTRAINT "scheduled_actions_related_task_id_tasks_id_fk" FOREIGN KEY ("related_task_id") REFERENCES "public"."tasks"("id") ON DELETE set null ON UPDATE no action;

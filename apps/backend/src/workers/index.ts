@@ -27,6 +27,7 @@ import { processDocumentJob } from "./jobs/documentProcessor.js";
 import processImageJob from "./jobs/imageProcessor.js";
 import processMediaJob from "./jobs/mediaProcessor.js";
 import processNoteJob from "./jobs/noteProcessor.js";
+import processScheduledAction from "./jobs/scheduledActionProcessor.js";
 import processTaskExecution from "./jobs/taskExecutionProcessor.js";
 import processTaskJob from "./jobs/taskProcessor.js";
 import {
@@ -212,6 +213,15 @@ export async function startBullMQWorkers(): Promise<void> {
     mediumTaskOptions,
   );
   bullmqWorkers.push(taskExecutionWorker);
+
+  // Scheduled Action Worker
+  const scheduledActionWorker = createBullMQWorker(
+    QueueNames.SCHEDULED_ACTION_EXECUTION,
+    processScheduledAction,
+    workerConfig,
+    mediumTaskOptions,
+  );
+  bullmqWorkers.push(scheduledActionWorker);
 
   // Start all workers
   for (const worker of bullmqWorkers) {

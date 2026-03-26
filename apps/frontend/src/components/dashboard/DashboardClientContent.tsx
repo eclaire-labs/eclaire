@@ -13,6 +13,7 @@ import { ActivityTimelineChart } from "@/components/dashboard/ActivityTimelineCh
 import { AssetOverviewCards } from "@/components/dashboard/AssetOverviewCards";
 import { DueItemsWidget } from "@/components/dashboard/DueItemsWidget";
 import { QuickStatsGrid } from "@/components/dashboard/QuickStatsGrid";
+import { ScheduledActionsWidget } from "@/components/dashboard/ScheduledActionsWidget";
 import { StorageUsageChart } from "@/components/dashboard/StorageUsageChart";
 import { ProcessingSummaryDashboard } from "@/components/processing/ProcessingSummaryDashboard";
 import { Badge } from "@/components/ui/badge";
@@ -196,6 +197,9 @@ export function DashboardClientContent({
             onPeriodChange={handlePeriodChange}
           />
         )}
+
+        {/* Scheduled Actions Widget */}
+        <ScheduledActionsWidget />
 
         {/* Middle Row: Storage Usage (left) | Recent Activity (right) */}
         <StorageUsageChart stats={stats} />

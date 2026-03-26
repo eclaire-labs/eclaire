@@ -270,17 +270,6 @@ export default function TasksPage() {
           assigneeActorId: taskData.assigneeActorId,
         }),
         ...(taskData.description && { description: taskData.description }),
-        isRecurring: taskData.isRecurring || false,
-        ...(taskData.isRecurring && {
-          cronExpression: taskData.cronExpression,
-          ...(taskData.recurrenceEndDate && {
-            recurrenceEndDate: taskData.recurrenceEndDate,
-          }),
-          ...(taskData.recurrenceLimit && {
-            recurrenceLimit: taskData.recurrenceLimit,
-          }),
-          runImmediately: taskData.runImmediately || false,
-        }),
       };
 
       // Remove null/undefined fields
