@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AgentChecklist } from "@/components/settings/AssistantSettings";
 
@@ -48,5 +48,36 @@ describe("AgentChecklist", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("checkbox")).toBeDisabled();
+  });
+
+  it("filters items by search query when more than 5 items", () => {
+    const items = Array.from({ length: 6 }, (_, i) => ({
+      name: `tool${i + 1}`,
+      label: `Tool ${i + 1}`,
+      description: `Description for tool ${i + 1}`,
+    }));
+    items[2] = {
+      name: "special",
+      label: "Special Tool",
+      description: "Unique capability",
+    };
+
+    render(
+      <AgentChecklist
+        title="Tools"
+        description="Capabilities"
+        items={items}
+        selectedNames={[]}
+        onToggle={vi.fn()}
+      />,
+    );
+
+    const searchInput = screen.getByPlaceholderText("Search tools...");
+    expect(searchInput).toBeInTheDocument();
+
+    fireEvent.change(searchInput, { target: { value: "Special" } });
+    expect(screen.getByText("Special Tool")).toBeInTheDocument();
+    expect(screen.queryByText("Tool 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tool 2")).not.toBeInTheDocument();
   });
 });

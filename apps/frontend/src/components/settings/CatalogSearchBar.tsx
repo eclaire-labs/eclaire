@@ -52,25 +52,27 @@ export function CatalogSearchBar<T>({
       {/* Filters + Sort */}
       <div className="flex flex-wrap gap-2 w-full sm:w-auto">
         {/* Filter dropdowns */}
-        {filterDimensions?.map((dim) => (
-          <Select
-            key={dim.key}
-            value={catalog.filters[dim.key] ?? "all"}
-            onValueChange={(val) => catalog.setFilter(dim.key, val)}
-          >
-            <SelectTrigger className="w-full sm:w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{dim.allLabel}</SelectItem>
-              {(catalog.filterOptions[dim.key] ?? []).map((val) => (
-                <SelectItem key={val} value={val}>
-                  {val}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ))}
+        {filterDimensions
+          ?.filter((dim) => (catalog.filterOptions[dim.key] ?? []).length > 1)
+          .map((dim) => (
+            <Select
+              key={dim.key}
+              value={catalog.filters[dim.key] ?? "all"}
+              onValueChange={(val) => catalog.setFilter(dim.key, val)}
+            >
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{dim.allLabel}</SelectItem>
+                {(catalog.filterOptions[dim.key] ?? []).map((val) => (
+                  <SelectItem key={val} value={val}>
+                    {val}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ))}
 
         {/* Sort */}
         {sortOptions.length > 1 && (
