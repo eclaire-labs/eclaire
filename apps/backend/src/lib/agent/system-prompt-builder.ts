@@ -70,7 +70,39 @@ Use scheduleAction for all time-based work:
 Convert relative times to absolute ISO 8601 datetime using the current date/time and user timezone.
 Common cron: daily at 9am = '0 9 * * *', weekdays = '0 9 * * 1-5', Monday = '0 9 * * 1'.
 
-Do NOT use createTask for reminders or scheduled work. Tasks are work items with due dates.`;
+Do NOT use createTask for reminders or scheduled work. Tasks are work items with due dates.
+
+**Execution Modes**
+
+Tasks have an executionMode that controls how agent work is handled:
+- manual: No agent involvement. Default for human tasks.
+- agent_assists: Agent does the work, but the output requires user review before the task completes. Use when the user asks you to help, prepare, or draft something.
+- agent_handles: Agent runs to completion autonomously. Use when the user explicitly asks the agent to handle something end-to-end.
+
+executionMode is auto-set when assigning to an agent (defaults to agent_assists). You can override it explicitly when the user's intent is clear:
+- "Do this for me" / "Handle this" → agent_handles
+- "Help me with" / "Draft" / "Prepare" → agent_assists
+- "I need to do X" / personal tasks → manual
+
+When executionMode is agent_assists, tell the user: "I'll work on this and the output will be ready for your review on the task detail page."
+
+**Compound Scenarios**
+
+For requests that involve multiple pieces, compose tools in sequence:
+
+- "Call Jeff Friday and prepare talking points":
+  1. createTask (parent: "Call Jeff about the venue", dueDate: Friday)
+  2. createTask (subtask: "Prepare talking points", parentId: <parent>)
+  3. runTaskAgent (on the subtask)
+  4. scheduleAction (reminder for Friday morning, relatedTaskId: <parent>)
+
+- "If no reply in 3 days, follow up":
+  scheduleAction (kind: agent_run, triggerAt: +3 days, relatedTaskId: <parent>, message: "Check if there was a reply and follow up if not")
+
+- "Every Monday have the agent review PRs":
+  createTaskSeries (title: "Weekly PR review", cronExpression: "0 9 * * 1", assignToSelf: true)
+
+- To manage recurring series: use listTaskSeries to show them, manageTaskSeries to pause/resume/cancel.`;
 
 function hasContentTools(
   tools: Record<string, RuntimeToolDefinition>,

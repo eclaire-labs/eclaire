@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   AudioWaveform,
   BookMarked,
+  Calendar,
   Clock,
   FileText,
   Flag,
@@ -15,8 +16,10 @@ import {
   ListTodo,
   Notebook,
   Pin,
+  RefreshCw,
   Search,
   Upload,
+  Users,
   Zap,
 } from "lucide-react";
 import {
@@ -85,6 +88,8 @@ const navigation = [
   { name: "Pinned", href: "/all/pinned", icon: Pin },
   { name: "Flagged", href: "/all/flagged", icon: Flag },
   { name: "Tasks", href: "/tasks", icon: ListTodo, separator: true },
+  { name: "Upcoming", href: "/upcoming", icon: Calendar },
+  { name: "By Actor", href: "/by-actor", icon: Users },
   { name: "Notes", href: "/notes", icon: Notebook },
   { name: "Bookmarks", href: "/bookmarks", icon: BookMarked },
   { name: "Documents", href: "/documents", icon: FileText },
@@ -92,6 +97,7 @@ const navigation = [
   { name: "Media", href: "/media", icon: AudioWaveform },
   { name: "History", href: "/history", icon: History },
   { name: "Automations", href: "/automations", icon: Zap, separator: true },
+  { name: "Task Series", href: "/task-series", icon: RefreshCw },
 ];
 
 interface MainLayoutClientProps {

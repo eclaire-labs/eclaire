@@ -38,6 +38,8 @@ export const TaskResponseSchema = z
     priority: z.number().int().min(0).max(4),
     dueDate: z.string().nullable(),
     assigneeActorId: z.string().nullable(),
+    delegatedByActorId: z.string().nullable().optional(),
+    executionMode: z.enum(["manual", "agent_assists", "agent_handles"]),
     reviewStatus: reviewStatusSchema,
     flagColor: z.enum(["red", "yellow", "orange", "green", "blue"]).nullable(),
     isPinned: z.boolean(),
@@ -62,6 +64,10 @@ export const TaskResponseSchema = z
     recurrenceLimit: z.number().nullable(),
     runImmediately: z.boolean(),
     processingEnabled: z.boolean(),
+    taskSeriesId: z.string().nullable().optional(),
+    latestAgentRunStatus: z
+      .enum(["queued", "running", "completed", "failed", "cancelled"])
+      .optional(),
   })
   .meta({ ref: "TaskResponse" });
 

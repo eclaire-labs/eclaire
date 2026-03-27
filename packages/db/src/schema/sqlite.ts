@@ -397,11 +397,20 @@ export const tasks = sqliteTable(
     assigneeActorId: text("assignee_actor_id").references(() => actors.id, {
       onDelete: "set null",
     }),
+    delegatedByActorId: text("delegated_by_actor_id").references(
+      () => actors.id,
+      { onDelete: "set null" },
+    ),
     taskSeriesId: text("task_series_id").references(() => taskSeries.id, {
       onDelete: "set null",
     }),
     occurrenceAt: integer("occurrence_at", { mode: "timestamp_ms" }),
     priority: integer("priority").notNull().default(0),
+    executionMode: text("execution_mode", {
+      enum: ["manual", "agent_assists", "agent_handles"],
+    })
+      .notNull()
+      .default("manual"),
     processingEnabled: integer("processing_enabled", { mode: "boolean" })
       .notNull()
       .default(true),

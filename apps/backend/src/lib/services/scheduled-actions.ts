@@ -334,6 +334,7 @@ export async function listScheduledActions(
   options?: {
     status?: ScheduledActionStatus;
     kind?: ScheduledActionKind;
+    relatedTaskId?: string;
     limit?: number;
     offset?: number;
   },
@@ -346,6 +347,9 @@ export async function listScheduledActions(
   }
   if (options?.kind) {
     conditions.push(eq(table.kind, options.kind));
+  }
+  if (options?.relatedTaskId) {
+    conditions.push(eq(table.relatedTaskId, options.relatedTaskId));
   }
 
   const results = await db

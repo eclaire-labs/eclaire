@@ -1,7 +1,9 @@
 import {
+  Bot,
   Edit,
   FileText,
   GitBranch,
+  Loader2,
   MessageCircle,
   MoreHorizontal,
   Trash2,
@@ -106,13 +108,23 @@ export function TaskListItem({
           >
             {getStatusIcon(task.status)}
           </Button>
-          <div className="absolute -top-1 -right-1">
-            <SimpleProcessingStatusIcon
-              status={task.processingStatus}
-              processingEnabled={task.processingEnabled}
-              className="bg-white/90 dark:bg-black/90 rounded-full p-0.5"
-            />
-          </div>
+          {task.latestAgentRunStatus === "running" ||
+          task.latestAgentRunStatus === "queued" ? (
+            <div
+              className="absolute -top-1 -right-1"
+              title="Agent is working on this task"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+            </div>
+          ) : (
+            <div className="absolute -top-1 -right-1">
+              <SimpleProcessingStatusIcon
+                status={task.processingStatus}
+                processingEnabled={task.processingEnabled}
+                className="bg-white/90 dark:bg-black/90 rounded-full p-0.5"
+              />
+            </div>
+          )}
         </div>
       </TableCell>
       <TableCell className="py-2 align-middle">
@@ -129,6 +141,20 @@ export function TaskListItem({
               <GitBranch className="h-3 w-3" />
               {task.childCount}
             </span>
+          )}
+          {task.executionMode !== "manual" && (
+            <Badge
+              variant="outline"
+              className="text-xs font-normal flex-shrink-0 gap-1 py-0"
+              title={
+                task.executionMode === "agent_assists"
+                  ? "Agent assists — output requires review"
+                  : "Agent handles — runs autonomously"
+              }
+            >
+              <Bot className="h-3 w-3" />
+              {task.executionMode === "agent_assists" ? "Assists" : "Auto"}
+            </Badge>
           )}
         </div>
         {task.description ? (

@@ -123,20 +123,41 @@ async function processAgentRunJob(
       agentResponse.slice(0, 500),
     );
 
-    // Mark task as completed
+    // Check execution mode to decide whether to auto-complete or require review
     try {
-      await db
-        .update(schema.tasks)
-        .set({
-          status: "completed",
-          completedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(schema.tasks.id, taskId));
+      const task = await db.query.tasks.findFirst({
+        where: eq(schema.tasks.id, taskId),
+        columns: { executionMode: true },
+      });
+
+      if (task?.executionMode === "agent_assists") {
+        // Don't auto-complete — require user review
+        await db
+          .update(schema.tasks)
+          .set({
+            reviewStatus: "pending",
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.tasks.id, taskId));
+        logger.info(
+          { taskId, agentRunId },
+          "Task set to pending review (agent_assists mode)",
+        );
+      } else {
+        // agent_handles or manual: auto-complete as before
+        await db
+          .update(schema.tasks)
+          .set({
+            status: "completed",
+            completedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.tasks.id, taskId));
+      }
     } catch (error) {
       logger.warn(
         { taskId, error },
-        "Failed to mark task as completed (task may be deleted)",
+        "Failed to update task after agent run (task may be deleted)",
       );
     }
 

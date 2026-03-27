@@ -1,8 +1,10 @@
 import {
+  Bot,
   CalendarDays,
   Edit,
   FileText,
   GitBranch,
+  Loader2,
   MessageCircle,
   MoreHorizontal,
   Trash2,
@@ -112,14 +114,29 @@ export function TaskTileItem({
                   </span>
                 )}
               </CardTitle>
-              {assignee?.userType === "assistant" && (
+              {task.executionMode !== "manual" ? (
                 <Badge
-                  variant="default"
-                  className="text-xs shrink-0 flex items-center gap-1"
+                  variant="outline"
+                  className="text-xs shrink-0 flex items-center gap-1 py-0"
+                  title={
+                    task.executionMode === "agent_assists"
+                      ? "Agent assists — output requires review"
+                      : "Agent handles — runs autonomously"
+                  }
                 >
-                  <AIAvatar size="sm" />
-                  AI
+                  <Bot className="h-3 w-3" />
+                  {task.executionMode === "agent_assists" ? "Assists" : "Auto"}
                 </Badge>
+              ) : (
+                assignee?.userType === "assistant" && (
+                  <Badge
+                    variant="default"
+                    className="text-xs shrink-0 flex items-center gap-1"
+                  >
+                    <AIAvatar size="sm" />
+                    AI
+                  </Badge>
+                )
               )}
             </div>
             <CardDescription className="flex items-center text-xs">
@@ -134,10 +151,17 @@ export function TaskTileItem({
                 </span>
               )}
               <div className="ml-2">
-                <SimpleProcessingStatusIcon
-                  status={task.processingStatus}
-                  processingEnabled={task.processingEnabled}
-                />
+                {task.latestAgentRunStatus === "running" ||
+                task.latestAgentRunStatus === "queued" ? (
+                  <span title="Agent is working on this task">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+                  </span>
+                ) : (
+                  <SimpleProcessingStatusIcon
+                    status={task.processingStatus}
+                    processingEnabled={task.processingEnabled}
+                  />
+                )}
               </div>
             </CardDescription>
           </div>

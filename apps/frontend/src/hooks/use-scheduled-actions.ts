@@ -17,6 +17,7 @@ const QUERY_KEY = "scheduled-actions";
 export function useScheduledActions(params?: {
   status?: string;
   kind?: string;
+  relatedTaskId?: string;
 }) {
   return useQuery({
     queryKey: [QUERY_KEY, params],

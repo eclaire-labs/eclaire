@@ -69,6 +69,16 @@ export const TaskSchema = z
         examples: ["user123", "agent123"],
       }),
 
+    executionMode: z
+      .enum(["manual", "agent_assists", "agent_handles"])
+      .optional()
+      .default("manual")
+      .meta({
+        description:
+          "How the task is executed: manual (human only), agent_assists (agent works, user reviews), agent_handles (agent auto-completes)",
+        examples: ["manual", "agent_assists", "agent_handles"],
+      }),
+
     processingEnabled: z
       .boolean()
       .default(true)

@@ -1,0 +1,1 @@
+ALTER TABLE `tasks` ADD `execution_mode` text DEFAULT 'manual' NOT NULL;

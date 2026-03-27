@@ -1,0 +1,2 @@
+ALTER TABLE "tasks" ADD COLUMN "delegated_by_actor_id" text;--> statement-breakpoint
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_delegated_by_actor_id_actors_id_fk" FOREIGN KEY ("delegated_by_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;

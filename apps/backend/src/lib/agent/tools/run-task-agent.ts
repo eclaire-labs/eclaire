@@ -63,6 +63,7 @@ export const runTaskAgentTool: RuntimeToolDefinition<typeof inputSchema> = {
         title: schema.tasks.title,
         description: schema.tasks.description,
         assigneeActorId: schema.tasks.assigneeActorId,
+        executionMode: schema.tasks.executionMode,
       })
       .from(schema.tasks)
       .where(
@@ -72,6 +73,14 @@ export const runTaskAgentTool: RuntimeToolDefinition<typeof inputSchema> = {
 
     if (!task) {
       return errorResult(`Task not found: ${taskId}`);
+    }
+
+    // If task is still in manual mode, upgrade to agent_assists (safe default)
+    if (task.executionMode === "manual") {
+      await db
+        .update(schema.tasks)
+        .set({ executionMode: "agent_assists", updatedAt: new Date() })
+        .where(eq(schema.tasks.id, taskId));
     }
 
     // Build prompt from task + optional instructions

@@ -11,9 +11,8 @@ import {
 import { useCallback, useState } from "react";
 import { ActivityTimelineChart } from "@/components/dashboard/ActivityTimelineChart";
 import { AssetOverviewCards } from "@/components/dashboard/AssetOverviewCards";
-import { DueItemsWidget } from "@/components/dashboard/DueItemsWidget";
+import { ComingUpWidget } from "@/components/dashboard/ComingUpWidget";
 import { QuickStatsGrid } from "@/components/dashboard/QuickStatsGrid";
-import { ScheduledActionsWidget } from "@/components/dashboard/ScheduledActionsWidget";
 import { StorageUsageChart } from "@/components/dashboard/StorageUsageChart";
 import { ProcessingSummaryDashboard } from "@/components/processing/ProcessingSummaryDashboard";
 import { Badge } from "@/components/ui/badge";
@@ -187,8 +186,8 @@ export function DashboardClientContent({
 
       {/* Main Dashboard Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Row: Due Items (left) | Activity Timeline (right) */}
-        {dueItems && <DueItemsWidget dueItems={dueItems} />}
+        {/* Top Row: Coming Up (left) | Activity Timeline (right) */}
+        <ComingUpWidget />
 
         {timeline && timeline.length > 0 && (
           <ActivityTimelineChart
@@ -197,9 +196,6 @@ export function DashboardClientContent({
             onPeriodChange={handlePeriodChange}
           />
         )}
-
-        {/* Scheduled Actions Widget */}
-        <ScheduledActionsWidget />
 
         {/* Middle Row: Storage Usage (left) | Recent Activity (right) */}
         <StorageUsageChart stats={stats} />

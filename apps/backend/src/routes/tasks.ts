@@ -1,15 +1,18 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
+import { count, eq, and, sql } from "drizzle-orm";
 import z from "zod/v4";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import { parseSearchFields } from "../lib/search-params.js";
+import { db, schema } from "../db/index.js";
 import {
   createTaskComment,
   deleteTaskComment,
   getTaskComments,
   updateTaskComment,
 } from "../lib/services/taskComments.js";
+import { listAgentRuns } from "../lib/services/agent-runs.js";
 import {
   createTask,
   deleteTask,
@@ -115,6 +118,86 @@ tasksRoutes.post(
   }, logger),
 );
 
+// GET /api/tasks/by-actor - Task counts grouped by assignee actor
+tasksRoutes.get(
+  "/by-actor",
+  withAuth(async (c, userId) => {
+    // Get task counts grouped by assignee and status
+    const rows = await db
+      .select({
+        assigneeActorId: schema.tasks.assigneeActorId,
+        status: schema.tasks.status,
+        count: count(),
+      })
+      .from(schema.tasks)
+      .where(eq(schema.tasks.userId, userId))
+      .groupBy(schema.tasks.assigneeActorId, schema.tasks.status);
+
+    // Get actor details for all assignees
+    const actorIds = [
+      ...new Set(rows.map((r) => r.assigneeActorId).filter(Boolean)),
+    ] as string[];
+
+    const actorMap = new Map<
+      string,
+      { displayName: string | null; kind: string }
+    >();
+
+    if (actorIds.length > 0) {
+      const actorRows = await db
+        .select({
+          id: schema.actors.id,
+          displayName: schema.actors.displayName,
+          kind: schema.actors.kind,
+        })
+        .from(schema.actors)
+        .where(sql`${schema.actors.id} IN ${actorIds}`);
+
+      for (const a of actorRows) {
+        actorMap.set(a.id, { displayName: a.displayName, kind: a.kind });
+      }
+    }
+
+    // Build actor summaries
+    interface ActorSummary {
+      actorId: string | null;
+      displayName: string | null;
+      kind: string;
+      counts: Record<string, number>;
+      total: number;
+    }
+
+    const summaryMap = new Map<string | null, ActorSummary>();
+
+    for (const row of rows) {
+      const key = row.assigneeActorId;
+      let summary = summaryMap.get(key);
+      if (!summary) {
+        const actor = key ? actorMap.get(key) : null;
+        summary = {
+          actorId: key,
+          displayName: actor?.displayName ?? null,
+          kind: actor?.kind ?? "human",
+          counts: {},
+          total: 0,
+        };
+        summaryMap.set(key, summary);
+      }
+      summary.counts[row.status] = row.count;
+      summary.total += row.count;
+    }
+
+    // Sort: agents first, then by total desc
+    const actors = [...summaryMap.values()].sort((a, b) => {
+      if (a.kind === "agent" && b.kind !== "agent") return -1;
+      if (a.kind !== "agent" && b.kind === "agent") return 1;
+      return b.total - a.total;
+    });
+
+    return c.json({ actors });
+  }, logger),
+);
+
 // GET /api/tasks/:id - Get a specific task
 tasksRoutes.get(
   "/:id",
@@ -206,6 +289,24 @@ tasksRoutes.get(
     const { cursor, limit } = c.req.valid("query");
     const result = await getTaskExecutions(taskId, userId, { cursor, limit });
     return c.json(result);
+  }, logger),
+);
+
+// GET /api/tasks/:id/agent-runs - Get agent run history for a task
+tasksRoutes.get(
+  "/:id/agent-runs",
+  zValidator(
+    "query",
+    z.object({
+      limit: z.coerce.number().min(1).max(100).default(20).optional(),
+      offset: z.coerce.number().min(0).default(0).optional(),
+    }),
+  ),
+  withAuth(async (c, userId) => {
+    const taskId = c.req.param("id");
+    const { limit, offset } = c.req.valid("query");
+    const runs = await listAgentRuns(taskId, userId, { limit, offset });
+    return c.json({ runs });
   }, logger),
 );
 

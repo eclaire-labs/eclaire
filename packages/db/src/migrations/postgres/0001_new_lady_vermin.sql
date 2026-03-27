@@ -1,0 +1,2 @@
+CREATE TYPE "public"."task_execution_mode" AS ENUM('manual', 'agent_assists', 'agent_handles');--> statement-breakpoint
+ALTER TABLE "tasks" ADD COLUMN "execution_mode" "task_execution_mode" DEFAULT 'manual' NOT NULL;

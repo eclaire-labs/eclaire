@@ -33,6 +33,7 @@ const INITIAL_TASK: Omit<Task, "id"> = {
   status: "open",
   dueDate: "",
   assigneeActorId: null,
+  executionMode: "manual",
   tags: [],
   createdAt: "",
   updatedAt: "",

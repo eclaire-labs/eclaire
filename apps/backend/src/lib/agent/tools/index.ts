@@ -59,6 +59,9 @@ import { scheduleActionTool } from "./schedule-action.js";
 // Agent execution tools
 import { runTaskAgentTool } from "./run-task-agent.js";
 import { createTaskSeriesTool } from "./create-task-series.js";
+// Task series management tools
+import { listTaskSeriesTool } from "./list-task-series.js";
+import { manageTaskSeriesTool } from "./manage-task-series.js";
 // Task comment tools
 import { addTaskCommentTool } from "./add-task-comment.js";
 import { browseChromeTool } from "./browse-chrome.js";
@@ -150,6 +153,9 @@ const staticTools: Record<string, RuntimeToolDefinition> = {
   // Agent execution tools
   runTaskAgent: runTaskAgentTool,
   createTaskSeries: createTaskSeriesTool,
+  // Task series management tools
+  listTaskSeries: listTaskSeriesTool,
+  manageTaskSeries: manageTaskSeriesTool,
   // Task comment tools
   addTaskComment: addTaskCommentTool,
   // Tag tools

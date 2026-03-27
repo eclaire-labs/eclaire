@@ -37,6 +37,7 @@ scheduledActionsRoutes.get(
     const results = await listScheduledActions(userId, {
       status: params.status,
       kind: params.kind,
+      relatedTaskId: params.relatedTaskId,
       limit: params.limit,
       offset: params.offset,
     });

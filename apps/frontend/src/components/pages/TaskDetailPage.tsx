@@ -1,7 +1,9 @@
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { Link, getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowLeft,
+  Bell,
+  Bot,
   Calendar,
   CheckCircle2,
   Edit3,
@@ -11,9 +13,12 @@ import {
   MoreHorizontal,
   Plus,
   RefreshCw,
+  RotateCcw,
   Save,
+  ThumbsUp,
   Trash2,
   X,
+  Zap,
 } from "lucide-react";
 
 const routeApi = getRouteApi("/_authenticated/tasks/$id");
@@ -50,6 +55,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useActors } from "@/hooks/use-actors";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
+import { useScheduledActions } from "@/hooks/use-scheduled-actions";
 import { useTask, useTasks } from "@/hooks/use-tasks";
 import { apiFetch } from "@/lib/api-client";
 import {
@@ -59,6 +65,7 @@ import {
 } from "@/lib/api-comments";
 import { formatDate } from "@/lib/date-utils";
 import type { TaskComment, TaskStatus } from "@/types/task";
+import { AgentRunHistory } from "./tasks/AgentRunHistory";
 import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
 import {
   PRIORITY_OPTIONS,
@@ -94,7 +101,13 @@ export function TaskDetailClient() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
   const { actors } = useActors(["human", "agent"]);
+
+  // Linked automations (scheduled actions related to this task)
+  const { data: linkedActions } = useScheduledActions({
+    relatedTaskId: taskId,
+  });
 
   // Comments state
   const [comments, setComments] = useState<TaskComment[]>([]);
@@ -111,6 +124,7 @@ export function TaskDetailClient() {
     priority: 0,
     dueDate: "",
     assigneeActorId: "",
+    executionMode: "manual" as "manual" | "agent_assists" | "agent_handles",
     tags: [] as string[],
   });
 
@@ -124,6 +138,7 @@ export function TaskDetailClient() {
         priority: task.priority ?? 0,
         dueDate: task.dueDate || "",
         assigneeActorId: task.assigneeActorId || "",
+        executionMode: task.executionMode || "manual",
         tags: [...task.tags],
       });
     }
@@ -203,6 +218,40 @@ export function TaskDetailClient() {
     }
   };
 
+  const handleReviewAction = async (action: "approve" | "request_changes") => {
+    if (!task) return;
+    try {
+      setIsReviewing(true);
+      const reviewStatus = action === "approve" ? "accepted" : "rejected";
+      const updates: Record<string, string> = { reviewStatus };
+      if (action === "approve") {
+        updates.status = "completed";
+      }
+      const response = await apiFetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      });
+      if (!response.ok) throw new Error("Failed to update review status");
+      refresh();
+      toast.success(
+        action === "approve" ? "Output approved" : "Changes requested",
+        {
+          description:
+            action === "approve"
+              ? "Task marked as completed."
+              : "Task kept in progress for the agent to revise.",
+        },
+      );
+    } catch (error) {
+      console.error("Error updating review status:", error);
+      toast.error("Error", {
+        description: "Failed to update review status. Please try again.",
+      });
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
   const renderStatusBadge = (status: TaskStatus) => {
     const config = getStatusConfig(status);
     return (
@@ -230,6 +279,7 @@ export function TaskDetailClient() {
         priority: task.priority ?? 0,
         dueDate: task.dueDate || "",
         assigneeActorId: task.assigneeActorId || "",
+        executionMode: task.executionMode || "manual",
         tags: [...task.tags],
       });
     }
@@ -250,6 +300,7 @@ export function TaskDetailClient() {
           ? new Date(editForm.dueDate).toISOString()
           : null,
         assigneeActorId: editForm.assigneeActorId.trim() || null,
+        executionMode: editForm.executionMode,
         tags: editForm.tags,
       };
 
@@ -437,6 +488,47 @@ export function TaskDetailClient() {
           <div className="flex-1 flex flex-col">
             <Card className="flex-1 flex flex-col">
               <CardContent className="pt-6 flex-1 flex flex-col">
+                {/* Agent Review Banner */}
+                {task.reviewStatus === "pending" &&
+                  task.executionMode !== "manual" && (
+                    <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 p-4">
+                      <div className="flex items-start gap-3">
+                        <Bot className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-amber-900 dark:text-amber-200">
+                            Agent output needs review
+                          </p>
+                          <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                            The agent has completed its work on this task.
+                            Review the output in the comments below, then
+                            approve or request changes.
+                          </p>
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              onClick={() => handleReviewAction("approve")}
+                              disabled={isReviewing}
+                            >
+                              <ThumbsUp className="mr-1.5 h-3.5 w-3.5" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleReviewAction("request_changes")
+                              }
+                              disabled={isReviewing}
+                            >
+                              <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                              Request Changes
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                 {/* Description */}
                 <div className="space-y-2 mb-6">
                   <Label>Description</Label>
@@ -462,6 +554,13 @@ export function TaskDetailClient() {
                     </div>
                   )}
                 </div>
+
+                {/* Agent Run History — only show if task involves agents */}
+                {task.executionMode !== "manual" && (
+                  <div className="pt-6 border-t">
+                    <AgentRunHistory taskId={task.id} />
+                  </div>
+                )}
 
                 {/* Comments Section */}
                 <div className="space-y-4 pt-6 border-t">
@@ -650,6 +749,24 @@ export function TaskDetailClient() {
                     </div>
                   )}
 
+                  {/* Delegated By */}
+                  {task.delegatedByActorId && (
+                    <div>
+                      <Label className="flex items-center gap-2">
+                        <Bot className="h-4 w-4" />
+                        Delegated By
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {(() => {
+                          const delegator = actors.find(
+                            (a) => a.id === task.delegatedByActorId,
+                          );
+                          return delegator?.label || task.delegatedByActorId;
+                        })()}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Status */}
                   <div>
                     <Label>Status</Label>
@@ -756,6 +873,49 @@ export function TaskDetailClient() {
                       </p>
                     )}
                   </div>
+
+                  {/* Execution Mode */}
+                  {isEditing ? (
+                    <div>
+                      <Label className="flex items-center gap-2">
+                        <Bot className="h-4 w-4" />
+                        Execution Mode
+                      </Label>
+                      <Select
+                        value={editForm.executionMode}
+                        onValueChange={(
+                          value: "manual" | "agent_assists" | "agent_handles",
+                        ) => handleInputChange("executionMode", value)}
+                      >
+                        <SelectTrigger className="w-fit min-w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manual">Manual</SelectItem>
+                          <SelectItem value="agent_assists">
+                            Agent Assists
+                          </SelectItem>
+                          <SelectItem value="agent_handles">
+                            Agent Handles
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    task.executionMode !== "manual" && (
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          <Bot className="h-4 w-4" />
+                          Execution Mode
+                        </Label>
+                        <Badge variant="outline" className="mt-1">
+                          {task.executionMode === "agent_assists"
+                            ? "Agent Assists"
+                            : "Agent Handles"}
+                        </Badge>
+                      </div>
+                    )
+                  )}
 
                   {isEditing && (
                     <TagEditor
@@ -893,6 +1053,58 @@ export function TaskDetailClient() {
                               })}
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* Linked Automations */}
+                      {linkedActions && linkedActions.length > 0 && (
+                        <div>
+                          <Label className="flex items-center gap-2">
+                            <Zap className="h-4 w-4" />
+                            Linked Automations
+                          </Label>
+                          <div className="space-y-1 mt-1">
+                            {linkedActions.map((action) => (
+                              <Link
+                                key={action.id}
+                                to="/automations/$id"
+                                params={{ id: action.id }}
+                                className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-muted transition-colors"
+                              >
+                                {action.kind === "agent_run" ? (
+                                  <Bot className="h-3 w-3 text-muted-foreground" />
+                                ) : (
+                                  <Bell className="h-3 w-3 text-muted-foreground" />
+                                )}
+                                <span className="truncate flex-1">
+                                  {action.title}
+                                </span>
+                                <Badge
+                                  variant={
+                                    action.status === "active"
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                  className="text-xs"
+                                >
+                                  {action.status}
+                                </Badge>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Parent Series */}
+                      {task.taskSeriesId && (
+                        <div>
+                          <Label className="flex items-center gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            Part of Series
+                          </Label>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            This task was created by a recurring series.
+                          </p>
                         </div>
                       )}
 

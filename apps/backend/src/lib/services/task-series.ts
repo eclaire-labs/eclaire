@@ -352,6 +352,8 @@ export async function createOccurrence(
     description: series.description,
     status: "open",
     assigneeActorId: series.defaultAssigneeActorId,
+    executionMode:
+      series.executionPolicy === "assign_and_run" ? "agent_handles" : "manual",
     taskSeriesId: seriesId,
     occurrenceAt: now,
   });

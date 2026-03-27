@@ -49,6 +49,7 @@ export const ScheduledActionSchema = z
 export const ScheduledActionSearchParamsSchema = z.object({
   status: z.enum(["active", "paused", "completed", "cancelled"]).optional(),
   kind: z.enum(["reminder", "agent_run"]).optional(),
+  relatedTaskId: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(50),
   offset: z.coerce.number().int().min(0).optional().default(0),
 });

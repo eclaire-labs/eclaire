@@ -131,6 +131,8 @@ interface CreateTaskParams {
   priority?: number;
   dueDate?: string;
   assigneeActorId?: string;
+  delegatedByActorId?: string;
+  executionMode?: "manual" | "agent_assists" | "agent_handles";
   tags?: string[];
   reviewStatus?: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
@@ -147,6 +149,7 @@ interface UpdateTaskParams {
   priority?: number;
   dueDate?: string | null;
   assigneeActorId?: string | null;
+  executionMode?: "manual" | "agent_assists" | "agent_handles";
   tags?: string[];
   reviewStatus?: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
@@ -271,6 +274,20 @@ export async function createTask(
 
     // Atomic transaction: insert task, tags, and history together
     await txManager.withTransaction(async (tx) => {
+      // Auto-set executionMode when assigning to an agent
+      const executionMode =
+        taskData.executionMode ??
+        (resolvedAssignee.kind === "agent" ? "agent_assists" : "manual");
+
+      // Auto-set delegatedByActorId when an agent creates a subtask for another actor
+      const delegatedByActorId =
+        taskData.delegatedByActorId ??
+        (taskData.parentId &&
+        actorId !== userId &&
+        actorId !== resolvedAssignee.assigneeActorId
+          ? actorId
+          : null);
+
       await tx.tasks.insert({
         id: taskId,
         userId: userId,
@@ -279,6 +296,8 @@ export async function createTask(
         status: taskStatus,
         dueDate: dueDateValue,
         assigneeActorId: resolvedAssignee.assigneeActorId,
+        delegatedByActorId,
+        executionMode,
         completedAt: completedAtValue,
         priority: taskData.priority ?? 0,
         processingEnabled: taskData.processingEnabled ?? true,
@@ -465,6 +484,14 @@ export async function updateTask(
 
     if (resolvedUpdatedAssignee) {
       updateSet.assigneeActorId = resolvedUpdatedAssignee.assigneeActorId;
+      // Auto-upgrade executionMode when reassigning to an agent (if still manual)
+      if (
+        resolvedUpdatedAssignee.kind === "agent" &&
+        existingTask.executionMode === "manual" &&
+        !("executionMode" in taskUpdateData)
+      ) {
+        updateSet.executionMode = "agent_assists";
+      }
     }
 
     // Conditionally add dueDate to the update set
@@ -1257,24 +1284,34 @@ export async function findTasks({
     const hasMore = finalIds.length > limit;
     if (hasMore) finalIds = finalIds.slice(0, limit);
 
-    // Fetch full data for the final page of IDs, schedule data, tags, and child counts in parallel
-    const [entriesList, schedulesMap, tagMap, childCounts] = await Promise.all([
-      db
-        .select()
-        .from(tasks)
-        .where(inArray(tasks.id, finalIds))
-        .orderBy(orderDir(sortColumn), orderDir(tasks.id)),
-      getTaskSchedulesMap(),
-      batchGetTags(tasksTags, tasksTags.taskId, tasksTags.tagId, finalIds),
-      db
-        .select({
-          parentId: tasks.parentId,
-          count: count(),
-        })
-        .from(tasks)
-        .where(inArray(tasks.parentId, finalIds))
-        .groupBy(tasks.parentId),
-    ]);
+    // Fetch full data for the final page of IDs, schedule data, tags, child counts, and latest agent run status in parallel
+    const [entriesList, schedulesMap, tagMap, childCounts, latestAgentRuns] =
+      await Promise.all([
+        db
+          .select()
+          .from(tasks)
+          .where(inArray(tasks.id, finalIds))
+          .orderBy(orderDir(sortColumn), orderDir(tasks.id)),
+        getTaskSchedulesMap(),
+        batchGetTags(tasksTags, tasksTags.taskId, tasksTags.tagId, finalIds),
+        db
+          .select({
+            parentId: tasks.parentId,
+            count: count(),
+          })
+          .from(tasks)
+          .where(inArray(tasks.parentId, finalIds))
+          .groupBy(tasks.parentId),
+        // Latest agent run status per task (for active run indicators)
+        db
+          .selectDistinctOn([schema.agentRuns.taskId], {
+            taskId: schema.agentRuns.taskId,
+            status: schema.agentRuns.status,
+          })
+          .from(schema.agentRuns)
+          .where(inArray(schema.agentRuns.taskId, finalIds))
+          .orderBy(schema.agentRuns.taskId, desc(schema.agentRuns.createdAt)),
+      ]);
 
     // Build child count map
     const childCountMap = new Map<string, number>();
@@ -1282,9 +1319,15 @@ export async function findTasks({
       if (row.parentId) childCountMap.set(row.parentId, row.count);
     }
 
+    // Build latest agent run status map
+    const agentRunStatusMap = new Map<string, string>();
+    for (const row of latestAgentRuns) {
+      agentRunStatusMap.set(row.taskId, row.status);
+    }
+
     const items = entriesList.map((task) => {
       const scheduleData = schedulesMap.get(task.id) || null;
-      return cleanTaskForResponse(
+      const response = cleanTaskForResponse(
         task,
         tagMap.get(task.id) ?? [],
         task.processingStatus,
@@ -1292,6 +1335,12 @@ export async function findTasks({
         scheduleData,
         childCountMap.get(task.id) ?? 0,
       );
+      const latestRunStatus = agentRunStatusMap.get(task.id);
+      if (latestRunStatus) {
+        (response as Record<string, unknown>).latestAgentRunStatus =
+          latestRunStatus;
+      }
+      return response;
     });
 
     // Build cursor from the last item

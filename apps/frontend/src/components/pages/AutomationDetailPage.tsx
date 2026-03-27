@@ -10,6 +10,7 @@ import {
   Bot,
   Calendar,
   CheckCircle2,
+  CheckSquare,
   Clock,
   Loader2,
   XCircle,
@@ -242,6 +243,19 @@ export default function AutomationDetailPage() {
               <span className="text-muted-foreground">Created</span>
               <span>{formatDate(action.createdAt)}</span>
             </div>
+            {action.relatedTaskId && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Linked Task</span>
+                <Link
+                  to="/tasks/$id"
+                  params={{ id: action.relatedTaskId }}
+                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                >
+                  <CheckSquare className="h-3.5 w-3.5" />
+                  View Task
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

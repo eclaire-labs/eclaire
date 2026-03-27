@@ -50,6 +50,12 @@ export const taskSeriesExecutionPolicyEnum = pgEnum(
   ["assign_only", "assign_and_run"],
 );
 
+export const taskExecutionModeEnum = pgEnum("task_execution_mode", [
+  "manual",
+  "agent_assists",
+  "agent_handles",
+]);
+
 export const agentRunStatusEnum = pgEnum("agent_run_status", [
   "queued",
   "running",
@@ -421,11 +427,18 @@ export const tasks = pgTable(
     assigneeActorId: text("assignee_actor_id").references(() => actors.id, {
       onDelete: "set null",
     }),
+    delegatedByActorId: text("delegated_by_actor_id").references(
+      () => actors.id,
+      { onDelete: "set null" },
+    ),
     taskSeriesId: text("task_series_id").references(() => taskSeries.id, {
       onDelete: "set null",
     }),
     occurrenceAt: timestamp("occurrence_at", { withTimezone: true }),
     priority: integer("priority").notNull().default(0),
+    executionMode: taskExecutionModeEnum("execution_mode")
+      .notNull()
+      .default("manual"),
     processingEnabled: boolean("processing_enabled").notNull().default(true),
     processingStatus: text("processing_status", {
       enum: ["pending", "processing", "completed", "failed"],

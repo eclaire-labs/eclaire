@@ -11,12 +11,15 @@ import type {
 export async function listScheduledActions(params?: {
   status?: string;
   kind?: string;
+  relatedTaskId?: string;
   limit?: number;
   offset?: number;
 }): Promise<{ data: ScheduledAction[] }> {
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set("status", params.status);
   if (params?.kind) searchParams.set("kind", params.kind);
+  if (params?.relatedTaskId)
+    searchParams.set("relatedTaskId", params.relatedTaskId);
   if (params?.limit) searchParams.set("limit", String(params.limit));
   if (params?.offset) searchParams.set("offset", String(params.offset));
   const qs = searchParams.toString();
