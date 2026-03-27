@@ -27,8 +27,10 @@ import { processDocumentJob } from "./jobs/documentProcessor.js";
 import processImageJob from "./jobs/imageProcessor.js";
 import processMediaJob from "./jobs/mediaProcessor.js";
 import processNoteJob from "./jobs/noteProcessor.js";
-import processScheduledAction from "./jobs/scheduledActionProcessor.js";
 import processTaskJob from "./jobs/taskProcessor.js";
+import processTaskOccurrence from "./jobs/taskOccurrenceProcessor.js";
+import processTaskScheduleTick from "./jobs/taskScheduleTickProcessor.js";
+import processTaskOverdueChecker from "./jobs/taskOverdueCheckerProcessor.js";
 import {
   startDirectDbWorkers,
   stopDirectDbWorkers,
@@ -204,14 +206,32 @@ export async function startBullMQWorkers(): Promise<void> {
   );
   bullmqWorkers.push(mediaWorker);
 
-  // Scheduled Action Worker
-  const scheduledActionWorker = createBullMQWorker(
-    QueueNames.SCHEDULED_ACTION_EXECUTION,
-    processScheduledAction,
+  // Task Occurrence Worker
+  const taskOccurrenceWorker = createBullMQWorker(
+    QueueNames.TASK_OCCURRENCE,
+    processTaskOccurrence,
     workerConfig,
     mediumTaskOptions,
   );
-  bullmqWorkers.push(scheduledActionWorker);
+  bullmqWorkers.push(taskOccurrenceWorker);
+
+  // Task Schedule Tick Worker
+  const taskScheduleTickWorker = createBullMQWorker(
+    QueueNames.TASK_SCHEDULE_TICK,
+    processTaskScheduleTick,
+    workerConfig,
+    shortTaskOptions,
+  );
+  bullmqWorkers.push(taskScheduleTickWorker);
+
+  // Task Overdue Checker Worker
+  const taskOverdueCheckerWorker = createBullMQWorker(
+    QueueNames.TASK_OVERDUE_CHECKER,
+    processTaskOverdueChecker,
+    workerConfig,
+    shortTaskOptions,
+  );
+  bullmqWorkers.push(taskOverdueCheckerWorker);
 
   // Start all workers
   for (const worker of bullmqWorkers) {

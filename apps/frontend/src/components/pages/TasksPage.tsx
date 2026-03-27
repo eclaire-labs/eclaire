@@ -71,6 +71,40 @@ export default function TasksPage() {
   const { openDialog } = routeApi.useSearch();
   const { data: auth } = useAuth();
 
+  // Saved views — quick filter presets
+  const savedViews = useMemo(
+    () => [
+      { key: "all", label: "All", params: {} },
+      {
+        key: "my-tasks",
+        label: "Assigned to Me",
+        params: { delegateMode: "manual" },
+      },
+      {
+        key: "agent-tasks",
+        label: "Agent Tasks",
+        params: { delegateMode: "assist,handle" },
+      },
+      {
+        key: "needs-review",
+        label: "Needs Review",
+        params: { attentionStatus: "needs_review" },
+      },
+      {
+        key: "recurring",
+        label: "Recurring",
+        params: { scheduleType: "recurring" },
+      },
+      {
+        key: "done",
+        label: "Done",
+        params: { taskStatus: "completed" },
+      },
+    ],
+    [],
+  );
+  const [activeView, setActiveView] = useState("all");
+
   const [params, setParams] = useState<ListParams>({ topLevelOnly: "true" });
 
   // Data
@@ -119,7 +153,7 @@ export default function TasksPage() {
       });
 
       tasks.forEach((task) => {
-        const assigneeId = task.assigneeActorId;
+        const assigneeId = task.delegateActorId;
         if (assigneeId && !assigneeSet.has(assigneeId)) {
           assigneeSet.add(assigneeId);
           assigneeList.push({
@@ -262,12 +296,12 @@ export default function TasksPage() {
     try {
       const taskToSend = {
         ...taskData,
-        ...(taskData.dueDate && {
-          dueDate: new Date(taskData.dueDate).toISOString(),
+        ...(taskData.dueAt && {
+          dueAt: new Date(taskData.dueAt).toISOString(),
         }),
-        status: taskData.status || "open",
-        ...(taskData.assigneeActorId?.trim() && {
-          assigneeActorId: taskData.assigneeActorId,
+        taskStatus: taskData.taskStatus || "open",
+        ...(taskData.delegateActorId?.trim() && {
+          delegateActorId: taskData.delegateActorId,
         }),
         ...(taskData.description && { description: taskData.description }),
       };
@@ -307,12 +341,12 @@ export default function TasksPage() {
     try {
       const taskToSend = {
         ...editingTask,
-        ...(editingTask.dueDate && {
-          dueDate: new Date(editingTask.dueDate).toISOString(),
+        ...(editingTask.dueAt && {
+          dueDate: new Date(editingTask.dueAt).toISOString(),
         }),
-        status: editingTask.status || "open",
-        ...(editingTask.assigneeActorId && {
-          assigneeActorId: editingTask.assigneeActorId,
+        taskStatus: editingTask.taskStatus || "open",
+        ...(editingTask.delegateActorId && {
+          assigneeActorId: editingTask.delegateActorId,
         }),
         ...(editingTask.description && {
           description: editingTask.description,
@@ -388,10 +422,10 @@ export default function TasksPage() {
   const extraFiltersForLayout = useMemo(
     () => [
       {
-        key: "status",
+        key: "taskStatus",
         label: "Status",
-        value: state.extraFilters.status ?? "all",
-        onChange: (v: string) => state.setExtraFilter("status", v),
+        value: state.extraFilters.taskStatus ?? "all",
+        onChange: (v: string) => state.setExtraFilter("taskStatus", v),
         options: [{ value: "all", label: "All Statuses" }, ...STATUS_OPTIONS],
       },
       {
@@ -444,10 +478,36 @@ export default function TasksPage() {
     ],
   );
 
+  const handleViewChange = useCallback(
+    (viewKey: string) => {
+      setActiveView(viewKey);
+      const view = savedViews.find((v) => v.key === viewKey);
+      if (view) {
+        setParams({ topLevelOnly: "true", ...view.params });
+      }
+    },
+    [savedViews],
+  );
+
   return (
     <ListPageLayout
       state={state}
       title="Tasks"
+      titleExtra={
+        <div className="flex gap-1 flex-wrap">
+          {savedViews.map((view) => (
+            <Button
+              key={view.key}
+              variant={activeView === view.key ? "default" : "outline"}
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => handleViewChange(view.key)}
+            >
+              {view.label}
+            </Button>
+          ))}
+        </div>
+      }
       emptyIcon={CheckSquare}
       emptyMessage="Your task collection is empty. Create your first task to get started organizing your work."
       emptyFilterMessage="No tasks found matching your criteria."
@@ -535,10 +595,10 @@ export default function TasksPage() {
                     <div className="space-y-2">
                       <Label htmlFor="edit-status">Status</Label>
                       <Select
-                        name="status"
-                        value={editingTask.status}
+                        name="taskStatus"
+                        value={editingTask.taskStatus}
                         onValueChange={(value) =>
-                          handleEditSelectChange("status", value)
+                          handleEditSelectChange("taskStatus", value)
                         }
                       >
                         <SelectTrigger id="edit-status">
@@ -579,7 +639,7 @@ export default function TasksPage() {
                     <div className="space-y-2">
                       <Label htmlFor="edit-due-date">Due Date</Label>
                       <DueDatePicker
-                        value={editingTask.dueDate || null}
+                        value={editingTask.dueAt || null}
                         onChange={(value) =>
                           setEditingTask((prev) =>
                             prev ? { ...prev, dueDate: value ?? "" } : null,
@@ -595,7 +655,7 @@ export default function TasksPage() {
                       <ActorPicker
                         id="edit-assignee"
                         actors={actors}
-                        value={editingTask.assigneeActorId ?? null}
+                        value={editingTask.delegateActorId ?? null}
                         allowUnassigned
                         placeholder="Search people and agents"
                         searchPlaceholder="Search people and agents..."

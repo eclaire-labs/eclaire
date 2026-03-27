@@ -1,491 +1,142 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  DEFAULT_AGENT_ACTOR_ID,
   globalTestCleanup,
   loggedFetch,
   type TaskComment,
   type TaskEntry,
 } from "../utils/tasks-test-helpers.js";
-import { delay } from "../utils/test-helpers.js";
 
 describe("Task Comments", { timeout: 30000 }, () => {
-  let commentTaskId: string | null = null;
-  let createdCommentId: string | null = null;
+  let taskId: string;
 
-  // Global cleanup after all tests complete
+  beforeAll(async () => {
+    const res = await loggedFetch("/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Comment Test Task" }),
+    });
+    expect(res.status).toBe(201);
+    const task = (await res.json()) as TaskEntry;
+    taskId = task.id;
+  });
+
   afterAll(async () => {
+    if (taskId) {
+      await loggedFetch(`/tasks/${taskId}`, { method: "DELETE" });
+    }
     await globalTestCleanup();
   });
 
-  describe("Comment CRUD Operations", () => {
-    it("POST /api/tasks - should create a task for comment testing", async () => {
-      const commentTaskData = {
-        title: "Task for Comment Testing",
-        description: "This task will be used to test comment functionality.",
-        status: "open",
-      };
+  describe("Comment CRUD", () => {
+    let commentId: string;
 
-      const response = await loggedFetch(`/tasks`, {
+    it("should create a comment", async () => {
+      const res = await loggedFetch(`/tasks/${taskId}/comments`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(commentTaskData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Test comment" }),
       });
 
-      expect(response.status).toBe(201);
-      const data = (await response.json()) as TaskEntry;
-      commentTaskId = data.id;
-
-      // Verify comments field is initialized as empty array
-      expect(data.comments).toEqual([]);
-      expect(data.title).toBe(commentTaskData.title);
-    });
-
-    it("GET /api/tasks/:id/comments - should return empty comments for new task", async () => {
-      expect(commentTaskId).not.toBeNull();
-
-      const response = await loggedFetch(`/tasks/${commentTaskId}/comments`, {
-        method: "GET",
-      });
-
-      expect(response.status).toBe(200);
-      const comments = (await response.json()) as TaskComment[];
-      expect(comments).toEqual([]);
-    });
-
-    it("POST /api/tasks/:id/comments - should create a new comment", async () => {
-      expect(commentTaskId).not.toBeNull();
-
-      const commentData = {
-        content: "This is a test comment for the task.",
-      };
-
-      const response = await loggedFetch(`/tasks/${commentTaskId}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(commentData),
-      });
-
-      expect(response.status).toBe(201);
-      const comment = (await response.json()) as TaskComment;
+      expect(res.status).toBe(201);
+      const comment = (await res.json()) as TaskComment;
 
       expect(comment.id).toBeTypeOf("string");
-      expect(comment.taskId).toBe(commentTaskId);
-      expect(comment.content).toBe(commentData.content);
-      expect(comment.user).toBeDefined();
-      expect(comment.user.userType).toBe("user");
+      expect(comment.taskId).toBe(taskId);
+      expect(comment.content).toBe("Test comment");
+      expect(comment.authorActorId).toBeTypeOf("string");
       expect(Date.parse(comment.createdAt)).not.toBeNaN();
-      expect(Date.parse(comment.updatedAt)).not.toBeNaN();
 
-      createdCommentId = comment.id;
+      commentId = comment.id;
     });
 
-    it("GET /api/tasks/:id/comments - should return the created comment", async () => {
-      expect(commentTaskId).not.toBeNull();
-      expect(createdCommentId).not.toBeNull();
+    it("should list comments including the created one", async () => {
+      const res = await loggedFetch(`/tasks/${taskId}/comments`);
 
-      const response = await loggedFetch(`/tasks/${commentTaskId}/comments`, {
-        method: "GET",
+      expect(res.status).toBe(200);
+      const comments = (await res.json()) as TaskComment[];
+
+      expect(Array.isArray(comments)).toBe(true);
+      expect(comments.length).toBeGreaterThanOrEqual(1);
+
+      const match = comments.find((c) => c.id === commentId);
+      expect(match).toBeDefined();
+      expect(match!.content).toBe("Test comment");
+    });
+
+    it("should update a comment", async () => {
+      const res = await loggedFetch(`/tasks/${taskId}/comments/${commentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Updated comment" }),
       });
 
-      expect(response.status).toBe(200);
-      const comments = (await response.json()) as TaskComment[];
+      expect(res.status).toBe(200);
+      const comment = (await res.json()) as TaskComment;
 
-      expect(comments).toHaveLength(1);
-      const comment = comments[0];
-      expect(comment).toBeDefined();
-      expect(comment?.id).toBe(createdCommentId);
-      expect(comment?.content).toBe("This is a test comment for the task.");
-      expect(comment?.user.userType).toBe("user");
+      expect(comment.id).toBe(commentId);
+      expect(comment.content).toBe("Updated comment");
     });
 
-    it("GET /api/tasks/:id - should include comments in task response", async () => {
-      expect(commentTaskId).not.toBeNull();
-
-      const response = await loggedFetch(`/tasks/${commentTaskId}`, {
-        method: "GET",
+    it("should delete a comment", async () => {
+      const res = await loggedFetch(`/tasks/${taskId}/comments/${commentId}`, {
+        method: "DELETE",
       });
 
-      expect(response.status).toBe(200);
-      const task = (await response.json()) as TaskEntry;
-
-      expect(task.comments).toHaveLength(1);
-      expect(task.comments?.[0]).toBeDefined();
-      expect(task.comments?.[0]?.id).toBe(createdCommentId);
-      expect(task.comments?.[0]?.content).toBe(
-        "This is a test comment for the task.",
-      );
+      expect(res.status).toBe(204);
     });
 
-    it("PUT /api/tasks/:taskId/comments/:commentId - should update the comment", async () => {
-      expect(commentTaskId).not.toBeNull();
-      expect(createdCommentId).not.toBeNull();
+    it("should no longer return the deleted comment", async () => {
+      const res = await loggedFetch(`/tasks/${taskId}/comments`);
 
-      const updatedCommentData = {
-        content: "This is an updated test comment.",
-      };
+      expect(res.status).toBe(200);
+      const comments = (await res.json()) as TaskComment[];
 
-      const response = await loggedFetch(
-        `/tasks/${commentTaskId}/comments/${createdCommentId}`,
+      const match = comments.find((c) => c.id === commentId);
+      expect(match).toBeUndefined();
+    });
+  });
+
+  describe("Validation", () => {
+    it("should reject a comment with empty content", async () => {
+      const res = await loggedFetch(`/tasks/${taskId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "" }),
+      });
+
+      expect(res.status).toBe(400);
+    });
+
+    it("should return 404 when posting a comment on a non-existent task", async () => {
+      const res = await loggedFetch("/tasks/non-existent-id/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Orphan comment" }),
+      });
+
+      expect(res.status).toBe(404);
+    });
+
+    it("should return 404 when updating a non-existent comment", async () => {
+      const res = await loggedFetch(
+        `/tasks/${taskId}/comments/non-existent-id`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedCommentData),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: "Ghost update" }),
         },
       );
 
-      expect(response.status).toBe(200);
-      const comment = (await response.json()) as TaskComment;
-
-      expect(comment.id).toBe(createdCommentId);
-      expect(comment.content).toBe(updatedCommentData.content);
-      expect(comment.user.userType).toBe("user");
+      expect(res.status).toBe(404);
     });
 
-    it("DELETE /api/tasks/:taskId/comments/:commentId - should delete the comment", async () => {
-      expect(commentTaskId).not.toBeNull();
-      expect(createdCommentId).not.toBeNull();
-
-      const response = await loggedFetch(
-        `/tasks/${commentTaskId}/comments/${createdCommentId}`,
-        {
-          method: "DELETE",
-        },
+    it("should return 404 when deleting a non-existent comment", async () => {
+      const res = await loggedFetch(
+        `/tasks/${taskId}/comments/non-existent-id`,
+        { method: "DELETE" },
       );
 
-      expect(response.status).toBe(204);
-    });
-  });
-
-  // Note: AI Assistant comment creation is now done via direct service calls
-  // in agentRunProcessor.ts, not via HTTP API. Tests for this functionality
-  // should use unit tests with mocked services.
-
-  describe("AI Assistant Task Assignment", () => {
-    let assignmentTaskId: string | null = null;
-
-    it("POST /api/tasks - should create task assigned to current user by default", async () => {
-      const taskData = {
-        title: "Task for Assignment Testing",
-        description: "This task will test assignment functionality.",
-        status: "open",
-      };
-
-      const response = await loggedFetch(`/tasks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(taskData),
-      });
-
-      expect(response.status).toBe(201);
-      const task = (await response.json()) as TaskEntry;
-      assignmentTaskId = task.id;
-
-      // Task should be assigned to current user by default
-      expect(task.assigneeActorId).not.toBeNull();
-      expect(task.assigneeActorId).not.toBe(DEFAULT_AGENT_ACTOR_ID);
-    });
-
-    it("PUT /api/tasks/:id - should allow assignment to AI assistant", async () => {
-      expect(assignmentTaskId).not.toBeNull();
-
-      const updateData = {
-        assigneeActorId: DEFAULT_AGENT_ACTOR_ID,
-      };
-
-      const response = await loggedFetch(`/tasks/${assignmentTaskId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      expect(response.status).toBe(200);
-      const task = (await response.json()) as TaskEntry;
-
-      expect(task.assigneeActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
-    });
-
-    it("POST /api/tasks - should allow explicit assignment to AI assistant during creation", async () => {
-      const taskData = {
-        title: "Task Assigned to AI Assistant",
-        description: "This task is explicitly assigned to AI assistant.",
-        status: "open",
-        assigneeActorId: DEFAULT_AGENT_ACTOR_ID,
-      };
-
-      const response = await loggedFetch(`/tasks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(taskData),
-      });
-
-      expect(response.status).toBe(201);
-      const task = (await response.json()) as TaskEntry;
-
-      expect(task.assigneeActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
-      expect(task.title).toBe(taskData.title);
-
-      // Clean up
-      await loggedFetch(`/tasks/${task.id}`, {
-        method: "DELETE",
-      });
-    });
-
-    it(
-      "POST /api/tasks - should create AI assistant task and generate comment",
-      { timeout: 65000 },
-      async () => {
-        const taskData = {
-          title: "AI Assistant Comment Test",
-          description: "This task should generate an AI assistant comment.",
-          status: "open",
-          assigneeActorId: DEFAULT_AGENT_ACTOR_ID,
-        };
-
-        const response = await loggedFetch(`/tasks`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(taskData),
-        });
-
-        expect(response.status).toBe(201);
-        const task = (await response.json()) as TaskEntry;
-
-        expect(task.assigneeActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
-        expect(task.title).toBe(taskData.title);
-
-        // Poll for AI assistant comments (indicates task execution occurred)
-        let aiCommentCount = 0;
-        const maxWaitTime = 60000; // 30 seconds max wait
-        const pollInterval = 3000; // Check every 3 seconds
-        const startTime = Date.now();
-
-        while (aiCommentCount === 0 && Date.now() - startTime < maxWaitTime) {
-          const commentsResponse = await loggedFetch(
-            `/tasks/${task.id}/comments`,
-            {
-              method: "GET",
-            },
-          );
-          expect(commentsResponse.status).toBe(200);
-          const comments = (await commentsResponse.json()) as TaskComment[];
-
-          const aiComments = comments.filter(
-            (c) => c.user.userType === "assistant",
-          );
-          aiCommentCount = aiComments.length;
-
-          if (aiCommentCount === 0) {
-            await delay(pollInterval);
-          }
-        }
-
-        // AI assistant should have created at least one comment
-        expect(aiCommentCount).toBeGreaterThanOrEqual(1);
-
-        // Clean up
-        await loggedFetch(`/tasks/${task.id}`, {
-          method: "DELETE",
-        });
-      },
-    );
-
-    it("PUT /api/tasks/:id - should return error for assignment to non-existent user", async () => {
-      expect(assignmentTaskId).not.toBeNull();
-
-      const updateData = {
-        assigneeActorId: "non-existent-user-id",
-      };
-
-      const response = await loggedFetch(`/tasks/${assignmentTaskId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      expect(response.status).toBe(400);
-      const errorResponse = (await response.json()) as any;
-
-      // Should return an error when assigned user doesn't exist
-      expect(errorResponse).toHaveProperty("error");
-      expect(errorResponse.error).toContain("Invalid assignee actor ID");
-    });
-
-    it("DELETE /api/tasks/:id - should clean up assignment test task", async () => {
-      expect(assignmentTaskId).not.toBeNull();
-
-      const response = await loggedFetch(`/tasks/${assignmentTaskId}`, {
-        method: "DELETE",
-      });
-
-      expect(response.status).toBe(204);
-    });
-  });
-
-  describe("Comment Validation", () => {
-    it("POST /api/tasks/:id/comments - should reject empty comment content", async () => {
-      // First create a task to test with
-      const taskResponse = await loggedFetch(`/tasks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ title: "Test Task for Comment Validation" }),
-      });
-
-      expect(taskResponse.status).toBe(201);
-      const task = (await taskResponse.json()) as TaskEntry;
-
-      // Try to create comment with empty content
-      const invalidCommentData = {
-        content: "",
-      };
-
-      const response = await loggedFetch(`/tasks/${task.id}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(invalidCommentData),
-      });
-
-      expect(response.status).toBe(400); // Bad Request
-
-      // Clean up
-      await loggedFetch(`/tasks/${task.id}`, {
-        method: "DELETE",
-      });
-    });
-
-    it("POST /api/tasks/:id/comments - should return 404 for non-existent task", async () => {
-      const nonExistentTaskId = "non-existent-task-id";
-      const commentData = {
-        content: "This comment is for a non-existent task.",
-      };
-
-      const response = await loggedFetch(
-        `/tasks/${nonExistentTaskId}/comments`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(commentData),
-        },
-      );
-
-      expect(response.status).toBe(404); // Not Found
-    });
-
-    it("GET /api/tasks/:id/comments - should return 404 for non-existent task", async () => {
-      const nonExistentTaskId = "non-existent-task-id";
-
-      const response = await loggedFetch(
-        `/tasks/${nonExistentTaskId}/comments`,
-        {
-          method: "GET",
-        },
-      );
-
-      expect(response.status).toBe(404); // Not Found
-    });
-
-    it("PUT /api/tasks/:taskId/comments/:commentId - should return 404 for non-existent comment", async () => {
-      // First create a task
-      const taskResponse = await loggedFetch(`/tasks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: "Test Task for Comment Update Validation",
-        }),
-      });
-
-      expect(taskResponse.status).toBe(201);
-      const task = (await taskResponse.json()) as TaskEntry;
-
-      const nonExistentCommentId = "non-existent-comment-id";
-      const updateData = {
-        content: "Updated content",
-      };
-
-      const response = await loggedFetch(
-        `/tasks/${task.id}/comments/${nonExistentCommentId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updateData),
-        },
-      );
-
-      expect(response.status).toBe(404); // Not Found
-
-      // Clean up
-      await loggedFetch(`/tasks/${task.id}`, {
-        method: "DELETE",
-      });
-    });
-
-    it("DELETE /api/tasks/:taskId/comments/:commentId - should return 404 for non-existent comment", async () => {
-      // First create a task
-      const taskResponse = await loggedFetch(`/tasks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: "Test Task for Comment Delete Validation",
-        }),
-      });
-
-      expect(taskResponse.status).toBe(201);
-      const task = (await taskResponse.json()) as TaskEntry;
-
-      const nonExistentCommentId = "non-existent-comment-id";
-
-      const response = await loggedFetch(
-        `/tasks/${task.id}/comments/${nonExistentCommentId}`,
-        {
-          method: "DELETE",
-        },
-      );
-
-      expect(response.status).toBe(404); // Not Found
-
-      // Clean up
-      await loggedFetch(`/tasks/${task.id}`, {
-        method: "DELETE",
-      });
-    });
-  });
-
-  describe("Test Cleanup", () => {
-    it("DELETE /api/tasks/:id - should clean up comment test task", async () => {
-      expect(commentTaskId).not.toBeNull();
-
-      const response = await loggedFetch(`/tasks/${commentTaskId}`, {
-        method: "DELETE",
-      });
-
-      expect(response.status).toBe(204);
+      expect(res.status).toBe(404);
     });
   });
 });

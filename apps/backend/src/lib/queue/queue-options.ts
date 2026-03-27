@@ -110,9 +110,9 @@ export const queueWorkerCategory: Record<QueueName, WorkerCategory> = {
   [QueueNames.NOTE_PROCESSING]: "short",
   [QueueNames.TASK_PROCESSING]: "short",
   [QueueNames.MEDIA_PROCESSING]: "long",
-  [QueueNames.SCHEDULED_ACTION_EXECUTION]: "short",
-  [QueueNames.AGENT_RUN]: "medium",
-  [QueueNames.TASK_SERIES_TICK]: "short",
+  [QueueNames.TASK_OCCURRENCE]: "medium",
+  [QueueNames.TASK_SCHEDULE_TICK]: "short",
+  [QueueNames.TASK_OVERDUE_CHECKER]: "short",
 };
 
 // --- BullMQ Default Job Options ---

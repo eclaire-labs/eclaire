@@ -39,13 +39,9 @@ export const generateChannelId = () => `ch-${generateCleanId()}`;
 export const generateFeedbackId = () => `fb-${generateCleanId()}`;
 export const generateAgentId = () => `agent-${generateCleanId()}`;
 export const generateTaskExecutionId = () => `txe-${generateCleanId()}`;
-export const generateAgentRunId = () => `ar-${generateCleanId()}`;
-export const generateTaskSeriesId = () => `ts-${generateCleanId()}`;
+export const generateTaskOccurrenceId = () => `tocc-${generateCleanId()}`;
 export const generateAgentStepId = () => `step-${generateCleanId()}`;
 export const generateMediaId = () => `med-${generateCleanId()}`;
-export const generateScheduledActionId = () => `sa-${generateCleanId()}`;
-export const generateScheduledActionExecutionId = () =>
-  `sae-${generateCleanId()}`;
 
 /**
  * ID Generation for Storage Files
@@ -82,12 +78,9 @@ export const isValidAssetProcessingJobId = createIdValidator("apj");
 export const isValidFeedbackId = createIdValidator("fb");
 export const isValidAgentId = createIdValidator("agent");
 export const isValidTaskExecutionId = createIdValidator("txe");
-export const isValidAgentRunId = createIdValidator("ar");
-export const isValidTaskSeriesId = createIdValidator("ts");
+export const isValidTaskOccurrenceId = createIdValidator("tocc");
 export const isValidAgentStepId = createIdValidator("step");
 export const isValidMediaId = createIdValidator("med");
-export const isValidScheduledActionId = createIdValidator("sa");
-export const isValidScheduledActionExecutionId = createIdValidator("sae");
 
 /**
  * Utility to extract entity type from ID
@@ -124,11 +117,8 @@ export const ID_CONSTANTS = {
     FEEDBACK: "fb-",
     AGENT: "agent-",
     TASK_EXECUTION: "txe-",
-    AGENT_RUN: "ar-",
-    TASK_SERIES: "ts-",
+    TASK_OCCURRENCE: "tocc-",
     AGENT_STEP: "step-",
     MEDIA: "med-",
-    SCHEDULED_ACTION: "sa-",
-    SCHEDULED_ACTION_EXECUTION: "sae-",
   },
 } as const;

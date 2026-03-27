@@ -15,12 +15,12 @@ import {
   isNotNull,
   isNull,
   lte,
+  ne,
   type SQL,
 } from "drizzle-orm";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
-const { tags, taskComments, tasks, tasksTags, users } = schema;
-const agentRuns = schema.agentRuns;
+const { tags, taskComments, tasks, tasksTags } = schema;
 
 import {
   batchGetTags,
@@ -35,7 +35,16 @@ import {
   encodeCursor,
   type CursorPaginatedResponse,
 } from "../pagination.js";
+import {
+  isValidCronExpression,
+  getNextExecutionTime,
+} from "../queue/cron-utils.js";
 import { getQueueAdapter } from "../queue/index.js";
+import { QueueNames } from "../queue/queue-names.js";
+import {
+  getScheduler,
+  getRecurringTaskScheduleKey,
+} from "../queue/scheduler.js";
 import { getActorSummaryOrNull } from "./actors.js";
 import { recordHistory } from "./history.js";
 import { formatTaskCommentForResponse } from "./taskComments.js";
@@ -52,7 +61,10 @@ export type FindTasksParams = {
   userId: string;
   text?: string;
   tags?: string[];
-  status?: TaskStatus;
+  taskStatus?: TaskStatus;
+  attentionStatus?: string;
+  scheduleType?: string;
+  delegateMode?: string;
   priority?: number;
   startDate?: Date;
   endDate?: Date;
@@ -66,39 +78,39 @@ export type FindTasksParams = {
   sortDir?: "asc" | "desc";
 };
 
-// Queue name for task tag_generation jobs (maps to old jobType="tag_generation")
+// Queue name for task tag_generation jobs
 const _TASK_PROCESSING_QUEUE = "task-processing";
 
-interface ResolvedTaskAssignee {
-  assigneeActorId: string;
+interface ResolvedTaskDelegate {
+  delegateActorId: string;
   kind: "human" | "agent" | "system" | "service";
 }
 
-async function resolveTaskAssignee(
-  assigneeActorId: string | null | undefined,
+async function resolveTaskDelegate(
+  delegateActorId: string | null | undefined,
   currentUserId: string,
   allowFallback: boolean = true,
-): Promise<ResolvedTaskAssignee> {
-  if (!assigneeActorId || !assigneeActorId.trim()) {
+): Promise<ResolvedTaskDelegate> {
+  if (!delegateActorId || !delegateActorId.trim()) {
     return {
-      assigneeActorId: currentUserId,
+      delegateActorId: currentUserId,
       kind: "human",
     };
   }
 
-  const normalizedActorId = assigneeActorId.trim();
+  const normalizedActorId = delegateActorId.trim();
   const actor = await getActorSummaryOrNull(currentUserId, normalizedActorId);
 
   if (actor?.kind === "human") {
     return {
-      assigneeActorId: normalizedActorId,
+      delegateActorId: normalizedActorId,
       kind: "human",
     };
   }
 
   if (actor?.kind === "agent") {
     return {
-      assigneeActorId: normalizedActorId,
+      delegateActorId: normalizedActorId,
       kind: "agent",
     };
   }
@@ -106,33 +118,49 @@ async function resolveTaskAssignee(
   if (allowFallback) {
     logger.warn(
       {
-        invalidAssignedTo: assigneeActorId,
+        invalidDelegateId: delegateActorId,
         currentUserId,
       },
-      "Invalid assignee actor ID provided, defaulting to current user",
+      "Invalid delegate actor ID provided, defaulting to current user",
     );
     return {
-      assigneeActorId: currentUserId,
+      delegateActorId: currentUserId,
       kind: "human",
     };
   }
 
   throw new Error(
-    `Invalid assignee actor ID: ${assigneeActorId}. Assignee must be an existing human or agent actor.`,
+    `Invalid delegate actor ID: ${delegateActorId}. Delegate must be an existing human or agent actor.`,
   );
 }
 
 interface CreateTaskParams {
   title: string;
   description?: string;
-  status?: TaskStatus;
+  prompt?: string;
+  taskStatus?: TaskStatus;
   priority?: number;
-  dueDate?: string;
-  assigneeActorId?: string;
+  dueAt?: string;
+  delegateActorId?: string;
   delegatedByActorId?: string;
-  executionMode?: "manual" | "agent_assists" | "agent_handles";
+  delegateMode?: "manual" | "assist" | "handle";
+  attentionStatus?:
+    | "none"
+    | "needs_triage"
+    | "awaiting_input"
+    | "needs_review"
+    | "failed"
+    | "urgent";
+  reviewStatus?: "none" | "pending" | "approved" | "changes_requested";
+  scheduleType?: "none" | "one_time" | "recurring";
+  scheduleRule?: string;
+  scheduleSummary?: string;
+  timezone?: string;
+  nextOccurrenceAt?: string;
+  maxOccurrences?: number;
+  deliveryTargets?: unknown;
+  sourceConversationId?: string;
   tags?: string[];
-  reviewStatus?: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned?: boolean;
   processingEnabled?: boolean;
@@ -143,13 +171,27 @@ interface CreateTaskParams {
 interface UpdateTaskParams {
   title?: string;
   description?: string;
-  status?: string;
+  prompt?: string;
+  taskStatus?: string;
   priority?: number;
-  dueDate?: string | null;
-  assigneeActorId?: string | null;
-  executionMode?: "manual" | "agent_assists" | "agent_handles";
+  dueAt?: string | null;
+  delegateActorId?: string | null;
+  delegateMode?: "manual" | "assist" | "handle";
+  attentionStatus?: string;
+  reviewStatus?: string;
+  scheduleType?: string;
+  scheduleRule?: string | null;
+  scheduleSummary?: string | null;
+  timezone?: string | null;
+  nextOccurrenceAt?: string | null;
+  maxOccurrences?: number | null;
+  occurrenceCount?: number;
+  latestExecutionStatus?: string | null;
+  latestResultSummary?: string | null;
+  latestErrorSummary?: string | null;
+  deliveryTargets?: unknown;
+  sourceConversationId?: string | null;
   tags?: string[];
-  reviewStatus?: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned?: boolean;
   processingEnabled?: boolean;
@@ -174,23 +216,25 @@ function cleanTaskForResponse(
   comments: any[] = [],
   childCount?: number,
 ) {
-  const dueDate = task.dueDate != null ? formatToISO8601(task.dueDate) : null;
+  const dueAt = task.dueAt != null ? formatToISO8601(task.dueAt) : null;
   const completedAt =
     task.completedAt != null ? formatToISO8601(task.completedAt) : null;
+  const nextOccurrenceAt =
+    task.nextOccurrenceAt != null
+      ? formatToISO8601(task.nextOccurrenceAt)
+      : null;
 
-  // Create a new object excluding the timestamp fields
-  const { createdAt, updatedAt, assigneeActorId, ...cleanedTask } = task;
+  const { createdAt, updatedAt, ...cleanedTask } = task;
 
   return {
     ...cleanedTask,
-    dueDate,
+    dueAt,
     completedAt,
-    assigneeActorId: assigneeActorId ?? null,
-    taskSeriesId: task.taskSeriesId ?? null,
-    occurrenceAt: task.occurrenceAt ? formatToISO8601(task.occurrenceAt) : null,
+    nextOccurrenceAt,
+    delegateActorId: task.delegateActorId ?? null,
     createdAt: createdAt ? formatToISO8601(createdAt) : null,
     updatedAt: updatedAt ? formatToISO8601(updatedAt) : null,
-    processingStatus: processingStatus || "pending",
+    processingStatus: processingStatus,
     priority: task.priority ?? 0,
     sortOrder: task.sortOrder ?? null,
     parentId: task.parentId ?? null,
@@ -207,17 +251,17 @@ export async function createTask(
   const userId = callerOwnerUserId(caller);
   const actorId = callerActorId(caller);
   try {
-    // Convert dueDate string to Date object
-    const dueDateValue = taskData.dueDate ? new Date(taskData.dueDate) : null;
+    // Convert dueAt string to Date object
+    const dueAtValue = taskData.dueAt ? new Date(taskData.dueAt) : null;
 
     // Set completedAt if task is being created with "completed" status
-    const taskStatus = taskData.status || "open";
+    const taskStatus = taskData.taskStatus || "open";
     const completedAtValue = taskStatus === "completed" ? new Date() : null;
 
-    const resolvedAssignee = await resolveTaskAssignee(
-      taskData.assigneeActorId,
+    const resolvedDelegate = await resolveTaskDelegate(
+      taskData.delegateActorId,
       userId,
-      true, // Allow fallback for create operations
+      true,
     );
 
     // Validate parentId if provided (single-level nesting, same user)
@@ -242,47 +286,65 @@ export async function createTask(
     const taskId = generateTaskId();
     const historyId = generateHistoryId();
 
+    // Convert nextOccurrenceAt
+    const nextOccurrenceAtValue = taskData.nextOccurrenceAt
+      ? new Date(taskData.nextOccurrenceAt)
+      : null;
+
     // Atomic transaction: insert task, tags, and history together
     await txManager.withTransaction(async (tx) => {
-      // Auto-set executionMode when assigning to an agent
-      const executionMode =
-        taskData.executionMode ??
-        (resolvedAssignee.kind === "agent" ? "agent_assists" : "manual");
+      // Auto-set delegateMode when assigning to an agent
+      // If delegate is an agent and mode is "manual" (the default), upgrade to "assist"
+      const delegateMode =
+        resolvedDelegate.kind === "agent" &&
+        (!taskData.delegateMode || taskData.delegateMode === "manual")
+          ? "assist"
+          : (taskData.delegateMode ?? "manual");
 
       // Auto-set delegatedByActorId when an agent creates a subtask for another actor
       const delegatedByActorId =
         taskData.delegatedByActorId ??
         (taskData.parentId &&
         actorId !== userId &&
-        actorId !== resolvedAssignee.assigneeActorId
+        actorId !== resolvedDelegate.delegateActorId
           ? actorId
           : null);
+
+      // Default reviewStatus: "none" for manual, "pending" for agent-assisted
+      const reviewStatus =
+        taskData.reviewStatus ??
+        (delegateMode !== "manual" ? "pending" : "none");
 
       await tx.tasks.insert({
         id: taskId,
         userId: userId,
         title: taskData.title,
         description: taskData.description || null,
-        status: taskStatus,
-        dueDate: dueDateValue,
-        assigneeActorId: resolvedAssignee.assigneeActorId,
+        prompt: taskData.prompt || null,
+        taskStatus,
+        dueAt: dueAtValue,
+        delegateActorId: resolvedDelegate.delegateActorId,
         delegatedByActorId,
-        executionMode,
+        delegateMode,
+        attentionStatus: taskData.attentionStatus ?? "none",
+        reviewStatus,
+        scheduleType: taskData.scheduleType ?? "none",
+        scheduleRule: taskData.scheduleRule ?? null,
+        scheduleSummary: taskData.scheduleSummary ?? null,
+        timezone: taskData.timezone ?? null,
+        nextOccurrenceAt: nextOccurrenceAtValue,
+        maxOccurrences: taskData.maxOccurrences ?? null,
+        deliveryTargets: taskData.deliveryTargets ?? null,
+        sourceConversationId: taskData.sourceConversationId ?? null,
         completedAt: completedAtValue,
         priority: taskData.priority ?? 0,
         processingEnabled: taskData.processingEnabled ?? true,
         processingStatus:
           (taskData.processingEnabled ?? true) ? "pending" : null,
-        reviewStatus:
-          taskData.reviewStatus ??
-          (executionMode !== "manual" ? "pending" : null),
         flagColor: taskData.flagColor || null,
         isPinned: taskData.isPinned || false,
         sortOrder: taskData.sortOrder ?? null,
         parentId: taskData.parentId || null,
-        // Note: Recurrence fields (isRecurring, cronExpression, etc.)
-        // are stored in queue_schedules, not in the tasks table.
-        // createdAt and updatedAt are handled by schema defaults
       });
 
       // Handle tags inside transaction
@@ -305,10 +367,10 @@ export async function createTask(
           id: taskId,
           title: taskData.title,
           description: taskData.description || null,
-          status: taskStatus,
-          dueDate: taskData.dueDate,
+          taskStatus,
+          dueAt: taskData.dueAt,
           tags: taskData.tags,
-          assigneeActorId: resolvedAssignee.assigneeActorId,
+          delegateActorId: resolvedDelegate.delegateActorId,
         },
         actor: caller.actor,
         actorId,
@@ -328,9 +390,125 @@ export async function createTask(
     });
     logger.info({ taskId, userId }, "Queued task for AI tag processing");
 
+    // Wire scheduling for recurring tasks
+    if (taskData.scheduleType === "recurring" && taskData.scheduleRule) {
+      if (!isValidCronExpression(taskData.scheduleRule)) {
+        throw new ValidationError("Invalid cron expression for scheduleRule");
+      }
+
+      // Compute nextOccurrenceAt if not explicitly provided
+      let computedNext = nextOccurrenceAtValue;
+      if (!computedNext) {
+        computedNext = getNextExecutionTime(
+          taskData.scheduleRule,
+          new Date(),
+          taskData.timezone,
+        );
+        if (computedNext) {
+          await db
+            .update(tasks)
+            .set({ nextOccurrenceAt: computedNext })
+            .where(eq(tasks.id, taskId));
+        }
+      }
+
+      const scheduler = await getScheduler();
+      await scheduler.upsert({
+        key: getRecurringTaskScheduleKey(taskId),
+        queue: QueueNames.TASK_SCHEDULE_TICK,
+        cron: taskData.scheduleRule,
+        data: { taskId, userId },
+        enabled: true,
+        limit: taskData.maxOccurrences ?? undefined,
+        timezone: taskData.timezone ?? undefined,
+      });
+      logger.info(
+        { taskId, cron: taskData.scheduleRule },
+        "Registered recurring schedule",
+      );
+    }
+
+    // Wire scheduling for one-time tasks
+    if (taskData.scheduleType === "one_time" && taskData.scheduleRule) {
+      const scheduledFor = new Date(taskData.scheduleRule);
+      if (Number.isNaN(scheduledFor.getTime())) {
+        throw new ValidationError(
+          "Invalid ISO datetime for one_time scheduleRule",
+        );
+      }
+
+      // Set nextOccurrenceAt if not provided
+      if (!nextOccurrenceAtValue) {
+        await db
+          .update(tasks)
+          .set({ nextOccurrenceAt: scheduledFor })
+          .where(eq(tasks.id, taskId));
+      }
+
+      // Determine kind
+      const deliveryTargets = taskData.deliveryTargets as Array<{
+        type: string;
+        ref?: string;
+      }> | null;
+      const hasNotificationTargets =
+        Array.isArray(deliveryTargets) &&
+        deliveryTargets.some((t) => t.type === "notification_channels");
+      const isAgentDelegate = resolvedDelegate.kind === "agent";
+      const occurrenceKind =
+        hasNotificationTargets && !isAgentDelegate
+          ? "reminder"
+          : "scheduled_run";
+
+      const { createTaskOccurrence } = await import("./task-occurrences.js");
+      await createTaskOccurrence({
+        taskId,
+        userId,
+        kind: occurrenceKind,
+        prompt: taskData.prompt ?? taskData.title,
+        executorActorId: resolvedDelegate.delegateActorId ?? undefined,
+        scheduledFor,
+      });
+
+      await db
+        .update(tasks)
+        .set({ latestExecutionStatus: "scheduled" })
+        .where(eq(tasks.id, taskId));
+
+      logger.info(
+        { taskId, scheduledFor: scheduledFor.toISOString() },
+        "Created one-time scheduled occurrence",
+      );
+    }
+
+    // Auto-execute agent-delegated tasks with no schedule
+    if (
+      taskData.scheduleType !== "recurring" &&
+      taskData.scheduleType !== "one_time" &&
+      resolvedDelegate.kind === "agent"
+    ) {
+      const { createTaskOccurrence } = await import("./task-occurrences.js");
+      await createTaskOccurrence({
+        taskId,
+        userId,
+        kind: "manual_run",
+        prompt: taskData.prompt ?? taskData.title,
+        executorActorId: resolvedDelegate.delegateActorId ?? undefined,
+      });
+
+      await db
+        .update(tasks)
+        .set({
+          taskStatus: "in_progress",
+          latestExecutionStatus: "queued",
+        })
+        .where(eq(tasks.id, taskId));
+
+      logger.info({ taskId }, "Auto-started agent-delegated task");
+    }
+
     // Fetch the complete task with tags to return the consistent API response format
     const taskWithTags = await getTaskWithTags(taskId);
-    return taskWithTags; // This will use cleanTaskForResponse
+    return taskWithTags;
   } catch (error) {
     logger.error(
       {
@@ -342,7 +520,6 @@ export async function createTask(
       "Error creating task",
     );
 
-    // Re-throw ValidationError directly to preserve type and message
     if (error instanceof ValidationError) {
       throw error;
     }
@@ -373,16 +550,16 @@ export async function updateTask(
 
     // Create a data object without tags for the task update
     const { tags: tagNames, ...taskUpdateData } = taskData;
-    let resolvedUpdatedAssignee: ResolvedTaskAssignee | null = null;
+    let resolvedDelegate: ResolvedTaskDelegate | null = null;
 
-    // Validate assignee actor if it's being updated - strict validation (no fallback)
-    if ("assigneeActorId" in taskUpdateData) {
-      resolvedUpdatedAssignee = await resolveTaskAssignee(
-        taskUpdateData.assigneeActorId,
+    // Validate delegate actor if it's being updated - strict validation (no fallback)
+    if ("delegateActorId" in taskUpdateData) {
+      resolvedDelegate = await resolveTaskDelegate(
+        taskUpdateData.delegateActorId,
         userId,
-        false, // No fallback for update operations - strict validation
+        false,
       );
-      taskUpdateData.assigneeActorId = resolvedUpdatedAssignee.assigneeActorId;
+      taskUpdateData.delegateActorId = resolvedDelegate.delegateActorId;
     }
 
     // Validate parentId if being changed (single-level nesting, same user)
@@ -409,16 +586,13 @@ export async function updateTask(
       }
     }
 
-    // Convert dueDate string to Date object
-    let dueDateValue: Date | null = null;
-    let includeDueDateUpdate = false; // Flag to track if dueDate needs updating
+    // Convert dueAt string to Date object
+    let dueAtValue: Date | null = null;
+    let includeDueAtUpdate = false;
 
-    if (Object.hasOwn(taskUpdateData, "dueDate")) {
-      // Check if dueDate key exists in the input
-      includeDueDateUpdate = true;
-      dueDateValue = taskUpdateData.dueDate
-        ? new Date(taskUpdateData.dueDate)
-        : null;
+    if (Object.hasOwn(taskUpdateData, "dueAt")) {
+      includeDueAtUpdate = true;
+      dueAtValue = taskUpdateData.dueAt ? new Date(taskUpdateData.dueAt) : null;
     }
 
     // Handle completedAt logic based on status changes
@@ -426,58 +600,74 @@ export async function updateTask(
     let includeCompletedAtUpdate = false;
 
     if (Object.hasOwn(taskUpdateData, "completedAt")) {
-      // If completedAt is explicitly provided, use it
       includeCompletedAtUpdate = true;
       completedAtValue = taskUpdateData.completedAt
         ? new Date(taskUpdateData.completedAt)
         : null;
-    } else if (Object.hasOwn(taskUpdateData, "status")) {
-      // If status is being updated, automatically set/clear completedAt
+    } else if (Object.hasOwn(taskUpdateData, "taskStatus")) {
       includeCompletedAtUpdate = true;
-      if (taskUpdateData.status === "completed") {
-        // Task is being marked as completed - set completedAt to now if not already completed
+      if (taskUpdateData.taskStatus === "completed") {
         completedAtValue =
-          existingTask.status !== "completed"
+          existingTask.taskStatus !== "completed"
             ? new Date()
             : existingTask.completedAt;
       } else {
-        // Task status is changing away from completed - clear completedAt
         completedAtValue = null;
       }
     }
 
-    // Build the update set additively — only include fields that should change
+    // Handle nextOccurrenceAt conversion
+    let nextOccurrenceAtValue: Date | null = null;
+    let includeNextOccurrenceAtUpdate = false;
+
+    if (Object.hasOwn(taskUpdateData, "nextOccurrenceAt")) {
+      includeNextOccurrenceAtUpdate = true;
+      nextOccurrenceAtValue = taskUpdateData.nextOccurrenceAt
+        ? new Date(taskUpdateData.nextOccurrenceAt)
+        : null;
+    }
+
+    // Build the update set additively
     // biome-ignore lint/suspicious/noExplicitAny: dynamic update object
     const updateSet: { [key: string]: any } = {
       updatedAt: new Date(),
     };
 
-    // Copy simple scalar fields (exclude dueDate, completedAt — handled separately)
+    // Copy simple scalar fields (exclude date fields handled separately)
     for (const key of Object.keys(
       taskUpdateData,
     ) as (keyof typeof taskUpdateData)[]) {
-      if (key === "dueDate" || key === "completedAt") continue;
+      if (
+        key === "dueAt" ||
+        key === "completedAt" ||
+        key === "nextOccurrenceAt"
+      )
+        continue;
       updateSet[key] = taskUpdateData[key];
     }
 
-    if (resolvedUpdatedAssignee) {
-      updateSet.assigneeActorId = resolvedUpdatedAssignee.assigneeActorId;
-      // Auto-upgrade executionMode when reassigning to an agent (if still manual)
+    if (resolvedDelegate) {
+      updateSet.delegateActorId = resolvedDelegate.delegateActorId;
+      // Auto-upgrade delegateMode when reassigning to an agent (if still manual)
       if (
-        resolvedUpdatedAssignee.kind === "agent" &&
-        existingTask.executionMode === "manual" &&
-        !("executionMode" in taskUpdateData)
+        resolvedDelegate.kind === "agent" &&
+        existingTask.delegateMode === "manual" &&
+        !("delegateMode" in taskUpdateData)
       ) {
-        updateSet.executionMode = "agent_assists";
+        updateSet.delegateMode = "assist";
       }
     }
 
-    if (includeDueDateUpdate) {
-      updateSet.dueDate = dueDateValue;
+    if (includeDueAtUpdate) {
+      updateSet.dueAt = dueAtValue;
     }
 
     if (includeCompletedAtUpdate) {
       updateSet.completedAt = completedAtValue;
+    }
+
+    if (includeNextOccurrenceAtUpdate) {
+      updateSet.nextOccurrenceAt = nextOccurrenceAtValue;
     }
 
     // Pre-generate history ID for transaction
@@ -491,7 +681,6 @@ export async function updateTask(
 
     // Atomic transaction: update task, handle tags, and record history together
     await txManager.withTransaction(async (tx) => {
-      // Update the task
       await tx.tasks.update(
         and(eq(tasks.id, id), eq(tasks.userId, userId)),
         updateSet,
@@ -499,10 +688,7 @@ export async function updateTask(
 
       // Handle tags if provided
       if (tagNames) {
-        // Remove existing tags
         await tx.tasksTags.delete(eq(tasksTags.taskId, id));
-
-        // Add new tags
         if (tagNames.length > 0) {
           const tagList = await tx.getOrCreateTags(tagNames, userId);
           for (const tag of tagList) {
@@ -511,7 +697,7 @@ export async function updateTask(
         }
       }
 
-      // Record history for task update - atomic with the update
+      // Record history for task update
       await tx.history.insert({
         id: historyId,
         action: "update",
@@ -532,9 +718,64 @@ export async function updateTask(
       });
     });
 
-    // Return task with updated tags using the consistent API response format
+    // Handle schedule changes
+    const scheduleTypeChanged = "scheduleType" in taskData;
+    const scheduleRuleChanged = "scheduleRule" in taskData;
+
+    if (scheduleTypeChanged || scheduleRuleChanged) {
+      const effectiveScheduleType =
+        taskData.scheduleType ?? existingTask.scheduleType;
+      const effectiveScheduleRule =
+        taskData.scheduleRule ?? existingTask.scheduleRule;
+      const effectiveTimezone = taskData.timezone ?? existingTask.timezone;
+
+      const scheduler = await getScheduler();
+      const scheduleKey = getRecurringTaskScheduleKey(id);
+
+      if (
+        effectiveScheduleType === "recurring" &&
+        effectiveScheduleRule &&
+        isValidCronExpression(effectiveScheduleRule)
+      ) {
+        await scheduler.upsert({
+          key: scheduleKey,
+          queue: QueueNames.TASK_SCHEDULE_TICK,
+          cron: effectiveScheduleRule,
+          data: { taskId: id, userId },
+          enabled: true,
+          limit:
+            taskData.maxOccurrences ?? existingTask.maxOccurrences ?? undefined,
+          timezone: effectiveTimezone ?? undefined,
+        });
+
+        const next = getNextExecutionTime(
+          effectiveScheduleRule,
+          new Date(),
+          effectiveTimezone,
+        );
+        if (next) {
+          await db
+            .update(tasks)
+            .set({ nextOccurrenceAt: next })
+            .where(eq(tasks.id, id));
+        }
+      } else if (
+        existingTask.scheduleType === "recurring" &&
+        effectiveScheduleType !== "recurring"
+      ) {
+        try {
+          await scheduler.remove(scheduleKey);
+        } catch (err) {
+          logger.warn(
+            { taskId: id, error: err },
+            "Failed to remove schedule on type change",
+          );
+        }
+      }
+    }
+
     const taskWithTags = await getTaskWithTags(id);
-    return taskWithTags; // This will use cleanTaskForResponse
+    return taskWithTags;
   } catch (error) {
     logger.error(
       {
@@ -547,7 +788,6 @@ export async function updateTask(
       "Error updating task",
     );
 
-    // Re-throw typed errors to preserve specific error messages
     if (
       error instanceof NotFoundError ||
       error instanceof ValidationError ||
@@ -562,7 +802,6 @@ export async function updateTask(
 
 /**
  * Updates task status specifically for AI assistants assigned to the task
- * This bypasses the ownership check and records proper history with assistant actor
  */
 export async function updateTaskStatusAsAssistant(
   taskId: string,
@@ -577,14 +816,13 @@ export async function updateTaskStatusAsAssistant(
       "Updating task status as assistant",
     );
 
-    // Get the task to validate assignment and get task owner
     const task = await db.query.tasks.findFirst({
       where: eq(tasks.id, taskId),
       columns: {
         id: true,
         userId: true,
-        assigneeActorId: true,
-        status: true,
+        delegateActorId: true,
+        taskStatus: true,
         completedAt: true,
       },
     });
@@ -593,20 +831,18 @@ export async function updateTaskStatusAsAssistant(
       throw new NotFoundError("Task");
     }
 
-    // Verify the assistant is actually assigned to this task
-    if (task.assigneeActorId !== actorId) {
+    if (task.delegateActorId !== actorId) {
       throw new Error(`Assistant ${actorId} is not assigned to task ${taskId}`);
     }
 
     const beforeData = {
-      status: task.status,
+      taskStatus: task.taskStatus,
       completedAt: task.completedAt,
     };
 
-    // Prepare update data
     // biome-ignore lint/suspicious/noExplicitAny: dynamic update object
     const updateData: any = {
-      status,
+      taskStatus: status,
       updatedAt: new Date(),
     };
 
@@ -614,7 +850,6 @@ export async function updateTaskStatusAsAssistant(
       updateData.completedAt = new Date(completedAt);
     }
 
-    // Update the task
     const updatedTask = await db
       .update(tasks)
       .set(updateData)
@@ -626,11 +861,10 @@ export async function updateTaskStatusAsAssistant(
     }
 
     const afterData = {
-      status: updatedTask[0]?.status,
+      taskStatus: updatedTask[0]?.taskStatus,
       completedAt: updatedTask[0]?.completedAt,
     };
 
-    // Record history with assistant as the actor
     await recordHistory({
       action: "update",
       itemType: "task",
@@ -638,13 +872,13 @@ export async function updateTaskStatusAsAssistant(
       itemName: `Task status updated to ${status}`,
       beforeData,
       afterData,
-      userId: task.userId, // The task owner
+      userId: task.userId,
       actor: caller.actor,
       actorId,
       metadata: {
-        updatedFields: ["status", ...(completedAt ? ["completedAt"] : [])],
-        statusChange: `${beforeData.status} → ${status}`,
-        assistantId: actorId, // Store assistant ID in metadata instead
+        updatedFields: ["taskStatus", ...(completedAt ? ["completedAt"] : [])],
+        statusChange: `${beforeData.taskStatus} → ${status}`,
+        assistantId: actorId,
       },
     });
 
@@ -685,7 +919,6 @@ export async function updateTaskArtifacts(
   },
 ): Promise<void> {
   try {
-    // We only need to handle tags for now.
     if (artifacts.tags === undefined || !Array.isArray(artifacts.tags)) {
       logger.warn(
         { taskId },
@@ -704,7 +937,7 @@ export async function updateTaskArtifacts(
         { taskId },
         "Task not found for artifact update, skipping processing",
       );
-      return; // Gracefully handle missing tasks in background processing
+      return;
     }
 
     logger.info(
@@ -712,25 +945,18 @@ export async function updateTaskArtifacts(
       "Updating task with new AI-generated tags.",
     );
 
-    // Get or create tags BEFORE transaction (this is async and requires DB calls)
     let tagList: { id: string; name: string }[] = [];
     if (artifacts.tags && artifacts.tags.length > 0) {
       tagList = await getOrCreateTags(artifacts.tags, task.userId);
     }
 
-    // Execute transaction
     await txManager.withTransaction(async (tx) => {
-      // Clear existing tags for a full replacement
       await tx.tasksTags.delete(eq(tasksTags.taskId, taskId));
-
-      // Insert new tags
       if (tagList.length > 0) {
         for (const tag of tagList) {
           await tx.tasksTags.insert({ taskId, tagId: tag.id });
         }
       }
-
-      // Update the task's timestamp
       await tx.tasks.update(eq(tasks.id, taskId), { updatedAt: new Date() });
     });
   } catch (err) {
@@ -746,7 +972,6 @@ export async function updateTaskArtifacts(
   }
 }
 
-// Delete task function
 export async function deleteTask(
   id: string,
   userId: string,
@@ -756,7 +981,6 @@ export async function deleteTask(
   try {
     logger.info({ taskId: id, userId }, "Starting task deletion process");
 
-    // Get existing task for history
     const existingTask = await db.query.tasks.findFirst({
       where: and(eq(tasks.id, id), eq(tasks.userId, userId)),
     });
@@ -766,21 +990,12 @@ export async function deleteTask(
       throw new NotFoundError("Task");
     }
 
-    // Get task tags before deletion for history
     const taskTags = await getTaskTags(id);
-
-    // Pre-generate history ID for transaction
     const historyId = generateHistoryId();
 
-    // Atomic transaction: delete all DB records and record history together
     await txManager.withTransaction(async (tx) => {
-      // Delete task-tag relationships first
       await tx.tasksTags.delete(eq(tasksTags.taskId, id));
-
-      // Delete the task
       await tx.tasks.delete(and(eq(tasks.id, id), eq(tasks.userId, userId)));
-
-      // Record history for task deletion - atomic with the delete
       await tx.history.insert({
         id: historyId,
         action: "delete",
@@ -797,8 +1012,20 @@ export async function deleteTask(
       });
     });
 
-    // Delete queue job outside transaction (non-critical)
     await db.delete(queueJobs).where(eq(queueJobs.key, `tasks:${id}`));
+
+    // Remove recurring schedule if applicable
+    if (existingTask.scheduleType === "recurring") {
+      try {
+        const scheduler = await getScheduler();
+        await scheduler.remove(getRecurringTaskScheduleKey(id));
+      } catch (err) {
+        logger.warn(
+          { taskId: id, error: err },
+          "Failed to remove schedule during deletion",
+        );
+      }
+    }
 
     return { success: true };
   } catch (error) {
@@ -815,22 +1042,18 @@ export async function deleteTask(
   }
 }
 
-// Get a single task by ID with its tags
 export async function getTaskById(taskId: string, userId: string) {
   try {
-    // Get the task by ID
     const [task] = await db
       .select()
       .from(tasks)
       .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
 
     if (!task) {
-      // Return null instead of throwing an error
       return null;
     }
 
-    // Fetch data in parallel
-    const [taskTagNames, taskCommentsData, childCountResult, lastExecution] =
+    const [taskTagNames, taskCommentsData, childCountResult] =
       await Promise.all([
         getTaskTags(taskId),
         getTaskCommentsWithUsers(taskId, task.userId),
@@ -838,7 +1061,6 @@ export async function getTaskById(taskId: string, userId: string) {
           .select({ value: count() })
           .from(tasks)
           .where(eq(tasks.parentId, taskId)),
-        getLastTaskExecution(taskId),
       ]);
 
     const response = cleanTaskForResponse(
@@ -849,12 +1071,7 @@ export async function getTaskById(taskId: string, userId: string) {
       childCountResult[0]?.value ?? 0,
     );
 
-    return {
-      ...response,
-      lastExecutionStatus: lastExecution?.status ?? null,
-      lastExecutionError: lastExecution?.error ?? null,
-      lastExecutionAt: lastExecution?.completedAt?.toISOString() ?? null,
-    };
+    return response;
   } catch (error) {
     logger.error(
       {
@@ -865,7 +1082,6 @@ export async function getTaskById(taskId: string, userId: string) {
       },
       "Error getting task by ID",
     );
-    // Re-throw unexpected errors
     throw new Error("Failed to fetch task due to an unexpected error");
   }
 }
@@ -917,25 +1133,19 @@ async function getTaskWithTags(taskId: string) {
 
   const taskTagNames = await getTaskTags(taskId);
 
-  return cleanTaskForResponse(task, taskTagNames);
+  return cleanTaskForResponse(task, taskTagNames, task.processingStatus);
 }
 
 /**
  * Builds the common query conditions for finding/counting tasks.
- *
- * @param userId - The ID of the user.
- * @param text - Optional text search (title, description).
- * @param status - Optional task status.
- * @param startDate - Optional start date (due date).
- * @param endDate - Optional end date (due date).
- * @param dueDateStart - Optional start due date filter.
- * @param dueDateEnd - Optional end due date filter.
- * @returns An array of Drizzle SQL conditions.
  */
 function _buildTaskQueryConditions({
   userId,
   text,
-  status,
+  taskStatus,
+  attentionStatus,
+  scheduleType,
+  delegateMode,
   priority,
   startDate,
   endDate,
@@ -944,8 +1154,6 @@ function _buildTaskQueryConditions({
   parentId,
   topLevelOnly,
 }: FindTasksParams): (SQL | undefined)[] {
-  // Return type allowing undefined for clarity before filtering/spreading
-  // Explicitly type the array elements
   const definedConditions: (SQL | undefined)[] = [eq(tasks.userId, userId)];
 
   if (text?.trim()) {
@@ -957,68 +1165,87 @@ function _buildTaskQueryConditions({
     );
   }
 
-  if (status) {
-    definedConditions.push(eq(tasks.status, status));
+  if (taskStatus) {
+    definedConditions.push(eq(tasks.taskStatus, taskStatus));
+  }
+
+  if (attentionStatus) {
+    definedConditions.push(
+      eq(
+        tasks.attentionStatus,
+        attentionStatus as (typeof tasks.attentionStatus.enumValues)[number],
+      ),
+    );
+  }
+
+  if (scheduleType) {
+    definedConditions.push(
+      eq(
+        tasks.scheduleType,
+        scheduleType as (typeof tasks.scheduleType.enumValues)[number],
+      ),
+    );
+  }
+
+  if (delegateMode) {
+    definedConditions.push(
+      eq(
+        tasks.delegateMode,
+        delegateMode as (typeof tasks.delegateMode.enumValues)[number],
+      ),
+    );
   }
 
   if (priority !== undefined) {
     definedConditions.push(eq(tasks.priority, priority));
   }
 
-  // Filter by dueDate (Date object)
   if (startDate) {
-    // Use tasks.dueDate directly. Drizzle knows its type.
-    // isNotNull checks the column is not null, gte compares the value.
     definedConditions.push(
-      and(isNotNull(tasks.dueDate), gte(tasks.dueDate, startDate)),
+      and(isNotNull(tasks.dueAt), gte(tasks.dueAt, startDate)),
     );
   }
 
   if (endDate) {
     const endOfDay = new Date(endDate);
     endOfDay.setHours(23, 59, 59, 999);
-    // Use tasks.dueDate directly.
     definedConditions.push(
-      and(isNotNull(tasks.dueDate), lte(tasks.dueDate, endOfDay)),
+      and(isNotNull(tasks.dueAt), lte(tasks.dueAt, endOfDay)),
     );
   }
 
-  // Additional due date filtering (separate from creation date filtering)
   if (dueDateStart) {
     definedConditions.push(
-      and(isNotNull(tasks.dueDate), gte(tasks.dueDate, dueDateStart)),
+      and(isNotNull(tasks.dueAt), gte(tasks.dueAt, dueDateStart)),
     );
   }
 
   if (dueDateEnd) {
     definedConditions.push(
-      and(isNotNull(tasks.dueDate), lte(tasks.dueDate, dueDateEnd)),
+      and(isNotNull(tasks.dueAt), lte(tasks.dueAt, dueDateEnd)),
     );
   }
 
-  // Filter by parent task
   if (parentId) {
     definedConditions.push(eq(tasks.parentId, parentId));
   } else if (topLevelOnly) {
     definedConditions.push(isNull(tasks.parentId));
   }
 
-  // Return the array including potential undefined values.
-  // The `and(...conditions)` spread in the calling functions handles filtering undefined.
   return definedConditions;
 }
 
 /**
  * Search tasks by text, tags, status, and date range (cursor-based pagination).
- *
- * @param params - {@link FindTasksParams} plus an optional `limit` (default 50).
- * @returns Cursor-paginated response of tasks.
  */
 export async function findTasks({
   userId,
   text,
   tags: tagsList,
-  status,
+  taskStatus,
+  attentionStatus,
+  scheduleType,
+  delegateMode,
   priority,
   startDate,
   endDate,
@@ -1035,7 +1262,10 @@ export async function findTasks({
     const conditions = _buildTaskQueryConditions({
       userId,
       text,
-      status,
+      taskStatus,
+      attentionStatus,
+      scheduleType,
+      delegateMode,
       priority,
       startDate,
       endDate,
@@ -1049,23 +1279,22 @@ export async function findTasks({
     // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: tasks.createdAt,
-      dueDate: tasks.dueDate,
-      status: tasks.status,
+      dueAt: tasks.dueAt,
+      taskStatus: tasks.taskStatus,
       title: tasks.title,
       priority: tasks.priority,
       sortOrder: tasks.sortOrder,
+      updatedAt: tasks.updatedAt,
     };
     const sortColumn = sortColumnMap[sortBy] || tasks.createdAt;
     const orderDir = sortDir === "asc" ? asc : desc;
 
-    // Add cursor condition if paginating
     if (cursor) {
       conditions.push(
         buildCursorCondition(sortColumn, tasks.id, cursor, sortDir),
       );
     }
 
-    // Add tag filter as a subquery condition
     if (tagsList && tagsList.length > 0) {
       conditions.push(
         buildTagFilterCondition(
@@ -1074,11 +1303,12 @@ export async function findTasks({
           tasksTags.tagId,
           tagsList,
           userId,
+          tasks.id,
         ),
       );
     }
 
-    const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+    const fetchLimit = limit + 1;
     const matched = await db
       .select({ id: tasks.id })
       .from(tasks)
@@ -1090,76 +1320,51 @@ export async function findTasks({
     if (finalIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
 
-    // Check hasMore before trimming
     const hasMore = finalIds.length > limit;
     if (hasMore) finalIds = finalIds.slice(0, limit);
 
-    // Fetch full data for the final page of IDs, tags, child counts, and latest agent run status in parallel
-    const [entriesList, tagMap, childCounts, latestAgentRuns] =
-      await Promise.all([
-        db
-          .select()
-          .from(tasks)
-          .where(inArray(tasks.id, finalIds))
-          .orderBy(orderDir(sortColumn), orderDir(tasks.id)),
-        batchGetTags(tasksTags, tasksTags.taskId, tasksTags.tagId, finalIds),
-        db
-          .select({
-            parentId: tasks.parentId,
-            count: count(),
-          })
-          .from(tasks)
-          .where(inArray(tasks.parentId, finalIds))
-          .groupBy(tasks.parentId),
-        // Latest agent run status per task (for active run indicators)
-        db
-          .selectDistinctOn([schema.agentRuns.taskId], {
-            taskId: schema.agentRuns.taskId,
-            status: schema.agentRuns.status,
-          })
-          .from(schema.agentRuns)
-          .where(inArray(schema.agentRuns.taskId, finalIds))
-          .orderBy(schema.agentRuns.taskId, desc(schema.agentRuns.createdAt)),
-      ]);
+    const [entriesList, tagMap, childCounts] = await Promise.all([
+      db
+        .select()
+        .from(tasks)
+        .where(inArray(tasks.id, finalIds))
+        .orderBy(orderDir(sortColumn), orderDir(tasks.id)),
+      batchGetTags(tasksTags, tasksTags.taskId, tasksTags.tagId, finalIds),
+      db
+        .select({
+          parentId: tasks.parentId,
+          count: count(),
+        })
+        .from(tasks)
+        .where(inArray(tasks.parentId, finalIds))
+        .groupBy(tasks.parentId),
+    ]);
 
-    // Build child count map
     const childCountMap = new Map<string, number>();
     for (const row of childCounts) {
       if (row.parentId) childCountMap.set(row.parentId, row.count);
     }
 
-    // Build latest agent run status map
-    const agentRunStatusMap = new Map<string, string>();
-    for (const row of latestAgentRuns) {
-      agentRunStatusMap.set(row.taskId, row.status);
-    }
-
     const items = entriesList.map((task) => {
-      const response = cleanTaskForResponse(
+      return cleanTaskForResponse(
         task,
         tagMap.get(task.id) ?? [],
         task.processingStatus,
         [],
         childCountMap.get(task.id) ?? 0,
       );
-      const latestRunStatus = agentRunStatusMap.get(task.id);
-      if (latestRunStatus) {
-        (response as Record<string, unknown>).latestAgentRunStatus =
-          latestRunStatus;
-      }
-      return response;
     });
 
-    // Build cursor from the last item
     const lastItem = items[items.length - 1];
     // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
       if (sortBy === "title") return item.title;
-      if (sortBy === "dueDate") return item.dueDate;
-      if (sortBy === "status") return item.status;
+      if (sortBy === "dueAt") return item.dueAt;
+      if (sortBy === "taskStatus") return item.taskStatus;
       if (sortBy === "priority") return item.priority;
       if (sortBy === "sortOrder") return item.sortOrder;
-      return item.createdAt; // createdAt formatted as ISO string
+      if (sortBy === "updatedAt") return item.updatedAt;
+      return item.createdAt;
     };
     const nextCursor =
       hasMore && lastItem
@@ -1173,7 +1378,7 @@ export async function findTasks({
         userId,
         text,
         tagsList,
-        status,
+        taskStatus,
         startDate,
         endDate,
         limit,
@@ -1190,15 +1395,15 @@ export async function findTasks({
 
 /**
  * Count tasks matching criteria.
- *
- * @param params - {@link FindTasksParams}.
- * @returns The total count of matching tasks.
  */
 export async function countTasks({
   userId,
   text,
   tags: tagsList,
-  status,
+  taskStatus,
+  attentionStatus,
+  scheduleType,
+  delegateMode,
   priority,
   startDate,
   endDate,
@@ -1211,7 +1416,10 @@ export async function countTasks({
     const conditions = _buildTaskQueryConditions({
       userId,
       text,
-      status,
+      taskStatus,
+      attentionStatus,
+      scheduleType,
+      delegateMode,
       priority,
       startDate,
       endDate,
@@ -1229,6 +1437,7 @@ export async function countTasks({
           tasksTags.tagId,
           tagsList,
           userId,
+          tasks.id,
         ),
       );
     }
@@ -1244,7 +1453,7 @@ export async function countTasks({
         userId,
         text,
         tagsList,
-        status,
+        taskStatus,
         startDate,
         endDate,
         dueDateStart,
@@ -1260,7 +1469,6 @@ export async function countTasks({
 
 /**
  * Runs findTasks and (on first page only) countTasks in parallel.
- * Returns a cursor-paginated response.
  */
 export async function findTasksPaginated(
   params: FindTasksParams & { limit?: number },
@@ -1284,7 +1492,6 @@ export async function findTasksPaginated(
 
 /**
  * Re-processes an existing task by using the existing retry logic.
- * This allows users to refresh processing results without knowing about processing jobs.
  */
 export async function reprocessTask(
   taskId: string,
@@ -1292,13 +1499,11 @@ export async function reprocessTask(
   force: boolean = false,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // 1. Get the existing task to ensure it exists and user has access
     const task = await getTaskById(taskId, userId);
     if (!task) {
       return { success: false, error: "Task not found" };
     }
 
-    // 2. Use the existing retry logic with force parameter to properly handle job deduplication
     const { retryAssetProcessing } = await import("./processing-status.js");
     const result = await retryAssetProcessing("tasks", taskId, userId, force);
 
@@ -1330,29 +1535,127 @@ export async function reprocessTask(
 }
 
 // ============================================================================
-// Agent Run Queries (for task enrichment)
+// Inbox
 // ============================================================================
 
 /**
- * Get paginated agent run history for a task.
+ * Get inbox items — tasks that need user attention.
  */
-export async function getTaskExecutions(
+export async function getInbox(userId: string) {
+  const inboxTasks = await db
+    .select()
+    .from(tasks)
+    .where(and(eq(tasks.userId, userId), ne(tasks.attentionStatus, "none")))
+    .orderBy(desc(tasks.updatedAt));
+
+  // Group by attention_status into sections
+  const sections = {
+    needsReview: [] as typeof inboxTasks,
+    waitingOnYou: [] as typeof inboxTasks,
+    failed: [] as typeof inboxTasks,
+    needsTriage: [] as typeof inboxTasks,
+    urgent: [] as typeof inboxTasks,
+  };
+
+  for (const task of inboxTasks) {
+    switch (task.attentionStatus) {
+      case "needs_review":
+        sections.needsReview.push(task);
+        break;
+      case "awaiting_input":
+        sections.waitingOnYou.push(task);
+        break;
+      case "failed":
+        sections.failed.push(task);
+        break;
+      case "needs_triage":
+        sections.needsTriage.push(task);
+        break;
+      case "urgent":
+        sections.urgent.push(task);
+        break;
+    }
+  }
+
+  // Get tags for all inbox tasks
+  const allIds = inboxTasks.map((t) => t.id);
+  const tagMap =
+    allIds.length > 0
+      ? await batchGetTags(tasksTags, tasksTags.taskId, tasksTags.tagId, allIds)
+      : new Map<string, string[]>();
+
+  const formatInboxTask = (task: (typeof inboxTasks)[number]) => {
+    const reasonTextMap: Record<string, string> = {
+      needs_triage: "New task awaiting triage",
+      awaiting_input: "Agent needs your answer",
+      needs_review: "Agent completed work and needs approval",
+      failed: "Latest run failed",
+      urgent: task.dueAt
+        ? `Due ${formatToISO8601(task.dueAt)}`
+        : "Needs attention",
+    };
+
+    return {
+      taskId: task.id,
+      title: task.title,
+      userId: task.userId,
+      delegateActorId: task.delegateActorId,
+      taskStatus: task.taskStatus,
+      attentionStatus: task.attentionStatus,
+      reasonText: reasonTextMap[task.attentionStatus] ?? "Needs attention",
+      dueAt: task.dueAt ? formatToISO8601(task.dueAt) : null,
+      nextOccurrenceAt: task.nextOccurrenceAt
+        ? formatToISO8601(task.nextOccurrenceAt)
+        : null,
+      latestExecutionStatus: task.latestExecutionStatus,
+      latestResultSummary: task.latestResultSummary,
+      latestErrorSummary: task.latestErrorSummary,
+      reviewStatus: task.reviewStatus,
+      scheduleSummary: task.scheduleSummary,
+      tags: tagMap.get(task.id) ?? [],
+      updatedAt: task.updatedAt ? formatToISO8601(task.updatedAt) : null,
+    };
+  };
+
+  return {
+    sections: {
+      needsReview: sections.needsReview.map(formatInboxTask),
+      waitingOnYou: sections.waitingOnYou.map(formatInboxTask),
+      failed: sections.failed.map(formatInboxTask),
+      needsTriage: sections.needsTriage.map(formatInboxTask),
+      urgent: sections.urgent.map(formatInboxTask),
+    },
+    totalCount: inboxTasks.length,
+  };
+}
+
+// ============================================================================
+// Task Occurrence Queries (for task enrichment)
+// ============================================================================
+
+/**
+ * Get paginated occurrence history for a task.
+ */
+export async function getTaskOccurrences(
   taskId: string,
   userId: string,
   params: { cursor?: string; limit?: number } = {},
-): Promise<CursorPaginatedResponse<typeof agentRuns.$inferSelect>> {
+): Promise<
+  CursorPaginatedResponse<typeof schema.taskOccurrences.$inferSelect>
+> {
+  const taskOccurrences = schema.taskOccurrences;
   const limit = params.limit ?? 20;
 
   const conditions: SQL[] = [
-    eq(agentRuns.taskId, taskId),
-    eq(agentRuns.userId, userId),
+    eq(taskOccurrences.taskId, taskId),
+    eq(taskOccurrences.userId, userId),
   ];
 
   if (params.cursor) {
     conditions.push(
       buildCursorCondition(
-        agentRuns.createdAt,
-        agentRuns.id,
+        taskOccurrences.createdAt,
+        taskOccurrences.id,
         params.cursor,
         "desc",
       ),
@@ -1361,9 +1664,9 @@ export async function getTaskExecutions(
 
   const rows = await db
     .select()
-    .from(agentRuns)
+    .from(taskOccurrences)
     .where(and(...conditions))
-    .orderBy(desc(agentRuns.createdAt), desc(agentRuns.id))
+    .orderBy(desc(taskOccurrences.createdAt), desc(taskOccurrences.id))
     .limit(limit + 1);
 
   const hasMore = rows.length > limit;
@@ -1377,24 +1680,303 @@ export async function getTaskExecutions(
   return { items, nextCursor, hasMore };
 }
 
-/**
- * Get the most recent agent run for a task (for lastExecutionStatus).
- */
-export async function getLastTaskExecution(taskId: string): Promise<{
-  status: string;
-  error: string | null;
-  completedAt: Date | null;
-} | null> {
-  const [row] = await db
-    .select({
-      status: agentRuns.status,
-      error: agentRuns.error,
-      completedAt: agentRuns.completedAt,
-    })
-    .from(agentRuns)
-    .where(eq(agentRuns.taskId, taskId))
-    .orderBy(desc(agentRuns.createdAt))
-    .limit(1);
+// ============================================================================
+// Task Actions (inbox state machine transitions)
+// ============================================================================
 
-  return row ?? null;
+/**
+ * Start immediate execution of a task — creates an occurrence and enqueues it.
+ */
+export async function startTask(
+  taskId: string,
+  userId: string,
+): Promise<{ occurrenceId: string }> {
+  const task = await db.query.tasks.findFirst({
+    where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+    columns: {
+      id: true,
+      delegateActorId: true,
+      delegateMode: true,
+      prompt: true,
+    },
+  });
+  if (!task) throw new NotFoundError("Task");
+
+  const { createTaskOccurrence } = await import("./task-occurrences.js");
+  const occurrence = await createTaskOccurrence({
+    taskId,
+    userId,
+    kind: "manual_run",
+    prompt: task.prompt ?? undefined,
+    executorActorId: task.delegateActorId ?? undefined,
+  });
+
+  await db
+    .update(tasks)
+    .set({
+      taskStatus: "in_progress",
+      latestExecutionStatus: "queued",
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
+
+  return { occurrenceId: occurrence.id };
+}
+
+/**
+ * Retry a failed task — creates a new occurrence as a retry.
+ */
+export async function retryTask(
+  taskId: string,
+  userId: string,
+  editedPrompt?: string,
+): Promise<{ occurrenceId: string }> {
+  const task = await db.query.tasks.findFirst({
+    where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+    columns: {
+      id: true,
+      delegateActorId: true,
+      prompt: true,
+    },
+  });
+  if (!task) throw new NotFoundError("Task");
+
+  const { createTaskOccurrence } = await import("./task-occurrences.js");
+  const occurrence = await createTaskOccurrence({
+    taskId,
+    userId,
+    kind: "manual_run",
+    prompt: editedPrompt ?? task.prompt ?? undefined,
+    executorActorId: task.delegateActorId ?? undefined,
+  });
+
+  await db
+    .update(tasks)
+    .set({
+      attentionStatus: "none",
+      latestExecutionStatus: "queued",
+      latestErrorSummary: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
+
+  return { occurrenceId: occurrence.id };
+}
+
+/**
+ * Cancel the current queued/running occurrence.
+ */
+export async function cancelTaskOccurrence(
+  taskId: string,
+  userId: string,
+): Promise<void> {
+  const task = await db.query.tasks.findFirst({
+    where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+    columns: { id: true },
+  });
+  if (!task) throw new NotFoundError("Task");
+
+  // Cancel any queued/running occurrences
+  const taskOccurrences = schema.taskOccurrences;
+  await db
+    .update(taskOccurrences)
+    .set({ executionStatus: "cancelled" })
+    .where(
+      and(
+        eq(taskOccurrences.taskId, taskId),
+        inArray(taskOccurrences.executionStatus, ["queued", "running"]),
+      ),
+    );
+
+  await db
+    .update(tasks)
+    .set({
+      attentionStatus: "none",
+      latestExecutionStatus: "cancelled",
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
+}
+
+/**
+ * Pause a recurring task — stops future occurrences.
+ */
+export async function pauseTask(taskId: string, userId: string): Promise<void> {
+  const task = await db.query.tasks.findFirst({
+    where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+    columns: { id: true, scheduleType: true },
+  });
+  if (!task) throw new NotFoundError("Task");
+  if (task.scheduleType !== "recurring") {
+    throw new ValidationError("Only recurring tasks can be paused");
+  }
+
+  await db
+    .update(tasks)
+    .set({
+      // Keep scheduleType as 'recurring' but clear nextOccurrenceAt to pause
+      nextOccurrenceAt: null,
+      taskStatus: "blocked",
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
+
+  // Disable the schedule
+  try {
+    const scheduler = await getScheduler();
+    await scheduler.setEnabled(getRecurringTaskScheduleKey(taskId), false);
+  } catch (err) {
+    logger.warn(
+      { taskId, error: err },
+      "Failed to disable schedule (may not exist)",
+    );
+  }
+}
+
+/**
+ * Resume a paused recurring task.
+ */
+export async function resumeTask(
+  taskId: string,
+  userId: string,
+): Promise<void> {
+  const task = await db.query.tasks.findFirst({
+    where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+    columns: {
+      id: true,
+      scheduleType: true,
+      scheduleRule: true,
+      timezone: true,
+    },
+  });
+  if (!task) throw new NotFoundError("Task");
+  if (task.scheduleType !== "recurring") {
+    throw new ValidationError("Only recurring tasks can be resumed");
+  }
+
+  // Compute next occurrence from cron expression
+  const nextOccurrence = task.scheduleRule
+    ? getNextExecutionTime(task.scheduleRule, new Date(), task.timezone)
+    : null;
+
+  await db
+    .update(tasks)
+    .set({
+      taskStatus: "open",
+      nextOccurrenceAt: nextOccurrence,
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
+
+  // Re-enable the schedule
+  try {
+    const scheduler = await getScheduler();
+    await scheduler.setEnabled(getRecurringTaskScheduleKey(taskId), true);
+  } catch (err) {
+    logger.warn(
+      { taskId, error: err },
+      "Failed to re-enable schedule (may not exist)",
+    );
+  }
+}
+
+/**
+ * Approve an agent's completed work.
+ */
+export async function approveTask(
+  taskId: string,
+  userId: string,
+): Promise<void> {
+  const task = await db.query.tasks.findFirst({
+    where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+    columns: { id: true, attentionStatus: true },
+  });
+  if (!task) throw new NotFoundError("Task");
+
+  await db
+    .update(tasks)
+    .set({
+      reviewStatus: "approved",
+      attentionStatus: "none",
+      taskStatus: "completed",
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
+
+  // Update the latest occurrence's review status
+  const taskOccurrences = schema.taskOccurrences;
+  await db
+    .update(taskOccurrences)
+    .set({ reviewStatus: "approved" })
+    .where(
+      and(
+        eq(taskOccurrences.taskId, taskId),
+        eq(taskOccurrences.reviewStatus, "pending"),
+      ),
+    );
+}
+
+/**
+ * Request changes on an agent's completed work.
+ */
+export async function requestChanges(
+  taskId: string,
+  userId: string,
+): Promise<void> {
+  const task = await db.query.tasks.findFirst({
+    where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+    columns: { id: true },
+  });
+  if (!task) throw new NotFoundError("Task");
+
+  await db
+    .update(tasks)
+    .set({
+      reviewStatus: "changes_requested",
+      attentionStatus: "none",
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
+
+  // Update the latest occurrence
+  const taskOccurrences = schema.taskOccurrences;
+  await db
+    .update(taskOccurrences)
+    .set({ reviewStatus: "changes_requested" })
+    .where(
+      and(
+        eq(taskOccurrences.taskId, taskId),
+        eq(taskOccurrences.reviewStatus, "pending"),
+      ),
+    );
+}
+
+/**
+ * Respond to an agent's question (task in awaiting_input state).
+ */
+export async function respondToTask(
+  taskId: string,
+  userId: string,
+  response: string,
+  caller: CallerContext,
+): Promise<void> {
+  const task = await db.query.tasks.findFirst({
+    where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+    columns: { id: true, attentionStatus: true },
+  });
+  if (!task) throw new NotFoundError("Task");
+
+  // Add response as a comment
+  const { createTaskComment } = await import("./taskComments.js");
+  await createTaskComment({ taskId, content: response }, caller);
+
+  // Clear the awaiting_input attention status
+  await db
+    .update(tasks)
+    .set({
+      attentionStatus: "none",
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
 }

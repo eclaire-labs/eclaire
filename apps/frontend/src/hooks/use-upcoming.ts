@@ -1,15 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
+import type { Task } from "@/types/task";
 
 export interface UpcomingItem {
   id: string;
-  sourceType: "task" | "scheduled_action" | "task_series";
   title: string;
   when: string;
-  kind?: string;
-  executionMode?: string;
-  status?: string;
+  scheduleType: string;
+  delegateMode: string;
   linkTo: string;
+}
+
+function taskToUpcomingItem(task: Task): UpcomingItem {
+  const when = task.nextOccurrenceAt ?? task.dueAt ?? task.createdAt;
+  return {
+    id: task.id,
+    title: task.title,
+    when,
+    scheduleType: task.scheduleType,
+    delegateMode: task.delegateMode,
+    linkTo: `/tasks/${task.id}`,
+  };
 }
 
 export function useUpcoming(options?: { limit?: number; enabled?: boolean }) {
@@ -18,12 +29,20 @@ export function useUpcoming(options?: { limit?: number; enabled?: boolean }) {
   const query = useQuery<{ items: UpcomingItem[] }>({
     queryKey: ["upcoming", limit],
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: String(limit) });
-      const res = await apiFetch(`/api/upcoming?${params.toString()}`);
-      return res.json();
+      const params = new URLSearchParams({
+        limit: String(limit),
+        sortBy: "dueAt",
+        sortDir: "asc",
+        dueDateStart: new Date().toISOString(),
+      });
+      const res = await apiFetch(`/api/tasks?${params.toString()}`);
+      if (!res.ok) return { items: [] };
+      const data = await res.json();
+      const tasks: Task[] = data.items ?? data ?? [];
+      return { items: tasks.map(taskToUpcomingItem) };
     },
     enabled: options?.enabled ?? true,
-    refetchInterval: 60_000, // refresh every minute
+    refetchInterval: 60_000,
   });
 
   return {

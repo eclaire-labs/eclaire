@@ -41,12 +41,12 @@ import processMediaJob from "../jobs/mediaProcessor.js";
 import processNoteJob from "../jobs/noteProcessor.js";
 import type { TaskJobData } from "../jobs/taskProcessor.js";
 import processTaskJob from "../jobs/taskProcessor.js";
-import processScheduledAction from "../jobs/scheduledActionProcessor.js";
-import processAgentRunJob from "../jobs/agentRunProcessor.js";
-import processTaskSeriesTick from "../jobs/taskSeriesProcessor.js";
+import processTaskOccurrence from "../jobs/taskOccurrenceProcessor.js";
+import processTaskScheduleTick from "../jobs/taskScheduleTickProcessor.js";
+import processTaskOverdueChecker from "../jobs/taskOverdueCheckerProcessor.js";
 import type {
-  AgentRunJobData,
-  ScheduledActionJobData,
+  TaskOccurrenceJobData,
+  TaskScheduleTickJobData,
 } from "../../lib/queue/types.js";
 import type { BookmarkJobData } from "./bookmarks/index.js";
 
@@ -212,47 +212,49 @@ export async function startDirectDbWorkers(): Promise<void> {
   workers.push(mediaWorker);
   logger.info({ queue: QueueNames.MEDIA_PROCESSING }, "Media worker started");
 
-  // Task execution worker
-  // Scheduled action execution worker
-  const scheduledActionWorker = createDbWorker(
-    QueueNames.SCHEDULED_ACTION_EXECUTION,
-    async (ctx: JobContext<ScheduledActionJobData>) => {
-      await processScheduledAction(ctx);
+  // Task occurrence worker (replaces scheduled action, agent run, and task series workers)
+  const taskOccurrenceWorker = createDbWorker<TaskOccurrenceJobData>(
+    QueueNames.TASK_OCCURRENCE,
+    async (ctx: JobContext<TaskOccurrenceJobData>) => {
+      await processTaskOccurrence(ctx);
     },
     config,
     { concurrency: 1 },
   );
-  workers.push(scheduledActionWorker);
+  workers.push(taskOccurrenceWorker);
   logger.info(
-    { queue: QueueNames.SCHEDULED_ACTION_EXECUTION },
-    "Scheduled action worker started",
+    { queue: QueueNames.TASK_OCCURRENCE },
+    "Task occurrence worker started",
   );
 
-  // Agent run worker
-  const agentRunWorker = createDbWorker<AgentRunJobData>(
-    QueueNames.AGENT_RUN,
-    async (ctx: JobContext<AgentRunJobData>) => {
-      await processAgentRunJob(ctx);
+  // Task schedule tick worker (creates occurrences for recurring tasks)
+  const taskScheduleTickWorker = createDbWorker<TaskScheduleTickJobData>(
+    QueueNames.TASK_SCHEDULE_TICK,
+    async (ctx: JobContext<TaskScheduleTickJobData>) => {
+      await processTaskScheduleTick(ctx);
     },
     config,
     { concurrency: 1 },
   );
-  workers.push(agentRunWorker);
-  logger.info({ queue: QueueNames.AGENT_RUN }, "Agent run worker started");
-
-  // Task series tick worker
-  const taskSeriesWorker = createDbWorker(
-    QueueNames.TASK_SERIES_TICK,
-    async (ctx: JobContext<{ taskSeriesId: string; userId: string }>) => {
-      await processTaskSeriesTick(ctx);
-    },
-    config,
-    { concurrency: 1 },
-  );
-  workers.push(taskSeriesWorker);
+  workers.push(taskScheduleTickWorker);
   logger.info(
-    { queue: QueueNames.TASK_SERIES_TICK },
-    "Task series tick worker started",
+    { queue: QueueNames.TASK_SCHEDULE_TICK },
+    "Task schedule tick worker started",
+  );
+
+  // Task overdue checker worker (marks overdue tasks as urgent)
+  const taskOverdueCheckerWorker = createDbWorker(
+    QueueNames.TASK_OVERDUE_CHECKER,
+    async (ctx: JobContext) => {
+      await processTaskOverdueChecker(ctx);
+    },
+    config,
+    { concurrency: 1 },
+  );
+  workers.push(taskOverdueCheckerWorker);
+  logger.info(
+    { queue: QueueNames.TASK_OVERDUE_CHECKER },
+    "Task overdue checker worker started",
   );
 
   // Start all workers

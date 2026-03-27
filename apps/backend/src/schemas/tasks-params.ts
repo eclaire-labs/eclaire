@@ -10,184 +10,149 @@ export const TaskSchema = z
       .min(1, "Title is required")
       .meta({
         description: "Title of the task",
-        examples: [
-          "Complete project documentation",
-          "Review code changes",
-          "Schedule team meeting",
-        ],
+        examples: ["Complete project documentation", "Review code changes"],
       }),
 
-    description: z
-      .string()
-      .optional()
-      .nullable()
-      .meta({
-        description: "Optional detailed description of the task",
-        examples: [
-          "Write comprehensive documentation for the new API endpoints",
-          "Review and approve pull request #123",
-        ],
-      }),
+    description: z.string().optional().nullable().meta({
+      description: "Optional detailed description of the task",
+    }),
 
-    status: z
-      .enum(["backlog", "open", "in-progress", "completed", "cancelled"])
+    prompt: z.string().optional().nullable().meta({
+      description: "Agent instructions — what the delegate should do",
+    }),
+
+    taskStatus: z
+      .enum(["open", "in_progress", "blocked", "completed", "cancelled"])
       .optional()
       .default("open")
       .meta({
         description: "Current status of the task",
-        examples: ["backlog", "open", "in-progress", "completed", "cancelled"],
       }),
 
-    priority: z
-      .number()
-      .int()
-      .min(0)
-      .max(4)
-      .optional()
-      .default(0)
-      .meta({
-        description:
-          "Priority level: 0=none, 1=urgent, 2=high, 3=medium, 4=low",
-        examples: [0, 1, 2, 3, 4],
-      }),
+    priority: z.number().int().min(0).max(4).optional().default(0).meta({
+      description: "Priority level: 0=none, 1=urgent, 2=high, 3=medium, 4=low",
+    }),
 
-    dueDate: z
+    dueAt: z
       .string()
       .optional()
       .nullable()
       .meta({
-        description: "Due date for the task in ISO 8601 format",
-        examples: ["2025-06-15T09:00:00Z", "2025-12-31T23:59:59Z", null],
+        description: "Due date in ISO 8601 format",
+        examples: ["2025-06-15T09:00:00Z"],
       }),
 
-    assigneeActorId: z
-      .string()
-      .nullable()
-      .optional()
-      .meta({
-        description: "Actor ID assigned to this task",
-        examples: ["user123", "agent123"],
-      }),
+    delegateActorId: z.string().nullable().optional().meta({
+      description: "Actor ID delegated to work on this task",
+    }),
 
-    executionMode: z
-      .enum(["manual", "agent_assists", "agent_handles"])
+    delegateMode: z
+      .enum(["manual", "assist", "handle"])
       .optional()
       .default("manual")
       .meta({
         description:
-          "How the task is executed: manual (human only), agent_assists (agent works, user reviews), agent_handles (agent auto-completes)",
-        examples: ["manual", "agent_assists", "agent_handles"],
+          "How the task is executed: manual (human only), assist (agent works, user reviews), handle (agent auto-completes)",
       }),
 
-    processingEnabled: z
-      .boolean()
-      .default(true)
-      .meta({
-        description: "Whether background processing is enabled for this task",
-        examples: [true, false],
-      }),
-
-    tags: z
-      .array(z.string())
-      .default([])
-      .meta({
-        description: "Array of tags to categorize the task",
-        examples: [
-          ["urgent", "development"],
-          ["meeting", "planning"],
-          ["documentation", "api"],
-        ],
-      }),
+    attentionStatus: z
+      .enum([
+        "none",
+        "needs_triage",
+        "awaiting_input",
+        "needs_review",
+        "failed",
+        "urgent",
+      ])
+      .optional()
+      .default("none")
+      .meta({ description: "Inbox attention routing status" }),
 
     reviewStatus: z
-      .enum(["pending", "accepted", "rejected"])
-      .default("pending")
-      .meta({
-        description: "Review status of the task",
-        examples: ["pending", "accepted", "rejected"],
-      }),
-
-    flagColor: z
-      .enum(["red", "yellow", "orange", "green", "blue"])
-      .nullable()
+      .enum(["none", "pending", "approved", "changes_requested"])
       .optional()
-      .meta({
-        description: "Flag color for the task (optional)",
-        examples: ["red", "green", "blue"],
-      }),
+      .default("none")
+      .meta({ description: "Review status" }),
 
-    isPinned: z
-      .boolean()
-      .default(false)
-      .meta({
-        description: "Whether the task is pinned",
-        examples: [true, false],
-      }),
-
-    sortOrder: z
-      .number()
+    scheduleType: z
+      .enum(["none", "one_time", "recurring"])
       .optional()
-      .nullable()
-      .meta({
-        description: "Manual sort order (fractional). Null uses default sort.",
-        examples: [1.0, 1.5, 2.0],
-      }),
+      .default("none")
+      .meta({ description: "Schedule type" }),
 
-    parentId: z
+    scheduleRule: z
       .string()
       .optional()
       .nullable()
       .meta({
-        description:
-          "ID of the parent task for sub-tasks (single-level nesting only)",
-        examples: ["task_abc123", null],
+        description: "Cron expression (recurring) or ISO datetime (one_time)",
+        examples: ["0 9 * * 1", "2025-06-15T09:00:00Z"],
       }),
 
-    isRecurring: z
-      .boolean()
-      .default(false)
-      .meta({
-        description: "Whether the task should recur based on a schedule",
-        examples: [true, false],
-      }),
-
-    cronExpression: z
+    scheduleSummary: z
       .string()
       .optional()
       .nullable()
-      .meta({
-        description:
-          "Cron expression for task recurrence (required when isRecurring is true)",
-        examples: ["0 9 * * 1", "0 0 1 * *", "0 18 * * 5"],
-      }),
+      .meta({ description: "Human-readable schedule description" }),
 
-    recurrenceEndDate: z
+    timezone: z
       .string()
       .optional()
       .nullable()
-      .meta({
-        description: "Optional end date for task recurrence in ISO 8601 format",
-        examples: ["2025-12-31T23:59:59Z", null],
-      }),
+      .meta({ description: "IANA timezone" }),
 
-    recurrenceLimit: z
+    maxOccurrences: z
       .number()
       .int()
       .positive()
       .nullable()
       .optional()
-      .meta({
-        description: "Maximum number of executions for recurring tasks",
-        examples: [5, 10, 100],
-      }),
+      .meta({ description: "Maximum number of occurrences" }),
 
-    runImmediately: z
+    deliveryTargets: z
+      .any()
+      .optional()
+      .nullable()
+      .meta({ description: "Where to deliver results (JSONB)" }),
+
+    sourceConversationId: z
+      .string()
+      .optional()
+      .nullable()
+      .meta({ description: "Originating conversation ID" }),
+
+    processingEnabled: z
+      .boolean()
+      .default(true)
+      .meta({ description: "Whether AI tag generation is enabled" }),
+
+    tags: z
+      .array(z.string())
+      .default([])
+      .meta({ description: "Tags to categorize the task" }),
+
+    flagColor: z
+      .enum(["red", "yellow", "orange", "green", "blue"])
+      .nullable()
+      .optional()
+      .meta({ description: "Flag color (optional)" }),
+
+    isPinned: z
       .boolean()
       .default(false)
-      .meta({
-        description: "Whether to execute the first recurring job immediately",
-        examples: [true, false],
-      }),
+      .meta({ description: "Whether the task is pinned" }),
+
+    sortOrder: z
+      .number()
+      .optional()
+      .nullable()
+      .meta({ description: "Manual sort order (fractional)" }),
+
+    parentId: z
+      .string()
+      .optional()
+      .nullable()
+      .meta({ description: "Parent task ID for sub-tasks" }),
   })
   .meta({
     ref: "TaskRequest",
@@ -202,156 +167,102 @@ export const PartialTaskSchema = makePartial(TaskSchema).meta({
 
 // Task search/filter parameters schema
 export const TaskSearchParamsSchema = z.object({
-  text: z
-    .string()
-    .optional()
-    .meta({
-      description: "Search text to match against task title and description",
-      examples: ["documentation", "meeting", "urgent"],
-    }),
+  text: z.string().optional().meta({
+    description: "Search text to match against task title and description",
+  }),
 
-  tags: z
-    .string()
-    .optional()
-    .meta({
-      description: "Comma-separated list of tags to filter by",
-      examples: ["urgent,development", "meeting,planning"],
-    }),
+  tags: z.string().optional().meta({
+    description: "Comma-separated list of tags to filter by",
+  }),
 
-  status: z
-    .enum(["backlog", "open", "in-progress", "completed", "cancelled"])
+  taskStatus: z
+    .enum(["open", "in_progress", "blocked", "completed", "cancelled"])
     .optional()
-    .meta({
-      description: "Filter tasks by status",
-      examples: ["backlog", "in-progress", "completed", "cancelled"],
-    }),
+    .meta({ description: "Filter tasks by status" }),
 
-  priority: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .max(4)
+  attentionStatus: z
+    .enum([
+      "none",
+      "needs_triage",
+      "awaiting_input",
+      "needs_review",
+      "failed",
+      "urgent",
+    ])
     .optional()
-    .meta({
-      description:
-        "Filter tasks by priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low",
-      examples: [1, 2, 3],
-    }),
+    .meta({ description: "Filter by attention status" }),
 
-  startDate: z
-    .string()
+  scheduleType: z
+    .enum(["none", "one_time", "recurring"])
     .optional()
-    .meta({
-      description:
-        "Filter tasks with due dates on or after this date (YYYY-MM-DD format)",
-      examples: ["2025-06-01", "2025-12-31"],
-    }),
+    .meta({ description: "Filter by schedule type" }),
 
-  endDate: z
-    .string()
+  delegateMode: z
+    .enum(["manual", "assist", "handle"])
     .optional()
-    .meta({
-      description:
-        "Filter tasks with due dates on or before this date (YYYY-MM-DD format)",
-      examples: ["2025-06-30", "2025-12-31"],
-    }),
+    .meta({ description: "Filter by delegate mode" }),
 
-  limit: z.coerce
-    .number()
-    .min(1)
-    .max(200)
-    .optional()
-    .default(50)
-    .meta({
-      description: "Maximum number of tasks to return per page",
-      examples: [10, 25, 50],
-    }),
+  priority: z.coerce.number().int().min(0).max(4).optional().meta({
+    description: "Filter by priority",
+  }),
 
-  cursor: z
-    .string()
-    .optional()
-    .meta({
-      description:
-        "Opaque cursor for pagination. Pass the nextCursor from the previous response to get the next page.",
-      examples: ["eyJzIjoiMjAyNS0wMS0wMVQwMDowMDowMFoiLCJpZCI6InRza18xMjMifQ"],
-    }),
+  startDate: z.string().optional().meta({
+    description: "Filter tasks created on or after this date (YYYY-MM-DD)",
+  }),
+
+  endDate: z.string().optional().meta({
+    description: "Filter tasks created on or before this date (YYYY-MM-DD)",
+  }),
+
+  limit: z.coerce.number().min(1).max(200).optional().default(50).meta({
+    description: "Maximum number of tasks to return per page",
+  }),
+
+  cursor: z.string().optional().meta({
+    description: "Opaque cursor for pagination",
+  }),
 
   sortBy: z
-    .enum(["createdAt", "dueDate", "status", "title", "priority", "sortOrder"])
+    .enum([
+      "createdAt",
+      "dueAt",
+      "taskStatus",
+      "title",
+      "priority",
+      "sortOrder",
+      "updatedAt",
+    ])
     .optional()
     .default("createdAt")
-    .meta({
-      description: "Field to sort tasks by",
-      examples: [
-        "createdAt",
-        "dueDate",
-        "status",
-        "title",
-        "priority",
-        "sortOrder",
-      ],
-    }),
+    .meta({ description: "Field to sort tasks by" }),
 
-  sortDir: z
-    .enum(["asc", "desc"])
-    .optional()
-    .default("desc")
-    .meta({
-      description: "Sort direction",
-      examples: ["asc", "desc"],
-    }),
+  sortDir: z.enum(["asc", "desc"]).optional().default("desc").meta({
+    description: "Sort direction",
+  }),
 
-  dueDateStart: z
-    .string()
-    .optional()
-    .meta({
-      description:
-        "Filter tasks with due dates on or after this date (YYYY-MM-DD format)",
-      examples: ["2025-06-01", "2025-12-31"],
-    }),
+  dueDateStart: z.string().optional().meta({
+    description: "Filter tasks with due dates on or after this date",
+  }),
 
-  dueDateEnd: z
-    .string()
-    .optional()
-    .meta({
-      description:
-        "Filter tasks with due dates on or before this date (YYYY-MM-DD format)",
-      examples: ["2025-06-30", "2025-12-31"],
-    }),
+  dueDateEnd: z.string().optional().meta({
+    description: "Filter tasks with due dates on or before this date",
+  }),
 
-  parentId: z
-    .string()
-    .optional()
-    .meta({
-      description:
-        "Filter tasks by parent task ID (returns sub-tasks of the specified parent)",
-      examples: ["tsk_abc123"],
-    }),
+  parentId: z.string().optional().meta({
+    description: "Filter sub-tasks of the specified parent",
+  }),
 
-  topLevelOnly: z
-    .enum(["true", "false"])
-    .optional()
-    .meta({
-      description:
-        "When 'true', only return top-level tasks (exclude sub-tasks). Ignored if parentId is set.",
-      examples: ["true"],
-    }),
+  topLevelOnly: z.enum(["true", "false"]).optional().meta({
+    description: "Only return top-level tasks (exclude sub-tasks)",
+  }),
 });
 
 // Task comment creation schema
 export const TaskCommentCreateSchema = z
   .object({
-    content: z
-      .string()
-      .min(1, "Comment content is required")
-      .meta({
-        description: "Content of the comment",
-        examples: [
-          "This task is completed and tested successfully.",
-          "I've reviewed the requirements and started implementation.",
-          "The AI assistant has processed this task.",
-        ],
-      }),
+    content: z.string().min(1, "Comment content is required").meta({
+      description: "Content of the comment",
+    }),
   })
   .meta({
     ref: "TaskCommentCreate",
@@ -361,16 +272,9 @@ export const TaskCommentCreateSchema = z
 // Task comment update schema
 export const TaskCommentUpdateSchema = z
   .object({
-    content: z
-      .string()
-      .min(1, "Comment content is required")
-      .meta({
-        description: "Updated content of the comment",
-        examples: [
-          "This task is completed and tested successfully (updated).",
-          "I've reviewed the requirements and started implementation (edited).",
-        ],
-      }),
+    content: z.string().min(1, "Comment content is required").meta({
+      description: "Updated content of the comment",
+    }),
   })
   .meta({
     ref: "TaskCommentUpdate",
@@ -382,7 +286,6 @@ export const TaskIdParam = z
   .object({
     id: z.string().meta({
       description: "Unique identifier of the task",
-      examples: ["clxyz123abc", "task_12345"],
     }),
   })
   .meta({
@@ -394,7 +297,6 @@ export const CommentIdParam = z
   .object({
     commentId: z.string().meta({
       description: "Unique identifier of the comment",
-      examples: ["tc-xyz123abc", "tc-comment456"],
     }),
   })
   .meta({

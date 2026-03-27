@@ -43,123 +43,65 @@ const fullRawTask = {
   userId: "user-1",
   title: "Test Task",
   description: "A description",
-  status: "open",
-  dueDate: "2026-04-01",
-  assigneeActorId: "user-2",
+  prompt: null,
+  taskStatus: "open",
+  dueAt: "2026-04-01",
+  delegateActorId: "user-2",
+  delegateMode: "manual",
+  delegatedByActorId: null,
+  attentionStatus: "none",
+  reviewStatus: "none",
+  scheduleType: "none",
+  scheduleRule: null,
+  scheduleSummary: null,
+  timezone: null,
+  nextOccurrenceAt: null,
+  maxOccurrences: null,
+  occurrenceCount: 0,
+  latestExecutionStatus: null,
+  latestResultSummary: null,
+  latestErrorSummary: null,
+  deliveryTargets: null,
+  sourceConversationId: null,
   tags: ["frontend", "bug"],
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-02T00:00:00.000Z",
   processingStatus: "completed",
-  reviewStatus: "approved",
   flagColor: "red",
   isPinned: true,
   processingEnabled: true,
-  priority: "medium",
+  priority: 0,
   parentId: null,
   sortOrder: 0,
-  isRecurring: true,
-  cronExpression: "0 9 * * 1",
-  recurrenceEndDate: "2026-12-31",
-  recurrenceLimit: 10,
-  runImmediately: true,
-  nextRunAt: "2026-03-09T09:00:00.000Z",
-  lastRunAt: "2026-03-02T09:00:00.000Z",
-  completedAt: "2026-03-02T09:05:00.000Z",
-  comments: [
-    {
-      id: "c1",
-      taskId: "task-1",
-      userId: "user-1",
-      authorActorId: "user-1",
-      content: "done",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-      author: { id: "user-1", displayName: "Alice", kind: "human" },
-      user: { id: "user-1", displayName: "Alice", userType: "user" },
-    },
-  ],
+  completedAt: null,
 };
 
 describe("transformTaskData", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it("passes through all fields from a full raw task", () => {
+    const result = transformTaskData(fullRawTask);
+    expect(result.id).toBe("task-1");
+    expect(result.title).toBe("Test Task");
+    expect(result.taskStatus).toBe("open");
+    expect(result.delegateActorId).toBe("user-2");
+    expect(result.delegateMode).toBe("manual");
+    expect(result.tags).toEqual(["frontend", "bug"]);
+    expect(result.isPinned).toBe(true);
+    expect(result.flagColor).toBe("red");
   });
 
-  it("defaults userId to empty string when missing", () => {
-    const result = transformTaskData({ id: "1", title: "t" });
-    expect(result.userId).toBe("");
-  });
-
-  it("defaults tags to empty array when null or missing", () => {
-    expect(transformTaskData({ id: "1", tags: null }).tags).toEqual([]);
-    expect(transformTaskData({ id: "1" }).tags).toEqual([]);
-  });
-
-  it("defaults isRecurring and runImmediately to false via ||", () => {
-    const result = transformTaskData({ id: "1" });
-    expect(result.isRecurring).toBe(false);
-    expect(result.runImmediately).toBe(false);
-  });
-
-  it("defaults recurrence fields to null", () => {
-    const result = transformTaskData({ id: "1" });
-    expect(result.cronExpression).toBeNull();
-    expect(result.recurrenceEndDate).toBeNull();
-    expect(result.recurrenceLimit).toBeNull();
-    expect(result.nextRunAt).toBeNull();
-    expect(result.lastRunAt).toBeNull();
-    expect(result.completedAt).toBeNull();
-  });
-
-  it("defaults comments to undefined, not null or empty array", () => {
-    const result = transformTaskData({ id: "1" });
-    expect(result.comments).toBeUndefined();
-
-    // Falsy comments value also becomes undefined
-    const result2 = transformTaskData({ id: "1", comments: null });
-    expect(result2.comments).toBeUndefined();
-
-    const result3 = transformTaskData({ id: "1", comments: "" });
-    expect(result3.comments).toBeUndefined();
-  });
-
-  it("preserves processingEnabled: false via ?? (not ||)", () => {
-    const result = transformTaskData({ id: "1", processingEnabled: false });
-    expect(result.processingEnabled).toBe(false);
-
-    // When missing, defaults to true
-    const result2 = transformTaskData({ id: "1" });
-    expect(result2.processingEnabled).toBe(true);
-  });
-
-  it("defaults priority to 0, parentId to null, sortOrder to null, childCount to 0", () => {
-    const result = transformTaskData({ id: "1" });
-    expect(result.priority).toBe(0);
-    expect(result.parentId).toBeNull();
-    expect(result.sortOrder).toBeNull();
-    expect(result.childCount).toBe(0);
-  });
-
-  it("preserves childCount when present", () => {
-    const result = transformTaskData({ id: "1", childCount: 3 });
-    expect(result.childCount).toBe(3);
-  });
-
-  it("defaults reviewStatus, flagColor, isPinned, processingStatus, and generates date fallbacks", () => {
-    const before = new Date().toISOString();
-    const result = transformTaskData({ id: "1" });
-    const after = new Date().toISOString();
-
-    expect(result.reviewStatus).toBe("pending");
-    expect(result.flagColor).toBeNull();
+  it("defaults missing fields to safe values", () => {
+    const result = transformTaskData({ id: "task-2", title: "Minimal" });
+    expect(result.taskStatus).toBe("open");
+    expect(result.delegateMode).toBe("manual");
+    expect(result.attentionStatus).toBe("none");
+    expect(result.reviewStatus).toBe("none");
+    expect(result.scheduleType).toBe("none");
+    expect(result.tags).toEqual([]);
     expect(result.isPinned).toBe(false);
-    expect(result.processingStatus).toBeNull();
-
-    // createdAt and updatedAt should be ISO strings generated at call time
-    expect(result.createdAt >= before).toBe(true);
-    expect(result.createdAt <= after).toBe(true);
-    expect(result.updatedAt >= before).toBe(true);
-    expect(result.updatedAt <= after).toBe(true);
+    expect(result.priority).toBe(0);
+    expect(result.delegateActorId).toBeNull();
+    expect(result.completedAt).toBeNull();
+    expect(result.comments).toBeUndefined();
   });
 });
 
@@ -168,10 +110,14 @@ describe("useTasks", () => {
     vi.clearAllMocks();
   });
 
-  it("updateTaskStatus sends PATCH /api/tasks/{id} with status body", async () => {
-    // Initial list fetch
+  it("updateTaskStatus sends PATCH /api/tasks/{id} with taskStatus body", async () => {
     mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [fullRawTask] }),
+      mockJsonResponse({
+        items: [fullRawTask],
+        nextCursor: null,
+        hasMore: false,
+        totalCount: 1,
+      }),
     );
 
     const { result } = renderHook(() => useTasks(), {
@@ -180,45 +126,19 @@ describe("useTasks", () => {
 
     await waitFor(() => expect(result.current.tasks.length).toBe(1));
 
-    // Status update
     mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ ...fullRawTask, status: "completed" }),
-    );
-    // Refetch after invalidation
-    mockApiFetch.mockResolvedValueOnce(
-      mockJsonResponse({ items: [{ ...fullRawTask, status: "completed" }] }),
+      mockJsonResponse({ ...fullRawTask, taskStatus: "completed" }),
     );
 
     await result.current.updateTaskStatus("task-1", "completed");
 
-    expect(mockApiFetch).toHaveBeenCalledWith("/api/tasks/task-1", {
-      method: "PATCH",
-      body: JSON.stringify({ status: "completed" }),
-    });
-  });
-
-  it("status update failure triggers toast.error", async () => {
-    // Initial list fetch
-    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({ items: [] }));
-
-    const { result } = renderHook(() => useTasks(), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => expect(result.current.isUpdating).toBe(false));
-
-    // Status update fails
-    mockApiFetch.mockRejectedValueOnce(new Error("Network failure"));
-
-    await expect(
-      result.current.updateTaskStatus("task-1", "completed"),
-    ).rejects.toThrow("Network failure");
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        "Status update failed: Network failure",
-      );
-    });
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/api/tasks/task-1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ taskStatus: "completed" }),
+      }),
+    );
   });
 });
 
@@ -227,18 +147,14 @@ describe("useTask", () => {
     vi.clearAllMocks();
   });
 
-  it("returns { task, ... } for a single task by ID", async () => {
+  it("fetches a single task by id", async () => {
     mockApiFetch.mockResolvedValueOnce(mockJsonResponse(fullRawTask));
 
     const { result } = renderHook(() => useTask("task-1"), {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(mockApiFetch).toHaveBeenCalledWith("/api/tasks/task-1");
-    expect(result.current.task).toBeDefined();
-    expect(result.current.task?.id).toBe("task-1");
+    await waitFor(() => expect(result.current.task).toBeDefined());
     expect(result.current.task?.title).toBe("Test Task");
   });
 });

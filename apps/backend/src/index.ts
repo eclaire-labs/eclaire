@@ -38,6 +38,8 @@ import {
   startScheduler,
   stopScheduler,
 } from "./lib/queue/index.js";
+import { getScheduler } from "./lib/queue/scheduler.js";
+import { QueueNames } from "./lib/queue/queue-names.js";
 import { channelRegistry } from "./lib/channels.js";
 
 import { registerApiRoutes } from "./routes/registry.js";
@@ -263,6 +265,17 @@ const start = async () => {
       if (SERVICE_ROLE === "all") {
         logger.info("Starting scheduler for recurring tasks");
         await startScheduler();
+
+        // Register system-level cron: overdue task checker (every 15 minutes)
+        const scheduler = await getScheduler();
+        await scheduler.upsert({
+          key: "system:task-overdue-checker",
+          queue: QueueNames.TASK_OVERDUE_CHECKER,
+          cron: "0 */15 * * * *",
+          data: {},
+          enabled: true,
+        });
+        logger.info("Registered task overdue checker cron");
       }
     }
 

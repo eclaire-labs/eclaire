@@ -22,20 +22,23 @@ export function buildTagFilterCondition(
   // biome-ignore lint/suspicious/noExplicitAny: junction table type varies per entity
   junctionTable: any,
   // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
-  entityIdCol: any,
+  junctionEntityIdCol: any,
   // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
   tagIdCol: any,
   tagsList: string[],
   userId: string,
+  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
+  outerEntityIdCol?: any,
 ): SQL {
+  const outerCol = outerEntityIdCol ?? junctionEntityIdCol;
   return inArray(
-    entityIdCol,
+    outerCol,
     db
-      .select({ id: entityIdCol })
+      .select({ id: junctionEntityIdCol })
       .from(junctionTable)
       .innerJoin(tags, eq(tagIdCol, tags.id))
       .where(and(eq(tags.userId, userId), inArray(tags.name, tagsList)))
-      .groupBy(entityIdCol)
+      .groupBy(junctionEntityIdCol)
       .having(sql`COUNT(DISTINCT ${tags.name}) = ${tagsList.length}`),
   );
 }

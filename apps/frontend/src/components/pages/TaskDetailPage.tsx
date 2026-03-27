@@ -55,7 +55,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useActors } from "@/hooks/use-actors";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
-import { useScheduledActions } from "@/hooks/use-scheduled-actions";
 import { useTask, useTasks } from "@/hooks/use-tasks";
 import { apiFetch } from "@/lib/api-client";
 import {
@@ -65,8 +64,8 @@ import {
 } from "@/lib/api-comments";
 import { formatDate } from "@/lib/date-utils";
 import type { TaskComment, TaskStatus } from "@/types/task";
-import { AgentRunHistory } from "./tasks/AgentRunHistory";
 import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
+import { TaskExecutionHistory } from "./tasks/TaskExecutionHistory";
 import {
   PRIORITY_OPTIONS,
   STATUS_OPTIONS,
@@ -104,11 +103,6 @@ export function TaskDetailClient() {
   const [isReviewing, setIsReviewing] = useState(false);
   const { actors } = useActors(["human", "agent"]);
 
-  // Linked automations (scheduled actions related to this task)
-  const { data: linkedActions } = useScheduledActions({
-    relatedTaskId: taskId,
-  });
-
   // Comments state
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -120,11 +114,11 @@ export function TaskDetailClient() {
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
-    status: "open" as TaskStatus,
+    taskStatus: "open" as TaskStatus,
     priority: 0,
-    dueDate: "",
-    assigneeActorId: "",
-    executionMode: "manual" as "manual" | "agent_assists" | "agent_handles",
+    dueAt: "",
+    delegateActorId: "",
+    delegateMode: "manual" as "manual" | "assist" | "handle",
     tags: [] as string[],
   });
 
@@ -134,11 +128,11 @@ export function TaskDetailClient() {
       setEditForm({
         title: task.title,
         description: task.description || "",
-        status: task.status,
+        taskStatus: task.taskStatus,
         priority: task.priority ?? 0,
-        dueDate: task.dueDate || "",
-        assigneeActorId: task.assigneeActorId || "",
-        executionMode: task.executionMode || "manual",
+        dueAt: task.dueAt || "",
+        delegateActorId: task.delegateActorId || "",
+        delegateMode: task.delegateMode || "manual",
         tags: [...task.tags],
       });
     }
@@ -222,10 +216,11 @@ export function TaskDetailClient() {
     if (!task) return;
     try {
       setIsReviewing(true);
-      const reviewStatus = action === "approve" ? "accepted" : "rejected";
+      const reviewStatus =
+        action === "approve" ? "approved" : "changes_requested";
       const updates: Record<string, string> = { reviewStatus };
       if (action === "approve") {
-        updates.status = "completed";
+        updates.taskStatus = "completed";
       }
       const response = await apiFetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
@@ -275,11 +270,11 @@ export function TaskDetailClient() {
       setEditForm({
         title: task.title,
         description: task.description || "",
-        status: task.status,
+        taskStatus: task.taskStatus,
         priority: task.priority ?? 0,
-        dueDate: task.dueDate || "",
-        assigneeActorId: task.assigneeActorId || "",
-        executionMode: task.executionMode || "manual",
+        dueAt: task.dueAt || "",
+        delegateActorId: task.delegateActorId || "",
+        delegateMode: task.delegateMode || "manual",
         tags: [...task.tags],
       });
     }
@@ -294,13 +289,11 @@ export function TaskDetailClient() {
       const updateData = {
         title: editForm.title.trim(),
         description: editForm.description.trim() || null,
-        status: editForm.status,
+        taskStatus: editForm.taskStatus,
         priority: editForm.priority,
-        dueDate: editForm.dueDate
-          ? new Date(editForm.dueDate).toISOString()
-          : null,
-        assigneeActorId: editForm.assigneeActorId.trim() || null,
-        executionMode: editForm.executionMode,
+        dueAt: editForm.dueAt ? new Date(editForm.dueAt).toISOString() : null,
+        delegateActorId: editForm.delegateActorId.trim() || null,
+        delegateMode: editForm.delegateMode,
         tags: editForm.tags,
       };
 
@@ -490,7 +483,7 @@ export function TaskDetailClient() {
               <CardContent className="pt-6 flex-1 flex flex-col">
                 {/* Agent Review Banner */}
                 {task.reviewStatus === "pending" &&
-                  task.executionMode !== "manual" && (
+                  task.delegateMode !== "manual" && (
                     <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 p-4">
                       <div className="flex items-start gap-3">
                         <Bot className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
@@ -554,13 +547,6 @@ export function TaskDetailClient() {
                     </div>
                   )}
                 </div>
-
-                {/* Agent Run History — only show if task involves agents */}
-                {task.executionMode !== "manual" && (
-                  <div className="pt-6 border-t">
-                    <AgentRunHistory taskId={task.id} />
-                  </div>
-                )}
 
                 {/* Comments Section */}
                 <div className="space-y-4 pt-6 border-t">
@@ -772,9 +758,9 @@ export function TaskDetailClient() {
                     <Label>Status</Label>
                     {isEditing ? (
                       <Select
-                        value={editForm.status}
+                        value={editForm.taskStatus}
                         onValueChange={(value: TaskStatus) =>
-                          handleInputChange("status", value)
+                          handleInputChange("taskStatus", value)
                         }
                       >
                         <SelectTrigger className="w-fit min-w-32">
@@ -789,7 +775,7 @@ export function TaskDetailClient() {
                         </SelectContent>
                       </Select>
                     ) : (
-                      renderStatusBadge(task.status)
+                      renderStatusBadge(task.taskStatus)
                     )}
                   </div>
 
@@ -828,16 +814,14 @@ export function TaskDetailClient() {
                     <Label>Due Date</Label>
                     {isEditing ? (
                       <DueDatePicker
-                        value={editForm.dueDate}
-                        onChange={(value) =>
-                          handleInputChange("dueDate", value)
-                        }
+                        value={editForm.dueAt}
+                        onChange={(value) => handleInputChange("dueAt", value)}
                       />
                     ) : (
                       <p className="text-muted-foreground flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        {task.dueDate
-                          ? formatDate(task.dueDate)
+                        {task.dueAt
+                          ? formatDate(task.dueAt)
                           : "No due date set"}
                       </p>
                     )}
@@ -848,19 +832,19 @@ export function TaskDetailClient() {
                     {isEditing ? (
                       <ActorPicker
                         actors={actors}
-                        value={editForm.assigneeActorId || null}
+                        value={editForm.delegateActorId || null}
                         allowUnassigned
                         placeholder="Search people and agents"
                         searchPlaceholder="Search people and agents..."
                         onChange={(value) =>
-                          handleInputChange("assigneeActorId", value ?? "")
+                          handleInputChange("delegateActorId", value ?? "")
                         }
                       />
                     ) : (
                       <p className="text-muted-foreground">
-                        {task.assigneeActorId
+                        {task.delegateActorId
                           ? (() => {
-                              const assigneeId = task.assigneeActorId;
+                              const assigneeId = task.delegateActorId;
                               const assignee = actors.find(
                                 (actor) => actor.id === assigneeId,
                               );
@@ -882,34 +866,30 @@ export function TaskDetailClient() {
                         Execution Mode
                       </Label>
                       <Select
-                        value={editForm.executionMode}
+                        value={editForm.delegateMode}
                         onValueChange={(
-                          value: "manual" | "agent_assists" | "agent_handles",
-                        ) => handleInputChange("executionMode", value)}
+                          value: "manual" | "assist" | "handle",
+                        ) => handleInputChange("delegateMode", value)}
                       >
                         <SelectTrigger className="w-fit min-w-32">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="manual">Manual</SelectItem>
-                          <SelectItem value="agent_assists">
-                            Agent Assists
-                          </SelectItem>
-                          <SelectItem value="agent_handles">
-                            Agent Handles
-                          </SelectItem>
+                          <SelectItem value="assist">Agent Assists</SelectItem>
+                          <SelectItem value="handle">Agent Handles</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   ) : (
-                    task.executionMode !== "manual" && (
+                    task.delegateMode !== "manual" && (
                       <div>
                         <Label className="flex items-center gap-2">
                           <Bot className="h-4 w-4" />
                           Execution Mode
                         </Label>
                         <Badge variant="outline" className="mt-1">
-                          {task.executionMode === "agent_assists"
+                          {task.delegateMode === "assist"
                             ? "Agent Assists"
                             : "Agent Handles"}
                         </Badge>
@@ -955,7 +935,7 @@ export function TaskDetailClient() {
                       </div>
 
                       {/* Completion Date - Only show when task is completed */}
-                      {task.status === "completed" && task.completedAt && (
+                      {task.taskStatus === "completed" && task.completedAt && (
                         <div>
                           <Label className="flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -1012,7 +992,9 @@ export function TaskDetailClient() {
                           ) : (
                             <div className="space-y-1">
                               {subTasks.map((sub) => {
-                                const statusCfg = getStatusConfig(sub.status);
+                                const statusCfg = getStatusConfig(
+                                  sub.taskStatus,
+                                );
                                 return (
                                   <button
                                     type="button"
@@ -1032,13 +1014,13 @@ export function TaskDetailClient() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         const nextStatus =
-                                          sub.status === "completed"
+                                          sub.taskStatus === "completed"
                                             ? "open"
                                             : "completed";
                                         updateSubTaskStatus(sub.id, nextStatus);
                                       }}
                                     >
-                                      {getStatusIcon(sub.status)}
+                                      {getStatusIcon(sub.taskStatus)}
                                     </button>
                                     <span className="text-sm truncate flex-1">
                                       {sub.title}
@@ -1056,56 +1038,25 @@ export function TaskDetailClient() {
                         </div>
                       )}
 
-                      {/* Linked Automations */}
-                      {linkedActions && linkedActions.length > 0 && (
-                        <div>
-                          <Label className="flex items-center gap-2">
-                            <Zap className="h-4 w-4" />
-                            Linked Automations
-                          </Label>
-                          <div className="space-y-1 mt-1">
-                            {linkedActions.map((action) => (
-                              <Link
-                                key={action.id}
-                                to="/automations/$id"
-                                params={{ id: action.id }}
-                                className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-muted transition-colors"
-                              >
-                                {action.kind === "agent_run" ? (
-                                  <Bot className="h-3 w-3 text-muted-foreground" />
-                                ) : (
-                                  <Bell className="h-3 w-3 text-muted-foreground" />
-                                )}
-                                <span className="truncate flex-1">
-                                  {action.title}
-                                </span>
-                                <Badge
-                                  variant={
-                                    action.status === "active"
-                                      ? "default"
-                                      : "secondary"
-                                  }
-                                  className="text-xs"
-                                >
-                                  {action.status}
-                                </Badge>
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Parent Series */}
-                      {task.taskSeriesId && (
+                      {/* Schedule Info */}
+                      {task.scheduleType !== "none" && task.scheduleSummary && (
                         <div>
                           <Label className="flex items-center gap-2">
                             <RefreshCw className="h-4 w-4" />
-                            Part of Series
+                            Schedule
                           </Label>
                           <p className="text-sm text-muted-foreground mt-1">
-                            This task was created by a recurring series.
+                            {task.scheduleSummary}
                           </p>
                         </div>
+                      )}
+
+                      {/* Execution History */}
+                      {task.delegateMode !== "manual" && (
+                        <TaskExecutionHistory
+                          taskId={task.id}
+                          isRecurring={task.scheduleType === "recurring"}
+                        />
                       )}
 
                       <div>

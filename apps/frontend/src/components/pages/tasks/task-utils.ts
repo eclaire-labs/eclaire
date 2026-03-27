@@ -4,9 +4,9 @@ import {
   ArrowUp,
   CheckCircle2,
   Circle,
-  Inbox,
   Loader2,
   Minus,
+  ShieldAlert,
   XCircle,
 } from "lucide-react";
 import { createElement } from "react";
@@ -17,23 +17,23 @@ import type { TaskStatus } from "@/types/task";
 // ---------------------------------------------------------------------------
 
 const statusConfigs = {
-  backlog: {
-    label: "Backlog",
-    icon: Inbox,
-    iconClass: "text-muted-foreground",
-    badgeClass: "bg-muted text-muted-foreground border-border border-dashed",
-  },
   open: {
     label: "Not Started",
     icon: Circle,
     iconClass: "text-muted-foreground",
     badgeClass: "bg-secondary text-secondary-foreground border-border",
   },
-  "in-progress": {
+  in_progress: {
     label: "In Progress",
     icon: Loader2,
     iconClass: "text-info animate-spin",
     badgeClass: "bg-info/10 text-info border-info/30",
+  },
+  blocked: {
+    label: "Blocked",
+    icon: ShieldAlert,
+    iconClass: "text-warning",
+    badgeClass: "bg-warning/10 text-warning border-warning/30",
   },
   completed: {
     label: "Completed",
@@ -65,17 +65,17 @@ export function getStatusIcon(
   });
 }
 
-/** Cycle: backlog->not-started->in-progress->completed->not-started.
- *  cancelled->not-started (re-activate). */
+/** Cycle: open -> in_progress -> completed -> open.
+ *  blocked -> open, cancelled -> open (re-activate). */
 export function getNextStatus(current: TaskStatus): TaskStatus {
   switch (current) {
-    case "backlog":
-      return "open";
     case "open":
-      return "in-progress";
-    case "in-progress":
+      return "in_progress";
+    case "in_progress":
       return "completed";
     case "completed":
+      return "open";
+    case "blocked":
       return "open";
     case "cancelled":
       return "open";
@@ -85,9 +85,9 @@ export function getNextStatus(current: TaskStatus): TaskStatus {
 }
 
 export const STATUS_OPTIONS = [
-  { value: "backlog", label: "Backlog" },
   { value: "open", label: "Not Started" },
-  { value: "in-progress", label: "In Progress" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "blocked", label: "Blocked" },
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },
 ] as const;

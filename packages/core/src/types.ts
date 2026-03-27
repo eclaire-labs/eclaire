@@ -37,14 +37,60 @@ export const JOB_STATUSES = [
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
 export const TASK_STATUSES = [
-  "backlog",
   "open",
-  "in-progress",
+  "in_progress",
+  "blocked",
   "completed",
   "cancelled",
-  "blocked",
 ] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export const TASK_DELEGATE_MODES = ["manual", "assist", "handle"] as const;
+export type TaskDelegateMode = (typeof TASK_DELEGATE_MODES)[number];
+
+export const TASK_ATTENTION_STATUSES = [
+  "none",
+  "needs_triage",
+  "awaiting_input",
+  "needs_review",
+  "failed",
+  "urgent",
+] as const;
+export type TaskAttentionStatus = (typeof TASK_ATTENTION_STATUSES)[number];
+
+export const TASK_REVIEW_STATUSES = [
+  "none",
+  "pending",
+  "approved",
+  "changes_requested",
+] as const;
+export type TaskReviewStatus = (typeof TASK_REVIEW_STATUSES)[number];
+
+export const TASK_SCHEDULE_TYPES = ["none", "one_time", "recurring"] as const;
+export type TaskScheduleType = (typeof TASK_SCHEDULE_TYPES)[number];
+
+export const TASK_OCCURRENCE_KINDS = [
+  "manual_run",
+  "scheduled_run",
+  "recurring_run",
+  "reminder",
+  "review_run",
+] as const;
+export type TaskOccurrenceKind = (typeof TASK_OCCURRENCE_KINDS)[number];
+
+export const TASK_OCCURRENCE_EXECUTION_STATUSES = [
+  "idle",
+  "scheduled",
+  "queued",
+  "running",
+  "awaiting_input",
+  "awaiting_review",
+  "failed",
+  "completed",
+  "cancelled",
+] as const;
+export type TaskOccurrenceExecutionStatus =
+  (typeof TASK_OCCURRENCE_EXECUTION_STATUSES)[number];
 
 export const TASK_PRIORITIES = [0, 1, 2, 3, 4] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];

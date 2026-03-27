@@ -29,16 +29,31 @@ import { CREATE_STATUS_OPTIONS, PRIORITY_OPTIONS } from "./task-utils";
 
 const INITIAL_TASK: Omit<Task, "id"> = {
   title: "",
-  description: "",
-  status: "open",
-  dueDate: "",
-  assigneeActorId: null,
-  executionMode: "manual",
+  description: null,
+  prompt: null,
+  taskStatus: "open",
+  dueAt: null,
+  delegateActorId: null,
+  delegateMode: "manual",
+  delegatedByActorId: null,
+  attentionStatus: "none",
+  reviewStatus: "none",
+  scheduleType: "none",
+  scheduleRule: null,
+  scheduleSummary: null,
+  timezone: null,
+  nextOccurrenceAt: null,
+  maxOccurrences: null,
+  occurrenceCount: 0,
+  latestExecutionStatus: null,
+  latestResultSummary: null,
+  latestErrorSummary: null,
+  deliveryTargets: null,
+  sourceConversationId: null,
   tags: [],
   createdAt: "",
   updatedAt: "",
   userId: "",
-  reviewStatus: "pending",
   flagColor: null,
   isPinned: false,
   processingEnabled: true,
@@ -46,13 +61,6 @@ const INITIAL_TASK: Omit<Task, "id"> = {
   parentId: null,
   sortOrder: null,
   processingStatus: null,
-  isRecurring: false,
-  cronExpression: null,
-  recurrenceEndDate: null,
-  recurrenceLimit: null,
-  runImmediately: false,
-  nextRunAt: null,
-  lastRunAt: null,
   completedAt: null,
 };
 
@@ -78,7 +86,7 @@ export function CreateTaskDialog({
 }: CreateTaskDialogProps) {
   const [task, setTask] = useState<Omit<Task, "id">>({
     ...INITIAL_TASK,
-    assigneeActorId: defaultAssigneeId ?? null,
+    delegateActorId: defaultAssigneeId ?? null,
     userId: "",
     parentId: parentId ?? null,
   });
@@ -86,7 +94,7 @@ export function CreateTaskDialog({
   const reset = (assigneeId?: string) =>
     setTask({
       ...INITIAL_TASK,
-      assigneeActorId: assigneeId ?? defaultAssigneeId ?? null,
+      delegateActorId: assigneeId ?? defaultAssigneeId ?? null,
       userId: "",
       parentId: parentId ?? null,
     });
@@ -153,9 +161,9 @@ export function CreateTaskDialog({
               <div className="space-y-2">
                 <Label htmlFor="new-status">Status</Label>
                 <Select
-                  value={task.status}
+                  value={task.taskStatus}
                   onValueChange={(value) =>
-                    setTask({ ...task, status: value as TaskStatus })
+                    setTask({ ...task, taskStatus: value as TaskStatus })
                   }
                 >
                   <SelectTrigger id="new-status">
@@ -193,9 +201,9 @@ export function CreateTaskDialog({
               <div className="space-y-2">
                 <Label htmlFor="new-due-date">Due Date</Label>
                 <DueDatePicker
-                  value={task.dueDate || null}
+                  value={task.dueAt || null}
                   onChange={(value) =>
-                    setTask({ ...task, dueDate: value ?? "" })
+                    setTask({ ...task, dueAt: value ?? null })
                   }
                 />
               </div>
@@ -207,14 +215,14 @@ export function CreateTaskDialog({
                 <ActorPicker
                   id="new-assignee"
                   actors={assigneeOptions}
-                  value={task.assigneeActorId ?? null}
+                  value={task.delegateActorId ?? null}
                   allowUnassigned
                   placeholder="Search people and agents"
                   searchPlaceholder="Search people and agents..."
                   onChange={(value) =>
                     setTask({
                       ...task,
-                      assigneeActorId: value,
+                      delegateActorId: value,
                     })
                   }
                 />

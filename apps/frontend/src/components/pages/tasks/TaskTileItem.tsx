@@ -87,7 +87,7 @@ export function TaskTileItem({
   allAssignees,
   currentUser,
 }: TaskTileItemProps) {
-  const assigneeId = task.assigneeActorId;
+  const assigneeId = task.delegateActorId;
   const assignee = allAssignees.find((a) => a.id === assigneeId);
 
   return (
@@ -114,18 +114,18 @@ export function TaskTileItem({
                   </span>
                 )}
               </CardTitle>
-              {task.executionMode !== "manual" ? (
+              {task.delegateMode !== "manual" ? (
                 <Badge
                   variant="outline"
                   className="text-xs shrink-0 flex items-center gap-1 py-0"
                   title={
-                    task.executionMode === "agent_assists"
+                    task.delegateMode === "assist"
                       ? "Agent assists — output requires review"
                       : "Agent handles — runs autonomously"
                   }
                 >
                   <Bot className="h-3 w-3" />
-                  {task.executionMode === "agent_assists" ? "Assists" : "Auto"}
+                  {task.delegateMode === "assist" ? "Assists" : "Auto"}
                 </Badge>
               ) : (
                 assignee?.userType === "assistant" && (
@@ -140,10 +140,10 @@ export function TaskTileItem({
               )}
             </div>
             <CardDescription className="flex items-center text-xs">
-              {task.dueDate ? (
+              {task.dueAt ? (
                 <span className="flex items-center text-muted-foreground">
                   <CalendarDays className="mr-1 h-3 w-3" />{" "}
-                  {formatDate(task.dueDate)}
+                  {formatDate(task.dueAt)}
                 </span>
               ) : (
                 <span className="flex items-center text-muted-foreground italic">
@@ -151,8 +151,8 @@ export function TaskTileItem({
                 </span>
               )}
               <div className="ml-2">
-                {task.latestAgentRunStatus === "running" ||
-                task.latestAgentRunStatus === "queued" ? (
+                {task.latestExecutionStatus === "running" ||
+                task.latestExecutionStatus === "queued" ? (
                   <span title="Agent is working on this task">
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
                   </span>
@@ -219,17 +219,18 @@ export function TaskTileItem({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() =>
-                    onStatusChange(task.id, task.status as TaskStatus)
+                    onStatusChange(task.id, task.taskStatus as TaskStatus)
                   }
                 >
                   {getStatusIcon(
-                    getNextStatus(task.status as TaskStatus),
+                    getNextStatus(task.taskStatus as TaskStatus),
                     "mr-2 h-4 w-4",
                   )}
                   Mark{" "}
                   {
-                    getStatusConfig(getNextStatus(task.status as TaskStatus))
-                      .label
+                    getStatusConfig(
+                      getNextStatus(task.taskStatus as TaskStatus),
+                    ).label
                   }
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -281,9 +282,9 @@ export function TaskTileItem({
           <div className="flex items-center gap-2">
             <Badge
               variant="outline"
-              className={`${getStatusConfig(task.status).badgeClass} whitespace-nowrap`}
+              className={`${getStatusConfig(task.taskStatus).badgeClass} whitespace-nowrap`}
             >
-              {getStatusConfig(task.status).label}
+              {getStatusConfig(task.taskStatus).label}
             </Badge>
             {getPriorityIcon(task.priority) && (
               <span className="flex items-center">

@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import {
@@ -6,21 +6,19 @@ import {
   AlertTriangle,
   AudioWaveform,
   BookMarked,
-  Calendar,
   Clock,
   FileText,
   Flag,
   History,
   Home,
   ImageIcon,
+  Inbox,
   ListTodo,
   Notebook,
   Pin,
-  RefreshCw,
   Search,
   Upload,
   Users,
-  Zap,
 } from "lucide-react";
 import {
   type ReactNode,
@@ -77,8 +75,8 @@ import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, ContentLink, Message } from "@/types/message";
 import { convertToToolCallSummary } from "@/types/message";
 
-// Define navigation items outside the component for better structure
-const navigation = [
+// Base navigation items — inbox badge is injected dynamically
+const baseNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Processing", href: "/processing", icon: Activity },
   { name: "Upload", href: "/upload", icon: Upload, separator: true },
@@ -87,18 +85,29 @@ const navigation = [
   { name: "Due Now", href: "/all/due-now", icon: AlertTriangle },
   { name: "Pinned", href: "/all/pinned", icon: Pin },
   { name: "Flagged", href: "/all/flagged", icon: Flag },
-  { name: "Tasks", href: "/tasks", icon: ListTodo, separator: true },
-  { name: "Upcoming", href: "/upcoming", icon: Calendar },
-  { name: "By Actor", href: "/by-actor", icon: Users },
+  { name: "Inbox", href: "/inbox", icon: Inbox, separator: true },
+  { name: "Tasks", href: "/tasks", icon: ListTodo },
   { name: "Notes", href: "/notes", icon: Notebook },
   { name: "Bookmarks", href: "/bookmarks", icon: BookMarked },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Photos", href: "/photos", icon: ImageIcon },
   { name: "Media", href: "/media", icon: AudioWaveform },
   { name: "History", href: "/history", icon: History },
-  { name: "Automations", href: "/automations", icon: Zap, separator: true },
-  { name: "Task Series", href: "/task-series", icon: RefreshCw },
 ];
+
+function useInboxCount() {
+  return useQuery<{ totalCount: number }>({
+    queryKey: ["inbox-count"],
+    queryFn: async () => {
+      const res = await apiFetch("/api/tasks/inbox");
+      if (!res.ok) return { totalCount: 0 };
+      const data = await res.json();
+      return { totalCount: data.totalCount ?? 0 };
+    },
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+  });
+}
 
 interface MainLayoutClientProps {
   children: ReactNode;
@@ -110,6 +119,16 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { data: inboxCount } = useInboxCount();
+  const navigation = useMemo(
+    () =>
+      baseNavigation.map((item) =>
+        item.href === "/inbox"
+          ? { ...item, badge: inboxCount?.totalCount }
+          : item,
+      ),
+    [inboxCount?.totalCount],
+  );
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantFullScreen, setAssistantFullScreen] = useState(false);
   const [preAttachedAssets, setPreAttachedAssets] = useState<AssetReference[]>(

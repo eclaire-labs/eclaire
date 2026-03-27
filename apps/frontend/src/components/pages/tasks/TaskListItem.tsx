@@ -81,10 +81,10 @@ export function TaskListItem({
   allAssignees,
   currentUser,
 }: TaskListItemProps) {
-  const assigneeId = task.assigneeActorId;
+  const assigneeId = task.delegateActorId;
   const assignee = allAssignees.find((a) => a.id === assigneeId);
 
-  const statusConfig = getStatusConfig(task.status);
+  const statusConfig = getStatusConfig(task.taskStatus);
 
   return (
     <TableRow
@@ -100,16 +100,16 @@ export function TaskListItem({
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-full"
-            title={`Current: ${task.status}. Click to change.`}
+            title={`Current: ${task.taskStatus}. Click to change.`}
             onClick={(e) => {
               e.stopPropagation();
-              onStatusChange(task.id, task.status as TaskStatus);
+              onStatusChange(task.id, task.taskStatus as TaskStatus);
             }}
           >
-            {getStatusIcon(task.status)}
+            {getStatusIcon(task.taskStatus)}
           </Button>
-          {task.latestAgentRunStatus === "running" ||
-          task.latestAgentRunStatus === "queued" ? (
+          {task.latestExecutionStatus === "running" ||
+          task.latestExecutionStatus === "queued" ? (
             <div
               className="absolute -top-1 -right-1"
               title="Agent is working on this task"
@@ -142,18 +142,18 @@ export function TaskListItem({
               {task.childCount}
             </span>
           )}
-          {task.executionMode !== "manual" && (
+          {task.delegateMode !== "manual" && (
             <Badge
               variant="outline"
               className="text-xs font-normal flex-shrink-0 gap-1 py-0"
               title={
-                task.executionMode === "agent_assists"
+                task.delegateMode === "assist"
                   ? "Agent assists — output requires review"
                   : "Agent handles — runs autonomously"
               }
             >
               <Bot className="h-3 w-3" />
-              {task.executionMode === "agent_assists" ? "Assists" : "Auto"}
+              {task.delegateMode === "assist" ? "Assists" : "Auto"}
             </Badge>
           )}
         </div>
@@ -216,7 +216,7 @@ export function TaskListItem({
         </div>
       </TableCell>
       <TableCell className="hidden sm:table-cell text-sm text-muted-foreground align-middle">
-        {formatDate(task.dueDate)}
+        {formatDate(task.dueAt)}
       </TableCell>
       <TableCell className="hidden lg:table-cell align-middle">
         <div className="flex flex-wrap gap-1">
@@ -289,16 +289,16 @@ export function TaskListItem({
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
-                  onStatusChange(task.id, task.status as TaskStatus)
+                  onStatusChange(task.id, task.taskStatus as TaskStatus)
                 }
               >
                 {getStatusIcon(
-                  getNextStatus(task.status as TaskStatus),
+                  getNextStatus(task.taskStatus as TaskStatus),
                   "mr-2 h-4 w-4",
                 )}
                 Mark{" "}
                 {
-                  getStatusConfig(getNextStatus(task.status as TaskStatus))
+                  getStatusConfig(getNextStatus(task.taskStatus as TaskStatus))
                     .label
                 }
               </DropdownMenuItem>

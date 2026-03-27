@@ -72,25 +72,21 @@ export interface DeliveryTarget {
   ref?: string;
 }
 
-export interface ScheduledActionJobData extends JobData {
-  scheduledActionId: string;
-  executionId: string;
+export interface TaskOccurrenceJobData extends JobData {
+  occurrenceId: string;
+  taskId: string;
   userId: string;
-  kind: "reminder" | "agent_run";
+  kind: string;
+  executorActorId: string;
   prompt: string;
-  title: string;
-  deliveryTargets: DeliveryTarget[];
+  deliveryTargets?: DeliveryTarget[];
   sourceConversationId?: string;
-  agentActorId?: string;
   scheduledFor?: Date;
 }
 
-export interface AgentRunJobData extends JobData {
-  agentRunId: string;
+export interface TaskScheduleTickJobData extends JobData {
   taskId: string;
   userId: string;
-  executorActorId: string;
-  prompt: string;
 }
 
 // --- Queue Adapter Interface ---
@@ -102,7 +98,7 @@ export interface QueueAdapter {
   enqueueNote(data: NoteJobData): Promise<void>;
   enqueueTask(data: TaskJobData): Promise<void>;
   enqueueMedia(data: MediaJobData): Promise<void>;
-  enqueueScheduledAction(data: ScheduledActionJobData): Promise<void>;
-  enqueueAgentRun(data: AgentRunJobData): Promise<void>;
+  enqueueTaskOccurrence(data: TaskOccurrenceJobData): Promise<void>;
+  enqueueTaskScheduleTick(data: TaskScheduleTickJobData): Promise<void>;
   close(): Promise<void>;
 }

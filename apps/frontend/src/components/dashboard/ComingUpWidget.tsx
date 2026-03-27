@@ -1,6 +1,5 @@
 /**
- * Dashboard widget showing the next upcoming items across
- * tasks, scheduled actions, and task series.
+ * Dashboard widget showing upcoming tasks (due dates, scheduled occurrences).
  */
 
 import { Link } from "@tanstack/react-router";
@@ -35,23 +34,23 @@ function formatNextTime(dateStr: string): string {
 }
 
 function ItemIcon({ item }: { item: UpcomingItem }) {
-  if (item.sourceType === "task") {
-    return <CheckSquare className="h-3.5 w-3.5 text-blue-500 shrink-0" />;
+  if (item.scheduleType === "recurring") {
+    return <RefreshCw className="h-3.5 w-3.5 text-green-500 shrink-0" />;
   }
-  if (item.sourceType === "scheduled_action") {
-    return item.kind === "agent_run" ? (
-      <Bot className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-    ) : (
-      <Bell className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-    );
+  if (item.delegateMode !== "manual") {
+    return <Bot className="h-3.5 w-3.5 text-purple-500 shrink-0" />;
   }
-  return <RefreshCw className="h-3.5 w-3.5 text-green-500 shrink-0" />;
+  if (item.scheduleType === "one_time") {
+    return <Bell className="h-3.5 w-3.5 text-amber-500 shrink-0" />;
+  }
+  return <CheckSquare className="h-3.5 w-3.5 text-blue-500 shrink-0" />;
 }
 
 function UpcomingRow({ item }: { item: UpcomingItem }) {
   return (
     <Link
-      to={item.linkTo}
+      to="/tasks/$id"
+      params={{ id: item.id }}
       className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted transition-colors"
     >
       <ItemIcon item={item} />
@@ -90,18 +89,15 @@ export function ComingUpWidget() {
           ) : (
             <div className="space-y-0.5">
               {items.map((item) => (
-                <UpcomingRow
-                  key={`${item.sourceType}-${item.id}`}
-                  item={item}
-                />
+                <UpcomingRow key={item.id} item={item} />
               ))}
             </div>
           )}
         </div>
         <div className="pt-4 mt-auto">
-          <Link to="/upcoming">
+          <Link to="/tasks">
             <Button variant="outline" size="sm" className="w-full">
-              View All Upcoming
+              View All Tasks
             </Button>
           </Link>
         </div>

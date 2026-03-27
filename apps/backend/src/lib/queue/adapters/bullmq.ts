@@ -16,8 +16,9 @@ import type {
   MediaJobData,
   NoteJobData,
   QueueAdapter,
-  ScheduledActionJobData,
   TaskJobData,
+  TaskOccurrenceJobData,
+  TaskScheduleTickJobData,
 } from "../types.js";
 
 export interface BullMQAdapterConfig {
@@ -140,34 +141,33 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
       );
     },
 
-    async enqueueScheduledAction(data: ScheduledActionJobData): Promise<void> {
+    async enqueueTaskOccurrence(data: TaskOccurrenceJobData): Promise<void> {
       const queue: Queue | null = queueManager.getQueue(
-        QueueNames.SCHEDULED_ACTION_EXECUTION,
+        QueueNames.TASK_OCCURRENCE,
       );
       if (!queue) {
         logger.error(
-          { queueName: QueueNames.SCHEDULED_ACTION_EXECUTION },
+          { queueName: QueueNames.TASK_OCCURRENCE },
           "Queue not available",
         );
-        throw new Error("Scheduled action queue not available");
+        throw new Error("Task occurrence queue not available");
       }
 
       const requestId = getRequestId();
-      const jobId = `scheduled-action:${data.scheduledActionId}`;
+      const jobId = `task-occurrence:${data.occurrenceId}`;
 
-      // Calculate delay from scheduledFor
       const delay = data.scheduledFor
         ? Math.max(0, data.scheduledFor.getTime() - Date.now())
         : 0;
 
       await queue.add(
-        "process-scheduled-action",
+        "process-task-occurrence",
         {
           ...data,
           requestId,
           __metadata: {
-            assetType: "scheduled_action",
-            assetId: data.scheduledActionId,
+            assetType: "task_occurrence",
+            assetId: data.occurrenceId,
             userId: data.userId,
           },
         },
@@ -176,18 +176,49 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
 
       logger.info(
         {
-          scheduledActionId: data.scheduledActionId,
+          occurrenceId: data.occurrenceId,
+          taskId: data.taskId,
           userId: data.userId,
-          queue: QueueNames.SCHEDULED_ACTION_EXECUTION,
+          queue: QueueNames.TASK_OCCURRENCE,
           jobId,
           delay,
         },
-        "Scheduled action enqueued to Redis",
+        "Task occurrence enqueued to Redis",
       );
     },
 
-    async enqueueAgentRun(): Promise<void> {
-      throw new Error("Agent run enqueue not supported in BullMQ adapter");
+    async enqueueTaskScheduleTick(
+      data: TaskScheduleTickJobData,
+    ): Promise<void> {
+      const queue: Queue | null = queueManager.getQueue(
+        QueueNames.TASK_SCHEDULE_TICK,
+      );
+      if (!queue) {
+        logger.error(
+          { queueName: QueueNames.TASK_SCHEDULE_TICK },
+          "Queue not available",
+        );
+        throw new Error("Task schedule tick queue not available");
+      }
+
+      const requestId = getRequestId();
+      const jobId = `task-schedule-tick:${data.taskId}:${Date.now()}`;
+
+      await queue.add(
+        "process-task-schedule-tick",
+        { ...data, requestId },
+        { jobId },
+      );
+
+      logger.info(
+        {
+          taskId: data.taskId,
+          userId: data.userId,
+          queue: QueueNames.TASK_SCHEDULE_TICK,
+          jobId,
+        },
+        "Task schedule tick enqueued to Redis",
+      );
     },
 
     async close(): Promise<void> {

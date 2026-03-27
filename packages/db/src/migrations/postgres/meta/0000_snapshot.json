@@ -1,5 +1,5 @@
 {
-  "id": "6d92e306-59e5-4d6c-96d8-fb631c32cd45",
+  "id": "3cbbd844-405a-4d1a-96fe-1cc2b343a5c6",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -556,228 +556,6 @@
           "columnsFrom": ["owner_user_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.agent_runs": {
-      "name": "agent_runs",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "task_id": {
-          "name": "task_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "requested_by_actor_id": {
-          "name": "requested_by_actor_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "executor_actor_id": {
-          "name": "executor_actor_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "agent_run_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'queued'"
-        },
-        "prompt": {
-          "name": "prompt",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "started_at": {
-          "name": "started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "duration_ms": {
-          "name": "duration_ms",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "output": {
-          "name": "output",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "result_summary": {
-          "name": "result_summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "token_usage": {
-          "name": "token_usage",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "metadata": {
-          "name": "metadata",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "agent_runs_task_id_created_at_idx": {
-          "name": "agent_runs_task_id_created_at_idx",
-          "columns": [
-            {
-              "expression": "task_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "agent_runs_user_id_created_at_idx": {
-          "name": "agent_runs_user_id_created_at_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "agent_runs_status_idx": {
-          "name": "agent_runs_status_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "agent_runs_executor_actor_id_idx": {
-          "name": "agent_runs_executor_actor_id_idx",
-          "columns": [
-            {
-              "expression": "executor_actor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "agent_runs_task_id_tasks_id_fk": {
-          "name": "agent_runs_task_id_tasks_id_fk",
-          "tableFrom": "agent_runs",
-          "tableTo": "tasks",
-          "columnsFrom": ["task_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "agent_runs_user_id_users_id_fk": {
-          "name": "agent_runs_user_id_users_id_fk",
-          "tableFrom": "agent_runs",
-          "tableTo": "users",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "agent_runs_requested_by_actor_id_actors_id_fk": {
-          "name": "agent_runs_requested_by_actor_id_actors_id_fk",
-          "tableFrom": "agent_runs",
-          "tableTo": "actors",
-          "columnsFrom": ["requested_by_actor_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "agent_runs_executor_actor_id_actors_id_fk": {
-          "name": "agent_runs_executor_actor_id_actors_id_fk",
-          "tableFrom": "agent_runs",
-          "tableTo": "actors",
-          "columnsFrom": ["executor_actor_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -4605,416 +4383,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.scheduled_action_executions": {
-      "name": "scheduled_action_executions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "scheduled_action_id": {
-          "name": "scheduled_action_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "scheduled_for": {
-          "name": "scheduled_for",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "started_at": {
-          "name": "started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "scheduled_action_execution_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "output": {
-          "name": "output",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "delivery_result": {
-          "name": "delivery_result",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "metadata": {
-          "name": "metadata",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "sa_executions_action_id_created_at_idx": {
-          "name": "sa_executions_action_id_created_at_idx",
-          "columns": [
-            {
-              "expression": "scheduled_action_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "sa_executions_user_id_created_at_idx": {
-          "name": "sa_executions_user_id_created_at_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "sa_executions_status_idx": {
-          "name": "sa_executions_status_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "scheduled_action_executions_scheduled_action_id_scheduled_actions_id_fk": {
-          "name": "scheduled_action_executions_scheduled_action_id_scheduled_actions_id_fk",
-          "tableFrom": "scheduled_action_executions",
-          "tableTo": "scheduled_actions",
-          "columnsFrom": ["scheduled_action_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "scheduled_action_executions_user_id_users_id_fk": {
-          "name": "scheduled_action_executions_user_id_users_id_fk",
-          "tableFrom": "scheduled_action_executions",
-          "tableTo": "users",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.scheduled_actions": {
-      "name": "scheduled_actions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "scheduled_action_kind",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "scheduled_action_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'active'"
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prompt": {
-          "name": "prompt",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "trigger_type": {
-          "name": "trigger_type",
-          "type": "scheduled_action_trigger_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "run_at": {
-          "name": "run_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cron_expression": {
-          "name": "cron_expression",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "timezone": {
-          "name": "timezone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "start_at": {
-          "name": "start_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "end_at": {
-          "name": "end_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "max_runs": {
-          "name": "max_runs",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "run_count": {
-          "name": "run_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "delivery_targets": {
-          "name": "delivery_targets",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[{\"type\":\"notification_channels\"}]'::jsonb"
-        },
-        "source_conversation_id": {
-          "name": "source_conversation_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "agent_actor_id": {
-          "name": "agent_actor_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "related_task_id": {
-          "name": "related_task_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_run_at": {
-          "name": "last_run_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "next_run_at": {
-          "name": "next_run_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "scheduled_actions_user_id_status_idx": {
-          "name": "scheduled_actions_user_id_status_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "scheduled_actions_user_id_next_run_at_idx": {
-          "name": "scheduled_actions_user_id_next_run_at_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "next_run_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "scheduled_actions_status_next_run_at_idx": {
-          "name": "scheduled_actions_status_next_run_at_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "next_run_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "scheduled_actions_user_id_users_id_fk": {
-          "name": "scheduled_actions_user_id_users_id_fk",
-          "tableFrom": "scheduled_actions",
-          "tableTo": "users",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "scheduled_actions_agent_actor_id_actors_id_fk": {
-          "name": "scheduled_actions_agent_actor_id_actors_id_fk",
-          "tableFrom": "scheduled_actions",
-          "tableTo": "actors",
-          "columnsFrom": ["agent_actor_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "scheduled_actions_related_task_id_tasks_id_fk": {
-          "name": "scheduled_actions_related_task_id_tasks_id_fk",
-          "tableFrom": "scheduled_actions",
-          "tableTo": "tasks",
-          "columnsFrom": ["related_task_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.sessions": {
       "name": "sessions",
       "schema": "",
@@ -5319,8 +4687,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.task_series": {
-      "name": "task_series",
+    "public.task_occurrences": {
+      "name": "task_occurrences",
       "schema": "",
       "columns": {
         "id": {
@@ -5329,92 +4697,129 @@
           "primaryKey": true,
           "notNull": true
         },
+        "task_id": {
+          "name": "task_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "user_id": {
           "name": "user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "status": {
-          "name": "status",
-          "type": "task_series_status",
+        "kind": {
+          "name": "kind",
+          "type": "task_occurrence_kind",
           "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'active'"
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "default_assignee_actor_id": {
-          "name": "default_assignee_actor_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "execution_policy": {
-          "name": "execution_policy",
-          "type": "task_series_execution_policy",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'assign_only'"
-        },
-        "cron_expression": {
-          "name": "cron_expression",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "timezone": {
-          "name": "timezone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "start_at": {
-          "name": "start_at",
+        "scheduled_for": {
+          "name": "scheduled_for",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "end_at": {
-          "name": "end_at",
+        "started_at": {
+          "name": "started_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "max_occurrences": {
-          "name": "max_occurrences",
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_ms": {
+          "name": "duration_ms",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
-        "occurrence_count": {
-          "name": "occurrence_count",
-          "type": "integer",
+        "execution_status": {
+          "name": "execution_status",
+          "type": "task_occurrence_execution_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": 0
+          "default": "'idle'"
         },
-        "last_occurrence_at": {
-          "name": "last_occurrence_at",
-          "type": "timestamp with time zone",
+        "prompt": {
+          "name": "prompt",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "next_occurrence_at": {
-          "name": "next_occurrence_at",
-          "type": "timestamp with time zone",
+        "result_summary": {
+          "name": "result_summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "result_body": {
+          "name": "result_body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error_body": {
+          "name": "error_body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requires_review": {
+          "name": "requires_review",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "occurrence_review_status": {
+          "name": "occurrence_review_status",
+          "type": "task_review_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'none'"
+        },
+        "executor_actor_id": {
+          "name": "executor_actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_by_actor_id": {
+          "name": "requested_by_actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_usage": {
+          "name": "token_usage",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_result": {
+          "name": "delivery_result",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "retry_of_occurrence_id": {
+          "name": "retry_of_occurrence_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -5424,21 +4829,20 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         }
       },
       "indexes": {
-        "task_series_user_id_idx": {
-          "name": "task_series_user_id_idx",
+        "task_occurrences_task_id_created_at_idx": {
+          "name": "task_occurrences_task_id_created_at_idx",
           "columns": [
             {
-              "expression": "user_id",
+              "expression": "task_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5449,8 +4853,8 @@
           "method": "btree",
           "with": {}
         },
-        "task_series_user_id_status_idx": {
-          "name": "task_series_user_id_status_idx",
+        "task_occurrences_user_id_created_at_idx": {
+          "name": "task_occurrences_user_id_created_at_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -5459,7 +4863,7 @@
               "nulls": "last"
             },
             {
-              "expression": "status",
+              "expression": "created_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5470,17 +4874,41 @@
           "method": "btree",
           "with": {}
         },
-        "task_series_status_next_occurrence_at_idx": {
-          "name": "task_series_status_next_occurrence_at_idx",
+        "task_occurrences_execution_status_idx": {
+          "name": "task_occurrences_execution_status_idx",
           "columns": [
             {
-              "expression": "status",
+              "expression": "execution_status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            },
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "task_occurrences_executor_actor_id_idx": {
+          "name": "task_occurrences_executor_actor_id_idx",
+          "columns": [
             {
-              "expression": "next_occurrence_at",
+              "expression": "executor_actor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "task_occurrences_kind_idx": {
+          "name": "task_occurrences_kind_idx",
+          "columns": [
+            {
+              "expression": "kind",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5493,20 +4921,47 @@
         }
       },
       "foreignKeys": {
-        "task_series_user_id_users_id_fk": {
-          "name": "task_series_user_id_users_id_fk",
-          "tableFrom": "task_series",
+        "task_occurrences_task_id_tasks_id_fk": {
+          "name": "task_occurrences_task_id_tasks_id_fk",
+          "tableFrom": "task_occurrences",
+          "tableTo": "tasks",
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "task_occurrences_user_id_users_id_fk": {
+          "name": "task_occurrences_user_id_users_id_fk",
+          "tableFrom": "task_occurrences",
           "tableTo": "users",
           "columnsFrom": ["user_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "task_series_default_assignee_actor_id_actors_id_fk": {
-          "name": "task_series_default_assignee_actor_id_actors_id_fk",
-          "tableFrom": "task_series",
+        "task_occurrences_executor_actor_id_actors_id_fk": {
+          "name": "task_occurrences_executor_actor_id_actors_id_fk",
+          "tableFrom": "task_occurrences",
           "tableTo": "actors",
-          "columnsFrom": ["default_assignee_actor_id"],
+          "columnsFrom": ["executor_actor_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "task_occurrences_requested_by_actor_id_actors_id_fk": {
+          "name": "task_occurrences_requested_by_actor_id_actors_id_fk",
+          "tableFrom": "task_occurrences",
+          "tableTo": "actors",
+          "columnsFrom": ["requested_by_actor_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "task_occurrences_retry_of_occurrence_id_task_occurrences_id_fk": {
+          "name": "task_occurrences_retry_of_occurrence_id_task_occurrences_id_fk",
+          "tableFrom": "task_occurrences",
+          "tableTo": "task_occurrences",
+          "columnsFrom": ["retry_of_occurrence_id"],
           "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
@@ -5546,34 +5001,134 @@
           "primaryKey": false,
           "notNull": false
         },
-        "status": {
-          "name": "status",
+        "prompt": {
+          "name": "prompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delegate_actor_id": {
+          "name": "delegate_actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delegate_mode": {
+          "name": "delegate_mode",
+          "type": "task_delegate_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
+        },
+        "delegated_by_actor_id": {
+          "name": "delegated_by_actor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "task_status": {
+          "name": "task_status",
           "type": "task_status",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'open'"
         },
-        "due_date": {
-          "name": "due_date",
+        "attention_status": {
+          "name": "attention_status",
+          "type": "task_attention_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'none'"
+        },
+        "review_status": {
+          "name": "review_status",
+          "type": "task_review_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'none'"
+        },
+        "schedule_type": {
+          "name": "schedule_type",
+          "type": "task_schedule_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'none'"
+        },
+        "schedule_rule": {
+          "name": "schedule_rule",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "schedule_summary": {
+          "name": "schedule_summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "next_occurrence_at": {
+          "name": "next_occurrence_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "assignee_actor_id": {
-          "name": "assignee_actor_id",
+        "max_occurrences": {
+          "name": "max_occurrences",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurrence_count": {
+          "name": "occurrence_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "latest_execution_status": {
+          "name": "latest_execution_status",
+          "type": "task_occurrence_execution_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "latest_result_summary": {
+          "name": "latest_result_summary",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "task_series_id": {
-          "name": "task_series_id",
+        "latest_error_summary": {
+          "name": "latest_error_summary",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "occurrence_at": {
-          "name": "occurrence_at",
+        "delivery_targets": {
+          "name": "delivery_targets",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_conversation_id": {
+          "name": "source_conversation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "due_at": {
+          "name": "due_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
@@ -5585,21 +5140,8 @@
           "notNull": true,
           "default": 0
         },
-        "processing_enabled": {
-          "name": "processing_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "processing_status": {
-          "name": "processing_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "review_status": {
-          "name": "review_status",
+        "parent_id": {
+          "name": "parent_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -5623,8 +5165,15 @@
           "primaryKey": false,
           "notNull": false
         },
-        "parent_id": {
-          "name": "parent_id",
+        "processing_enabled": {
+          "name": "processing_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "processing_status": {
+          "name": "processing_status",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -5676,11 +5225,11 @@
           "method": "btree",
           "with": {}
         },
-        "tasks_status_idx": {
-          "name": "tasks_status_idx",
+        "tasks_task_status_idx": {
+          "name": "tasks_task_status_idx",
           "columns": [
             {
-              "expression": "status",
+              "expression": "task_status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5691,11 +5240,11 @@
           "method": "btree",
           "with": {}
         },
-        "tasks_due_date_idx": {
-          "name": "tasks_due_date_idx",
+        "tasks_attention_status_idx": {
+          "name": "tasks_attention_status_idx",
           "columns": [
             {
-              "expression": "due_date",
+              "expression": "attention_status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5706,11 +5255,26 @@
           "method": "btree",
           "with": {}
         },
-        "tasks_assignee_actor_id_idx": {
-          "name": "tasks_assignee_actor_id_idx",
+        "tasks_due_at_idx": {
+          "name": "tasks_due_at_idx",
           "columns": [
             {
-              "expression": "assignee_actor_id",
+              "expression": "due_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "tasks_delegate_actor_id_idx": {
+          "name": "tasks_delegate_actor_id_idx",
+          "columns": [
+            {
+              "expression": "delegate_actor_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5766,11 +5330,47 @@
           "method": "btree",
           "with": {}
         },
-        "tasks_task_series_id_idx": {
-          "name": "tasks_task_series_id_idx",
+        "tasks_schedule_type_idx": {
+          "name": "tasks_schedule_type_idx",
           "columns": [
             {
-              "expression": "task_series_id",
+              "expression": "schedule_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "tasks_next_occurrence_at_idx": {
+          "name": "tasks_next_occurrence_at_idx",
+          "columns": [
+            {
+              "expression": "next_occurrence_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "tasks_user_id_attention_status_idx": {
+          "name": "tasks_user_id_attention_status_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "attention_status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5818,8 +5418,8 @@
           "method": "btree",
           "with": {}
         },
-        "tasks_user_id_due_date_idx": {
-          "name": "tasks_user_id_due_date_idx",
+        "tasks_user_id_due_at_idx": {
+          "name": "tasks_user_id_due_at_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -5828,7 +5428,7 @@
               "nulls": "last"
             },
             {
-              "expression": "due_date",
+              "expression": "due_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5839,8 +5439,8 @@
           "method": "btree",
           "with": {}
         },
-        "tasks_user_id_status_created_at_idx": {
-          "name": "tasks_user_id_status_created_at_idx",
+        "tasks_user_id_task_status_created_at_idx": {
+          "name": "tasks_user_id_task_status_created_at_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -5849,7 +5449,7 @@
               "nulls": "last"
             },
             {
-              "expression": "status",
+              "expression": "task_status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5955,20 +5555,20 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "tasks_assignee_actor_id_actors_id_fk": {
-          "name": "tasks_assignee_actor_id_actors_id_fk",
+        "tasks_delegate_actor_id_actors_id_fk": {
+          "name": "tasks_delegate_actor_id_actors_id_fk",
           "tableFrom": "tasks",
           "tableTo": "actors",
-          "columnsFrom": ["assignee_actor_id"],
+          "columnsFrom": ["delegate_actor_id"],
           "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
-        "tasks_task_series_id_task_series_id_fk": {
-          "name": "tasks_task_series_id_task_series_id_fk",
+        "tasks_delegated_by_actor_id_actors_id_fk": {
+          "name": "tasks_delegated_by_actor_id_actors_id_fk",
           "tableFrom": "tasks",
-          "tableTo": "task_series",
-          "columnsFrom": ["task_series_id"],
+          "tableTo": "actors",
+          "columnsFrom": ["delegated_by_actor_id"],
           "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
@@ -6696,52 +6296,63 @@
       "schema": "public",
       "values": ["human", "agent", "system", "service"]
     },
-    "public.agent_run_status": {
-      "name": "agent_run_status",
+    "public.task_attention_status": {
+      "name": "task_attention_status",
       "schema": "public",
-      "values": ["queued", "running", "completed", "failed", "cancelled"]
+      "values": [
+        "none",
+        "needs_triage",
+        "awaiting_input",
+        "needs_review",
+        "failed",
+        "urgent"
+      ]
     },
-    "public.scheduled_action_execution_status": {
-      "name": "scheduled_action_execution_status",
+    "public.task_delegate_mode": {
+      "name": "task_delegate_mode",
       "schema": "public",
-      "values": ["pending", "running", "completed", "failed", "skipped"]
+      "values": ["manual", "assist", "handle"]
     },
-    "public.scheduled_action_kind": {
-      "name": "scheduled_action_kind",
+    "public.task_occurrence_execution_status": {
+      "name": "task_occurrence_execution_status",
       "schema": "public",
-      "values": ["reminder", "agent_run"]
+      "values": [
+        "idle",
+        "scheduled",
+        "queued",
+        "running",
+        "awaiting_input",
+        "awaiting_review",
+        "failed",
+        "completed",
+        "cancelled"
+      ]
     },
-    "public.scheduled_action_status": {
-      "name": "scheduled_action_status",
+    "public.task_occurrence_kind": {
+      "name": "task_occurrence_kind",
       "schema": "public",
-      "values": ["active", "paused", "completed", "cancelled"]
+      "values": [
+        "manual_run",
+        "scheduled_run",
+        "recurring_run",
+        "reminder",
+        "review_run"
+      ]
     },
-    "public.scheduled_action_trigger_type": {
-      "name": "scheduled_action_trigger_type",
+    "public.task_review_status": {
+      "name": "task_review_status",
       "schema": "public",
-      "values": ["once", "recurring"]
+      "values": ["none", "pending", "approved", "changes_requested"]
     },
-    "public.task_series_execution_policy": {
-      "name": "task_series_execution_policy",
+    "public.task_schedule_type": {
+      "name": "task_schedule_type",
       "schema": "public",
-      "values": ["assign_only", "assign_and_run"]
-    },
-    "public.task_series_status": {
-      "name": "task_series_status",
-      "schema": "public",
-      "values": ["active", "paused", "completed", "cancelled"]
+      "values": ["none", "one_time", "recurring"]
     },
     "public.task_status": {
       "name": "task_status",
       "schema": "public",
-      "values": [
-        "backlog",
-        "open",
-        "in-progress",
-        "completed",
-        "cancelled",
-        "blocked"
-      ]
+      "values": ["open", "in_progress", "blocked", "completed", "cancelled"]
     }
   },
   "schemas": {},

@@ -653,18 +653,18 @@ export async function getDueItems(userId: string) {
         .select({
           id: tasks.id,
           title: tasks.title,
-          dueDate: tasks.dueDate,
+          dueDate: tasks.dueAt,
           type: sql<string>`'task'`.as("type"),
         })
         .from(tasks)
         .where(
           and(
             eq(tasks.userId, userId),
-            isNotNull(tasks.dueDate),
-            lte(tasks.dueDate, today),
+            isNotNull(tasks.dueAt),
+            lte(tasks.dueAt, today),
           ),
         )
-        .orderBy(tasks.dueDate),
+        .orderBy(tasks.dueAt),
     ]);
 
     // Get due today items
@@ -691,19 +691,19 @@ export async function getDueItems(userId: string) {
         .select({
           id: tasks.id,
           title: tasks.title,
-          dueDate: tasks.dueDate,
+          dueDate: tasks.dueAt,
           type: sql<string>`'task'`.as("type"),
         })
         .from(tasks)
         .where(
           and(
             eq(tasks.userId, userId),
-            isNotNull(tasks.dueDate),
-            gte(tasks.dueDate, today),
-            lte(tasks.dueDate, tomorrow),
+            isNotNull(tasks.dueAt),
+            gte(tasks.dueAt, today),
+            lte(tasks.dueAt, tomorrow),
           ),
         )
-        .orderBy(tasks.dueDate),
+        .orderBy(tasks.dueAt),
     ]);
 
     // Get due this week items
@@ -730,19 +730,19 @@ export async function getDueItems(userId: string) {
         .select({
           id: tasks.id,
           title: tasks.title,
-          dueDate: tasks.dueDate,
+          dueDate: tasks.dueAt,
           type: sql<string>`'task'`.as("type"),
         })
         .from(tasks)
         .where(
           and(
             eq(tasks.userId, userId),
-            isNotNull(tasks.dueDate),
-            gte(tasks.dueDate, tomorrow),
-            lte(tasks.dueDate, nextWeek),
+            isNotNull(tasks.dueAt),
+            gte(tasks.dueAt, tomorrow),
+            lte(tasks.dueAt, nextWeek),
           ),
         )
-        .orderBy(tasks.dueDate),
+        .orderBy(tasks.dueAt),
     ]);
 
     return {

@@ -5,13 +5,12 @@ import { useState } from "react";
 import { AgentStatusDot } from "@/components/assistant/agent-status-dot";
 import { Button } from "@/components/ui/button";
 import { AiActivityFeed } from "@/components/sidebar/ai-activity-feed";
-import { AiAutomationsList } from "@/components/sidebar/ai-automations-list";
 import { AiConversationList } from "@/components/sidebar/ai-conversation-list";
 import type { AgentExecutionStatus } from "@/hooks/use-session-status";
 import type { Agent } from "@/types/agent";
 import type { ConversationSummary } from "@/types/conversation";
 
-type SidebarTab = "chat" | "automations";
+type SidebarTab = "chat";
 
 interface AiSidebarProps {
   agents: Agent[];
@@ -53,122 +52,90 @@ export function AiSidebar({
     <div className="flex flex-col h-full">
       {/* Tab Toggle */}
       <div className="p-3 pb-1">
-        <div className="flex gap-1 rounded-lg bg-muted p-0.5">
-          <button
-            type="button"
-            onClick={() => setActiveTab("chat")}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              activeTab === "chat"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            Chat
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("automations")}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              activeTab === "automations"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Zap className="h-3.5 w-3.5" />
-            Automations
-          </button>
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <MessageSquare className="h-3.5 w-3.5" />
+          Chat
         </div>
       </div>
 
-      {activeTab === "chat" ? (
-        <>
-          {/* New Chat */}
-          <div className="p-3 pb-2">
-            <Button
-              variant="default"
-              className="w-full justify-start gap-2"
-              onClick={onNewChat}
-            >
-              <Plus className="h-4 w-4" />
-              New Chat
-            </Button>
-          </div>
-
-          {/* Conversations */}
-          <div className="flex-1 overflow-y-auto px-0">
-            <AiConversationList
-              activeConversationId={showAiChat ? activeConversationId : null}
-              onSelectConversation={onSelectConversation}
-            />
-
-            {/* Agents */}
-            <div className="mt-3">
-              <div className="h-px bg-border my-2" />
-              <div className="flex items-center justify-between px-3 py-1.5">
-                <Link
-                  to="/agents/$agentId"
-                  params={{ agentId: DEFAULT_AGENT_ACTOR_ID }}
-                  className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-                >
-                  <Bot className="h-3.5 w-3.5" />
-                  Agents
-                </Link>
-                <Link
-                  to="/agents/$agentId"
-                  params={{ agentId: "new" }}
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-[hsl(var(--hover-bg))] hover:text-foreground"
-                >
-                  <Plus className="h-4 w-4" />
-                </Link>
-              </div>
-              <div className="space-y-1">
-                {agents.map((agent) => {
-                  const agentStatus = agentStatuses.get(agent.id);
-                  const isActive = activeAgentId === agent.id;
-                  return (
-                    <a
-                      key={agent.id}
-                      href={`/agents/${agent.id}`}
-                      onClick={(e) => handleAgentClick(e, agent.id)}
-                      className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${
-                        isActive
-                          ? "font-medium"
-                          : "text-muted-foreground hover:bg-[hsl(var(--hover-bg))]"
-                      }`}
-                      style={
-                        isActive
-                          ? {
-                              backgroundColor: `hsl(var(--sidebar-active-bg) / var(--sidebar-active-bg-opacity))`,
-                              color: `hsl(var(--sidebar-active-text))`,
-                            }
-                          : undefined
-                      }
-                    >
-                      <span className="relative flex h-6 w-6 items-center justify-center rounded-full border bg-background text-[11px] font-semibold">
-                        {agent.name.slice(0, 1).toUpperCase()}
-                        {agentStatus && <AgentStatusDot status={agentStatus} />}
-                      </span>
-                      <span className="truncate">{agent.name}</span>
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Activity Feed */}
-            <AiActivityFeed
-              agents={agents}
-              onSelectActivity={onSelectActivity}
-            />
-          </div>
-        </>
-      ) : (
-        /* Automations Tab */
-        <div className="flex-1 overflow-y-auto">
-          <AiAutomationsList />
+      <>
+        {/* New Chat */}
+        <div className="p-3 pb-2">
+          <Button
+            variant="default"
+            className="w-full justify-start gap-2"
+            onClick={onNewChat}
+          >
+            <Plus className="h-4 w-4" />
+            New Chat
+          </Button>
         </div>
-      )}
+
+        {/* Conversations */}
+        <div className="flex-1 overflow-y-auto px-0">
+          <AiConversationList
+            activeConversationId={showAiChat ? activeConversationId : null}
+            onSelectConversation={onSelectConversation}
+          />
+
+          {/* Agents */}
+          <div className="mt-3">
+            <div className="h-px bg-border my-2" />
+            <div className="flex items-center justify-between px-3 py-1.5">
+              <Link
+                to="/agents/$agentId"
+                params={{ agentId: DEFAULT_AGENT_ACTOR_ID }}
+                className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+              >
+                <Bot className="h-3.5 w-3.5" />
+                Agents
+              </Link>
+              <Link
+                to="/agents/$agentId"
+                params={{ agentId: "new" }}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-[hsl(var(--hover-bg))] hover:text-foreground"
+              >
+                <Plus className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="space-y-1">
+              {agents.map((agent) => {
+                const agentStatus = agentStatuses.get(agent.id);
+                const isActive = activeAgentId === agent.id;
+                return (
+                  <a
+                    key={agent.id}
+                    href={`/agents/${agent.id}`}
+                    onClick={(e) => handleAgentClick(e, agent.id)}
+                    className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${
+                      isActive
+                        ? "font-medium"
+                        : "text-muted-foreground hover:bg-[hsl(var(--hover-bg))]"
+                    }`}
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: `hsl(var(--sidebar-active-bg) / var(--sidebar-active-bg-opacity))`,
+                            color: `hsl(var(--sidebar-active-text))`,
+                          }
+                        : undefined
+                    }
+                  >
+                    <span className="relative flex h-6 w-6 items-center justify-center rounded-full border bg-background text-[11px] font-semibold">
+                      {agent.name.slice(0, 1).toUpperCase()}
+                      {agentStatus && <AgentStatusDot status={agentStatus} />}
+                    </span>
+                    <span className="truncate">{agent.name}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Activity Feed */}
+          <AiActivityFeed agents={agents} onSelectActivity={onSelectActivity} />
+        </div>
+      </>
     </div>
   );
 }

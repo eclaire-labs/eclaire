@@ -9,9 +9,9 @@ export const QueueNames = {
   NOTE_PROCESSING: "note-processing",
   TASK_PROCESSING: "task-processing",
   MEDIA_PROCESSING: "media-processing",
-  SCHEDULED_ACTION_EXECUTION: "scheduled-action-execution",
-  AGENT_RUN: "agent-run",
-  TASK_SERIES_TICK: "task-series-tick",
+  TASK_OCCURRENCE: "task-occurrence",
+  TASK_SCHEDULE_TICK: "task-schedule-tick",
+  TASK_OVERDUE_CHECKER: "task-overdue-checker",
 } as const;
 
 export type QueueName = (typeof QueueNames)[keyof typeof QueueNames];

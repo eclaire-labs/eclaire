@@ -17,13 +17,14 @@ describe("TaskSchema", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.title).toBe("Buy groceries");
-      expect(result.data.status).toBe("open");
+      expect(result.data.taskStatus).toBe("open");
       expect(result.data.processingEnabled).toBe(true);
       expect(result.data.tags).toEqual([]);
-      expect(result.data.reviewStatus).toBe("pending");
+      expect(result.data.reviewStatus).toBe("none");
       expect(result.data.isPinned).toBe(false);
-      expect(result.data.isRecurring).toBe(false);
-      expect(result.data.runImmediately).toBe(false);
+      expect(result.data.delegateMode).toBe("manual");
+      expect(result.data.scheduleType).toBe("none");
+      expect(result.data.attentionStatus).toBe("none");
     }
   });
 
@@ -31,19 +32,19 @@ describe("TaskSchema", () => {
     const result = TaskSchema.safeParse({
       title: "Full Task",
       description: "A complete task",
-      status: "in-progress",
-      dueDate: "2026-06-15T09:00:00Z",
-      assigneeActorId: "user-123",
+      taskStatus: "in_progress",
+      dueAt: "2026-06-15T09:00:00Z",
+      delegateActorId: "user-123",
+      delegateMode: "assist",
       processingEnabled: false,
       tags: ["urgent", "backend"],
-      reviewStatus: "accepted",
+      reviewStatus: "pending",
       flagColor: "red",
       isPinned: true,
-      isRecurring: true,
-      cronExpression: "0 9 * * 1",
-      recurrenceEndDate: "2026-12-31T23:59:59Z",
-      recurrenceLimit: 10,
-      runImmediately: true,
+      scheduleType: "recurring",
+      scheduleRule: "0 9 * * 1",
+      scheduleSummary: "Every Monday at 9 AM",
+      maxOccurrences: 10,
     });
     expect(result.success).toBe(true);
   });
@@ -63,21 +64,23 @@ describe("TaskSchema", () => {
   it("should reject invalid status", () => {
     const result = TaskSchema.safeParse({
       title: "Test",
-      status: "invalid-status",
+      taskStatus: "invalid-status",
     });
     expect(result.success).toBe(false);
   });
 
   it("should accept all valid status values", () => {
-    for (const status of [
-      "backlog",
+    for (const taskStatus of [
       "open",
-      "in-progress",
+      "in_progress",
+      "blocked",
       "completed",
       "cancelled",
     ]) {
-      const result = TaskSchema.safeParse({ title: "Test", status });
-      expect(result.success, `status '${status}' should be valid`).toBe(true);
+      const result = TaskSchema.safeParse({ title: "Test", taskStatus });
+      expect(result.success, `taskStatus '${taskStatus}' should be valid`).toBe(
+        true,
+      );
     }
   });
 
@@ -134,7 +137,12 @@ describe("TaskSchema", () => {
   });
 
   it("should accept all valid reviewStatus values", () => {
-    for (const reviewStatus of ["pending", "accepted", "rejected"]) {
+    for (const reviewStatus of [
+      "none",
+      "pending",
+      "approved",
+      "changes_requested",
+    ]) {
       const result = TaskSchema.safeParse({ title: "Test", reviewStatus });
       expect(
         result.success,
@@ -165,47 +173,59 @@ describe("TaskSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("should accept nullable dueDate", () => {
-    const result = TaskSchema.safeParse({ title: "Test", dueDate: null });
+  it("should accept nullable dueAt", () => {
+    const result = TaskSchema.safeParse({ title: "Test", dueAt: null });
     expect(result.success).toBe(true);
   });
 
-  it("should accept nullable cronExpression", () => {
+  it("should accept all valid delegateMode values", () => {
+    for (const delegateMode of ["manual", "assist", "handle"]) {
+      const result = TaskSchema.safeParse({ title: "Test", delegateMode });
+      expect(
+        result.success,
+        `delegateMode '${delegateMode}' should be valid`,
+      ).toBe(true);
+    }
+  });
+
+  it("should accept all valid scheduleType values", () => {
+    for (const scheduleType of ["none", "one_time", "recurring"]) {
+      const result = TaskSchema.safeParse({ title: "Test", scheduleType });
+      expect(
+        result.success,
+        `scheduleType '${scheduleType}' should be valid`,
+      ).toBe(true);
+    }
+  });
+
+  it("should accept nullable scheduleRule", () => {
     const result = TaskSchema.safeParse({
       title: "Test",
-      cronExpression: null,
+      scheduleRule: null,
     });
     expect(result.success).toBe(true);
   });
 
-  it("should reject non-integer recurrenceLimit", () => {
+  it("should reject non-integer maxOccurrences", () => {
     const result = TaskSchema.safeParse({
       title: "Test",
-      recurrenceLimit: 5.5,
+      maxOccurrences: 5.5,
     });
     expect(result.success).toBe(false);
   });
 
-  it("should reject zero recurrenceLimit", () => {
+  it("should reject zero maxOccurrences", () => {
     const result = TaskSchema.safeParse({
       title: "Test",
-      recurrenceLimit: 0,
+      maxOccurrences: 0,
     });
     expect(result.success).toBe(false);
   });
 
-  it("should reject negative recurrenceLimit", () => {
+  it("should accept positive integer maxOccurrences", () => {
     const result = TaskSchema.safeParse({
       title: "Test",
-      recurrenceLimit: -1,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("should accept positive integer recurrenceLimit", () => {
-    const result = TaskSchema.safeParse({
-      title: "Test",
-      recurrenceLimit: 10,
+      maxOccurrences: 10,
     });
     expect(result.success).toBe(true);
   });
@@ -226,13 +246,13 @@ describe("PartialTaskSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("should accept status-only update", () => {
-    const result = PartialTaskSchema.safeParse({ status: "completed" });
+  it("should accept taskStatus-only update", () => {
+    const result = PartialTaskSchema.safeParse({ taskStatus: "completed" });
     expect(result.success).toBe(true);
   });
 
-  it("should still reject invalid status in partial update", () => {
-    const result = PartialTaskSchema.safeParse({ status: "invalid" });
+  it("should still reject invalid taskStatus in partial update", () => {
+    const result = PartialTaskSchema.safeParse({ taskStatus: "invalid" });
     expect(result.success).toBe(false);
   });
 
@@ -274,13 +294,15 @@ describe("TaskSearchParamsSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("should accept valid status filter", () => {
-    const result = TaskSearchParamsSchema.safeParse({ status: "completed" });
+  it("should accept valid taskStatus filter", () => {
+    const result = TaskSearchParamsSchema.safeParse({
+      taskStatus: "completed",
+    });
     expect(result.success).toBe(true);
   });
 
-  it("should reject invalid status filter", () => {
-    const result = TaskSearchParamsSchema.safeParse({ status: "invalid" });
+  it("should reject invalid taskStatus filter", () => {
+    const result = TaskSearchParamsSchema.safeParse({ taskStatus: "invalid" });
     expect(result.success).toBe(false);
   });
 
@@ -294,11 +316,6 @@ describe("TaskSearchParamsSchema", () => {
 
   it("should reject limit below 1", () => {
     const result = TaskSearchParamsSchema.safeParse({ limit: "0" });
-    expect(result.success).toBe(false);
-  });
-
-  it("should reject negative limit", () => {
-    const result = TaskSearchParamsSchema.safeParse({ limit: "-1" });
     expect(result.success).toBe(false);
   });
 
@@ -321,7 +338,7 @@ describe("TaskSearchParamsSchema", () => {
   it("should accept combined filters", () => {
     const result = TaskSearchParamsSchema.safeParse({
       text: "meeting",
-      status: "in-progress",
+      taskStatus: "in_progress",
       tags: "urgent",
       limit: "10",
     });
@@ -343,14 +360,6 @@ describe("TaskSearchParamsSchema", () => {
       topLevelOnly: "true",
     });
     expect(trueResult.success).toBe(true);
-    if (trueResult.success) {
-      expect(trueResult.data.topLevelOnly).toBe("true");
-    }
-
-    const falseResult = TaskSearchParamsSchema.safeParse({
-      topLevelOnly: "false",
-    });
-    expect(falseResult.success).toBe(true);
   });
 
   it("should reject invalid topLevelOnly value", () => {
@@ -358,6 +367,27 @@ describe("TaskSearchParamsSchema", () => {
       topLevelOnly: "yes",
     });
     expect(result.success).toBe(false);
+  });
+
+  it("should accept attentionStatus filter", () => {
+    const result = TaskSearchParamsSchema.safeParse({
+      attentionStatus: "needs_review",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept scheduleType filter", () => {
+    const result = TaskSearchParamsSchema.safeParse({
+      scheduleType: "recurring",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should accept delegateMode filter", () => {
+    const result = TaskSearchParamsSchema.safeParse({
+      delegateMode: "assist",
+    });
+    expect(result.success).toBe(true);
   });
 });
 

@@ -27,7 +27,7 @@ describe("useViewPreferences", () => {
   it("returns correct defaults for each page type", () => {
     const expected: Record<PageType, string> = {
       bookmarks: "createdAt",
-      tasks: "dueDate",
+      tasks: "dueAt",
       notes: "createdAt",
       documents: "createdAt",
       photos: "dateTaken",
@@ -87,7 +87,7 @@ describe("useViewPreferences", () => {
       const { result } = renderHook(() => useViewPreferences(pageType));
       const defaults: Record<PageType, string> = {
         bookmarks: "createdAt",
-        tasks: "dueDate",
+        tasks: "dueAt",
         notes: "createdAt",
         documents: "createdAt",
         photos: "dateTaken",

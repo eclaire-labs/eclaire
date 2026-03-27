@@ -44,14 +44,7 @@ const constArrays = [
   {
     name: "TASK_STATUSES",
     arr: TASK_STATUSES,
-    expected: [
-      "backlog",
-      "open",
-      "in-progress",
-      "completed",
-      "cancelled",
-      "blocked",
-    ],
+    expected: ["open", "in_progress", "blocked", "completed", "cancelled"],
   },
   {
     name: "MESSAGE_ROLES",

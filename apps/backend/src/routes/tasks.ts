@@ -12,14 +12,22 @@ import {
   getTaskComments,
   updateTaskComment,
 } from "../lib/services/taskComments.js";
-import { listAgentRuns } from "../lib/services/agent-runs.js";
 import {
+  approveTask,
+  cancelTaskOccurrence,
   createTask,
   deleteTask,
   findTasksPaginated,
+  getInbox,
   getTaskById,
-  getTaskExecutions,
+  getTaskOccurrences,
+  pauseTask,
   reprocessTask,
+  requestChanges,
+  respondToTask,
+  resumeTask,
+  retryTask,
+  startTask,
   updateTask,
 } from "../lib/services/tasks.js";
 import { principalCaller } from "../lib/services/types.js";
@@ -55,19 +63,15 @@ const logger = createChildLogger("tasks");
 function toTaskServiceData<
   T extends {
     description?: string | null;
-    dueDate?: string | null;
-    cronExpression?: string | null;
-    recurrenceEndDate?: string | null;
-    assigneeActorId?: string | null;
+    dueAt?: string | null;
+    delegateActorId?: string | null;
   },
 >(data: T) {
   return {
     ...data,
-    assigneeActorId: data.assigneeActorId ?? undefined,
+    delegateActorId: data.delegateActorId ?? undefined,
     description: data.description || undefined,
-    dueDate: data.dueDate || undefined,
-    cronExpression: data.cronExpression || undefined,
-    recurrenceEndDate: data.recurrenceEndDate || undefined,
+    dueAt: data.dueAt || undefined,
   };
 }
 
@@ -87,7 +91,10 @@ tasksRoutes.get(
       userId,
       text: params.text,
       tags,
-      status: params.status,
+      taskStatus: params.taskStatus,
+      attentionStatus: params.attentionStatus,
+      scheduleType: params.scheduleType,
+      delegateMode: params.delegateMode,
       priority: params.priority,
       startDate,
       endDate,
@@ -118,24 +125,31 @@ tasksRoutes.post(
   }, logger),
 );
 
-// GET /api/tasks/by-actor - Task counts grouped by assignee actor
+// GET /api/inbox - Get inbox (attention queue)
+tasksRoutes.get(
+  "/inbox",
+  withAuth(async (c, userId) => {
+    const result = await getInbox(userId);
+    return c.json(result);
+  }, logger),
+);
+
+// GET /api/tasks/by-actor - Task counts grouped by delegate actor
 tasksRoutes.get(
   "/by-actor",
   withAuth(async (c, userId) => {
-    // Get task counts grouped by assignee and status
     const rows = await db
       .select({
-        assigneeActorId: schema.tasks.assigneeActorId,
-        status: schema.tasks.status,
+        delegateActorId: schema.tasks.delegateActorId,
+        taskStatus: schema.tasks.taskStatus,
         count: count(),
       })
       .from(schema.tasks)
       .where(eq(schema.tasks.userId, userId))
-      .groupBy(schema.tasks.assigneeActorId, schema.tasks.status);
+      .groupBy(schema.tasks.delegateActorId, schema.tasks.taskStatus);
 
-    // Get actor details for all assignees
     const actorIds = [
-      ...new Set(rows.map((r) => r.assigneeActorId).filter(Boolean)),
+      ...new Set(rows.map((r) => r.delegateActorId).filter(Boolean)),
     ] as string[];
 
     const actorMap = new Map<
@@ -158,7 +172,6 @@ tasksRoutes.get(
       }
     }
 
-    // Build actor summaries
     interface ActorSummary {
       actorId: string | null;
       displayName: string | null;
@@ -170,7 +183,7 @@ tasksRoutes.get(
     const summaryMap = new Map<string | null, ActorSummary>();
 
     for (const row of rows) {
-      const key = row.assigneeActorId;
+      const key = row.delegateActorId;
       let summary = summaryMap.get(key);
       if (!summary) {
         const actor = key ? actorMap.get(key) : null;
@@ -183,11 +196,10 @@ tasksRoutes.get(
         };
         summaryMap.set(key, summary);
       }
-      summary.counts[row.status] = row.count;
+      summary.counts[row.taskStatus] = row.count;
       summary.total += row.count;
     }
 
-    // Sort: agents first, then by total desc
     const actors = [...summaryMap.values()].sort((a, b) => {
       if (a.kind === "agent" && b.kind !== "agent") return -1;
       if (a.kind !== "agent" && b.kind === "agent") return 1;
@@ -274,9 +286,9 @@ registerCommonEndpoints(tasksRoutes, {
   logger,
 });
 
-// GET /api/tasks/:id/executions - Get execution history for a task
+// GET /api/tasks/:id/occurrences - Get occurrence history for a task
 tasksRoutes.get(
-  "/:id/executions",
+  "/:id/occurrences",
   zValidator(
     "query",
     z.object({
@@ -287,26 +299,85 @@ tasksRoutes.get(
   withAuth(async (c, userId) => {
     const taskId = c.req.param("id");
     const { cursor, limit } = c.req.valid("query");
-    const result = await getTaskExecutions(taskId, userId, { cursor, limit });
+    const result = await getTaskOccurrences(taskId, userId, { cursor, limit });
     return c.json(result);
   }, logger),
 );
 
-// GET /api/tasks/:id/agent-runs - Get agent run history for a task
-tasksRoutes.get(
-  "/:id/agent-runs",
-  zValidator(
-    "query",
-    z.object({
-      limit: z.coerce.number().min(1).max(100).default(20).optional(),
-      offset: z.coerce.number().min(0).default(0).optional(),
-    }),
-  ),
+// POST /api/tasks/:id/start - Trigger immediate execution
+tasksRoutes.post(
+  "/:id/start",
   withAuth(async (c, userId) => {
-    const taskId = c.req.param("id");
-    const { limit, offset } = c.req.valid("query");
-    const runs = await listAgentRuns(taskId, userId, { limit, offset });
-    return c.json({ runs });
+    const result = await startTask(c.req.param("id"), userId);
+    return c.json(result);
+  }, logger),
+);
+
+// POST /api/tasks/:id/retry - Retry a failed occurrence
+tasksRoutes.post(
+  "/:id/retry",
+  zValidator("json", z.object({ prompt: z.string().optional() }).optional()),
+  withAuth(async (c, userId) => {
+    const body = c.req.valid("json");
+    const result = await retryTask(c.req.param("id"), userId, body?.prompt);
+    return c.json(result);
+  }, logger),
+);
+
+// POST /api/tasks/:id/cancel - Cancel current occurrence
+tasksRoutes.post(
+  "/:id/cancel",
+  withAuth(async (c, userId) => {
+    await cancelTaskOccurrence(c.req.param("id"), userId);
+    return c.json({ success: true });
+  }, logger),
+);
+
+// POST /api/tasks/:id/pause - Pause recurrence
+tasksRoutes.post(
+  "/:id/pause",
+  withAuth(async (c, userId) => {
+    await pauseTask(c.req.param("id"), userId);
+    return c.json({ success: true });
+  }, logger),
+);
+
+// POST /api/tasks/:id/resume - Resume recurrence
+tasksRoutes.post(
+  "/:id/resume",
+  withAuth(async (c, userId) => {
+    await resumeTask(c.req.param("id"), userId);
+    return c.json({ success: true });
+  }, logger),
+);
+
+// POST /api/tasks/:id/approve - Approve agent result
+tasksRoutes.post(
+  "/:id/approve",
+  withAuth(async (c, userId) => {
+    await approveTask(c.req.param("id"), userId);
+    return c.json({ success: true });
+  }, logger),
+);
+
+// POST /api/tasks/:id/request-changes - Request changes on agent result
+tasksRoutes.post(
+  "/:id/request-changes",
+  withAuth(async (c, userId) => {
+    await requestChanges(c.req.param("id"), userId);
+    return c.json({ success: true });
+  }, logger),
+);
+
+// POST /api/tasks/:id/respond - Respond to agent question
+tasksRoutes.post(
+  "/:id/respond",
+  zValidator("json", z.object({ response: z.string().min(1) })),
+  withAuth(async (c, userId, principal) => {
+    const { response } = c.req.valid("json");
+    const caller = principalCaller(principal);
+    await respondToTask(c.req.param("id"), userId, response, caller);
+    return c.json({ success: true });
   }, logger),
 );
 
@@ -330,7 +401,6 @@ tasksRoutes.post(
     z.object({
       content: z.string().min(1).meta({
         description: "Comment content",
-        example: "This task is completed and tested successfully.",
       }),
     }),
   ),
@@ -352,7 +422,6 @@ tasksRoutes.put(
     z.object({
       content: z.string().min(1).meta({
         description: "Updated comment content",
-        example: "This task is completed and tested successfully (updated).",
       }),
     }),
   ),

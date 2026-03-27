@@ -1,7 +1,7 @@
 /**
  * Update Task Tool
  *
- * Update an existing task's title, description, status, priority, tags, or due date.
+ * Update an existing task's properties.
  */
 
 import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
@@ -11,44 +11,61 @@ import { agentToolCaller } from "./caller.js";
 
 const inputSchema = z.object({
   id: z.string().describe("ID of the task to update"),
-  title: z.string().optional().describe("New title for the task"),
-  description: z.string().optional().describe("New description for the task"),
-  status: z
-    .enum(["backlog", "open", "in-progress", "completed", "cancelled"])
+  title: z.string().optional().describe("New title"),
+  description: z.string().optional().describe("New description"),
+  prompt: z.string().optional().describe("New agent instructions"),
+  taskStatus: z
+    .enum(["open", "in_progress", "blocked", "completed", "cancelled"])
     .optional()
-    .describe("New status for the task"),
+    .describe("New status"),
   priority: z
     .number()
     .int()
     .min(0)
-    .max(3)
+    .max(4)
     .optional()
-    .describe("New priority level (0 = none, 1 = low, 2 = medium, 3 = high)"),
+    .describe("New priority (0=none, 1=urgent, 2=high, 3=medium, 4=low)"),
   tags: z.array(z.string()).optional().describe("New tags (replaces existing)"),
-  dueDate: z
+  dueAt: z
     .string()
     .nullable()
     .optional()
-    .describe(
-      "New due date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ), or null to clear",
-    ),
-  assigneeActorId: z
+    .describe("New due date in ISO 8601 format, or null to clear"),
+  delegateActorId: z
     .string()
     .nullable()
     .optional()
-    .describe("New assignee actor ID, or null to unassign"),
+    .describe("New delegate actor ID, or null to unassign"),
+  delegateMode: z
+    .enum(["manual", "assist", "handle"])
+    .optional()
+    .describe("New delegate mode"),
+  scheduleType: z
+    .enum(["none", "one_time", "recurring"])
+    .optional()
+    .describe("New schedule type"),
+  scheduleRule: z
+    .string()
+    .nullable()
+    .optional()
+    .describe("New schedule rule (cron or ISO datetime)"),
+  scheduleSummary: z
+    .string()
+    .nullable()
+    .optional()
+    .describe("New human-readable schedule summary"),
 });
 
 export const updateTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "updateTask",
   label: "Update Task",
   description:
-    "Update a task's title, description, status, priority, tags, due date, or assignee.",
+    "Update a task's properties: title, description, status, priority, tags, due date, delegate, schedule, etc.",
   accessLevel: "write",
   inputSchema,
   promptGuidelines: [
     "Always confirm with the user before modifying tasks.",
-    "For scheduling or recurring work, use scheduleAction — not updateTask.",
+    "To pause a recurring task, set scheduleType='none'. To resume, restore scheduleType and scheduleRule.",
   ],
   execute: async (_callId, input, ctx) => {
     const { id, ...updateData } = input;

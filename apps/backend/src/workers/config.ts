@@ -35,8 +35,7 @@ export const config = {
     documentProcessing: QueueNames.DOCUMENT_PROCESSING,
     noteProcessing: QueueNames.NOTE_PROCESSING,
     taskProcessing: QueueNames.TASK_PROCESSING,
-    agentRun: QueueNames.AGENT_RUN,
-    taskSeriesTick: QueueNames.TASK_SERIES_TICK,
+    taskOccurrence: QueueNames.TASK_OCCURRENCE,
   },
   // Domain-specific rate limiting configuration (worker-specific)
   domains: {

@@ -1,12 +1,11 @@
 CREATE TYPE "public"."actor_kind" AS ENUM('human', 'agent', 'system', 'service');--> statement-breakpoint
-CREATE TYPE "public"."agent_run_status" AS ENUM('queued', 'running', 'completed', 'failed', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."scheduled_action_execution_status" AS ENUM('pending', 'running', 'completed', 'failed', 'skipped');--> statement-breakpoint
-CREATE TYPE "public"."scheduled_action_kind" AS ENUM('reminder', 'agent_run');--> statement-breakpoint
-CREATE TYPE "public"."scheduled_action_status" AS ENUM('active', 'paused', 'completed', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."scheduled_action_trigger_type" AS ENUM('once', 'recurring');--> statement-breakpoint
-CREATE TYPE "public"."task_series_execution_policy" AS ENUM('assign_only', 'assign_and_run');--> statement-breakpoint
-CREATE TYPE "public"."task_series_status" AS ENUM('active', 'paused', 'completed', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."task_status" AS ENUM('backlog', 'open', 'in-progress', 'completed', 'cancelled', 'blocked');--> statement-breakpoint
+CREATE TYPE "public"."task_attention_status" AS ENUM('none', 'needs_triage', 'awaiting_input', 'needs_review', 'failed', 'urgent');--> statement-breakpoint
+CREATE TYPE "public"."task_delegate_mode" AS ENUM('manual', 'assist', 'handle');--> statement-breakpoint
+CREATE TYPE "public"."task_occurrence_execution_status" AS ENUM('idle', 'scheduled', 'queued', 'running', 'awaiting_input', 'awaiting_review', 'failed', 'completed', 'cancelled');--> statement-breakpoint
+CREATE TYPE "public"."task_occurrence_kind" AS ENUM('manual_run', 'scheduled_run', 'recurring_run', 'reminder', 'review_run');--> statement-breakpoint
+CREATE TYPE "public"."task_review_status" AS ENUM('none', 'pending', 'approved', 'changes_requested');--> statement-breakpoint
+CREATE TYPE "public"."task_schedule_type" AS ENUM('none', 'one_time', 'recurring');--> statement-breakpoint
+CREATE TYPE "public"."task_status" AS ENUM('open', 'in_progress', 'blocked', 'completed', 'cancelled');--> statement-breakpoint
 CREATE TABLE "accounts" (
 	"id" text PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
@@ -63,25 +62,6 @@ CREATE TABLE "actors" (
 	"display_name" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "agent_runs" (
-	"id" text PRIMARY KEY NOT NULL,
-	"task_id" text NOT NULL,
-	"user_id" text NOT NULL,
-	"requested_by_actor_id" text,
-	"executor_actor_id" text,
-	"status" "agent_run_status" DEFAULT 'queued' NOT NULL,
-	"prompt" text,
-	"started_at" timestamp with time zone,
-	"completed_at" timestamp with time zone,
-	"duration_ms" integer,
-	"output" text,
-	"error" text,
-	"result_summary" text,
-	"token_usage" jsonb,
-	"metadata" jsonb,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "agent_steps" (
@@ -486,46 +466,6 @@ CREATE TABLE "photos_tags" (
 	CONSTRAINT "photos_tags_photo_id_tag_id_pk" PRIMARY KEY("photo_id","tag_id")
 );
 --> statement-breakpoint
-CREATE TABLE "scheduled_action_executions" (
-	"id" text PRIMARY KEY NOT NULL,
-	"scheduled_action_id" text NOT NULL,
-	"user_id" text NOT NULL,
-	"scheduled_for" timestamp with time zone,
-	"started_at" timestamp with time zone,
-	"completed_at" timestamp with time zone,
-	"status" "scheduled_action_execution_status" DEFAULT 'pending' NOT NULL,
-	"output" text,
-	"error" text,
-	"delivery_result" jsonb,
-	"metadata" jsonb,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "scheduled_actions" (
-	"id" text PRIMARY KEY NOT NULL,
-	"user_id" text NOT NULL,
-	"kind" "scheduled_action_kind" NOT NULL,
-	"status" "scheduled_action_status" DEFAULT 'active' NOT NULL,
-	"title" text NOT NULL,
-	"prompt" text NOT NULL,
-	"trigger_type" "scheduled_action_trigger_type" NOT NULL,
-	"run_at" timestamp with time zone,
-	"cron_expression" text,
-	"timezone" text,
-	"start_at" timestamp with time zone,
-	"end_at" timestamp with time zone,
-	"max_runs" integer,
-	"run_count" integer DEFAULT 0 NOT NULL,
-	"delivery_targets" jsonb DEFAULT '[{"type":"notification_channels"}]'::jsonb NOT NULL,
-	"source_conversation_id" text,
-	"agent_actor_id" text,
-	"related_task_id" text,
-	"last_run_at" timestamp with time zone,
-	"next_run_at" timestamp with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "sessions" (
 	"id" text PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
@@ -554,24 +494,29 @@ CREATE TABLE "task_comments" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "task_series" (
+CREATE TABLE "task_occurrences" (
 	"id" text PRIMARY KEY NOT NULL,
+	"task_id" text NOT NULL,
 	"user_id" text NOT NULL,
-	"status" "task_series_status" DEFAULT 'active' NOT NULL,
-	"title" text NOT NULL,
-	"description" text,
-	"default_assignee_actor_id" text,
-	"execution_policy" "task_series_execution_policy" DEFAULT 'assign_only' NOT NULL,
-	"cron_expression" text NOT NULL,
-	"timezone" text,
-	"start_at" timestamp with time zone,
-	"end_at" timestamp with time zone,
-	"max_occurrences" integer,
-	"occurrence_count" integer DEFAULT 0 NOT NULL,
-	"last_occurrence_at" timestamp with time zone,
-	"next_occurrence_at" timestamp with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"kind" "task_occurrence_kind" NOT NULL,
+	"scheduled_for" timestamp with time zone,
+	"started_at" timestamp with time zone,
+	"completed_at" timestamp with time zone,
+	"duration_ms" integer,
+	"execution_status" "task_occurrence_execution_status" DEFAULT 'idle' NOT NULL,
+	"prompt" text,
+	"result_summary" text,
+	"result_body" text,
+	"error_body" text,
+	"requires_review" boolean DEFAULT false NOT NULL,
+	"occurrence_review_status" "task_review_status" DEFAULT 'none' NOT NULL,
+	"executor_actor_id" text,
+	"requested_by_actor_id" text,
+	"token_usage" jsonb,
+	"delivery_result" jsonb,
+	"retry_of_occurrence_id" text,
+	"metadata" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "tasks" (
@@ -579,19 +524,33 @@ CREATE TABLE "tasks" (
 	"user_id" text NOT NULL,
 	"title" text NOT NULL,
 	"description" text,
-	"status" "task_status" DEFAULT 'open' NOT NULL,
-	"due_date" timestamp with time zone,
-	"assignee_actor_id" text,
-	"task_series_id" text,
-	"occurrence_at" timestamp with time zone,
+	"prompt" text,
+	"delegate_actor_id" text,
+	"delegate_mode" "task_delegate_mode" DEFAULT 'manual' NOT NULL,
+	"delegated_by_actor_id" text,
+	"task_status" "task_status" DEFAULT 'open' NOT NULL,
+	"attention_status" "task_attention_status" DEFAULT 'none' NOT NULL,
+	"review_status" "task_review_status" DEFAULT 'none' NOT NULL,
+	"schedule_type" "task_schedule_type" DEFAULT 'none' NOT NULL,
+	"schedule_rule" text,
+	"schedule_summary" text,
+	"timezone" text,
+	"next_occurrence_at" timestamp with time zone,
+	"max_occurrences" integer,
+	"occurrence_count" integer DEFAULT 0 NOT NULL,
+	"latest_execution_status" "task_occurrence_execution_status",
+	"latest_result_summary" text,
+	"latest_error_summary" text,
+	"delivery_targets" jsonb,
+	"source_conversation_id" text,
+	"due_at" timestamp with time zone,
 	"priority" integer DEFAULT 0 NOT NULL,
-	"processing_enabled" boolean DEFAULT true NOT NULL,
-	"processing_status" text,
-	"review_status" text,
+	"parent_id" text,
 	"flag_color" text,
 	"is_pinned" boolean DEFAULT false NOT NULL,
 	"sort_order" double precision,
-	"parent_id" text,
+	"processing_enabled" boolean DEFAULT true NOT NULL,
+	"processing_status" text,
 	"completed_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -696,10 +655,6 @@ ALTER TABLE "actor_grants" ADD CONSTRAINT "actor_grants_actor_id_actors_id_fk" F
 ALTER TABLE "actor_grants" ADD CONSTRAINT "actor_grants_owner_user_id_users_id_fk" FOREIGN KEY ("owner_user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "actor_grants" ADD CONSTRAINT "actor_grants_granted_by_actor_id_actors_id_fk" FOREIGN KEY ("granted_by_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "actors" ADD CONSTRAINT "actors_owner_user_id_users_id_fk" FOREIGN KEY ("owner_user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agent_runs" ADD CONSTRAINT "agent_runs_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."tasks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agent_runs" ADD CONSTRAINT "agent_runs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agent_runs" ADD CONSTRAINT "agent_runs_requested_by_actor_id_actors_id_fk" FOREIGN KEY ("requested_by_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agent_runs" ADD CONSTRAINT "agent_runs_executor_actor_id_actors_id_fk" FOREIGN KEY ("executor_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agent_steps" ADD CONSTRAINT "agent_steps_message_id_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agent_steps" ADD CONSTRAINT "agent_steps_conversation_id_conversations_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agents" ADD CONSTRAINT "agents_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -736,21 +691,19 @@ ALTER TABLE "notes_tags" ADD CONSTRAINT "notes_tags_tag_id_tags_id_fk" FOREIGN K
 ALTER TABLE "photos" ADD CONSTRAINT "photos_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "photos_tags" ADD CONSTRAINT "photos_tags_photo_id_photos_id_fk" FOREIGN KEY ("photo_id") REFERENCES "public"."photos"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "photos_tags" ADD CONSTRAINT "photos_tags_tag_id_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "scheduled_action_executions" ADD CONSTRAINT "scheduled_action_executions_scheduled_action_id_scheduled_actions_id_fk" FOREIGN KEY ("scheduled_action_id") REFERENCES "public"."scheduled_actions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "scheduled_action_executions" ADD CONSTRAINT "scheduled_action_executions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "scheduled_actions" ADD CONSTRAINT "scheduled_actions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "scheduled_actions" ADD CONSTRAINT "scheduled_actions_agent_actor_id_actors_id_fk" FOREIGN KEY ("agent_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "scheduled_actions" ADD CONSTRAINT "scheduled_actions_related_task_id_tasks_id_fk" FOREIGN KEY ("related_task_id") REFERENCES "public"."tasks"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tags" ADD CONSTRAINT "tags_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "task_comments" ADD CONSTRAINT "task_comments_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."tasks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "task_comments" ADD CONSTRAINT "task_comments_author_actor_id_actors_id_fk" FOREIGN KEY ("author_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "task_comments" ADD CONSTRAINT "task_comments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_series" ADD CONSTRAINT "task_series_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_series" ADD CONSTRAINT "task_series_default_assignee_actor_id_actors_id_fk" FOREIGN KEY ("default_assignee_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "task_occurrences" ADD CONSTRAINT "task_occurrences_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."tasks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "task_occurrences" ADD CONSTRAINT "task_occurrences_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "task_occurrences" ADD CONSTRAINT "task_occurrences_executor_actor_id_actors_id_fk" FOREIGN KEY ("executor_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "task_occurrences" ADD CONSTRAINT "task_occurrences_requested_by_actor_id_actors_id_fk" FOREIGN KEY ("requested_by_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "task_occurrences" ADD CONSTRAINT "task_occurrences_retry_of_occurrence_id_task_occurrences_id_fk" FOREIGN KEY ("retry_of_occurrence_id") REFERENCES "public"."task_occurrences"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_assignee_actor_id_actors_id_fk" FOREIGN KEY ("assignee_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_task_series_id_task_series_id_fk" FOREIGN KEY ("task_series_id") REFERENCES "public"."task_series"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_delegate_actor_id_actors_id_fk" FOREIGN KEY ("delegate_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_delegated_by_actor_id_actors_id_fk" FOREIGN KEY ("delegated_by_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_parent_id_tasks_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."tasks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks_tags" ADD CONSTRAINT "tasks_tags_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."tasks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks_tags" ADD CONSTRAINT "tasks_tags_tag_id_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -764,10 +717,6 @@ CREATE INDEX "actor_grants_owner_user_id_idx" ON "actor_grants" USING btree ("ow
 CREATE INDEX "actor_grants_granted_by_actor_id_idx" ON "actor_grants" USING btree ("granted_by_actor_id");--> statement-breakpoint
 CREATE INDEX "actors_owner_user_id_idx" ON "actors" USING btree ("owner_user_id");--> statement-breakpoint
 CREATE INDEX "actors_owner_user_id_kind_idx" ON "actors" USING btree ("owner_user_id","kind");--> statement-breakpoint
-CREATE INDEX "agent_runs_task_id_created_at_idx" ON "agent_runs" USING btree ("task_id","created_at");--> statement-breakpoint
-CREATE INDEX "agent_runs_user_id_created_at_idx" ON "agent_runs" USING btree ("user_id","created_at");--> statement-breakpoint
-CREATE INDEX "agent_runs_status_idx" ON "agent_runs" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "agent_runs_executor_actor_id_idx" ON "agent_runs" USING btree ("executor_actor_id");--> statement-breakpoint
 CREATE INDEX "agent_steps_message_id_idx" ON "agent_steps" USING btree ("message_id");--> statement-breakpoint
 CREATE INDEX "agent_steps_conversation_id_idx" ON "agent_steps" USING btree ("conversation_id");--> statement-breakpoint
 CREATE INDEX "agent_steps_conversation_id_step_number_idx" ON "agent_steps" USING btree ("conversation_id","step_number");--> statement-breakpoint
@@ -841,33 +790,32 @@ CREATE INDEX "photos_user_id_title_idx" ON "photos" USING btree ("user_id","titl
 CREATE INDEX "photos_title_trgm_idx" ON "photos" USING gin ("title" gin_trgm_ops);--> statement-breakpoint
 CREATE INDEX "photos_search_vector_idx" ON "photos" USING gin ("search_vector");--> statement-breakpoint
 CREATE INDEX "photos_tags_tag_id_idx" ON "photos_tags" USING btree ("tag_id");--> statement-breakpoint
-CREATE INDEX "sa_executions_action_id_created_at_idx" ON "scheduled_action_executions" USING btree ("scheduled_action_id","created_at");--> statement-breakpoint
-CREATE INDEX "sa_executions_user_id_created_at_idx" ON "scheduled_action_executions" USING btree ("user_id","created_at");--> statement-breakpoint
-CREATE INDEX "sa_executions_status_idx" ON "scheduled_action_executions" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "scheduled_actions_user_id_status_idx" ON "scheduled_actions" USING btree ("user_id","status");--> statement-breakpoint
-CREATE INDEX "scheduled_actions_user_id_next_run_at_idx" ON "scheduled_actions" USING btree ("user_id","next_run_at");--> statement-breakpoint
-CREATE INDEX "scheduled_actions_status_next_run_at_idx" ON "scheduled_actions" USING btree ("status","next_run_at");--> statement-breakpoint
 CREATE INDEX "sessions_user_id_idx" ON "sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "tags_user_id_name_lower_idx" ON "tags" USING btree ("user_id",lower("name"));--> statement-breakpoint
 CREATE INDEX "task_comments_task_id_idx" ON "task_comments" USING btree ("task_id");--> statement-breakpoint
 CREATE INDEX "task_comments_user_id_idx" ON "task_comments" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "task_comments_author_actor_id_idx" ON "task_comments" USING btree ("author_actor_id");--> statement-breakpoint
 CREATE INDEX "task_comments_created_at_idx" ON "task_comments" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "task_series_user_id_idx" ON "task_series" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "task_series_user_id_status_idx" ON "task_series" USING btree ("user_id","status");--> statement-breakpoint
-CREATE INDEX "task_series_status_next_occurrence_at_idx" ON "task_series" USING btree ("status","next_occurrence_at");--> statement-breakpoint
+CREATE INDEX "task_occurrences_task_id_created_at_idx" ON "task_occurrences" USING btree ("task_id","created_at");--> statement-breakpoint
+CREATE INDEX "task_occurrences_user_id_created_at_idx" ON "task_occurrences" USING btree ("user_id","created_at");--> statement-breakpoint
+CREATE INDEX "task_occurrences_execution_status_idx" ON "task_occurrences" USING btree ("execution_status");--> statement-breakpoint
+CREATE INDEX "task_occurrences_executor_actor_id_idx" ON "task_occurrences" USING btree ("executor_actor_id");--> statement-breakpoint
+CREATE INDEX "task_occurrences_kind_idx" ON "task_occurrences" USING btree ("kind");--> statement-breakpoint
 CREATE INDEX "tasks_user_id_idx" ON "tasks" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "tasks_status_idx" ON "tasks" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "tasks_due_date_idx" ON "tasks" USING btree ("due_date");--> statement-breakpoint
-CREATE INDEX "tasks_assignee_actor_id_idx" ON "tasks" USING btree ("assignee_actor_id");--> statement-breakpoint
+CREATE INDEX "tasks_task_status_idx" ON "tasks" USING btree ("task_status");--> statement-breakpoint
+CREATE INDEX "tasks_attention_status_idx" ON "tasks" USING btree ("attention_status");--> statement-breakpoint
+CREATE INDEX "tasks_due_at_idx" ON "tasks" USING btree ("due_at");--> statement-breakpoint
+CREATE INDEX "tasks_delegate_actor_id_idx" ON "tasks" USING btree ("delegate_actor_id");--> statement-breakpoint
 CREATE INDEX "tasks_is_pinned_idx" ON "tasks" USING btree ("is_pinned");--> statement-breakpoint
 CREATE INDEX "tasks_completed_at_idx" ON "tasks" USING btree ("completed_at");--> statement-breakpoint
 CREATE INDEX "tasks_parent_id_idx" ON "tasks" USING btree ("parent_id");--> statement-breakpoint
-CREATE INDEX "tasks_task_series_id_idx" ON "tasks" USING btree ("task_series_id");--> statement-breakpoint
+CREATE INDEX "tasks_schedule_type_idx" ON "tasks" USING btree ("schedule_type");--> statement-breakpoint
+CREATE INDEX "tasks_next_occurrence_at_idx" ON "tasks" USING btree ("next_occurrence_at");--> statement-breakpoint
+CREATE INDEX "tasks_user_id_attention_status_idx" ON "tasks" USING btree ("user_id","attention_status");--> statement-breakpoint
 CREATE INDEX "tasks_user_id_processing_enabled_idx" ON "tasks" USING btree ("user_id") WHERE processing_enabled = true;--> statement-breakpoint
 CREATE INDEX "tasks_user_id_created_at_idx" ON "tasks" USING btree ("user_id","created_at");--> statement-breakpoint
-CREATE INDEX "tasks_user_id_due_date_idx" ON "tasks" USING btree ("user_id","due_date");--> statement-breakpoint
-CREATE INDEX "tasks_user_id_status_created_at_idx" ON "tasks" USING btree ("user_id","status","created_at");--> statement-breakpoint
+CREATE INDEX "tasks_user_id_due_at_idx" ON "tasks" USING btree ("user_id","due_at");--> statement-breakpoint
+CREATE INDEX "tasks_user_id_task_status_created_at_idx" ON "tasks" USING btree ("user_id","task_status","created_at");--> statement-breakpoint
 CREATE INDEX "tasks_user_id_priority_created_at_idx" ON "tasks" USING btree ("user_id","priority","created_at");--> statement-breakpoint
 CREATE INDEX "tasks_user_id_sort_order_idx" ON "tasks" USING btree ("user_id","sort_order");--> statement-breakpoint
 CREATE INDEX "tasks_title_trgm_idx" ON "tasks" USING gin ("title" gin_trgm_ops);--> statement-breakpoint

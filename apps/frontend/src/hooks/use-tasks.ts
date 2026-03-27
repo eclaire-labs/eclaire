@@ -9,38 +9,58 @@ export const transformTaskData = (raw: any): Task => ({
   id: raw.id,
   userId: raw.userId || "",
   title: raw.title,
-  description: raw.description,
-  status: raw.status,
-  dueDate: raw.dueDate,
-  assigneeActorId: raw.assigneeActorId ?? null,
+  description: raw.description ?? null,
+  prompt: raw.prompt ?? null,
+
+  // Assignment
+  delegateActorId: raw.delegateActorId ?? null,
+  delegateMode: raw.delegateMode || "manual",
   delegatedByActorId: raw.delegatedByActorId ?? null,
-  executionMode: raw.executionMode || "manual",
-  tags: raw.tags || [],
-  createdAt: raw.createdAt || new Date().toISOString(),
-  updatedAt: raw.updatedAt || new Date().toISOString(),
-  processingStatus: raw.processingStatus || null,
-  reviewStatus: raw.reviewStatus || "pending",
-  flagColor: raw.flagColor || null,
-  isPinned: raw.isPinned || false,
-  processingEnabled: raw.processingEnabled ?? true,
+
+  // Status
+  taskStatus: raw.taskStatus || "open",
+  attentionStatus: raw.attentionStatus || "none",
+  reviewStatus: raw.reviewStatus || "none",
+
+  // Schedule
+  scheduleType: raw.scheduleType || "none",
+  scheduleRule: raw.scheduleRule ?? null,
+  scheduleSummary: raw.scheduleSummary ?? null,
+  timezone: raw.timezone ?? null,
+  nextOccurrenceAt: raw.nextOccurrenceAt ?? null,
+  maxOccurrences: raw.maxOccurrences ?? null,
+  occurrenceCount: raw.occurrenceCount ?? 0,
+
+  // Denormalized execution
+  latestExecutionStatus: raw.latestExecutionStatus ?? null,
+  latestResultSummary: raw.latestResultSummary ?? null,
+  latestErrorSummary: raw.latestErrorSummary ?? null,
+
+  // Delivery
+  deliveryTargets: raw.deliveryTargets ?? null,
+  sourceConversationId: raw.sourceConversationId ?? null,
+
+  // Scheduling & organization
+  dueAt: raw.dueAt ?? null,
   priority: raw.priority ?? 0,
   parentId: raw.parentId ?? null,
   childCount: raw.childCount ?? 0,
+  flagColor: raw.flagColor ?? null,
+  isPinned: raw.isPinned || false,
   sortOrder: raw.sortOrder ?? null,
-  isRecurring: raw.isRecurring || false,
-  cronExpression: raw.cronExpression || null,
-  recurrenceEndDate: raw.recurrenceEndDate || null,
-  recurrenceLimit: raw.recurrenceLimit || null,
-  runImmediately: raw.runImmediately || false,
-  nextRunAt: raw.nextRunAt || null,
-  lastRunAt: raw.lastRunAt || null,
-  completedAt: raw.completedAt || null,
-  comments: raw.comments || undefined,
-  taskSeriesId: raw.taskSeriesId ?? null,
-  latestAgentRunStatus: raw.latestAgentRunStatus ?? undefined,
-  lastExecutionStatus: raw.lastExecutionStatus ?? null,
-  lastExecutionError: raw.lastExecutionError ?? null,
-  lastExecutionAt: raw.lastExecutionAt ?? null,
+  tags: raw.tags || [],
+
+  // Processing
+  processingEnabled: raw.processingEnabled ?? true,
+  processingStatus: raw.processingStatus ?? null,
+
+  // Lifecycle
+  completedAt: raw.completedAt ?? null,
+  createdAt: raw.createdAt || new Date().toISOString(),
+  updatedAt: raw.updatedAt || new Date().toISOString(),
+
+  // Relations
+  comments: raw.comments ?? undefined,
 });
 
 const { useList, useSingle } = createCrudHooks<Task>({
@@ -65,7 +85,7 @@ export function useTasks(params: ListParams = {}) {
     mutationFn: async ({ id, status }: { id: string; status: TaskStatus }) => {
       const response = await apiFetch(`/api/tasks/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ taskStatus: status }),
       });
       return response.json();
     },

@@ -81,10 +81,16 @@ export {
   TaskResponseSchema,
   TaskCommentSchema,
   CommentUserSchema,
+  TaskOccurrenceSchema,
+  InboxTaskSchema,
+  InboxResponseSchema,
   TasksListResponseSchema,
   type Task,
   type TaskComment,
   type TaskStatus,
+  type TaskOccurrence,
+  type InboxTask,
+  type InboxResponse,
   type TasksListResponse,
 } from "./tasks.js";
 

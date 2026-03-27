@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const UpcomingPage = lazy(() => import("@/components/pages/UpcomingPage"));
+const InboxPage = lazy(() => import("@/components/pages/InboxPage"));
 
 function PageLoading() {
   return (
@@ -12,10 +12,10 @@ function PageLoading() {
   );
 }
 
-export const Route = createFileRoute("/_authenticated/upcoming/")({
+export const Route = createFileRoute("/_authenticated/inbox")({
   component: () => (
     <Suspense fallback={<PageLoading />}>
-      <UpcomingPage />
+      <InboxPage />
     </Suspense>
   ),
 });

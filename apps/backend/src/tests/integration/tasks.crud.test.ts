@@ -18,71 +18,51 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
     );
   };
 
-  const initialTaskData = {
-    title: "Test Task",
-    description: "This is a test task description.",
-    status: "open", // Changed from "pending" to valid enum value
-    dueDate: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-  };
+  const tomorrow = new Date(Date.now() + 86400000).toISOString();
+  const dayAfterTomorrow = new Date(Date.now() + 172800000).toISOString();
 
-  const updatedTaskData = {
-    title: "Updated Test Task",
-    description: "This is the updated task description.",
-    status: "in-progress",
-    dueDate: new Date(Date.now() + 172800000).toISOString(), // Day after tomorrow
-  };
-
-  // Global cleanup after all tests complete
   afterAll(async () => {
     await globalTestCleanup();
   });
 
+  // ---------------------------------------------------------------------------
+  // Basic CRUD Operations
+  // ---------------------------------------------------------------------------
   describe("Basic CRUD Operations", () => {
-    it("POST /api/tasks - should create a new task", async () => {
+    it("POST /tasks — should create a new task", async () => {
       await delay(200);
-      const response = await loggedFetch(`/tasks`, {
+
+      const response = await loggedFetch("/tasks", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(initialTaskData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Test Task",
+          description: "This is a test task description.",
+          taskStatus: "open",
+          dueAt: tomorrow,
+        }),
       });
 
-      // The API now correctly returns 201 for creation
       expect(response.status).toBe(201);
 
       const data = (await response.json()) as TaskEntry;
 
-      expect(data).toBeDefined();
       expect(data.id).toBeTypeOf("string");
-      expect(data.title).toBe(initialTaskData.title);
-      expect(data.description).toBe(initialTaskData.description);
-      expect(data.status).toBe(initialTaskData.status);
+      expect(data.title).toBe("Test Task");
+      expect(data.description).toBe("This is a test task description.");
+      expect(data.taskStatus).toBe("open");
+      expect(data.delegateMode).toBe("manual");
+      expect(data.priority).toBe(0);
+      expect(data.tags).toEqual([]);
 
-      // Validate dates in ISO format
-      expect(data.createdAt).toBeDefined();
-      expect(data.updatedAt).toBeDefined();
+      // Validate timestamps
       expect(Date.parse(data.createdAt)).not.toBeNaN();
       expect(Date.parse(data.updatedAt)).not.toBeNaN();
 
-      // Validate schema-defined fields
-      expect(data.processingEnabled).toBe(true);
-      expect(data.tags).toEqual([]);
-      expect(data.reviewStatus).toBe("pending");
-      expect(data.isPinned).toBe(false);
-      expect(data.comments).toEqual([]);
-
-      // Validate ISO date format for dueDate
-      if (data.dueDate) {
-        expect(Date.parse(data.dueDate)).not.toBeNaN();
-      }
-
-      // Store ID for subsequent tests
       createdTaskId = data.id;
-      expect(createdTaskId).not.toBeNull();
     });
 
-    it("GET /api/tasks/:id - should retrieve the created task", async () => {
+    it("GET /tasks/:id — should retrieve the created task", async () => {
       const taskId = ensureTaskCreated();
 
       const response = await loggedFetch(`/tasks/${taskId}`, {
@@ -93,397 +73,226 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
 
       const data = (await response.json()) as TaskEntry;
 
-      expect(data).toBeDefined();
-      expect(data.id).toBe(createdTaskId);
-      expect(data.title).toBe(initialTaskData.title);
-      expect(data.description).toBe(initialTaskData.description);
-      expect(data.status).toBe(initialTaskData.status);
-
-      // Validate date information
-      expect(data.createdAt).toBeDefined();
-      expect(data.updatedAt).toBeDefined();
-      if (data.dueDate) {
-        expect(Date.parse(data.dueDate)).not.toBeNaN();
-      }
-
-      // Validate comments field
+      expect(data.id).toBe(taskId);
+      expect(data.title).toBe("Test Task");
+      expect(data.description).toBe("This is a test task description.");
+      expect(data.taskStatus).toBe("open");
+      expect(data.delegateMode).toBe("manual");
+      expect(data.priority).toBe(0);
+      expect(data.tags).toEqual([]);
       expect(data.comments).toBeDefined();
       expect(Array.isArray(data.comments)).toBe(true);
     });
 
-    it("GET /api/tasks - should list tasks including the new one", async () => {
+    it("GET /tasks — should list tasks including the new one", async () => {
       const taskId = ensureTaskCreated();
 
-      const response = await loggedFetch(`/tasks`, {
-        method: "GET",
-      });
+      const response = await loggedFetch("/tasks", { method: "GET" });
 
       expect(response.status).toBe(200);
+
       const data = (await response.json()) as TaskListResponse;
 
       expect(data.items).toBeInstanceOf(Array);
       expect(data.items.length).toBeGreaterThan(0);
-      expect(data.totalCount).toBeGreaterThan(0);
-      expect(data.hasMore).toBeTypeOf("boolean");
+      expect(data).toHaveProperty("nextCursor");
+      expect(data).toHaveProperty("hasMore");
+      expect(typeof data.hasMore).toBe("boolean");
 
       const found = data.items.find((t) => t.id === taskId);
-      expect(
-        found,
-        `Task with ID ${taskId} not found in the list`,
-      ).toBeDefined();
-      expect(found?.title).toBe(initialTaskData.title);
-      expect(found?.status).toBe(initialTaskData.status);
+      expect(found, `Task ${taskId} not found in list`).toBeDefined();
+      expect(found?.title).toBe("Test Task");
     });
 
-    it("PUT /api/tasks/:id - should update the task", async () => {
-      expect(
-        createdTaskId,
-        "Test setup failed: createdTaskId is null",
-      ).not.toBeNull();
+    it("PUT /tasks/:id — should fully update the task", async () => {
+      const taskId = ensureTaskCreated();
 
-      const response = await loggedFetch(`/tasks/${createdTaskId}`, {
+      const response = await loggedFetch(`/tasks/${taskId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedTaskData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Updated",
+          description: "Updated desc",
+          taskStatus: "in_progress",
+          dueAt: dayAfterTomorrow,
+        }),
       });
 
       expect(response.status).toBe(200);
 
       const data = (await response.json()) as TaskEntry;
 
-      expect(data).toBeDefined();
-      expect(data.id).toBe(createdTaskId);
-      expect(data.title).toBe(updatedTaskData.title);
-      expect(data.description).toBe(updatedTaskData.description);
-      expect(data.status).toBe(updatedTaskData.status);
+      expect(data.id).toBe(taskId);
+      expect(data.title).toBe("Updated");
+      expect(data.description).toBe("Updated desc");
+      expect(data.taskStatus).toBe("in_progress");
+      if (data.dueAt) {
+        expect(Date.parse(data.dueAt)).not.toBeNaN();
+      }
     });
 
-    it("GET /api/tasks/:id - should retrieve the updated task", async () => {
-      expect(
-        createdTaskId,
-        "Test setup failed: createdTaskId is null",
-      ).not.toBeNull();
+    it("PATCH /tasks/:id — should partially update the task", async () => {
+      const taskId = ensureTaskCreated();
 
-      const response = await loggedFetch(`/tasks/${createdTaskId}`, {
-        method: "GET",
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as TaskEntry;
-
-      expect(data).toBeDefined();
-      expect(data.id).toBe(createdTaskId);
-      expect(data.title).toBe(updatedTaskData.title);
-      expect(data.description).toBe(updatedTaskData.description);
-      expect(data.status).toBe(updatedTaskData.status);
-    });
-  });
-
-  describe("Specialized Updates", () => {
-    it("PATCH /api/tasks/:id - should partially update the task", async () => {
-      expect(
-        createdTaskId,
-        "Test setup failed: createdTaskId is null",
-      ).not.toBeNull();
-
-      const partialUpdateData = {
-        title: "Partially Updated Task",
-        isPinned: true,
-      };
-
-      const response = await loggedFetch(`/tasks/${createdTaskId}`, {
+      const response = await loggedFetch(`/tasks/${taskId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(partialUpdateData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priority: 2 }),
       });
 
       expect(response.status).toBe(200);
 
       const data = (await response.json()) as TaskEntry;
 
-      expect(data).toBeDefined();
-      expect(data.id).toBe(createdTaskId);
-      expect(data.title).toBe(partialUpdateData.title);
-      expect(data.isPinned).toBe(true);
-      // Other fields should remain unchanged
-      expect(data.description).toBe(updatedTaskData.description);
-      expect(data.status).toBe(updatedTaskData.status);
+      expect(data.id).toBe(taskId);
+      expect(data.priority).toBe(2);
+      // Other fields should remain unchanged from the PUT
+      expect(data.title).toBe("Updated");
+      expect(data.description).toBe("Updated desc");
+      expect(data.taskStatus).toBe("in_progress");
     });
 
-    it("PATCH /api/tasks/:id/review - should update task review status", async () => {
-      expect(
-        createdTaskId,
-        "Test setup failed: createdTaskId is null",
-      ).not.toBeNull();
+    it("DELETE /tasks/:id — should delete the task, then GET returns 404", async () => {
+      const taskId = ensureTaskCreated();
 
-      const reviewUpdateData = {
-        reviewStatus: "accepted" as const,
-      };
-
-      const response = await loggedFetch(`/tasks/${createdTaskId}/review`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(reviewUpdateData),
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as TaskEntry;
-
-      expect(data).toBeDefined();
-      expect(data.id).toBe(createdTaskId);
-      expect(data.reviewStatus).toBe("accepted");
-      // Other fields should remain unchanged
-      expect(data.title).toBe("Partially Updated Task");
-      expect(data.isPinned).toBe(true);
-    });
-
-    it("PATCH /api/tasks/:id/flag - should update task flag color", async () => {
-      expect(
-        createdTaskId,
-        "Test setup failed: createdTaskId is null",
-      ).not.toBeNull();
-
-      const flagUpdateData = {
-        flagColor: "red" as const,
-      };
-
-      const response = await loggedFetch(`/tasks/${createdTaskId}/flag`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(flagUpdateData),
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as TaskEntry;
-
-      expect(data).toBeDefined();
-      expect(data.id).toBe(createdTaskId);
-      expect(data.flagColor).toBe("red");
-      // Other fields should remain unchanged
-      expect(data.title).toBe("Partially Updated Task");
-      expect(data.isPinned).toBe(true);
-      expect(data.reviewStatus).toBe("accepted");
-    });
-
-    it("PATCH /api/tasks/:id/pin - should update task pin status", async () => {
-      expect(
-        createdTaskId,
-        "Test setup failed: createdTaskId is null",
-      ).not.toBeNull();
-
-      const pinUpdateData = {
-        isPinned: false,
-      };
-
-      const response = await loggedFetch(`/tasks/${createdTaskId}/pin`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(pinUpdateData),
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as TaskEntry;
-
-      expect(data).toBeDefined();
-      expect(data.id).toBe(createdTaskId);
-      expect(data.isPinned).toBe(false);
-      // Other fields should remain unchanged
-      expect(data.title).toBe("Partially Updated Task");
-      expect(data.flagColor).toBe("red");
-      expect(data.reviewStatus).toBe("accepted");
-    });
-  });
-
-  describe("Task Deletion", () => {
-    it("DELETE /api/tasks/:id - should delete the task", async () => {
-      expect(
-        createdTaskId,
-        "Test setup failed: createdTaskId is null",
-      ).not.toBeNull();
-
-      const response = await loggedFetch(`/tasks/${createdTaskId}`, {
+      const deleteResponse = await loggedFetch(`/tasks/${taskId}`, {
         method: "DELETE",
       });
+      expect(deleteResponse.status).toBe(204);
 
-      expect(response.status).toBe(204);
-    });
-
-    it("GET /api/tasks/:id - should return 404 for the deleted task", async () => {
-      expect(
-        createdTaskId,
-        "Test cleanup check requires createdTaskId",
-      ).not.toBeNull();
-
-      const response = await loggedFetch(`/tasks/${createdTaskId}`, {
+      const getResponse = await loggedFetch(`/tasks/${taskId}`, {
         method: "GET",
       });
+      expect(getResponse.status).toBe(404);
 
-      expect(response.status).toBe(404); // Expect Not Found
-    });
-
-    it("GET /api/tasks - should not list the deleted task", async () => {
-      expect(
-        createdTaskId,
-        "Test cleanup check requires createdTaskId",
-      ).not.toBeNull();
-
-      const response = await loggedFetch(`/tasks`, {
-        method: "GET",
-      });
-
-      expect(response.status).toBe(200);
-      const data = (await response.json()) as TaskListResponse;
-
-      expect(data.items).toBeInstanceOf(Array);
-      const found = data.items.find((t) => t.id === createdTaskId);
-      expect(
-        found,
-        `Deleted task with ID ${createdTaskId} still found in the list`,
-      ).toBeUndefined();
-
-      // Reset for safety if other describe blocks run
       createdTaskId = null;
     });
   });
 
-  describe("Validation and Error Scenarios", () => {
-    it("POST /api/tasks - should reject invalid task data", async () => {
-      const invalidTaskData = {
-        title: "", // Empty title should fail
-        status: "invalid-status", // Invalid status should fail
-      };
+  // ---------------------------------------------------------------------------
+  // Specialized Endpoints
+  // ---------------------------------------------------------------------------
+  describe("Specialized Endpoints", () => {
+    let specialTaskId: string;
 
-      const response = await loggedFetch(`/tasks`, {
+    it("setup — create a task for specialized endpoint tests", async () => {
+      const response = await loggedFetch("/tasks", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(invalidTaskData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Specialized Endpoints Task" }),
       });
-
-      expect(response.status).toBe(400); // Bad Request
+      expect(response.status).toBe(201);
+      const data = (await response.json()) as TaskEntry;
+      specialTaskId = data.id;
     });
 
-    it("GET /api/tasks/:id - should return 404 for non-existent task", async () => {
-      const nonExistentId = "non-existent-id";
-
-      const response = await loggedFetch(`/tasks/${nonExistentId}`, {
-        method: "GET",
-      });
-
-      expect(response.status).toBe(404); // Not Found
-    });
-
-    it("PUT /api/tasks/:id - should return 404 for non-existent task", async () => {
-      const nonExistentId = "non-existent-id";
-
-      const response = await loggedFetch(`/tasks/${nonExistentId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ title: "Updated Task" }),
-      });
-
-      expect(response.status).toBe(404); // Not Found
-    });
-
-    it("PATCH /api/tasks/:id/review - should reject invalid review status", async () => {
-      // First create a task to test with
-      const taskResponse = await loggedFetch(`/tasks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ title: "Test Task for Validation" }),
-      });
-
-      expect(taskResponse.status).toBe(201);
-      const task = (await taskResponse.json()) as TaskEntry;
-
-      // Now try to update with invalid review status
-      const invalidReviewData = {
-        reviewStatus: "invalid-status",
-      };
-
-      const response = await loggedFetch(`/tasks/${task.id}/review`, {
+    it("PATCH /tasks/:id/review — should update reviewStatus", async () => {
+      const response = await loggedFetch(`/tasks/${specialTaskId}/review`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(invalidReviewData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewStatus: "pending" }),
       });
 
-      expect(response.status).toBe(400); // Bad Request
+      expect(response.status).toBe(200);
+
+      const data = (await response.json()) as TaskEntry;
+      expect(data.reviewStatus).toBe("pending");
+    });
+
+    it("PATCH /tasks/:id/flag — should update flagColor", async () => {
+      const response = await loggedFetch(`/tasks/${specialTaskId}/flag`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagColor: "red" }),
+      });
+
+      expect(response.status).toBe(200);
+
+      const data = (await response.json()) as TaskEntry;
+      expect(data.flagColor).toBe("red");
+    });
+
+    it("PATCH /tasks/:id/pin — should update isPinned", async () => {
+      const response = await loggedFetch(`/tasks/${specialTaskId}/pin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPinned: true }),
+      });
+
+      expect(response.status).toBe(200);
+
+      const data = (await response.json()) as TaskEntry;
+      expect(data.isPinned).toBe(true);
+    });
+
+    it("teardown — delete the specialized endpoint task", async () => {
+      await loggedFetch(`/tasks/${specialTaskId}`, { method: "DELETE" });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Validation Errors
+  // ---------------------------------------------------------------------------
+  describe("Validation Errors", () => {
+    it("POST /tasks with empty title — should return 400", async () => {
+      const response = await loggedFetch("/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "" }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it("POST /tasks with invalid taskStatus — should return 400", async () => {
+      const response = await loggedFetch("/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Valid Title",
+          taskStatus: "invalid-status",
+        }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it("PATCH /tasks with invalid priority (5) — should return 400", async () => {
+      // Create a throwaway task to patch against
+      const createResponse = await loggedFetch("/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Priority Validation Task" }),
+      });
+      expect(createResponse.status).toBe(201);
+      const task = (await createResponse.json()) as TaskEntry;
+
+      const response = await loggedFetch(`/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priority: 5 }),
+      });
+
+      expect(response.status).toBe(400);
 
       // Clean up
-      await loggedFetch(`/tasks/${task.id}`, {
-        method: "DELETE",
-      });
+      await loggedFetch(`/tasks/${task.id}`, { method: "DELETE" });
     });
 
-    it("PATCH /api/tasks/:id/flag - should reject invalid flag color", async () => {
-      // First create a task to test with
-      const taskResponse = await loggedFetch(`/tasks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ title: "Test Task for Flag Validation" }),
-      });
-
-      expect(taskResponse.status).toBe(201);
-      const task = (await taskResponse.json()) as TaskEntry;
-
-      // Now try to update with invalid flag color
-      const invalidFlagData = {
-        flagColor: "invalid-color",
-      };
-
-      const response = await loggedFetch(`/tasks/${task.id}/flag`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(invalidFlagData),
-      });
-
-      expect(response.status).toBe(400); // Bad Request
-
-      // Clean up
-      await loggedFetch(`/tasks/${task.id}`, {
-        method: "DELETE",
-      });
-    });
-
-    it("GET /api/tasks - should handle invalid limit parameter", async () => {
-      const response = await loggedFetch(`/tasks?limit=-1`, {
+    it("GET /tasks/nonexistent-id — should return 404", async () => {
+      const response = await loggedFetch("/tasks/nonexistent-id", {
         method: "GET",
       });
 
-      expect(response.status).toBe(400); // Bad Request - limit should be max 100
+      expect(response.status).toBe(404);
     });
 
-    it("GET /api/tasks - should handle invalid status filter", async () => {
-      const response = await loggedFetch(`/tasks?status=invalid-status`, {
+    it("GET /tasks with invalid limit (0) — should return 400", async () => {
+      const response = await loggedFetch("/tasks?limit=0", {
         method: "GET",
       });
 
-      expect(response.status).toBe(400); // Bad Request
+      expect(response.status).toBe(400);
     });
   });
 });

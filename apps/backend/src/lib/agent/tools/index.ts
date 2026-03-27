@@ -52,16 +52,6 @@ import { quickActionTool } from "./quick-action.js";
 import { searchAllTool } from "./search-all.js";
 // Notification tools
 import { sendNotificationTool } from "./send-notification.js";
-// Scheduling tools
-import { cancelScheduledActionTool } from "./cancel-scheduled-action.js";
-import { listScheduledActionsTool } from "./list-scheduled-actions.js";
-import { scheduleActionTool } from "./schedule-action.js";
-// Agent execution tools
-import { runTaskAgentTool } from "./run-task-agent.js";
-import { createTaskSeriesTool } from "./create-task-series.js";
-// Task series management tools
-import { listTaskSeriesTool } from "./list-task-series.js";
-import { manageTaskSeriesTool } from "./manage-task-series.js";
 // Task comment tools
 import { addTaskCommentTool } from "./add-task-comment.js";
 import { browseChromeTool } from "./browse-chrome.js";
@@ -146,16 +136,6 @@ const staticTools: Record<string, RuntimeToolDefinition> = {
   quickAction: quickActionTool,
   // Notification tools
   sendNotification: sendNotificationTool,
-  // Scheduling tools
-  scheduleAction: scheduleActionTool,
-  listScheduledActions: listScheduledActionsTool,
-  cancelScheduledAction: cancelScheduledActionTool,
-  // Agent execution tools
-  runTaskAgent: runTaskAgentTool,
-  createTaskSeries: createTaskSeriesTool,
-  // Task series management tools
-  listTaskSeries: listTaskSeriesTool,
-  manageTaskSeries: manageTaskSeriesTool,
   // Task comment tools
   addTaskComment: addTaskCommentTool,
   // Tag tools
@@ -241,9 +221,6 @@ export { listTagsTool } from "./list-tags.js";
 export { loadSkillTool } from "./load-skill.js";
 export { quickActionTool } from "./quick-action.js";
 export { searchAllTool } from "./search-all.js";
-export { cancelScheduledActionTool } from "./cancel-scheduled-action.js";
-export { listScheduledActionsTool } from "./list-scheduled-actions.js";
-export { scheduleActionTool } from "./schedule-action.js";
 export { sendNotificationTool } from "./send-notification.js";
 export { importMediaUrlTool } from "./import-media-url.js";
 export { updateBookmarkTool } from "./update-bookmark.js";

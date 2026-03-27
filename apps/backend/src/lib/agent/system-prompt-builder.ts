@@ -44,65 +44,45 @@ const CONTENT_TOOL_NAMES = [
   "getDueItems",
 ];
 
-const SCHEDULED_ACTION_TOOL_NAMES = ["scheduleAction"];
+const TASK_SCHEDULING_INSTRUCTIONS = `
 
-function hasScheduledActionTools(
-  tools: Record<string, RuntimeToolDefinition>,
-): boolean {
-  return SCHEDULED_ACTION_TOOL_NAMES.some((name) => name in tools);
-}
+**Task Scheduling & Delegation**
 
-const REMINDER_INSTRUCTIONS = `
+Everything is a task. Use createTask for work items, reminders, scheduled agent work, and recurring tasks — just set the right properties.
 
-**Reminders & Scheduled Actions**
-
-Use scheduleAction for all time-based work:
-
-- One-off reminders ("remind me to X in 5 minutes", "at 3pm remind me to Y"):
-  kind='reminder', triggerAt=<absolute ISO 8601 datetime>
-
-- Recurring agent work ("every morning summarize my tasks", "weekly report every Monday"):
-  kind='agent_run', cronExpression=<cron>, message=<instructions for the AI agent>
-
-- One-off agent work ("tomorrow at 8pm, send a summary of today's notes"):
-  kind='agent_run', triggerAt=<absolute ISO 8601 datetime>
-
-Convert relative times to absolute ISO 8601 datetime using the current date/time and user timezone.
-Common cron: daily at 9am = '0 9 * * *', weekdays = '0 9 * * 1-5', Monday = '0 9 * * 1'.
-
-Do NOT use createTask for reminders or scheduled work. Tasks are work items with due dates.
-
-**Execution Modes**
-
-Tasks have an executionMode that controls how agent work is handled:
+**Delegate Modes**
 - manual: No agent involvement. Default for human tasks.
-- agent_assists: Agent does the work, but the output requires user review before the task completes. Use when the user asks you to help, prepare, or draft something.
-- agent_handles: Agent runs to completion autonomously. Use when the user explicitly asks the agent to handle something end-to-end.
+- assist: Agent does the work, output requires user review. Use for "help me draft", "prepare", etc.
+- handle: Agent runs autonomously to completion. Use for "do this for me", "handle this".
 
-executionMode is auto-set when assigning to an agent (defaults to agent_assists). You can override it explicitly when the user's intent is clear:
-- "Do this for me" / "Handle this" → agent_handles
-- "Help me with" / "Draft" / "Prepare" → agent_assists
+delegateMode is auto-set when delegating to an agent (defaults to assist). Override when intent is clear:
+- "Do this for me" / "Handle this" → handle
+- "Help me with" / "Draft" / "Prepare" → assist
 - "I need to do X" / personal tasks → manual
 
-When executionMode is agent_assists, tell the user: "I'll work on this and the output will be ready for your review on the task detail page."
+When delegateMode is assist, tell the user: "I'll work on this and the output will be ready for your review."
+
+**Scheduling**
+- One-off reminders: scheduleType='one_time', scheduleRule=<ISO 8601 datetime>, deliveryTargets=[{type:'notification_channels'}]
+- Recurring agent work: scheduleType='recurring', scheduleRule=<cron>, delegateActorId=<agent>, delegateMode='handle'
+- One-off agent work: delegateActorId=<agent>, delegateMode='assist' or 'handle'
+
+Convert relative times to absolute ISO 8601 using the current date/time and user timezone.
+Common cron: daily at 9am = '0 9 * * *', weekdays = '0 9 * * 1-5', Monday = '0 9 * * 1'.
 
 **Compound Scenarios**
 
-For requests that involve multiple pieces, compose tools in sequence:
-
 - "Call Jeff Friday and prepare talking points":
-  1. createTask (parent: "Call Jeff about the venue", dueDate: Friday)
-  2. createTask (subtask: "Prepare talking points", parentId: <parent>)
-  3. runTaskAgent (on the subtask)
-  4. scheduleAction (reminder for Friday morning, relatedTaskId: <parent>)
+  1. createTask (parent: "Call Jeff about the venue", dueAt: Friday)
+  2. createTask (subtask: "Prepare talking points", parentId: <parent>, delegateMode: 'assist')
 
 - "If no reply in 3 days, follow up":
-  scheduleAction (kind: agent_run, triggerAt: +3 days, relatedTaskId: <parent>, message: "Check if there was a reply and follow up if not")
+  createTask (title: "Follow up if no reply", scheduleType: 'one_time', scheduleRule: +3 days, delegateMode: 'handle', prompt: "Check if there was a reply and follow up if not")
 
 - "Every Monday have the agent review PRs":
-  createTaskSeries (title: "Weekly PR review", cronExpression: "0 9 * * 1", assignToSelf: true)
+  createTask (title: "Weekly PR review", scheduleType: 'recurring', scheduleRule: '0 9 * * 1', delegateMode: 'handle')
 
-- To manage recurring series: use listTaskSeries to show them, manageTaskSeries to pause/resume/cancel.`;
+- To manage recurring tasks: use findTasks with scheduleType='recurring'. Use updateTask to pause (scheduleType='none') or resume.`;
 
 function hasContentTools(
   tools: Record<string, RuntimeToolDefinition>,
@@ -374,12 +354,11 @@ ${getToolSignatures(tools)}
     ? CONTENT_LINKING_INSTRUCTIONS
     : "";
 
-  const scheduledActionNormal = hasScheduledActionTools(tools)
-    ? REMINDER_INSTRUCTIONS
-    : "";
+  const taskSchedulingSection =
+    "createTask" in tools ? TASK_SCHEDULING_INSTRUCTIONS : "";
 
   return appendAgentCapabilities(
-    `${basePrompt}${COMMUNICATION_STYLE_INSTRUCTIONS}${contentLinkingNormal}${scheduledActionNormal}
+    `${basePrompt}${COMMUNICATION_STYLE_INSTRUCTIONS}${contentLinkingNormal}${taskSchedulingSection}
 ${toolSignaturesSection}`,
     { skillNames: agent?.skillNames, tools },
   );

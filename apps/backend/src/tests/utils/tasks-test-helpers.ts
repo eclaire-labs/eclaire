@@ -44,37 +44,45 @@ export interface TaskComment {
   user: CommentUser;
 }
 
-// Custom interface for Tasks API response (aligned with schemas)
+// Custom interface for Tasks API response (aligned with unified schema)
 export interface TaskEntry {
   id: string;
   userId: string;
   title: string;
   description: string | null;
-  status: "backlog" | "open" | "in-progress" | "completed" | "cancelled";
-  dueDate: string | null;
-  assigneeActorId: string | null;
-  processingEnabled: boolean;
+  prompt: string | null;
+  delegateActorId: string | null;
+  delegateMode: "manual" | "assist" | "handle";
+  delegatedByActorId: string | null;
+  taskStatus: "open" | "in_progress" | "blocked" | "completed" | "cancelled";
+  attentionStatus: string;
+  reviewStatus: "none" | "pending" | "approved" | "changes_requested";
+  scheduleType: "none" | "one_time" | "recurring";
+  scheduleRule: string | null;
+  scheduleSummary: string | null;
+  timezone: string | null;
+  nextOccurrenceAt: string | null;
+  maxOccurrences: number | null;
+  occurrenceCount: number;
+  latestExecutionStatus: string | null;
+  latestResultSummary: string | null;
+  latestErrorSummary: string | null;
+  deliveryTargets: unknown;
+  sourceConversationId: string | null;
+  dueAt: string | null;
   priority: number;
   parentId: string | null;
   sortOrder: number | null;
   childCount?: number;
-  tags: string[];
-  reviewStatus: "pending" | "accepted" | "rejected";
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned: boolean;
+  tags: string[];
+  processingEnabled: boolean;
+  processingStatus?: string;
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  completedAt: string | null;
-  processingStatus?: string;
   comments: TaskComment[];
-  // Recurrence fields
-  isRecurring: boolean;
-  cronExpression: string | null;
-  recurrenceEndDate: string | null;
-  recurrenceLimit: number | null;
-  runImmediately: boolean;
-  nextRunAt: string | null;
-  lastRunAt: string | null;
 }
 
 // Response interface for delete operation
@@ -122,12 +130,10 @@ export const RecurrenceTestHelpers = {
     const taskData = {
       title,
       description: "Test recurring task",
-      isRecurring: true,
-      cronExpression,
-      assigneeActorId,
-      recurrenceEndDate: defaultEndDate,
-      recurrenceLimit,
-      runImmediately,
+      scheduleType: "recurring" as const,
+      scheduleRule: cronExpression,
+      delegateActorId: assigneeActorId,
+      maxOccurrences: recurrenceLimit,
     };
 
     const response = await loggedFetch(`${BASE_URL}/tasks`, {
@@ -176,16 +182,16 @@ export const RecurrenceTestHelpers = {
         if (response.status === 200) {
           const task = (await response.json()) as TaskEntry;
           // Check if lastRunAt has been set (indicates execution started)
-          if (task.lastRunAt) {
-            const lastRun = new Date(task.lastRunAt);
+          if (task.nextOccurrenceAt) {
+            const lastRun = new Date(task.nextOccurrenceAt);
             // If lastRunAt is after the initial time, execution occurred
             if (lastRun > initialRun) {
               return true;
             }
           }
           // Also check if nextRunAt has been updated (indicates execution)
-          if (task.nextRunAt) {
-            const nextRun = new Date(task.nextRunAt);
+          if (task.nextOccurrenceAt) {
+            const nextRun = new Date(task.nextOccurrenceAt);
             const now = new Date();
             // If nextRunAt has changed from initial AND is still in the future, execution occurred
             if (nextRun.getTime() !== initialRun.getTime() && nextRun > now) {
@@ -213,21 +219,11 @@ export const RecurrenceTestHelpers = {
     expectedLimit?: number,
     expectedImmediate?: boolean,
   ): void => {
-    expect(task.isRecurring).toBe(true);
-    expect(task.cronExpression).toBe(expectedCron);
-    expect(task.nextRunAt).toBeDefined();
-    expect(task.lastRunAt).toBeNull(); // Should be null initially
-
-    if (expectedEndDate) {
-      expect(task.recurrenceEndDate).toBe(expectedEndDate);
-    }
+    expect(task.scheduleType).toBe("recurring");
+    expect(task.scheduleRule).toBe(expectedCron);
 
     if (expectedLimit !== undefined) {
-      expect(task.recurrenceLimit).toBe(expectedLimit);
-    }
-
-    if (expectedImmediate !== undefined) {
-      expect(task.runImmediately).toBe(expectedImmediate);
+      expect(task.maxOccurrences).toBe(expectedLimit);
     }
   },
 
@@ -352,13 +348,13 @@ export const RecurrenceTestHelpers = {
         if (response.status === 200) {
           const task = (await response.json()) as TaskEntry;
 
-          if (task.nextRunAt === lastSchedulerId) {
+          if (task.nextOccurrenceAt === lastSchedulerId) {
             stableCount++;
             if (stableCount >= requiredStableIterations) {
               return true;
             }
           } else {
-            lastSchedulerId = task.nextRunAt;
+            lastSchedulerId = task.nextOccurrenceAt;
             stableCount = 0;
           }
         }
@@ -394,12 +390,18 @@ export const RecurrenceTestHelpers = {
           const task = (await response.json()) as TaskEntry;
 
           // For non-recurring tasks, nextRunAt should be null
-          if (!task.isRecurring && task.nextRunAt === null) {
+          if (
+            !(task.scheduleType === "recurring") &&
+            task.nextOccurrenceAt === null
+          ) {
             return true;
           }
 
           // For recurring tasks, nextRunAt should be present
-          if (task.isRecurring && task.nextRunAt !== null) {
+          if (
+            task.scheduleType === "recurring" &&
+            task.nextOccurrenceAt !== null
+          ) {
             return true;
           }
         }
@@ -533,16 +535,16 @@ export const RecurrenceTestHelpers = {
           const task = (await response.json()) as TaskEntry;
 
           // Track execution count by changes in lastRunAt
-          if (task.lastRunAt && task.lastRunAt !== lastRunAt) {
+          if (task.nextOccurrenceAt && task.nextOccurrenceAt !== lastRunAt) {
             executionCount++;
-            lastRunAt = task.lastRunAt;
+            lastRunAt = task.nextOccurrenceAt;
           }
 
           // Record state changes
           stateChanges.push({
             timestamp: Date.now(),
-            lastRunAt: task.lastRunAt,
-            nextRunAt: task.nextRunAt,
+            lastRunAt: task.nextOccurrenceAt,
+            nextRunAt: task.nextOccurrenceAt,
           });
         }
       } catch (_error) {
@@ -671,9 +673,9 @@ export const RecurrenceTestHelpers = {
 
           // Check if scheduler has recovered properly
           if (
-            task.isRecurring &&
-            task.cronExpression === expectedCronExpression &&
-            task.nextRunAt
+            task.scheduleType === "recurring" &&
+            task.scheduleRule === expectedCronExpression &&
+            task.nextOccurrenceAt
           ) {
             return true;
           }
@@ -708,7 +710,7 @@ export const RecurrenceTestHelpers = {
 
     if (!taskExecutionQueue) {
       const { QueueNames } = await import("../../lib/queue/index.js");
-      taskExecutionQueue = new Queue(QueueNames.AGENT_RUN, {
+      taskExecutionQueue = new Queue(QueueNames.TASK_OCCURRENCE, {
         connection: redisConnection,
       });
     }
@@ -818,7 +820,7 @@ export const globalTestCleanup = async () => {
     try {
       const { getQueue, QueueNames } = await import("../../lib/queue/index.js");
       const taskQueue = getQueue(QueueNames.TASK_PROCESSING);
-      const executionQueue = getQueue(QueueNames.AGENT_RUN);
+      const executionQueue = getQueue(QueueNames.TASK_OCCURRENCE);
 
       if (taskQueue) {
         await taskQueue.drain(); // Remove all waiting jobs

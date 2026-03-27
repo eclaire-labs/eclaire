@@ -379,7 +379,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Adapter Integration Tests", ({
           id: taskId,
           userId: testUserId,
           title: "Important Task",
-          status: "open",
+          taskStatus: "open",
         });
 
         await tx.tasksTags.insert({ taskId, tagId: tag1Id });

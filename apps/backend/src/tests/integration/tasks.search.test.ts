@@ -19,7 +19,7 @@ describe("Task Search and Filtering", { timeout: 30000 }, () => {
       const searchTaskData = {
         title: "Searchable Task",
         description: "This task has unique searchable content.",
-        status: "completed",
+        taskStatus: "completed",
         tags: ["urgent", "testing"],
       };
 
@@ -69,8 +69,8 @@ describe("Task Search and Filtering", { timeout: 30000 }, () => {
       expect(found?.tags).toContain("urgent");
     });
 
-    it("GET /api/tasks?status=completed - should filter tasks by status", async () => {
-      const response = await loggedFetch(`/tasks?status=completed`, {
+    it("GET /api/tasks?taskStatus=completed - should filter tasks by status", async () => {
+      const response = await loggedFetch(`/tasks?taskStatus=completed`, {
         method: "GET",
       });
 
@@ -80,7 +80,7 @@ describe("Task Search and Filtering", { timeout: 30000 }, () => {
       expect(data.items).toBeInstanceOf(Array);
       const found = data.items.find((t) => t.id === searchTaskId);
       expect(found).toBeDefined();
-      expect(found?.status).toBe("completed");
+      expect(found?.taskStatus).toBe("completed");
     });
 
     it("GET /api/tasks?limit=1 - should respect pagination limit", async () => {

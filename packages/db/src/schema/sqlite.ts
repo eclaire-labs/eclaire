@@ -11,17 +11,13 @@ import {
   generateMessageId,
   generateNoteId,
   generatePhotoId,
-  generateScheduledActionExecutionId,
-  generateScheduledActionId,
   generateSecurityId,
   generateTagId,
   generateTaskCommentId,
   generateAgentStepId,
-  generateAgentRunId,
   generateMediaId,
-  generateTaskExecutionId,
   generateTaskId,
-  generateTaskSeriesId,
+  generateTaskOccurrenceId,
   generateUserId,
 } from "@eclaire/core/id";
 import { relations, sql } from "drizzle-orm";
@@ -45,6 +41,9 @@ type ChannelConfig = Record<string, unknown>;
 type HistoryBeforeData = Record<string, unknown>;
 type HistoryAfterData = Record<string, unknown>;
 type HistoryMetadata = Record<string, unknown>;
+type DeliveryTarget = { type: string; ref?: string };
+type DeliveryResult = Record<string, unknown>;
+type TaskOccurrenceMetadata = Record<string, unknown>;
 
 export const users = sqliteTable(
   "users",
@@ -312,64 +311,6 @@ export const actorCredentials = sqliteTable(
   }),
 );
 
-export const taskSeries = sqliteTable(
-  "task_series",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => generateTaskSeriesId()),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    status: text("status", {
-      enum: ["active", "paused", "completed", "cancelled"],
-    })
-      .notNull()
-      .default("active"),
-
-    // Template
-    title: text("title").notNull(),
-    description: text("description"),
-    defaultAssigneeActorId: text("default_assignee_actor_id").references(
-      () => actors.id,
-      { onDelete: "set null" },
-    ),
-    executionPolicy: text("execution_policy", {
-      enum: ["assign_only", "assign_and_run"],
-    })
-      .notNull()
-      .default("assign_only"),
-
-    // Recurrence
-    cronExpression: text("cron_expression").notNull(),
-    timezone: text("timezone"),
-    startAt: integer("start_at", { mode: "timestamp_ms" }),
-    endAt: integer("end_at", { mode: "timestamp_ms" }),
-    maxOccurrences: integer("max_occurrences"),
-    occurrenceCount: integer("occurrence_count").notNull().default(0),
-
-    // Lifecycle
-    lastOccurrenceAt: integer("last_occurrence_at", { mode: "timestamp_ms" }),
-    nextOccurrenceAt: integer("next_occurrence_at", { mode: "timestamp_ms" }),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
-      .notNull()
-      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-      .notNull()
-      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
-  },
-  (table) => ({
-    userIdx: index("task_series_user_id_idx").on(table.userId),
-    userStatusIdx: index("task_series_user_id_status_idx").on(
-      table.userId,
-      table.status,
-    ),
-    statusNextOccurrenceIdx: index(
-      "task_series_status_next_occurrence_at_idx",
-    ).on(table.status, table.nextOccurrenceAt),
-  }),
-);
-
 export const tasks = sqliteTable(
   "tasks",
   {
@@ -379,47 +320,94 @@ export const tasks = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+
+    // Content
     title: text("title").notNull(),
     description: text("description"),
-    status: text("status", {
-      enum: [
-        "backlog",
-        "open",
-        "in-progress",
-        "completed",
-        "cancelled",
-        "blocked",
-      ],
-    })
-      .notNull()
-      .default("open"),
-    dueDate: integer("due_date", { mode: "timestamp_ms" }),
-    assigneeActorId: text("assignee_actor_id").references(() => actors.id, {
+    prompt: text("prompt"),
+
+    // Assignment
+    delegateActorId: text("delegate_actor_id").references(() => actors.id, {
       onDelete: "set null",
     }),
+    delegateMode: text("delegate_mode", {
+      enum: ["manual", "assist", "handle"],
+    })
+      .notNull()
+      .default("manual"),
     delegatedByActorId: text("delegated_by_actor_id").references(
       () => actors.id,
       { onDelete: "set null" },
     ),
-    taskSeriesId: text("task_series_id").references(() => taskSeries.id, {
-      onDelete: "set null",
-    }),
-    occurrenceAt: integer("occurrence_at", { mode: "timestamp_ms" }),
-    priority: integer("priority").notNull().default(0),
-    executionMode: text("execution_mode", {
-      enum: ["manual", "agent_assists", "agent_handles"],
+
+    // Status
+    taskStatus: text("task_status", {
+      enum: ["open", "in_progress", "blocked", "completed", "cancelled"],
     })
       .notNull()
-      .default("manual"),
-    processingEnabled: integer("processing_enabled", { mode: "boolean" })
+      .default("open"),
+    attentionStatus: text("attention_status", {
+      enum: [
+        "none",
+        "needs_triage",
+        "awaiting_input",
+        "needs_review",
+        "failed",
+        "urgent",
+      ],
+    })
       .notNull()
-      .default(true),
-    processingStatus: text("processing_status", {
-      enum: ["pending", "processing", "completed", "failed"],
-    }),
+      .default("none"),
     reviewStatus: text("review_status", {
-      enum: ["pending", "accepted", "rejected"],
+      enum: ["none", "pending", "approved", "changes_requested"],
+    })
+      .notNull()
+      .default("none"),
+
+    // Schedule
+    scheduleType: text("schedule_type", {
+      enum: ["none", "one_time", "recurring"],
+    })
+      .notNull()
+      .default("none"),
+    scheduleRule: text("schedule_rule"),
+    scheduleSummary: text("schedule_summary"),
+    timezone: text("timezone"),
+    nextOccurrenceAt: integer("next_occurrence_at", { mode: "timestamp_ms" }),
+    maxOccurrences: integer("max_occurrences"),
+    occurrenceCount: integer("occurrence_count").notNull().default(0),
+
+    // Denormalized latest execution
+    latestExecutionStatus: text("latest_execution_status", {
+      enum: [
+        "idle",
+        "scheduled",
+        "queued",
+        "running",
+        "awaiting_input",
+        "awaiting_review",
+        "failed",
+        "completed",
+        "cancelled",
+      ],
     }),
+    latestResultSummary: text("latest_result_summary"),
+    latestErrorSummary: text("latest_error_summary"),
+
+    // Delivery
+    deliveryTargets: text("delivery_targets", {
+      mode: "json",
+    }).$type<DeliveryTarget[]>(),
+    sourceConversationId: text("source_conversation_id"),
+
+    // Scheduling
+    dueAt: integer("due_at", { mode: "timestamp_ms" }),
+    priority: integer("priority").notNull().default(0),
+
+    // Hierarchy
+    parentId: text("parent_id"),
+
+    // Organization
     flagColor: text("flag_color", {
       enum: ["red", "yellow", "orange", "green", "blue"],
     }),
@@ -427,7 +415,16 @@ export const tasks = sqliteTable(
       .notNull()
       .default(false),
     sortOrder: real("sort_order"),
-    parentId: text("parent_id"),
+
+    // AI tag generation
+    processingEnabled: integer("processing_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    processingStatus: text("processing_status", {
+      enum: ["pending", "processing", "completed", "failed"],
+    }),
+
+    // Lifecycle
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
@@ -438,29 +435,36 @@ export const tasks = sqliteTable(
   },
   (table) => ({
     userIdx: index("tasks_user_id_idx").on(table.userId),
-    statusIdx: index("tasks_status_idx").on(table.status),
-    dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
-    assigneeActorIdx: index("tasks_assignee_actor_id_idx").on(
-      table.assigneeActorId,
+    taskStatusIdx: index("tasks_task_status_idx").on(table.taskStatus),
+    attentionStatusIdx: index("tasks_attention_status_idx").on(
+      table.attentionStatus,
+    ),
+    dueAtIdx: index("tasks_due_at_idx").on(table.dueAt),
+    delegateActorIdx: index("tasks_delegate_actor_id_idx").on(
+      table.delegateActorId,
     ),
     isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
     completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
     parentIdx: index("tasks_parent_id_idx").on(table.parentId),
-    taskSeriesIdx: index("tasks_task_series_id_idx").on(table.taskSeriesId),
-    // Composite indexes for cursor pagination
+    scheduleTypeIdx: index("tasks_schedule_type_idx").on(table.scheduleType),
+    nextOccurrenceAtIdx: index("tasks_next_occurrence_at_idx").on(
+      table.nextOccurrenceAt,
+    ),
+    userAttentionStatusIdx: index("tasks_user_id_attention_status_idx").on(
+      table.userId,
+      table.attentionStatus,
+    ),
     userCreatedAtIdx: index("tasks_user_id_created_at_idx").on(
       table.userId,
       table.createdAt,
     ),
-    userDueDateIdx: index("tasks_user_id_due_date_idx").on(
+    userDueAtIdx: index("tasks_user_id_due_at_idx").on(
       table.userId,
-      table.dueDate,
+      table.dueAt,
     ),
-    userStatusCreatedAtIdx: index("tasks_user_id_status_created_at_idx").on(
-      table.userId,
-      table.status,
-      table.createdAt,
-    ),
+    userStatusCreatedAtIdx: index(
+      "tasks_user_id_task_status_created_at_idx",
+    ).on(table.userId, table.taskStatus, table.createdAt),
     userPriorityCreatedAtIdx: index("tasks_user_id_priority_created_at_idx").on(
       table.userId,
       table.priority,
@@ -470,7 +474,6 @@ export const tasks = sqliteTable(
       table.userId,
       table.sortOrder,
     ),
-    // Self-referencing FK for sub-tasks (defined here to avoid circular type inference)
     parentFk: foreignKey({
       columns: [table.parentId],
       foreignColumns: [table.id],
@@ -511,56 +514,115 @@ export const taskComments = sqliteTable(
   }),
 );
 
-export const agentRuns = sqliteTable(
-  "agent_runs",
+export const taskOccurrences = sqliteTable(
+  "task_occurrences",
   {
     id: text("id")
       .primaryKey()
-      .$defaultFn(() => generateAgentRunId()),
+      .$defaultFn(() => generateTaskOccurrenceId()),
     taskId: text("task_id")
       .notNull()
       .references(() => tasks.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+
+    // Classification
+    kind: text("kind", {
+      enum: [
+        "manual_run",
+        "scheduled_run",
+        "recurring_run",
+        "reminder",
+        "review_run",
+      ],
+    }).notNull(),
+
+    // Timing
+    scheduledFor: integer("scheduled_for", { mode: "timestamp_ms" }),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    durationMs: integer("duration_ms"),
+
+    // Status
+    executionStatus: text("execution_status", {
+      enum: [
+        "idle",
+        "scheduled",
+        "queued",
+        "running",
+        "awaiting_input",
+        "awaiting_review",
+        "failed",
+        "completed",
+        "cancelled",
+      ],
+    })
+      .notNull()
+      .default("idle"),
+
+    // Content
+    prompt: text("prompt"),
+    resultSummary: text("result_summary"),
+    resultBody: text("result_body"),
+    errorBody: text("error_body"),
+
+    // Review
+    requiresReview: integer("requires_review", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    reviewStatus: text("occurrence_review_status", {
+      enum: ["none", "pending", "approved", "changes_requested"],
+    })
+      .notNull()
+      .default("none"),
+
+    // Agent details
+    executorActorId: text("executor_actor_id").references(() => actors.id, {
+      onDelete: "set null",
+    }),
     requestedByActorId: text("requested_by_actor_id").references(
       () => actors.id,
       { onDelete: "set null" },
     ),
-    executorActorId: text("executor_actor_id").references(() => actors.id, {
-      onDelete: "set null",
-    }),
-    status: text("status", {
-      enum: ["queued", "running", "completed", "failed", "cancelled"],
-    })
-      .notNull()
-      .default("queued"),
-    prompt: text("prompt"),
-    startedAt: integer("started_at", { mode: "timestamp_ms" }),
-    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
-    durationMs: integer("duration_ms"),
-    output: text("output"),
-    error: text("error"),
-    resultSummary: text("result_summary"),
     tokenUsage: text("token_usage", { mode: "json" }),
-    metadata: text("metadata", { mode: "json" }),
+
+    // Delivery
+    deliveryResult: text("delivery_result", {
+      mode: "json",
+    }).$type<DeliveryResult>(),
+
+    // Retry chain
+    retryOfOccurrenceId: text("retry_of_occurrence_id"),
+
+    // Meta
+    metadata: text("metadata", {
+      mode: "json",
+    }).$type<TaskOccurrenceMetadata>(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
   },
   (table) => ({
-    taskCreatedAtIdx: index("agent_runs_task_id_created_at_idx").on(
+    taskCreatedAtIdx: index("task_occurrences_task_id_created_at_idx").on(
       table.taskId,
       table.createdAt,
     ),
-    userCreatedAtIdx: index("agent_runs_user_id_created_at_idx").on(
+    userCreatedAtIdx: index("task_occurrences_user_id_created_at_idx").on(
       table.userId,
       table.createdAt,
     ),
-    statusIdx: index("agent_runs_status_idx").on(table.status),
-    executorActorIdx: index("agent_runs_executor_actor_id_idx").on(
+    executionStatusIdx: index("task_occurrences_execution_status_idx").on(
+      table.executionStatus,
+    ),
+    executorActorIdx: index("task_occurrences_executor_actor_id_idx").on(
       table.executorActorId,
     ),
+    kindIdx: index("task_occurrences_kind_idx").on(table.kind),
+    retryFk: foreignKey({
+      columns: [table.retryOfOccurrenceId],
+      foreignColumns: [table.id],
+    }).onDelete("set null"),
   }),
 );
 
@@ -1406,31 +1468,21 @@ export const accountsRelations = relations(accounts, ({ one }) => ({
   user: one(users, { fields: [accounts.userId], references: [users.id] }),
 }));
 
-export const taskSeriesRelations = relations(taskSeries, ({ one, many }) => ({
-  user: one(users, {
-    fields: [taskSeries.userId],
-    references: [users.id],
-  }),
-  defaultAssigneeActor: one(actors, {
-    fields: [taskSeries.defaultAssigneeActorId],
-    references: [actors.id],
-  }),
-  occurrences: many(tasks),
-}));
-
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   user: one(users, {
     fields: [tasks.userId],
     references: [users.id],
     relationName: "taskOwner",
   }),
-  assigneeActor: one(actors, {
-    fields: [tasks.assigneeActorId],
+  delegateActor: one(actors, {
+    fields: [tasks.delegateActorId],
     references: [actors.id],
+    relationName: "taskDelegate",
   }),
-  series: one(taskSeries, {
-    fields: [tasks.taskSeriesId],
-    references: [taskSeries.id],
+  delegatedByActor: one(actors, {
+    fields: [tasks.delegatedByActorId],
+    references: [actors.id],
+    relationName: "taskDelegatedBy",
   }),
   parent: one(tasks, {
     fields: [tasks.parentId],
@@ -1440,29 +1492,37 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   children: many(tasks, { relationName: "parentChild" }),
   tags: many(tasksTags),
   comments: many(taskComments),
-  agentRuns: many(agentRuns),
+  occurrences: many(taskOccurrences),
 }));
 
-export const agentRunsRelations = relations(agentRuns, ({ one }) => ({
-  task: one(tasks, {
-    fields: [agentRuns.taskId],
-    references: [tasks.id],
+export const taskOccurrencesRelations = relations(
+  taskOccurrences,
+  ({ one }) => ({
+    task: one(tasks, {
+      fields: [taskOccurrences.taskId],
+      references: [tasks.id],
+    }),
+    user: one(users, {
+      fields: [taskOccurrences.userId],
+      references: [users.id],
+    }),
+    executorActor: one(actors, {
+      fields: [taskOccurrences.executorActorId],
+      references: [actors.id],
+      relationName: "occurrenceExecutor",
+    }),
+    requestedByActor: one(actors, {
+      fields: [taskOccurrences.requestedByActorId],
+      references: [actors.id],
+      relationName: "occurrenceRequestedBy",
+    }),
+    retryOfOccurrence: one(taskOccurrences, {
+      fields: [taskOccurrences.retryOfOccurrenceId],
+      references: [taskOccurrences.id],
+      relationName: "retryChain",
+    }),
   }),
-  user: one(users, {
-    fields: [agentRuns.userId],
-    references: [users.id],
-  }),
-  requestedByActor: one(actors, {
-    fields: [agentRuns.requestedByActorId],
-    references: [actors.id],
-    relationName: "agentRunRequestedBy",
-  }),
-  executorActor: one(actors, {
-    fields: [agentRuns.executorActorId],
-    references: [actors.id],
-    relationName: "agentRunExecutor",
-  }),
-}));
+);
 
 export const bookmarksRelations = relations(bookmarks, ({ one, many }) => ({
   user: one(users, { fields: [bookmarks.userId], references: [users.id] }),
@@ -1748,167 +1808,3 @@ export const appMeta = sqliteTable("_app_meta", {
     .notNull()
     .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
 });
-
-// =============================================================================
-// Scheduled Actions (time-based execution: reminders, agent runs, etc.)
-// =============================================================================
-
-// JSON type aliases for scheduled actions
-type DeliveryTarget = { type: string; ref?: string };
-type DeliveryResult = Record<string, unknown>;
-type ScheduledActionMetadata = Record<string, unknown>;
-
-export const scheduledActions = sqliteTable(
-  "scheduled_actions",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => generateScheduledActionId()),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    kind: text("kind", {
-      enum: ["reminder", "agent_run"],
-    }).notNull(),
-    status: text("status", {
-      enum: ["active", "paused", "completed", "cancelled"],
-    })
-      .notNull()
-      .default("active"),
-
-    // What
-    title: text("title").notNull(),
-    prompt: text("prompt").notNull(),
-
-    // When — trigger
-    triggerType: text("trigger_type", {
-      enum: ["once", "recurring"],
-    }).notNull(),
-    runAt: integer("run_at", { mode: "timestamp_ms" }),
-    cronExpression: text("cron_expression"),
-    timezone: text("timezone"),
-    startAt: integer("start_at", { mode: "timestamp_ms" }),
-    endAt: integer("end_at", { mode: "timestamp_ms" }),
-    maxRuns: integer("max_runs"),
-    runCount: integer("run_count").notNull().default(0),
-
-    // Where — delivery
-    deliveryTargets: text("delivery_targets", {
-      mode: "json",
-    })
-      .$type<DeliveryTarget[]>()
-      .notNull()
-      .default([{ type: "notification_channels" }]),
-
-    // Context
-    sourceConversationId: text("source_conversation_id"),
-    agentActorId: text("agent_actor_id").references(() => actors.id, {
-      onDelete: "set null",
-    }),
-    relatedTaskId: text("related_task_id").references(() => tasks.id, {
-      onDelete: "set null",
-    }),
-
-    // Lifecycle
-    lastRunAt: integer("last_run_at", { mode: "timestamp_ms" }),
-    nextRunAt: integer("next_run_at", { mode: "timestamp_ms" }),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
-      .notNull()
-      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-      .notNull()
-      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
-  },
-  (table) => ({
-    userStatusIdx: index("scheduled_actions_user_id_status_idx").on(
-      table.userId,
-      table.status,
-    ),
-    userNextRunIdx: index("scheduled_actions_user_id_next_run_at_idx").on(
-      table.userId,
-      table.nextRunAt,
-    ),
-    statusNextRunIdx: index("scheduled_actions_status_next_run_at_idx").on(
-      table.status,
-      table.nextRunAt,
-    ),
-  }),
-);
-
-export const scheduledActionExecutions = sqliteTable(
-  "scheduled_action_executions",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => generateScheduledActionExecutionId()),
-    scheduledActionId: text("scheduled_action_id")
-      .notNull()
-      .references(() => scheduledActions.id, { onDelete: "cascade" }),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    scheduledFor: integer("scheduled_for", { mode: "timestamp_ms" }),
-    startedAt: integer("started_at", { mode: "timestamp_ms" }),
-    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
-    status: text("status", {
-      enum: ["pending", "running", "completed", "failed", "skipped"],
-    })
-      .notNull()
-      .default("pending"),
-    output: text("output"),
-    error: text("error"),
-    deliveryResult: text("delivery_result", {
-      mode: "json",
-    }).$type<DeliveryResult>(),
-    metadata: text("metadata", {
-      mode: "json",
-    }).$type<ScheduledActionMetadata>(),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
-      .notNull()
-      .default(sql`(cast((unixepoch('subsec') * 1000) as integer))`),
-  },
-  (table) => ({
-    actionCreatedAtIdx: index("sa_executions_action_id_created_at_idx").on(
-      table.scheduledActionId,
-      table.createdAt,
-    ),
-    userCreatedAtIdx: index("sa_executions_user_id_created_at_idx").on(
-      table.userId,
-      table.createdAt,
-    ),
-    statusIdx: index("sa_executions_status_idx").on(table.status),
-  }),
-);
-
-export const scheduledActionsRelations = relations(
-  scheduledActions,
-  ({ one, many }) => ({
-    user: one(users, {
-      fields: [scheduledActions.userId],
-      references: [users.id],
-    }),
-    agentActor: one(actors, {
-      fields: [scheduledActions.agentActorId],
-      references: [actors.id],
-    }),
-    relatedTask: one(tasks, {
-      fields: [scheduledActions.relatedTaskId],
-      references: [tasks.id],
-    }),
-    executions: many(scheduledActionExecutions),
-  }),
-);
-
-export const scheduledActionExecutionsRelations = relations(
-  scheduledActionExecutions,
-  ({ one }) => ({
-    scheduledAction: one(scheduledActions, {
-      fields: [scheduledActionExecutions.scheduledActionId],
-      references: [scheduledActions.id],
-    }),
-    user: one(users, {
-      fields: [scheduledActionExecutions.userId],
-      references: [users.id],
-    }),
-  }),
-);

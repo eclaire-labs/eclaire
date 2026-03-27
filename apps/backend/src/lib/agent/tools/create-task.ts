@@ -1,8 +1,8 @@
 /**
  * Create Task Tool
  *
- * Create a new task with title, description, status, priority, tags, and due date.
- * Tasks are work items — for reminders and scheduled work, use scheduleAction instead.
+ * Create a new task — work items, reminders, scheduled agent work, recurring tasks.
+ * Everything is a task with different properties.
  */
 
 import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
@@ -16,8 +16,12 @@ const inputSchema = z.object({
     .string()
     .optional()
     .describe("Detailed description of the task"),
-  status: z
-    .enum(["backlog", "open", "in-progress", "completed", "cancelled"])
+  prompt: z
+    .string()
+    .optional()
+    .describe("Instructions for the agent delegate (what to do)"),
+  taskStatus: z
+    .enum(["open", "in_progress", "blocked", "completed", "cancelled"])
     .optional()
     .default("open")
     .describe("Task status"),
@@ -25,39 +29,66 @@ const inputSchema = z.object({
     .number()
     .int()
     .min(0)
-    .max(3)
+    .max(4)
     .optional()
     .default(0)
-    .describe("Priority level (0 = none, 1 = low, 2 = medium, 3 = high)"),
+    .describe("Priority (0=none, 1=urgent, 2=high, 3=medium, 4=low)"),
   tags: z.array(z.string()).optional().describe("Tags for the task"),
-  dueDate: z
-    .string()
-    .optional()
-    .describe(
-      "Due date in ISO 8601 format (YYYY-MM-DD for date-only, or YYYY-MM-DDTHH:mm:ssZ for specific date+time)",
-    ),
+  dueAt: z.string().optional().describe("Due date in ISO 8601 format"),
   parentId: z
     .string()
     .optional()
     .describe("Parent task ID to create this as a sub-task"),
-  assigneeActorId: z
+  delegateActorId: z
     .string()
     .optional()
-    .describe("Actor ID to assign the task to (human or agent)."),
+    .describe("Actor ID to delegate to (human or agent)"),
+  delegateMode: z
+    .enum(["manual", "assist", "handle"])
+    .optional()
+    .describe(
+      "manual (human only), assist (agent + review), handle (agent auto-completes)",
+    ),
+  scheduleType: z
+    .enum(["none", "one_time", "recurring"])
+    .optional()
+    .describe("Schedule type: none, one_time, or recurring"),
+  scheduleRule: z
+    .string()
+    .optional()
+    .describe("Cron expression (recurring) or ISO datetime (one_time)"),
+  scheduleSummary: z
+    .string()
+    .optional()
+    .describe("Human-readable schedule description"),
+  timezone: z
+    .string()
+    .optional()
+    .describe("IANA timezone for schedule interpretation"),
+  deliveryTargets: z
+    .any()
+    .optional()
+    .describe(
+      "Where to deliver results (e.g., [{type: 'notification_channels'}])",
+    ),
+  sourceConversationId: z
+    .string()
+    .optional()
+    .describe("Originating conversation ID for context"),
 });
 
 export const createTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "createTask",
   label: "Create Task",
   description:
-    "Create a new task (work item) with title, description, status, priority, tags, and due date. For reminders and scheduled work, use scheduleAction instead.",
+    "Create a new task. Handles all types: work items, reminders, scheduled agent work, and recurring tasks via properties.",
   accessLevel: "write",
   inputSchema,
   promptGuidelines: [
-    "Tasks are work items with due dates — like Linear or Apple Reminders. Use createTask for things people need to do.",
-    "For reminders and scheduled notifications, use scheduleAction instead.",
-    "For recurring tasks (e.g., 'every morning summarize my meetings'), use createTaskSeries instead.",
-    "To assign a task to an agent and have it run immediately, first createTask, then runTaskAgent.",
+    "Everything is a task. Use createTask for work items, reminders, scheduled agent runs, and recurring tasks.",
+    "For a reminder: set scheduleType='one_time', scheduleRule=ISO datetime, deliveryTargets=[{type:'notification_channels'}].",
+    "For recurring agent work: set scheduleType='recurring', scheduleRule=cron, delegateActorId=agent, delegateMode='handle'.",
+    "For one-time agent work: set delegateActorId=agent, delegateMode='assist' (review) or 'handle' (auto-complete).",
     "Always confirm with the user before creating tasks.",
   ],
   execute: async (_callId, input, ctx) => {
@@ -65,12 +96,20 @@ export const createTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
       {
         title: input.title,
         description: input.description,
-        status: input.status,
+        prompt: input.prompt,
+        taskStatus: input.taskStatus,
         priority: input.priority,
         tags: input.tags,
-        dueDate: input.dueDate,
+        dueAt: input.dueAt,
         parentId: input.parentId,
-        assigneeActorId: input.assigneeActorId,
+        delegateActorId: input.delegateActorId,
+        delegateMode: input.delegateMode,
+        scheduleType: input.scheduleType,
+        scheduleRule: input.scheduleRule,
+        scheduleSummary: input.scheduleSummary,
+        timezone: input.timezone,
+        deliveryTargets: input.deliveryTargets,
+        sourceConversationId: input.sourceConversationId,
       },
       agentToolCaller(ctx),
     );

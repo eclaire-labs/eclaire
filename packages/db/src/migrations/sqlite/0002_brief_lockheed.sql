@@ -1,1 +1,0 @@
-ALTER TABLE `tasks` ADD `delegated_by_actor_id` text REFERENCES actors(id);

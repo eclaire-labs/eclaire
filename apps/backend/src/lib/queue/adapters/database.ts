@@ -13,7 +13,6 @@ import { getRequestId, type Logger } from "@eclaire/logger";
 import type { DbInstance } from "@eclaire/db";
 import { QueueNames } from "../queue-names.js";
 import type {
-  AgentRunJobData,
   AssetType,
   BookmarkJobData,
   DocumentJobData,
@@ -21,8 +20,9 @@ import type {
   MediaJobData,
   NoteJobData,
   QueueAdapter,
-  ScheduledActionJobData,
   TaskJobData,
+  TaskOccurrenceJobData,
+  TaskScheduleTickJobData,
 } from "../types.js";
 
 export interface DatabaseAdapterConfig {
@@ -169,9 +169,9 @@ export function createDatabaseAdapter(
       await enqueueJob("media", data.mediaId, data.userId, data);
     },
 
-    async enqueueScheduledAction(data: ScheduledActionJobData): Promise<void> {
-      const queueName = QueueNames.SCHEDULED_ACTION_EXECUTION;
-      const key = `scheduled-action:${data.scheduledActionId}`;
+    async enqueueTaskOccurrence(data: TaskOccurrenceJobData): Promise<void> {
+      const queueName = QueueNames.TASK_OCCURRENCE;
+      const key = `task-occurrence:${data.occurrenceId}`;
       const requestId = getRequestId();
 
       try {
@@ -184,8 +184,8 @@ export function createDatabaseAdapter(
             runAt: data.scheduledFor,
             metadata: {
               userId: data.userId,
-              assetType: "scheduled_action",
-              assetId: data.scheduledActionId,
+              assetType: "task_occurrence",
+              assetId: data.occurrenceId,
             },
           },
         );
@@ -193,11 +193,11 @@ export function createDatabaseAdapter(
         logger.info(
           {
             queueName,
-            scheduledActionId: data.scheduledActionId,
+            occurrenceId: data.occurrenceId,
+            taskId: data.taskId,
             userId: data.userId,
-            scheduledFor: data.scheduledFor,
           },
-          "Scheduled action job enqueued",
+          "Task occurrence job enqueued",
         );
 
         if (notifyEmitter) {
@@ -207,18 +207,20 @@ export function createDatabaseAdapter(
         logger.error(
           {
             queueName,
-            scheduledActionId: data.scheduledActionId,
+            occurrenceId: data.occurrenceId,
             error: getErrorMessage(error),
           },
-          "Failed to enqueue scheduled action job",
+          "Failed to enqueue task occurrence job",
         );
         throw error;
       }
     },
 
-    async enqueueAgentRun(data: AgentRunJobData): Promise<void> {
-      const queueName = QueueNames.AGENT_RUN;
-      const key = `agent-run:${data.agentRunId}`;
+    async enqueueTaskScheduleTick(
+      data: TaskScheduleTickJobData,
+    ): Promise<void> {
+      const queueName = QueueNames.TASK_SCHEDULE_TICK;
+      const key = `task-schedule-tick:${data.taskId}:${Date.now()}`;
       const requestId = getRequestId();
 
       try {
@@ -230,8 +232,8 @@ export function createDatabaseAdapter(
             priority: 0,
             metadata: {
               userId: data.userId,
-              assetType: "agent_run",
-              assetId: data.agentRunId,
+              assetType: "task_schedule_tick",
+              assetId: data.taskId,
             },
           },
         );
@@ -239,11 +241,10 @@ export function createDatabaseAdapter(
         logger.info(
           {
             queueName,
-            agentRunId: data.agentRunId,
             taskId: data.taskId,
             userId: data.userId,
           },
-          "Agent run job enqueued",
+          "Task schedule tick job enqueued",
         );
 
         if (notifyEmitter) {
@@ -253,10 +254,10 @@ export function createDatabaseAdapter(
         logger.error(
           {
             queueName,
-            agentRunId: data.agentRunId,
+            taskId: data.taskId,
             error: getErrorMessage(error),
           },
-          "Failed to enqueue agent run job",
+          "Failed to enqueue task schedule tick job",
         );
         throw error;
       }

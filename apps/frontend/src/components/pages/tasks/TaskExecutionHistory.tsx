@@ -1,14 +1,18 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useTaskExecutions } from "@/hooks/use-task-executions";
-import type { TaskExecution } from "@/types/task";
+import { useTaskOccurrences } from "@/hooks/use-task-executions";
+import type { TaskOccurrence } from "@/types/task";
 import {
   AlertCircle,
+  Bell,
+  Bot,
   CheckCircle2,
   ChevronDown,
   Clock,
   Loader2,
-  SkipForward,
+  Play,
+  RefreshCw,
+  XCircle,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -33,24 +37,59 @@ function formatRelativeTime(dateStr: string | null): string {
   return `${diffDays}d ago`;
 }
 
-const statusConfig = {
+interface StatusConfigEntry {
+  icon: React.ComponentType<{ className?: string }>;
+  variant: "default" | "secondary" | "destructive" | "outline";
+  label: string;
+}
+
+const statusConfig: { [key: string]: StatusConfigEntry } = {
   completed: {
     icon: CheckCircle2,
-    variant: "success" as const,
+    variant: "default",
     label: "Completed",
   },
   failed: {
     icon: AlertCircle,
-    variant: "destructive" as const,
+    variant: "destructive",
     label: "Failed",
   },
-  running: { icon: Loader2, variant: "secondary" as const, label: "Running" },
-  skipped: { icon: SkipForward, variant: "outline" as const, label: "Skipped" },
+  running: { icon: Loader2, variant: "secondary", label: "Running" },
+  queued: { icon: Clock, variant: "outline", label: "Queued" },
+  scheduled: { icon: Clock, variant: "outline", label: "Scheduled" },
+  cancelled: { icon: XCircle, variant: "outline", label: "Cancelled" },
+  awaiting_input: {
+    icon: Clock,
+    variant: "secondary",
+    label: "Awaiting Input",
+  },
+  awaiting_review: {
+    icon: Clock,
+    variant: "secondary",
+    label: "Awaiting Review",
+  },
+  idle: { icon: Clock, variant: "outline", label: "Idle" },
 };
 
-function ExecutionRow({ execution }: { execution: TaskExecution }) {
-  const config = statusConfig[execution.status] || statusConfig.completed;
-  const Icon = config.icon;
+const kindIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  manual_run: Play,
+  scheduled_run: Clock,
+  recurring_run: RefreshCw,
+  reminder: Bell,
+  review_run: Bot,
+};
+
+const fallbackConfig: StatusConfigEntry = {
+  icon: CheckCircle2,
+  variant: "default",
+  label: "Completed",
+};
+
+function OccurrenceRow({ occurrence }: { occurrence: TaskOccurrence }) {
+  const config: StatusConfigEntry =
+    statusConfig[occurrence.executionStatus] ?? fallbackConfig;
+  const StatusIcon = config.icon;
+  const KindIcon = kindIcons[occurrence.kind] ?? Play;
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -60,24 +99,25 @@ function ExecutionRow({ execution }: { execution: TaskExecution }) {
         className="flex items-center gap-2 cursor-pointer w-full text-left"
         onClick={() => setExpanded(!expanded)}
       >
-        <Icon
+        <StatusIcon
           className={`h-3.5 w-3.5 shrink-0 ${
-            execution.status === "running" ? "animate-spin" : ""
+            occurrence.executionStatus === "running" ? "animate-spin" : ""
           } ${
-            execution.status === "completed"
+            occurrence.executionStatus === "completed"
               ? "text-green-500"
-              : execution.status === "failed"
+              : occurrence.executionStatus === "failed"
                 ? "text-red-500"
                 : "text-muted-foreground"
           }`}
         />
+        <KindIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
         <span className="text-xs text-muted-foreground flex-1">
-          {formatRelativeTime(execution.startedAt)}
+          {formatRelativeTime(occurrence.startedAt ?? occurrence.createdAt)}
         </span>
-        {execution.durationMs !== null && (
+        {occurrence.durationMs !== null && (
           <span className="text-xs text-muted-foreground flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            {formatDuration(execution.durationMs)}
+            {formatDuration(occurrence.durationMs)}
           </span>
         )}
         <Badge variant={config.variant} className="text-[10px] px-1.5 py-0">
@@ -86,15 +126,15 @@ function ExecutionRow({ execution }: { execution: TaskExecution }) {
       </button>
       {expanded && (
         <div className="mt-1.5 ml-5.5 text-xs">
-          {execution.error && (
-            <p className="text-red-500 break-words">{execution.error}</p>
+          {occurrence.errorBody && (
+            <p className="text-red-500 break-words">{occurrence.errorBody}</p>
           )}
-          {execution.resultSummary && (
+          {occurrence.resultSummary && (
             <p className="text-muted-foreground break-words line-clamp-3">
-              {execution.resultSummary}
+              {occurrence.resultSummary}
             </p>
           )}
-          {!execution.error && !execution.resultSummary && (
+          {!occurrence.errorBody && !occurrence.resultSummary && (
             <p className="text-muted-foreground italic">No details available</p>
           )}
         </div>
@@ -114,12 +154,12 @@ export function TaskExecutionHistory({
 }: TaskExecutionHistoryProps) {
   const [isOpen, setIsOpen] = useState(false);
   const {
-    executions,
+    occurrences,
     isLoading,
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useTaskExecutions(taskId, { enabled: isOpen, limit: 10 });
+  } = useTaskOccurrences(taskId, { enabled: isOpen, limit: 10 });
 
   if (!isRecurring && !isOpen) return null;
 
@@ -143,15 +183,15 @@ export function TaskExecutionHistory({
               <Loader2 className="h-3 w-3 animate-spin" />
               Loading...
             </div>
-          ) : executions.length === 0 ? (
+          ) : occurrences.length === 0 ? (
             <p className="text-xs text-muted-foreground py-2">
               No executions yet
             </p>
           ) : (
             <>
               <div className="border rounded-md">
-                {executions.map((exec) => (
-                  <ExecutionRow key={exec.id} execution={exec} />
+                {occurrences.map((occ) => (
+                  <OccurrenceRow key={occ.id} occurrence={occ} />
                 ))}
               </div>
               {hasNextPage && (

@@ -589,7 +589,7 @@ export async function findAllEntries({
       promises.push(
         findTasks({
           ...commonParams,
-          status: undefined,
+          taskStatus: undefined,
           limit: fetchLimit,
         }).then((r) => r.items.map((item) => ({ ...item, type: "task" }))),
       );
@@ -717,7 +717,9 @@ export async function countAllEntries({
     if (activeTypes.has("note")) countPromises.push(countNotes(commonParams));
     if (activeTypes.has("photo")) countPromises.push(countPhotos(commonParams));
     if (activeTypes.has("task"))
-      countPromises.push(countTasks({ ...commonParams, status: undefined }));
+      countPromises.push(
+        countTasks({ ...commonParams, taskStatus: undefined }),
+      );
 
     const counts = await Promise.all(countPromises);
     return counts.reduce((sum, c) => sum + c, 0);

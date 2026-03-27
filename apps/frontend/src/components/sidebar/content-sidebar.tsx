@@ -2,12 +2,13 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
 import { PopularTagsSection } from "@/components/dashboard/popular-tags-section";
 
-interface NavItem {
+export interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   separator?: boolean;
   isDialog?: boolean;
+  badge?: number;
 }
 
 interface ContentSidebarProps {
@@ -61,7 +62,12 @@ export function ContentSidebar({ navigation }: ContentSidebarProps) {
                 }
               >
                 <item.icon className="h-4 w-4" />
-                <span>{item.name}</span>
+                <span className="flex-1">{item.name}</span>
+                {item.badge != null && item.badge > 0 && (
+                  <span className="ml-auto inline-flex items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-medium text-destructive-foreground min-w-[18px]">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
               </Link>
             )}
           </li>

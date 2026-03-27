@@ -48,6 +48,8 @@ export interface ListPageLayoutProps<TItem extends ListableItem> {
   extraFilters?: ExtraFilterProps[];
   viewModes?: ViewModeDef[];
   headerAction?: React.ReactNode;
+  /** Extra content rendered below the title row (e.g. view tabs). */
+  titleExtra?: React.ReactNode;
   /** Wraps the entire page in a dropzone div. */
   dropzoneRootProps?: React.HTMLAttributes<HTMLDivElement>;
   dropzoneInputProps?: React.InputHTMLAttributes<HTMLInputElement>;
@@ -87,6 +89,7 @@ export function ListPageLayout<TItem extends ListableItem>({
   extraFilters,
   viewModes = defaultViewModes,
   headerAction,
+  titleExtra,
   dropzoneRootProps,
   dropzoneInputProps,
   isDragActive,
@@ -151,6 +154,7 @@ export function ListPageLayout<TItem extends ListableItem>({
         </div>
         {headerAction}
       </div>
+      {titleExtra}
 
       {/* Controls: Search + Filter/Sort */}
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
