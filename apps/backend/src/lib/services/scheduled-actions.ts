@@ -5,14 +5,19 @@
  * Uses the queue system for delayed/recurring execution.
  */
 
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import {
   generateScheduledActionId,
   generateScheduledActionExecutionId,
 } from "@eclaire/core/id";
 import { db, schema } from "../../db/index.js";
+import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/adapter.js";
+import {
+  isValidCronExpression,
+  getNextExecutionTime,
+} from "../queue/cron-utils.js";
 import { QueueNames } from "../queue/queue-names.js";
 import { getScheduler } from "../queue/scheduler.js";
 import type { DeliveryTarget, ScheduledActionJobData } from "../queue/types.js";
@@ -145,17 +150,14 @@ async function upsertRecurringSchedule(action: ScheduledAction): Promise<void> {
  * Remove a recurring schedule from the scheduler.
  */
 async function deleteRecurringSchedule(actionId: string): Promise<void> {
-  try {
-    const scheduler = await getScheduler();
-    await scheduler.remove(getScheduleKey(actionId));
+  const scheduler = await getScheduler();
+  const removed = await scheduler.remove(getScheduleKey(actionId));
+  if (removed) {
     logger.info({ scheduledActionId: actionId }, "Recurring schedule deleted");
-  } catch (error) {
-    logger.warn(
-      {
-        scheduledActionId: actionId,
-        error: error instanceof Error ? error.message : String(error),
-      },
-      "Failed to delete recurring schedule (may not exist)",
+  } else {
+    logger.debug(
+      { scheduledActionId: actionId },
+      "Recurring schedule not found (already removed)",
     );
   }
 }
@@ -176,16 +178,47 @@ export async function createScheduledAction(
   // Validate trigger
   if (params.triggerType === "once") {
     if (!params.runAt) {
-      throw new Error("runAt is required for one-time scheduled actions");
+      throw new ValidationError(
+        "runAt is required for one-time scheduled actions",
+        "runAt",
+      );
     }
     const runAtDate = new Date(params.runAt);
     if (runAtDate.getTime() <= Date.now()) {
-      throw new Error("runAt must be in the future");
+      throw new ValidationError("runAt must be in the future", "runAt");
     }
   } else if (params.triggerType === "recurring") {
     if (!params.cronExpression) {
-      throw new Error(
+      throw new ValidationError(
         "cronExpression is required for recurring scheduled actions",
+        "cronExpression",
+      );
+    }
+    if (!isValidCronExpression(params.cronExpression)) {
+      throw new ValidationError(
+        `Invalid cron expression: "${params.cronExpression}". Use standard 5-field cron format (e.g., "0 9 * * *").`,
+        "cronExpression",
+      );
+    }
+  }
+
+  // Validate relatedTaskId belongs to the user
+  if (params.relatedTaskId) {
+    const tasks = schema.tasks;
+    const [task] = await db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.id, params.relatedTaskId),
+          eq(tasks.userId, params.userId),
+        ),
+      )
+      .limit(1);
+    if (!task) {
+      throw new ValidationError(
+        "Related task not found or does not belong to you",
+        "relatedTaskId",
       );
     }
   }
@@ -198,8 +231,13 @@ export async function createScheduledAction(
     { type: "notification_channels" },
   ];
 
-  // For one-time actions, nextRunAt = runAt
-  const nextRunAt = runAtDate;
+  // Compute nextRunAt: for one-time use runAt, for recurring compute from cron
+  let nextRunAt: Date | null = runAtDate;
+  if (params.triggerType === "recurring" && params.cronExpression) {
+    const tz = params.timezone ?? (await getUserTimezone(params.userId));
+    nextRunAt =
+      getNextExecutionTime(params.cronExpression, new Date(), tz) ?? null;
+  }
 
   const [created] = await db
     .insert(table)
@@ -237,11 +275,35 @@ export async function createScheduledAction(
     "Scheduled action created",
   );
 
-  // Enqueue execution or set up recurring schedule
-  if (params.triggerType === "once" && runAtDate) {
-    await enqueueExecution(created as ScheduledAction, runAtDate);
-  } else if (params.triggerType === "recurring" && params.cronExpression) {
-    await upsertRecurringSchedule(created as ScheduledAction);
+  // Enqueue execution or set up recurring schedule.
+  // If enqueue fails, delete the orphaned record so users don't see
+  // an "active" action that will never fire.
+  try {
+    if (params.triggerType === "once" && runAtDate) {
+      await enqueueExecution(created as ScheduledAction, runAtDate);
+    } else if (params.triggerType === "recurring" && params.cronExpression) {
+      await upsertRecurringSchedule(created as ScheduledAction);
+    }
+  } catch (enqueueError) {
+    logger.error(
+      {
+        id,
+        error:
+          enqueueError instanceof Error
+            ? enqueueError.message
+            : String(enqueueError),
+      },
+      "Failed to enqueue scheduled action, rolling back DB record",
+    );
+    try {
+      await db.delete(table).where(eq(table.id, id));
+    } catch (deleteError) {
+      logger.error(
+        { id, error: deleteError },
+        "Failed to clean up orphaned scheduled action record",
+      );
+    }
+    throw enqueueError;
   }
 
   return created as ScheduledAction;
@@ -316,7 +378,7 @@ export async function cancelScheduledAction(
     .returning();
 
   if (!updated) {
-    throw new Error("Scheduled action not found");
+    throw new NotFoundError("Scheduled action", id);
   }
 
   // Remove recurring schedule if any
@@ -344,7 +406,7 @@ export async function deleteScheduledAction(
     .limit(1);
 
   if (!existing) {
-    throw new Error("Scheduled action not found");
+    throw new NotFoundError("Scheduled action", id);
   }
 
   // Remove recurring schedule if any
@@ -405,6 +467,36 @@ async function enqueueExecution(
   );
 
   return executionId;
+}
+
+/**
+ * Get the status of an execution record (for idempotency checks).
+ */
+export async function getExecutionStatus(
+  executionId: string,
+): Promise<string | null> {
+  const table = scheduledActionExecutions;
+  const [row] = await db
+    .select({ status: table.status })
+    .from(table)
+    .where(eq(table.id, executionId))
+    .limit(1);
+  return row?.status ?? null;
+}
+
+/**
+ * Get the status of a scheduled action (for worker pre-execution checks).
+ */
+export async function getScheduledActionStatus(
+  id: string,
+): Promise<string | null> {
+  const table = scheduledActions;
+  const [row] = await db
+    .select({ status: table.status })
+    .from(table)
+    .where(eq(table.id, id))
+    .limit(1);
+  return row?.status ?? null;
 }
 
 /**
@@ -477,40 +569,59 @@ export async function failExecution(
 
 /**
  * Update the scheduled action after an execution completes.
+ * Uses atomic SQL increment for runCount to avoid race conditions.
  */
 export async function updateAfterExecution(
   scheduledActionId: string,
 ): Promise<void> {
   const table = scheduledActions;
-  const [action] = await db
-    .select()
-    .from(table)
-    .where(eq(table.id, scheduledActionId))
-    .limit(1);
 
-  if (!action) return;
-
-  const newRunCount = (action.runCount ?? 0) + 1;
-  const isOnce = action.triggerType === "once";
-  const reachedMaxRuns = action.maxRuns && newRunCount >= action.maxRuns;
-
-  const shouldComplete = isOnce || reachedMaxRuns;
-
-  await db
+  // Atomically increment runCount and get the updated row
+  const [updated] = await db
     .update(table)
     .set({
-      runCount: newRunCount,
+      runCount: sql`${table.runCount} + 1`,
       lastRunAt: new Date(),
-      nextRunAt: shouldComplete ? null : action.nextRunAt,
-      status: shouldComplete ? "completed" : action.status,
       updatedAt: new Date(),
     })
-    .where(eq(table.id, scheduledActionId));
+    .where(eq(table.id, scheduledActionId))
+    .returning();
+
+  if (!updated) return;
+
+  const newRunCount = updated.runCount ?? 1;
+  const isOnce = updated.triggerType === "once";
+  const reachedMaxRuns = updated.maxRuns && newRunCount >= updated.maxRuns;
+  const shouldComplete = isOnce || reachedMaxRuns;
+
+  // Compute nextRunAt for recurring actions, or null if completing
+  let nextRunAt: Date | null = null;
+  if (
+    !shouldComplete &&
+    updated.triggerType === "recurring" &&
+    updated.cronExpression
+  ) {
+    const tz = updated.timezone ?? (await getUserTimezone(updated.userId));
+    nextRunAt =
+      getNextExecutionTime(updated.cronExpression, new Date(), tz) ?? null;
+  }
+
+  // Update status and nextRunAt in a second pass (only if state changed)
+  if (shouldComplete || nextRunAt !== undefined) {
+    await db
+      .update(table)
+      .set({
+        nextRunAt,
+        ...(shouldComplete ? { status: "completed" as const } : {}),
+      })
+      .where(eq(table.id, scheduledActionId));
+  }
 
   logger.info(
     {
       scheduledActionId,
       runCount: newRunCount,
+      nextRunAt,
       completed: shouldComplete,
     },
     "Scheduled action updated after execution",

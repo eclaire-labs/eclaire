@@ -14,6 +14,8 @@ import {
   failExecution,
   updateAfterExecution,
   createExecutionRecord,
+  getExecutionStatus,
+  getScheduledActionStatus,
 } from "../../lib/services/scheduled-actions.js";
 import { getNotificationChannels } from "../../lib/services/channels.js";
 import { channelRegistry } from "../../lib/channels.js";
@@ -205,9 +207,10 @@ async function processAgentRun(
     "Running AI agent for scheduled action",
   );
 
-  // Invoke the AI agent with the stored prompt
+  // Invoke the AI agent with the stored prompt (5 minute timeout)
+  const AGENT_RUN_TIMEOUT_MS = 5 * 60 * 1000;
   const requestId = `sa-exec-${scheduledActionId}-${Date.now()}`;
-  const result = await processPromptRequest({
+  const agentPromise = processPromptRequest({
     userId,
     prompt,
     context: {
@@ -217,6 +220,13 @@ async function processAgentRun(
     requestId,
     enableThinking: false,
   });
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(
+      () => reject(new Error("Agent run timed out after 5 minutes")),
+      AGENT_RUN_TIMEOUT_MS,
+    ),
+  );
+  const result = await Promise.race([agentPromise, timeoutPromise]);
 
   const agentResponse = result.response || "Agent completed without output.";
 
@@ -268,6 +278,32 @@ async function processScheduledAction(
     throw new Error(
       `Missing required job data: scheduledActionId=${scheduledActionId}, userId=${userId}`,
     );
+  }
+
+  // Guard: skip if the action was cancelled or deleted since it was enqueued
+  const actionStatus = await getScheduledActionStatus(scheduledActionId);
+  if (
+    !actionStatus ||
+    actionStatus === "cancelled" ||
+    actionStatus === "completed"
+  ) {
+    logger.info(
+      { jobId: ctx.job.id, scheduledActionId, actionStatus },
+      "Skipping execution — action is no longer active",
+    );
+    return;
+  }
+
+  // Idempotency: if this execution already completed (e.g., queue retry), skip it
+  if (executionId) {
+    const existingStatus = await getExecutionStatus(executionId);
+    if (existingStatus === "completed") {
+      logger.info(
+        { jobId: ctx.job.id, executionId, scheduledActionId },
+        "Skipping already-completed execution (idempotency check)",
+      );
+      return;
+    }
   }
 
   // For recurring jobs (enqueued by scheduler), executionId may be empty.

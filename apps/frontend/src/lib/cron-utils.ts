@@ -54,8 +54,21 @@ export function parseCronExpression(cron: string): CronParts {
 export function describeCronExpression(cron: string): RecurrenceDescription {
   const parts = parseCronExpression(cron);
 
-  // Extract time
-  const hours = parts.hours === "*" ? 9 : parseInt(parts.hours, 10);
+  // Extract time — if hours or minutes are wildcards, signal that there's
+  // no fixed time (e.g., "every minute" or "every hour") instead of
+  // silently defaulting to 09:00.
+  if (parts.hours === "*" && parts.minutes === "*") {
+    return { pattern: "custom", time: "every minute" };
+  }
+  if (parts.hours === "*") {
+    const minutes = parseInt(parts.minutes, 10);
+    return {
+      pattern: "custom",
+      time: `every hour at :${minutes.toString().padStart(2, "0")}`,
+    };
+  }
+
+  const hours = parseInt(parts.hours, 10);
   const minutes = parts.minutes === "*" ? 0 : parseInt(parts.minutes, 10);
   const time = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 
@@ -261,15 +274,24 @@ export function formatCronForDisplay(cron: string): string {
         return `Monthly at ${description.time}`;
       case "weekdays":
         return `Weekdays at ${description.time}`;
-      case "custom":
+      case "custom": {
+        // Wildcard patterns already have descriptive time strings
+        const isDescriptiveTime =
+          description.time.startsWith("every ") ||
+          description.time.includes("at :");
         if (description.weekdays) {
           const dayNames = description.weekdays.map((day) => {
             const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
             return days[parseInt(day, 10)];
           });
-          return `${dayNames.join(", ")} at ${description.time}`;
+          return isDescriptiveTime
+            ? `${dayNames.join(", ")}, ${description.time}`
+            : `${dayNames.join(", ")} at ${description.time}`;
         }
-        return `Custom schedule at ${description.time}`;
+        return isDescriptiveTime
+          ? `Runs ${description.time}`
+          : `Custom schedule at ${description.time}`;
+      }
       default:
         return "Custom schedule";
     }

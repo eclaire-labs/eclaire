@@ -2,6 +2,7 @@
  * Automation detail page — shows a single scheduled action with execution history.
  */
 
+import { useState } from "react";
 import { Link, useParams, useRouter } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -31,6 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import {
   useCancelScheduledAction,
   useDeleteScheduledAction,
@@ -92,6 +94,7 @@ export default function AutomationDetailPage() {
   const { data: executions } = useScheduledActionExecutions(id);
   const cancelMutation = useCancelScheduledAction();
   const deleteMutation = useDeleteScheduledAction();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -149,17 +152,18 @@ export default function AutomationDetailPage() {
               variant="outline"
               size="sm"
               onClick={() => cancelMutation.mutate(action.id)}
+              disabled={cancelMutation.isPending}
             >
+              {cancelMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Cancel
             </Button>
           )}
           <Button
             variant="destructive"
             size="sm"
-            onClick={async () => {
-              deleteMutation.mutate(action.id);
-              router.navigate({ to: "/automations" });
-            }}
+            onClick={() => setDeleteDialogOpen(true)}
           >
             Delete
           </Button>
@@ -275,6 +279,21 @@ export default function AutomationDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        label="Automation"
+        onConfirm={() => {
+          deleteMutation.mutate(action.id, {
+            onSuccess: () => {
+              setDeleteDialogOpen(false);
+              router.navigate({ to: "/automations" });
+            },
+          });
+        }}
+        isDeleting={deleteMutation.isPending}
+      />
     </div>
   );
 }

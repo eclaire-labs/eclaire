@@ -24,6 +24,7 @@ export function useScheduledActions(params?: {
     select: (data) => data.data,
     staleTime: 30_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -33,6 +34,8 @@ export function useScheduledAction(id: string | undefined) {
     queryFn: () => getScheduledAction(id as string),
     enabled: !!id,
     staleTime: 30_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -43,6 +46,8 @@ export function useScheduledActionExecutions(id: string | undefined) {
     select: (data) => data.data,
     enabled: !!id,
     staleTime: 30_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 

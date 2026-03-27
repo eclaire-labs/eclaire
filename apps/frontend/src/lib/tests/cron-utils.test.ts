@@ -76,10 +76,16 @@ describe("describeCronExpression", () => {
     });
   });
 
-  it("defaults wildcard hours to 09 and wildcard minutes to 00", () => {
+  it("returns 'every minute' for fully-wildcard '* * * * *'", () => {
     const result = describeCronExpression("* * * * *");
-    expect(result.time).toBe("09:00");
-    expect(result.pattern).toBe("daily");
+    expect(result.time).toBe("every minute");
+    expect(result.pattern).toBe("custom");
+  });
+
+  it("returns 'every hour' for wildcard hours with fixed minutes '0 * * * *'", () => {
+    const result = describeCronExpression("0 * * * *");
+    expect(result.time).toBe("every hour at :00");
+    expect(result.pattern).toBe("custom");
   });
 });
 
@@ -196,6 +202,14 @@ describe("formatCronForDisplay", () => {
     expect(formatCronForDisplay("0 9 * * 1,3,5")).toBe(
       "Mon, Wed, Fri at 09:00",
     );
+  });
+
+  it("formats wildcard cron '* * * * *' as 'every minute'", () => {
+    expect(formatCronForDisplay("* * * * *")).toBe("Runs every minute");
+  });
+
+  it("formats hourly cron '0 * * * *'", () => {
+    expect(formatCronForDisplay("0 * * * *")).toBe("Runs every hour at :00");
   });
 
   it("returns 'Invalid schedule' for an invalid cron expression", () => {

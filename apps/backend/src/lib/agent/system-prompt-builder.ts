@@ -263,7 +263,7 @@ Current Date & Time: ${dateString} (${timeString})${userContextInfo}${readOnlyNo
     const toolSignaturesSection = includeToolSignatures
       ? `
 Analyze the task request. If it requires searching for information or counting items, invoke the appropriate tool from the ones listed below.
-Dates must be ISO strings (YYYY-MM-DD).
+Dates must be ISO 8601 strings (e.g. "2026-03-26" for dates, "2026-03-26T14:05:00-04:00" for datetimes).
 
 \`\`\`typescript
 ${getToolSignatures(tools)}
@@ -330,7 +330,7 @@ If you need to call tools, use this JSON format:
 2. Only use JSON format for tool calls
 3. Group related tool calls in the same JSON object
 
-Dates must be ISO strings (YYYY-MM-DD).
+Dates must be ISO 8601 strings (e.g. "2026-03-26" for dates, "2026-03-26T14:05:00-04:00" for datetimes).
 
 \`\`\`typescript
 ${getToolSignatures(tools)}

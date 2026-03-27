@@ -2,12 +2,14 @@
  * Automations list page — shows all scheduled actions.
  */
 
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Bell,
   Bot,
   Calendar,
   Clock,
+  Loader2,
   MoreHorizontal,
   Trash2,
   XCircle,
@@ -29,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import {
   useCancelScheduledAction,
   useDeleteScheduledAction,
@@ -87,64 +90,84 @@ function kindBadge(kind: string) {
 function ActionRow({ action }: { action: ScheduledAction }) {
   const cancelMutation = useCancelScheduledAction();
   const deleteMutation = useDeleteScheduledAction();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   return (
-    <TableRow>
-      <TableCell>
-        <Link
-          to="/automations/$id"
-          params={{ id: action.id }}
-          className="font-medium hover:underline"
-        >
-          {action.title}
-        </Link>
-      </TableCell>
-      <TableCell>{kindBadge(action.kind)}</TableCell>
-      <TableCell className="text-muted-foreground text-sm">
-        {formatSchedule(action)}
-      </TableCell>
-      <TableCell>{statusBadge(action.status)}</TableCell>
-      <TableCell className="text-muted-foreground text-sm">
-        {action.runCount}
-      </TableCell>
-      <TableCell className="text-muted-foreground text-sm">
-        {action.lastRunAt
-          ? new Date(action.lastRunAt).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            })
-          : "—"}
-      </TableCell>
-      <TableCell className="text-right">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {action.status === "active" && (
+    <>
+      <TableRow>
+        <TableCell>
+          <Link
+            to="/automations/$id"
+            params={{ id: action.id }}
+            className="font-medium hover:underline"
+          >
+            {action.title}
+          </Link>
+        </TableCell>
+        <TableCell>{kindBadge(action.kind)}</TableCell>
+        <TableCell className="text-muted-foreground text-sm">
+          {formatSchedule(action)}
+        </TableCell>
+        <TableCell>{statusBadge(action.status)}</TableCell>
+        <TableCell className="text-muted-foreground text-sm">
+          {action.runCount}
+        </TableCell>
+        <TableCell className="text-muted-foreground text-sm">
+          {action.lastRunAt
+            ? new Date(action.lastRunAt).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              })
+            : "—"}
+        </TableCell>
+        <TableCell className="text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {action.status === "active" && (
+                <DropdownMenuItem
+                  onClick={() => cancelMutation.mutate(action.id)}
+                  disabled={cancelMutation.isPending}
+                >
+                  {cancelMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <XCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Cancel
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
-                onClick={() => cancelMutation.mutate(action.id)}
+                onClick={() => setDeleteDialogOpen(true)}
+                className="text-destructive"
               >
-                <XCircle className="h-4 w-4 mr-2" />
-                Cancel
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={() => deleteMutation.mutate(action.id)}
-              className="text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TableCell>
-    </TableRow>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      </TableRow>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        label="Automation"
+        onConfirm={() => {
+          deleteMutation.mutate(action.id, {
+            onSuccess: () => setDeleteDialogOpen(false),
+          });
+        }}
+        isDeleting={deleteMutation.isPending}
+      />
+    </>
   );
 }
 

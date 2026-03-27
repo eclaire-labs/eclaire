@@ -13,10 +13,12 @@ import {
   listExecutions,
   listScheduledActions,
 } from "../lib/services/scheduled-actions.js";
+import { NotFoundError } from "../lib/errors.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {
   ScheduledActionSchema,
   ScheduledActionSearchParamsSchema,
+  ScheduledActionExecutionSearchParamsSchema,
 } from "../schemas/scheduled-action-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
@@ -48,18 +50,11 @@ scheduledActionsRoutes.post(
   zValidator("json", ScheduledActionSchema),
   withAuth(async (c, userId) => {
     const body = c.req.valid("json");
-    try {
-      const result = await createScheduledAction({
-        userId,
-        ...body,
-      });
-      return c.json(result, 201);
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("required")) {
-        return c.json({ error: error.message }, 400);
-      }
-      throw error;
-    }
+    const result = await createScheduledAction({
+      userId,
+      ...body,
+    });
+    return c.json(result, 201);
   }, logger),
 );
 
@@ -70,7 +65,7 @@ scheduledActionsRoutes.get(
     const id = c.req.param("id");
     const action = await getScheduledAction(id, userId);
     if (!action) {
-      return c.json({ error: "Scheduled action not found" }, 404);
+      throw new NotFoundError("Scheduled action", id);
     }
     return c.json(action);
   }, logger),
@@ -81,15 +76,8 @@ scheduledActionsRoutes.delete(
   "/:id",
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    try {
-      await deleteScheduledAction(id, userId);
-      return c.json({ success: true });
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("not found")) {
-        return c.json({ error: "Scheduled action not found" }, 404);
-      }
-      throw error;
-    }
+    await deleteScheduledAction(id, userId);
+    return c.json({ success: true });
   }, logger),
 );
 
@@ -98,24 +86,22 @@ scheduledActionsRoutes.post(
   "/:id/cancel",
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    try {
-      await cancelScheduledAction(id, userId);
-      return c.json({ success: true });
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("not found")) {
-        return c.json({ error: "Scheduled action not found" }, 404);
-      }
-      throw error;
-    }
+    await cancelScheduledAction(id, userId);
+    return c.json({ success: true });
   }, logger),
 );
 
 // GET /api/scheduled-actions/:id/executions - Get execution history
 scheduledActionsRoutes.get(
   "/:id/executions",
+  zValidator("query", ScheduledActionExecutionSearchParamsSchema),
   withAuth(async (c, userId) => {
     const id = c.req.param("id");
-    const executions = await listExecutions(id, userId);
+    const params = c.req.valid("query");
+    const executions = await listExecutions(id, userId, {
+      limit: params.limit,
+      offset: params.offset,
+    });
     return c.json({ data: executions });
   }, logger),
 );

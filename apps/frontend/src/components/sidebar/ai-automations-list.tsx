@@ -3,6 +3,7 @@
  * Shows upcoming scheduled actions and recent executions.
  */
 
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Bell, Bot, Calendar, Clock } from "lucide-react";
 import { useScheduledActions } from "@/hooks/use-scheduled-actions";
@@ -100,11 +101,17 @@ function AutomationItem({ action }: { action: ScheduledAction }) {
 export function AiAutomationsList() {
   const { data: actions, isLoading } = useScheduledActions();
 
-  const active = actions?.filter(
-    (a) => a.status === "active" || a.status === "paused",
+  const active = useMemo(
+    () =>
+      actions?.filter((a) => a.status === "active" || a.status === "paused"),
+    [actions],
   );
-  const recent = actions?.filter(
-    (a) => a.status === "completed" || a.status === "cancelled",
+  const recent = useMemo(
+    () =>
+      actions?.filter(
+        (a) => a.status === "completed" || a.status === "cancelled",
+      ),
+    [actions],
   );
 
   if (isLoading) {

@@ -15,6 +15,7 @@ import {
   createScheduledAction,
   type CreateScheduledActionParams,
 } from "../../services/scheduled-actions.js";
+import { isValidCronExpression } from "../../queue/cron-utils.js";
 import type { DeliveryTarget } from "../../queue/types.js";
 
 function getAgentActorId(ctx: {
@@ -105,6 +106,13 @@ export const scheduleActionTool: RuntimeToolDefinition<typeof inputSchema> = {
     if (isOnce && isRecurring) {
       return errorResult(
         "Provide either triggerAt or cronExpression, not both.",
+      );
+    }
+
+    // Validate cronExpression for recurring
+    if (isRecurring && !isValidCronExpression(input.cronExpression as string)) {
+      return errorResult(
+        `Invalid cron expression: "${input.cronExpression}". Use standard 5-field format like '0 9 * * *' (daily at 9am).`,
       );
     }
 
