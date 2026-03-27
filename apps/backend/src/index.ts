@@ -98,8 +98,21 @@ app.use("*", async (c, next) => {
     | undefined;
   c.set("resolveSession", async () => {
     if (cached !== undefined) return cached;
-    const result = await auth.api.getSession({ headers: c.req.raw.headers });
-    cached = result ?? null;
+    try {
+      const result = await auth.api.getSession({
+        headers: c.req.raw.headers,
+      });
+      cached = result ?? null;
+    } catch (error) {
+      logger.warn(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          path: c.req.path,
+        },
+        "Session resolution failed, falling back to null",
+      );
+      cached = null;
+    }
     if (cached) {
       c.set("user", cached.user);
       c.set("session", cached.session);

@@ -17,8 +17,9 @@ const DEFAULTS: UserPreferences = {
 
 const QUERY_KEY = ["user-preferences"] as const;
 
-export function useUserPreferences() {
+export function useUserPreferences(options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
+  const enabled = options?.enabled ?? true;
 
   const { data, isLoading } = useQuery({
     queryKey: QUERY_KEY,
@@ -27,6 +28,7 @@ export function useUserPreferences() {
       return (await res.json()) as UserPreferences;
     },
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 
   const mutation = useMutation({

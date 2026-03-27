@@ -114,6 +114,10 @@ export async function getAuthenticatedPrincipal(
     if (session?.user?.id) {
       // Block suspended users
       if (!(await isAccountActive(session.user.id))) {
+        logger.debug(
+          { userId: session.user.id, path: c.req.path },
+          "Auth rejected: user account is suspended",
+        );
         return null;
       }
       await ensureHumanActorForUserId(session.user.id);
@@ -128,6 +132,19 @@ export async function getAuthenticatedPrincipal(
         scopes: ["*"],
       };
     }
+    logger.debug(
+      {
+        path: c.req.path,
+        hasSession: session !== null,
+        hasUser: !!session?.user,
+      },
+      "Session resolved but no valid user found",
+    );
+  } else {
+    logger.debug(
+      { path: c.req.path },
+      "No resolveSession available in context",
+    );
   }
 
   if (!config.isProduction) {
@@ -160,9 +177,19 @@ export async function getAuthenticatedPrincipal(
           scopes: ["*"],
         };
       }
+      logger.debug("Localhost auth bypass: no users found in database");
+    } else {
+      logger.debug(
+        { clientIP, path: c.req.path },
+        "Localhost bypass skipped: non-local IP",
+      );
     }
   }
 
+  logger.warn(
+    { path: c.req.path, method: c.req.method },
+    "All auth methods failed — returning null principal",
+  );
   return null;
 }
 

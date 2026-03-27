@@ -9,21 +9,40 @@
  */
 
 /**
- * Helper function to handle authentication errors
+ * Helper function to handle authentication errors.
+ * Skips redirect if already on an auth page (login/register).
+ * Uses sessionStorage for a cooldown that survives full page reloads.
  */
+const AUTH_REDIRECT_COOLDOWN_MS = 5000;
+const AUTH_REDIRECT_KEY = "auth_redirect_ts";
+
 function handleAuthError() {
-  if (typeof window !== "undefined") {
-    // Get current path to redirect back after login
-    const currentPath = window.location.pathname;
-    const loginUrl = new URL("/auth/login", window.location.origin);
+  if (typeof window === "undefined") return;
 
-    // Only set callback URL if not already on auth pages
-    if (!currentPath.includes("/auth")) {
-      loginUrl.searchParams.set("callbackUrl", encodeURI(currentPath));
+  // Already on an auth page — nothing to redirect to
+  if (window.location.pathname.startsWith("/auth/")) return;
+
+  // Cooldown: prevent rapid redirect loops (sessionStorage survives page reloads)
+  const now = Date.now();
+  try {
+    const last = sessionStorage.getItem(AUTH_REDIRECT_KEY);
+    if (last && now - Number.parseInt(last, 10) < AUTH_REDIRECT_COOLDOWN_MS) {
+      console.error(
+        "[api-client] Auth redirect loop detected — suppressing redirect",
+      );
+      return;
     }
-
-    window.location.href = loginUrl.toString();
+    sessionStorage.setItem(AUTH_REDIRECT_KEY, now.toString());
+  } catch {
+    // sessionStorage unavailable (SSR, tests, privacy mode)
   }
+
+  // Get current path to redirect back after login
+  const currentPath = window.location.pathname;
+  const loginUrl = new URL("/auth/login", window.location.origin);
+  loginUrl.searchParams.set("callbackUrl", encodeURI(currentPath));
+
+  window.location.href = loginUrl.toString();
 }
 
 /**

@@ -33,9 +33,24 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect already-authenticated users (e.g., navigated here after login via stale callbackUrl)
+  // Redirect already-authenticated users (e.g., navigated here after login via stale callbackUrl).
+  // Includes loop detection: if we redirect and land back here within 5 seconds, something is
+  // wrong (e.g., API returns 401 despite valid session). Show an error instead of looping.
   useEffect(() => {
     if (!isSessionPending && session?.user) {
+      const key = `auth_redirect_${callbackUrl}`;
+      const last = sessionStorage.getItem(key);
+      const now = Date.now();
+
+      if (last && now - Number.parseInt(last, 10) < 5000) {
+        setError(
+          "Session issue: you appear to be logged in but API requests are failing. Try clearing your cookies and signing in again.",
+        );
+        sessionStorage.removeItem(key);
+        return;
+      }
+
+      sessionStorage.setItem(key, now.toString());
       window.location.href = callbackUrl;
     }
   }, [session, isSessionPending, callbackUrl]);

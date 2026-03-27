@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
+import { useSession } from "@/lib/auth";
 import { apiGet, apiPatch } from "@/lib/api-client";
 
 // ---------------------------------------------------------------------------
@@ -210,6 +211,12 @@ export function AssistantPreferencesProvider({
 }: {
   children: ReactNode;
 }) {
+  // Only fetch server-side preferences when the user is authenticated.
+  // This provider is rendered at the root level (wraps auth pages too),
+  // so unauthenticated API calls would trigger 401 redirect loops.
+  const { data: session } = useSession();
+  const isAuthenticated = !!session?.user;
+
   // Tier 3: localStorage
   const [localPrefs, setLocalPrefs] =
     useState<LocalPreferences>(readLocalPreferences);
@@ -245,6 +252,7 @@ export function AssistantPreferencesProvider({
       return (await res.json()) as Record<string, unknown>;
     },
     staleTime: 60 * 1000,
+    enabled: isAuthenticated,
   });
   const instance = instanceRaw
     ? parseInstanceSettings(instanceRaw)
@@ -255,7 +263,7 @@ export function AssistantPreferencesProvider({
     preferences: userPrefs,
     updatePreference: updateUserPref,
     isLoading: userPrefsLoading,
-  } = useUserPreferences();
+  } = useUserPreferences({ enabled: isAuthenticated });
 
   // One-time migration
   const migrationRan = useRef(false);
