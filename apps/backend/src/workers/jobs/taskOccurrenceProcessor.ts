@@ -10,6 +10,12 @@
  */
 
 import { createChildLogger } from "../../lib/logger.js";
+import {
+  emitOccurrenceStarted,
+  emitOccurrenceCompleted,
+  emitOccurrenceFailed,
+  emitTaskStatusChanged,
+} from "../../lib/events/task-events.js";
 import type { TaskOccurrenceJobData } from "../../lib/queue/types.js";
 import {
   startTaskOccurrence,
@@ -57,6 +63,8 @@ export default async function processTaskOccurrence(ctx: any): Promise<void> {
       .set({ latestExecutionStatus: "running" })
       .where(eq(schema.tasks.id, taskId));
 
+    emitOccurrenceStarted(userId, taskId, occurrenceId);
+
     if (kind === "reminder") {
       // Reminder: deliver notification
       await processReminder(occurrenceId, taskId, userId, prompt);
@@ -88,6 +96,9 @@ export default async function processTaskOccurrence(ctx: any): Promise<void> {
         attentionStatus: "failed",
       })
       .where(eq(schema.tasks.id, taskId));
+
+    emitOccurrenceFailed(userId, taskId, occurrenceId, errorMessage);
+    emitTaskStatusChanged(userId, taskId, { attentionStatus: "failed" });
   }
 }
 
@@ -211,6 +222,9 @@ async function processReminder(
     })
     .where(eq(schema.tasks.id, taskId));
 
+  emitOccurrenceCompleted(userId, taskId, occurrenceId, resultSummary);
+  emitTaskStatusChanged(userId, taskId, { taskStatus: "completed" });
+
   logger.info(
     {
       occurrenceId,
@@ -320,6 +334,11 @@ async function processAgentExecution(
       .update(schema.taskOccurrences)
       .set({ reviewStatus: "pending", requiresReview: true })
       .where(eq(schema.taskOccurrences.id, occurrenceId));
+
+    emitOccurrenceCompleted(userId, taskId, occurrenceId, resultSummary);
+    emitTaskStatusChanged(userId, taskId, {
+      attentionStatus: "needs_review",
+    });
   } else {
     // Auto-complete (handle mode)
     await db
@@ -331,6 +350,9 @@ async function processAgentExecution(
         completedAt: new Date(),
       })
       .where(eq(schema.tasks.id, taskId));
+
+    emitOccurrenceCompleted(userId, taskId, occurrenceId, resultSummary);
+    emitTaskStatusChanged(userId, taskId, { taskStatus: "completed" });
   }
 
   logger.info(

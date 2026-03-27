@@ -57,7 +57,20 @@ export interface ProcessingEvent {
     | "session_running" // Agent session execution started
     | "session_completed" // Agent session execution completed
     | "session_error" // Agent session execution failed
-    | "session_awaiting_approval"; // Agent session awaiting tool approval
+    | "session_awaiting_approval" // Agent session awaiting tool approval
+    // Task lifecycle events
+    | "task_created"
+    | "task_updated"
+    | "task_deleted"
+    | "task_status_changed"
+    // Occurrence lifecycle events
+    | "occurrence_queued"
+    | "occurrence_started"
+    | "occurrence_completed"
+    | "occurrence_failed"
+    | "occurrence_cancelled"
+    // Batch events
+    | "tasks_overdue";
 
   // Asset identity (for processing events)
   assetType?: AssetType;
@@ -76,6 +89,14 @@ export interface ProcessingEvent {
   sessionId?: string;
   agentActorId?: string;
 
+  // Task identity (for task_* and occurrence_* events)
+  taskId?: string;
+  occurrenceId?: string;
+  taskStatus?: string;
+  attentionStatus?: string;
+  taskIds?: string[];
+  resultSummary?: string;
+
   timestamp: number;
   userId?: string;
 }
@@ -91,6 +112,74 @@ interface ProcessingEventsContextType {
 const ProcessingEventsContext =
   createContext<ProcessingEventsContextType | null>(null);
 
+/** Invalidate task-related React Query caches in response to SSE events. */
+function handleTaskEvent(
+  queryClient: ReturnType<typeof useQueryClient>,
+  data: ProcessingEvent,
+) {
+  const { type, taskId } = data;
+
+  switch (type) {
+    case "task_created":
+    case "task_deleted":
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
+      break;
+
+    case "task_updated":
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
+      if (taskId) {
+        queryClient.invalidateQueries({ queryKey: ["tasks", taskId] });
+      }
+      break;
+
+    case "task_status_changed":
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
+      if (taskId) {
+        queryClient.invalidateQueries({ queryKey: ["tasks", taskId] });
+        queryClient.invalidateQueries({
+          queryKey: ["task-occurrences", taskId],
+        });
+      }
+      break;
+
+    case "occurrence_queued":
+    case "occurrence_started":
+    case "occurrence_cancelled":
+      if (taskId) {
+        queryClient.invalidateQueries({
+          queryKey: ["task-occurrences", taskId],
+        });
+        queryClient.invalidateQueries({ queryKey: ["tasks", taskId] });
+      }
+      break;
+
+    case "occurrence_completed":
+    case "occurrence_failed":
+      if (taskId) {
+        queryClient.invalidateQueries({
+          queryKey: ["task-occurrences", taskId],
+        });
+        queryClient.invalidateQueries({ queryKey: ["tasks", taskId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      break;
+
+    case "tasks_overdue":
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      break;
+  }
+}
+
 interface ProcessingEventsProviderProps {
   children: ReactNode;
 }
@@ -101,6 +190,7 @@ export function ProcessingEventsProvider({
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const [isConnected, setIsConnected] = useState(false);
+  const isConnectedRef = useRef(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
@@ -128,9 +218,20 @@ export function ProcessingEventsProvider({
         const eventSource = new EventSource(sseUrl);
 
         eventSource.onopen = () => {
+          const wasDisconnected = !isConnectedRef.current;
+          isConnectedRef.current = true;
           setIsConnected(true);
           reconnectAttemptsRef.current = 0; // Reset counter on successful connection
           console.log("Global processing events connected");
+
+          // Catch up on events missed during disconnection
+          if (wasDisconnected) {
+            queryClient.invalidateQueries({ queryKey: ["inbox"] });
+            queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
+            queryClient.invalidateQueries({ queryKey: ["tasks"] });
+            queryClient.invalidateQueries({ queryKey: ["task-occurrences"] });
+            queryClient.invalidateQueries({ queryKey: ["session-status"] });
+          }
         };
 
         eventSource.onmessage = (event) => {
@@ -160,6 +261,16 @@ export function ProcessingEventsProvider({
                   queryKey: ["sessions", data.sessionId],
                 });
               }
+              return;
+            }
+
+            // Handle task and occurrence lifecycle events
+            if (
+              type.startsWith("task_") ||
+              type.startsWith("occurrence_") ||
+              type === "tasks_overdue"
+            ) {
+              handleTaskEvent(queryClient, data);
               return;
             }
 
@@ -335,6 +446,7 @@ export function ProcessingEventsProvider({
             "Global SSE connection error - will attempt to reconnect:",
             error,
           );
+          isConnectedRef.current = false;
           setIsConnected(false);
           eventSource.close();
 
@@ -366,6 +478,7 @@ export function ProcessingEventsProvider({
         eventSourceRef.current = eventSource;
       } catch (error) {
         console.error("Failed to connect to global SSE:", error);
+        isConnectedRef.current = false;
         setIsConnected(false);
         reconnectAttemptsRef.current += 1;
       }
@@ -381,6 +494,7 @@ export function ProcessingEventsProvider({
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
+      isConnectedRef.current = false;
       setIsConnected(false);
     };
   }, [queryClient, session?.user]);

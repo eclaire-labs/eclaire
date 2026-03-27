@@ -56,6 +56,14 @@ import {
 } from "../schemas/tasks-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
 import { registerCommonEndpoints } from "./shared-endpoints.js";
+import {
+  emitTaskCreated,
+  emitTaskUpdated,
+  emitTaskDeleted,
+  emitTaskStatusChanged,
+  emitOccurrenceQueued,
+  emitOccurrenceCancelled,
+} from "../lib/events/task-events.js";
 
 const logger = createChildLogger("tasks");
 
@@ -117,10 +125,11 @@ tasksRoutes.post(
   "/",
   describeRoute(postTasksRouteDescription),
   zValidator("json", TaskSchema),
-  withAuth(async (c, _userId, principal) => {
+  withAuth(async (c, userId, principal) => {
     const caller = principalCaller(principal);
     const validatedData = c.req.valid("json");
     const newTask = await createTask(toTaskServiceData(validatedData), caller);
+    emitTaskCreated(userId, newTask.id);
     return c.json(newTask, 201);
   }, logger),
 );
@@ -226,7 +235,7 @@ tasksRoutes.put(
   "/:id",
   describeRoute(putTaskRouteDescription),
   zValidator("json", TaskSchema),
-  withAuth(async (c, _userId, principal) => {
+  withAuth(async (c, userId, principal) => {
     const caller = principalCaller(principal);
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
@@ -236,6 +245,7 @@ tasksRoutes.put(
       caller,
     );
     if (!updatedTask) throw new NotFoundError("Task");
+    emitTaskUpdated(userId, id);
     return c.json(updatedTask);
   }, logger),
 );
@@ -245,7 +255,7 @@ tasksRoutes.patch(
   "/:id",
   describeRoute(patchTaskRouteDescription),
   zValidator("json", PartialTaskSchema),
-  withAuth(async (c, _userId, principal) => {
+  withAuth(async (c, userId, principal) => {
     const caller = principalCaller(principal);
     const id = c.req.param("id");
     const validatedData = c.req.valid("json");
@@ -255,6 +265,7 @@ tasksRoutes.patch(
       caller,
     );
     if (!updatedTask) throw new NotFoundError("Task");
+    emitTaskUpdated(userId, id);
     return c.json(updatedTask);
   }, logger),
 );
@@ -268,6 +279,7 @@ tasksRoutes.delete(
     const id = c.req.param("id");
     const success = await deleteTask(id, userId, caller);
     if (!success) throw new NotFoundError("Task");
+    emitTaskDeleted(userId, id);
     return new Response(null, { status: 204 });
   }, logger),
 );
@@ -308,7 +320,10 @@ tasksRoutes.get(
 tasksRoutes.post(
   "/:id/start",
   withAuth(async (c, userId) => {
-    const result = await startTask(c.req.param("id"), userId);
+    const id = c.req.param("id");
+    const result = await startTask(id, userId);
+    emitOccurrenceQueued(userId, id, result.occurrenceId);
+    emitTaskStatusChanged(userId, id, { taskStatus: "in_progress" });
     return c.json(result);
   }, logger),
 );
@@ -318,8 +333,10 @@ tasksRoutes.post(
   "/:id/retry",
   zValidator("json", z.object({ prompt: z.string().optional() }).optional()),
   withAuth(async (c, userId) => {
+    const id = c.req.param("id");
     const body = c.req.valid("json");
-    const result = await retryTask(c.req.param("id"), userId, body?.prompt);
+    const result = await retryTask(id, userId, body?.prompt);
+    emitOccurrenceQueued(userId, id, result.occurrenceId);
     return c.json(result);
   }, logger),
 );
@@ -328,7 +345,10 @@ tasksRoutes.post(
 tasksRoutes.post(
   "/:id/cancel",
   withAuth(async (c, userId) => {
-    await cancelTaskOccurrence(c.req.param("id"), userId);
+    const id = c.req.param("id");
+    await cancelTaskOccurrence(id, userId);
+    emitOccurrenceCancelled(userId, id);
+    emitTaskStatusChanged(userId, id);
     return c.json({ success: true });
   }, logger),
 );
@@ -337,7 +357,9 @@ tasksRoutes.post(
 tasksRoutes.post(
   "/:id/pause",
   withAuth(async (c, userId) => {
-    await pauseTask(c.req.param("id"), userId);
+    const id = c.req.param("id");
+    await pauseTask(id, userId);
+    emitTaskStatusChanged(userId, id);
     return c.json({ success: true });
   }, logger),
 );
@@ -346,7 +368,9 @@ tasksRoutes.post(
 tasksRoutes.post(
   "/:id/resume",
   withAuth(async (c, userId) => {
-    await resumeTask(c.req.param("id"), userId);
+    const id = c.req.param("id");
+    await resumeTask(id, userId);
+    emitTaskStatusChanged(userId, id);
     return c.json({ success: true });
   }, logger),
 );
@@ -355,7 +379,12 @@ tasksRoutes.post(
 tasksRoutes.post(
   "/:id/approve",
   withAuth(async (c, userId) => {
-    await approveTask(c.req.param("id"), userId);
+    const id = c.req.param("id");
+    await approveTask(id, userId);
+    emitTaskStatusChanged(userId, id, {
+      taskStatus: "completed",
+      attentionStatus: "none",
+    });
     return c.json({ success: true });
   }, logger),
 );
@@ -364,7 +393,9 @@ tasksRoutes.post(
 tasksRoutes.post(
   "/:id/request-changes",
   withAuth(async (c, userId) => {
-    await requestChanges(c.req.param("id"), userId);
+    const id = c.req.param("id");
+    await requestChanges(id, userId);
+    emitTaskStatusChanged(userId, id, { attentionStatus: "none" });
     return c.json({ success: true });
   }, logger),
 );
@@ -374,9 +405,11 @@ tasksRoutes.post(
   "/:id/respond",
   zValidator("json", z.object({ response: z.string().min(1) })),
   withAuth(async (c, userId, principal) => {
+    const id = c.req.param("id");
     const { response } = c.req.valid("json");
     const caller = principalCaller(principal);
-    await respondToTask(c.req.param("id"), userId, response, caller);
+    await respondToTask(id, userId, response, caller);
+    emitTaskStatusChanged(userId, id, { attentionStatus: "none" });
     return c.json({ success: true });
   }, logger),
 );

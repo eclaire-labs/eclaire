@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { getSessionStatuses } from "@/lib/api-sessions";
+import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
 
 export type AgentExecutionStatus = "running" | "completed" | "error";
 
@@ -8,13 +9,14 @@ export type AgentExecutionStatus = "running" | "completed" | "error";
  * React Query hook to fetch session execution statuses.
  * Returns sessions that are running, errored, or have unread responses.
  * Automatically refreshed via SSE events (session_running/completed/error)
- * with a 30s polling fallback.
+ * with a 30s polling fallback when SSE is disconnected.
  */
 export function useSessionStatuses() {
+  const { isConnected } = useSSEConnectionStatus();
   return useQuery({
     queryKey: ["session-status"],
     queryFn: () => getSessionStatuses(),
-    refetchInterval: 30_000,
+    refetchInterval: isConnected ? false : 30_000,
     staleTime: 5_000,
   });
 }

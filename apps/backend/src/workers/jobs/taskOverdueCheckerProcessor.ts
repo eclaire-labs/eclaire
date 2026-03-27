@@ -8,6 +8,7 @@
 
 import { and, lte, ne, inArray } from "drizzle-orm";
 import { createChildLogger } from "../../lib/logger.js";
+import { emitTasksOverdue } from "../../lib/events/task-events.js";
 import { db, schema } from "../../db/index.js";
 
 const logger = createChildLogger("task-overdue-checker");
@@ -22,7 +23,7 @@ export default async function processTaskOverdueChecker(
 
   // Find overdue tasks that aren't already marked urgent, completed, or cancelled
   const overdueTasks = await db
-    .select({ id: schema.tasks.id })
+    .select({ id: schema.tasks.id, userId: schema.tasks.userId })
     .from(schema.tasks)
     .where(
       and(
@@ -51,6 +52,17 @@ export default async function processTaskOverdueChecker(
       updatedAt: now,
     })
     .where(inArray(schema.tasks.id, taskIds));
+
+  // Emit SSE events grouped by user
+  const byUser = new Map<string, string[]>();
+  for (const t of overdueTasks) {
+    const list = byUser.get(t.userId) ?? [];
+    list.push(t.id);
+    byUser.set(t.userId, list);
+  }
+  for (const [userId, ids] of byUser) {
+    emitTasksOverdue(userId, ids);
+  }
 
   logger.info({ count: taskIds.length }, "Marked overdue tasks as urgent");
 }

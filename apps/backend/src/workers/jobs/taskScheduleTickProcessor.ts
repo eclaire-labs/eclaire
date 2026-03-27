@@ -7,6 +7,10 @@
 
 import { eq } from "drizzle-orm";
 import { createChildLogger } from "../../lib/logger.js";
+import {
+  emitOccurrenceQueued,
+  emitTaskUpdated,
+} from "../../lib/events/task-events.js";
 import { getNextExecutionTime } from "../../lib/queue/cron-utils.js";
 import {
   getScheduler,
@@ -87,13 +91,15 @@ export default async function processTaskScheduleTick(
     hasNotificationTargets && !isAgentDelegate ? "reminder" : "recurring_run";
 
   // Create the occurrence — this also enqueues to task-occurrence queue
-  await createTaskOccurrence({
+  const occurrence = await createTaskOccurrence({
     taskId,
     userId,
     kind,
     prompt: task.prompt ?? task.title,
     executorActorId: task.delegateActorId ?? undefined,
   });
+
+  emitOccurrenceQueued(userId, taskId, occurrence.id);
 
   // Increment occurrence count
   const newCount = (task.occurrenceCount ?? 0) + 1;
@@ -112,6 +118,8 @@ export default async function processTaskScheduleTick(
       updatedAt: new Date(),
     })
     .where(eq(schema.tasks.id, taskId));
+
+  emitTaskUpdated(userId, taskId);
 
   // If max occurrences reached, remove the schedule
   if (task.maxOccurrences && newCount >= task.maxOccurrences) {

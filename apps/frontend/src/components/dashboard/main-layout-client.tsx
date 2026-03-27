@@ -50,6 +50,7 @@ import { useSlashCommands } from "@/hooks/use-slash-commands";
 import { SidebarShell } from "@/components/sidebar/sidebar-shell";
 import { listAgents } from "@/lib/api-agents";
 import { apiFetch } from "@/lib/api-client";
+import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
 import {
   abortSession,
   createSession,
@@ -96,6 +97,7 @@ const baseNavigation = [
 ];
 
 function useInboxCount() {
+  const { isConnected } = useSSEConnectionStatus();
   return useQuery<{ totalCount: number }>({
     queryKey: ["inbox-count"],
     queryFn: async () => {
@@ -104,7 +106,7 @@ function useInboxCount() {
       const data = await res.json();
       return { totalCount: data.totalCount ?? 0 };
     },
-    refetchInterval: 30_000,
+    refetchInterval: isConnected ? false : 30_000,
     staleTime: 10_000,
   });
 }

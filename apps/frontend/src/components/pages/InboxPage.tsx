@@ -17,9 +17,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/date-utils";
+import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
 import type { InboxResponse, InboxTask } from "@/types/task";
 
 function useInbox() {
+  const { isConnected } = useSSEConnectionStatus();
   return useQuery<InboxResponse>({
     queryKey: ["inbox"],
     queryFn: async () => {
@@ -27,7 +29,8 @@ function useInbox() {
       if (!res.ok) throw new Error("Failed to fetch inbox");
       return res.json();
     },
-    refetchInterval: 30_000, // poll every 30s
+    // Only poll when SSE is disconnected; SSE invalidation handles the live case
+    refetchInterval: isConnected ? false : 30_000,
   });
 }
 
