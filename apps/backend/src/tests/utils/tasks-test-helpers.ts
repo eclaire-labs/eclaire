@@ -765,6 +765,34 @@ export const RecurrenceTestHelpers = {
 };
 
 /**
+ * Polls a task until a field reaches one of the expected values.
+ * Throws if the timeout is exceeded.
+ */
+export const waitForTaskState = async (
+  taskId: string,
+  field: keyof TaskEntry,
+  expectedValues: (string | number | boolean | null)[],
+  maxWaitMs = 30000,
+): Promise<TaskEntry> => {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const res = await loggedFetch(`/tasks/${taskId}`);
+    if (res.status === 200) {
+      const task = (await res.json()) as TaskEntry;
+      if (
+        expectedValues.includes(task[field] as string | number | boolean | null)
+      ) {
+        return task;
+      }
+    }
+    await delay(500);
+  }
+  throw new Error(
+    `Task ${taskId} field "${field}" never reached [${expectedValues}] within ${maxWaitMs}ms`,
+  );
+};
+
+/**
  * Waits for AI-generated comments to appear on a task
  * @param taskId - The task ID to check for comments
  * @param maxWaitMs - Maximum time to wait in milliseconds (default: 60000ms)
