@@ -23,7 +23,7 @@ const statusConfigs = {
     iconClass: "text-muted-foreground",
     badgeClass: "bg-muted text-muted-foreground border-border border-dashed",
   },
-  "not-started": {
+  open: {
     label: "Not Started",
     icon: Circle,
     iconClass: "text-muted-foreground",
@@ -49,7 +49,7 @@ const statusConfigs = {
   },
 } as const;
 
-const defaultStatus = statusConfigs["not-started"];
+const defaultStatus = statusConfigs["open"];
 
 export function getStatusConfig(status: string) {
   return statusConfigs[status as keyof typeof statusConfigs] ?? defaultStatus;
@@ -70,23 +70,23 @@ export function getStatusIcon(
 export function getNextStatus(current: TaskStatus): TaskStatus {
   switch (current) {
     case "backlog":
-      return "not-started";
-    case "not-started":
+      return "open";
+    case "open":
       return "in-progress";
     case "in-progress":
       return "completed";
     case "completed":
-      return "not-started";
+      return "open";
     case "cancelled":
-      return "not-started";
+      return "open";
     default:
-      return "not-started";
+      return "open";
   }
 }
 
 export const STATUS_OPTIONS = [
   { value: "backlog", label: "Backlog" },
-  { value: "not-started", label: "Not Started" },
+  { value: "open", label: "Not Started" },
   { value: "in-progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },

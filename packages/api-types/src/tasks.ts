@@ -30,7 +30,7 @@ export const TaskResponseSchema = z
     description: z.string().nullable(),
     status: z.enum([
       "backlog",
-      "not-started",
+      "open",
       "in-progress",
       "completed",
       "cancelled",

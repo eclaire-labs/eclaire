@@ -213,7 +213,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Schema Parity Tests", ({
       expect(result.isPinned).toBe(false);
     });
 
-    it("should apply default value 'not-started' for task status", async () => {
+    it("should apply default value 'open' for task status", async () => {
       const taskId = generateTestTaskId();
       const { db } = testDb;
 
@@ -245,7 +245,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Schema Parity Tests", ({
       }
 
       expect(result).toBeDefined();
-      expect(result.status).toBe("not-started");
+      expect(result.status).toBe("open");
     });
   });
 

@@ -19,9 +19,7 @@ const logger = createChildLogger("processing-status");
  */
 function buildQueueName(assetType: AssetType, jobType?: string): string {
   if (assetType === "tasks") {
-    return jobType === "execution"
-      ? QueueNames.TASK_EXECUTION_PROCESSING
-      : QueueNames.TASK_PROCESSING;
+    return QueueNames.TASK_PROCESSING;
   }
 
   const mapping: Record<AssetType, string> = {

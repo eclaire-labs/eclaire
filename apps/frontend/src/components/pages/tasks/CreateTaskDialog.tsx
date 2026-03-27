@@ -30,7 +30,7 @@ import { CREATE_STATUS_OPTIONS, PRIORITY_OPTIONS } from "./task-utils";
 const INITIAL_TASK: Omit<Task, "id"> = {
   title: "",
   description: "",
-  status: "not-started",
+  status: "open",
   dueDate: "",
   assigneeActorId: null,
   tags: [],

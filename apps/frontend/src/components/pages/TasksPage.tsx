@@ -265,7 +265,7 @@ export default function TasksPage() {
         ...(taskData.dueDate && {
           dueDate: new Date(taskData.dueDate).toISOString(),
         }),
-        status: taskData.status || "not-started",
+        status: taskData.status || "open",
         ...(taskData.assigneeActorId?.trim() && {
           assigneeActorId: taskData.assigneeActorId,
         }),
@@ -310,7 +310,7 @@ export default function TasksPage() {
         ...(editingTask.dueDate && {
           dueDate: new Date(editingTask.dueDate).toISOString(),
         }),
-        status: editingTask.status || "not-started",
+        status: editingTask.status || "open",
         ...(editingTask.assigneeActorId && {
           assigneeActorId: editingTask.assigneeActorId,
         }),

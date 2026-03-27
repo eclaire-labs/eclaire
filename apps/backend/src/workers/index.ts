@@ -28,7 +28,6 @@ import processImageJob from "./jobs/imageProcessor.js";
 import processMediaJob from "./jobs/mediaProcessor.js";
 import processNoteJob from "./jobs/noteProcessor.js";
 import processScheduledAction from "./jobs/scheduledActionProcessor.js";
-import processTaskExecution from "./jobs/taskExecutionProcessor.js";
 import processTaskJob from "./jobs/taskProcessor.js";
 import {
   startDirectDbWorkers,
@@ -204,15 +203,6 @@ export async function startBullMQWorkers(): Promise<void> {
     { ...longTaskOptions, concurrency: 1 },
   );
   bullmqWorkers.push(mediaWorker);
-
-  // Task Execution Worker
-  const taskExecutionWorker = createBullMQWorker(
-    QueueNames.TASK_EXECUTION_PROCESSING,
-    processTaskExecution,
-    workerConfig,
-    mediumTaskOptions,
-  );
-  bullmqWorkers.push(taskExecutionWorker);
 
   // Scheduled Action Worker
   const scheduledActionWorker = createBullMQWorker(

@@ -328,8 +328,8 @@ describe("ID_CONSTANTS", () => {
     expect(ID_CONSTANTS.STANDARD_LENGTH).toBe(15);
   });
 
-  it("PREFIXES contains all 20 entity prefixes", () => {
-    expect(Object.keys(ID_CONSTANTS.PREFIXES).length).toBe(20);
+  it("PREFIXES contains all entity prefixes", () => {
+    expect(Object.keys(ID_CONSTANTS.PREFIXES).length).toBe(24);
   });
 
   it("all PREFIXES end with a dash", () => {

@@ -56,6 +56,9 @@ import { sendNotificationTool } from "./send-notification.js";
 import { cancelScheduledActionTool } from "./cancel-scheduled-action.js";
 import { listScheduledActionsTool } from "./list-scheduled-actions.js";
 import { scheduleActionTool } from "./schedule-action.js";
+// Agent execution tools
+import { runTaskAgentTool } from "./run-task-agent.js";
+import { createTaskSeriesTool } from "./create-task-series.js";
 // Task comment tools
 import { addTaskCommentTool } from "./add-task-comment.js";
 import { browseChromeTool } from "./browse-chrome.js";
@@ -144,6 +147,9 @@ const staticTools: Record<string, RuntimeToolDefinition> = {
   scheduleAction: scheduleActionTool,
   listScheduledActions: listScheduledActionsTool,
   cancelScheduledAction: cancelScheduledActionTool,
+  // Agent execution tools
+  runTaskAgent: runTaskAgentTool,
+  createTaskSeries: createTaskSeriesTool,
   // Task comment tools
   addTaskComment: addTaskCommentTool,
   // Tag tools

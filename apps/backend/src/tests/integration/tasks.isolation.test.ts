@@ -24,7 +24,7 @@ describe("Tasks — Multi-user Isolation", { timeout: 30000 }, () => {
       body: JSON.stringify({
         title: "User 1 Private Task",
         description: "This should not be visible to user 2",
-        status: "not-started",
+        status: "open",
         tags: ["isolation-test"],
       }),
     });

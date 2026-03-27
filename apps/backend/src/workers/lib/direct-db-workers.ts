@@ -39,12 +39,15 @@ import processImageJob from "../jobs/imageProcessor.js";
 import type { MediaJobData } from "../jobs/mediaProcessor.js";
 import processMediaJob from "../jobs/mediaProcessor.js";
 import processNoteJob from "../jobs/noteProcessor.js";
-import type { TaskExecutionJobData } from "../jobs/taskExecutionProcessor.js";
-import processTaskExecution from "../jobs/taskExecutionProcessor.js";
 import type { TaskJobData } from "../jobs/taskProcessor.js";
 import processTaskJob from "../jobs/taskProcessor.js";
 import processScheduledAction from "../jobs/scheduledActionProcessor.js";
-import type { ScheduledActionJobData } from "../../lib/queue/types.js";
+import processAgentRunJob from "../jobs/agentRunProcessor.js";
+import processTaskSeriesTick from "../jobs/taskSeriesProcessor.js";
+import type {
+  AgentRunJobData,
+  ScheduledActionJobData,
+} from "../../lib/queue/types.js";
 import type { BookmarkJobData } from "./bookmarks/index.js";
 
 const logger = createChildLogger("direct-db-workers");
@@ -210,20 +213,6 @@ export async function startDirectDbWorkers(): Promise<void> {
   logger.info({ queue: QueueNames.MEDIA_PROCESSING }, "Media worker started");
 
   // Task execution worker
-  const taskExecutionWorker = createDbWorker(
-    QueueNames.TASK_EXECUTION_PROCESSING,
-    async (ctx: JobContext<TaskExecutionJobData>) => {
-      await processTaskExecution(ctx);
-    },
-    config,
-    { concurrency: 1 },
-  );
-  workers.push(taskExecutionWorker);
-  logger.info(
-    { queue: QueueNames.TASK_EXECUTION_PROCESSING },
-    "Task execution worker started",
-  );
-
   // Scheduled action execution worker
   const scheduledActionWorker = createDbWorker(
     QueueNames.SCHEDULED_ACTION_EXECUTION,
@@ -237,6 +226,33 @@ export async function startDirectDbWorkers(): Promise<void> {
   logger.info(
     { queue: QueueNames.SCHEDULED_ACTION_EXECUTION },
     "Scheduled action worker started",
+  );
+
+  // Agent run worker
+  const agentRunWorker = createDbWorker<AgentRunJobData>(
+    QueueNames.AGENT_RUN,
+    async (ctx: JobContext<AgentRunJobData>) => {
+      await processAgentRunJob(ctx);
+    },
+    config,
+    { concurrency: 1 },
+  );
+  workers.push(agentRunWorker);
+  logger.info({ queue: QueueNames.AGENT_RUN }, "Agent run worker started");
+
+  // Task series tick worker
+  const taskSeriesWorker = createDbWorker(
+    QueueNames.TASK_SERIES_TICK,
+    async (ctx: JobContext<{ taskSeriesId: string; userId: string }>) => {
+      await processTaskSeriesTick(ctx);
+    },
+    config,
+    { concurrency: 1 },
+  );
+  workers.push(taskSeriesWorker);
+  logger.info(
+    { queue: QueueNames.TASK_SERIES_TICK },
+    "Task series tick worker started",
   );
 
   // Start all workers

@@ -186,6 +186,10 @@ export function createBullMQAdapter(config: BullMQAdapterConfig): QueueAdapter {
       );
     },
 
+    async enqueueAgentRun(): Promise<void> {
+      throw new Error("Agent run enqueue not supported in BullMQ adapter");
+    },
+
     async close(): Promise<void> {
       logger.info({}, "BullMQ adapter close requested");
       await queueManager.close();

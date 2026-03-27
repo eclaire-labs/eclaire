@@ -96,7 +96,7 @@ export const SearchArgsSchema = z.object({
   locationCity: z.string().optional(), // For photos
   dateField: z.enum(["created_at", "dateTaken"]).optional(), // For photos
   status: z
-    .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
+    .enum(["backlog", "open", "in-progress", "completed", "cancelled"])
     .optional(), // For tasks
 });
 

@@ -17,7 +17,7 @@ describe("TaskSchema", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.title).toBe("Buy groceries");
-      expect(result.data.status).toBe("not-started");
+      expect(result.data.status).toBe("open");
       expect(result.data.processingEnabled).toBe(true);
       expect(result.data.tags).toEqual([]);
       expect(result.data.reviewStatus).toBe("pending");
@@ -71,7 +71,7 @@ describe("TaskSchema", () => {
   it("should accept all valid status values", () => {
     for (const status of [
       "backlog",
-      "not-started",
+      "open",
       "in-progress",
       "completed",
       "cancelled",

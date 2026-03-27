@@ -20,7 +20,9 @@ import {
 } from "drizzle-orm";
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
-const { tags, taskComments, taskExecutions, tasks, tasksTags, users } = schema;
+const { tags, taskComments, tasks, tasksTags, users } = schema;
+// Legacy alias — taskExecutions is now agentRuns in schema, but dead code below still references it
+const taskExecutions = schema.agentRuns;
 
 import {
   batchGetTags,
@@ -200,28 +202,19 @@ function cleanTaskForResponse(
   childCount?: number,
 ) {
   const dueDate = task.dueDate != null ? formatToISO8601(task.dueDate) : null;
-  const lastExecutedAt =
-    task.lastExecutedAt != null ? formatToISO8601(task.lastExecutedAt) : null;
   const completedAt =
     task.completedAt != null ? formatToISO8601(task.completedAt) : null;
 
   // Create a new object excluding the timestamp fields
   const { createdAt, updatedAt, assigneeActorId, ...cleanedTask } = task;
 
-  // Recurrence data comes from the scheduler; default to non-recurring if not provided
-  const recurrenceData = scheduleData ?? {
-    isRecurring: false,
-    cronExpression: null,
-    recurrenceEndDate: null,
-    recurrenceLimit: null,
-  };
-
   return {
     ...cleanedTask,
     dueDate,
-    lastExecutedAt,
     completedAt,
     assigneeActorId: assigneeActorId ?? null,
+    taskSeriesId: task.taskSeriesId ?? null,
+    occurrenceAt: task.occurrenceAt ? formatToISO8601(task.occurrenceAt) : null,
     createdAt: createdAt ? formatToISO8601(createdAt) : null,
     updatedAt: updatedAt ? formatToISO8601(updatedAt) : null,
     processingStatus: processingStatus || "pending",
@@ -231,13 +224,6 @@ function cleanTaskForResponse(
     childCount: childCount ?? 0,
     tags: tags,
     comments: comments,
-    // Recurrence data from scheduler
-    isRecurring: recurrenceData.isRecurring,
-    cronExpression: recurrenceData.cronExpression,
-    recurrenceEndDate: recurrenceData.recurrenceEndDate
-      ? formatToISO8601(recurrenceData.recurrenceEndDate)
-      : null,
-    recurrenceLimit: recurrenceData.recurrenceLimit,
   };
 }
 
@@ -252,7 +238,7 @@ export async function createTask(
     const dueDateValue = taskData.dueDate ? new Date(taskData.dueDate) : null;
 
     // Set completedAt if task is being created with "completed" status
-    const taskStatus = taskData.status || "not-started";
+    const taskStatus = taskData.status || "open";
     const completedAtValue = taskStatus === "completed" ? new Date() : null;
 
     const resolvedAssignee = await resolveTaskAssignee(
@@ -732,7 +718,7 @@ export {
  *
  * @param taskId - The task ID
  * @param userId - The user ID making the request
- * @param lastExecutedAt - Optional ISO 8601 timestamp when task was last executed
+ * @param _lastExecutedAt - Optional ISO 8601 timestamp when task was last executed
  * @returns Object with success message and list of updated fields
  * @throws TaskNotFoundError if task doesn't exist
  * @throws TaskUnauthorizedError if user doesn't have permission
@@ -740,7 +726,7 @@ export {
 export async function updateTaskExecutionTrackingWithPermissions(
   taskId: string,
   userId: string,
-  lastExecutedAt?: string,
+  _lastExecutedAt?: string,
 ): Promise<{ message: string; updated: string[] }> {
   // Get the task to verify it exists and user has permission
   const task = await db.query.tasks.findFirst({
@@ -769,19 +755,19 @@ export async function updateTaskExecutionTrackingWithPermissions(
       userId,
       taskOwnerId: task.userId,
       taskAssigneeActorId: task.assigneeActorId,
-      updates: { lastExecutedAt },
+      updates: { _lastExecutedAt },
     },
     "Task execution tracking update",
   );
 
-  // Prepare update data - only lastExecutedAt is in the task table
+  // Prepare update data - only _lastExecutedAt is in the task table
   // nextRunAt is managed by the queue scheduler
-  const updateData: { lastExecutedAt?: Date } = {};
+  const updateData: { _lastExecutedAt?: Date } = {};
   const updatedFields: string[] = [];
 
-  if (lastExecutedAt !== undefined) {
-    updateData.lastExecutedAt = new Date(lastExecutedAt);
-    updatedFields.push("lastExecutedAt");
+  if (_lastExecutedAt !== undefined) {
+    updateData._lastExecutedAt = new Date(_lastExecutedAt);
+    updatedFields.push("_lastExecutedAt");
   }
 
   // Update the task
@@ -800,19 +786,19 @@ export async function updateTaskExecutionTrackingWithPermissions(
 }
 
 /**
- * Updates the lastExecutedAt timestamp for a task.
+ * Updates the _lastExecutedAt timestamp for a task.
  * Used by task execution processor for internal tracking - no history recorded.
  * Returns true if task was found and updated, false if task was not found.
  */
 export async function updateTaskExecutionTracking(
   taskId: string,
-  lastExecutedAt: Date,
+  _lastExecutedAt: Date,
 ): Promise<boolean> {
   try {
+    // NOTE: lastExecutedAt column removed — this function is dead code
     const result = await db
       .update(tasks)
       .set({
-        lastExecutedAt,
         updatedAt: new Date(),
       })
       .where(eq(tasks.id, taskId))
@@ -826,13 +812,16 @@ export async function updateTaskExecutionTracking(
       return false;
     }
 
-    logger.debug({ taskId, lastExecutedAt }, "Task execution tracking updated");
+    logger.debug(
+      { taskId, _lastExecutedAt },
+      "Task execution tracking updated",
+    );
     return true;
   } catch (error) {
     logger.error(
       {
         taskId,
-        lastExecutedAt,
+        _lastExecutedAt,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Failed to update task execution tracking",
@@ -1509,8 +1498,6 @@ export async function createTaskExecution(
     id,
     taskId: params.taskId,
     userId: params.userId,
-    scheduleKey: params.scheduleKey ?? null,
-    jobId: params.jobId ?? null,
     status: "running",
     startedAt: now,
     createdAt: now,
@@ -1594,9 +1581,7 @@ export async function recordSkippedTaskExecution(
     id: generateTaskExecutionId(),
     taskId: params.taskId,
     userId: params.userId,
-    scheduleKey: params.scheduleKey ?? null,
-    jobId: params.jobId ?? null,
-    status: "skipped",
+    status: "cancelled",
     startedAt: now,
     completedAt: now,
     durationMs: 0,

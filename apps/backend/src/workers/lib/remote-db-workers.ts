@@ -26,8 +26,6 @@ import type { ImageJobData } from "../jobs/imageProcessor.js";
 import processImageJob from "../jobs/imageProcessor.js";
 import type { NoteJobData } from "../jobs/noteProcessor.js";
 import processNoteJob from "../jobs/noteProcessor.js";
-import type { TaskExecutionJobData } from "../jobs/taskExecutionProcessor.js";
-import processTaskExecution from "../jobs/taskExecutionProcessor.js";
 import type { TaskJobData } from "../jobs/taskProcessor.js";
 import processTaskJob from "../jobs/taskProcessor.js";
 import type { BookmarkJobData } from "./bookmarks/index.js";
@@ -163,21 +161,6 @@ export async function startRemoteDbWorkers(): Promise<void> {
   );
   workers.push(taskWorker);
   logger.info({ queue: QueueNames.TASK_PROCESSING }, "Task worker started");
-
-  // Task execution worker
-  const taskExecutionWorker = createDbWorker(
-    QueueNames.TASK_EXECUTION_PROCESSING,
-    async (ctx: JobContext<TaskExecutionJobData>) => {
-      await processTaskExecution(ctx);
-    },
-    config,
-    { concurrency: 1 },
-  );
-  workers.push(taskExecutionWorker);
-  logger.info(
-    { queue: QueueNames.TASK_EXECUTION_PROCESSING },
-    "Task execution worker started",
-  );
 
   // Start all workers
   for (const worker of workers) {

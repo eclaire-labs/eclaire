@@ -1,1 +1,0 @@
-ALTER TABLE "media" ADD COLUMN "source_url" text;

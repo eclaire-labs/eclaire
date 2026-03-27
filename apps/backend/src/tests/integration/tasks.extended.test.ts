@@ -119,7 +119,7 @@ describe("Tasks — CompletedAt Auto-Setting", { timeout: 30000 }, () => {
       method: "POST",
       body: JSON.stringify({
         title: "CompletedAt Test Task",
-        status: "not-started",
+        status: "open",
       }),
     });
 
@@ -371,7 +371,7 @@ describe("Tasks — Extended Search and Filtering", { timeout: 30000 }, () => {
       {
         title: "Extended Search Alpha",
         description: "Frontend development task",
-        status: "not-started" as const,
+        status: "open" as const,
         tags: ["frontend", "urgent"],
         dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
       },
@@ -505,7 +505,7 @@ describe("Tasks — Execution Tracking Endpoint", { timeout: 30000 }, () => {
       method: "POST",
       body: JSON.stringify({
         title: "Execution Tracking Test Task",
-        status: "not-started",
+        status: "open",
       }),
     });
 
@@ -555,7 +555,7 @@ describe("Tasks — Assistant Status Endpoint", { timeout: 30000 }, () => {
       method: "POST",
       body: JSON.stringify({
         title: "Assistant Status Test Task",
-        status: "not-started",
+        status: "open",
         assigneeActorId: DEFAULT_AGENT_ACTOR_ID,
       }),
     });

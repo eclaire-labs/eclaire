@@ -5,57 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1773828118919,
-      "tag": "0000_round_epoch",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1774269207611,
-      "tag": "0001_motionless_sheva_callister",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1774271510814,
-      "tag": "0002_perfect_gambit",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1774353178984,
-      "tag": "0003_clear_king_bedlam",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1774355466304,
-      "tag": "0004_jittery_jane_foster",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1774357488017,
-      "tag": "0005_grey_sage",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1774532619996,
-      "tag": "0006_salty_johnny_storm",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1774535671474,
-      "tag": "0007_tense_wendigo",
+      "when": 1774583677648,
+      "tag": "0000_wonderful_dark_phoenix",
       "breakpoints": true
     }
   ]

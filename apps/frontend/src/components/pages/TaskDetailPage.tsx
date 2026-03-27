@@ -107,7 +107,7 @@ export function TaskDetailClient() {
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
-    status: "not-started" as TaskStatus,
+    status: "open" as TaskStatus,
     priority: 0,
     dueDate: "",
     assigneeActorId: "",
@@ -873,7 +873,7 @@ export function TaskDetailClient() {
                                         e.stopPropagation();
                                         const nextStatus =
                                           sub.status === "completed"
-                                            ? "not-started"
+                                            ? "open"
                                             : "completed";
                                         updateSubTaskStatus(sub.id, nextStatus);
                                       }}

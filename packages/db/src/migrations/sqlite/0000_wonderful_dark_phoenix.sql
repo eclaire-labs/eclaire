@@ -73,6 +73,33 @@ CREATE TABLE `actors` (
 --> statement-breakpoint
 CREATE INDEX `actors_owner_user_id_idx` ON `actors` (`owner_user_id`);--> statement-breakpoint
 CREATE INDEX `actors_owner_user_id_kind_idx` ON `actors` (`owner_user_id`,`kind`);--> statement-breakpoint
+CREATE TABLE `agent_runs` (
+	`id` text PRIMARY KEY NOT NULL,
+	`task_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`requested_by_actor_id` text,
+	`executor_actor_id` text,
+	`status` text DEFAULT 'queued' NOT NULL,
+	`prompt` text,
+	`started_at` integer,
+	`completed_at` integer,
+	`duration_ms` integer,
+	`output` text,
+	`error` text,
+	`result_summary` text,
+	`token_usage` text,
+	`metadata` text,
+	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	FOREIGN KEY (`task_id`) REFERENCES `tasks`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`requested_by_actor_id`) REFERENCES `actors`(`id`) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (`executor_actor_id`) REFERENCES `actors`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
+CREATE INDEX `agent_runs_task_id_created_at_idx` ON `agent_runs` (`task_id`,`created_at`);--> statement-breakpoint
+CREATE INDEX `agent_runs_user_id_created_at_idx` ON `agent_runs` (`user_id`,`created_at`);--> statement-breakpoint
+CREATE INDEX `agent_runs_status_idx` ON `agent_runs` (`status`);--> statement-breakpoint
+CREATE INDEX `agent_runs_executor_actor_id_idx` ON `agent_runs` (`executor_actor_id`);--> statement-breakpoint
 CREATE TABLE `agent_steps` (
 	`id` text PRIMARY KEY NOT NULL,
 	`message_id` text NOT NULL,
@@ -378,6 +405,60 @@ CREATE TABLE `mcp_servers` (
 	FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
+CREATE TABLE `media` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`title` text NOT NULL,
+	`description` text,
+	`original_filename` text,
+	`source_url` text,
+	`storage_id` text NOT NULL,
+	`mime_type` text,
+	`file_size` integer,
+	`due_date` integer,
+	`media_type` text NOT NULL,
+	`duration` real,
+	`channels` integer,
+	`sample_rate` integer,
+	`bitrate` integer,
+	`codec` text,
+	`language` text,
+	`width` integer,
+	`height` integer,
+	`frame_rate` real,
+	`video_codec` text,
+	`extracted_text` text,
+	`thumbnail_storage_id` text,
+	`waveform_storage_id` text,
+	`extracted_md_storage_id` text,
+	`extracted_txt_storage_id` text,
+	`raw_metadata` text,
+	`original_mime_type` text,
+	`user_agent` text,
+	`processing_enabled` integer DEFAULT true NOT NULL,
+	`processing_status` text,
+	`review_status` text,
+	`flag_color` text,
+	`is_pinned` integer DEFAULT false,
+	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `media_user_id_idx` ON `media` (`user_id`);--> statement-breakpoint
+CREATE INDEX `media_is_pinned_idx` ON `media` (`is_pinned`);--> statement-breakpoint
+CREATE INDEX `media_user_id_media_type_idx` ON `media` (`user_id`,`media_type`);--> statement-breakpoint
+CREATE INDEX `media_user_id_created_at_idx` ON `media` (`user_id`,`created_at`);--> statement-breakpoint
+CREATE INDEX `media_user_id_title_idx` ON `media` (`user_id`,`title`);--> statement-breakpoint
+CREATE TABLE `media_tags` (
+	`media_id` text NOT NULL,
+	`tag_id` text NOT NULL,
+	PRIMARY KEY(`media_id`, `tag_id`),
+	FOREIGN KEY (`media_id`) REFERENCES `media`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`tag_id`) REFERENCES `tags`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `media_tags_tag_id_idx` ON `media_tags` (`tag_id`);--> statement-breakpoint
 CREATE TABLE `messages` (
 	`id` text PRIMARY KEY NOT NULL,
 	`conversation_id` text NOT NULL,
@@ -489,6 +570,57 @@ CREATE TABLE `photos_tags` (
 );
 --> statement-breakpoint
 CREATE INDEX `photos_tags_tag_id_idx` ON `photos_tags` (`tag_id`);--> statement-breakpoint
+CREATE TABLE `scheduled_action_executions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`scheduled_action_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`scheduled_for` integer,
+	`started_at` integer,
+	`completed_at` integer,
+	`status` text DEFAULT 'pending' NOT NULL,
+	`output` text,
+	`error` text,
+	`delivery_result` text,
+	`metadata` text,
+	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	FOREIGN KEY (`scheduled_action_id`) REFERENCES `scheduled_actions`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `sa_executions_action_id_created_at_idx` ON `scheduled_action_executions` (`scheduled_action_id`,`created_at`);--> statement-breakpoint
+CREATE INDEX `sa_executions_user_id_created_at_idx` ON `scheduled_action_executions` (`user_id`,`created_at`);--> statement-breakpoint
+CREATE INDEX `sa_executions_status_idx` ON `scheduled_action_executions` (`status`);--> statement-breakpoint
+CREATE TABLE `scheduled_actions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`kind` text NOT NULL,
+	`status` text DEFAULT 'active' NOT NULL,
+	`title` text NOT NULL,
+	`prompt` text NOT NULL,
+	`trigger_type` text NOT NULL,
+	`run_at` integer,
+	`cron_expression` text,
+	`timezone` text,
+	`start_at` integer,
+	`end_at` integer,
+	`max_runs` integer,
+	`run_count` integer DEFAULT 0 NOT NULL,
+	`delivery_targets` text DEFAULT '[{"type":"notification_channels"}]' NOT NULL,
+	`source_conversation_id` text,
+	`agent_actor_id` text,
+	`related_task_id` text,
+	`last_run_at` integer,
+	`next_run_at` integer,
+	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`agent_actor_id`) REFERENCES `actors`(`id`) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (`related_task_id`) REFERENCES `tasks`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
+CREATE INDEX `scheduled_actions_user_id_status_idx` ON `scheduled_actions` (`user_id`,`status`);--> statement-breakpoint
+CREATE INDEX `scheduled_actions_user_id_next_run_at_idx` ON `scheduled_actions` (`user_id`,`next_run_at`);--> statement-breakpoint
+CREATE INDEX `scheduled_actions_status_next_run_at_idx` ON `scheduled_actions` (`status`,`next_run_at`);--> statement-breakpoint
 CREATE TABLE `sessions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -528,36 +660,41 @@ CREATE INDEX `task_comments_task_id_idx` ON `task_comments` (`task_id`);--> stat
 CREATE INDEX `task_comments_user_id_idx` ON `task_comments` (`user_id`);--> statement-breakpoint
 CREATE INDEX `task_comments_author_actor_id_idx` ON `task_comments` (`author_actor_id`);--> statement-breakpoint
 CREATE INDEX `task_comments_created_at_idx` ON `task_comments` (`created_at`);--> statement-breakpoint
-CREATE TABLE `task_executions` (
+CREATE TABLE `task_series` (
 	`id` text PRIMARY KEY NOT NULL,
-	`task_id` text NOT NULL,
 	`user_id` text NOT NULL,
-	`schedule_key` text,
-	`job_id` text,
-	`status` text NOT NULL,
-	`started_at` integer,
-	`completed_at` integer,
-	`duration_ms` integer,
-	`error` text,
-	`result_summary` text,
-	`token_usage` text,
-	`metadata` text,
+	`status` text DEFAULT 'active' NOT NULL,
+	`title` text NOT NULL,
+	`description` text,
+	`default_assignee_actor_id` text,
+	`execution_policy` text DEFAULT 'assign_only' NOT NULL,
+	`cron_expression` text NOT NULL,
+	`timezone` text,
+	`start_at` integer,
+	`end_at` integer,
+	`max_occurrences` integer,
+	`occurrence_count` integer DEFAULT 0 NOT NULL,
+	`last_occurrence_at` integer,
+	`next_occurrence_at` integer,
 	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
-	FOREIGN KEY (`task_id`) REFERENCES `tasks`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`default_assignee_actor_id`) REFERENCES `actors`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
-CREATE INDEX `task_executions_task_id_created_at_idx` ON `task_executions` (`task_id`,`created_at`);--> statement-breakpoint
-CREATE INDEX `task_executions_user_id_created_at_idx` ON `task_executions` (`user_id`,`created_at`);--> statement-breakpoint
-CREATE INDEX `task_executions_status_idx` ON `task_executions` (`status`);--> statement-breakpoint
+CREATE INDEX `task_series_user_id_idx` ON `task_series` (`user_id`);--> statement-breakpoint
+CREATE INDEX `task_series_user_id_status_idx` ON `task_series` (`user_id`,`status`);--> statement-breakpoint
+CREATE INDEX `task_series_status_next_occurrence_at_idx` ON `task_series` (`status`,`next_occurrence_at`);--> statement-breakpoint
 CREATE TABLE `tasks` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
 	`title` text NOT NULL,
 	`description` text,
-	`status` text DEFAULT 'not-started' NOT NULL,
+	`status` text DEFAULT 'open' NOT NULL,
 	`due_date` integer,
 	`assignee_actor_id` text,
+	`task_series_id` text,
+	`occurrence_at` integer,
 	`priority` integer DEFAULT 0 NOT NULL,
 	`processing_enabled` integer DEFAULT true NOT NULL,
 	`processing_status` text,
@@ -566,12 +703,12 @@ CREATE TABLE `tasks` (
 	`is_pinned` integer DEFAULT false NOT NULL,
 	`sort_order` real,
 	`parent_id` text,
-	`last_executed_at` integer,
 	`completed_at` integer,
 	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
 	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`assignee_actor_id`) REFERENCES `actors`(`id`) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (`task_series_id`) REFERENCES `task_series`(`id`) ON UPDATE no action ON DELETE set null,
 	FOREIGN KEY (`parent_id`) REFERENCES `tasks`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
@@ -582,6 +719,7 @@ CREATE INDEX `tasks_assignee_actor_id_idx` ON `tasks` (`assignee_actor_id`);--> 
 CREATE INDEX `tasks_is_pinned_idx` ON `tasks` (`is_pinned`);--> statement-breakpoint
 CREATE INDEX `tasks_completed_at_idx` ON `tasks` (`completed_at`);--> statement-breakpoint
 CREATE INDEX `tasks_parent_id_idx` ON `tasks` (`parent_id`);--> statement-breakpoint
+CREATE INDEX `tasks_task_series_id_idx` ON `tasks` (`task_series_id`);--> statement-breakpoint
 CREATE INDEX `tasks_user_id_created_at_idx` ON `tasks` (`user_id`,`created_at`);--> statement-breakpoint
 CREATE INDEX `tasks_user_id_due_date_idx` ON `tasks` (`user_id`,`due_date`);--> statement-breakpoint
 CREATE INDEX `tasks_user_id_status_created_at_idx` ON `tasks` (`user_id`,`status`,`created_at`);--> statement-breakpoint
@@ -596,6 +734,13 @@ CREATE TABLE `tasks_tags` (
 );
 --> statement-breakpoint
 CREATE INDEX `tasks_tags_tag_id_idx` ON `tasks_tags` (`tag_id`);--> statement-breakpoint
+CREATE TABLE `user_preferences` (
+	`user_id` text PRIMARY KEY NOT NULL,
+	`preferences` text DEFAULT '{}' NOT NULL,
+	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
 CREATE TABLE `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_type` text NOT NULL,
@@ -610,6 +755,7 @@ CREATE TABLE `users` (
 	`city` text,
 	`country` text,
 	`is_instance_admin` integer DEFAULT false NOT NULL,
+	`account_status` text DEFAULT 'active' NOT NULL,
 	`created_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
 	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL
 );

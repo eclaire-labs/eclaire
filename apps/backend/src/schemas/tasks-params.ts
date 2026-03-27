@@ -30,18 +30,12 @@ export const TaskSchema = z
       }),
 
     status: z
-      .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
+      .enum(["backlog", "open", "in-progress", "completed", "cancelled"])
       .optional()
-      .default("not-started")
+      .default("open")
       .meta({
         description: "Current status of the task",
-        examples: [
-          "backlog",
-          "not-started",
-          "in-progress",
-          "completed",
-          "cancelled",
-        ],
+        examples: ["backlog", "open", "in-progress", "completed", "cancelled"],
       }),
 
     priority: z
@@ -215,7 +209,7 @@ export const TaskSearchParamsSchema = z.object({
     }),
 
   status: z
-    .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
+    .enum(["backlog", "open", "in-progress", "completed", "cancelled"])
     .optional()
     .meta({
       description: "Filter tasks by status",

@@ -13,6 +13,7 @@ import { getRequestId, type Logger } from "@eclaire/logger";
 import type { DbInstance } from "@eclaire/db";
 import { QueueNames } from "../queue-names.js";
 import type {
+  AgentRunJobData,
   AssetType,
   BookmarkJobData,
   DocumentJobData,
@@ -38,11 +39,7 @@ export interface DatabaseAdapterConfig {
 /**
  * Map asset type to queue name
  */
-function getQueueName(assetType: AssetType, jobType?: string): string {
-  if (assetType === "tasks" && jobType === "execution") {
-    return QueueNames.TASK_EXECUTION_PROCESSING;
-  }
-
+function getQueueName(assetType: AssetType, _jobType?: string): string {
   const mapping: Record<AssetType, string> = {
     bookmarks: QueueNames.BOOKMARK_PROCESSING,
     photos: QueueNames.IMAGE_PROCESSING,
@@ -214,6 +211,52 @@ export function createDatabaseAdapter(
             error: getErrorMessage(error),
           },
           "Failed to enqueue scheduled action job",
+        );
+        throw error;
+      }
+    },
+
+    async enqueueAgentRun(data: AgentRunJobData): Promise<void> {
+      const queueName = QueueNames.AGENT_RUN;
+      const key = `agent-run:${data.agentRunId}`;
+      const requestId = getRequestId();
+
+      try {
+        await queueClient.enqueue(
+          queueName,
+          { ...data, requestId },
+          {
+            key,
+            priority: 0,
+            metadata: {
+              userId: data.userId,
+              assetType: "agent_run",
+              assetId: data.agentRunId,
+            },
+          },
+        );
+
+        logger.info(
+          {
+            queueName,
+            agentRunId: data.agentRunId,
+            taskId: data.taskId,
+            userId: data.userId,
+          },
+          "Agent run job enqueued",
+        );
+
+        if (notifyEmitter) {
+          await notifyEmitter.emit(queueName);
+        }
+      } catch (error) {
+        logger.error(
+          {
+            queueName,
+            agentRunId: data.agentRunId,
+            error: getErrorMessage(error),
+          },
+          "Failed to enqueue agent run job",
         );
         throw error;
       }

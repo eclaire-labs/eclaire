@@ -21,7 +21,7 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
   const initialTaskData = {
     title: "Test Task",
     description: "This is a test task description.",
-    status: "not-started", // Changed from "pending" to valid enum value
+    status: "open", // Changed from "pending" to valid enum value
     dueDate: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
   };
 

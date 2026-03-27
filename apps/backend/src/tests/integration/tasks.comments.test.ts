@@ -22,7 +22,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
       const commentTaskData = {
         title: "Task for Comment Testing",
         description: "This task will be used to test comment functionality.",
-        status: "not-started",
+        status: "open",
       };
 
       const response = await loggedFetch(`/tasks`, {
@@ -163,7 +163,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
   });
 
   // Note: AI Assistant comment creation is now done via direct service calls
-  // in taskExecutionProcessor.ts, not via HTTP API. Tests for this functionality
+  // in agentRunProcessor.ts, not via HTTP API. Tests for this functionality
   // should use unit tests with mocked services.
 
   describe("AI Assistant Task Assignment", () => {
@@ -173,7 +173,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
       const taskData = {
         title: "Task for Assignment Testing",
         description: "This task will test assignment functionality.",
-        status: "not-started",
+        status: "open",
       };
 
       const response = await loggedFetch(`/tasks`, {
@@ -218,7 +218,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
       const taskData = {
         title: "Task Assigned to AI Assistant",
         description: "This task is explicitly assigned to AI assistant.",
-        status: "not-started",
+        status: "open",
         assigneeActorId: DEFAULT_AGENT_ACTOR_ID,
       };
 
@@ -249,7 +249,7 @@ describe("Task Comments", { timeout: 30000 }, () => {
         const taskData = {
           title: "AI Assistant Comment Test",
           description: "This task should generate an AI assistant comment.",
-          status: "not-started",
+          status: "open",
           assigneeActorId: DEFAULT_AGENT_ACTOR_ID,
         };
 

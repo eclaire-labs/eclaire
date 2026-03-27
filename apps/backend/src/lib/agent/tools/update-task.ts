@@ -14,7 +14,7 @@ const inputSchema = z.object({
   title: z.string().optional().describe("New title for the task"),
   description: z.string().optional().describe("New description for the task"),
   status: z
-    .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
+    .enum(["backlog", "open", "in-progress", "completed", "cancelled"])
     .optional()
     .describe("New status for the task"),
   priority: z

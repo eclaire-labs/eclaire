@@ -1,1 +1,0 @@
-ALTER TABLE `scheduled_actions` ADD `related_task_id` text REFERENCES tasks(id);

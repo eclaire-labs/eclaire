@@ -5,57 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1773828118021,
-      "tag": "0000_aromatic_anita_blake",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1774269208339,
-      "tag": "0001_rich_cloak",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1774271504870,
-      "tag": "0002_same_hawkeye",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1774353178157,
-      "tag": "0003_aberrant_romulus",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1774355461156,
-      "tag": "0004_premium_starhawk",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1774357487255,
-      "tag": "0005_mean_karnak",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1774532615481,
-      "tag": "0006_brainy_retro_girl",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1774535670716,
-      "tag": "0007_tearful_betty_ross",
+      "when": 1774583672172,
+      "tag": "0000_living_stature",
       "breakpoints": true
     }
   ]

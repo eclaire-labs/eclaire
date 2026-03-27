@@ -85,6 +85,14 @@ export interface ScheduledActionJobData extends JobData {
   scheduledFor?: Date;
 }
 
+export interface AgentRunJobData extends JobData {
+  agentRunId: string;
+  taskId: string;
+  userId: string;
+  executorActorId: string;
+  prompt: string;
+}
+
 // --- Queue Adapter Interface ---
 
 export interface QueueAdapter {
@@ -95,5 +103,6 @@ export interface QueueAdapter {
   enqueueTask(data: TaskJobData): Promise<void>;
   enqueueMedia(data: MediaJobData): Promise<void>;
   enqueueScheduledAction(data: ScheduledActionJobData): Promise<void>;
+  enqueueAgentRun(data: AgentRunJobData): Promise<void>;
   close(): Promise<void>;
 }

@@ -31,9 +31,30 @@ const tsvector = customType<{ data: string }>({
 // Enums
 export const taskStatusEnum = pgEnum("task_status", [
   "backlog",
-  "not-started",
+  "open",
   "in-progress",
   "completed",
+  "cancelled",
+  "blocked",
+]);
+
+export const taskSeriesStatusEnum = pgEnum("task_series_status", [
+  "active",
+  "paused",
+  "completed",
+  "cancelled",
+]);
+
+export const taskSeriesExecutionPolicyEnum = pgEnum(
+  "task_series_execution_policy",
+  ["assign_only", "assign_and_run"],
+);
+
+export const agentRunStatusEnum = pgEnum("agent_run_status", [
+  "queued",
+  "running",
+  "completed",
+  "failed",
   "cancelled",
 ]);
 
@@ -63,9 +84,11 @@ import {
   generateTagId,
   generateTaskCommentId,
   generateAgentStepId,
+  generateAgentRunId,
   generateMediaId,
   generateTaskExecutionId,
   generateTaskId,
+  generateTaskSeriesId,
   generateUserId,
 } from "@eclaire/core/id";
 
@@ -330,6 +353,58 @@ export const actorCredentials = pgTable(
   }),
 );
 
+export const taskSeries = pgTable(
+  "task_series",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateTaskSeriesId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: taskSeriesStatusEnum("status").notNull().default("active"),
+
+    // Template
+    title: text("title").notNull(),
+    description: text("description"),
+    defaultAssigneeActorId: text("default_assignee_actor_id").references(
+      () => actors.id,
+      { onDelete: "set null" },
+    ),
+    executionPolicy: taskSeriesExecutionPolicyEnum("execution_policy")
+      .notNull()
+      .default("assign_only"),
+
+    // Recurrence
+    cronExpression: text("cron_expression").notNull(),
+    timezone: text("timezone"),
+    startAt: timestamp("start_at", { withTimezone: true }),
+    endAt: timestamp("end_at", { withTimezone: true }),
+    maxOccurrences: integer("max_occurrences"),
+    occurrenceCount: integer("occurrence_count").notNull().default(0),
+
+    // Lifecycle
+    lastOccurrenceAt: timestamp("last_occurrence_at", { withTimezone: true }),
+    nextOccurrenceAt: timestamp("next_occurrence_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userIdx: index("task_series_user_id_idx").on(table.userId),
+    userStatusIdx: index("task_series_user_id_status_idx").on(
+      table.userId,
+      table.status,
+    ),
+    statusNextOccurrenceIdx: index(
+      "task_series_status_next_occurrence_at_idx",
+    ).on(table.status, table.nextOccurrenceAt),
+  }),
+);
+
 export const tasks = pgTable(
   "tasks",
   {
@@ -341,11 +416,15 @@ export const tasks = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     description: text("description"),
-    status: taskStatusEnum("status").notNull().default("not-started"),
+    status: taskStatusEnum("status").notNull().default("open"),
     dueDate: timestamp("due_date", { withTimezone: true }),
     assigneeActorId: text("assignee_actor_id").references(() => actors.id, {
       onDelete: "set null",
     }),
+    taskSeriesId: text("task_series_id").references(() => taskSeries.id, {
+      onDelete: "set null",
+    }),
+    occurrenceAt: timestamp("occurrence_at", { withTimezone: true }),
     priority: integer("priority").notNull().default(0),
     processingEnabled: boolean("processing_enabled").notNull().default(true),
     processingStatus: text("processing_status", {
@@ -360,9 +439,6 @@ export const tasks = pgTable(
     isPinned: boolean("is_pinned").notNull().default(false),
     sortOrder: doublePrecision("sort_order"),
     parentId: text("parent_id"),
-    // Note: Recurrence data (isRecurring, cronExpression, recurrenceEndDate, recurrenceLimit)
-    // is now stored in queue_schedules table and fetched via scheduler.get()
-    lastExecutedAt: timestamp("last_executed_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -388,6 +464,7 @@ export const tasks = pgTable(
     isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
     completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
     parentIdx: index("tasks_parent_id_idx").on(table.parentId),
+    taskSeriesIdx: index("tasks_task_series_id_idx").on(table.taskSeriesId),
     userProcessingEnabledIdx: index("tasks_user_id_processing_enabled_idx")
       .on(table.userId)
       .where(sql`processing_enabled = true`),
@@ -461,26 +538,31 @@ export const taskComments = pgTable(
   }),
 );
 
-export const taskExecutions = pgTable(
-  "task_executions",
+export const agentRuns = pgTable(
+  "agent_runs",
   {
     id: text("id")
       .primaryKey()
-      .$defaultFn(() => generateTaskExecutionId()),
+      .$defaultFn(() => generateAgentRunId()),
     taskId: text("task_id")
       .notNull()
       .references(() => tasks.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    scheduleKey: text("schedule_key"),
-    jobId: text("job_id"),
-    status: text("status", {
-      enum: ["running", "completed", "failed", "skipped"],
-    }).notNull(),
+    requestedByActorId: text("requested_by_actor_id").references(
+      () => actors.id,
+      { onDelete: "set null" },
+    ),
+    executorActorId: text("executor_actor_id").references(() => actors.id, {
+      onDelete: "set null",
+    }),
+    status: agentRunStatusEnum("status").notNull().default("queued"),
+    prompt: text("prompt"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     durationMs: integer("duration_ms"),
+    output: text("output"),
     error: text("error"),
     resultSummary: text("result_summary"),
     tokenUsage: jsonb("token_usage"),
@@ -490,15 +572,18 @@ export const taskExecutions = pgTable(
       .defaultNow(),
   },
   (table) => ({
-    taskCreatedAtIdx: index("task_executions_task_id_created_at_idx").on(
+    taskCreatedAtIdx: index("agent_runs_task_id_created_at_idx").on(
       table.taskId,
       table.createdAt,
     ),
-    userCreatedAtIdx: index("task_executions_user_id_created_at_idx").on(
+    userCreatedAtIdx: index("agent_runs_user_id_created_at_idx").on(
       table.userId,
       table.createdAt,
     ),
-    statusIdx: index("task_executions_status_idx").on(table.status),
+    statusIdx: index("agent_runs_status_idx").on(table.status),
+    executorActorIdx: index("agent_runs_executor_actor_id_idx").on(
+      table.executorActorId,
+    ),
   }),
 );
 
@@ -1215,6 +1300,18 @@ export const accountsRelations = relations(accounts, ({ one }) => ({
   user: one(users, { fields: [accounts.userId], references: [users.id] }),
 }));
 
+export const taskSeriesRelations = relations(taskSeries, ({ one, many }) => ({
+  user: one(users, {
+    fields: [taskSeries.userId],
+    references: [users.id],
+  }),
+  defaultAssigneeActor: one(actors, {
+    fields: [taskSeries.defaultAssigneeActorId],
+    references: [actors.id],
+  }),
+  occurrences: many(tasks),
+}));
+
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   user: one(users, {
     fields: [tasks.userId],
@@ -1225,6 +1322,10 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.assigneeActorId],
     references: [actors.id],
   }),
+  series: one(taskSeries, {
+    fields: [tasks.taskSeriesId],
+    references: [taskSeries.id],
+  }),
   parent: one(tasks, {
     fields: [tasks.parentId],
     references: [tasks.id],
@@ -1233,6 +1334,28 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   children: many(tasks, { relationName: "parentChild" }),
   tags: many(tasksTags),
   comments: many(taskComments),
+  agentRuns: many(agentRuns),
+}));
+
+export const agentRunsRelations = relations(agentRuns, ({ one }) => ({
+  task: one(tasks, {
+    fields: [agentRuns.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [agentRuns.userId],
+    references: [users.id],
+  }),
+  requestedByActor: one(actors, {
+    fields: [agentRuns.requestedByActorId],
+    references: [actors.id],
+    relationName: "agentRunRequestedBy",
+  }),
+  executorActor: one(actors, {
+    fields: [agentRuns.executorActorId],
+    references: [actors.id],
+    relationName: "agentRunExecutor",
+  }),
 }));
 
 export const bookmarksRelations = relations(bookmarks, ({ one, many }) => ({

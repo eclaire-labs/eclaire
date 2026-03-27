@@ -43,7 +43,7 @@ const fullRawTask = {
   userId: "user-1",
   title: "Test Task",
   description: "A description",
-  status: "not-started",
+  status: "open",
   dueDate: "2026-04-01",
   assigneeActorId: "user-2",
   tags: ["frontend", "bug"],

@@ -50,7 +50,7 @@ export interface TaskEntry {
   userId: string;
   title: string;
   description: string | null;
-  status: "backlog" | "not-started" | "in-progress" | "completed" | "cancelled";
+  status: "backlog" | "open" | "in-progress" | "completed" | "cancelled";
   dueDate: string | null;
   assigneeActorId: string | null;
   processingEnabled: boolean;
@@ -708,7 +708,7 @@ export const RecurrenceTestHelpers = {
 
     if (!taskExecutionQueue) {
       const { QueueNames } = await import("../../lib/queue/index.js");
-      taskExecutionQueue = new Queue(QueueNames.TASK_EXECUTION_PROCESSING, {
+      taskExecutionQueue = new Queue(QueueNames.AGENT_RUN, {
         connection: redisConnection,
       });
     }
@@ -818,7 +818,7 @@ export const globalTestCleanup = async () => {
     try {
       const { getQueue, QueueNames } = await import("../../lib/queue/index.js");
       const taskQueue = getQueue(QueueNames.TASK_PROCESSING);
-      const executionQueue = getQueue(QueueNames.TASK_EXECUTION_PROCESSING);
+      const executionQueue = getQueue(QueueNames.AGENT_RUN);
 
       if (taskQueue) {
         await taskQueue.drain(); // Remove all waiting jobs

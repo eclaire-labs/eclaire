@@ -127,7 +127,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Transaction Tests", ({
           id: taskId,
           userId: testUserId,
           title: "Test Task",
-          status: "not-started",
+          status: "open",
         });
 
         // Insert task-tag relationships
@@ -196,7 +196,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Transaction Tests", ({
             id: taskId,
             userId: testUserId,
             title: "Test Task",
-            status: "not-started",
+            status: "open",
           });
 
           // Insert task-tag relationship

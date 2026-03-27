@@ -38,10 +38,11 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 
 export const TASK_STATUSES = [
   "backlog",
-  "not-started",
+  "open",
   "in-progress",
   "completed",
   "cancelled",
+  "blocked",
 ] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 

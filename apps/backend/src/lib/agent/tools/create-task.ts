@@ -17,9 +17,9 @@ const inputSchema = z.object({
     .optional()
     .describe("Detailed description of the task"),
   status: z
-    .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
+    .enum(["backlog", "open", "in-progress", "completed", "cancelled"])
     .optional()
-    .default("not-started")
+    .default("open")
     .describe("Task status"),
   priority: z
     .number()
@@ -55,7 +55,9 @@ export const createTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   inputSchema,
   promptGuidelines: [
     "Tasks are work items with due dates — like Linear or Apple Reminders. Use createTask for things people need to do.",
-    "For reminders, scheduled notifications, or recurring agent work, use scheduleAction instead — do NOT create a task.",
+    "For reminders and scheduled notifications, use scheduleAction instead.",
+    "For recurring tasks (e.g., 'every morning summarize my meetings'), use createTaskSeries instead.",
+    "To assign a task to an agent and have it run immediately, first createTask, then runTaskAgent.",
     "Always confirm with the user before creating tasks.",
   ],
   execute: async (_callId, input, ctx) => {

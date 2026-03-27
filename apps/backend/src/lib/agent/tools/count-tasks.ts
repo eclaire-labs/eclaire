@@ -18,7 +18,7 @@ const inputSchema = z.object({
     .describe("Search query for task title/description"),
   tags: z.array(z.string()).optional().describe("Filter by tags"),
   status: z
-    .enum(["backlog", "not-started", "in-progress", "completed", "cancelled"])
+    .enum(["backlog", "open", "in-progress", "completed", "cancelled"])
     .optional()
     .describe("Filter by task status"),
   startDate: z.string().optional().describe("Start of date range (ISO format)"),
@@ -35,13 +35,9 @@ export const countTasksTool: RuntimeToolDefinition<typeof inputSchema> = {
     let validStatus: TaskStatus | undefined;
     if (
       input.status &&
-      [
-        "backlog",
-        "not-started",
-        "in-progress",
-        "completed",
-        "cancelled",
-      ].includes(input.status)
+      ["backlog", "open", "in-progress", "completed", "cancelled"].includes(
+        input.status,
+      )
     ) {
       validStatus = input.status as TaskStatus;
     }
