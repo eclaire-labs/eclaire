@@ -15,20 +15,7 @@ import {
   createTaskSeries,
   type CreateTaskSeriesParams,
 } from "../../services/task-series.js";
-
-function getAgentActorId(ctx: {
-  extra?: Record<string, unknown>;
-}): string | undefined {
-  if (
-    typeof ctx.extra?.agent === "object" &&
-    ctx.extra.agent !== null &&
-    "id" in ctx.extra.agent &&
-    typeof ctx.extra.agent.id === "string"
-  ) {
-    return ctx.extra.agent.id;
-  }
-  return undefined;
-}
+import { getAgentActorId } from "./caller.js";
 
 const inputSchema = z.object({
   title: z

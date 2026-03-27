@@ -17,20 +17,7 @@ import {
 } from "../../services/scheduled-actions.js";
 import { isValidCronExpression } from "../../queue/cron-utils.js";
 import type { DeliveryTarget } from "../../queue/types.js";
-
-function getAgentActorId(ctx: {
-  extra?: Record<string, unknown>;
-}): string | undefined {
-  if (
-    typeof ctx.extra?.agent === "object" &&
-    ctx.extra.agent !== null &&
-    "id" in ctx.extra.agent &&
-    typeof ctx.extra.agent.id === "string"
-  ) {
-    return ctx.extra.agent.id;
-  }
-  return undefined;
-}
+import { getAgentActorId } from "./caller.js";
 
 const inputSchema = z.object({
   title: z

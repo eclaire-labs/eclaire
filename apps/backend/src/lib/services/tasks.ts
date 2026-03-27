@@ -1,7 +1,6 @@
 import {
   formatToISO8601,
   generateHistoryId,
-  generateTaskExecutionId,
   generateTaskId,
   type TaskStatus,
 } from "@eclaire/core";
@@ -21,8 +20,7 @@ import {
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { tags, taskComments, tasks, tasksTags, users } = schema;
-// Legacy alias — taskExecutions is now agentRuns in schema, but dead code below still references it
-const taskExecutions = schema.agentRuns;
+const agentRuns = schema.agentRuns;
 
 import {
   batchGetTags,
@@ -163,33 +161,6 @@ interface UpdateTaskParams {
 // Re-export TaskStatus from @eclaire/core for external use (e.g., API route)
 export type { TaskStatus };
 
-// NOTE: Legacy scheduling functions (upsertTaskScheduler, cancelTaskExecutionJob,
-// removeTaskScheduler, validateRecurrenceParams, getTaskScheduleData) were removed
-// in Phase 4 of the Scheduled Actions migration. Tasks are now pure work items.
-// All scheduling goes through the ScheduledAction model.
-
-/**
- * Schedule data for task response enrichment.
- * Kept for API response compatibility; always returns non-recurring defaults
- * now that scheduling lives in ScheduledAction.
- */
-interface TaskScheduleData {
-  isRecurring: boolean;
-  cronExpression: string | null;
-  recurrenceEndDate: Date | null;
-  recurrenceLimit: number | null;
-}
-
-/** Always returns null — scheduling data now lives in ScheduledAction. */
-function getTaskScheduleData(_taskId: string): TaskScheduleData | null {
-  return null;
-}
-
-/** Always returns an empty map — scheduling data now lives in ScheduledAction. */
-function getTaskSchedulesMap(): Map<string, TaskScheduleData> {
-  return new Map();
-}
-
 /**
  * Cleans a task object for API response by removing DB-specific fields
  * and adding properly formatted date fields.
@@ -201,7 +172,6 @@ function cleanTaskForResponse(
   processingStatus?: string | null,
   // biome-ignore lint/suspicious/noExplicitAny: raw DB row formatter
   comments: any[] = [],
-  scheduleData?: TaskScheduleData | null,
   childCount?: number,
 ) {
   const dueDate = task.dueDate != null ? formatToISO8601(task.dueDate) : null;
@@ -303,7 +273,9 @@ export async function createTask(
         processingEnabled: taskData.processingEnabled ?? true,
         processingStatus:
           (taskData.processingEnabled ?? true) ? "pending" : null,
-        reviewStatus: taskData.reviewStatus || "pending",
+        reviewStatus:
+          taskData.reviewStatus ??
+          (executionMode !== "manual" ? "pending" : null),
         flagColor: taskData.flagColor || null,
         isPinned: taskData.isPinned || false,
         sortOrder: taskData.sortOrder ?? null,
@@ -474,13 +446,19 @@ export async function updateTask(
       }
     }
 
-    // Prepare the base update object (excluding dueDate initially)
-    // Use a type that allows flexible properties for .set()
+    // Build the update set additively — only include fields that should change
     // biome-ignore lint/suspicious/noExplicitAny: dynamic update object
     const updateSet: { [key: string]: any } = {
-      ...taskUpdateData,
-      updatedAt: new Date(), // Use current date
+      updatedAt: new Date(),
     };
+
+    // Copy simple scalar fields (exclude dueDate, completedAt — handled separately)
+    for (const key of Object.keys(
+      taskUpdateData,
+    ) as (keyof typeof taskUpdateData)[]) {
+      if (key === "dueDate" || key === "completedAt") continue;
+      updateSet[key] = taskUpdateData[key];
+    }
 
     if (resolvedUpdatedAssignee) {
       updateSet.assigneeActorId = resolvedUpdatedAssignee.assigneeActorId;
@@ -494,32 +472,12 @@ export async function updateTask(
       }
     }
 
-    // Conditionally add dueDate to the update set
     if (includeDueDateUpdate) {
       updateSet.dueDate = dueDateValue;
-    } else {
-      // If dueDate was not in the input, remove it from the updateSet
-      // to avoid accidentally setting it to undefined or null
-      delete updateSet.dueDate;
     }
 
     if (includeCompletedAtUpdate) {
       updateSet.completedAt = completedAtValue;
-    }
-
-    // Remove the original properties if they exist from taskUpdateData spread
-    if (Object.hasOwn(updateSet, "dueDate") && !includeDueDateUpdate) {
-      delete updateSet.dueDate;
-    }
-    if (Object.hasOwn(updateSet, "completedAt") && !includeCompletedAtUpdate) {
-      delete updateSet.completedAt;
-    }
-
-    // Also remove tags property if it was part of taskUpdateData spread
-    delete updateSet.tags;
-    // Remove completedAt from spread if it shouldn't be updated
-    if (!includeCompletedAtUpdate) {
-      delete updateSet.completedAt;
     }
 
     // Pre-generate history ID for transaction
@@ -589,38 +547,19 @@ export async function updateTask(
       "Error updating task",
     );
 
+    // Re-throw typed errors to preserve specific error messages
     if (
-      error instanceof Error &&
-      error.message.includes("Task update failed or task not found")
-    ) {
-      throw new NotFoundError("Task"); // Re-throw specific error
-    }
-
-    // Differentiate between not found and other errors if possible
-    if (error instanceof Error && error.message === "Task not found") {
-      // If thrown earlier
-      throw error;
-    }
-
-    // Re-throw validation errors to preserve specific error messages
-    if (
-      error instanceof Error &&
-      error.message.includes("Invalid assignee actor ID")
+      error instanceof NotFoundError ||
+      error instanceof ValidationError ||
+      error instanceof ForbiddenError
     ) {
       throw error;
     }
 
-    if (error instanceof ValidationError) {
-      throw error; // Preserve the original ValidationError
-    }
-
-    throw new Error("Failed to update task"); // General error
+    throw new Error("Failed to update task");
   }
 }
 
-/**
- * Updates a task record with artifacts produced by a worker (e.g., tags).
- */
 /**
  * Updates task status specifically for AI assistants assigned to the task
  * This bypasses the ownership check and records proper history with assistant actor
@@ -738,124 +677,6 @@ export {
   NotFoundError as TaskNotFoundError,
   ForbiddenError as TaskUnauthorizedError,
 };
-
-/**
- * Updates task execution tracking with permission checks.
- * Used by the API route for external access.
- *
- * @param taskId - The task ID
- * @param userId - The user ID making the request
- * @param _lastExecutedAt - Optional ISO 8601 timestamp when task was last executed
- * @returns Object with success message and list of updated fields
- * @throws TaskNotFoundError if task doesn't exist
- * @throws TaskUnauthorizedError if user doesn't have permission
- */
-export async function updateTaskExecutionTrackingWithPermissions(
-  taskId: string,
-  userId: string,
-  _lastExecutedAt?: string,
-): Promise<{ message: string; updated: string[] }> {
-  // Get the task to verify it exists and user has permission
-  const task = await db.query.tasks.findFirst({
-    where: eq(tasks.id, taskId),
-    columns: {
-      id: true,
-      userId: true,
-      assigneeActorId: true,
-    },
-  });
-
-  if (!task) {
-    throw new NotFoundError("Task", taskId);
-  }
-
-  // Check if user has permission to update execution tracking
-  const canUpdate = task.userId === userId || task.assigneeActorId === userId;
-  if (!canUpdate) {
-    throw new ForbiddenError("Unauthorized to update this task");
-  }
-
-  // Log execution tracking update for security/auditing
-  logger.info(
-    {
-      taskId,
-      userId,
-      taskOwnerId: task.userId,
-      taskAssigneeActorId: task.assigneeActorId,
-      updates: { _lastExecutedAt },
-    },
-    "Task execution tracking update",
-  );
-
-  // Prepare update data - only _lastExecutedAt is in the task table
-  // nextRunAt is managed by the queue scheduler
-  const updateData: { _lastExecutedAt?: Date } = {};
-  const updatedFields: string[] = [];
-
-  if (_lastExecutedAt !== undefined) {
-    updateData._lastExecutedAt = new Date(_lastExecutedAt);
-    updatedFields.push("_lastExecutedAt");
-  }
-
-  // Update the task
-  await db
-    .update(tasks)
-    .set({
-      ...updateData,
-      updatedAt: new Date(),
-    })
-    .where(eq(tasks.id, taskId));
-
-  return {
-    message: "Task execution tracking updated successfully",
-    updated: updatedFields,
-  };
-}
-
-/**
- * Updates the _lastExecutedAt timestamp for a task.
- * Used by task execution processor for internal tracking - no history recorded.
- * Returns true if task was found and updated, false if task was not found.
- */
-export async function updateTaskExecutionTracking(
-  taskId: string,
-  _lastExecutedAt: Date,
-): Promise<boolean> {
-  try {
-    // NOTE: lastExecutedAt column removed — this function is dead code
-    const result = await db
-      .update(tasks)
-      .set({
-        updatedAt: new Date(),
-      })
-      .where(eq(tasks.id, taskId))
-      .returning({ id: tasks.id });
-
-    if (result.length === 0) {
-      logger.warn(
-        { taskId },
-        "Task not found when updating execution tracking",
-      );
-      return false;
-    }
-
-    logger.debug(
-      { taskId, _lastExecutedAt },
-      "Task execution tracking updated",
-    );
-    return true;
-  } catch (error) {
-    logger.error(
-      {
-        taskId,
-        _lastExecutedAt,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Failed to update task execution tracking",
-    );
-    throw error;
-  }
-}
 
 export async function updateTaskArtifacts(
   taskId: string,
@@ -1009,29 +830,22 @@ export async function getTaskById(taskId: string, userId: string) {
     }
 
     // Fetch data in parallel
-    const [
-      taskTagNames,
-      taskCommentsData,
-      scheduleData,
-      childCountResult,
-      lastExecution,
-    ] = await Promise.all([
-      getTaskTags(taskId),
-      getTaskCommentsWithUsers(taskId, task.userId),
-      getTaskScheduleData(taskId),
-      db
-        .select({ value: count() })
-        .from(tasks)
-        .where(eq(tasks.parentId, taskId)),
-      getLastTaskExecution(taskId),
-    ]);
+    const [taskTagNames, taskCommentsData, childCountResult, lastExecution] =
+      await Promise.all([
+        getTaskTags(taskId),
+        getTaskCommentsWithUsers(taskId, task.userId),
+        db
+          .select({ value: count() })
+          .from(tasks)
+          .where(eq(tasks.parentId, taskId)),
+        getLastTaskExecution(taskId),
+      ]);
 
     const response = cleanTaskForResponse(
       task,
       taskTagNames,
       task.processingStatus,
       taskCommentsData,
-      scheduleData,
       childCountResult[0]?.value ?? 0,
     );
 
@@ -1101,13 +915,9 @@ async function getTaskWithTags(taskId: string) {
 
   if (!task) return null;
 
-  // Fetch tags and schedule data in parallel
-  const [taskTagNames, scheduleData] = await Promise.all([
-    getTaskTags(taskId),
-    getTaskScheduleData(taskId),
-  ]);
+  const taskTagNames = await getTaskTags(taskId);
 
-  return cleanTaskForResponse(task, taskTagNames, null, [], scheduleData);
+  return cleanTaskForResponse(task, taskTagNames);
 }
 
 /**
@@ -1284,15 +1094,14 @@ export async function findTasks({
     const hasMore = finalIds.length > limit;
     if (hasMore) finalIds = finalIds.slice(0, limit);
 
-    // Fetch full data for the final page of IDs, schedule data, tags, child counts, and latest agent run status in parallel
-    const [entriesList, schedulesMap, tagMap, childCounts, latestAgentRuns] =
+    // Fetch full data for the final page of IDs, tags, child counts, and latest agent run status in parallel
+    const [entriesList, tagMap, childCounts, latestAgentRuns] =
       await Promise.all([
         db
           .select()
           .from(tasks)
           .where(inArray(tasks.id, finalIds))
           .orderBy(orderDir(sortColumn), orderDir(tasks.id)),
-        getTaskSchedulesMap(),
         batchGetTags(tasksTags, tasksTags.taskId, tasksTags.tagId, finalIds),
         db
           .select({
@@ -1326,13 +1135,11 @@ export async function findTasks({
     }
 
     const items = entriesList.map((task) => {
-      const scheduleData = schedulesMap.get(task.id) || null;
       const response = cleanTaskForResponse(
         task,
         tagMap.get(task.id) ?? [],
         task.processingStatus,
         [],
-        scheduleData,
         childCountMap.get(task.id) ?? 0,
       );
       const latestRunStatus = agentRunStatusMap.get(task.id);
@@ -1523,141 +1330,29 @@ export async function reprocessTask(
 }
 
 // ============================================================================
-// Task Execution Recording
+// Agent Run Queries (for task enrichment)
 // ============================================================================
 
-export interface CreateTaskExecutionParams {
-  taskId: string;
-  userId: string;
-  scheduleKey?: string | null;
-  jobId?: string | null;
-}
-
 /**
- * Create a task execution record when execution starts.
- * Returns the execution ID for later updates.
- */
-export async function createTaskExecution(
-  params: CreateTaskExecutionParams,
-): Promise<string> {
-  const id = generateTaskExecutionId();
-  const now = new Date();
-
-  await db.insert(taskExecutions).values({
-    id,
-    taskId: params.taskId,
-    userId: params.userId,
-    status: "running",
-    startedAt: now,
-    createdAt: now,
-  });
-
-  return id;
-}
-
-/**
- * Mark a task execution as completed.
- */
-export async function completeTaskExecution(
-  executionId: string,
-  resultSummary?: string,
-  metadata?: Record<string, unknown>,
-): Promise<void> {
-  const now = new Date();
-
-  // Fetch startedAt to compute duration
-  const [execution] = await db
-    .select({ startedAt: taskExecutions.startedAt })
-    .from(taskExecutions)
-    .where(eq(taskExecutions.id, executionId))
-    .limit(1);
-
-  const durationMs = execution?.startedAt
-    ? now.getTime() - execution.startedAt.getTime()
-    : null;
-
-  await db
-    .update(taskExecutions)
-    .set({
-      status: "completed",
-      completedAt: now,
-      durationMs,
-      resultSummary: resultSummary?.slice(0, 500) ?? null,
-      metadata: metadata ?? null,
-    })
-    .where(eq(taskExecutions.id, executionId));
-}
-
-/**
- * Mark a task execution as failed.
- */
-export async function failTaskExecution(
-  executionId: string,
-  error: string,
-): Promise<void> {
-  const now = new Date();
-
-  const [execution] = await db
-    .select({ startedAt: taskExecutions.startedAt })
-    .from(taskExecutions)
-    .where(eq(taskExecutions.id, executionId))
-    .limit(1);
-
-  const durationMs = execution?.startedAt
-    ? now.getTime() - execution.startedAt.getTime()
-    : null;
-
-  await db
-    .update(taskExecutions)
-    .set({
-      status: "failed",
-      completedAt: now,
-      durationMs,
-      error,
-    })
-    .where(eq(taskExecutions.id, executionId));
-}
-
-/**
- * Record a skipped execution (e.g., due to overlap).
- */
-export async function recordSkippedTaskExecution(
-  params: CreateTaskExecutionParams,
-): Promise<void> {
-  const now = new Date();
-
-  await db.insert(taskExecutions).values({
-    id: generateTaskExecutionId(),
-    taskId: params.taskId,
-    userId: params.userId,
-    status: "cancelled",
-    startedAt: now,
-    completedAt: now,
-    durationMs: 0,
-    createdAt: now,
-  });
-}
-
-/**
- * Get paginated execution history for a task.
+ * Get paginated agent run history for a task.
  */
 export async function getTaskExecutions(
   taskId: string,
   userId: string,
   params: { cursor?: string; limit?: number } = {},
-): Promise<CursorPaginatedResponse<typeof taskExecutions.$inferSelect>> {
+): Promise<CursorPaginatedResponse<typeof agentRuns.$inferSelect>> {
   const limit = params.limit ?? 20;
 
   const conditions: SQL[] = [
-    eq(taskExecutions.taskId, taskId),
-    eq(taskExecutions.userId, userId),
+    eq(agentRuns.taskId, taskId),
+    eq(agentRuns.userId, userId),
   ];
 
   if (params.cursor) {
     conditions.push(
       buildCursorCondition(
-        taskExecutions.createdAt,
-        taskExecutions.id,
+        agentRuns.createdAt,
+        agentRuns.id,
         params.cursor,
         "desc",
       ),
@@ -1666,9 +1361,9 @@ export async function getTaskExecutions(
 
   const rows = await db
     .select()
-    .from(taskExecutions)
+    .from(agentRuns)
     .where(and(...conditions))
-    .orderBy(desc(taskExecutions.createdAt), desc(taskExecutions.id))
+    .orderBy(desc(agentRuns.createdAt), desc(agentRuns.id))
     .limit(limit + 1);
 
   const hasMore = rows.length > limit;
@@ -1683,7 +1378,7 @@ export async function getTaskExecutions(
 }
 
 /**
- * Get the most recent execution for a task (for lastExecutionStatus).
+ * Get the most recent agent run for a task (for lastExecutionStatus).
  */
 export async function getLastTaskExecution(taskId: string): Promise<{
   status: string;
@@ -1692,13 +1387,13 @@ export async function getLastTaskExecution(taskId: string): Promise<{
 } | null> {
   const [row] = await db
     .select({
-      status: taskExecutions.status,
-      error: taskExecutions.error,
-      completedAt: taskExecutions.completedAt,
+      status: agentRuns.status,
+      error: agentRuns.error,
+      completedAt: agentRuns.completedAt,
     })
-    .from(taskExecutions)
-    .where(eq(taskExecutions.taskId, taskId))
-    .orderBy(desc(taskExecutions.createdAt))
+    .from(agentRuns)
+    .where(eq(agentRuns.taskId, taskId))
+    .orderBy(desc(agentRuns.createdAt))
     .limit(1);
 
   return row ?? null;

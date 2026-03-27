@@ -74,7 +74,7 @@ function getScheduleKey(seriesId: string): string {
   return `${SCHEDULE_KEY_PREFIX}${seriesId}`;
 }
 
-async function getUserTimezone(userId: string): Promise<string | null> {
+export async function getUserTimezone(userId: string): Promise<string | null> {
   const users = schema.users;
   const [row] = await db
     .select({ timezone: users.timezone })
@@ -326,7 +326,7 @@ export async function resumeTaskSeries(
  */
 export async function createOccurrence(
   seriesId: string,
-): Promise<{ taskId: string; agentRunId?: string }> {
+): Promise<{ taskId: string | null; agentRunId?: string }> {
   const [series] = await db
     .select()
     .from(taskSeriesTable)
@@ -338,7 +338,7 @@ export async function createOccurrence(
       { seriesId, status: series?.status },
       "Skipping occurrence — series is not active",
     );
-    return { taskId: "" };
+    return { taskId: null };
   }
 
   // Create the task occurrence

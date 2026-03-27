@@ -220,13 +220,21 @@ async function processAgentRun(
     requestId,
     enableThinking: false,
   });
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(
+  const timeout = {
+    timer: undefined as ReturnType<typeof setTimeout> | undefined,
+  };
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout.timer = setTimeout(
       () => reject(new Error("Agent run timed out after 5 minutes")),
       AGENT_RUN_TIMEOUT_MS,
-    ),
-  );
-  const result = await Promise.race([agentPromise, timeoutPromise]);
+    );
+  });
+  let result: Awaited<typeof agentPromise>;
+  try {
+    result = await Promise.race([agentPromise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeout.timer);
+  }
 
   const agentResponse = result.response || "Agent completed without output.";
 

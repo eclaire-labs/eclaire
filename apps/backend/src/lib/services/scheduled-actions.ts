@@ -21,6 +21,7 @@ import {
 import { QueueNames } from "../queue/queue-names.js";
 import { getScheduler } from "../queue/scheduler.js";
 import type { DeliveryTarget, ScheduledActionJobData } from "../queue/types.js";
+import { getUserTimezone } from "./task-series.js";
 
 const logger = createChildLogger("scheduled-actions");
 
@@ -90,19 +91,6 @@ const SCHEDULE_KEY_PREFIX = "scheduled-action:";
 
 function getScheduleKey(actionId: string): string {
   return `${SCHEDULE_KEY_PREFIX}${actionId}`;
-}
-
-/**
- * Get user's IANA timezone. Returns null if not set.
- */
-async function getUserTimezone(userId: string): Promise<string | null> {
-  const users = schema.users;
-  const [row] = await db
-    .select({ timezone: users.timezone })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  return row?.timezone ?? null;
 }
 
 /**
@@ -611,7 +599,7 @@ export async function updateAfterExecution(
   }
 
   // Update status and nextRunAt in a second pass (only if state changed)
-  if (shouldComplete || nextRunAt !== undefined) {
+  if (shouldComplete || nextRunAt !== null) {
     await db
       .update(table)
       .set({

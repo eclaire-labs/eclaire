@@ -15,20 +15,7 @@ import { createAgentRun } from "../../services/agent-runs.js";
 import { buildTaskPrompt } from "../../services/task-series.js";
 import { db, schema } from "../../../db/index.js";
 import { eq, and } from "drizzle-orm";
-
-function getAgentActorId(ctx: {
-  extra?: Record<string, unknown>;
-}): string | undefined {
-  if (
-    typeof ctx.extra?.agent === "object" &&
-    ctx.extra.agent !== null &&
-    "id" in ctx.extra.agent &&
-    typeof ctx.extra.agent.id === "string"
-  ) {
-    return ctx.extra.agent.id;
-  }
-  return undefined;
-}
+import { getAgentActorId } from "./caller.js";
 
 const inputSchema = z.object({
   taskId: z.string().describe("The ID of the task to run the agent on."),
