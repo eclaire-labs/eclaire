@@ -50,6 +50,7 @@
     "test:db:watch": "vitest src/tests/db",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:watch": "vitest --config vitest.integration.config.ts",
+    "test:integration:channels": "vitest run --config vitest.integration.config.ts src/tests/integration/channels/",
     "test:ai-conversations": "vitest run --config vitest.integration.config.ts src/tests/integration/ai-conversations.test.ts",
     "test:ai-prompt": "vitest run --config vitest.integration.config.ts src/tests/integration/ai-prompt.test.ts",
     "test:ai-prompt-stream": "vitest run --config vitest.integration.config.ts src/tests/integration/ai-prompt-stream.test.ts",
