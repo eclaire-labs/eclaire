@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import z from "zod/v4";
 import type { ModelConfig, ProviderConfig } from "@eclaire/ai";
 import { assertInstanceAdmin } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
@@ -365,32 +366,29 @@ adminRoutes.delete(
 // =============================================================================
 
 // POST /api/admin/users - Create a new user (admin only)
+const adminCreateUserSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  displayName: z.string().max(100).optional(),
+});
+
 adminRoutes.post(
   "/users",
   withAuth(async (c, userId) => {
     await assertInstanceAdmin(userId);
-    const body = (await c.req.json()) as {
-      email?: string;
-      password?: string;
-      displayName?: string;
-    };
-    if (!body.email || typeof body.email !== "string") {
-      return c.json({ error: "email is required" }, 400);
-    }
-    if (
-      !body.password ||
-      typeof body.password !== "string" ||
-      body.password.length < 8
-    ) {
+    const body = await c.req.json();
+    const parsed = adminCreateUserSchema.safeParse(body);
+    if (!parsed.success) {
       return c.json(
-        { error: "password is required (minimum 8 characters)" },
+        { error: parsed.error.issues[0]?.message ?? "Invalid request" },
         400,
       );
     }
+    const { email, password, displayName } = parsed.data;
     const created = await createUserByAdmin(
-      body.email.trim(),
-      body.password,
-      body.displayName?.trim() || null,
+      email.trim(),
+      password,
+      displayName?.trim() || null,
       userId,
     );
     return c.json(created, 201);

@@ -162,6 +162,8 @@ export async function createTestUser(
     id: string;
     email: string;
     name: string;
+    isInstanceAdmin: boolean;
+    accountStatus: "active" | "suspended";
   }> = {},
 ) {
   const userId = overrides.id ?? generateTestUserId();
@@ -177,6 +179,8 @@ export async function createTestUser(
       email,
       userType: "user",
       displayName: name,
+      isInstanceAdmin: overrides.isInstanceAdmin ?? false,
+      accountStatus: overrides.accountStatus ?? "active",
     });
   } else {
     const users = pgSchema.users;
@@ -185,6 +189,8 @@ export async function createTestUser(
       email,
       userType: "user",
       displayName: name,
+      isInstanceAdmin: overrides.isInstanceAdmin ?? false,
+      accountStatus: overrides.accountStatus ?? "active",
     });
   }
 

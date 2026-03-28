@@ -19,37 +19,44 @@ const logger = createChildLogger("services:admin");
  * Called during application startup.
  */
 export async function ensureInstanceAdmin(): Promise<void> {
-  // Check if any admin exists
-  const existingAdmin = await db.query.users.findFirst({
-    where: eq(schema.users.isInstanceAdmin, true),
-    columns: { id: true, email: true },
+  const promoted = await txManager.withTransaction(async (tx) => {
+    // Check if any admin exists (inside transaction to prevent races)
+    const existingAdmin = await tx.users.findFirst(
+      eq(schema.users.isInstanceAdmin, true),
+    );
+
+    if (existingAdmin) {
+      return null;
+    }
+
+    // No admin exists — promote the first created user.
+    // tx.users.findFirst doesn't support orderBy, so fetch all and sort in app
+    // (only runs at startup with typically 0-5 users).
+    const allUsers = await tx.users.findMany(undefined);
+    if (allUsers.length === 0) {
+      return null;
+    }
+
+    const firstUser = allUsers.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    )[0]!;
+
+    await tx.users.update(eq(schema.users.id, firstUser.id), {
+      isInstanceAdmin: true,
+    });
+
+    return { id: firstUser.id, email: firstUser.email };
   });
 
-  if (existingAdmin) {
-    return;
+  if (promoted) {
+    logger.info(
+      { userId: promoted.id, email: promoted.email },
+      "First user set as instance admin",
+    );
+  } else {
+    logger.debug("No admin promotion needed (admin exists or no users yet)");
   }
-
-  // No admin exists — promote the first created user
-  const firstUser = await db.query.users.findFirst({
-    orderBy: [asc(schema.users.createdAt)],
-    columns: { id: true, email: true },
-  });
-
-  if (!firstUser) {
-    // No users yet — admin will be set when the first user registers
-    logger.debug("No users exist yet, admin will be set on first registration");
-    return;
-  }
-
-  await db
-    .update(schema.users)
-    .set({ isInstanceAdmin: true })
-    .where(eq(schema.users.id, firstUser.id));
-
-  logger.info(
-    { userId: firstUser.id, email: firstUser.email },
-    "First user set as instance admin",
-  );
 }
 
 // =============================================================================

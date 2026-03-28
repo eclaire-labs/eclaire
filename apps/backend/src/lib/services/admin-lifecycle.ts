@@ -8,7 +8,7 @@
 import { generateUserId } from "@eclaire/core";
 import { hashPassword } from "better-auth/crypto";
 import { count, eq, sql } from "drizzle-orm";
-import { db, schema } from "../../db/index.js";
+import { db, schema, txManager } from "../../db/index.js";
 import { ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
@@ -82,20 +82,22 @@ export async function suspendUser(
   const target = await assertUserExists(targetUserId);
   await assertNotAdmin(targetUserId);
 
-  // Set status to suspended
-  await db
-    .update(users)
-    .set({ accountStatus: "suspended", updatedAt: new Date() })
-    .where(eq(users.id, targetUserId));
+  await txManager.withTransaction(async (tx) => {
+    // Set status to suspended
+    await tx.users.update(eq(users.id, targetUserId), {
+      accountStatus: "suspended",
+      updatedAt: new Date(),
+    });
 
-  // Revoke all sessions immediately
-  await db.delete(sessions).where(eq(sessions.userId, targetUserId));
+    // Revoke all sessions immediately
+    await tx.sessions.delete(eq(sessions.userId, targetUserId));
 
-  // Deactivate all API credentials
-  await db
-    .update(actorCredentials)
-    .set({ isActive: false, updatedAt: new Date() })
-    .where(eq(actorCredentials.ownerUserId, targetUserId));
+    // Deactivate all API credentials
+    await tx.actorCredentials.update(
+      eq(actorCredentials.ownerUserId, targetUserId),
+      { isActive: false, updatedAt: new Date() },
+    );
+  });
 
   await recordAdminAction("admin.suspend", targetUserId, adminUserId, {
     email: target.email,
@@ -197,16 +199,17 @@ export async function deleteUserByAdmin(
     "Starting admin-initiated user deletion",
   );
 
-  // 1. Revoke all sessions and deactivate API credentials
-  await db.delete(sessions).where(eq(sessions.userId, targetUserId));
-  await db
-    .delete(actorCredentials)
-    .where(eq(actorCredentials.ownerUserId, targetUserId));
-  await db.delete(actorGrants).where(eq(actorGrants.ownerUserId, targetUserId));
+  // 1. Revoke all sessions, credentials, and grants atomically
+  await txManager.withTransaction(async (tx) => {
+    await tx.sessions.delete(eq(sessions.userId, targetUserId));
+    await tx.actorCredentials.delete(
+      eq(actorCredentials.ownerUserId, targetUserId),
+    );
+    await tx.actorGrants.delete(eq(actorGrants.ownerUserId, targetUserId));
+  });
 
   // 2. Purge all user-owned data (assets, history, preferences, storage)
-  //    Reuses the same path as self-service delete — handles tags, queue jobs,
-  //    storage files, etc.
+  //    Runs outside the transaction — touches many tables via purgeUserData.
   await purgeUserData(targetUserId);
 
   // 3. Record admin action (recorded AFTER purge since purge deletes history)
@@ -221,7 +224,7 @@ export async function deleteUserByAdmin(
     metadata: { email: target.email, displayName: target.displayName },
   });
 
-  // 4. Delete the user account itself
+  // 4. Delete the user account itself (accounts cascade via FK)
   await db.delete(users).where(eq(users.id, targetUserId));
 
   logger.info(
@@ -306,38 +309,37 @@ export interface UserAdminRowExtended {
 export async function listUsersAdminExtended(): Promise<
   UserAdminRowExtended[]
 > {
-  const userRows = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      displayName: users.displayName,
-      isInstanceAdmin: users.isInstanceAdmin,
-      accountStatus: users.accountStatus,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .orderBy(users.createdAt);
+  // 3 queries total (instead of 2N+1) regardless of user count
+  const [userRows, sessionCounts, credentialCounts] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        displayName: users.displayName,
+        isInstanceAdmin: users.isInstanceAdmin,
+        accountStatus: users.accountStatus,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .orderBy(users.createdAt),
+    db
+      .select({ userId: sessions.userId, count: count() })
+      .from(sessions)
+      .groupBy(sessions.userId),
+    db
+      .select({ ownerUserId: actorCredentials.ownerUserId, count: count() })
+      .from(actorCredentials)
+      .groupBy(actorCredentials.ownerUserId),
+  ]);
 
-  // Batch-fetch session and credential counts
-  const results: UserAdminRowExtended[] = [];
-  for (const row of userRows) {
-    const [sessionResult, credentialResult] = await Promise.all([
-      db
-        .select({ count: count() })
-        .from(sessions)
-        .where(eq(sessions.userId, row.id)),
-      db
-        .select({ count: count() })
-        .from(actorCredentials)
-        .where(eq(actorCredentials.ownerUserId, row.id)),
-    ]);
+  const sessionMap = new Map(sessionCounts.map((r) => [r.userId, r.count]));
+  const credentialMap = new Map(
+    credentialCounts.map((r) => [r.ownerUserId, r.count]),
+  );
 
-    results.push({
-      ...row,
-      activeSessionCount: sessionResult[0]?.count ?? 0,
-      activeApiKeyCount: credentialResult[0]?.count ?? 0,
-    });
-  }
-
-  return results;
+  return userRows.map((row) => ({
+    ...row,
+    activeSessionCount: sessionMap.get(row.id) ?? 0,
+    activeApiKeyCount: credentialMap.get(row.id) ?? 0,
+  }));
 }

@@ -139,6 +139,7 @@ export async function setInstanceSetting(
 
 /**
  * Batch upsert multiple instance settings. Validates all keys before writing.
+ * Wrapped in a transaction so partial batches cannot persist.
  */
 export async function setInstanceSettings(
   updates: Record<string, unknown>,
@@ -147,28 +148,30 @@ export async function setInstanceSettings(
   const keys = Object.keys(updates);
   if (keys.length === 0) return;
 
-  // Validate all keys first
+  // Validate all keys first (before starting transaction)
   for (const key of keys) {
     validateKey(key);
   }
 
-  for (const [key, value] of Object.entries(updates)) {
-    await db
-      .insert(instanceSettings)
-      .values({
-        key,
-        value: JSON.stringify(value),
-        updatedBy: updatedBy ?? null,
-      })
-      .onConflictDoUpdate({
-        target: instanceSettings.key,
-        set: {
+  await db.transaction(async (dtx) => {
+    for (const [key, value] of Object.entries(updates)) {
+      await dtx
+        .insert(instanceSettings)
+        .values({
+          key,
           value: JSON.stringify(value),
-          updatedAt: new Date(),
           updatedBy: updatedBy ?? null,
-        },
-      });
-  }
+        })
+        .onConflictDoUpdate({
+          target: instanceSettings.key,
+          set: {
+            value: JSON.stringify(value),
+            updatedAt: new Date(),
+            updatedBy: updatedBy ?? null,
+          },
+        });
+    }
+  });
 
   logger.info({ keys, updatedBy }, "Updated instance settings");
 }

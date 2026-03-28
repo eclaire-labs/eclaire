@@ -135,6 +135,9 @@ export const TX_TABLE_NAMES = [
   "messages",
   "channels",
   "feedback",
+  "sessions",
+  "actorCredentials",
+  "actorGrants",
 ] as const;
 
 export type TxTableName = (typeof TX_TABLE_NAMES)[number];
@@ -177,6 +180,10 @@ export interface Tx {
 
   channels: Repo<typeof pgSchema.channels>;
   feedback: Repo<typeof pgSchema.feedback>;
+
+  sessions: Repo<typeof pgSchema.sessions>;
+  actorCredentials: Repo<typeof pgSchema.actorCredentials>;
+  actorGrants: Repo<typeof pgSchema.actorGrants>;
 
   // biome-ignore lint/suspicious/noExplicitAny: outbox table provided by queue package, optional
   outbox?: BaseRepository<any, any, any>;
