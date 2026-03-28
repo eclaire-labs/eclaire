@@ -396,10 +396,7 @@ export default function DocumentsPage() {
         error instanceof Error ? error : error ? new Error(String(error)) : null
       }
       onRetry={refresh}
-      sortOptions={documentsConfig.sortOptions.map((o) => ({
-        value: o.value,
-        label: o.label,
-      }))}
+      sortOptions={state.sortOptions}
       headerAction={
         <Button onClick={openFileDialog}>
           <UploadCloud className="mr-2 h-4 w-4" /> Upload Documents

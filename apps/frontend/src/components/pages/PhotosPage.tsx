@@ -424,10 +424,7 @@ export default function PhotosPage() {
         error instanceof Error ? error : error ? new Error(String(error)) : null
       }
       onRetry={refresh}
-      sortOptions={photosConfig.sortOptions.map((o) => ({
-        value: o.value,
-        label: o.label,
-      }))}
+      sortOptions={state.sortOptions}
       viewModes={photosViewModes}
       headerAction={
         <Button onClick={openFileDialog}>

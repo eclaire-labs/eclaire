@@ -17,7 +17,7 @@ import {
   buildTagFilterCondition,
   getOrCreateTags,
 } from "../db-helpers.js";
-import { buildTextSearchCondition } from "../search.js";
+import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 
 const { media, mediaTags, tags } = schema;
 
@@ -874,7 +874,7 @@ function _buildMediaQueryConditions({
 
   if (text?.trim()) {
     definedConditions.push(
-      buildTextSearchCondition(text, null, [
+      buildTextSearchCondition(text, media.searchVector, [
         media.title,
         media.description,
         media.extractedText,
@@ -944,11 +944,15 @@ export async function findMedia({
     });
 
     // Resolve sort column
+    const rankExpr = text?.trim()
+      ? buildSearchRank(text, media.searchVector)
+      : null;
     // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: media.createdAt,
       title: media.title,
       duration: media.duration,
+      ...(rankExpr ? { relevance: rankExpr } : {}),
     };
     const sortColumn = sortColumnMap[sortBy] || media.createdAt;
     const orderDir = sortDir === "asc" ? asc : desc;
@@ -972,13 +976,21 @@ export async function findMedia({
     }
 
     const fetchLimit = limit + 1;
+    const isRelevanceSort = sortBy === "relevance" && rankExpr;
     const matchedMedia = await db
-      .select({ id: media.id })
+      .select({
+        id: media.id,
+        ...(isRelevanceSort ? { rankScore: rankExpr } : {}),
+      })
       .from(media)
       .where(and(...conditions))
       .orderBy(orderDir(sortColumn), orderDir(media.id))
       .limit(fetchLimit);
     let finalMediaIds: string[] = matchedMedia.map((m) => m.id);
+    const rankMap = isRelevanceSort
+      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
+        new Map(matchedMedia.map((r: any) => [r.id, r.rankScore ?? 0]))
+      : null;
 
     if (finalMediaIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -1056,6 +1068,7 @@ export async function findMedia({
     const lastItem = items[items.length - 1];
     // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
+      if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;
       if (sortBy === "duration") return item.duration;
       return item.createdAt;

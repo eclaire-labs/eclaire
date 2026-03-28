@@ -23,7 +23,7 @@ import {
   buildTagFilterCondition,
   getOrCreateTags,
 } from "../db-helpers.js";
-import { buildTextSearchCondition } from "../search.js";
+import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
@@ -610,7 +610,7 @@ function _buildNoteQueryConditions({
 }: Omit<FindNotesParams, "tags" | "limit" | "offset">): SQL<unknown>[] {
   const definedConditions: SQL<unknown>[] = [eq(notes.userId, userId)];
 
-  if (text) {
+  if (text?.trim()) {
     definedConditions.push(
       buildTextSearchCondition(text, notes.searchVector, [
         notes.title,
@@ -669,10 +669,14 @@ export async function findNotes({
     });
 
     // Resolve sort column
+    const rankExpr = text?.trim()
+      ? buildSearchRank(text, notes.searchVector)
+      : null;
     // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: notes.createdAt,
       title: notes.title,
+      ...(rankExpr ? { relevance: rankExpr } : {}),
     };
     const sortColumn = sortColumnMap[sortBy] || notes.createdAt;
     const orderDir = sortDir === "asc" ? asc : desc;
@@ -698,13 +702,21 @@ export async function findNotes({
     }
 
     const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+    const isRelevanceSort = sortBy === "relevance" && rankExpr;
     const matched = await db
-      .select({ id: notes.id })
+      .select({
+        id: notes.id,
+        ...(isRelevanceSort ? { rankScore: rankExpr } : {}),
+      })
       .from(notes)
       .where(and(...baseConditions))
       .orderBy(orderDir(sortColumn), orderDir(notes.id))
       .limit(fetchLimit);
     let finalIds: string[] = matched.map((e) => e.id);
+    const rankMap = isRelevanceSort
+      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
+        new Map(matched.map((r: any) => [r.id, r.rankScore ?? 0]))
+      : null;
 
     if (finalIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -751,6 +763,7 @@ export async function findNotes({
     const lastItem = items[items.length - 1];
     // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
+      if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;
       return item.createdAt; // createdAt formatted as ISO string
     };

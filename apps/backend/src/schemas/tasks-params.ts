@@ -225,10 +225,14 @@ export const TaskSearchParamsSchema = z.object({
       "priority",
       "sortOrder",
       "updatedAt",
+      "relevance",
     ])
     .optional()
     .default("createdAt")
-    .meta({ description: "Field to sort tasks by" }),
+    .meta({
+      description:
+        "Field to sort tasks by. Use 'relevance' with text search for best results.",
+    }),
 
   sortDir: z.enum(["asc", "desc"]).optional().default("desc").meta({
     description: "Sort direction",

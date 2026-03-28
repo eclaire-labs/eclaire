@@ -327,12 +327,13 @@ export const BookmarkSearchParamsSchema = z.object({
     }),
 
   sortBy: z
-    .enum(["createdAt", "title"])
+    .enum(["createdAt", "title", "relevance"])
     .optional()
     .default("createdAt")
     .meta({
-      description: "Field to sort bookmarks by",
-      examples: ["createdAt", "title"],
+      description:
+        "Field to sort bookmarks by. Use 'relevance' with text search for best results.",
+      examples: ["createdAt", "title", "relevance"],
     }),
 
   sortDir: z

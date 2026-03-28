@@ -797,7 +797,8 @@ export const documents = pgTable(
       (): ReturnType<typeof sql> => sql`(
         setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
         setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
-        setweight(to_tsvector('english', coalesce(extracted_text, '')), 'C')
+        setweight(to_tsvector('english', coalesce(extracted_text, '')), 'C') ||
+        setweight(to_tsvector('english', coalesce(original_filename, '')), 'D')
       )`,
     ),
   },

@@ -244,12 +244,14 @@ export const DocumentSearchParamsSchema = z.object({
       "mimeType",
       "fileSize",
       "originalFilename",
+      "relevance",
     ])
     .optional()
     .default("createdAt")
     .meta({
-      description: "Field to sort documents by",
-      examples: ["createdAt", "title", "fileSize"],
+      description:
+        "Field to sort documents by. Use 'relevance' with text search for best results.",
+      examples: ["createdAt", "title", "fileSize", "relevance"],
     }),
 
   sortDir: z

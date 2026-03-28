@@ -198,6 +198,31 @@ export interface Task {
   processingEnabled?: boolean;
 }
 
+export interface Media {
+  id: string;
+  title: string;
+  description: string | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  dueDate: string | null;
+  mediaType: "audio" | "video";
+  mimeType: string | null;
+  fileSize: number | null;
+  extractedText: string | null;
+  processingStatus: "pending" | "processing" | "completed" | "failed" | null;
+  reviewStatus: "pending" | "accepted" | "rejected" | null;
+  flagColor: "red" | "yellow" | "orange" | "green" | "blue" | null;
+  isPinned: boolean;
+}
+
+export interface MediaListResponse {
+  items: Media[];
+  totalCount: number;
+  limit: number;
+  offset: number;
+}
+
 export interface Conversation {
   id: string;
   userId: string;

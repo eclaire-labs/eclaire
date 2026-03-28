@@ -519,10 +519,7 @@ export default function TasksPage() {
         error instanceof Error ? error : error ? new Error(String(error)) : null
       }
       onRetry={refresh}
-      sortOptions={tasksConfig.sortOptions.map((o) => ({
-        value: o.value,
-        label: o.label,
-      }))}
+      sortOptions={state.sortOptions}
       extraFilters={extraFiltersForLayout}
       headerAction={
         <Button

@@ -243,10 +243,7 @@ export default function BookmarksPage() {
         error instanceof Error ? error : error ? new Error(String(error)) : null
       }
       onRetry={refresh}
-      sortOptions={bookmarksConfig.sortOptions.map((o) => ({
-        value: o.value,
-        label: o.label,
-      }))}
+      sortOptions={state.sortOptions}
       headerAction={
         <Button onClick={() => setIsNewBookmarkDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> New Bookmark

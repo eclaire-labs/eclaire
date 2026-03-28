@@ -290,12 +290,13 @@ export const PhotoSearchParamsSchema = z.object({
     }),
 
   sortBy: z
-    .enum(["createdAt", "dateTaken", "title"])
+    .enum(["createdAt", "dateTaken", "title", "relevance"])
     .optional()
     .default("createdAt")
     .meta({
-      description: "Field to sort photos by",
-      examples: ["createdAt", "dateTaken", "title"],
+      description:
+        "Field to sort photos by. Use 'relevance' with text search for best results.",
+      examples: ["createdAt", "dateTaken", "title", "relevance"],
     }),
 
   sortDir: z

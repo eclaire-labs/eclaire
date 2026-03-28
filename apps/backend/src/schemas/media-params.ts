@@ -255,12 +255,13 @@ export const MediaSearchParamsSchema = z.object({
     }),
 
   sortBy: z
-    .enum(["createdAt", "title", "duration"])
+    .enum(["createdAt", "title", "duration", "relevance"])
     .optional()
     .default("createdAt")
     .meta({
-      description: "Field to sort media by",
-      examples: ["createdAt", "title", "duration"],
+      description:
+        "Field to sort media by. Use 'relevance' with text search for best results.",
+      examples: ["createdAt", "title", "duration", "relevance"],
     }),
 
   sortDir: z

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   type PageType,
@@ -78,6 +78,8 @@ export interface ListPageState<TItem extends ListableItem> {
   viewMode: string;
   sortBy: string;
   sortDir: "asc" | "desc";
+  /** Dynamic sort options — includes "Best match" when a search query is active. */
+  sortOptions: SortOption[];
 
   // Search & filter
   searchQuery: string;
@@ -157,6 +159,36 @@ export function useListPageState<TItem extends ListableItem>(
   // Debounce search for server requests
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
 
+  // Search-specific sort: auto-select "Best match" when searching,
+  // revert to persisted preference when search is cleared.
+  const [searchSortChoice, setSearchSortChoice] = useState<string | null>(null);
+  const prevSearchRef = useRef(false);
+
+  useEffect(() => {
+    const isSearching = !!debouncedSearch;
+    const wasSearching = prevSearchRef.current;
+    if (isSearching && !wasSearching) {
+      setSearchSortChoice("relevance");
+    } else if (!isSearching && wasSearching) {
+      setSearchSortChoice(null);
+    }
+    prevSearchRef.current = isSearching;
+  }, [debouncedSearch]);
+
+  const effectiveSortBy = searchSortChoice ?? sortBy;
+  const effectiveSortDir: "asc" | "desc" =
+    effectiveSortBy === "relevance" ? "desc" : sortDir;
+
+  const effectiveSortOptions: SortOption[] = useMemo(() => {
+    if (debouncedSearch) {
+      return [
+        { value: "relevance", label: "Best match" },
+        ...config.sortOptions,
+      ];
+    }
+    return config.sortOptions;
+  }, [debouncedSearch, config.sortOptions]);
+
   // UI state
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
@@ -182,8 +214,8 @@ export function useListPageState<TItem extends ListableItem>(
   // Build server params from current state
   const serverParams: ListParams = useMemo(() => {
     const params: ListParams = {
-      sortBy,
-      sortDir,
+      sortBy: effectiveSortBy,
+      sortDir: effectiveSortDir,
     };
     if (debouncedSearch) {
       params.text = debouncedSearch;
@@ -200,8 +232,8 @@ export function useListPageState<TItem extends ListableItem>(
     }
     return params;
   }, [
-    sortBy,
-    sortDir,
+    effectiveSortBy,
+    effectiveSortDir,
     debouncedSearch,
     filterTag,
     extraFilterState,
@@ -212,7 +244,7 @@ export function useListPageState<TItem extends ListableItem>(
   const sortedItems = items;
 
   // Derived: should show date group headers?
-  const isGrouped = config.groupableSortKeys.includes(sortBy);
+  const isGrouped = config.groupableSortKeys.includes(effectiveSortBy);
 
   // ---- Handlers ----
 
@@ -241,13 +273,25 @@ export function useListPageState<TItem extends ListableItem>(
 
   const handleSortByChange = useCallback(
     (value: string) => {
-      updateViewPreference(
-        "sortBy",
-        value as ViewPreferences[keyof ViewPreferences],
-      );
+      if (debouncedSearch) {
+        // While searching, track sort choice locally
+        setSearchSortChoice(value);
+        // Persist non-relevance choices so they apply after search is cleared
+        if (value !== "relevance") {
+          updateViewPreference(
+            "sortBy",
+            value as ViewPreferences[keyof ViewPreferences],
+          );
+        }
+      } else {
+        updateViewPreference(
+          "sortBy",
+          value as ViewPreferences[keyof ViewPreferences],
+        );
+      }
       setFocusedIndex(-1);
     },
-    [updateViewPreference],
+    [debouncedSearch, updateViewPreference],
   );
 
   const toggleSortDir = useCallback(() => {
@@ -393,8 +437,9 @@ export function useListPageState<TItem extends ListableItem>(
 
   return {
     viewMode,
-    sortBy,
-    sortDir,
+    sortBy: effectiveSortBy,
+    sortDir: effectiveSortDir,
+    sortOptions: effectiveSortOptions,
     searchQuery,
     filterTag,
     extraFilters: extraFilterState,

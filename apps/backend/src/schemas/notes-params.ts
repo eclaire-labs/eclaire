@@ -240,12 +240,13 @@ export const NoteSearchSchema = z.object({
     }),
 
   sortBy: z
-    .enum(["createdAt", "title"])
+    .enum(["createdAt", "title", "relevance"])
     .optional()
     .default("createdAt")
     .meta({
-      description: "Field to sort notes by",
-      examples: ["createdAt", "title"],
+      description:
+        "Field to sort notes by. Use 'relevance' with text search for best results.",
+      examples: ["createdAt", "title", "relevance"],
     }),
 
   sortDir: z

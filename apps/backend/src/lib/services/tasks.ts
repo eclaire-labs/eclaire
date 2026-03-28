@@ -26,7 +26,7 @@ import {
   buildTagFilterCondition,
   getOrCreateTags,
 } from "../db-helpers.js";
-import { buildTextSearchCondition } from "../search.js";
+import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
@@ -1238,6 +1238,9 @@ export async function findTasks({
     });
 
     // Resolve sort column
+    const rankExpr = text?.trim()
+      ? buildSearchRank(text, tasks.searchVector)
+      : null;
     // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: tasks.createdAt,
@@ -1247,6 +1250,7 @@ export async function findTasks({
       priority: tasks.priority,
       sortOrder: tasks.sortOrder,
       updatedAt: tasks.updatedAt,
+      ...(rankExpr ? { relevance: rankExpr } : {}),
     };
     const sortColumn = sortColumnMap[sortBy] || tasks.createdAt;
     const orderDir = sortDir === "asc" ? asc : desc;
@@ -1271,13 +1275,21 @@ export async function findTasks({
     }
 
     const fetchLimit = limit + 1;
+    const isRelevanceSort = sortBy === "relevance" && rankExpr;
     const matched = await db
-      .select({ id: tasks.id })
+      .select({
+        id: tasks.id,
+        ...(isRelevanceSort ? { rankScore: rankExpr } : {}),
+      })
       .from(tasks)
       .where(and(...conditions))
       .orderBy(orderDir(sortColumn), orderDir(tasks.id))
       .limit(fetchLimit);
     let finalIds: string[] = matched.map((e) => e.id);
+    const rankMap = isRelevanceSort
+      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
+        new Map(matched.map((r: any) => [r.id, r.rankScore ?? 0]))
+      : null;
 
     if (finalIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -1305,6 +1317,7 @@ export async function findTasks({
     const lastItem = items[items.length - 1];
     // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
+      if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;
       if (sortBy === "dueDate") return item.dueDate;
       if (sortBy === "taskStatus") return item.taskStatus;

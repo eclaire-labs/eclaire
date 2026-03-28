@@ -21,7 +21,7 @@ import {
   buildTagFilterCondition,
   getOrCreateTags,
 } from "../db-helpers.js";
-import { buildTextSearchCondition } from "../search.js";
+import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 
 const { photos, photosTags, tags } = schema;
 
@@ -1051,11 +1051,15 @@ export async function findPhotos({
     });
 
     // Resolve sort column
+    const rankExpr = text?.trim()
+      ? buildSearchRank(text, photos.searchVector)
+      : null;
     // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: photos.createdAt,
       dateTaken: sql`COALESCE(${photos.dateTaken}, ${photos.createdAt})`,
       title: photos.title,
+      ...(rankExpr ? { relevance: rankExpr } : {}),
     };
     const sortColumn = sortColumnMap[sortBy] || photos.createdAt;
     const orderDir = sortDir === "asc" ? asc : desc;
@@ -1081,13 +1085,21 @@ export async function findPhotos({
     }
 
     const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+    const isRelevanceSort = sortBy === "relevance" && rankExpr;
     const matchedPhotos = await db
-      .select({ id: photos.id })
+      .select({
+        id: photos.id,
+        ...(isRelevanceSort ? { rankScore: rankExpr } : {}),
+      })
       .from(photos)
       .where(and(...conditions))
       .orderBy(orderDir(sortColumn), orderDir(photos.id))
       .limit(fetchLimit);
     let finalPhotoIds: string[] = matchedPhotos.map((p) => p.id);
+    const rankMap = isRelevanceSort
+      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
+        new Map(matchedPhotos.map((r: any) => [r.id, r.rankScore ?? 0]))
+      : null;
 
     if (finalPhotoIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -1196,6 +1208,7 @@ export async function findPhotos({
     const lastItem = items[items.length - 1];
     // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
+      if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;
       if (sortBy === "dateTaken") return item.dateTaken ?? item.createdAt;
       return item.createdAt; // createdAt formatted as ISO string

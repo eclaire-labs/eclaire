@@ -30,7 +30,7 @@ import {
   buildTagFilterCondition,
   getOrCreateTags,
 } from "../db-helpers.js";
-import { buildTextSearchCondition } from "../search.js";
+import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 import {
   buildCursorCondition,
   encodeCursor,
@@ -619,6 +619,9 @@ export async function findDocuments({
       dueDateStart,
       dueDateEnd,
     });
+    const rankExpr = text?.trim()
+      ? buildSearchRank(text, schemaDocuments.searchVector)
+      : null;
     // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects of varying types
     const sortColumnMap: Record<string, any> = {
       createdAt: schemaDocuments.createdAt,
@@ -627,6 +630,7 @@ export async function findDocuments({
       mimeType: schemaDocuments.mimeType,
       fileSize: schemaDocuments.fileSize,
       originalFilename: schemaDocuments.originalFilename,
+      ...(rankExpr ? { relevance: rankExpr } : {}),
     };
     const sortColumn = sortColumnMap[sortBy] || schemaDocuments.createdAt;
     const orderDir = sortDir === "asc" ? asc : desc;
@@ -652,13 +656,21 @@ export async function findDocuments({
     }
 
     const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+    const isRelevanceSort = sortBy === "relevance" && rankExpr;
     const matchedDocs = await db
-      .select({ id: schemaDocuments.id })
+      .select({
+        id: schemaDocuments.id,
+        ...(isRelevanceSort ? { rankScore: rankExpr } : {}),
+      })
       .from(schemaDocuments)
       .where(and(...conditions))
       .orderBy(orderDir(sortColumn), orderDir(schemaDocuments.id))
       .limit(fetchLimit);
     let finalDocIds: string[] = matchedDocs.map((d) => d.id);
+    const rankMap = isRelevanceSort
+      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
+        new Map(matchedDocs.map((r: any) => [r.id, r.rankScore ?? 0]))
+      : null;
 
     if (finalDocIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -736,6 +748,7 @@ export async function findDocuments({
     const lastItem = items[items.length - 1];
     // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
+      if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;
       if (sortBy === "updatedAt") return item.updatedAt;
       if (sortBy === "mimeType") return item.mimeType;

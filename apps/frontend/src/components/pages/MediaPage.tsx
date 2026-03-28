@@ -400,10 +400,7 @@ export default function MediaPage() {
         error instanceof Error ? error : error ? new Error(String(error)) : null
       }
       onRetry={refresh}
-      sortOptions={mediaConfig.sortOptions.map((o) => ({
-        value: o.value,
-        label: o.label,
-      }))}
+      sortOptions={state.sortOptions}
       viewModes={mediaViewModes}
       headerAction={
         <div className="flex gap-2">

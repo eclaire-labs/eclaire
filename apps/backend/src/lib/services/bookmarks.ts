@@ -31,7 +31,7 @@ import {
   encodeCursor,
   type CursorPaginatedResponse,
 } from "../pagination.js";
-import { buildTextSearchCondition } from "../search.js";
+import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
@@ -807,7 +807,7 @@ function _buildBookmarkQueryConditions({
 }: Omit<FindBookmarksParams, "tags" | "limit">): SQL<unknown>[] {
   const definedConditions: SQL<unknown>[] = [eq(bookmarks.userId, userId)];
 
-  if (text) {
+  if (text?.trim()) {
     definedConditions.push(
       buildTextSearchCondition(text, bookmarks.searchVector, [
         bookmarks.title,
@@ -863,10 +863,14 @@ export async function findBookmarks({
     });
 
     // Resolve sort column
+    const rankExpr = text?.trim()
+      ? buildSearchRank(text, bookmarks.searchVector)
+      : null;
     // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: bookmarks.createdAt,
       title: bookmarks.title,
+      ...(rankExpr ? { relevance: rankExpr } : {}),
     };
     const sortColumn = sortColumnMap[sortBy] || bookmarks.createdAt;
     const orderDir = sortDir === "asc" ? asc : desc;
@@ -892,13 +896,21 @@ export async function findBookmarks({
     }
 
     const fetchLimit = limit + 1; // fetch one extra to detect hasMore
+    const isRelevanceSort = sortBy === "relevance" && rankExpr;
     const matched = await db
-      .select({ id: bookmarks.id })
+      .select({
+        id: bookmarks.id,
+        ...(isRelevanceSort ? { rankScore: rankExpr } : {}),
+      })
       .from(bookmarks)
       .where(and(...conditions))
       .orderBy(orderDir(sortColumn), orderDir(bookmarks.id))
       .limit(fetchLimit);
     let finalIds: string[] = matched.map((e) => e.id);
+    const rankMap = isRelevanceSort
+      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
+        new Map(matched.map((r: any) => [r.id, r.rankScore ?? 0]))
+      : null;
 
     if (finalIds.length === 0)
       return { items: [], nextCursor: null, hasMore: false };
@@ -960,6 +972,7 @@ export async function findBookmarks({
     const lastItem = items[items.length - 1];
     // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
+      if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;
       return item.date; // createdAt formatted as ISO string
     };

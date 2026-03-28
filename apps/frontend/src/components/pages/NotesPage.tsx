@@ -313,10 +313,7 @@ export default function NotesPage() {
         error instanceof Error ? error : error ? new Error(String(error)) : null
       }
       onRetry={refresh}
-      sortOptions={notesConfig.sortOptions.map((o) => ({
-        value: o.value,
-        label: o.label,
-      }))}
+      sortOptions={state.sortOptions}
       headerAction={
         <Button onClick={() => setIsNewEntryDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> New Note
