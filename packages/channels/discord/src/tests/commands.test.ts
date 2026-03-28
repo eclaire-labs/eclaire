@@ -111,7 +111,7 @@ describe("handleCommandInteraction", () => {
       expect(reply).toContain("eclaire-new");
       expect(reply).toContain("eclaire-model");
       expect(reply).toContain("eclaire-history");
-      expect(reply).toContain("eclaire-settings");
+      expect(reply).toContain("eclaire-thinking");
       expect(reply).toContain("eclaire-clear");
     });
   });
@@ -121,7 +121,7 @@ describe("handleCommandInteraction", () => {
       const interaction = makeInteraction("eclaire-new");
       await handleCommandInteraction(interaction as any, "ch-1", "user-1");
 
-      expect(mockCreateSession).toHaveBeenCalledWith("user-1");
+      expect(mockCreateSession).toHaveBeenCalledWith("user-1", undefined, "eclaire");
       const reply = interaction.editReply.mock.calls[0]?.[0] as string;
       expect(reply).toContain("New conversation started");
       expect(getSession("ch-1").sessionId).toBe("session-1");
@@ -217,7 +217,7 @@ describe("handleCommandInteraction", () => {
       const interaction = makeInteraction("eclaire-history");
       await handleCommandInteraction(interaction as any, "ch-1", "user-1");
 
-      expect(mockListSessions).toHaveBeenCalledWith("user-1", 10);
+      expect(mockListSessions).toHaveBeenCalledWith("user-1", 10, undefined, "eclaire");
       const reply = interaction.editReply.mock.calls[0]?.[0] as string;
       expect(reply).toContain("1. Chat about TypeScript (5 msgs)");
       expect(reply).toContain("2. Debug session (12 msgs)");
@@ -284,7 +284,7 @@ describe("handleCommandInteraction", () => {
       await handleCommandInteraction(interaction as any, "ch-1", "user-1");
 
       expect(mockDeleteSession).toHaveBeenCalledWith("old-session", "user-1");
-      expect(mockCreateSession).toHaveBeenCalledWith("user-1");
+      expect(mockCreateSession).toHaveBeenCalledWith("user-1", undefined, "eclaire");
       expect(getSession("ch-1").sessionId).toBe("new-session");
       const reply = interaction.editReply.mock.calls[0]?.[0] as string;
       expect(reply).toContain("cleared");
