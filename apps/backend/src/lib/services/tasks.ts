@@ -459,25 +459,34 @@ export async function createTask(
           ? "reminder"
           : "scheduled_run";
 
-      const { createTaskOccurrence } = await import("./task-occurrences.js");
-      await createTaskOccurrence({
-        taskId,
-        userId,
-        kind: occurrenceKind,
-        prompt: taskData.prompt ?? taskData.title,
-        executorActorId: resolvedDelegate.delegateActorId ?? undefined,
-        scheduledFor,
-      });
+      try {
+        const { createTaskOccurrence } = await import("./task-occurrences.js");
+        await createTaskOccurrence({
+          taskId,
+          userId,
+          kind: occurrenceKind,
+          prompt: taskData.prompt ?? taskData.title,
+          executorActorId: resolvedDelegate.delegateActorId ?? undefined,
+          scheduledFor,
+        });
 
-      await db
-        .update(tasks)
-        .set({ latestExecutionStatus: "scheduled" })
-        .where(eq(tasks.id, taskId));
+        await db
+          .update(tasks)
+          .set({ latestExecutionStatus: "scheduled" })
+          .where(eq(tasks.id, taskId));
 
-      logger.info(
-        { taskId, scheduledFor: scheduledFor.toISOString() },
-        "Created one-time scheduled occurrence",
-      );
+        logger.info(
+          { taskId, scheduledFor: scheduledFor.toISOString() },
+          "Created one-time scheduled occurrence",
+        );
+      } catch (occErr) {
+        logger.error(
+          { taskId, error: occErr },
+          "Failed to create one-time occurrence, cleaning up task",
+        );
+        await db.delete(tasks).where(eq(tasks.id, taskId));
+        throw occErr;
+      }
     }
 
     // Auto-execute agent-delegated tasks with no schedule
@@ -486,24 +495,33 @@ export async function createTask(
       taskData.scheduleType !== "one_time" &&
       resolvedDelegate.kind === "agent"
     ) {
-      const { createTaskOccurrence } = await import("./task-occurrences.js");
-      await createTaskOccurrence({
-        taskId,
-        userId,
-        kind: "manual_run",
-        prompt: taskData.prompt ?? taskData.title,
-        executorActorId: resolvedDelegate.delegateActorId ?? undefined,
-      });
+      try {
+        const { createTaskOccurrence } = await import("./task-occurrences.js");
+        await createTaskOccurrence({
+          taskId,
+          userId,
+          kind: "manual_run",
+          prompt: taskData.prompt ?? taskData.title,
+          executorActorId: resolvedDelegate.delegateActorId ?? undefined,
+        });
 
-      await db
-        .update(tasks)
-        .set({
-          taskStatus: "in_progress",
-          latestExecutionStatus: "queued",
-        })
-        .where(eq(tasks.id, taskId));
+        await db
+          .update(tasks)
+          .set({
+            taskStatus: "in_progress",
+            latestExecutionStatus: "queued",
+          })
+          .where(eq(tasks.id, taskId));
 
-      logger.info({ taskId }, "Auto-started agent-delegated task");
+        logger.info({ taskId }, "Auto-started agent-delegated task");
+      } catch (occErr) {
+        logger.error(
+          { taskId, error: occErr },
+          "Failed to create auto-execution occurrence, cleaning up task",
+        );
+        await db.delete(tasks).where(eq(tasks.id, taskId));
+        throw occErr;
+      }
     }
 
     // Fetch the complete task with tags to return the consistent API response format
@@ -1702,15 +1720,7 @@ export async function startTask(
   });
   if (!task) throw new NotFoundError("Task");
 
-  const { createTaskOccurrence } = await import("./task-occurrences.js");
-  const occurrence = await createTaskOccurrence({
-    taskId,
-    userId,
-    kind: "manual_run",
-    prompt: task.prompt ?? undefined,
-    executorActorId: task.delegateActorId ?? undefined,
-  });
-
+  // Update task status BEFORE creating occurrence to avoid race with worker
   await db
     .update(tasks)
     .set({
@@ -1720,7 +1730,28 @@ export async function startTask(
     })
     .where(eq(tasks.id, taskId));
 
-  return { occurrenceId: occurrence.id };
+  try {
+    const { createTaskOccurrence } = await import("./task-occurrences.js");
+    const occurrence = await createTaskOccurrence({
+      taskId,
+      userId,
+      kind: "manual_run",
+      prompt: task.prompt ?? undefined,
+      executorActorId: task.delegateActorId ?? undefined,
+    });
+    return { occurrenceId: occurrence.id };
+  } catch (err) {
+    // Revert status if occurrence creation fails
+    await db
+      .update(tasks)
+      .set({
+        taskStatus: "open",
+        latestExecutionStatus: "idle",
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, taskId));
+    throw err;
+  }
 }
 
 /**
@@ -1737,19 +1768,15 @@ export async function retryTask(
       id: true,
       delegateActorId: true,
       prompt: true,
+      taskStatus: true,
+      attentionStatus: true,
+      latestExecutionStatus: true,
+      latestErrorSummary: true,
     },
   });
   if (!task) throw new NotFoundError("Task");
 
-  const { createTaskOccurrence } = await import("./task-occurrences.js");
-  const occurrence = await createTaskOccurrence({
-    taskId,
-    userId,
-    kind: "manual_run",
-    prompt: editedPrompt ?? task.prompt ?? undefined,
-    executorActorId: task.delegateActorId ?? undefined,
-  });
-
+  // Update task status BEFORE creating occurrence to avoid race with worker
   await db
     .update(tasks)
     .set({
@@ -1760,7 +1787,29 @@ export async function retryTask(
     })
     .where(eq(tasks.id, taskId));
 
-  return { occurrenceId: occurrence.id };
+  try {
+    const { createTaskOccurrence } = await import("./task-occurrences.js");
+    const occurrence = await createTaskOccurrence({
+      taskId,
+      userId,
+      kind: "manual_run",
+      prompt: editedPrompt ?? task.prompt ?? undefined,
+      executorActorId: task.delegateActorId ?? undefined,
+    });
+    return { occurrenceId: occurrence.id };
+  } catch (err) {
+    // Revert status if occurrence creation fails
+    await db
+      .update(tasks)
+      .set({
+        attentionStatus: task.attentionStatus,
+        latestExecutionStatus: task.latestExecutionStatus,
+        latestErrorSummary: task.latestErrorSummary,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, taskId));
+    throw err;
+  }
 }
 
 /**

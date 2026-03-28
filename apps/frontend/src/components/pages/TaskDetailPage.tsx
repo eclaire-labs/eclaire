@@ -216,15 +216,9 @@ export function TaskDetailClient() {
     if (!task) return;
     try {
       setIsReviewing(true);
-      const reviewStatus =
-        action === "approve" ? "approved" : "changes_requested";
-      const updates: Record<string, string> = { reviewStatus };
-      if (action === "approve") {
-        updates.taskStatus = "completed";
-      }
-      const response = await apiFetch(`/api/tasks/${taskId}`, {
-        method: "PATCH",
-        body: JSON.stringify(updates),
+      const endpoint = action === "approve" ? "approve" : "request-changes";
+      const response = await apiFetch(`/api/tasks/${taskId}/${endpoint}`, {
+        method: "POST",
       });
       if (!response.ok) throw new Error("Failed to update review status");
       refresh();

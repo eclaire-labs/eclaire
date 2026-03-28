@@ -342,11 +342,11 @@ export default function TasksPage() {
       const taskToSend = {
         ...editingTask,
         ...(editingTask.dueAt && {
-          dueDate: new Date(editingTask.dueAt).toISOString(),
+          dueAt: new Date(editingTask.dueAt).toISOString(),
         }),
         taskStatus: editingTask.taskStatus || "open",
         ...(editingTask.delegateActorId && {
-          assigneeActorId: editingTask.delegateActorId,
+          delegateActorId: editingTask.delegateActorId,
         }),
         ...(editingTask.description && {
           description: editingTask.description,
@@ -642,7 +642,7 @@ export default function TasksPage() {
                         value={editingTask.dueAt || null}
                         onChange={(value) =>
                           setEditingTask((prev) =>
-                            prev ? { ...prev, dueDate: value ?? "" } : null,
+                            prev ? { ...prev, dueAt: value ?? "" } : null,
                           )
                         }
                       />
@@ -664,7 +664,7 @@ export default function TasksPage() {
                             prev
                               ? {
                                   ...prev,
-                                  assigneeActorId: value,
+                                  delegateActorId: value,
                                 }
                               : null,
                           )

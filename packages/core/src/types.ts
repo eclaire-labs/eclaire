@@ -247,26 +247,6 @@ export interface BookmarkInsert {
   updatedAt?: string;
 }
 
-export interface TaskInsert {
-  id: string;
-  userId: string;
-  title: string;
-  description?: string;
-  status?: TaskStatus;
-  dueDate?: string;
-  assigneeActorId?: string;
-  priority?: number;
-  processingEnabled?: boolean;
-  reviewStatus?: ReviewStatus;
-  flagColor?: FlagColor;
-  isPinned?: boolean;
-  sortOrder?: number;
-  parentId?: string;
-  completedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export interface DocumentInsert {
   id: string;
   userId: string;

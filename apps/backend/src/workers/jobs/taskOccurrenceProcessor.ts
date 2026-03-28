@@ -27,11 +27,38 @@ import {
 import { channelRegistry } from "../../lib/channels.js";
 import { getNotificationChannels } from "../../lib/services/channels.js";
 import { db, schema } from "../../db/index.js";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 const logger = createChildLogger("task-occurrence-processor");
 
 const EXECUTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Only update denormalized task fields if this occurrence is the latest one,
+ * preventing concurrent occurrences from overwriting each other.
+ */
+async function updateTaskDenormalized(
+  taskId: string,
+  occurrenceId: string,
+  fields: Record<string, unknown>,
+): Promise<void> {
+  const [latest] = await db
+    .select({ id: schema.taskOccurrences.id })
+    .from(schema.taskOccurrences)
+    .where(eq(schema.taskOccurrences.taskId, taskId))
+    .orderBy(desc(schema.taskOccurrences.createdAt))
+    .limit(1);
+
+  if (latest && latest.id !== occurrenceId) {
+    logger.info(
+      { taskId, occurrenceId, latestId: latest.id },
+      "Skipping denormalized update — newer occurrence exists",
+    );
+    return;
+  }
+
+  await db.update(schema.tasks).set(fields).where(eq(schema.tasks.id, taskId));
+}
 
 // biome-ignore lint/suspicious/noExplicitAny: job context shape varies by queue driver
 export default async function processTaskOccurrence(ctx: any): Promise<void> {
@@ -57,11 +84,10 @@ export default async function processTaskOccurrence(ctx: any): Promise<void> {
     // Mark as running
     await startTaskOccurrence(occurrenceId);
 
-    // Update task's denormalized status
-    await db
-      .update(schema.tasks)
-      .set({ latestExecutionStatus: "running" })
-      .where(eq(schema.tasks.id, taskId));
+    // Update task's denormalized status (guarded against concurrent occurrences)
+    await updateTaskDenormalized(taskId, occurrenceId, {
+      latestExecutionStatus: "running",
+    });
 
     emitOccurrenceStarted(userId, taskId, occurrenceId);
 
@@ -87,15 +113,12 @@ export default async function processTaskOccurrence(ctx: any): Promise<void> {
     );
     await failTaskOccurrence(occurrenceId, errorMessage);
 
-    // Update task denormalized status + attention
-    await db
-      .update(schema.tasks)
-      .set({
-        latestExecutionStatus: "failed",
-        latestErrorSummary: errorMessage.slice(0, 500),
-        attentionStatus: "failed",
-      })
-      .where(eq(schema.tasks.id, taskId));
+    // Update task denormalized status + attention (guarded against concurrent occurrences)
+    await updateTaskDenormalized(taskId, occurrenceId, {
+      latestExecutionStatus: "failed",
+      latestErrorSummary: errorMessage.slice(0, 500),
+      attentionStatus: "failed",
+    });
 
     emitOccurrenceFailed(userId, taskId, occurrenceId, errorMessage);
     emitTaskStatusChanged(userId, taskId, { attentionStatus: "failed" });
@@ -214,16 +237,20 @@ async function processReminder(
   await completeTaskOccurrence(occurrenceId, message, resultSummary);
 
   // Update task denormalized status
-  await db
-    .update(schema.tasks)
-    .set({
-      latestExecutionStatus: "completed",
-      latestResultSummary: resultSummary,
-    })
-    .where(eq(schema.tasks.id, taskId));
+  const noChannelsDelivered = deliveryResults.length === 0;
+  await updateTaskDenormalized(taskId, occurrenceId, {
+    latestExecutionStatus: "completed",
+    latestResultSummary: resultSummary,
+    // Surface in inbox if no channels were configured so user knows delivery didn't happen
+    ...(noChannelsDelivered && { attentionStatus: "needs_triage" }),
+  });
 
   emitOccurrenceCompleted(userId, taskId, occurrenceId, resultSummary);
-  emitTaskStatusChanged(userId, taskId, { taskStatus: "completed" });
+  if (noChannelsDelivered) {
+    emitTaskStatusChanged(userId, taskId, { attentionStatus: "needs_triage" });
+  } else {
+    emitTaskStatusChanged(userId, taskId, { taskStatus: "completed" });
+  }
 
   logger.info(
     {
@@ -319,15 +346,12 @@ async function processAgentExecution(
 
   // Update task denormalized status based on review gate
   if (requiresReview) {
-    await db
-      .update(schema.tasks)
-      .set({
-        latestExecutionStatus: "completed",
-        latestResultSummary: resultSummary,
-        reviewStatus: "pending",
-        attentionStatus: "needs_review",
-      })
-      .where(eq(schema.tasks.id, taskId));
+    await updateTaskDenormalized(taskId, occurrenceId, {
+      latestExecutionStatus: "completed",
+      latestResultSummary: resultSummary,
+      reviewStatus: "pending",
+      attentionStatus: "needs_review",
+    });
 
     // Mark occurrence as awaiting review
     await db
@@ -341,15 +365,12 @@ async function processAgentExecution(
     });
   } else {
     // Auto-complete (handle mode)
-    await db
-      .update(schema.tasks)
-      .set({
-        latestExecutionStatus: "completed",
-        latestResultSummary: resultSummary,
-        taskStatus: "completed",
-        completedAt: new Date(),
-      })
-      .where(eq(schema.tasks.id, taskId));
+    await updateTaskDenormalized(taskId, occurrenceId, {
+      latestExecutionStatus: "completed",
+      latestResultSummary: resultSummary,
+      taskStatus: "completed",
+      completedAt: new Date(),
+    });
 
     emitOccurrenceCompleted(userId, taskId, occurrenceId, resultSummary);
     emitTaskStatusChanged(userId, taskId, { taskStatus: "completed" });

@@ -41,7 +41,6 @@ export type {
   PhotoInsert,
   ReviewStatus,
   TagInsert,
-  TaskInsert,
   TaskStatus,
   UserInsert,
   UserType,
