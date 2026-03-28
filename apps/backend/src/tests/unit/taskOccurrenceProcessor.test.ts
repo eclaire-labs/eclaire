@@ -254,10 +254,10 @@ describe("taskOccurrenceProcessor", () => {
       // Should NOT set needs_review
       const updateCalls = mockDbUpdateSet.mock.calls;
       const completionCall = updateCalls.find(
-        (c: Record<string, unknown>[]) => c[0].taskStatus === "completed",
+        (c: Record<string, unknown>[]) => c[0]?.taskStatus === "completed",
       );
       expect(completionCall).toBeDefined();
-      expect(completionCall[0]).not.toHaveProperty("reviewStatus", "pending");
+      expect(completionCall![0]).not.toHaveProperty("reviewStatus", "pending");
 
       // SSE: taskStatus changed to completed
       expect(mockEmitTaskStatusChanged).toHaveBeenCalledWith(

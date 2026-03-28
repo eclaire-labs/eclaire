@@ -12,7 +12,6 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn() },
 }));
 
-import { toast } from "sonner";
 import { transformTaskData, useTask, useTasks } from "@/hooks/use-tasks";
 import { apiFetch } from "@/lib/api-client";
 

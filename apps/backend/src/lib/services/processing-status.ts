@@ -16,7 +16,7 @@ const logger = createChildLogger("processing-status");
  * Build queue name for an asset type and optional job type
  * Uses QueueNames constants to ensure consistency with queue adapter
  */
-function buildQueueName(assetType: AssetType, jobType?: string): string {
+function buildQueueName(assetType: AssetType, _jobType?: string): string {
   if (assetType === "tasks") {
     return QueueNames.TASK_PROCESSING;
   }

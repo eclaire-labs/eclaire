@@ -125,7 +125,7 @@ export function DashboardClientContent({
   const [stats, _setStats] = useState(initialStats);
   const [recentActivities, _setRecentActivities] = useState(initialActivity);
   const [timeline, setTimeline] = useState(initialTimeline);
-  const [dueItems, _setDueItems] = useState(initialDueItems);
+  const [_dueItems, _setDueItems] = useState(initialDueItems);
   const [quickStats, _setQuickStats] = useState(initialQuickStats);
   const [timelinePeriod, setTimelinePeriod] = useState(30);
   const [_isLoadingTimeline, setIsLoadingTimeline] = useState(false);

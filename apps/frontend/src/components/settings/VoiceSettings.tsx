@@ -370,7 +370,7 @@ export default function VoiceSettings() {
     modelLabel(instSttHealth?.defaults?.sttModel ?? "") || "Server default";
   const ttsModelPlaceholder =
     modelLabel(instTtsHealth?.defaults?.ttsModel ?? "") || "Server default";
-  const ttsVoicePlaceholder =
+  const _ttsVoicePlaceholder =
     modelLabel(instTtsHealth?.defaults?.ttsVoice ?? "") || "Server default";
 
   return (

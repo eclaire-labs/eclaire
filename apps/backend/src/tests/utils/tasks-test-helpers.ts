@@ -5,7 +5,6 @@ import {
   delay,
   TEST_API_KEY,
   TEST_API_KEY_2,
-  VERBOSE,
 } from "../utils/test-helpers.js";
 
 // Factory for creating authenticated fetch functions with base URL handling
@@ -113,14 +112,9 @@ export const RecurrenceTestHelpers = {
     title: string,
     cronExpression: string = "*/3 * * * * *",
     assigneeActorId?: string,
-    recurrenceEndDate?: string,
+    _recurrenceEndDate?: string,
     recurrenceLimit?: number,
-    runImmediately?: boolean,
   ): Promise<TaskEntry> => {
-    // Add default end date 10 seconds from now if none provided to prevent infinite loops
-    const defaultEndDate =
-      recurrenceEndDate || RecurrenceTestHelpers.getFutureDate(10);
-
     const taskData = {
       title,
       description: "Test recurring task",
@@ -209,9 +203,8 @@ export const RecurrenceTestHelpers = {
   verifyRecurrenceConfig: (
     task: TaskEntry,
     expectedCron: string,
-    expectedEndDate?: string,
+    _expectedEndDate?: string,
     expectedLimit?: number,
-    expectedImmediate?: boolean,
   ): void => {
     expect(task.scheduleType).toBe("recurring");
     expect(task.scheduleRule).toBe(expectedCron);

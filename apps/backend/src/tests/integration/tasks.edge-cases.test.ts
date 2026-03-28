@@ -5,7 +5,6 @@ import {
   loggedFetch,
   RecurrenceTestHelpers,
   type TaskEntry,
-  waitForTaskState,
 } from "../utils/tasks-test-helpers.js";
 import { delay } from "../utils/test-helpers.js";
 

@@ -88,7 +88,7 @@ export async function addCommand(options: CommandOptions): Promise<void> {
         cancel(`Unknown preset: ${options.preset}`);
         log.info(
           colors.dim(
-            "Available presets: " + allPresets.map((p) => p.id).join(", "),
+            `Available presets: ${allPresets.map((p) => p.id).join(", ")}`,
           ),
         );
         process.exit(1);

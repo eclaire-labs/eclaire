@@ -6,7 +6,6 @@ import {
   type TaskEntry,
   waitForTaskState,
 } from "../utils/tasks-test-helpers.js";
-import { delay } from "../utils/test-helpers.js";
 
 describe("Task Scheduling", { timeout: 120000 }, () => {
   const taskIds: string[] = [];

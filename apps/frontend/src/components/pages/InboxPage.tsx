@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
-  CheckCircle2,
   Clock,
   HelpCircle,
   Inbox,
@@ -14,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/date-utils";
 import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
@@ -68,7 +67,7 @@ function InboxSection({
   title,
   icon: Icon,
   items,
-  emptyText,
+  emptyText: _emptyText,
   actions,
 }: {
   title: string;

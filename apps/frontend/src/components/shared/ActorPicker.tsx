@@ -156,7 +156,7 @@ export function ActorPicker({
   actors,
   value,
   onChange,
-  placeholder = "Select actor",
+  placeholder: _placeholder = "Select actor",
   searchPlaceholder = "Search actors...",
   emptyMessage = "No actors found.",
   allowUnassigned = false,

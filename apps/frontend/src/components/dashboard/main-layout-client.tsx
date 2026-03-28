@@ -18,7 +18,6 @@ import {
   Pin,
   Search,
   Upload,
-  Users,
 } from "lucide-react";
 import {
   type ReactNode,

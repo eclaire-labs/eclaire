@@ -5,7 +5,6 @@ import { ASSET_TYPE } from "../../types/assets.js";
 import {
   BOOKMARK_MIMES,
   DOCUMENT_MIMES,
-  MEDIA_AUDIO_MIMES,
   MEDIA_MIMES,
   NOTE_MIMES,
   PHOTO_MIMES,

@@ -940,7 +940,7 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
       | null = null;
     try {
       // Tier 1: yt-dlp provider captions (from URL_DOWNLOAD stage)
-      if (preExtractedSubtitles && preExtractedSubtitles.text) {
+      if (preExtractedSubtitles?.text) {
         transcriptText = preExtractedSubtitles.text;
         detectedLanguage = preExtractedSubtitles.language;
         transcriptSource = "provider_captions";

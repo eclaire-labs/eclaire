@@ -338,7 +338,7 @@ async function processAgentExecution(
           ownerUserId: userId,
         },
       );
-    } catch (err) {
+    } catch (_err) {
       logger.warn(
         { occurrenceId, taskId },
         "Failed to post agent output as comment",

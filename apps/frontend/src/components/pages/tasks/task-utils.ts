@@ -50,7 +50,7 @@ const statusConfigs = {
   },
 } as const;
 
-const defaultStatus = statusConfigs["open"];
+const defaultStatus = statusConfigs.open;
 
 export function getStatusConfig(status: string) {
   return statusConfigs[status as keyof typeof statusConfigs] ?? defaultStatus;

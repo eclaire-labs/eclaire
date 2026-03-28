@@ -2,7 +2,6 @@ import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowLeft,
-  Bell,
   Bot,
   Calendar,
   CheckCircle2,
@@ -15,7 +14,6 @@ import {
   ThumbsUp,
   Trash2,
   X,
-  Zap,
 } from "lucide-react";
 
 const routeApi = getRouteApi("/_authenticated/tasks/$id");
@@ -69,7 +67,6 @@ import {
   getPriorityIcon,
   getPriorityLabel,
   getStatusConfig,
-  getStatusIcon,
 } from "./tasks/task-utils";
 
 export function TaskDetailClient() {

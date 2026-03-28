@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   TaskSchema,
-  PartialTaskSchema,
   TaskSearchParamsSchema,
 } from "../../schemas/tasks-params.js";
 import {
