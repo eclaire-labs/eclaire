@@ -43,6 +43,10 @@ import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAgentExecutionStatus } from "@/hooks/use-session-status";
 import {
+  useSidebarCollapsed,
+  useSidebarCollapseShortcut,
+} from "@/hooks/use-sidebar-collapsed";
+import {
   useSidebarMode,
   useSidebarModeShortcut,
 } from "@/hooks/use-sidebar-mode";
@@ -140,9 +144,11 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const [isResizing, setIsResizing] = useState(false);
   const _resizeRef = useRef<HTMLDivElement>(null);
 
-  // Sidebar mode
+  // Sidebar mode & collapse
   const [sidebarMode, setSidebarMode] = useSidebarMode();
   useSidebarModeShortcut(sidebarMode, setSidebarMode);
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
+  useSidebarCollapseShortcut(sidebarCollapsed, setSidebarCollapsed);
   const [showAiChat, setShowAiChat] = useState(false);
 
   // Clear AI chat view when user navigates via links (e.g. clicking an agent)
@@ -1162,6 +1168,8 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
           onNewChat={handleNewChatFromSidebar}
           onSelectConversation={handleSelectConversationFromSidebar}
           onSelectActivity={handleSelectActivityFromSidebar}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
 
         {/* Middle Content */}

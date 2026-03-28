@@ -10,6 +10,7 @@ import type { SidebarMode } from "@/hooks/use-sidebar-mode";
 interface AppRailProps {
   mode: SidebarMode;
   onModeChange: (mode: SidebarMode) => void;
+  collapsed: boolean;
 }
 
 const railItems: {
@@ -21,9 +22,13 @@ const railItems: {
   { mode: "ai", icon: Sparkles, label: "AI" },
 ];
 
-export function AppRail({ mode, onModeChange }: AppRailProps) {
+export function AppRail({ mode, onModeChange, collapsed }: AppRailProps) {
   return (
-    <div className="flex w-full items-center gap-0.5 rounded-lg bg-muted p-0.5">
+    <div
+      className={`flex gap-0.5 rounded-lg bg-muted p-0.5 ${
+        collapsed ? "flex-col items-center" : "items-center w-full"
+      }`}
+    >
       <TooltipProvider delayDuration={300}>
         {railItems.map((item) => {
           const isActive = mode === item.mode;
@@ -33,7 +38,9 @@ export function AppRail({ mode, onModeChange }: AppRailProps) {
                 <button
                   type="button"
                   onClick={() => onModeChange(item.mode)}
-                  className={`flex h-7 flex-1 items-center justify-center rounded-md transition-colors ${
+                  className={`flex items-center justify-center rounded-md transition-colors ${
+                    collapsed ? "h-7 w-7" : "h-7 flex-1"
+                  } ${
                     isActive
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -42,7 +49,10 @@ export function AppRail({ mode, onModeChange }: AppRailProps) {
                   <item.icon className="h-3.5 w-3.5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
+              <TooltipContent
+                side={collapsed ? "right" : "bottom"}
+                className="text-xs"
+              >
                 <p>{item.label}</p>
               </TooltipContent>
             </Tooltip>
