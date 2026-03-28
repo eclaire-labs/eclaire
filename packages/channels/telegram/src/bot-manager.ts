@@ -25,6 +25,8 @@ interface TelegramBotInstance {
 
 // Store active bot instances
 const activeBots = new Map<string, TelegramBotInstance>();
+// Track pending retry timers so they can be cancelled during shutdown
+const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 /**
  * Creates and starts a Telegram bot instance.
@@ -181,7 +183,8 @@ async function createBotInstance(
           { channelId, userId },
           "Bot conflict detected, will retry polling after delay",
         );
-        setTimeout(async () => {
+        const timer = setTimeout(async () => {
+          retryTimers.delete(channelId);
           try {
             const retryPromise = bot.launch();
             const instance = activeBots.get(channelId);
@@ -205,6 +208,7 @@ async function createBotInstance(
             );
           }
         }, 2000);
+        retryTimers.set(channelId, timer);
       }
     });
 
@@ -241,6 +245,13 @@ export async function stopBot(channelId: string): Promise<void> {
   const { logger } = getDeps();
 
   try {
+    // Cancel any pending retry timer for this channel
+    const pendingTimer = retryTimers.get(channelId);
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
+      retryTimers.delete(channelId);
+    }
+
     const instance = activeBots.get(channelId);
     if (instance) {
       try {

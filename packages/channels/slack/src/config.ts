@@ -106,8 +106,7 @@ export function decryptConfig(storedConfig: unknown): SlackConfig | null {
       mention_mode: (raw.mention_mode as SlackConfig["mention_mode"]) ?? "all",
     };
   } catch (error) {
-    const { logger: log } = getDeps();
-    log.error(
+    logger.error(
       { error: error instanceof Error ? error.message : "Unknown error" },
       "Error decrypting Slack config",
     );

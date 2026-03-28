@@ -1,5 +1,10 @@
-import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
+import {
+  ChannelRateLimiter,
+  DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+} from "@eclaire/channels-core";
 import { MessageFlags, type Message, type TextChannel } from "discord.js";
+
+const rateLimiter = new ChannelRateLimiter();
 import { getDeps } from "./deps.js";
 import { stopBot, sendVoiceMessage } from "./bot-manager.js";
 import { getSession } from "./commands.js";
@@ -13,18 +18,35 @@ import {
   getAudioDuration,
 } from "./voice-utils.js";
 
+/** Allowed Discord CDN hostnames for attachment URLs. */
+const DISCORD_CDN_HOSTS = new Set([
+  "cdn.discordapp.com",
+  "media.discordapp.net",
+]);
+
+function isDiscordCdnUrl(url: string): boolean {
+  try {
+    return DISCORD_CDN_HOSTS.has(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Extracts attachment metadata from a Discord message.
+ * Only includes attachments from trusted Discord CDN origins.
  */
 function extractAttachments(
   message: Message,
 ): { url: string; name: string; contentType: string | null; size: number }[] {
-  return message.attachments.map((a) => ({
-    url: a.url,
-    name: a.name,
-    contentType: a.contentType,
-    size: a.size,
-  }));
+  return message.attachments
+    .filter((a) => isDiscordCdnUrl(a.url))
+    .map((a) => ({
+      url: a.url,
+      name: a.name,
+      contentType: a.contentType,
+      size: a.size,
+    }));
 }
 
 /**
@@ -61,6 +83,14 @@ export async function handleIncomingMessage(
     },
     "Processing incoming Discord message",
   );
+
+  if (!rateLimiter.allow(channelId)) {
+    logger.warn({ channelId, userId }, "Rate limited incoming Discord message");
+    await message.reply(
+      "You're sending messages too quickly. Please wait a moment before trying again.",
+    );
+    return;
+  }
 
   try {
     const channel = await findChannel(channelId, userId);

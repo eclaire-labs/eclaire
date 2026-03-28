@@ -48,7 +48,11 @@ export class ChannelRegistry {
   async stopAll(): Promise<void> {
     const stops = Array.from(this.adapters.values())
       .filter((a) => a.stopAll)
-      .map((a) => a.stopAll?.());
+      .map((a) =>
+        a.stopAll?.().catch((error) => {
+          console.error(`Channel adapter ${a.platform} stopAll failed:`, error);
+        }),
+      );
     await Promise.all(stops);
   }
 }

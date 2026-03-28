@@ -1,5 +1,10 @@
 import type { WebClient } from "@slack/web-api";
-import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
+import {
+  ChannelRateLimiter,
+  DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+} from "@eclaire/channels-core";
+
+const rateLimiter = new ChannelRateLimiter();
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
 import { getSession } from "./commands.js";
@@ -42,6 +47,16 @@ export async function handleIncomingMessage(
     },
     "Processing incoming Slack message",
   );
+
+  if (!rateLimiter.allow(channelId)) {
+    logger.warn({ channelId, userId }, "Rate limited incoming Slack message");
+    await client.chat.postMessage({
+      channel: slackChannelId,
+      thread_ts: messageTs,
+      text: "You're sending messages too quickly. Please wait a moment before trying again.",
+    });
+    return;
+  }
 
   try {
     const channel = await findChannel(channelId, userId);
@@ -260,6 +275,19 @@ export async function handleIncomingAudioFile(
       { channelId },
       "Audio file received but audio processing not available",
     );
+    return;
+  }
+
+  if (!rateLimiter.allow(channelId)) {
+    logger.warn(
+      { channelId, userId },
+      "Rate limited incoming Slack audio file",
+    );
+    await client.chat.postMessage({
+      channel: slackChannelId,
+      thread_ts: messageTs,
+      text: "You're sending messages too quickly. Please wait a moment before trying again.",
+    });
     return;
   }
 

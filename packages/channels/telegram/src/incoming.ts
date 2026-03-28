@@ -1,4 +1,7 @@
-import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
+import {
+  ChannelRateLimiter,
+  DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+} from "@eclaire/channels-core";
 import { getDeps } from "./deps.js";
 import { stopBot } from "./bot-manager.js";
 import type { BotContext } from "./commands.js";
@@ -6,6 +9,8 @@ import { splitMessage } from "./message-utils.js";
 import { sendStreamingResponse } from "./stream-sender.js";
 import { safeSendChatAction } from "./typing-indicator.js";
 import { Input } from "telegraf";
+
+const rateLimiter = new ChannelRateLimiter();
 
 /**
  * Handles incoming messages from Telegram for bidirectional channels.
@@ -44,6 +49,17 @@ export async function handleIncomingMessage(
     },
     "Processing incoming Telegram message",
   );
+
+  if (!rateLimiter.allow(channelId)) {
+    logger.warn(
+      { channelId, userId },
+      "Rate limited incoming Telegram message",
+    );
+    await ctx.reply(
+      "You're sending messages too quickly. Please wait a moment before trying again.",
+    );
+    return;
+  }
 
   try {
     // Get the channel to verify it supports chat/bidirectional
@@ -239,6 +255,17 @@ export async function handleIncomingVoiceMessage(
     logger.debug(
       { channelId },
       "Voice message received but audio processing not available",
+    );
+    return;
+  }
+
+  if (!rateLimiter.allow(channelId)) {
+    logger.warn(
+      { channelId, userId },
+      "Rate limited incoming Telegram voice message",
+    );
+    await ctx.reply(
+      "You're sending messages too quickly. Please wait a moment before trying again.",
     );
     return;
   }

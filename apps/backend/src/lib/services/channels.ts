@@ -247,10 +247,11 @@ export async function createChannel(
 
     return formatChannelForResponse(newChannel);
   } catch (error) {
+    const { config: _sensitiveConfig, ...safeChannelData } = channelData;
     logger.error(
       {
         userId,
-        channelData,
+        channelData: safeChannelData,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Error creating channel",
@@ -386,11 +387,12 @@ export async function updateChannel(
 
     return formatChannelForResponse(updatedChannel);
   } catch (error) {
+    const { config: _sensitiveConfig, ...safeUpdateData } = updateData;
     logger.error(
       {
         channelId,
         userId,
-        updateData,
+        updateData: safeUpdateData,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       "Error updating channel",

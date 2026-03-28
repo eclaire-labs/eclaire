@@ -1,4 +1,6 @@
 export { ChannelRegistry } from "./registry.js";
+export { ChannelRateLimiter } from "./rate-limiter.js";
+export type { RateLimiterOptions } from "./rate-limiter.js";
 export {
   CHANNEL_PLATFORMS,
   CHANNEL_CAPABILITIES,

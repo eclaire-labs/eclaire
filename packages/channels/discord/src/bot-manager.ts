@@ -530,11 +530,10 @@ export async function sendMessage(
       return false;
     }
 
-    const textChannel = instance.client.channels.cache.get(
+    let targetChannel = instance.client.channels.cache.get(
       meta.discordChannelId,
     ) as TextChannel | undefined;
-    if (!textChannel) {
-      // Try fetching the channel if not in cache
+    if (!targetChannel) {
       try {
         const fetched = await instance.client.channels.fetch(
           meta.discordChannelId,
@@ -546,6 +545,7 @@ export async function sendMessage(
           );
           return false;
         }
+        targetChannel = fetched as TextChannel;
       } catch (fetchError) {
         logger.error(
           {
@@ -560,11 +560,6 @@ export async function sendMessage(
         return false;
       }
     }
-
-    const targetChannel = (textChannel ??
-      (await instance.client.channels.fetch(
-        meta.discordChannelId,
-      ))) as TextChannel;
 
     const chunks = splitMessage(message);
     for (let i = 0; i < chunks.length; i++) {

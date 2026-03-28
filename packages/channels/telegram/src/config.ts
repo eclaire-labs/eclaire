@@ -62,14 +62,10 @@ export function decryptConfig(storedConfig: unknown): TelegramConfig | null {
       return null;
     }
 
-    // Decrypt the bot token if it's an encrypted string
-    let decryptedBotToken = bot_token as string;
-    if (typeof bot_token === "string" && bot_token.includes(":")) {
-      decryptedBotToken = decrypt(bot_token);
-      if (!decryptedBotToken) {
-        logger.error("Failed to decrypt bot token");
-        return null;
-      }
+    const decryptedBotToken = decrypt(bot_token as string);
+    if (!decryptedBotToken) {
+      logger.error("Failed to decrypt bot token");
+      return null;
     }
 
     return {

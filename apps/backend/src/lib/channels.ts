@@ -23,7 +23,7 @@ import { systemCaller } from "./services/types.js";
 
 export const channelRegistry = new ChannelRegistry();
 
-function buildAgentHandleCandidates(name: string): string[] {
+export function buildAgentHandleCandidates(name: string): string[] {
   const normalized = name
     .normalize("NFKD")
     .toLowerCase()
@@ -45,7 +45,7 @@ function buildAgentHandleCandidates(name: string): string[] {
   );
 }
 
-function parseAddressedPrompt(prompt: string): {
+export function parseAddressedPrompt(prompt: string): {
   handle: string;
   cleanedPrompt: string;
 } | null {
