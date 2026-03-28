@@ -1,7 +1,7 @@
 /**
  * Eclaire-specific Database Queue Adapter
  *
- * Database-backed queue implementation for zero-Redis deployments.
+ * Database-backed queue implementation.
  * Uses the queue_jobs table (via driver-db) for job storage.
  */
 

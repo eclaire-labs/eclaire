@@ -1109,7 +1109,7 @@ async function retryPhotoProcessing(
       return { success: false, error: "Photo not found" };
     }
 
-    // Queue unified image processing job using Queue Adapter (supports both Redis and Database backends)
+    // Queue unified image processing job via the queue adapter
     const { getQueueAdapter } = await import("../queue/index.js");
     const queueAdapter = await getQueueAdapter();
 
@@ -1209,7 +1209,7 @@ async function retryBookmarkProcessing(
       return { success: false, error: "Bookmark not found" };
     }
 
-    // Queue new bookmark processing job using Queue Adapter (supports both Redis and Database backends)
+    // Queue bookmark processing job via the queue adapter
     const { getQueueAdapter } = await import("../queue/index.js");
     const queueAdapter = await getQueueAdapter();
 
@@ -1269,7 +1269,7 @@ async function retryDocumentProcessing(
       return { success: false, error: "Document not found" };
     }
 
-    // Queue new document processing job using Queue Adapter (supports both Redis and Database backends)
+    // Queue document processing job via the queue adapter
     const { getQueueAdapter } = await import("../queue/index.js");
     const queueAdapter = await getQueueAdapter();
 
@@ -1331,7 +1331,7 @@ async function retryNoteProcessing(
       return { success: false, error: "Note not found" };
     }
 
-    // Queue new note processing job using Queue Adapter (supports both Redis and Database backends)
+    // Queue note processing job via the queue adapter
     const { getQueueAdapter } = await import("../queue/index.js");
     const queueAdapter = await getQueueAdapter();
 
@@ -1389,7 +1389,7 @@ async function retryTaskProcessing(
       return { success: false, error: "Task not found" };
     }
 
-    // Queue new task processing job using Queue Adapter (supports both Redis and Database backends)
+    // Queue task processing job via the queue adapter
     const { getQueueAdapter } = await import("../queue/index.js");
     const queueAdapter = await getQueueAdapter();
 

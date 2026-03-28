@@ -4,7 +4,7 @@
  * Creates event callbacks that publish SSE events via Postgres NOTIFY.
  * The backend uses LISTEN to receive these notifications and forward to SSE clients.
  *
- * Used when workers connect to Postgres remotely (without Redis).
+ * Used when workers connect to Postgres remotely (SERVICE_ROLE=worker).
  *
  * Channel naming: `processing_{userId}` (underscores because Postgres
  * channel names don't support colons or special characters).

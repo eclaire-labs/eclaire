@@ -5,7 +5,7 @@
  * Uses createDbWorker from @eclaire/queue/driver-db with Postgres NOTIFY
  * for real-time SSE updates via the database pub/sub channel.
  *
- * Use this when SERVICE_ROLE=worker and you want to use Postgres instead of Redis.
+ * Use this when SERVICE_ROLE=worker with DATABASE_TYPE=postgres.
  */
 
 import { QueueNames } from "../../lib/queue/queue-names.js";

@@ -88,7 +88,7 @@ function showCleanupPreview() {
     );
 
     // Show subdirectories
-    const subdirs = ["db", "users", "logs", "redis", "browser-data"];
+    const subdirs = ["db", "users", "logs", "browser-data"];
     for (const subdir of subdirs) {
       const subdirPath = path.join(dataDir, subdir);
       const subdirStats = getDirectoryStats(subdirPath);
@@ -185,7 +185,7 @@ async function dropDatabase(dryRun = false) {
     const password = url.password;
 
     // Resolve Docker hostnames to localhost when running from host machine
-    const dockerHosts = ["eclaire-postgres", "eclaire-redis"];
+    const dockerHosts = ["eclaire-postgres"];
     if (dockerHosts.includes(host)) {
       // Try to resolve the hostname, if it fails, we're likely on the host machine
       try {
@@ -497,7 +497,7 @@ async function performCleanup(options = {}) {
       `${colors.yellow}Don't forget to stop external dependencies:${colors.reset}`,
     );
     console.log(
-      `  • Docker containers: ${colors.cyan}docker stop eclaire-redis eclaire-postgres${colors.reset}`,
+      `  • Docker containers: ${colors.cyan}docker stop eclaire-postgres${colors.reset}`,
     );
     console.log(
       `  • Or stop all: ${colors.cyan}docker stop $(docker ps -q)${colors.reset}`,

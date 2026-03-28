@@ -189,7 +189,7 @@ The system supports multiple deployment modes:
 ### Development Mode
 - Backend and workers run locally with hot reloading
 - PostgreSQL runs in Docker container
-- No Redis required (database queue by default)
+- Database queue (PostgreSQL or SQLite) with no external dependencies
 
 ### Production Mode (Docker Compose)
 - All application services containerized

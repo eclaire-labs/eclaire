@@ -558,7 +558,6 @@ async function createDataDirectories() {
     "data/postgres",
     "data/pglite",
     "data/sqlite",
-    "data/redis",
   ];
 
   let createdCount = 0;

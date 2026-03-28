@@ -286,7 +286,7 @@ export async function publishProcessingEvent(
 }
 
 /**
- * Publish event directly to active SSE streams without Redis pub/sub
+ * Publish event directly to active SSE streams
  * This is used by the backend processing reporter for in-process events
  */
 export async function publishDirectSSEEvent(

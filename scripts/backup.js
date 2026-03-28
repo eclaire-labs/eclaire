@@ -129,7 +129,7 @@ function backupDatabase(backupDir) {
     const password = url.password;
 
     // Resolve Docker hostnames to localhost when running from host machine
-    const dockerHosts = ["eclaire-postgres", "eclaire-redis"];
+    const dockerHosts = ["eclaire-postgres"];
     if (dockerHosts.includes(host)) {
       // Try to resolve the hostname, if it fails, we're likely on the host machine
       try {
@@ -626,7 +626,7 @@ function validateBackup(backupDir) {
     let host = url.hostname;
 
     // Resolve Docker hostnames to localhost when running from host machine
-    const dockerHosts = ["eclaire-postgres", "eclaire-redis"];
+    const dockerHosts = ["eclaire-postgres"];
     if (dockerHosts.includes(host)) {
       // Try to resolve the hostname, if it fails, we're likely on the host machine
       try {
