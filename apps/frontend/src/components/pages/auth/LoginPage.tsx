@@ -107,7 +107,7 @@ export default function LoginPage() {
         <div className="relative z-20 mt-auto">
           <div className="space-y-4">
             <p className="text-sm text-white/80">
-              © 2025 Eclaire Labs. Open source under the MIT License.
+              © 2025-2026 Eclaire Labs. Open source under the MIT License.
             </p>
             <div className="flex items-center gap-4">
               <a
