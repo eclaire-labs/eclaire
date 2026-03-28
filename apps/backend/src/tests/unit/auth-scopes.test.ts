@@ -208,4 +208,72 @@ describe("normalizeGrantedScopes", () => {
     const result = normalizeGrantedScopes(null);
     expect(result).toEqual(["*"]);
   });
+
+  it("expands media:write to include media:read", () => {
+    const result = normalizeGrantedScopes(["media:write"]);
+    expect(result).toContain("media:write");
+    expect(result).toContain("media:read");
+  });
+
+  it("expands credentials:write to include credentials:read", () => {
+    const result = normalizeGrantedScopes(["credentials:write"]);
+    expect(result).toContain("credentials:write");
+    expect(result).toContain("credentials:read");
+  });
+
+  it("expands actors:write to include actors:read", () => {
+    const result = normalizeGrantedScopes(["actors:write"]);
+    expect(result).toContain("actors:write");
+    expect(result).toContain("actors:read");
+  });
+
+  it("expands admin:write to include admin:read", () => {
+    const result = normalizeGrantedScopes(["admin:write"]);
+    expect(result).toContain("admin:write");
+    expect(result).toContain("admin:read");
+  });
+
+  it("expands tasks:write to include tasks:read", () => {
+    const result = normalizeGrantedScopes(["tasks:write"]);
+    expect(result).toContain("tasks:write");
+    expect(result).toContain("tasks:read");
+  });
+
+  it("expands channels:write to include channels:read", () => {
+    const result = normalizeGrantedScopes(["channels:write"]);
+    expect(result).toContain("channels:write");
+    expect(result).toContain("channels:read");
+  });
+
+  it("expands agents:write to include agents:read", () => {
+    const result = normalizeGrantedScopes(["agents:write"]);
+    expect(result).toContain("agents:write");
+    expect(result).toContain("agents:read");
+  });
+
+  it("expands profile:write to include profile:read", () => {
+    const result = normalizeGrantedScopes(["profile:write"]);
+    expect(result).toContain("profile:write");
+    expect(result).toContain("profile:read");
+  });
+
+  it("expands feedback:write to include feedback:read", () => {
+    const result = normalizeGrantedScopes(["feedback:write"]);
+    expect(result).toContain("feedback:write");
+    expect(result).toContain("feedback:read");
+  });
+});
+
+describe("inferRequiredScopesForRequest — unrecognized routes", () => {
+  it("returns null for /api/browser/status (fail-closed)", () => {
+    expect(
+      inferRequiredScopesForRequest("/api/browser/status", "GET"),
+    ).toBeNull();
+  });
+
+  it("returns null for /api/auth/sign-in (fail-closed)", () => {
+    expect(
+      inferRequiredScopesForRequest("/api/auth/sign-in", "POST"),
+    ).toBeNull();
+  });
 });
