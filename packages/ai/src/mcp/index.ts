@@ -22,3 +22,11 @@ export {
   mcpToolsToGroupedRuntimeTool,
   normalizeMcpResult,
 } from "./tool-bridge.js";
+
+export {
+  createTestMcpServer,
+  createTestConnection,
+  type TestMcpServer,
+  type TestMcpServerOptions,
+  type TestToolDef,
+} from "./testing.js";

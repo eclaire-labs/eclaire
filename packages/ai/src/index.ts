@@ -546,6 +546,11 @@ export {
   mcpToolToRuntimeTool,
   mcpToolsToGroupedRuntimeTool,
   normalizeMcpResult,
+  createTestMcpServer,
+  createTestConnection,
+  type TestMcpServer,
+  type TestMcpServerOptions,
+  type TestToolDef,
 } from "./mcp/index.js";
 
 // =============================================================================

@@ -39,9 +39,14 @@ export class McpServerConnection {
   private discoveredTools: McpToolDescriptor[] = [];
   private readonly mutex = new Mutex();
 
+  /**
+   * @param _testTransport Optional transport override for integration testing.
+   *        When provided, `createTransport()` is bypassed entirely.
+   */
   constructor(
     private readonly serverKey: string,
     private readonly config: McpServerConfig,
+    private readonly _testTransport?: Transport,
   ) {}
 
   getState(): McpConnectionState {
@@ -119,7 +124,7 @@ export class McpServerConnection {
       this.state = "connecting";
       this.lastError = null;
 
-      const transport = this.createTransport();
+      const transport = this._testTransport ?? this.createTransport();
       const client = new Client(
         { name: "@eclaire/ai", version: "0.0.0" },
         { capabilities: {} },
