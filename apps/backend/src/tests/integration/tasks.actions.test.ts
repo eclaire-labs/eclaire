@@ -364,6 +364,47 @@ describe("Task Actions & Inbox", { timeout: 180000 }, () => {
     });
   });
 
+  describe("Respond Side Effects (Scenario #52)", () => {
+    it("should clear attentionStatus and save response as comment", async () => {
+      const createRes = await loggedFetch("/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Respond side-effects test",
+          attentionStatus: "awaiting_input",
+          delegateActorId: DEFAULT_AGENT_ACTOR_ID,
+        }),
+      });
+      const task = (await createRes.json()) as TaskEntry;
+      taskIds.push(task.id);
+      expect(task.attentionStatus).toBe("awaiting_input");
+
+      // Cancel auto-execution so we can test respond in isolation
+      await delay(500);
+      await loggedFetch(`/tasks/${task.id}/cancel`, { method: "POST" }).catch(
+        () => {},
+      );
+
+      const respondRes = await loggedFetch(`/tasks/${task.id}/respond`, {
+        method: "POST",
+        body: JSON.stringify({ response: "The answer is 42" }),
+      });
+      expect(respondRes.status).toBe(200);
+
+      // Verify attentionStatus cleared
+      const getRes = await loggedFetch(`/tasks/${task.id}`);
+      const updated = (await getRes.json()) as TaskEntry;
+      expect(updated.attentionStatus).toBe("none");
+
+      // Verify response saved as comment
+      const commentsRes = await loggedFetch(`/tasks/${task.id}/comments`);
+      const comments = (await commentsRes.json()) as TaskComment[];
+      const responseComment = comments.find((c) =>
+        c.content.includes("The answer is 42"),
+      );
+      expect(responseComment).toBeDefined();
+    });
+  });
+
   describe("Delegate Changes (Scenarios #36-38)", () => {
     it("should upgrade delegateMode when assigning agent", async () => {
       const createRes = await loggedFetch("/tasks", {
@@ -413,6 +454,120 @@ describe("Task Actions & Inbox", { timeout: 180000 }, () => {
       const updated = (await patchRes.json()) as TaskEntry;
       // delegateActorId may fall back to user ID when set to null
       expect(updated.delegateMode).toBe("manual");
+    });
+  });
+
+  describe("Handle Mode Auto-Complete (Scenario #51)", () => {
+    let handleTaskId: string;
+
+    it("should auto-complete without review gate in handle mode", async () => {
+      const createRes = await loggedFetch("/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Handle mode test",
+          prompt: "Say hello in one sentence",
+          delegateActorId: DEFAULT_AGENT_ACTOR_ID,
+          delegateMode: "handle",
+        }),
+      });
+      expect(createRes.status).toBe(201);
+      const task = (await createRes.json()) as TaskEntry;
+      handleTaskId = task.id;
+      taskIds.push(task.id);
+
+      expect(task.delegateMode).toBe("handle");
+      expect(task.taskStatus).toBe("in_progress");
+    });
+
+    it("should complete task and set completedAt without entering needs_review", async () => {
+      const task = await waitForTaskState(
+        handleTaskId,
+        "latestExecutionStatus",
+        ["completed"],
+        60000,
+      );
+      // Handle mode should auto-complete — no review gate
+      expect(task.taskStatus).toBe("completed");
+      expect(task.completedAt).not.toBeNull();
+      expect(task.attentionStatus).toBe("none");
+      // reviewStatus should NOT be pending (no review requested)
+      expect(task.reviewStatus).not.toBe("pending");
+    });
+
+    it("should NOT appear in inbox needsReview section", async () => {
+      const res = await loggedFetch("/tasks/inbox");
+      const inbox = await res.json();
+      const found = inbox.sections.needsReview.find(
+        (t: any) => t.taskId === handleTaskId,
+      );
+      expect(found).toBeUndefined();
+    });
+  });
+
+  describe("Approve/Request-Changes Occurrence Verification (Scenario #54)", () => {
+    it("should update occurrence reviewStatus to approved on approve", async () => {
+      const createRes = await loggedFetch("/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Approve occ test",
+          prompt: "Say yes",
+          delegateActorId: DEFAULT_AGENT_ACTOR_ID,
+        }),
+      });
+      const task = (await createRes.json()) as TaskEntry;
+      taskIds.push(task.id);
+
+      // Wait for needs_review
+      await waitForTaskState(
+        task.id,
+        "attentionStatus",
+        ["needs_review"],
+        60000,
+      );
+
+      // Approve
+      await loggedFetch(`/tasks/${task.id}/approve`, { method: "POST" });
+
+      // Verify occurrence-level reviewStatus
+      const occRes = await loggedFetch(
+        `/tasks/${task.id}/occurrences?limit=10`,
+      );
+      const data = await occRes.json();
+      expect(data.items.length).toBeGreaterThanOrEqual(1);
+      const latestOcc = data.items[0];
+      expect(latestOcc.reviewStatus).toBe("approved");
+    });
+
+    it("should update occurrence reviewStatus to changes_requested on request-changes", async () => {
+      const createRes = await loggedFetch("/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Changes occ test",
+          prompt: "Say hello",
+          delegateActorId: DEFAULT_AGENT_ACTOR_ID,
+        }),
+      });
+      const task = (await createRes.json()) as TaskEntry;
+      taskIds.push(task.id);
+
+      await waitForTaskState(
+        task.id,
+        "attentionStatus",
+        ["needs_review"],
+        60000,
+      );
+
+      await loggedFetch(`/tasks/${task.id}/request-changes`, {
+        method: "POST",
+      });
+
+      const occRes = await loggedFetch(
+        `/tasks/${task.id}/occurrences?limit=10`,
+      );
+      const data = await occRes.json();
+      expect(data.items.length).toBeGreaterThanOrEqual(1);
+      const latestOcc = data.items[0];
+      expect(latestOcc.reviewStatus).toBe("changes_requested");
     });
   });
 

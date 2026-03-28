@@ -112,6 +112,88 @@ describe("Task Edge Cases", { timeout: 120000 }, () => {
     });
   });
 
+  describe("Overdue Checker Precedence (Scenario #56)", () => {
+    it("should only mark none/needs_triage tasks as urgent, respecting precedence", async () => {
+      const pastDue = new Date(Date.now() - 3600000).toISOString(); // 1 hour ago
+
+      // Create tasks with different attention statuses, all overdue
+      const attentionStatuses = [
+        "none",
+        "needs_triage",
+        "awaiting_input",
+        "needs_review",
+        "failed",
+      ] as const;
+
+      const createdTasks: { id: string; attentionStatus: string }[] = [];
+      for (const attn of attentionStatuses) {
+        const res = await loggedFetch("/tasks", {
+          method: "POST",
+          body: JSON.stringify({
+            title: `Overdue ${attn} test`,
+            dueDate: pastDue,
+            attentionStatus: attn,
+          }),
+        });
+        expect(res.status).toBe(201);
+        const task = (await res.json()) as TaskEntry;
+        taskIds.push(task.id);
+        createdTasks.push({ id: task.id, attentionStatus: attn });
+      }
+
+      // Also create completed and cancelled tasks with past due date
+      const completedRes = await loggedFetch("/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Overdue completed test",
+          dueDate: pastDue,
+          taskStatus: "completed",
+        }),
+      });
+      const completedTask = (await completedRes.json()) as TaskEntry;
+      taskIds.push(completedTask.id);
+
+      const cancelledRes = await loggedFetch("/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Overdue cancelled test",
+          dueDate: pastDue,
+          taskStatus: "cancelled",
+        }),
+      });
+      const cancelledTask = (await cancelledRes.json()) as TaskEntry;
+      taskIds.push(cancelledTask.id);
+
+      // Import and call the overdue checker directly
+      const { default: processTaskOverdueChecker } = await import(
+        "../../workers/jobs/taskOverdueCheckerProcessor.js"
+      );
+      await processTaskOverdueChecker({ job: { data: {} } });
+
+      // Verify: only "none" and "needs_triage" should become "urgent"
+      for (const { id, attentionStatus } of createdTasks) {
+        const getRes = await loggedFetch(`/tasks/${id}`);
+        const task = (await getRes.json()) as TaskEntry;
+
+        if (attentionStatus === "none" || attentionStatus === "needs_triage") {
+          expect(task.attentionStatus).toBe("urgent");
+        } else {
+          // awaiting_input, needs_review, failed should be unchanged
+          expect(task.attentionStatus).toBe(attentionStatus);
+        }
+      }
+
+      // Completed and cancelled tasks should not be affected
+      const getCompleted = await loggedFetch(`/tasks/${completedTask.id}`);
+      const completed = (await getCompleted.json()) as TaskEntry;
+      expect(completed.attentionStatus).not.toBe("urgent");
+
+      const getCancelled = await loggedFetch(`/tasks/${cancelledTask.id}`);
+      const cancelled = (await getCancelled.json()) as TaskEntry;
+      expect(cancelled.attentionStatus).not.toBe("urgent");
+    });
+  });
+
   describe("Completed Recurring (Scenario #43)", () => {
     it("should not appear in inbox when recurring task is completed", async () => {
       const patterns = RecurrenceTestHelpers.getCronPatterns();

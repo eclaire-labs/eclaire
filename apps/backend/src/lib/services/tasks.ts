@@ -791,6 +791,11 @@ export async function updateTask(
             "Failed to remove schedule on type change",
           );
         }
+        // Clear nextOccurrenceAt when de-scheduling
+        await db
+          .update(tasks)
+          .set({ nextOccurrenceAt: null })
+          .where(eq(tasks.id, id));
       }
     }
 

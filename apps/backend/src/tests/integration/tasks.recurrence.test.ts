@@ -237,6 +237,98 @@ describe("Task Recurrence", { timeout: 90000 }, () => {
     }, 15000);
   });
 
+  describe("Schedule Pattern Update (Scenario #55)", () => {
+    it("should update cron pattern and recompute nextOccurrenceAt", async () => {
+      const task = await RecurrenceTestHelpers.createRecurringTask(
+        "Schedule update test",
+        patterns.daily, // daily at 9am
+      );
+      recurringTaskIds.push(task.id);
+
+      const originalNext = task.nextOccurrenceAt;
+      expect(originalNext).not.toBeNull();
+
+      // Update to weekly pattern
+      const patchRes = await loggedFetch(`/tasks/${task.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          scheduleRule: patterns.weekly,
+        }),
+      });
+      expect(patchRes.status).toBe(200);
+      const updated = (await patchRes.json()) as TaskEntry;
+
+      expect(updated.scheduleRule).toBe(patterns.weekly);
+      expect(updated.nextOccurrenceAt).not.toBeNull();
+      // Next occurrence should have changed (weekly is later than daily)
+      expect(updated.nextOccurrenceAt).not.toBe(originalNext);
+    });
+
+    it("should clear schedule when changing scheduleType from recurring to none", async () => {
+      const task = await RecurrenceTestHelpers.createRecurringTask(
+        "De-schedule test",
+        patterns.everyTenSeconds,
+      );
+      recurringTaskIds.push(task.id);
+      expect(task.nextOccurrenceAt).not.toBeNull();
+
+      const patchRes = await loggedFetch(`/tasks/${task.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          scheduleType: "none",
+          scheduleRule: null,
+        }),
+      });
+      expect(patchRes.status).toBe(200);
+      const updated = (await patchRes.json()) as TaskEntry;
+
+      expect(updated.scheduleType).toBe("none");
+      expect(updated.nextOccurrenceAt).toBeNull();
+    });
+  });
+
+  describe("maxOccurrences Runtime Enforcement (Scenario #54)", () => {
+    it("should stop creating occurrences after maxOccurrences reached", async () => {
+      const task = await RecurrenceTestHelpers.createRecurringTask(
+        "Max occ test",
+        patterns.everyThreeSeconds,
+        undefined,
+        undefined,
+        2, // maxOccurrences = 2
+      );
+      recurringTaskIds.push(task.id);
+
+      expect(task.maxOccurrences).toBe(2);
+      expect(task.occurrenceCount).toBe(0);
+
+      // Wait for occurrenceCount to reach 2 (poll-based, handles scheduler latency)
+      const reached = await RecurrenceTestHelpers.waitForTaskConsistency(
+        task.id,
+        { occurrenceCount: 2 } as Partial<TaskEntry>,
+        45000,
+      );
+      expect(reached).toBe(true);
+
+      // Verify via occurrence history
+      const occRes = await loggedFetch(
+        `/tasks/${task.id}/occurrences?limit=20`,
+      );
+      const occData = await occRes.json();
+      const occCount = occData.items.length;
+      expect(occCount).toBeGreaterThanOrEqual(2);
+
+      // Wait a bit more to verify no new occurrences are created
+      await delay(15000);
+      const occRes2 = await loggedFetch(
+        `/tasks/${task.id}/occurrences?limit=20`,
+      );
+      const occData2 = await occRes2.json();
+
+      // Occurrence count should have stabilized
+      expect(occData2.items.length).toBe(occCount);
+    }, 90000);
+  });
+
   describe("Deletion", () => {
     it("should clean up schedule when recurring task is deleted", async () => {
       const task = await RecurrenceTestHelpers.createRecurringTask(

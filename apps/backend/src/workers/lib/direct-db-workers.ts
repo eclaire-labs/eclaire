@@ -129,20 +129,29 @@ function getWorkerConfig(): Omit<DbWorkerConfig, "eventCallbacks"> {
 export async function startDirectDbWorkers(): Promise<void> {
   logger.info({}, "Starting direct database workers (unified mode)");
 
-  const eventCallbacks = createSSEEventCallbacks();
   const baseConfig = getWorkerConfig();
-  const config: DbWorkerConfig = {
+
+  // Asset processing workers use generic event callbacks for SSE progress
+  // events, artifact processing, and status change tracking.
+  const assetConfig: DbWorkerConfig = {
     ...baseConfig,
-    eventCallbacks,
+    eventCallbacks: createSSEEventCallbacks(),
   };
 
-  // Bookmark processing worker - now uses ctx directly
+  // Task lifecycle workers manage their own SSE events via emitTask*/
+  // emitOccurrence* functions — no generic event callbacks needed.
+  const taskLifecycleConfig: DbWorkerConfig = {
+    ...baseConfig,
+  };
+
+  // --- Asset processing workers ---
+
   const bookmarkWorker = createDbWorker(
     QueueNames.BOOKMARK_PROCESSING,
     async (ctx: JobContext<BookmarkJobData>) => {
       await processBookmarkJob(ctx);
     },
-    config,
+    assetConfig,
     { concurrency: 1 },
   );
   workers.push(bookmarkWorker);
@@ -151,25 +160,23 @@ export async function startDirectDbWorkers(): Promise<void> {
     "Bookmark worker started",
   );
 
-  // Image processing worker
   const imageWorker = createDbWorker(
     QueueNames.IMAGE_PROCESSING,
     async (ctx: JobContext<ImageJobData>) => {
       await processImageJob(ctx);
     },
-    config,
+    assetConfig,
     { concurrency: 1 },
   );
   workers.push(imageWorker);
   logger.info({ queue: QueueNames.IMAGE_PROCESSING }, "Image worker started");
 
-  // Document processing worker
   const documentWorker = createDbWorker(
     QueueNames.DOCUMENT_PROCESSING,
     async (ctx: JobContext<DocumentJobData>) => {
       await processDocumentJob(ctx);
     },
-    config,
+    assetConfig,
     { concurrency: 1 },
   );
   workers.push(documentWorker);
@@ -178,47 +185,46 @@ export async function startDirectDbWorkers(): Promise<void> {
     "Document worker started",
   );
 
-  // Note processing worker
   const noteWorker = createDbWorker(
     QueueNames.NOTE_PROCESSING,
     processNoteJob,
-    config,
+    assetConfig,
     { concurrency: 1 },
   );
   workers.push(noteWorker);
   logger.info({ queue: QueueNames.NOTE_PROCESSING }, "Note worker started");
 
-  // Task processing worker (tag generation)
+  // Task tag generation — asset processing (uses generic callbacks)
   const taskWorker = createDbWorker(
     QueueNames.TASK_PROCESSING,
     async (ctx: JobContext<TaskJobData>) => {
       await processTaskJob(ctx);
     },
-    config,
+    assetConfig,
     { concurrency: 1 },
   );
   workers.push(taskWorker);
   logger.info({ queue: QueueNames.TASK_PROCESSING }, "Task worker started");
 
-  // Media processing worker
   const mediaWorker = createDbWorker(
     QueueNames.MEDIA_PROCESSING,
     async (ctx: JobContext<MediaJobData>) => {
       await processMediaJob(ctx);
     },
-    config,
+    assetConfig,
     { concurrency: 1 },
   );
   workers.push(mediaWorker);
   logger.info({ queue: QueueNames.MEDIA_PROCESSING }, "Media worker started");
 
-  // Task occurrence worker (replaces scheduled action, agent run, and task series workers)
+  // --- Task lifecycle workers (own SSE events) ---
+
   const taskOccurrenceWorker = createDbWorker<TaskOccurrenceJobData>(
     QueueNames.TASK_OCCURRENCE,
     async (ctx: JobContext<TaskOccurrenceJobData>) => {
       await processTaskOccurrence(ctx);
     },
-    config,
+    taskLifecycleConfig,
     { concurrency: 1 },
   );
   workers.push(taskOccurrenceWorker);
@@ -227,13 +233,12 @@ export async function startDirectDbWorkers(): Promise<void> {
     "Task occurrence worker started",
   );
 
-  // Task schedule tick worker (creates occurrences for recurring tasks)
   const taskScheduleTickWorker = createDbWorker<TaskScheduleTickJobData>(
     QueueNames.TASK_SCHEDULE_TICK,
     async (ctx: JobContext<TaskScheduleTickJobData>) => {
       await processTaskScheduleTick(ctx);
     },
-    config,
+    taskLifecycleConfig,
     { concurrency: 1 },
   );
   workers.push(taskScheduleTickWorker);
@@ -242,13 +247,12 @@ export async function startDirectDbWorkers(): Promise<void> {
     "Task schedule tick worker started",
   );
 
-  // Task overdue checker worker (marks overdue tasks as urgent)
   const taskOverdueCheckerWorker = createDbWorker(
     QueueNames.TASK_OVERDUE_CHECKER,
     async (ctx: JobContext) => {
       await processTaskOverdueChecker(ctx);
     },
-    config,
+    taskLifecycleConfig,
     { concurrency: 1 },
   );
   workers.push(taskOverdueCheckerWorker);
