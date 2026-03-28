@@ -31,8 +31,9 @@ export const deleteMediaTool: RuntimeToolDefinition<typeof inputSchema> = {
     try {
       await deleteMedia(input.id, ctx.userId, agentToolCaller(ctx), true);
       return textResult("Media item deleted successfully.");
-    } catch {
-      return errorResult("Failed to delete media item. It may not exist.");
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      return errorResult(`Failed to delete media item: ${detail}`);
     }
   },
 };

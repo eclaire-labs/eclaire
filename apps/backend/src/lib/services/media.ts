@@ -1192,6 +1192,39 @@ export async function getMediaStream(
 }
 
 /**
+ * Gets the original media file as a Buffer (for internal use, e.g. transcription).
+ */
+export async function getMediaBuffer(
+  mediaId: string,
+  userId: string,
+): Promise<{ buffer: Buffer; originalFilename: string; mimeType: string }> {
+  const row = await db.query.media.findFirst({
+    columns: {
+      storageId: true,
+      mimeType: true,
+      originalFilename: true,
+    },
+    where: and(eq(media.id, mediaId), eq(media.userId, userId)),
+  });
+
+  if (!row) {
+    throw new NotFoundError("Media");
+  }
+  if (!row.storageId) {
+    throw new NotFoundError("Media original file");
+  }
+
+  const storage = getStorage();
+  const { buffer } = await storage.readBuffer(row.storageId);
+
+  return {
+    buffer,
+    originalFilename: row.originalFilename || "",
+    mimeType: row.mimeType || "application/octet-stream",
+  };
+}
+
+/**
  * Gets the waveform thumbnail as a stream.
  */
 export async function getThumbnailStream(

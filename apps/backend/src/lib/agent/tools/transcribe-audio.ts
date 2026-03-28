@@ -1,7 +1,7 @@
 /**
  * Transcribe Audio Tool
  *
- * Transcribe an audio file to text using the audio service (STT).
+ * Transcribe a stored media item's audio to text using the audio service (STT).
  */
 
 import {
@@ -11,9 +11,12 @@ import {
 } from "@eclaire/ai";
 import z from "zod/v4";
 import { transcribe } from "../../services/audio.js";
+import { getMediaBuffer } from "../../services/media.js";
 
 const inputSchema = z.object({
-  filePath: z.string().describe("Path to the audio file to transcribe"),
+  mediaId: z
+    .string()
+    .describe("ID of the media item to transcribe (e.g. 'med-abc123')"),
   language: z.string().optional().describe("Language code (e.g. 'en', 'fr')"),
 });
 
@@ -21,13 +24,16 @@ export const transcribeAudioTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "transcribeAudio",
   label: "Transcribe Audio",
   description:
-    "Transcribe an audio file to text using local speech-to-text. Supports common audio formats (wav, mp3, m4a, etc.).",
+    "Transcribe a stored media item's audio to text using local speech-to-text. Use getMedia first to check if a transcript already exists.",
   accessLevel: "read",
   inputSchema,
-  execute: async (_callId, input, _ctx) => {
+  execute: async (_callId, input, ctx) => {
     try {
+      const media = await getMediaBuffer(input.mediaId, ctx.userId);
+
       const result = await transcribe({
-        file: input.filePath,
+        file: media.buffer,
+        fileName: media.originalFilename || "audio.wav",
         language: input.language,
       });
 

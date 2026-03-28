@@ -30,6 +30,8 @@ export interface MediaJobData {
   sourceUrl?: string;
 }
 
+const MAX_MEDIA_SIZE = 500 * 1024 * 1024; // 500 MB
+
 const STAGES = {
   URL_DOWNLOAD: "url_download",
   PREPARATION: "media_preparation",
@@ -42,22 +44,29 @@ const STAGES = {
 
 type Stage = (typeof STAGES)[keyof typeof STAGES];
 
-// --- FFmpeg/FFprobe helpers ---
+// --- FFmpeg/FFprobe helpers (availability cached for process lifetime) ---
+
+let cachedFFmpeg: boolean | null = null;
+let cachedFFprobe: boolean | null = null;
 
 async function isFFmpegAvailable(): Promise<boolean> {
-  return new Promise((resolve) => {
+  if (cachedFFmpeg !== null) return cachedFFmpeg;
+  cachedFFmpeg = await new Promise<boolean>((resolve) => {
     const proc = spawn("ffmpeg", ["-version"], { stdio: "ignore" });
     proc.on("error", () => resolve(false));
     proc.on("close", (code) => resolve(code === 0));
   });
+  return cachedFFmpeg;
 }
 
 async function isFFprobeAvailable(): Promise<boolean> {
-  return new Promise((resolve) => {
+  if (cachedFFprobe !== null) return cachedFFprobe;
+  cachedFFprobe = await new Promise<boolean>((resolve) => {
     const proc = spawn("ffprobe", ["-version"], { stdio: "ignore" });
     proc.on("error", () => resolve(false));
     proc.on("close", (code) => resolve(code === 0));
   });
+  return cachedFFprobe;
 }
 
 interface AudioMetadata {
@@ -639,8 +648,6 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
       await mkdir(tempDir, { recursive: true });
 
       try {
-        const MAX_MEDIA_SIZE = 500 * 1024 * 1024; // 500MB
-
         if (await isYtdlpAvailable()) {
           logger.info({ mediaId, sourceUrl }, "Using yt-dlp for URL download");
 
@@ -805,7 +812,6 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
     await ctx.startStage(STAGES.PREPARATION);
     const storage = getStorage();
 
-    const MAX_MEDIA_SIZE = 500 * 1024 * 1024; // 500MB
     const meta = await storage.head(effectiveStorageId);
     if (meta && meta.size > MAX_MEDIA_SIZE) {
       throw new Error(

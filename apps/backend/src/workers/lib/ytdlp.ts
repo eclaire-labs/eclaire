@@ -93,7 +93,17 @@ export interface YtdlpMediaInfo {
   subtitleLanguages: string[];
 }
 
+function assertHttpUrl(url: string): void {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(
+      `Only http/https URLs are allowed, got "${parsed.protocol}"`,
+    );
+  }
+}
+
 export async function fetchMediaInfo(url: string): Promise<YtdlpMediaInfo> {
+  assertHttpUrl(url);
   logger.info({ url }, "Fetching media info");
 
   const result = await spawnWithTimeout(
@@ -182,6 +192,7 @@ export async function downloadMedia(
   outputDir: string,
   options?: DownloadMediaOptions,
 ): Promise<YtdlpDownloadResult> {
+  assertHttpUrl(url);
   const maxMB = options?.maxFileSize ?? DEFAULT_MAX_FILE_SIZE_MB;
   logger.info({ url, outputDir, maxMB }, "Downloading media");
 
@@ -281,6 +292,7 @@ export async function extractSubtitles(
   outputDir: string,
   options?: ExtractSubtitlesOptions,
 ): Promise<YtdlpSubtitleResult | null> {
+  assertHttpUrl(url);
   const langs = options?.preferredLanguages ?? ["en"];
   const langStr = langs.join(",");
 

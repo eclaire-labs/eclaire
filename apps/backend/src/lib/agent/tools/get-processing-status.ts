@@ -18,7 +18,7 @@ import type { AssetType } from "../../../types/assets.js";
 
 const inputSchema = z.object({
   assetType: z
-    .enum(["bookmarks", "documents", "photos", "notes", "tasks"])
+    .enum(["bookmarks", "documents", "media", "photos", "notes", "tasks"])
     .optional()
     .describe("Type of content to check"),
   assetId: z

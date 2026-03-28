@@ -16,7 +16,10 @@ import {
 } from "../../../workers/lib/ytdlp.js";
 
 const inputSchema = z.object({
-  url: z.string().describe("URL to inspect (YouTube, Vimeo, SoundCloud, etc.)"),
+  url: z
+    .string()
+    .url()
+    .describe("URL to inspect (YouTube, Vimeo, SoundCloud, etc.)"),
 });
 
 export const getMediaInfoTool: RuntimeToolDefinition<typeof inputSchema> = {
@@ -35,10 +38,9 @@ export const getMediaInfoTool: RuntimeToolDefinition<typeof inputSchema> = {
     try {
       const info = await fetchMediaInfo(input.url);
       return textResult(JSON.stringify(info, null, 2));
-    } catch {
-      return errorResult(
-        "Failed to fetch media info. The URL may be invalid or unsupported.",
-      );
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      return errorResult(`Failed to fetch media info: ${detail}`);
     }
   },
 };

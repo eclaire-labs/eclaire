@@ -26,15 +26,21 @@ interface DirectDownloadOptions {
 }
 
 /**
- * Check whether an IP address falls within private/internal ranges.
- * Covers IPv4 private, loopback, link-local, and IPv6 equivalents.
+ * Check whether an IP address falls within private/internal/reserved ranges.
+ * Covers IPv4 private, loopback, link-local, CGNAT, reserved, and IPv6 equivalents.
  */
-function isPrivateIp(ip: string): boolean {
+export function isPrivateIp(ip: string): boolean {
   // IPv6 loopback
   if (ip === "::1") return true;
 
   // IPv6 unique-local (fc00::/7 covers fc00:: through fdff::)
   if (/^f[cd]/i.test(ip)) return true;
+
+  // IPv6 link-local (fe80::/10)
+  if (/^fe[89ab]/i.test(ip)) return true;
+
+  // IPv6 multicast (ff00::/8)
+  if (/^ff/i.test(ip)) return true;
 
   // IPv4-mapped IPv6 — extract the IPv4 portion
   const v4Mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
@@ -49,18 +55,26 @@ function isPrivateIp(ip: string): boolean {
   const a = octets[0] as number;
   const b = octets[1] as number;
 
-  // 0.0.0.0/8
+  // 0.0.0.0/8 (current network)
   if (a === 0) return true;
   // 127.0.0.0/8 (loopback)
   if (a === 127) return true;
   // 10.0.0.0/8 (private)
   if (a === 10) return true;
+  // 100.64.0.0/10 (CGNAT / carrier-grade NAT, used in cloud VPCs)
+  if (a === 100 && b >= 64 && b <= 127) return true;
   // 172.16.0.0/12 (private)
   if (a === 172 && b >= 16 && b <= 31) return true;
+  // 192.0.0.0/24 (IETF protocol assignments)
+  if (a === 192 && b === 0 && octets[2] === 0) return true;
   // 192.168.0.0/16 (private)
   if (a === 192 && b === 168) return true;
   // 169.254.0.0/16 (link-local)
   if (a === 169 && b === 254) return true;
+  // 198.18.0.0/15 (benchmark testing)
+  if (a === 198 && (b === 18 || b === 19)) return true;
+  // 240.0.0.0/4 (reserved, Class E)
+  if (a >= 240) return true;
 
   return false;
 }
@@ -88,12 +102,16 @@ function parseFilenameFromContentDisposition(
 /**
  * Derive a filename from the response headers and URL.
  * Priority: Content-Disposition > URL path basename > "download".
+ * Always sanitized via basename() to prevent path traversal.
  */
 function deriveFilename(url: string, headers: Headers): string {
   const fromHeader = parseFilenameFromContentDisposition(
     headers.get("content-disposition"),
   );
-  if (fromHeader) return fromHeader;
+  if (fromHeader) {
+    const safe = basename(fromHeader);
+    if (safe) return safe;
+  }
 
   try {
     const parsed = new URL(url);
@@ -155,9 +173,82 @@ async function deriveMimeType(
   return "application/octet-stream";
 }
 
+const MAX_REDIRECTS = 5;
+const ALLOWED_SCHEMES = new Set(["http:", "https:"]);
+
+/**
+ * Validate a URL against SSRF: check scheme and resolve DNS to ensure
+ * the target is not a private/internal IP.
+ */
+async function validateUrlForSsrf(url: string): Promise<void> {
+  const parsed = new URL(url);
+
+  if (!ALLOWED_SCHEMES.has(parsed.protocol)) {
+    throw new Error(
+      `URL scheme "${parsed.protocol}" is not allowed (only http/https)`,
+    );
+  }
+
+  const { address } = await dnsLookup(parsed.hostname);
+  if (isPrivateIp(address)) {
+    throw new Error(
+      `URL resolves to a private/internal IP address (${address})`,
+    );
+  }
+
+  logger.debug(
+    { hostname: parsed.hostname, resolvedIp: address },
+    "DNS resolution passed SSRF check",
+  );
+}
+
+/**
+ * Fetch a URL with manual redirect following. Each redirect target is
+ * validated against SSRF before being followed.
+ */
+async function fetchWithSsrfProtection(
+  url: string,
+  timeout: number,
+): Promise<Response> {
+  let currentUrl = url;
+
+  for (let i = 0; i <= MAX_REDIRECTS; i++) {
+    await validateUrlForSsrf(currentUrl);
+
+    const response = await fetch(currentUrl, {
+      signal: AbortSignal.timeout(timeout),
+      redirect: "manual",
+    });
+
+    const status = response.status;
+    if (status >= 300 && status < 400) {
+      const location = response.headers.get("location");
+      if (!location) {
+        throw new Error(`Redirect ${status} with no Location header`);
+      }
+      // Resolve relative redirects against the current URL
+      currentUrl = new URL(location, currentUrl).href;
+      logger.debug(
+        { redirectTo: currentUrl, hop: i + 1 },
+        "Following redirect",
+      );
+      continue;
+    }
+
+    return response;
+  }
+
+  throw new Error(`Too many redirects (exceeded ${MAX_REDIRECTS})`);
+}
+
 /**
  * Download a file from a URL directly via HTTP with SSRF protection and
  * size limits. Falls back to this when yt-dlp is not available.
+ *
+ * SSRF protections:
+ * - Only http/https schemes allowed
+ * - DNS resolved and checked against private IP ranges before each request
+ * - Redirects followed manually with SSRF validation on each hop
  */
 export async function directDownload(
   url: string,
@@ -169,27 +260,8 @@ export async function directDownload(
 
   logger.info({ url }, "Starting direct download");
 
-  // --- SSRF protection: resolve hostname and check against private ranges ---
-  const parsed = new URL(url);
-  const hostname = parsed.hostname;
-
-  const { address } = await dnsLookup(hostname);
-  if (isPrivateIp(address)) {
-    throw new Error(
-      `URL resolves to a private/internal IP address (${address})`,
-    );
-  }
-
-  logger.debug(
-    { hostname, resolvedIp: address },
-    "DNS resolution passed SSRF check",
-  );
-
-  // --- Fetch with timeout ---
-  const response = await fetch(url, {
-    signal: AbortSignal.timeout(timeout),
-    redirect: "follow",
-  });
+  // --- Fetch with SSRF-safe redirect following ---
+  const response = await fetchWithSsrfProtection(url, timeout);
 
   if (!response.ok) {
     throw new Error(

@@ -16,6 +16,7 @@ import { agentToolCaller } from "./caller.js";
 const inputSchema = z.object({
   url: z
     .string()
+    .url()
     .describe(
       "URL to import media from (YouTube, Vimeo, SoundCloud, direct file URL, etc.)",
     ),
@@ -57,10 +58,9 @@ export const importMediaUrlTool: RuntimeToolDefinition<typeof inputSchema> = {
         agentToolCaller(ctx),
       );
       return textResult(JSON.stringify(result, null, 2));
-    } catch {
-      return errorResult(
-        "Failed to import media from URL. The URL may be invalid or unsupported.",
-      );
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      return errorResult(`Failed to import media from URL: ${detail}`);
     }
   },
 };
