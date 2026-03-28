@@ -198,6 +198,126 @@ export async function createTestUser(
 }
 
 /**
+ * Generate a test conversation ID
+ */
+export function generateTestConversationId(): string {
+  return `conv-test-${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Generate a test message ID
+ */
+export function generateTestMessageId(): string {
+  return `msg-test-${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Generate a test agent ID
+ */
+export function generateTestAgentId(): string {
+  return `agent-test-${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Generate a test actor ID
+ */
+export function generateTestActorId(): string {
+  return `actor-test-${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Generate a test agent step ID
+ */
+export function generateTestAgentStepId(): string {
+  return `step-test-${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Create a test actor in the database
+ */
+export async function createTestActor(
+  testDb: TestDatabase,
+  userId: string,
+  overrides: Partial<{
+    id: string;
+    kind: "human" | "agent" | "system" | "service";
+    displayName: string;
+  }> = {},
+) {
+  const actorId = overrides.id ?? generateTestActorId();
+  const kind = overrides.kind ?? "agent";
+  const displayName = overrides.displayName ?? `Test Actor ${actorId}`;
+
+  const { db, dbType } = testDb;
+  const s = dbType === "sqlite" ? sqliteSchema : pgSchema;
+
+  await db.insert(s.actors).values({
+    id: actorId,
+    ownerUserId: userId,
+    kind,
+    displayName,
+  });
+
+  return { id: actorId, kind, displayName };
+}
+
+/**
+ * Create a test conversation in the database.
+ * Requires a valid userId and agentActorId (actor must exist).
+ */
+export async function createTestConversation(
+  testDb: TestDatabase,
+  userId: string,
+  agentActorId: string,
+  overrides: Partial<{ id: string; title: string }> = {},
+) {
+  const conversationId = overrides.id ?? generateTestConversationId();
+  const title = overrides.title ?? "Test Conversation";
+
+  const { db, dbType } = testDb;
+  const s = dbType === "sqlite" ? sqliteSchema : pgSchema;
+
+  await db.insert(s.conversations).values({
+    id: conversationId,
+    userId,
+    agentActorId,
+    title,
+  });
+
+  return { id: conversationId, title };
+}
+
+/**
+ * Create a test message in the database.
+ * Requires a valid conversationId.
+ */
+export async function createTestMessage(
+  testDb: TestDatabase,
+  conversationId: string,
+  overrides: Partial<{
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+  }> = {},
+) {
+  const messageId = overrides.id ?? generateTestMessageId();
+  const role = overrides.role ?? "user";
+  const content = overrides.content ?? "Test message content";
+
+  const { db, dbType } = testDb;
+  const s = dbType === "sqlite" ? sqliteSchema : pgSchema;
+
+  await db.insert(s.messages).values({
+    id: messageId,
+    conversationId,
+    role,
+    content,
+  });
+
+  return { id: messageId, role, content };
+}
+
+/**
  * Database test configuration for parameterized tests
  */
 export const DB_TEST_CONFIGS: Array<{ dbType: TestDbType; label: string }> = [
