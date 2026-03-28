@@ -65,6 +65,7 @@ interface FormState {
   description: string;
   transport: "stdio" | "sse" | "http";
   command: string;
+  url: string;
   args: string;
   connectTimeout: string;
   enabled: boolean;
@@ -77,6 +78,7 @@ const EMPTY_FORM: FormState = {
   description: "",
   transport: "stdio",
   command: "",
+  url: "",
   args: "",
   connectTimeout: "",
   enabled: true,
@@ -108,18 +110,20 @@ export default function McpServerManager() {
   }, [load]);
 
   function formToPayload(f: FormState) {
-    const argsArray = f.args
-      ? f.args
-          .split(",")
-          .map((a) => a.trim())
-          .filter(Boolean)
-      : null;
+    const isHttpTransport = f.transport === "sse" || f.transport === "http";
+    const argsArray =
+      !isHttpTransport && f.args
+        ? f.args
+            .split(",")
+            .map((a) => a.trim())
+            .filter(Boolean)
+        : null;
     return {
       id: f.id,
       name: f.name,
       description: f.description || null,
       transport: f.transport,
-      command: f.command || null,
+      command: isHttpTransport ? f.url || null : f.command || null,
       args: argsArray,
       connectTimeout: f.connectTimeout
         ? Number.parseInt(f.connectTimeout, 10)
@@ -161,13 +165,15 @@ export default function McpServerManager() {
   };
 
   const openEdit = (s: McpServerRow) => {
+    const isHttpTransport = s.transport === "sse" || s.transport === "http";
     setEditingId(s.id);
     setForm({
       id: s.id,
       name: s.name,
       description: s.description ?? "",
       transport: s.transport,
-      command: s.command ?? "",
+      command: isHttpTransport ? "" : (s.command ?? ""),
+      url: isHttpTransport ? (s.command ?? "") : "",
       args: s.args?.join(", ") ?? "",
       connectTimeout: s.connectTimeout?.toString() ?? "",
       enabled: s.enabled,
@@ -201,10 +207,9 @@ export default function McpServerManager() {
     }
   };
 
-  /** Returns the command (for stdio) or a dash for other transports. */
+  /** Returns the command (for stdio) or URL (for sse/http). */
   function getCommandDisplay(s: McpServerRow): string {
-    if (s.transport === "stdio") return s.command || "-";
-    return "-";
+    return s.command || "-";
   }
 
   const renderForm = (isEdit: boolean) => (
@@ -262,7 +267,7 @@ export default function McpServerManager() {
           </SelectContent>
         </Select>
       </div>
-      {form.transport === "stdio" && (
+      {form.transport === "stdio" ? (
         <>
           <div className="space-y-2">
             <Label htmlFor="server-command">Command</Label>
@@ -288,6 +293,20 @@ export default function McpServerManager() {
             </p>
           </div>
         </>
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor="server-url">Server URL</Label>
+          <Input
+            id="server-url"
+            value={form.url}
+            onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+            placeholder={
+              form.transport === "sse"
+                ? "http://localhost:3001/sse"
+                : "http://localhost:3001/mcp"
+            }
+          />
+        </div>
       )}
       <div className="space-y-2">
         <Label htmlFor="server-timeout">Connect Timeout (ms)</Label>

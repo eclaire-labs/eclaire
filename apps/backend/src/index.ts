@@ -356,6 +356,19 @@ const shutdown = async (signal: string) => {
     logger.error({ error }, "Error closing processing events");
   }
 
+  // Disconnect MCP servers (kills stdio subprocesses)
+  try {
+    const { getMcpRegistry } = await import("./lib/mcp/registry.js");
+    try {
+      await getMcpRegistry().disconnectAll();
+      logger.info("MCP connections closed");
+    } catch {
+      // Registry may not be initialized
+    }
+  } catch (error) {
+    logger.error({ error }, "Error disconnecting MCP servers");
+  }
+
   logger.info("Shutdown complete");
   process.exit(0);
 };

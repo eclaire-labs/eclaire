@@ -9,8 +9,8 @@
 // TRANSPORT & CONNECTION
 // =============================================================================
 
-/** Supported MCP transport types */
-export type McpTransportType = "stdio" | "sse" | "streamable-http";
+/** Supported MCP transport types ("http" is an alias for "streamable-http") */
+export type McpTransportType = "stdio" | "sse" | "streamable-http" | "http";
 
 /** Connection lifecycle state */
 export type McpConnectionState =
@@ -65,6 +65,8 @@ export interface McpServerConfig {
   // --- connection ---
   /** Connection timeout in ms (default: 15000) */
   connectTimeout?: number;
+  /** Tool call timeout in ms (default: 60000) */
+  toolTimeout?: number;
   /** Whether this server is enabled (default: true) */
   enabled?: boolean;
   /** Connect eagerly at startup vs lazily on first use (default: false) */

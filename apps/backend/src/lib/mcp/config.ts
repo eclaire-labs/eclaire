@@ -8,12 +8,35 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import type { McpServerConfig, McpServersFileConfig } from "@eclaire/ai";
+import type {
+  McpServerConfig,
+  McpServersFileConfig,
+  McpTransportType,
+} from "@eclaire/ai";
 import { config } from "../../config/index.js";
 import { listMcpServers } from "../services/ai-config.js";
 import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("mcp:config");
+
+/** Map DB transport values to runtime transport type. */
+function normalizeTransport(dbTransport: string): McpTransportType {
+  switch (dbTransport) {
+    case "stdio":
+      return "stdio";
+    case "sse":
+      return "sse";
+    case "http":
+    case "streamable-http":
+      return "streamable-http";
+    default:
+      logger.warn(
+        { transport: dbTransport },
+        "Unknown MCP transport, defaulting to stdio",
+      );
+      return "stdio";
+  }
+}
 
 /**
  * Load MCP server configs from DB, with fallback to JSON file and legacy env vars.
@@ -29,12 +52,18 @@ export async function loadMcpServersConfig(): Promise<
     if (dbServers.length > 0) {
       for (const row of dbServers) {
         if (!row.enabled) continue;
+        const transport = normalizeTransport(row.transport);
+        const isHttpTransport =
+          transport === "sse" || transport === "streamable-http";
         servers[row.id] = {
           name: row.name,
           description: row.description ?? undefined,
-          transport: row.transport as McpServerConfig["transport"],
-          command: row.command ?? undefined,
-          args: (row.args as string[]) ?? undefined,
+          transport,
+          command: isHttpTransport ? undefined : (row.command ?? undefined),
+          url: isHttpTransport ? (row.command ?? undefined) : undefined,
+          args: isHttpTransport
+            ? undefined
+            : ((row.args as string[]) ?? undefined),
           connectTimeout: row.connectTimeout ?? undefined,
           enabled: row.enabled,
           toolMode: (row.toolMode as McpServerConfig["toolMode"]) ?? undefined,
