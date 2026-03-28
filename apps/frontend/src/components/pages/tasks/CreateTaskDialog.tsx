@@ -217,15 +217,35 @@ export function CreateTaskDialog({
                   actors={assigneeOptions}
                   value={task.delegateActorId ?? null}
                   allowUnassigned
-                  placeholder="Search people and agents"
-                  searchPlaceholder="Search people and agents..."
-                  onChange={(value) =>
+                  placeholder="Unassigned"
+                  searchPlaceholder="Search..."
+                  onChange={(value) => {
+                    const actor = assigneeOptions.find((a) => a.id === value);
                     setTask({
                       ...task,
                       delegateActorId: value,
-                    })
-                  }
+                      delegateMode:
+                        actor?.kind === "agent" ? "assist" : "manual",
+                    });
+                  }}
                 />
+                {assigneeOptions.find((a) => a.id === task.delegateActorId)
+                  ?.kind === "agent" && (
+                  <label className="flex items-center gap-2 mt-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={task.delegateMode === "assist"}
+                      onChange={(e) =>
+                        setTask({
+                          ...task,
+                          delegateMode: e.target.checked ? "assist" : "handle",
+                        })
+                      }
+                      className="rounded border-border"
+                    />
+                    Require review before completing
+                  </label>
+                )}
               </div>
             </div>
             {/* Tags */}

@@ -202,19 +202,11 @@ export default function InboxPage() {
             >
               Approve
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                action.mutate({
-                  taskId: task.taskId,
-                  action: "request-changes",
-                })
-              }
-              disabled={action.isPending}
-            >
-              Request Changes
-            </Button>
+            <Link to="/tasks/$id" params={{ id: task.taskId }}>
+              <Button size="sm" variant="outline">
+                Request Changes
+              </Button>
+            </Link>
           </>
         )}
       />

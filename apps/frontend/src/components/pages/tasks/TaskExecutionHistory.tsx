@@ -85,7 +85,13 @@ const fallbackConfig: StatusConfigEntry = {
   label: "Completed",
 };
 
-function OccurrenceRow({ occurrence }: { occurrence: TaskOccurrence }) {
+function OccurrenceRow({
+  occurrence,
+  fullWidth,
+}: {
+  occurrence: TaskOccurrence;
+  fullWidth?: boolean;
+}) {
   const config: StatusConfigEntry =
     statusConfig[occurrence.executionStatus] ?? fallbackConfig;
   const StatusIcon = config.icon;
@@ -130,7 +136,9 @@ function OccurrenceRow({ occurrence }: { occurrence: TaskOccurrence }) {
             <p className="text-red-500 break-words">{occurrence.errorBody}</p>
           )}
           {occurrence.resultSummary && (
-            <p className="text-muted-foreground break-words line-clamp-3">
+            <p
+              className={`text-muted-foreground break-words ${fullWidth ? "" : "line-clamp-3"}`}
+            >
               {occurrence.resultSummary}
             </p>
           )}
@@ -147,14 +155,19 @@ interface TaskExecutionHistoryProps {
   taskId: string;
   isRecurring?: boolean;
   autoOpen?: boolean;
+  /** When true, renders without collapsible toggle and uses wider layout */
+  fullWidth?: boolean;
 }
 
 export function TaskExecutionHistory({
   taskId,
   isRecurring,
   autoOpen,
+  fullWidth,
 }: TaskExecutionHistoryProps) {
-  const [isOpen, setIsOpen] = useState(isRecurring || autoOpen || false);
+  const [isOpen, setIsOpen] = useState(
+    fullWidth || isRecurring || autoOpen || false,
+  );
   const {
     occurrences,
     isLoading,
@@ -162,9 +175,44 @@ export function TaskExecutionHistory({
     fetchNextPage,
     isFetchingNextPage,
   } = useTaskOccurrences(taskId, {
-    enabled: isRecurring || autoOpen || isOpen,
+    enabled: fullWidth || isRecurring || autoOpen || isOpen,
     limit: 10,
   });
+
+  const content = isLoading ? (
+    <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      Loading...
+    </div>
+  ) : occurrences.length === 0 ? (
+    <p className="text-sm text-muted-foreground py-4">No executions yet</p>
+  ) : (
+    <>
+      <div className="border rounded-md">
+        {occurrences.map((occ) => (
+          <OccurrenceRow key={occ.id} occurrence={occ} fullWidth={fullWidth} />
+        ))}
+      </div>
+      {hasNextPage && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full mt-1 text-xs"
+          onClick={() => fetchNextPage()}
+          disabled={isFetchingNextPage}
+        >
+          {isFetchingNextPage ? (
+            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+          ) : null}
+          Load more
+        </Button>
+      )}
+    </>
+  );
+
+  if (fullWidth) {
+    return <div>{content}</div>;
+  }
 
   return (
     <div>
@@ -179,42 +227,7 @@ export function TaskExecutionHistory({
         Execution History
       </button>
 
-      {isOpen && (
-        <div className="mt-2">
-          {isLoading ? (
-            <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Loading...
-            </div>
-          ) : occurrences.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2">
-              No executions yet
-            </p>
-          ) : (
-            <>
-              <div className="border rounded-md">
-                {occurrences.map((occ) => (
-                  <OccurrenceRow key={occ.id} occurrence={occ} />
-                ))}
-              </div>
-              {hasNextPage && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full mt-1 text-xs"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                >
-                  {isFetchingNextPage ? (
-                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                  ) : null}
-                  Load more
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      {isOpen && <div className="mt-2">{content}</div>}
     </div>
   );
 }

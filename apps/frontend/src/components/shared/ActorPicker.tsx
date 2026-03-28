@@ -218,26 +218,18 @@ export function ActorPicker({
         align="start"
         className="w-[var(--radix-popover-trigger-width)] rounded-3xl border-border/80 p-0 shadow-2xl shadow-black/5"
       >
-        <div className="border-b border-border/70 bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--muted)/0.4)_100%)] px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold">Choose an actor</div>
-              <div className="text-xs text-muted-foreground">
-                Shared identity across people and agents
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {humans.length > 0 && (
-                <Badge variant="secondary" className="rounded-full px-2 py-0">
-                  {humans.length} people
-                </Badge>
-              )}
-              {agents.length > 0 && (
-                <Badge variant="secondary" className="rounded-full px-2 py-0">
-                  {agents.length} agents
-                </Badge>
-              )}
-            </div>
+        <div className="border-b border-border/70 bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--muted)/0.4)_100%)] px-4 py-2.5">
+          <div className="flex items-center justify-end gap-1.5">
+            {humans.length > 0 && (
+              <Badge variant="secondary" className="rounded-full px-2 py-0">
+                {humans.length} people
+              </Badge>
+            )}
+            {agents.length > 0 && (
+              <Badge variant="secondary" className="rounded-full px-2 py-0">
+                {agents.length} agents
+              </Badge>
+            )}
           </div>
         </div>
 

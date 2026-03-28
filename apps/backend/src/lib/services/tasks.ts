@@ -1982,7 +1982,13 @@ export async function requestChanges(
 ): Promise<void> {
   const task = await db.query.tasks.findFirst({
     where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
-    columns: { id: true },
+    columns: {
+      id: true,
+      title: true,
+      prompt: true,
+      delegateActorId: true,
+      delegateMode: true,
+    },
   });
   if (!task) throw new NotFoundError("Task");
 
@@ -1991,6 +1997,7 @@ export async function requestChanges(
     .set({
       reviewStatus: "changes_requested",
       attentionStatus: "none",
+      latestExecutionStatus: "queued",
       updatedAt: new Date(),
     })
     .where(eq(tasks.id, taskId));
@@ -2006,6 +2013,19 @@ export async function requestChanges(
         eq(taskOccurrences.reviewStatus, "pending"),
       ),
     );
+
+  // Trigger a new agent run so the agent can revise based on comments
+  if (task.delegateActorId) {
+    const { createTaskOccurrence } = await import("./task-occurrences.js");
+    await createTaskOccurrence({
+      taskId,
+      userId,
+      kind: "review_run",
+      prompt: task.prompt || `Revise the task: ${task.title}`,
+      executorActorId: task.delegateActorId,
+      requiresReview: task.delegateMode === "assist",
+    });
+  }
 }
 
 /**

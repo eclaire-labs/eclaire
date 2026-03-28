@@ -102,6 +102,9 @@ export function TaskDetailClient() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"comments" | "history">(
+    "comments",
+  );
   const { actors } = useActors(["human", "agent"]);
 
   // Comments state
@@ -145,6 +148,18 @@ export function TaskDetailClient() {
       setComments(task.comments);
     }
   }, [task]);
+
+  // Default to history tab when agent output needs attention
+  useEffect(() => {
+    if (
+      task &&
+      task.delegateMode !== "manual" &&
+      (task.reviewStatus === "pending" ||
+        task.latestExecutionStatus === "failed")
+    ) {
+      setActiveTab("history");
+    }
+  }, [task?.id]); // only on initial load / task change
 
   // Comment management functions
   const handleAddComment = async () => {
@@ -494,7 +509,8 @@ export function TaskDetailClient() {
                           </p>
                           <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
                             The agent has completed its work. Review the result
-                            below, then approve or request changes.
+                            below. To request changes, add a comment with your
+                            feedback first.
                           </p>
                           {task.latestResultSummary ? (
                             <div className="mt-2 rounded bg-white/60 dark:bg-black/20 p-3 max-h-40 overflow-y-auto text-sm text-amber-900 dark:text-amber-200 whitespace-pre-wrap">
@@ -502,8 +518,8 @@ export function TaskDetailClient() {
                             </div>
                           ) : (
                             <p className="mt-2 text-xs italic text-amber-600 dark:text-amber-500">
-                              No text output was produced. Check the execution
-                              history in the sidebar for details.
+                              No text output was produced. Check the Execution
+                              History tab below for details.
                             </p>
                           )}
                           <div className="flex gap-2 mt-3">
@@ -558,160 +574,211 @@ export function TaskDetailClient() {
                   )}
                 </div>
 
-                {/* Comments Section */}
+                {/* Comments / Execution History */}
                 <div className="space-y-4 pt-6 border-t">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">
-                      Comments ({comments.length})
-                    </Label>
-                  </div>
-
-                  {/* Add Comment Form */}
-                  <div className="space-y-2">
-                    <Textarea
-                      placeholder="Add a comment..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      rows={3}
-                      className="resize-none"
-                    />
-                    <div className="flex justify-end">
-                      <Button
-                        onClick={handleAddComment}
-                        disabled={!newComment.trim() || isAddingComment}
-                        size="sm"
+                  {task.delegateMode !== "manual" && (
+                    <div className="flex gap-1 border-b">
+                      <button
+                        type="button"
+                        className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                          activeTab === "comments"
+                            ? "border-primary text-foreground"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                        onClick={() => setActiveTab("comments")}
                       >
-                        {isAddingComment ? (
-                          <>
-                            <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
-                            Adding...
-                          </>
-                        ) : (
-                          "Add Comment"
-                        )}
-                      </Button>
+                        Comments ({comments.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                          activeTab === "history"
+                            ? "border-primary text-foreground"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                        onClick={() => setActiveTab("history")}
+                      >
+                        Execution History
+                      </button>
                     </div>
-                  </div>
+                  )}
+                  {task.delegateMode === "manual" && (
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">
+                        Comments ({comments.length})
+                      </Label>
+                    </div>
+                  )}
 
-                  {/* Comments List */}
-                  <div className="space-y-4">
-                    {comments.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        No comments yet. Be the first to comment!
-                      </p>
-                    ) : (
-                      comments.map((comment) => (
-                        <div
-                          key={comment.id}
-                          className="border rounded-lg p-4 space-y-2"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1">
-                                {comment.author.kind === "agent" ? (
-                                  <span className="text-sm">🤖</span>
-                                ) : (
-                                  <span className="text-sm">👤</span>
-                                )}
-                                <span className="font-medium text-sm">
-                                  {comment.author.displayName ||
-                                    comment.author.id}
-                                </span>
-                              </div>
-                              <Badge
-                                variant={
-                                  comment.author.kind === "agent"
-                                    ? "default"
-                                    : "secondary"
-                                }
-                                className="text-xs"
-                              >
-                                {comment.author.kind === "agent"
-                                  ? "Agent"
-                                  : "Team Member"}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">
-                                {formatDate(comment.createdAt)}
-                                {comment.updatedAt !== comment.createdAt &&
-                                  " (edited)"}
-                              </span>
-                              {/* Only show edit/delete for current user's comments */}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <MoreHorizontal className="h-3 w-3" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setEditingCommentId(comment.id);
-                                      setEditingCommentContent(comment.content);
-                                    }}
-                                  >
-                                    <Edit3 className="mr-2 h-3 w-3" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handleDeleteComment(comment.id)
-                                    }
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="mr-2 h-3 w-3" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-
-                          {editingCommentId === comment.id ? (
-                            <div className="space-y-2">
-                              <Textarea
-                                value={editingCommentContent}
-                                onChange={(e) =>
-                                  setEditingCommentContent(e.target.value)
-                                }
-                                rows={3}
-                                className="resize-none"
-                              />
-                              <div className="flex gap-2 justify-end">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingCommentId(null);
-                                    setEditingCommentContent("");
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleEditComment(comment.id)}
-                                  disabled={!editingCommentContent.trim()}
-                                >
-                                  Save
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <MarkdownDisplayWithAssets
-                              content={comment.content}
-                              className="text-sm prose-sm"
-                            />
-                          )}
-                        </div>
-                      ))
+                  {/* Execution History Tab Panel */}
+                  {task.delegateMode !== "manual" &&
+                    activeTab === "history" && (
+                      <div className="pt-2">
+                        <TaskExecutionHistory
+                          taskId={task.id}
+                          isRecurring={task.scheduleType === "recurring"}
+                          autoOpen
+                          fullWidth
+                        />
+                      </div>
                     )}
-                  </div>
+
+                  {/* Comments Tab Panel */}
+                  {(task.delegateMode === "manual" ||
+                    activeTab === "comments") && (
+                    <>
+                      {/* Add Comment Form */}
+                      <div className="space-y-2">
+                        <Textarea
+                          placeholder="Add a comment..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          rows={3}
+                          className="resize-none"
+                        />
+                        <div className="flex justify-end">
+                          <Button
+                            onClick={handleAddComment}
+                            disabled={!newComment.trim() || isAddingComment}
+                            size="sm"
+                          >
+                            {isAddingComment ? (
+                              <>
+                                <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
+                                Adding...
+                              </>
+                            ) : (
+                              "Add Comment"
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Comments List */}
+                      <div className="space-y-4">
+                        {comments.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            No comments yet. Be the first to comment!
+                          </p>
+                        ) : (
+                          comments.map((comment) => (
+                            <div
+                              key={comment.id}
+                              className="border rounded-lg p-4 space-y-2"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1">
+                                    {comment.author.kind === "agent" ? (
+                                      <span className="text-sm">🤖</span>
+                                    ) : (
+                                      <span className="text-sm">👤</span>
+                                    )}
+                                    <span className="font-medium text-sm">
+                                      {comment.author.displayName ||
+                                        comment.author.id}
+                                    </span>
+                                  </div>
+                                  <Badge
+                                    variant={
+                                      comment.author.kind === "agent"
+                                        ? "default"
+                                        : "secondary"
+                                    }
+                                    className="text-xs"
+                                  >
+                                    {comment.author.kind === "agent"
+                                      ? "Agent"
+                                      : "Team Member"}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatDate(comment.createdAt)}
+                                    {comment.updatedAt !== comment.createdAt &&
+                                      " (edited)"}
+                                  </span>
+                                  {/* Only show edit/delete for current user's comments */}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <MoreHorizontal className="h-3 w-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setEditingCommentId(comment.id);
+                                          setEditingCommentContent(
+                                            comment.content,
+                                          );
+                                        }}
+                                      >
+                                        <Edit3 className="mr-2 h-3 w-3" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleDeleteComment(comment.id)
+                                        }
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <Trash2 className="mr-2 h-3 w-3" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </div>
+
+                              {editingCommentId === comment.id ? (
+                                <div className="space-y-2">
+                                  <Textarea
+                                    value={editingCommentContent}
+                                    onChange={(e) =>
+                                      setEditingCommentContent(e.target.value)
+                                    }
+                                    rows={3}
+                                    className="resize-none"
+                                  />
+                                  <div className="flex gap-2 justify-end">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingCommentId(null);
+                                        setEditingCommentContent("");
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        handleEditComment(comment.id)
+                                      }
+                                      disabled={!editingCommentContent.trim()}
+                                    >
+                                      Save
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <MarkdownDisplayWithAssets
+                                  content={comment.content}
+                                  className="text-sm prose-sm"
+                                />
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -871,43 +938,38 @@ export function TaskDetailClient() {
                   </div>
 
                   {/* Execution Mode */}
-                  {isEditing ? (
-                    <div>
-                      <Label className="flex items-center gap-2">
-                        <Bot className="h-4 w-4" />
-                        Execution Mode
-                      </Label>
-                      <Select
-                        value={editForm.delegateMode}
-                        onValueChange={(
-                          value: "manual" | "assist" | "handle",
-                        ) => handleInputChange("delegateMode", value)}
-                      >
-                        <SelectTrigger className="w-fit min-w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="manual">Manual</SelectItem>
-                          <SelectItem value="assist">Agent Assists</SelectItem>
-                          <SelectItem value="handle">Agent Handles</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : (
-                    task.delegateMode !== "manual" && (
-                      <div>
-                        <Label className="flex items-center gap-2">
-                          <Bot className="h-4 w-4" />
-                          Execution Mode
-                        </Label>
-                        <Badge variant="outline" className="mt-1">
-                          {task.delegateMode === "assist"
-                            ? "Agent Assists"
-                            : "Agent Handles"}
-                        </Badge>
-                      </div>
-                    )
-                  )}
+                  {isEditing
+                    ? editForm.delegateMode !== "manual" && (
+                        <div>
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={editForm.delegateMode === "assist"}
+                              onChange={(e) =>
+                                handleInputChange(
+                                  "delegateMode",
+                                  e.target.checked ? "assist" : "handle",
+                                )
+                              }
+                              className="rounded border-border"
+                            />
+                            Require review before completing
+                          </label>
+                        </div>
+                      )
+                    : task.delegateMode !== "manual" && (
+                        <div>
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={task.delegateMode === "assist"}
+                              disabled
+                              className="rounded border-border"
+                            />
+                            Require review before completing
+                          </label>
+                        </div>
+                      )}
 
                   {isEditing && (
                     <TagEditor
@@ -1063,17 +1125,7 @@ export function TaskDetailClient() {
                         </div>
                       )}
 
-                      {/* Execution History */}
-                      {task.delegateMode !== "manual" && (
-                        <TaskExecutionHistory
-                          taskId={task.id}
-                          isRecurring={task.scheduleType === "recurring"}
-                          autoOpen={
-                            task.reviewStatus === "pending" ||
-                            task.latestExecutionStatus === "failed"
-                          }
-                        />
-                      )}
+                      {/* Execution History moved to main content area tabs */}
 
                       <div>
                         <Label>Processing Status</Label>
