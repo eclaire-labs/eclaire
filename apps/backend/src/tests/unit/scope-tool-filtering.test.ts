@@ -41,7 +41,7 @@ describe("selectAgentTools scope-based filtering", () => {
   it("session user (no scopes) gets all tools", () => {
     const tools = selectAgentTools(allToolsAgent(), adminUserContext, null);
     const names = Object.keys(tools);
-    expect(names).toContain("findNotes");
+    expect(names).toContain("findContent");
     expect(names).toContain("createNote");
     expect(names).toContain("deleteNote");
     expect(names).toContain("manageAdminRead");
@@ -51,7 +51,7 @@ describe("selectAgentTools scope-based filtering", () => {
   it("full-access API key gets all tools", () => {
     const tools = selectAgentTools(allToolsAgent(), adminUserContext, ["*"]);
     const names = Object.keys(tools);
-    expect(names).toContain("findNotes");
+    expect(names).toContain("findContent");
     expect(names).toContain("createNote");
     expect(names).toContain("manageAdminWrite");
   });
@@ -70,11 +70,9 @@ describe("selectAgentTools scope-based filtering", () => {
     const names = Object.keys(tools);
 
     // Should have read tools
-    expect(names).toContain("findNotes");
-    expect(names).toContain("findBookmarks");
-    expect(names).toContain("searchAll");
+    expect(names).toContain("findContent");
+    expect(names).toContain("findTasks");
     expect(names).toContain("getTask");
-    expect(names).toContain("countNotes");
 
     // Should NOT have write tools
     expect(names).not.toContain("createNote");
@@ -104,7 +102,7 @@ describe("selectAgentTools scope-based filtering", () => {
     );
     const names = Object.keys(tools);
 
-    expect(names).toContain("findNotes");
+    expect(names).toContain("findContent");
     expect(names).toContain("createNote");
     expect(names).toContain("updateNote");
     expect(names).toContain("deleteNote");

@@ -27,21 +27,10 @@ describe("tool access levels", () => {
   });
 
   const expectedRead = [
-    "findNotes",
-    "findBookmarks",
-    "findDocuments",
-    "findMedia",
-    "findPhotos",
+    "findContent",
     "findTasks",
-    "searchAll",
     "browseWeb",
     "browseChrome",
-    "countNotes",
-    "countBookmarks",
-    "countDocuments",
-    "countMedia",
-    "countPhotos",
-    "countTasks",
     "getTask",
     "getNote",
     "getBookmark",

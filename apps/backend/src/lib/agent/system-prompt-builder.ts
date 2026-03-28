@@ -32,12 +32,8 @@ export interface BuildSystemPromptOptions {
 }
 
 const CONTENT_TOOL_NAMES = [
-  "findNotes",
-  "findBookmarks",
-  "findDocuments",
-  "findPhotos",
+  "findContent",
   "findTasks",
-  "searchAll",
   "getNote",
   "getBookmark",
   "getTask",

@@ -461,6 +461,7 @@ interface FindAllParams {
   startDate?: Date;
   endDate?: Date;
   types?: string[];
+  mediaType?: "audio" | "video";
   limit?: number;
   cursor?: string;
   dueStatus?: string;
@@ -515,6 +516,7 @@ export async function findAllEntries({
   startDate,
   endDate,
   types,
+  mediaType,
   limit = 50,
   cursor,
   dueStatus,
@@ -572,7 +574,7 @@ export async function findAllEntries({
     }
     if (activeTypes.has("media")) {
       promises.push(
-        findMedia({ ...commonParams, limit: fetchLimit }).then((r) =>
+        findMedia({ ...commonParams, mediaType, limit: fetchLimit }).then((r) =>
           r.items.map((item) => ({ ...item, type: "media" })),
         ),
       );
@@ -684,6 +686,7 @@ export async function countAllEntries({
   startDate,
   endDate,
   types,
+  mediaType,
   dueStatus,
 }: Omit<FindAllParams, "limit" | "cursor">): Promise<number> {
   try {
@@ -712,7 +715,8 @@ export async function countAllEntries({
       countPromises.push(countBookmarks(commonParams));
     if (activeTypes.has("document"))
       countPromises.push(countDocuments(commonParams));
-    if (activeTypes.has("media")) countPromises.push(countMedia(commonParams));
+    if (activeTypes.has("media"))
+      countPromises.push(countMedia({ ...commonParams, mediaType }));
     if (activeTypes.has("note")) countPromises.push(countNotes(commonParams));
     if (activeTypes.has("photo")) countPromises.push(countPhotos(commonParams));
     if (activeTypes.has("task"))

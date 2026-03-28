@@ -10,11 +10,11 @@ describe("agent capability normalization", () => {
   it("adds loadSkill when creating an agent with skills", () => {
     expect(
       normalizeCreateAgentCapabilities({
-        toolNames: ["findNotes"],
+        toolNames: ["findContent"],
         skillNames: ["agent-browser"],
       }),
     ).toEqual({
-      toolNames: ["findNotes", LOAD_SKILL_TOOL_NAME],
+      toolNames: ["findContent", LOAD_SKILL_TOOL_NAME],
       skillNames: ["agent-browser"],
     });
   });
@@ -22,25 +22,25 @@ describe("agent capability normalization", () => {
   it("deduplicates loadSkill when it is already selected", () => {
     expect(
       normalizeToolNamesForSkills(
-        ["findNotes", LOAD_SKILL_TOOL_NAME, LOAD_SKILL_TOOL_NAME],
+        ["findContent", LOAD_SKILL_TOOL_NAME, LOAD_SKILL_TOOL_NAME],
         ["agent-browser"],
       ),
-    ).toEqual(["findNotes", LOAD_SKILL_TOOL_NAME]);
+    ).toEqual(["findContent", LOAD_SKILL_TOOL_NAME]);
   });
 
   it("reapplies loadSkill on update when skills remain enabled", () => {
     expect(
       normalizeUpdatedAgentCapabilities(
         {
-          toolNames: ["findNotes", LOAD_SKILL_TOOL_NAME],
+          toolNames: ["findContent", LOAD_SKILL_TOOL_NAME],
           skillNames: ["agent-browser"],
         },
         {
-          toolNames: ["findNotes"],
+          toolNames: ["findContent"],
         },
       ),
     ).toEqual({
-      toolNames: ["findNotes", LOAD_SKILL_TOOL_NAME],
+      toolNames: ["findContent", LOAD_SKILL_TOOL_NAME],
     });
   });
 
@@ -48,7 +48,7 @@ describe("agent capability normalization", () => {
     expect(
       normalizeUpdatedAgentCapabilities(
         {
-          toolNames: ["findNotes", LOAD_SKILL_TOOL_NAME],
+          toolNames: ["findContent", LOAD_SKILL_TOOL_NAME],
           skillNames: ["agent-browser"],
         },
         {
@@ -56,7 +56,7 @@ describe("agent capability normalization", () => {
         },
       ),
     ).toEqual({
-      toolNames: ["findNotes"],
+      toolNames: ["findContent"],
       skillNames: [],
     });
   });

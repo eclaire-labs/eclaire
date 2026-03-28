@@ -61,6 +61,6 @@ Media items support the same organization features as other content types:
 
 - Use `getMediaInfo` before `importMediaUrl` to preview what a URL contains — this helps avoid importing unwanted content
 - After importing, tell users that processing happens in the background
-- Use `findMedia` with `mediaType: "audio"` or `mediaType: "video"` to narrow searches
-- The transcript text is searchable via the `text` parameter in `findMedia`
+- Use `findContent` with `types: ["media"]` and `mediaType: "audio"` or `mediaType: "video"` to narrow searches
+- The transcript text is searchable via the `text` parameter in `findContent`
 - If a user asks about a specific media item's transcript, use `getMedia` to retrieve it — the `extractedText` field contains the transcript

@@ -8,13 +8,6 @@
 import type { RuntimeToolDefinition } from "@eclaire/ai";
 import { getMcpRegistry } from "../../mcp/index.js";
 import { isAudioAvailable } from "../../services/audio.js";
-// Count tools
-import { countBookmarksTool } from "./count-bookmarks.js";
-import { countDocumentsTool } from "./count-documents.js";
-import { countMediaTool } from "./count-media.js";
-import { countNotesTool } from "./count-notes.js";
-import { countPhotosTool } from "./count-photos.js";
-import { countTasksTool } from "./count-tasks.js";
 // Create tools
 import { createBookmarkTool } from "./create-bookmark.js";
 import { createNoteTool } from "./create-note.js";
@@ -26,13 +19,9 @@ import { deleteMediaTool } from "./delete-media.js";
 import { deleteNoteTool } from "./delete-note.js";
 import { deletePhotoTool } from "./delete-photo.js";
 import { deleteTaskTool } from "./delete-task.js";
-// Find tools
-import { findBookmarksTool } from "./find-bookmarks.js";
-import { findDocumentsTool } from "./find-documents.js";
-import { findMediaTool } from "./find-media.js";
-import { findNotesTool } from "./find-notes.js";
-import { findPhotosTool } from "./find-photos.js";
+// Find/Search tools
 import { findTasksTool } from "./find-tasks.js";
+import { findContentTool } from "./find-content.js";
 // Get tools
 import { getBookmarkTool } from "./get-bookmark.js";
 import { getDocumentTool } from "./get-document.js";
@@ -48,8 +37,6 @@ import { getTaskCommentsTool } from "./get-task-comments.js";
 import { loadSkillTool } from "./load-skill.js";
 // Quick action tools
 import { quickActionTool } from "./quick-action.js";
-// Search tools
-import { searchAllTool } from "./search-all.js";
 // Notification tools
 import { sendNotificationTool } from "./send-notification.js";
 // Task comment tools
@@ -83,24 +70,11 @@ import { manageAdminWriteTool } from "./manage-admin-write.js";
  * Static backend tools (always available).
  */
 const staticTools: Record<string, RuntimeToolDefinition> = {
-  // Find tools
-  findNotes: findNotesTool,
-  findBookmarks: findBookmarksTool,
-  findDocuments: findDocumentsTool,
-  findMedia: findMediaTool,
-  findPhotos: findPhotosTool,
-  findTasks: findTasksTool,
   // Search tools
-  searchAll: searchAllTool,
+  findContent: findContentTool,
+  findTasks: findTasksTool,
   browseWeb: browseWebTool,
   browseChrome: browseChromeTool,
-  // Count tools
-  countNotes: countNotesTool,
-  countBookmarks: countBookmarksTool,
-  countDocuments: countDocumentsTool,
-  countMedia: countMediaTool,
-  countPhotos: countPhotosTool,
-  countTasks: countTasksTool,
   // Get tools
   getTask: getTaskTool,
   getNote: getNoteTool,
@@ -186,12 +160,6 @@ export const backendTools: Record<string, RuntimeToolDefinition> = staticTools;
 export { addTaskCommentTool } from "./add-task-comment.js";
 export { browseChromeTool } from "./browse-chrome.js";
 export { browseWebTool } from "./browse-web.js";
-export { countBookmarksTool } from "./count-bookmarks.js";
-export { countDocumentsTool } from "./count-documents.js";
-export { countMediaTool } from "./count-media.js";
-export { countNotesTool } from "./count-notes.js";
-export { countPhotosTool } from "./count-photos.js";
-export { countTasksTool } from "./count-tasks.js";
 export { createBookmarkTool } from "./create-bookmark.js";
 export { createNoteTool } from "./create-note.js";
 export { createTaskTool } from "./create-task.js";
@@ -201,11 +169,6 @@ export { deleteMediaTool } from "./delete-media.js";
 export { deleteNoteTool } from "./delete-note.js";
 export { deletePhotoTool } from "./delete-photo.js";
 export { deleteTaskTool } from "./delete-task.js";
-export { findBookmarksTool } from "./find-bookmarks.js";
-export { findDocumentsTool } from "./find-documents.js";
-export { findMediaTool } from "./find-media.js";
-export { findNotesTool } from "./find-notes.js";
-export { findPhotosTool } from "./find-photos.js";
 export { findTasksTool } from "./find-tasks.js";
 export { getBookmarkTool } from "./get-bookmark.js";
 export { getDocumentTool } from "./get-document.js";
@@ -220,7 +183,7 @@ export { getTaskCommentsTool } from "./get-task-comments.js";
 export { listTagsTool } from "./list-tags.js";
 export { loadSkillTool } from "./load-skill.js";
 export { quickActionTool } from "./quick-action.js";
-export { searchAllTool } from "./search-all.js";
+export { findContentTool } from "./find-content.js";
 export { sendNotificationTool } from "./send-notification.js";
 export { importMediaUrlTool } from "./import-media-url.js";
 export { updateBookmarkTool } from "./update-bookmark.js";

@@ -1,12 +1,13 @@
 /**
  * Find Tasks Tool
  *
- * Search tasks by text, tags, status, schedule, delegate, and date range.
+ * Search tasks with task-specific filters: status, attention, schedule type, and delegate mode.
  */
 
 import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
 import z from "zod/v4";
 import {
+  countTasks as countTasksService,
   findTasks as findTasksService,
   type TaskStatus,
 } from "../../services/tasks.js";
@@ -44,6 +45,10 @@ const inputSchema = z.object({
     .describe("Filter by delegate mode"),
   startDate: z.string().optional().describe("Start of date range (ISO format)"),
   endDate: z.string().optional().describe("End of date range (ISO format)"),
+  countOnly: z
+    .boolean()
+    .optional()
+    .describe("When true, return only the total count instead of items."),
   limit: z
     .number()
     .optional()
@@ -55,11 +60,11 @@ export const findTasksTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "findTasks",
   label: "Find Tasks",
   description:
-    "Search tasks by keywords, tags, status, schedule type, delegate mode, and date range. Also finds recurring tasks, reminders, and scheduled agent work.",
+    "Search tasks with task-specific filters: status, attention, schedule type, and delegate mode. For general text/tag search across all content types, use findContent instead.",
   accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {
-    const results = await findTasksService({
+    const commonParams = {
       userId: ctx.userId,
       text: input.text,
       tags: input.tags,
@@ -69,6 +74,15 @@ export const findTasksTool: RuntimeToolDefinition<typeof inputSchema> = {
       delegateModes: input.delegateMode ? [input.delegateMode] : undefined,
       startDate: input.startDate ? new Date(input.startDate) : undefined,
       endDate: input.endDate ? new Date(input.endDate) : undefined,
+    };
+
+    if (input.countOnly) {
+      const count = await countTasksService(commonParams);
+      return textResult(JSON.stringify({ totalCount: count }));
+    }
+
+    const results = await findTasksService({
+      ...commonParams,
       limit: input.limit,
     });
     return textResult(JSON.stringify(results.items, null, 2));

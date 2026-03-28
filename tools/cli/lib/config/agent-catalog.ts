@@ -7,26 +7,14 @@
 // Static backend tools (sync with apps/backend/src/lib/agent/tools/index.ts)
 export const BUILTIN_TOOLS = [
   {
-    name: "findNotes",
-    label: "Find Notes",
-    description: "Search notes by content",
+    name: "findContent",
+    label: "Find Content",
+    description: "Search across all content types with optional type filter",
   },
   {
-    name: "findBookmarks",
-    label: "Find Bookmarks",
-    description: "Search bookmarks",
-  },
-  {
-    name: "findDocuments",
-    label: "Find Documents",
-    description: "Search documents",
-  },
-  { name: "findPhotos", label: "Find Photos", description: "Search photos" },
-  { name: "findTasks", label: "Find Tasks", description: "Search tasks" },
-  {
-    name: "searchAll",
-    label: "Search All",
-    description: "Search across all asset types",
+    name: "findTasks",
+    label: "Find Tasks",
+    description: "Search tasks with status/schedule/delegate filters",
   },
   {
     name: "browseWeb",
@@ -38,23 +26,6 @@ export const BUILTIN_TOOLS = [
     label: "Browse Chrome",
     description: "Browse Chrome bookmarks/history",
   },
-  {
-    name: "countNotes",
-    label: "Count Notes",
-    description: "Count notes matching criteria",
-  },
-  {
-    name: "countBookmarks",
-    label: "Count Bookmarks",
-    description: "Count bookmarks",
-  },
-  {
-    name: "countDocuments",
-    label: "Count Documents",
-    description: "Count documents",
-  },
-  { name: "countPhotos", label: "Count Photos", description: "Count photos" },
-  { name: "countTasks", label: "Count Tasks", description: "Count tasks" },
   { name: "getTask", label: "Get Task", description: "Get task details" },
   { name: "getNote", label: "Get Note", description: "Get note content" },
   {
