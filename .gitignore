@@ -73,6 +73,9 @@ config/ai/selection.json
 
 backups/
 
+# Local working directory
+local/
+
 # Monorepo tools
 .turbo/
 turbo/
