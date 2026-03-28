@@ -641,7 +641,7 @@ CREATE TABLE `tasks` (
 	`latest_error_summary` text,
 	`delivery_targets` text,
 	`source_conversation_id` text,
-	`due_at` integer,
+	`due_date` integer,
 	`priority` integer DEFAULT 0 NOT NULL,
 	`parent_id` text,
 	`flag_color` text,
@@ -661,7 +661,7 @@ CREATE TABLE `tasks` (
 CREATE INDEX `tasks_user_id_idx` ON `tasks` (`user_id`);--> statement-breakpoint
 CREATE INDEX `tasks_task_status_idx` ON `tasks` (`task_status`);--> statement-breakpoint
 CREATE INDEX `tasks_attention_status_idx` ON `tasks` (`attention_status`);--> statement-breakpoint
-CREATE INDEX `tasks_due_at_idx` ON `tasks` (`due_at`);--> statement-breakpoint
+CREATE INDEX `tasks_due_date_idx` ON `tasks` (`due_date`);--> statement-breakpoint
 CREATE INDEX `tasks_delegate_actor_id_idx` ON `tasks` (`delegate_actor_id`);--> statement-breakpoint
 CREATE INDEX `tasks_is_pinned_idx` ON `tasks` (`is_pinned`);--> statement-breakpoint
 CREATE INDEX `tasks_completed_at_idx` ON `tasks` (`completed_at`);--> statement-breakpoint
@@ -670,7 +670,7 @@ CREATE INDEX `tasks_schedule_type_idx` ON `tasks` (`schedule_type`);--> statemen
 CREATE INDEX `tasks_next_occurrence_at_idx` ON `tasks` (`next_occurrence_at`);--> statement-breakpoint
 CREATE INDEX `tasks_user_id_attention_status_idx` ON `tasks` (`user_id`,`attention_status`);--> statement-breakpoint
 CREATE INDEX `tasks_user_id_created_at_idx` ON `tasks` (`user_id`,`created_at`);--> statement-breakpoint
-CREATE INDEX `tasks_user_id_due_at_idx` ON `tasks` (`user_id`,`due_at`);--> statement-breakpoint
+CREATE INDEX `tasks_user_id_due_date_idx` ON `tasks` (`user_id`,`due_date`);--> statement-breakpoint
 CREATE INDEX `tasks_user_id_task_status_created_at_idx` ON `tasks` (`user_id`,`task_status`,`created_at`);--> statement-breakpoint
 CREATE INDEX `tasks_user_id_priority_created_at_idx` ON `tasks` (`user_id`,`priority`,`created_at`);--> statement-breakpoint
 CREATE INDEX `tasks_user_id_sort_order_idx` ON `tasks` (`user_id`,`sort_order`);--> statement-breakpoint

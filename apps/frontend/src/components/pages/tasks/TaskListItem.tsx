@@ -216,7 +216,7 @@ export function TaskListItem({
         </div>
       </TableCell>
       <TableCell className="hidden sm:table-cell text-sm text-muted-foreground align-middle">
-        {formatDate(task.dueAt)}
+        {formatDate(task.dueDate)}
       </TableCell>
       <TableCell className="hidden lg:table-cell align-middle">
         <div className="flex flex-wrap gap-1">

@@ -401,7 +401,7 @@ export const tasks = sqliteTable(
     sourceConversationId: text("source_conversation_id"),
 
     // Scheduling
-    dueAt: integer("due_at", { mode: "timestamp_ms" }),
+    dueDate: integer("due_date", { mode: "timestamp_ms" }),
     priority: integer("priority").notNull().default(0),
 
     // Hierarchy
@@ -439,7 +439,7 @@ export const tasks = sqliteTable(
     attentionStatusIdx: index("tasks_attention_status_idx").on(
       table.attentionStatus,
     ),
-    dueAtIdx: index("tasks_due_at_idx").on(table.dueAt),
+    dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
     delegateActorIdx: index("tasks_delegate_actor_id_idx").on(
       table.delegateActorId,
     ),
@@ -458,9 +458,9 @@ export const tasks = sqliteTable(
       table.userId,
       table.createdAt,
     ),
-    userDueAtIdx: index("tasks_user_id_due_at_idx").on(
+    userDueDateIdx: index("tasks_user_id_due_date_idx").on(
       table.userId,
-      table.dueAt,
+      table.dueDate,
     ),
     userStatusCreatedAtIdx: index(
       "tasks_user_id_task_status_created_at_idx",

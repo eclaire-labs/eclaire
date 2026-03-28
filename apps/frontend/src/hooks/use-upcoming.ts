@@ -12,7 +12,7 @@ export interface UpcomingItem {
 }
 
 function taskToUpcomingItem(task: Task): UpcomingItem {
-  const when = task.nextOccurrenceAt ?? task.dueAt ?? task.createdAt;
+  const when = task.nextOccurrenceAt ?? task.dueDate ?? task.createdAt;
   return {
     id: task.id,
     title: task.title,
@@ -31,7 +31,7 @@ export function useUpcoming(options?: { limit?: number; enabled?: boolean }) {
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: String(limit),
-        sortBy: "dueAt",
+        sortBy: "dueDate",
         sortDir: "asc",
         dueDateStart: new Date().toISOString(),
       });

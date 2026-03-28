@@ -24,7 +24,7 @@ export interface BookmarksViewPreferences extends BaseViewPreferences {
 
 export interface TasksViewPreferences extends BaseViewPreferences {
   viewMode: "tile" | "list";
-  sortBy: "dueAt" | "taskStatus" | "title";
+  sortBy: "dueDate" | "taskStatus" | "title";
 }
 
 export interface NotesViewPreferences extends BaseViewPreferences {
@@ -71,7 +71,7 @@ const DEFAULT_PREFERENCES: Record<PageType, ViewPreferences> = {
   } as BookmarksViewPreferences,
   tasks: {
     viewMode: "tile",
-    sortBy: "dueAt",
+    sortBy: "dueDate",
     sortDir: "asc",
   } as TasksViewPreferences,
   notes: {
@@ -99,7 +99,7 @@ const DEFAULT_PREFERENCES: Record<PageType, ViewPreferences> = {
 // Valid sortBy values per page type, used to discard stale localStorage entries
 const VALID_SORT_KEYS: Record<PageType, string[]> = {
   bookmarks: ["createdAt", "title"],
-  tasks: ["dueAt", "taskStatus", "title"],
+  tasks: ["dueDate", "taskStatus", "title"],
   notes: ["createdAt", "title"],
   documents: [
     "createdAt",

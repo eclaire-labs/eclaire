@@ -438,7 +438,7 @@ export const tasks = pgTable(
     sourceConversationId: text("source_conversation_id"),
 
     // Scheduling
-    dueAt: timestamp("due_at", { withTimezone: true }),
+    dueDate: timestamp("due_date", { withTimezone: true }),
     priority: integer("priority").notNull().default(0),
 
     // Hierarchy
@@ -479,7 +479,7 @@ export const tasks = pgTable(
     attentionStatusIdx: index("tasks_attention_status_idx").on(
       table.attentionStatus,
     ),
-    dueAtIdx: index("tasks_due_at_idx").on(table.dueAt),
+    dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
     delegateActorIdx: index("tasks_delegate_actor_id_idx").on(
       table.delegateActorId,
     ),
@@ -501,9 +501,9 @@ export const tasks = pgTable(
       table.userId,
       table.createdAt,
     ),
-    userDueAtIdx: index("tasks_user_id_due_at_idx").on(
+    userDueDateIdx: index("tasks_user_id_due_date_idx").on(
       table.userId,
-      table.dueAt,
+      table.dueDate,
     ),
     userStatusCreatedAtIdx: index(
       "tasks_user_id_task_status_created_at_idx",

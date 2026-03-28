@@ -74,14 +74,14 @@ describe("Task Scheduling", { timeout: 120000 }, () => {
 
   describe("Due Date + Recurrence (Scenario #39)", () => {
     it("should create a recurring task with a due date", async () => {
-      const dueAt = new Date(Date.now() + 86400000).toISOString(); // tomorrow
+      const dueDate = new Date(Date.now() + 86400000).toISOString(); // tomorrow
       const res = await loggedFetch("/tasks", {
         method: "POST",
         body: JSON.stringify({
           title: "Recurring with due date",
           scheduleType: "recurring",
           scheduleRule: "0 0 9 * * *", // daily at 9am
-          dueAt,
+          dueDate,
         }),
       });
       expect(res.status).toBe(201);
@@ -89,7 +89,7 @@ describe("Task Scheduling", { timeout: 120000 }, () => {
       taskIds.push(task.id);
 
       expect(task.scheduleType).toBe("recurring");
-      expect(task.dueAt).not.toBeNull();
+      expect(task.dueDate).not.toBeNull();
       expect(task.nextOccurrenceAt).not.toBeNull();
     });
   });

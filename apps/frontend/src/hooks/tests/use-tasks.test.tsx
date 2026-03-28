@@ -45,7 +45,7 @@ const fullRawTask = {
   description: "A description",
   prompt: null,
   taskStatus: "open",
-  dueAt: "2026-04-01",
+  dueDate: "2026-04-01",
   delegateActorId: "user-2",
   delegateMode: "manual",
   delegatedByActorId: null,

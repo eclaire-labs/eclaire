@@ -33,7 +33,7 @@ export const TaskSchema = z
       description: "Priority level: 0=none, 1=urgent, 2=high, 3=medium, 4=low",
     }),
 
-    dueAt: z
+    dueDate: z
       .string()
       .optional()
       .nullable()
@@ -225,7 +225,7 @@ export const TaskSearchParamsSchema = z.object({
   sortBy: z
     .enum([
       "createdAt",
-      "dueAt",
+      "dueDate",
       "taskStatus",
       "title",
       "priority",

@@ -140,10 +140,10 @@ export function TaskTileItem({
               )}
             </div>
             <CardDescription className="flex items-center text-xs">
-              {task.dueAt ? (
+              {task.dueDate ? (
                 <span className="flex items-center text-muted-foreground">
                   <CalendarDays className="mr-1 h-3 w-3" />{" "}
-                  {formatDate(task.dueAt)}
+                  {formatDate(task.dueDate)}
                 </span>
               ) : (
                 <span className="flex items-center text-muted-foreground italic">

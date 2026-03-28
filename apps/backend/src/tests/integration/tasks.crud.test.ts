@@ -39,7 +39,7 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
           title: "Test Task",
           description: "This is a test task description.",
           taskStatus: "open",
-          dueAt: tomorrow,
+          dueDate: tomorrow,
         }),
       });
 
@@ -114,7 +114,7 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
           title: "Updated",
           description: "Updated desc",
           taskStatus: "in_progress",
-          dueAt: dayAfterTomorrow,
+          dueDate: dayAfterTomorrow,
         }),
       });
 
@@ -126,8 +126,8 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
       expect(data.title).toBe("Updated");
       expect(data.description).toBe("Updated desc");
       expect(data.taskStatus).toBe("in_progress");
-      if (data.dueAt) {
-        expect(Date.parse(data.dueAt)).not.toBeNaN();
+      if (data.dueDate) {
+        expect(Date.parse(data.dueDate)).not.toBeNaN();
       }
     });
 

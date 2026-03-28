@@ -106,9 +106,9 @@ function InboxSection({
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {task.reasonText}
                   </p>
-                  {task.dueAt && (
+                  {task.dueDate && (
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Due {formatDate(task.dueAt)}
+                      Due {formatDate(task.dueDate)}
                     </p>
                   )}
                   {task.latestErrorSummary && (

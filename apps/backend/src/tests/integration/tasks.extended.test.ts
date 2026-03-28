@@ -15,8 +15,8 @@ describe("Task Extended Features", { timeout: 30000 }, () => {
   describe("Due Date Functionality", () => {
     let taskId: string | null = null;
 
-    it("should create a task with dueAt", async () => {
-      const dueAt = new Date(
+    it("should create a task with dueDate", async () => {
+      const dueDate = new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000,
       ).toISOString();
 
@@ -24,7 +24,7 @@ describe("Task Extended Features", { timeout: 30000 }, () => {
         method: "POST",
         body: JSON.stringify({
           title: "Due Date Test Task",
-          dueAt,
+          dueDate,
         }),
       });
 
@@ -32,14 +32,14 @@ describe("Task Extended Features", { timeout: 30000 }, () => {
       const data = (await response.json()) as TaskEntry;
       taskId = data.id;
 
-      expect(data.dueAt).not.toBeNull();
+      expect(data.dueDate).not.toBeNull();
       const timeDiff = Math.abs(
-        new Date(data.dueAt!).getTime() - new Date(dueAt).getTime(),
+        new Date(data.dueDate!).getTime() - new Date(dueDate).getTime(),
       );
       expect(timeDiff).toBeLessThan(1000);
     });
 
-    it("should update dueAt to a new date via PATCH", async () => {
+    it("should update dueDate to a new date via PATCH", async () => {
       expect(taskId).not.toBeNull();
 
       const newDueAt = new Date(
@@ -47,41 +47,41 @@ describe("Task Extended Features", { timeout: 30000 }, () => {
       ).toISOString();
       const response = await loggedFetch(`/tasks/${taskId}`, {
         method: "PATCH",
-        body: JSON.stringify({ dueAt: newDueAt }),
+        body: JSON.stringify({ dueDate: newDueAt }),
       });
 
       expect(response.status).toBe(200);
       const data = (await response.json()) as TaskEntry;
-      expect(data.dueAt).not.toBeNull();
+      expect(data.dueDate).not.toBeNull();
       const timeDiff = Math.abs(
-        new Date(data.dueAt!).getTime() - new Date(newDueAt).getTime(),
+        new Date(data.dueDate!).getTime() - new Date(newDueAt).getTime(),
       );
       expect(timeDiff).toBeLessThan(1000);
     });
 
-    it("should clear dueAt by patching to null", async () => {
+    it("should clear dueDate by patching to null", async () => {
       expect(taskId).not.toBeNull();
 
       const response = await loggedFetch(`/tasks/${taskId}`, {
         method: "PATCH",
-        body: JSON.stringify({ dueAt: null }),
+        body: JSON.stringify({ dueDate: null }),
       });
 
       expect(response.status).toBe(200);
       const data = (await response.json()) as TaskEntry;
-      expect(data.dueAt).toBeNull();
+      expect(data.dueDate).toBeNull();
     });
 
     it("should filter tasks by due date range", async () => {
       expect(taskId).not.toBeNull();
 
-      // Re-set a dueAt so the task shows up in range queries
+      // Re-set a dueDate so the task shows up in range queries
       const testDueAt = new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000,
       ).toISOString();
       await loggedFetch(`/tasks/${taskId}`, {
         method: "PATCH",
-        body: JSON.stringify({ dueAt: testDueAt }),
+        body: JSON.stringify({ dueDate: testDueAt }),
       });
 
       const dueDateStart = new Date().toISOString().split("T")[0];

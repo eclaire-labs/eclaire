@@ -26,7 +26,7 @@ const inputSchema = z.object({
     .optional()
     .describe("New priority (0=none, 1=urgent, 2=high, 3=medium, 4=low)"),
   tags: z.array(z.string()).optional().describe("New tags (replaces existing)"),
-  dueAt: z
+  dueDate: z
     .string()
     .nullable()
     .optional()

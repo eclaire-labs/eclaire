@@ -140,7 +140,7 @@ interface CreateTaskParams {
   prompt?: string;
   taskStatus?: TaskStatus;
   priority?: number;
-  dueAt?: string;
+  dueDate?: string;
   delegateActorId?: string;
   delegatedByActorId?: string;
   delegateMode?: "manual" | "assist" | "handle";
@@ -174,7 +174,7 @@ interface UpdateTaskParams {
   prompt?: string;
   taskStatus?: string;
   priority?: number;
-  dueAt?: string | null;
+  dueDate?: string | null;
   delegateActorId?: string | null;
   delegateMode?: "manual" | "assist" | "handle";
   attentionStatus?: string;
@@ -216,7 +216,7 @@ function cleanTaskForResponse(
   comments: any[] = [],
   childCount?: number,
 ) {
-  const dueAt = task.dueAt != null ? formatToISO8601(task.dueAt) : null;
+  const dueDate = task.dueDate != null ? formatToISO8601(task.dueDate) : null;
   const completedAt =
     task.completedAt != null ? formatToISO8601(task.completedAt) : null;
   const nextOccurrenceAt =
@@ -228,7 +228,7 @@ function cleanTaskForResponse(
 
   return {
     ...cleanedTask,
-    dueAt,
+    dueDate,
     completedAt,
     nextOccurrenceAt,
     delegateActorId: task.delegateActorId ?? null,
@@ -251,8 +251,8 @@ export async function createTask(
   const userId = callerOwnerUserId(caller);
   const actorId = callerActorId(caller);
   try {
-    // Convert dueAt string to Date object
-    const dueAtValue = taskData.dueAt ? new Date(taskData.dueAt) : null;
+    // Convert dueDate string to Date object
+    const dueDateValue = taskData.dueDate ? new Date(taskData.dueDate) : null;
 
     // Set completedAt if task is being created with "completed" status
     const taskStatus = taskData.taskStatus || "open";
@@ -322,7 +322,7 @@ export async function createTask(
         description: taskData.description || null,
         prompt: taskData.prompt || null,
         taskStatus,
-        dueAt: dueAtValue,
+        dueDate: dueDateValue,
         delegateActorId: resolvedDelegate.delegateActorId,
         delegatedByActorId,
         delegateMode,
@@ -368,7 +368,7 @@ export async function createTask(
           title: taskData.title,
           description: taskData.description || null,
           taskStatus,
-          dueAt: taskData.dueAt,
+          dueDate: taskData.dueDate,
           tags: taskData.tags,
           delegateActorId: resolvedDelegate.delegateActorId,
         },
@@ -604,13 +604,15 @@ export async function updateTask(
       }
     }
 
-    // Convert dueAt string to Date object
-    let dueAtValue: Date | null = null;
-    let includeDueAtUpdate = false;
+    // Convert dueDate string to Date object
+    let dueDateValue: Date | null = null;
+    let includeDueDateUpdate = false;
 
-    if (Object.hasOwn(taskUpdateData, "dueAt")) {
-      includeDueAtUpdate = true;
-      dueAtValue = taskUpdateData.dueAt ? new Date(taskUpdateData.dueAt) : null;
+    if (Object.hasOwn(taskUpdateData, "dueDate")) {
+      includeDueDateUpdate = true;
+      dueDateValue = taskUpdateData.dueDate
+        ? new Date(taskUpdateData.dueDate)
+        : null;
     }
 
     // Handle completedAt logic based on status changes
@@ -656,7 +658,7 @@ export async function updateTask(
       taskUpdateData,
     ) as (keyof typeof taskUpdateData)[]) {
       if (
-        key === "dueAt" ||
+        key === "dueDate" ||
         key === "completedAt" ||
         key === "nextOccurrenceAt"
       )
@@ -676,8 +678,8 @@ export async function updateTask(
       }
     }
 
-    if (includeDueAtUpdate) {
-      updateSet.dueAt = dueAtValue;
+    if (includeDueDateUpdate) {
+      updateSet.dueDate = dueDateValue;
     }
 
     if (includeCompletedAtUpdate) {
@@ -1220,7 +1222,7 @@ function _buildTaskQueryConditions({
 
   if (startDate) {
     definedConditions.push(
-      and(isNotNull(tasks.dueAt), gte(tasks.dueAt, startDate)),
+      and(isNotNull(tasks.dueDate), gte(tasks.dueDate, startDate)),
     );
   }
 
@@ -1228,19 +1230,19 @@ function _buildTaskQueryConditions({
     const endOfDay = new Date(endDate);
     endOfDay.setHours(23, 59, 59, 999);
     definedConditions.push(
-      and(isNotNull(tasks.dueAt), lte(tasks.dueAt, endOfDay)),
+      and(isNotNull(tasks.dueDate), lte(tasks.dueDate, endOfDay)),
     );
   }
 
   if (dueDateStart) {
     definedConditions.push(
-      and(isNotNull(tasks.dueAt), gte(tasks.dueAt, dueDateStart)),
+      and(isNotNull(tasks.dueDate), gte(tasks.dueDate, dueDateStart)),
     );
   }
 
   if (dueDateEnd) {
     definedConditions.push(
-      and(isNotNull(tasks.dueAt), lte(tasks.dueAt, dueDateEnd)),
+      and(isNotNull(tasks.dueDate), lte(tasks.dueDate, dueDateEnd)),
     );
   }
 
@@ -1297,7 +1299,7 @@ export async function findTasks({
     // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: tasks.createdAt,
-      dueAt: tasks.dueAt,
+      dueDate: tasks.dueDate,
       taskStatus: tasks.taskStatus,
       title: tasks.title,
       priority: tasks.priority,
@@ -1377,7 +1379,7 @@ export async function findTasks({
     // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
       if (sortBy === "title") return item.title;
-      if (sortBy === "dueAt") return item.dueAt;
+      if (sortBy === "dueDate") return item.dueDate;
       if (sortBy === "taskStatus") return item.taskStatus;
       if (sortBy === "priority") return item.priority;
       if (sortBy === "sortOrder") return item.sortOrder;
@@ -1608,8 +1610,8 @@ export async function getInbox(userId: string) {
       awaiting_input: "Agent needs your answer",
       needs_review: "Agent completed work and needs approval",
       failed: "Latest run failed",
-      urgent: task.dueAt
-        ? `Due ${formatToISO8601(task.dueAt)}`
+      urgent: task.dueDate
+        ? `Due ${formatToISO8601(task.dueDate)}`
         : "Needs attention",
     };
 
@@ -1621,7 +1623,7 @@ export async function getInbox(userId: string) {
       taskStatus: task.taskStatus,
       attentionStatus: task.attentionStatus,
       reasonText: reasonTextMap[task.attentionStatus] ?? "Needs attention",
-      dueAt: task.dueAt ? formatToISO8601(task.dueAt) : null,
+      dueDate: task.dueDate ? formatToISO8601(task.dueDate) : null,
       nextOccurrenceAt: task.nextOccurrenceAt
         ? formatToISO8601(task.nextOccurrenceAt)
         : null,

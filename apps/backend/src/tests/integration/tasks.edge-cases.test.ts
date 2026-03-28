@@ -58,7 +58,7 @@ describe("Task Edge Cases", { timeout: 120000 }, () => {
         body: JSON.stringify({
           title: "Due but running test",
           prompt: "Count to 10 slowly",
-          dueAt: pastDue,
+          dueDate: pastDue,
           delegateActorId: DEFAULT_AGENT_ACTOR_ID,
         }),
       });
@@ -69,7 +69,7 @@ describe("Task Edge Cases", { timeout: 120000 }, () => {
       // Task is now running with past due date
       // The overdue checker should NOT override agent-related attention statuses
       // For now just verify the task was created with correct fields
-      expect(task.dueAt).not.toBeNull();
+      expect(task.dueDate).not.toBeNull();
       expect(task.delegateActorId).toBe(DEFAULT_AGENT_ACTOR_ID);
     });
   });

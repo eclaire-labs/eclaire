@@ -296,8 +296,8 @@ export default function TasksPage() {
     try {
       const taskToSend = {
         ...taskData,
-        ...(taskData.dueAt && {
-          dueAt: new Date(taskData.dueAt).toISOString(),
+        ...(taskData.dueDate && {
+          dueDate: new Date(taskData.dueDate).toISOString(),
         }),
         taskStatus: taskData.taskStatus || "open",
         ...(taskData.delegateActorId?.trim() && {
@@ -341,8 +341,8 @@ export default function TasksPage() {
     try {
       const taskToSend = {
         ...editingTask,
-        ...(editingTask.dueAt && {
-          dueAt: new Date(editingTask.dueAt).toISOString(),
+        ...(editingTask.dueDate && {
+          dueDate: new Date(editingTask.dueDate).toISOString(),
         }),
         taskStatus: editingTask.taskStatus || "open",
         ...(editingTask.delegateActorId && {
@@ -639,10 +639,10 @@ export default function TasksPage() {
                     <div className="space-y-2">
                       <Label htmlFor="edit-due-date">Due Date</Label>
                       <DueDatePicker
-                        value={editingTask.dueAt || null}
+                        value={editingTask.dueDate || null}
                         onChange={(value) =>
                           setEditingTask((prev) =>
-                            prev ? { ...prev, dueAt: value ?? "" } : null,
+                            prev ? { ...prev, dueDate: value ?? "" } : null,
                           )
                         }
                       />

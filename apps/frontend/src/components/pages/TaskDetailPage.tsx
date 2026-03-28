@@ -116,7 +116,7 @@ export function TaskDetailClient() {
     description: "",
     taskStatus: "open" as TaskStatus,
     priority: 0,
-    dueAt: "",
+    dueDate: "",
     delegateActorId: "",
     delegateMode: "manual" as "manual" | "assist" | "handle",
     tags: [] as string[],
@@ -130,7 +130,7 @@ export function TaskDetailClient() {
         description: task.description || "",
         taskStatus: task.taskStatus,
         priority: task.priority ?? 0,
-        dueAt: task.dueAt || "",
+        dueDate: task.dueDate || "",
         delegateActorId: task.delegateActorId || "",
         delegateMode: task.delegateMode || "manual",
         tags: [...task.tags],
@@ -266,7 +266,7 @@ export function TaskDetailClient() {
         description: task.description || "",
         taskStatus: task.taskStatus,
         priority: task.priority ?? 0,
-        dueAt: task.dueAt || "",
+        dueDate: task.dueDate || "",
         delegateActorId: task.delegateActorId || "",
         delegateMode: task.delegateMode || "manual",
         tags: [...task.tags],
@@ -285,7 +285,9 @@ export function TaskDetailClient() {
         description: editForm.description.trim() || null,
         taskStatus: editForm.taskStatus,
         priority: editForm.priority,
-        dueAt: editForm.dueAt ? new Date(editForm.dueAt).toISOString() : null,
+        dueDate: editForm.dueDate
+          ? new Date(editForm.dueDate).toISOString()
+          : null,
         delegateActorId: editForm.delegateActorId.trim() || null,
         delegateMode: editForm.delegateMode,
         tags: editForm.tags,
@@ -808,14 +810,16 @@ export function TaskDetailClient() {
                     <Label>Due Date</Label>
                     {isEditing ? (
                       <DueDatePicker
-                        value={editForm.dueAt}
-                        onChange={(value) => handleInputChange("dueAt", value)}
+                        value={editForm.dueDate}
+                        onChange={(value) =>
+                          handleInputChange("dueDate", value)
+                        }
                       />
                     ) : (
                       <p className="text-muted-foreground flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        {task.dueAt
-                          ? formatDate(task.dueAt)
+                        {task.dueDate
+                          ? formatDate(task.dueDate)
                           : "No due date set"}
                       </p>
                     )}

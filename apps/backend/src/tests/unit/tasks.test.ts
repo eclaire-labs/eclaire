@@ -33,7 +33,7 @@ describe("TaskSchema", () => {
       title: "Full Task",
       description: "A complete task",
       taskStatus: "in_progress",
-      dueAt: "2026-06-15T09:00:00Z",
+      dueDate: "2026-06-15T09:00:00Z",
       delegateActorId: "user-123",
       delegateMode: "assist",
       processingEnabled: false,
@@ -173,8 +173,8 @@ describe("TaskSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("should accept nullable dueAt", () => {
-    const result = TaskSchema.safeParse({ title: "Test", dueAt: null });
+  it("should accept nullable dueDate", () => {
+    const result = TaskSchema.safeParse({ title: "Test", dueDate: null });
     expect(result.success).toBe(true);
   });
 

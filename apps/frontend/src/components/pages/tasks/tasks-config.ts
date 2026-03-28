@@ -26,16 +26,16 @@ export const tasksConfig: ListPageConfig<Task> = {
   ],
 
   sortOptions: [
-    { value: "dueAt", label: "Due Date" },
+    { value: "dueDate", label: "Due Date" },
     { value: "taskStatus", label: "Status" },
     { value: "priority", label: "Priority" },
     { value: "title", label: "Title" },
   ],
 
-  groupableSortKeys: ["dueAt"],
+  groupableSortKeys: ["dueDate"],
 
   getGroupDate: (item, sortBy) => {
-    if (sortBy === "dueAt") return item.dueAt;
+    if (sortBy === "dueDate") return item.dueDate;
     return null;
   },
 };

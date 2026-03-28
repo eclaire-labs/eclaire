@@ -71,7 +71,7 @@ const logger = createChildLogger("tasks");
 function toTaskServiceData<
   T extends {
     description?: string | null;
-    dueAt?: string | null;
+    dueDate?: string | null;
     delegateActorId?: string | null;
   },
 >(data: T) {
@@ -79,7 +79,7 @@ function toTaskServiceData<
     ...data,
     delegateActorId: data.delegateActorId ?? undefined,
     description: data.description || undefined,
-    dueAt: data.dueAt || undefined,
+    dueDate: data.dueDate || undefined,
   };
 }
 

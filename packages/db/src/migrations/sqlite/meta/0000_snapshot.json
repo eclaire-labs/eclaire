@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ad006215-f8c5-4a10-849a-c2bd31e97eaa",
+  "id": "80113e13-d500-4b32-9372-257c164cb9f1",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "accounts": {
@@ -4213,8 +4213,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "due_at": {
-          "name": "due_at",
+        "due_date": {
+          "name": "due_date",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
@@ -4312,9 +4312,9 @@
           "columns": ["attention_status"],
           "isUnique": false
         },
-        "tasks_due_at_idx": {
-          "name": "tasks_due_at_idx",
-          "columns": ["due_at"],
+        "tasks_due_date_idx": {
+          "name": "tasks_due_date_idx",
+          "columns": ["due_date"],
           "isUnique": false
         },
         "tasks_delegate_actor_id_idx": {
@@ -4357,9 +4357,9 @@
           "columns": ["user_id", "created_at"],
           "isUnique": false
         },
-        "tasks_user_id_due_at_idx": {
-          "name": "tasks_user_id_due_at_idx",
-          "columns": ["user_id", "due_at"],
+        "tasks_user_id_due_date_idx": {
+          "name": "tasks_user_id_due_date_idx",
+          "columns": ["user_id", "due_date"],
           "isUnique": false
         },
         "tasks_user_id_task_status_created_at_idx": {

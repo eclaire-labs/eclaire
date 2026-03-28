@@ -2,7 +2,7 @@
  * Task Overdue Checker Processor
  *
  * System cron job that runs periodically to mark overdue tasks as urgent.
- * Tasks with due_at in the past and attention_status != "urgent" are updated.
+ * Tasks with due_date in the past and attention_status != "urgent" are updated.
  * Only checks active tasks (not completed or cancelled).
  */
 
@@ -27,7 +27,7 @@ export default async function processTaskOverdueChecker(
     .from(schema.tasks)
     .where(
       and(
-        lte(schema.tasks.dueAt, now),
+        lte(schema.tasks.dueDate, now),
         ne(schema.tasks.attentionStatus, "urgent"),
         // Only active tasks — skip completed and cancelled
         ne(schema.tasks.taskStatus, "completed"),

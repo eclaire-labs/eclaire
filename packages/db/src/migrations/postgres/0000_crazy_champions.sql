@@ -543,7 +543,7 @@ CREATE TABLE "tasks" (
 	"latest_error_summary" text,
 	"delivery_targets" jsonb,
 	"source_conversation_id" text,
-	"due_at" timestamp with time zone,
+	"due_date" timestamp with time zone,
 	"priority" integer DEFAULT 0 NOT NULL,
 	"parent_id" text,
 	"flag_color" text,
@@ -804,7 +804,7 @@ CREATE INDEX "task_occurrences_kind_idx" ON "task_occurrences" USING btree ("kin
 CREATE INDEX "tasks_user_id_idx" ON "tasks" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "tasks_task_status_idx" ON "tasks" USING btree ("task_status");--> statement-breakpoint
 CREATE INDEX "tasks_attention_status_idx" ON "tasks" USING btree ("attention_status");--> statement-breakpoint
-CREATE INDEX "tasks_due_at_idx" ON "tasks" USING btree ("due_at");--> statement-breakpoint
+CREATE INDEX "tasks_due_date_idx" ON "tasks" USING btree ("due_date");--> statement-breakpoint
 CREATE INDEX "tasks_delegate_actor_id_idx" ON "tasks" USING btree ("delegate_actor_id");--> statement-breakpoint
 CREATE INDEX "tasks_is_pinned_idx" ON "tasks" USING btree ("is_pinned");--> statement-breakpoint
 CREATE INDEX "tasks_completed_at_idx" ON "tasks" USING btree ("completed_at");--> statement-breakpoint
@@ -814,7 +814,7 @@ CREATE INDEX "tasks_next_occurrence_at_idx" ON "tasks" USING btree ("next_occurr
 CREATE INDEX "tasks_user_id_attention_status_idx" ON "tasks" USING btree ("user_id","attention_status");--> statement-breakpoint
 CREATE INDEX "tasks_user_id_processing_enabled_idx" ON "tasks" USING btree ("user_id") WHERE processing_enabled = true;--> statement-breakpoint
 CREATE INDEX "tasks_user_id_created_at_idx" ON "tasks" USING btree ("user_id","created_at");--> statement-breakpoint
-CREATE INDEX "tasks_user_id_due_at_idx" ON "tasks" USING btree ("user_id","due_at");--> statement-breakpoint
+CREATE INDEX "tasks_user_id_due_date_idx" ON "tasks" USING btree ("user_id","due_date");--> statement-breakpoint
 CREATE INDEX "tasks_user_id_task_status_created_at_idx" ON "tasks" USING btree ("user_id","task_status","created_at");--> statement-breakpoint
 CREATE INDEX "tasks_user_id_priority_created_at_idx" ON "tasks" USING btree ("user_id","priority","created_at");--> statement-breakpoint
 CREATE INDEX "tasks_user_id_sort_order_idx" ON "tasks" USING btree ("user_id","sort_order");--> statement-breakpoint

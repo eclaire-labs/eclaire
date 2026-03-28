@@ -340,7 +340,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Schema Parity Tests", ({
           id: taskId,
           userId: testUserId,
           title: "Test Task",
-          dueAt: null,
+          dueDate: null,
           completedAt: null,
         });
       } else {
@@ -348,7 +348,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Schema Parity Tests", ({
           id: taskId,
           userId: testUserId,
           title: "Test Task",
-          dueAt: null,
+          dueDate: null,
           completedAt: null,
         });
       }
@@ -366,7 +366,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Schema Parity Tests", ({
       }
 
       expect(result).toBeDefined();
-      expect(result.dueAt).toBeNull();
+      expect(result.dueDate).toBeNull();
       expect(result.completedAt).toBeNull();
     });
 

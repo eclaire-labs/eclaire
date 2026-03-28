@@ -87,7 +87,7 @@ export const TaskResponseSchema = z
     sourceConversationId: z.string().nullable(),
 
     // Scheduling
-    dueAt: z.string().nullable(),
+    dueDate: z.string().nullable(),
     priority: z.number().int().min(0).max(4),
 
     // Hierarchy
@@ -189,7 +189,7 @@ export const InboxTaskSchema = z
       "urgent",
     ]),
     reasonText: z.string(),
-    dueAt: z.string().nullable(),
+    dueDate: z.string().nullable(),
     nextOccurrenceAt: z.string().nullable(),
     latestExecutionStatus: z
       .enum([

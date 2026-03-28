@@ -1,5 +1,5 @@
 {
-  "id": "3cbbd844-405a-4d1a-96fe-1cc2b343a5c6",
+  "id": "91584b74-c454-42ac-9cf2-b66321428b47",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -5127,8 +5127,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "due_at": {
-          "name": "due_at",
+        "due_date": {
+          "name": "due_date",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
@@ -5255,11 +5255,11 @@
           "method": "btree",
           "with": {}
         },
-        "tasks_due_at_idx": {
-          "name": "tasks_due_at_idx",
+        "tasks_due_date_idx": {
+          "name": "tasks_due_date_idx",
           "columns": [
             {
-              "expression": "due_at",
+              "expression": "due_date",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5418,8 +5418,8 @@
           "method": "btree",
           "with": {}
         },
-        "tasks_user_id_due_at_idx": {
-          "name": "tasks_user_id_due_at_idx",
+        "tasks_user_id_due_date_idx": {
+          "name": "tasks_user_id_due_date_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -5428,7 +5428,7 @@
               "nulls": "last"
             },
             {
-              "expression": "due_at",
+              "expression": "due_date",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

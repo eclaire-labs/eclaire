@@ -67,7 +67,7 @@ export interface TaskEntry {
   latestErrorSummary: string | null;
   deliveryTargets: unknown;
   sourceConversationId: string | null;
-  dueAt: string | null;
+  dueDate: string | null;
   priority: number;
   parentId: string | null;
   sortOrder: number | null;

@@ -73,7 +73,7 @@ Common cron: daily at 9am = '0 9 * * *', weekdays = '0 9 * * 1-5', Monday = '0 9
 **Compound Scenarios**
 
 - "Call Jeff Friday and prepare talking points":
-  1. createTask (parent: "Call Jeff about the venue", dueAt: Friday)
+  1. createTask (parent: "Call Jeff about the venue", dueDate: Friday)
   2. createTask (subtask: "Prepare talking points", parentId: <parent>, delegateMode: 'assist')
 
 - "If no reply in 3 days, follow up":

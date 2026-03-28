@@ -41,7 +41,7 @@ export const transformTaskData = (raw: any): Task => ({
   sourceConversationId: raw.sourceConversationId ?? null,
 
   // Scheduling & organization
-  dueAt: raw.dueAt ?? null,
+  dueDate: raw.dueDate ?? null,
   priority: raw.priority ?? 0,
   parentId: raw.parentId ?? null,
   childCount: raw.childCount ?? 0,

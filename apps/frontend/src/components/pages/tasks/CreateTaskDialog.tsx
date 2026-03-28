@@ -32,7 +32,7 @@ const INITIAL_TASK: Omit<Task, "id"> = {
   description: null,
   prompt: null,
   taskStatus: "open",
-  dueAt: null,
+  dueDate: null,
   delegateActorId: null,
   delegateMode: "manual",
   delegatedByActorId: null,
@@ -201,9 +201,9 @@ export function CreateTaskDialog({
               <div className="space-y-2">
                 <Label htmlFor="new-due-date">Due Date</Label>
                 <DueDatePicker
-                  value={task.dueAt || null}
+                  value={task.dueDate || null}
                   onChange={(value) =>
-                    setTask({ ...task, dueAt: value ?? null })
+                    setTask({ ...task, dueDate: value ?? null })
                   }
                 />
               </div>
