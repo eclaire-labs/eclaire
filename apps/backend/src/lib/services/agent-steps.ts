@@ -121,46 +121,35 @@ export async function saveAgentSteps(
 ): Promise<void> {
   if (steps.length === 0) return;
 
-  try {
-    const values = steps.map((step) => {
-      const { thinkingContent, textContent } = extractContentFromStep(step);
+  const values = steps.map((step) => {
+    const { thinkingContent, textContent } = extractContentFromStep(step);
 
-      const toolExecs = step.toolExecutions
-        ? truncateToolExecutions(step.toolExecutions)
-        : null;
+    const toolExecs = step.toolExecutions
+      ? truncateToolExecutions(step.toolExecutions)
+      : null;
 
-      return {
-        id: generateAgentStepId(),
-        messageId,
-        conversationId,
-        stepNumber: step.stepNumber,
-        timestamp: new Date(step.timestamp),
-        thinkingContent,
-        textContent,
-        isTerminal: step.isTerminal,
-        stopReason: step.stopReason ?? null,
-        promptTokens: null as number | null,
-        completionTokens: null as number | null,
-        toolExecutions: toolExecs,
-      };
-    });
+    return {
+      id: generateAgentStepId(),
+      messageId,
+      conversationId,
+      stepNumber: step.stepNumber,
+      timestamp: new Date(step.timestamp),
+      thinkingContent,
+      textContent,
+      isTerminal: step.isTerminal,
+      stopReason: step.stopReason ?? null,
+      promptTokens: null as number | null,
+      completionTokens: null as number | null,
+      toolExecutions: toolExecs,
+    };
+  });
 
-    await db.insert(agentSteps).values(values);
+  await db.insert(agentSteps).values(values);
 
-    logger.info(
-      { messageId, conversationId, stepCount: steps.length },
-      "Saved agent execution steps",
-    );
-  } catch (error) {
-    logger.error(
-      {
-        messageId,
-        conversationId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Failed to save agent steps",
-    );
-  }
+  logger.info(
+    { messageId, conversationId, stepCount: steps.length },
+    "Saved agent execution steps",
+  );
 }
 
 /**

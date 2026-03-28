@@ -22,11 +22,7 @@ import {
   normalizeUpdatedAgentCapabilities,
 } from "./agent-capabilities.js";
 import { DEFAULT_AGENT_ACTOR_ID } from "./actor-constants.js";
-import {
-  createAgentActor,
-  deleteAgentActor,
-  updateAgentActorDisplayName,
-} from "./actors.js";
+import { updateAgentActorDisplayName } from "./actors.js";
 
 const { agents } = schema;
 
@@ -219,7 +215,7 @@ function normalizeAgentRecord(
     const runtimeKind = getAgentRuntimeKindForModel(record.modelId);
     if (runtimeKind === "external_harness") {
       if (toolNames.length > 0 || skillNames.length > 0) {
-        logger.warn(
+        logger.debug(
           { agentId: record.id, modelId: record.modelId },
           "Sanitizing tools/skills for external harness agent on read",
         );
@@ -335,24 +331,45 @@ export async function createAgent(
 
   const trimmedName = input.name.trim();
 
-  const [agent] = await db
-    .insert(agents)
-    .values({
-      userId,
-      name: trimmedName,
-      description: input.description?.trim() || null,
-      systemPrompt: input.systemPrompt.trim(),
-      toolNames: capabilities.toolNames,
-      skillNames: capabilities.skillNames,
-      modelId: input.modelId ?? null,
-    })
-    .returning();
+  // Atomic: create agent + actor in a single transaction to prevent orphaned rows
+  const agent = await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(agents)
+      .values({
+        userId,
+        name: trimmedName,
+        description: input.description?.trim() || null,
+        systemPrompt: input.systemPrompt.trim(),
+        toolNames: capabilities.toolNames,
+        skillNames: capabilities.skillNames,
+        modelId: input.modelId ?? null,
+      })
+      .returning();
 
-  if (!agent) {
-    throw new Error("Failed to create agent");
-  }
+    if (!inserted) {
+      throw new Error("Failed to create agent");
+    }
 
-  await createAgentActor(userId, agent.id, trimmedName);
+    await tx
+      .insert(schema.actors)
+      .values({
+        id: inserted.id,
+        ownerUserId: userId,
+        kind: "agent" as const,
+        displayName: trimmedName,
+      })
+      .onConflictDoUpdate({
+        target: schema.actors.id,
+        set: {
+          ownerUserId: userId,
+          kind: "agent" as const,
+          displayName: trimmedName,
+          updatedAt: new Date(),
+        },
+      });
+
+    return inserted;
+  });
 
   logger.info({ userId, agentId: agent.id }, "Created custom agent");
 
@@ -491,16 +508,29 @@ export async function deleteAgent(
     throw new ValidationError("The default Eclaire agent cannot be deleted");
   }
 
-  const [deleted] = await db
-    .delete(agents)
-    .where(and(eq(agents.id, agentId), eq(agents.userId, userId)))
-    .returning();
+  // Atomic: delete agent + actor in a single transaction to prevent orphaned rows
+  const deleted = await db.transaction(async (tx) => {
+    const [removed] = await tx
+      .delete(agents)
+      .where(and(eq(agents.id, agentId), eq(agents.userId, userId)))
+      .returning();
 
-  if (!deleted) {
-    throw new NotFoundError("Agent", agentId);
-  }
+    if (!removed) {
+      throw new NotFoundError("Agent", agentId);
+    }
 
-  await deleteAgentActor(userId, agentId);
+    await tx
+      .delete(schema.actors)
+      .where(
+        and(
+          eq(schema.actors.id, agentId),
+          eq(schema.actors.ownerUserId, userId),
+          eq(schema.actors.kind, "agent"),
+        ),
+      );
+
+    return removed;
+  });
 
   logger.info({ userId, agentId }, "Deleted custom agent");
 

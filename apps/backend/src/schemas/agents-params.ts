@@ -11,7 +11,10 @@ export const AgentPayloadSchema = z.object({
 
 export const CreateAgentSchema = AgentPayloadSchema;
 
-export const UpdateAgentSchema = AgentPayloadSchema.partial();
+export const UpdateAgentSchema = AgentPayloadSchema.partial().refine(
+  (obj) => Object.keys(obj).length > 0,
+  { message: "At least one field must be provided" },
+);
 
 export type CreateAgentRequest = z.infer<typeof CreateAgentSchema>;
 export type UpdateAgentRequest = z.infer<typeof UpdateAgentSchema>;
