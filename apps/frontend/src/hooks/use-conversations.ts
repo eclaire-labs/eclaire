@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { listSessions } from "@/lib/api-sessions";
+import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
 import type { ConversationSummary } from "@/types/conversation";
 
 export interface ConversationGroup {
@@ -48,10 +49,12 @@ function groupByTime(
 }
 
 export function useConversations() {
+  const { isConnected } = useSSEConnectionStatus();
+
   const query = useQuery({
     queryKey: ["sidebar-conversations"],
     queryFn: () => listSessions(30, 0),
-    refetchInterval: 30_000,
+    refetchInterval: isConnected ? false : 30_000,
     staleTime: 10_000,
   });
 

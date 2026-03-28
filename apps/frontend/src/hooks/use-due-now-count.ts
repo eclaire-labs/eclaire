@@ -1,34 +1,21 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
+import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
 
 export function useDueNowCount() {
-  const [count, setCount] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isConnected } = useSSEConnectionStatus();
 
-  useEffect(() => {
-    const fetchDueNowCount = async () => {
-      try {
-        setIsLoading(true);
-        const response = await apiFetch("/api/all?dueStatus=due_now&limit=100");
-        if (response.ok) {
-          const data = await response.json();
-          setCount(data.items.length);
-        }
-      } catch (error) {
-        console.error("Error fetching due now count:", error);
-        setCount(0);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const query = useQuery({
+    queryKey: ["due-now-count"],
+    queryFn: async () => {
+      const response = await apiFetch("/api/all?dueStatus=due_now&limit=100");
+      if (!response.ok) return 0;
+      const data = await response.json();
+      return data.items.length as number;
+    },
+    refetchInterval: isConnected ? false : 5 * 60 * 1000,
+    staleTime: 30_000,
+  });
 
-    fetchDueNowCount();
-
-    // Refresh count every 5 minutes
-    const interval = setInterval(fetchDueNowCount, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  return { count, isLoading };
+  return { count: query.data ?? 0, isLoading: query.isLoading };
 }

@@ -8,6 +8,13 @@ import { stream } from "hono/streaming";
 import type postgres from "postgres";
 import { config } from "../config/index.js";
 import { createChildLogger } from "../lib/logger.js";
+import {
+  type StreamRef,
+  getStreamsForUser,
+  registerStream,
+  removeStreamsByClientIds,
+  unregisterStream,
+} from "../lib/sse/stream-registry.js";
 import { withAuth } from "../middleware/with-auth.js";
 import type { RouteVariables } from "../types/route-variables.js";
 import { sanitizeChannelName } from "../workers/lib/postgres-publisher.js";
@@ -22,14 +29,6 @@ export const processingEventsRoutes = new Hono<{ Variables: RouteVariables }>();
 const dbType = getDatabaseType();
 const usePostgresListen = dbType === "postgres" && config.serviceRole !== "all";
 const postgresUrl = usePostgresListen ? getDatabaseUrl() : null;
-
-// Map to track active SSE streams by userId → clientId → stream ref
-type StreamRef = {
-  write: (data: string) => Promise<unknown>;
-  readonly closed: boolean;
-  abort: () => void;
-};
-const activeStreams = new Map<string, Map<string, StreamRef>>();
 
 // Validate clientId: must be a UUID-like string (alphanumeric + hyphens, max 64 chars)
 const CLIENT_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
@@ -61,15 +60,9 @@ processingEventsRoutes.get(
       c.header("Access-Control-Allow-Origin", "*");
       c.header("Access-Control-Allow-Headers", "Cache-Control");
 
-      // Register this stream for direct publishing
-      if (!activeStreams.has(userId)) {
-        activeStreams.set(userId, new Map());
-      }
-      // biome-ignore lint/style/noNonNullAssertion: map entry set on preceding line
-      const userStreams = activeStreams.get(userId)!;
-
       // Close previous connection from the same client/tab
-      const existingStream = userStreams.get(clientId);
+      const userStreams = getStreamsForUser(userId);
+      const existingStream = userStreams?.get(clientId);
       if (existingStream) {
         logger.info(
           { userId, clientId },
@@ -85,7 +78,7 @@ processingEventsRoutes.get(
         },
         abort: () => stream.abort(),
       };
-      userStreams.set(clientId, streamRef);
+      registerStream(userId, clientId, streamRef);
 
       let pgSubscriber: postgres.Sql | null = null;
       let pgListenSubscription: { unlisten: () => Promise<void> } | null = null;
@@ -159,6 +152,10 @@ processingEventsRoutes.get(
         // Keep connection alive with periodic pings
         keepAliveInterval = setInterval(() => {
           try {
+            if (stream.closed || stream.aborted) {
+              stream.abort();
+              return;
+            }
             const pingMessage = JSON.stringify({
               type: "ping",
               timestamp: Date.now(),
@@ -170,23 +167,19 @@ processingEventsRoutes.get(
                 userId,
                 error: error instanceof Error ? error.message : "Unknown error",
               },
-              "Error sending ping, connection likely closed",
+              "Error sending ping, aborting stream",
             );
+            try {
+              stream.abort();
+            } catch {
+              /* already closing */
+            }
           }
         }, 30000);
 
         // Wait for the stream to be closed or aborted (client disconnect)
         await new Promise<void>((resolve) => {
           stream.onAbort(() => resolve());
-          // Also poll in case stream closes without abort signal
-          const checkConnection = () => {
-            if (stream.closed || stream.aborted) {
-              resolve();
-            } else {
-              setTimeout(checkConnection, 1000);
-            }
-          };
-          checkConnection();
         });
       } catch (error) {
         logger.error(
@@ -238,16 +231,7 @@ processingEventsRoutes.get(
         }
 
         // Unregister this stream from direct publishing
-        const currentStreams = activeStreams.get(userId);
-        if (currentStreams) {
-          // Only remove if this stream is still the registered one for this clientId
-          if (currentStreams.get(clientId) === streamRef) {
-            currentStreams.delete(clientId);
-          }
-          if (currentStreams.size === 0) {
-            activeStreams.delete(userId);
-          }
-        }
+        unregisterStream(userId, clientId, streamRef);
 
         logger.info(
           { userId, clientId },
@@ -305,7 +289,7 @@ export async function publishDirectSSEEvent(
   },
 ): Promise<void> {
   try {
-    const userStreams = activeStreams.get(userId);
+    const userStreams = getStreamsForUser(userId);
     if (!userStreams || userStreams.size === 0) {
       logger.debug(
         { userId, eventType: event.type },
@@ -343,11 +327,8 @@ export async function publishDirectSSEEvent(
     }
 
     // Clean up closed streams
-    for (const clientId of clientIdsToRemove) {
-      userStreams.delete(clientId);
-    }
-    if (userStreams.size === 0) {
-      activeStreams.delete(userId);
+    if (clientIdsToRemove.length > 0) {
+      removeStreamsByClientIds(userId, clientIdsToRemove);
     }
 
     logger.debug(

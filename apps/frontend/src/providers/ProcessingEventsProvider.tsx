@@ -125,12 +125,16 @@ function handleTaskEvent(
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["inbox"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming"] });
+      queryClient.invalidateQueries({ queryKey: ["due-now-count"] });
       break;
 
     case "task_updated":
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["inbox"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming"] });
+      queryClient.invalidateQueries({ queryKey: ["due-now-count"] });
       if (taskId) {
         queryClient.invalidateQueries({ queryKey: ["tasks", taskId] });
       }
@@ -140,6 +144,8 @@ function handleTaskEvent(
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["inbox"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming"] });
+      queryClient.invalidateQueries({ queryKey: ["due-now-count"] });
       if (taskId) {
         queryClient.invalidateQueries({ queryKey: ["tasks", taskId] });
         queryClient.invalidateQueries({
@@ -170,12 +176,14 @@ function handleTaskEvent(
       queryClient.invalidateQueries({ queryKey: ["inbox"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["due-now-count"] });
       break;
 
     case "tasks_overdue":
       queryClient.invalidateQueries({ queryKey: ["inbox"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-count"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["due-now-count"] });
       break;
   }
 }
@@ -194,7 +202,7 @@ export function ProcessingEventsProvider({
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
-  const refreshCallbacksRef = useRef<Map<string, () => void>>(new Map());
+  const refreshCallbacksRef = useRef<Map<string, Set<() => void>>>(new Map());
 
   useEffect(() => {
     // Only connect if user is authenticated
@@ -231,6 +239,11 @@ export function ProcessingEventsProvider({
             queryClient.invalidateQueries({ queryKey: ["tasks"] });
             queryClient.invalidateQueries({ queryKey: ["task-occurrences"] });
             queryClient.invalidateQueries({ queryKey: ["session-status"] });
+            queryClient.invalidateQueries({
+              queryKey: ["sidebar-conversations"],
+            });
+            queryClient.invalidateQueries({ queryKey: ["upcoming"] });
+            queryClient.invalidateQueries({ queryKey: ["due-now-count"] });
           }
         };
 
@@ -255,6 +268,9 @@ export function ProcessingEventsProvider({
             ) {
               queryClient.invalidateQueries({
                 queryKey: ["session-status"],
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["sidebar-conversations"],
               });
               if (data.sessionId) {
                 queryClient.invalidateQueries({
@@ -407,9 +423,11 @@ export function ProcessingEventsProvider({
                   queryKey: ["processing-jobs"],
                 });
                 // Trigger registered refresh callbacks
-                const callback = refreshCallbacksRef.current.get(assetType);
-                if (callback) {
-                  callback();
+                const callbacks = refreshCallbacksRef.current.get(assetType);
+                if (callbacks) {
+                  for (const cb of callbacks) {
+                    cb();
+                  }
                 }
                 break;
               }
@@ -484,9 +502,25 @@ export function ProcessingEventsProvider({
       }
     };
 
+    // Recovery: when the user returns to the tab after SSE has been
+    // permanently disconnected (max attempts reached), reset and retry.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (
+          !isConnectedRef.current &&
+          reconnectAttemptsRef.current >= maxReconnectAttempts
+        ) {
+          reconnectAttemptsRef.current = 0;
+          connectSSE();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     connectSSE();
 
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (reconnectTimeoutId) {
         clearTimeout(reconnectTimeoutId);
       }
@@ -501,11 +535,21 @@ export function ProcessingEventsProvider({
 
   const registerRefreshCallback = useCallback(
     (assetType: AssetType, callback: () => void) => {
-      refreshCallbacksRef.current.set(assetType, callback);
+      if (!refreshCallbacksRef.current.has(assetType)) {
+        refreshCallbacksRef.current.set(assetType, new Set());
+      }
+      // biome-ignore lint/style/noNonNullAssertion: set created on preceding line
+      refreshCallbacksRef.current.get(assetType)!.add(callback);
 
       // Return cleanup function
       return () => {
-        refreshCallbacksRef.current.delete(assetType);
+        const set = refreshCallbacksRef.current.get(assetType);
+        if (set) {
+          set.delete(callback);
+          if (set.size === 0) {
+            refreshCallbacksRef.current.delete(assetType);
+          }
+        }
       };
     },
     [],

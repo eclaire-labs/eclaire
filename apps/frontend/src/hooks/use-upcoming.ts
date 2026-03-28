@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
+import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
 import type { Task } from "@/types/task";
 
 export interface UpcomingItem {
@@ -25,6 +26,7 @@ function taskToUpcomingItem(task: Task): UpcomingItem {
 
 export function useUpcoming(options?: { limit?: number; enabled?: boolean }) {
   const limit = options?.limit ?? 15;
+  const { isConnected } = useSSEConnectionStatus();
 
   const query = useQuery<{ items: UpcomingItem[] }>({
     queryKey: ["upcoming", limit],
@@ -42,7 +44,8 @@ export function useUpcoming(options?: { limit?: number; enabled?: boolean }) {
       return { items: tasks.map(taskToUpcomingItem) };
     },
     enabled: options?.enabled ?? true,
-    refetchInterval: 60_000,
+    refetchInterval: isConnected ? false : 60_000,
+    staleTime: 10_000,
   });
 
   return {
