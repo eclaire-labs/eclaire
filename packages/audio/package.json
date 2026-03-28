@@ -22,6 +22,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "clean": "rm -rf dist",
     "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
     "format": "biome format --write ./",

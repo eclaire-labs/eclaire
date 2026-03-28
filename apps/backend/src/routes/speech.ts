@@ -256,8 +256,8 @@ speechRoutes.get(
           } else if (typeof data === "string") {
             // JSON control message (e.g. {"action": "stop"})
             try {
-              JSON.parse(data); // validate it's JSON
-              realtimeClient.sendJson(JSON.parse(data));
+              const parsed = JSON.parse(data);
+              realtimeClient.sendJson(parsed);
             } catch {
               // Not valid JSON — ignore
             }
