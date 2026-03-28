@@ -58,7 +58,6 @@ const INITIAL_TASK: Omit<Task, "id"> = {
   isPinned: false,
   processingEnabled: true,
   priority: 0,
-  parentId: null,
   sortOrder: null,
   processingStatus: null,
   completedAt: null,

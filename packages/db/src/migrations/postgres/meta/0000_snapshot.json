@@ -1,5 +1,5 @@
 {
-  "id": "91584b74-c454-42ac-9cf2-b66321428b47",
+  "id": "9b62fb9f-911e-4a7c-82ac-202b6297788a",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -5140,12 +5140,6 @@
           "notNull": true,
           "default": 0
         },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "flag_color": {
           "name": "flag_color",
           "type": "text",
@@ -5305,21 +5299,6 @@
           "columns": [
             {
               "expression": "completed_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "tasks_parent_id_idx": {
-          "name": "tasks_parent_id_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5571,15 +5550,6 @@
           "columnsFrom": ["delegated_by_actor_id"],
           "columnsTo": ["id"],
           "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "tasks_parent_id_tasks_id_fk": {
-          "name": "tasks_parent_id_tasks_id_fk",
-          "tableFrom": "tasks",
-          "tableTo": "tasks",
-          "columnsFrom": ["parent_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },

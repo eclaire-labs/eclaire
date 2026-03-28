@@ -70,7 +70,6 @@ const fullRawTask = {
   isPinned: true,
   processingEnabled: true,
   priority: 0,
-  parentId: null,
   sortOrder: 0,
   completedAt: null,
 };

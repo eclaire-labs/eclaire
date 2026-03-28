@@ -68,9 +68,7 @@ export interface TaskEntry {
   sourceConversationId: string | null;
   dueDate: string | null;
   priority: number;
-  parentId: string | null;
   sortOrder: number | null;
-  childCount?: number;
   flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
   isPinned: boolean;
   tags: string[];

@@ -84,20 +84,6 @@ describe("TaskSchema", () => {
     }
   });
 
-  it("should accept parentId as string or null", () => {
-    const withString = TaskSchema.safeParse({
-      title: "Test",
-      parentId: "tsk_abc123",
-    });
-    expect(withString.success).toBe(true);
-
-    const withNull = TaskSchema.safeParse({
-      title: "Test",
-      parentId: null,
-    });
-    expect(withNull.success).toBe(true);
-  });
-
   it("should accept priority values 0-4", () => {
     for (const priority of [0, 1, 2, 3, 4]) {
       const result = TaskSchema.safeParse({ title: "Test", priority });

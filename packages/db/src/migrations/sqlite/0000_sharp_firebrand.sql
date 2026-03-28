@@ -643,7 +643,6 @@ CREATE TABLE `tasks` (
 	`source_conversation_id` text,
 	`due_date` integer,
 	`priority` integer DEFAULT 0 NOT NULL,
-	`parent_id` text,
 	`flag_color` text,
 	`is_pinned` integer DEFAULT false NOT NULL,
 	`sort_order` real,
@@ -654,8 +653,7 @@ CREATE TABLE `tasks` (
 	`updated_at` integer DEFAULT (cast((unixepoch('subsec') * 1000) as integer)) NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`delegate_actor_id`) REFERENCES `actors`(`id`) ON UPDATE no action ON DELETE set null,
-	FOREIGN KEY (`delegated_by_actor_id`) REFERENCES `actors`(`id`) ON UPDATE no action ON DELETE set null,
-	FOREIGN KEY (`parent_id`) REFERENCES `tasks`(`id`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (`delegated_by_actor_id`) REFERENCES `actors`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
 CREATE INDEX `tasks_user_id_idx` ON `tasks` (`user_id`);--> statement-breakpoint
@@ -665,7 +663,6 @@ CREATE INDEX `tasks_due_date_idx` ON `tasks` (`due_date`);--> statement-breakpoi
 CREATE INDEX `tasks_delegate_actor_id_idx` ON `tasks` (`delegate_actor_id`);--> statement-breakpoint
 CREATE INDEX `tasks_is_pinned_idx` ON `tasks` (`is_pinned`);--> statement-breakpoint
 CREATE INDEX `tasks_completed_at_idx` ON `tasks` (`completed_at`);--> statement-breakpoint
-CREATE INDEX `tasks_parent_id_idx` ON `tasks` (`parent_id`);--> statement-breakpoint
 CREATE INDEX `tasks_schedule_type_idx` ON `tasks` (`schedule_type`);--> statement-breakpoint
 CREATE INDEX `tasks_next_occurrence_at_idx` ON `tasks` (`next_occurrence_at`);--> statement-breakpoint
 CREATE INDEX `tasks_user_id_attention_status_idx` ON `tasks` (`user_id`,`attention_status`);--> statement-breakpoint

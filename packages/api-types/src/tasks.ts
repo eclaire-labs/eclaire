@@ -90,10 +90,6 @@ export const TaskResponseSchema = z
     dueDate: z.string().nullable(),
     priority: z.number().int().min(0).max(4),
 
-    // Hierarchy
-    parentId: z.string().nullable(),
-    childCount: z.number().int().optional(),
-
     // Organization
     flagColor: z.enum(["red", "yellow", "orange", "green", "blue"]).nullable(),
     isPinned: z.boolean(),

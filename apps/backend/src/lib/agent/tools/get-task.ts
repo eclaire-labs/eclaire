@@ -1,7 +1,7 @@
 /**
  * Get Task Tool
  *
- * Get full details of a single task by ID, including comments and sub-task info.
+ * Get full details of a single task by ID, including comments.
  */
 
 import {
@@ -19,8 +19,7 @@ const inputSchema = z.object({
 export const getTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
   name: "getTask",
   label: "Get Task",
-  description:
-    "Get full details of a task by ID, including comments and sub-task count.",
+  description: "Get full details of a task by ID, including comments.",
   accessLevel: "read",
   inputSchema,
   execute: async (_callId, input, ctx) => {

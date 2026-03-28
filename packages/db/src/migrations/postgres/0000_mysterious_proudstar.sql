@@ -545,7 +545,6 @@ CREATE TABLE "tasks" (
 	"source_conversation_id" text,
 	"due_date" timestamp with time zone,
 	"priority" integer DEFAULT 0 NOT NULL,
-	"parent_id" text,
 	"flag_color" text,
 	"is_pinned" boolean DEFAULT false NOT NULL,
 	"sort_order" double precision,
@@ -704,7 +703,6 @@ ALTER TABLE "task_occurrences" ADD CONSTRAINT "task_occurrences_retry_of_occurre
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_delegate_actor_id_actors_id_fk" FOREIGN KEY ("delegate_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_delegated_by_actor_id_actors_id_fk" FOREIGN KEY ("delegated_by_actor_id") REFERENCES "public"."actors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_parent_id_tasks_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."tasks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks_tags" ADD CONSTRAINT "tasks_tags_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."tasks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks_tags" ADD CONSTRAINT "tasks_tags_tag_id_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_preferences" ADD CONSTRAINT "user_preferences_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -808,7 +806,6 @@ CREATE INDEX "tasks_due_date_idx" ON "tasks" USING btree ("due_date");--> statem
 CREATE INDEX "tasks_delegate_actor_id_idx" ON "tasks" USING btree ("delegate_actor_id");--> statement-breakpoint
 CREATE INDEX "tasks_is_pinned_idx" ON "tasks" USING btree ("is_pinned");--> statement-breakpoint
 CREATE INDEX "tasks_completed_at_idx" ON "tasks" USING btree ("completed_at");--> statement-breakpoint
-CREATE INDEX "tasks_parent_id_idx" ON "tasks" USING btree ("parent_id");--> statement-breakpoint
 CREATE INDEX "tasks_schedule_type_idx" ON "tasks" USING btree ("schedule_type");--> statement-breakpoint
 CREATE INDEX "tasks_next_occurrence_at_idx" ON "tasks" USING btree ("next_occurrence_at");--> statement-breakpoint
 CREATE INDEX "tasks_user_id_attention_status_idx" ON "tasks" USING btree ("user_id","attention_status");--> statement-breakpoint

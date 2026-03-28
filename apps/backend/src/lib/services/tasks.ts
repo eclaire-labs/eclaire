@@ -237,8 +237,6 @@ function cleanTaskForResponse(
     processingStatus: processingStatus,
     priority: task.priority ?? 0,
     sortOrder: task.sortOrder ?? null,
-    parentId: null,
-    childCount: 0,
     tags: tags,
     comments: comments,
   };

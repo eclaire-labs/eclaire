@@ -404,9 +404,6 @@ export const tasks = sqliteTable(
     dueDate: integer("due_date", { mode: "timestamp_ms" }),
     priority: integer("priority").notNull().default(0),
 
-    // Hierarchy
-    parentId: text("parent_id"),
-
     // Organization
     flagColor: text("flag_color", {
       enum: ["red", "yellow", "orange", "green", "blue"],
@@ -445,7 +442,6 @@ export const tasks = sqliteTable(
     ),
     isPinnedIdx: index("tasks_is_pinned_idx").on(table.isPinned),
     completedAtIdx: index("tasks_completed_at_idx").on(table.completedAt),
-    parentIdx: index("tasks_parent_id_idx").on(table.parentId),
     scheduleTypeIdx: index("tasks_schedule_type_idx").on(table.scheduleType),
     nextOccurrenceAtIdx: index("tasks_next_occurrence_at_idx").on(
       table.nextOccurrenceAt,
@@ -474,10 +470,6 @@ export const tasks = sqliteTable(
       table.userId,
       table.sortOrder,
     ),
-    parentFk: foreignKey({
-      columns: [table.parentId],
-      foreignColumns: [table.id],
-    }).onDelete("cascade"),
   }),
 );
 
@@ -1484,12 +1476,6 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [actors.id],
     relationName: "taskDelegatedBy",
   }),
-  parent: one(tasks, {
-    fields: [tasks.parentId],
-    references: [tasks.id],
-    relationName: "parentChild",
-  }),
-  children: many(tasks, { relationName: "parentChild" }),
   tags: many(tasksTags),
   comments: many(taskComments),
   occurrences: many(taskOccurrences),

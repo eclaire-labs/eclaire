@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "80113e13-d500-4b32-9372-257c164cb9f1",
+  "id": "f4e08559-2d42-4719-a13f-30395747c2f8",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "accounts": {
@@ -4228,13 +4228,6 @@
           "autoincrement": false,
           "default": 0
         },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "flag_color": {
           "name": "flag_color",
           "type": "text",
@@ -4332,11 +4325,6 @@
           "columns": ["completed_at"],
           "isUnique": false
         },
-        "tasks_parent_id_idx": {
-          "name": "tasks_parent_id_idx",
-          "columns": ["parent_id"],
-          "isUnique": false
-        },
         "tasks_schedule_type_idx": {
           "name": "tasks_schedule_type_idx",
           "columns": ["schedule_type"],
@@ -4404,15 +4392,6 @@
           "columnsFrom": ["delegated_by_actor_id"],
           "columnsTo": ["id"],
           "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "tasks_parent_id_tasks_id_fk": {
-          "name": "tasks_parent_id_tasks_id_fk",
-          "tableFrom": "tasks",
-          "tableTo": "tasks",
-          "columnsFrom": ["parent_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },

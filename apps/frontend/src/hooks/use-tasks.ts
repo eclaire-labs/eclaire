@@ -43,8 +43,6 @@ export const transformTaskData = (raw: any): Task => ({
   // Scheduling & organization
   dueDate: raw.dueDate ?? null,
   priority: raw.priority ?? 0,
-  parentId: raw.parentId ?? null,
-  childCount: raw.childCount ?? 0,
   flagColor: raw.flagColor ?? null,
   isPinned: raw.isPinned || false,
   sortOrder: raw.sortOrder ?? null,
