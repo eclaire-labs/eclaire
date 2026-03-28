@@ -64,7 +64,7 @@ export type FindTasksParams = {
   taskStatus?: TaskStatus;
   attentionStatus?: string;
   scheduleType?: string;
-  delegateMode?: string;
+  delegateModes?: string[];
   priority?: number;
   startDate?: Date;
   endDate?: Date;
@@ -1145,7 +1145,7 @@ function _buildTaskQueryConditions({
   taskStatus,
   attentionStatus,
   scheduleType,
-  delegateMode,
+  delegateModes,
   priority,
   startDate,
   endDate,
@@ -1187,11 +1187,11 @@ function _buildTaskQueryConditions({
     );
   }
 
-  if (delegateMode) {
+  if (delegateModes?.length) {
     definedConditions.push(
-      eq(
+      inArray(
         tasks.delegateMode,
-        delegateMode as (typeof tasks.delegateMode.enumValues)[number],
+        delegateModes as (typeof tasks.delegateMode.enumValues)[number][],
       ),
     );
   }
@@ -1245,7 +1245,7 @@ export async function findTasks({
   taskStatus,
   attentionStatus,
   scheduleType,
-  delegateMode,
+  delegateModes,
   priority,
   startDate,
   endDate,
@@ -1265,7 +1265,7 @@ export async function findTasks({
       taskStatus,
       attentionStatus,
       scheduleType,
-      delegateMode,
+      delegateModes,
       priority,
       startDate,
       endDate,
@@ -1403,7 +1403,7 @@ export async function countTasks({
   taskStatus,
   attentionStatus,
   scheduleType,
-  delegateMode,
+  delegateModes,
   priority,
   startDate,
   endDate,
@@ -1419,7 +1419,7 @@ export async function countTasks({
       taskStatus,
       attentionStatus,
       scheduleType,
-      delegateMode,
+      delegateModes,
       priority,
       startDate,
       endDate,

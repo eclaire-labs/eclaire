@@ -74,7 +74,7 @@ export const findTasksTool: RuntimeToolDefinition<typeof inputSchema> = {
       taskStatus: input.taskStatus as TaskStatus | undefined,
       attentionStatus: input.attentionStatus,
       scheduleType: input.scheduleType,
-      delegateMode: input.delegateMode,
+      delegateModes: input.delegateMode ? [input.delegateMode] : undefined,
       startDate: input.startDate ? new Date(input.startDate) : undefined,
       endDate: input.endDate ? new Date(input.endDate) : undefined,
       parentId: input.parentId,

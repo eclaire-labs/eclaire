@@ -197,10 +197,10 @@ export const TaskSearchParamsSchema = z.object({
     .optional()
     .meta({ description: "Filter by schedule type" }),
 
-  delegateMode: z
-    .enum(["manual", "assist", "handle"])
-    .optional()
-    .meta({ description: "Filter by delegate mode" }),
+  delegateMode: z.string().optional().meta({
+    description:
+      "Filter by delegate mode (comma-separated for multiple, e.g. 'assist,handle')",
+  }),
 
   priority: z.coerce.number().int().min(0).max(4).optional().meta({
     description: "Filter by priority",

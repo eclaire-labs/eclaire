@@ -92,8 +92,14 @@ tasksRoutes.get(
   zValidator("query", TaskSearchParamsSchema),
   withAuth(async (c, userId) => {
     const params = c.req.valid("query");
-    const { tags, startDate, endDate, dueDateStart, dueDateEnd } =
-      parseSearchFields(params);
+    const {
+      tags,
+      delegateModes,
+      startDate,
+      endDate,
+      dueDateStart,
+      dueDateEnd,
+    } = parseSearchFields(params);
 
     const result = await findTasksPaginated({
       userId,
@@ -102,7 +108,7 @@ tasksRoutes.get(
       taskStatus: params.taskStatus,
       attentionStatus: params.attentionStatus,
       scheduleType: params.scheduleType,
-      delegateMode: params.delegateMode,
+      delegateModes,
       priority: params.priority,
       startDate,
       endDate,

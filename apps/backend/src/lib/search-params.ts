@@ -6,6 +6,7 @@ import type { Context } from "hono";
  */
 export function parseSearchFields(params: {
   tags?: string;
+  delegateMode?: string;
   startDate?: string;
   endDate?: string;
   dueDateStart?: string;
@@ -13,6 +14,9 @@ export function parseSearchFields(params: {
 }) {
   return {
     tags: params.tags ? params.tags.split(",").map((t) => t.trim()) : undefined,
+    delegateModes: params.delegateMode
+      ? params.delegateMode.split(",").map((m) => m.trim())
+      : undefined,
     startDate: params.startDate ? new Date(params.startDate) : undefined,
     endDate: params.endDate ? new Date(params.endDate) : undefined,
     dueDateStart: params.dueDateStart
