@@ -70,8 +70,6 @@ interface CreateTaskDialogProps {
   onCreateTask: (data: Omit<Task, "id">) => Promise<void>;
   isCreating: boolean;
   defaultAssigneeId?: string;
-  /** Pre-fill parentId when creating a sub-task */
-  parentId?: string | null;
   assigneeOptions: ActorOption[];
 }
 
@@ -81,14 +79,12 @@ export function CreateTaskDialog({
   onCreateTask,
   isCreating,
   defaultAssigneeId,
-  parentId,
   assigneeOptions,
 }: CreateTaskDialogProps) {
   const [task, setTask] = useState<Omit<Task, "id">>({
     ...INITIAL_TASK,
     delegateActorId: defaultAssigneeId ?? null,
     userId: "",
-    parentId: parentId ?? null,
   });
 
   const reset = (assigneeId?: string) =>
@@ -96,7 +92,6 @@ export function CreateTaskDialog({
       ...INITIAL_TASK,
       delegateActorId: assigneeId ?? defaultAssigneeId ?? null,
       userId: "",
-      parentId: parentId ?? null,
     });
 
   const handleSubmit = async () => {
@@ -114,14 +109,8 @@ export function CreateTaskDialog({
     >
       <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
-          <DialogTitle>
-            {parentId ? "Create Sub-task" : "Create New Task"}
-          </DialogTitle>
-          <DialogDescription>
-            {parentId
-              ? "Add a sub-task to the parent task."
-              : "Add a new task to your list."}
-          </DialogDescription>
+          <DialogTitle>Create New Task</DialogTitle>
+          <DialogDescription>Add a new task to your list.</DialogDescription>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -270,7 +259,7 @@ export function CreateTaskDialog({
             </DialogClose>
             <Button type="submit" disabled={isCreating || !task.title}>
               {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {parentId ? "Create Sub-task" : "Create Task"}
+              Create Task
             </Button>
           </DialogFooter>
         </form>

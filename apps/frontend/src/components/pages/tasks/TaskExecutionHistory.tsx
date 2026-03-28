@@ -37,6 +37,16 @@ function formatRelativeTime(dateStr: string | null): string {
   return `${diffDays}d ago`;
 }
 
+function formatAbsoluteTime(dateStr: string | null): string {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 interface StatusConfigEntry {
   icon: React.ComponentType<{ className?: string }>;
   variant: "default" | "secondary" | "destructive" | "outline";
@@ -117,8 +127,14 @@ function OccurrenceRow({
           }`}
         />
         <KindIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
-        <span className="text-xs text-muted-foreground flex-1">
-          {formatRelativeTime(occurrence.startedAt ?? occurrence.createdAt)}
+        <span
+          className="text-xs text-muted-foreground flex-1"
+          title={formatAbsoluteTime(
+            occurrence.startedAt ?? occurrence.createdAt,
+          )}
+        >
+          {formatAbsoluteTime(occurrence.startedAt ?? occurrence.createdAt) ||
+            formatRelativeTime(occurrence.startedAt ?? occurrence.createdAt)}
         </span>
         {occurrence.durationMs !== null && (
           <span className="text-xs text-muted-foreground flex items-center gap-1">

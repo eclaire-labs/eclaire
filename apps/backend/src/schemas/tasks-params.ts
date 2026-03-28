@@ -147,12 +147,6 @@ export const TaskSchema = z
       .optional()
       .nullable()
       .meta({ description: "Manual sort order (fractional)" }),
-
-    parentId: z
-      .string()
-      .optional()
-      .nullable()
-      .meta({ description: "Parent task ID for sub-tasks" }),
   })
   .meta({
     ref: "TaskRequest",
@@ -246,14 +240,6 @@ export const TaskSearchParamsSchema = z.object({
 
   dueDateEnd: z.string().optional().meta({
     description: "Filter tasks with due dates on or before this date",
-  }),
-
-  parentId: z.string().optional().meta({
-    description: "Filter sub-tasks of the specified parent",
-  }),
-
-  topLevelOnly: z.enum(["true", "false"]).optional().meta({
-    description: "Only return top-level tasks (exclude sub-tasks)",
   }),
 });
 

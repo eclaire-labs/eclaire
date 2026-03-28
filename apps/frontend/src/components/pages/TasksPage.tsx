@@ -97,7 +97,7 @@ export default function TasksPage() {
       },
       {
         key: "done",
-        label: "Done",
+        label: "Completed",
         params: { taskStatus: "completed" },
       },
     ],
@@ -105,7 +105,7 @@ export default function TasksPage() {
   );
   const [activeView, setActiveView] = useState("all");
 
-  const [params, setParams] = useState<ListParams>({ topLevelOnly: "true" });
+  const [params, setParams] = useState<ListParams>({});
 
   // Data
   const {
@@ -483,7 +483,7 @@ export default function TasksPage() {
       setActiveView(viewKey);
       const view = savedViews.find((v) => v.key === viewKey);
       if (view) {
-        setParams({ topLevelOnly: "true", ...view.params });
+        setParams({ ...view.params });
       }
     },
     [savedViews],
@@ -772,7 +772,7 @@ export default function TasksPage() {
                 <TableHead className="w-[120px] hidden sm:table-cell">
                   Due Date
                 </TableHead>
-                <TableHead className="w-[150px] hidden lg:table-cell">
+                <TableHead className="w-[200px] hidden lg:table-cell">
                   Tags
                 </TableHead>
                 <TableHead className="w-fit text-right pr-4 pl-2">

@@ -31,25 +31,27 @@ export function TagEditor({
   return (
     <div className={className ?? "space-y-2"}>
       <Label>Tags</Label>
-      <div className="flex flex-wrap gap-2 mb-2 min-h-[24px]">
-        {tags.map((tag) => (
-          <Badge
-            key={tag}
-            variant="secondary"
-            className="flex items-center gap-1"
-          >
-            {tag}
-            <button
-              type="button"
-              className="ml-1 text-muted-foreground hover:text-foreground focus:outline-none"
-              onClick={() => onRemoveTag(tag)}
-              aria-label={`Remove tag ${tag}`}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {tags.map((tag) => (
+            <Badge
+              key={tag}
+              variant="secondary"
+              className="flex items-center gap-1"
             >
-              &times;
-            </button>
-          </Badge>
-        ))}
-      </div>
+              {tag}
+              <button
+                type="button"
+                className="ml-1 text-muted-foreground hover:text-foreground focus:outline-none"
+                onClick={() => onRemoveTag(tag)}
+                aria-label={`Remove tag ${tag}`}
+              >
+                &times;
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
       <div className="flex gap-2">
         <Input
           placeholder="Add a tag..."

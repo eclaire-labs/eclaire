@@ -345,30 +345,6 @@ describe("TaskSearchParamsSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("should accept parentId filter", () => {
-    const result = TaskSearchParamsSchema.safeParse({
-      parentId: "tsk_abc123",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.parentId).toBe("tsk_abc123");
-    }
-  });
-
-  it("should accept topLevelOnly filter", () => {
-    const trueResult = TaskSearchParamsSchema.safeParse({
-      topLevelOnly: "true",
-    });
-    expect(trueResult.success).toBe(true);
-  });
-
-  it("should reject invalid topLevelOnly value", () => {
-    const result = TaskSearchParamsSchema.safeParse({
-      topLevelOnly: "yes",
-    });
-    expect(result.success).toBe(false);
-  });
-
   it("should accept attentionStatus filter", () => {
     const result = TaskSearchParamsSchema.safeParse({
       attentionStatus: "needs_review",

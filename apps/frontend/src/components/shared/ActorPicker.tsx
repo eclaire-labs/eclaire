@@ -141,9 +141,6 @@ function ActorPickerItem({
             {getActorKindLabel(actor.kind)}
           </Badge>
         </div>
-        <div className="truncate text-xs text-muted-foreground">
-          {actor.secondaryLabel}
-        </div>
       </div>
       <div
         className={cn(
@@ -206,9 +203,11 @@ export function ActorPicker({
               <div className="truncate font-medium">
                 {selectedActor ? selectedActor.label : unassignedLabel}
               </div>
-              <div className="truncate text-xs text-muted-foreground">
-                {selectedActor ? selectedActor.secondaryLabel : placeholder}
-              </div>
+              {selectedActor && (
+                <div className="truncate text-xs text-muted-foreground">
+                  {selectedActor.secondaryLabel}
+                </div>
+              )}
             </div>
           </div>
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
@@ -218,21 +217,6 @@ export function ActorPicker({
         align="start"
         className="w-[var(--radix-popover-trigger-width)] rounded-3xl border-border/80 p-0 shadow-2xl shadow-black/5"
       >
-        <div className="border-b border-border/70 bg-[linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--muted)/0.4)_100%)] px-4 py-2.5">
-          <div className="flex items-center justify-end gap-1.5">
-            {humans.length > 0 && (
-              <Badge variant="secondary" className="rounded-full px-2 py-0">
-                {humans.length} people
-              </Badge>
-            )}
-            {agents.length > 0 && (
-              <Badge variant="secondary" className="rounded-full px-2 py-0">
-                {agents.length} agents
-              </Badge>
-            )}
-          </div>
-        </div>
-
         <Command className="bg-transparent">
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList className="max-h-[22rem] p-2">
@@ -255,9 +239,6 @@ export function ActorPicker({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="font-medium">{unassignedLabel}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Leave this field empty for now
-                        </div>
                       </div>
                     </div>
                   </CommandItem>

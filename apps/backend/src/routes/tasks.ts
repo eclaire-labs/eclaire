@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
-import { count, eq, and, sql } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import z from "zod/v4";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
@@ -67,7 +67,8 @@ import {
 
 const logger = createChildLogger("tasks");
 
-/** Converts nullable fields to undefined for service layer compatibility. */
+/** Converts nullable fields to undefined for service layer compatibility.
+ *  Preserves null for delegateActorId (explicitly unassigned) vs undefined (not provided). */
 function toTaskServiceData<
   T extends {
     description?: string | null;
@@ -77,7 +78,8 @@ function toTaskServiceData<
 >(data: T) {
   return {
     ...data,
-    delegateActorId: data.delegateActorId ?? undefined,
+    delegateActorId:
+      "delegateActorId" in data ? (data.delegateActorId ?? null) : undefined,
     description: data.description || undefined,
     dueDate: data.dueDate || undefined,
   };
@@ -118,8 +120,6 @@ tasksRoutes.get(
       sortDir: params.sortDir,
       dueDateStart,
       dueDateEnd,
-      parentId: params.parentId,
-      topLevelOnly: params.topLevelOnly === "true",
     });
 
     return c.json(result);
@@ -443,11 +443,43 @@ tasksRoutes.post(
       }),
     }),
   ),
-  withAuth(async (c, _userId, principal) => {
+  withAuth(async (c, userId, principal) => {
     const caller = principalCaller(principal);
     const taskId = c.req.param("id");
     const { content } = c.req.valid("json");
     const newComment = await createTaskComment({ taskId, content }, caller);
+
+    // Trigger agent run when a human comments on a delegated task
+    if (caller.actor === "human") {
+      const task = await getTaskById(taskId, userId);
+      if (
+        task &&
+        task.delegateMode !== "manual" &&
+        task.delegateActorId &&
+        !["running", "queued"].includes(task.latestExecutionStatus ?? "")
+      ) {
+        const { createTaskOccurrence } = await import(
+          "../lib/services/task-occurrences.js"
+        );
+        await createTaskOccurrence({
+          taskId,
+          userId,
+          kind: "review_run",
+          prompt: task.prompt || `Revise the task: ${task.title}`,
+          executorActorId: task.delegateActorId,
+          requiresReview: task.delegateMode === "assist",
+        });
+        await db
+          .update(schema.tasks)
+          .set({
+            latestExecutionStatus: "queued",
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.tasks.id, taskId));
+        emitTaskUpdated(userId, taskId);
+      }
+    }
+
     return c.json(newComment, 201);
   }, logger),
 );

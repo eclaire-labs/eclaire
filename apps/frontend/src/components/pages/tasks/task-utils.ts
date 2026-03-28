@@ -87,23 +87,9 @@ export function getEffectiveStatusDisplay(task: {
   return getStatusConfig(task.taskStatus);
 }
 
-/** Cycle: open -> in_progress -> completed -> open.
- *  blocked -> open, cancelled -> open (re-activate). */
+/** Toggle: any status → completed, completed → open. */
 export function getNextStatus(current: TaskStatus): TaskStatus {
-  switch (current) {
-    case "open":
-      return "in_progress";
-    case "in_progress":
-      return "completed";
-    case "completed":
-      return "open";
-    case "blocked":
-      return "open";
-    case "cancelled":
-      return "open";
-    default:
-      return "open";
-  }
+  return current === "completed" ? "open" : "completed";
 }
 
 export const STATUS_OPTIONS = [

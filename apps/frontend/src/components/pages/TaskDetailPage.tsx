@@ -1,4 +1,4 @@
-import { Link, getRouteApi, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowLeft,
@@ -7,13 +7,10 @@ import {
   Calendar,
   CheckCircle2,
   Edit3,
-  Link2,
   Loader2,
   MessageCircle,
   MoreHorizontal,
-  Plus,
   RefreshCw,
-  RotateCcw,
   Save,
   ThumbsUp,
   Trash2,
@@ -55,7 +52,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useActors } from "@/hooks/use-actors";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
-import { useTask, useTasks } from "@/hooks/use-tasks";
+import { useTask } from "@/hooks/use-tasks";
 import { apiFetch } from "@/lib/api-client";
 import {
   createTaskComment,
@@ -64,7 +61,6 @@ import {
 } from "@/lib/api-comments";
 import { formatDate } from "@/lib/date-utils";
 import type { TaskComment, TaskStatus } from "@/types/task";
-import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
 import { TaskExecutionHistory } from "./tasks/TaskExecutionHistory";
 import {
   PRIORITY_OPTIONS,
@@ -88,16 +84,6 @@ export function TaskDetailClient() {
     refresh,
     onDeleted: () => navigate({ to: "/tasks" }),
   });
-
-  // Sub-tasks
-  const {
-    tasks: subTasks,
-    createTask: createSubTask,
-    updateTaskStatus: updateSubTaskStatus,
-    isLoading: isLoadingSubTasks,
-  } = useTasks({ parentId: taskId });
-  const [showCreateSubTask, setShowCreateSubTask] = useState(false);
-  const [isCreatingSubTask, setIsCreatingSubTask] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -149,18 +135,6 @@ export function TaskDetailClient() {
     }
   }, [task]);
 
-  // Default to history tab when agent output needs attention
-  useEffect(() => {
-    if (
-      task &&
-      task.delegateMode !== "manual" &&
-      (task.reviewStatus === "pending" ||
-        task.latestExecutionStatus === "failed")
-    ) {
-      setActiveTab("history");
-    }
-  }, [task?.id]); // only on initial load / task change
-
   // Comment management functions
   const handleAddComment = async () => {
     if (!newComment.trim() || !task) return;
@@ -170,6 +144,7 @@ export function TaskDetailClient() {
       const comment = await createTaskComment(task.id, newComment.trim());
       setComments((prev) => [comment, ...prev]); // Add to top
       setNewComment("");
+      refresh(); // Refresh task data (backend may trigger agent on delegated tasks)
 
       toast.success("Comment added", {
         description: "Your comment has been added successfully.",
@@ -508,9 +483,8 @@ export function TaskDetailClient() {
                             Agent output needs review
                           </p>
                           <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                            The agent has completed its work. Review the result
-                            below. To request changes, add a comment with your
-                            feedback first.
+                            The agent has completed its work. Add a comment
+                            below to request changes, or approve to complete.
                           </p>
                           {task.latestResultSummary ? (
                             <div className="mt-2 rounded bg-white/60 dark:bg-black/20 p-3 max-h-40 overflow-y-auto text-sm text-amber-900 dark:text-amber-200 whitespace-pre-wrap">
@@ -530,17 +504,6 @@ export function TaskDetailClient() {
                             >
                               <ThumbsUp className="mr-1.5 h-3.5 w-3.5" />
                               Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                handleReviewAction("request_changes")
-                              }
-                              disabled={isReviewing}
-                            >
-                              <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                              Request Changes
                             </Button>
                           </div>
                         </div>
@@ -790,28 +753,6 @@ export function TaskDetailClient() {
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-4 text-sm">
-                  {/* Parent Task Link */}
-                  {task.parentId && (
-                    <div>
-                      <Label className="flex items-center gap-2">
-                        <Link2 className="h-4 w-4" />
-                        Parent Task
-                      </Label>
-                      <Button
-                        variant="link"
-                        className="h-auto p-0 text-sm"
-                        onClick={() =>
-                          navigate({
-                            to: "/tasks/$id",
-                            params: { id: task.parentId ?? "" },
-                          })
-                        }
-                      >
-                        View parent task
-                      </Button>
-                    </div>
-                  )}
-
                   {/* Delegated By */}
                   {task.delegatedByActorId && (
                     <div>
@@ -1039,79 +980,6 @@ export function TaskDetailClient() {
                         </div>
                       </div>
 
-                      {/* Sub-tasks Section — only on top-level tasks */}
-                      {!task.parentId && (
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <Label>Sub-tasks</Label>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs"
-                              onClick={() => setShowCreateSubTask(true)}
-                            >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Add
-                            </Button>
-                          </div>
-                          {isLoadingSubTasks ? (
-                            <div className="flex items-center gap-2 text-muted-foreground text-xs py-2">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Loading...
-                            </div>
-                          ) : subTasks.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                              No sub-tasks
-                            </p>
-                          ) : (
-                            <div className="space-y-1">
-                              {subTasks.map((sub) => {
-                                const statusCfg = getStatusConfig(
-                                  sub.taskStatus,
-                                );
-                                return (
-                                  <button
-                                    type="button"
-                                    key={sub.id}
-                                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 cursor-pointer group text-left"
-                                    onClick={() =>
-                                      navigate({
-                                        to: "/tasks/$id",
-                                        params: { id: sub.id },
-                                      })
-                                    }
-                                  >
-                                    <button
-                                      type="button"
-                                      className="flex-shrink-0"
-                                      title={`Status: ${statusCfg.label}`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const nextStatus =
-                                          sub.taskStatus === "completed"
-                                            ? "open"
-                                            : "completed";
-                                        updateSubTaskStatus(sub.id, nextStatus);
-                                      }}
-                                    >
-                                      {getStatusIcon(sub.taskStatus)}
-                                    </button>
-                                    <span className="text-sm truncate flex-1">
-                                      {sub.title}
-                                    </span>
-                                    {sub.priority > 0 && (
-                                      <span className="flex-shrink-0">
-                                        {getPriorityIcon(sub.priority)}
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
                       {/* Schedule Info */}
                       {task.scheduleType !== "none" && task.scheduleSummary && (
                         <div>
@@ -1179,27 +1047,6 @@ export function TaskDetailClient() {
           label="Task"
           isReprocessing={actions.isReprocessing}
           onConfirm={actions.handleReprocess}
-        />
-
-        {/* Create Sub-task Dialog */}
-        <CreateTaskDialog
-          open={showCreateSubTask}
-          onOpenChange={setShowCreateSubTask}
-          parentId={task.id}
-          onCreateTask={async (data) => {
-            setIsCreatingSubTask(true);
-            try {
-              await createSubTask(data);
-              setShowCreateSubTask(false);
-              toast.success("Sub-task created");
-            } catch {
-              toast.error("Failed to create sub-task");
-            } finally {
-              setIsCreatingSubTask(false);
-            }
-          }}
-          isCreating={isCreatingSubTask}
-          assigneeOptions={actors}
         />
       </div>
     </TooltipProvider>

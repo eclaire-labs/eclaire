@@ -1,8 +1,6 @@
 import {
-  Bot,
   Edit,
   FileText,
-  GitBranch,
   Loader2,
   MessageCircle,
   MoreHorizontal,
@@ -137,29 +135,6 @@ export function TaskListItem({
           title={task.title}
         >
           {task.title}
-          {(task.childCount ?? 0) > 0 && (
-            <span
-              className="flex items-center gap-0.5 text-xs text-muted-foreground flex-shrink-0"
-              title={`${task.childCount} sub-task${task.childCount === 1 ? "" : "s"}`}
-            >
-              <GitBranch className="h-3 w-3" />
-              {task.childCount}
-            </span>
-          )}
-          {task.delegateMode !== "manual" && (
-            <Badge
-              variant="outline"
-              className="text-xs font-normal flex-shrink-0 gap-1 py-0"
-              title={
-                task.delegateMode === "assist"
-                  ? "Agent assists — output requires review"
-                  : "Agent handles — runs autonomously"
-              }
-            >
-              <Bot className="h-3 w-3" />
-              {task.delegateMode === "assist" ? "Assists" : "Auto"}
-            </Badge>
-          )}
         </div>
         {task.description ? (
           <div
@@ -223,7 +198,7 @@ export function TaskListItem({
         {formatDate(task.dueDate)}
       </TableCell>
       <TableCell className="hidden lg:table-cell align-middle">
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 max-h-[1.75rem] overflow-hidden">
           {task.tags.slice(0, 2).map((tag) => (
             <Badge
               key={tag}

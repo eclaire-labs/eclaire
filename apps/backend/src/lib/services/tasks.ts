@@ -13,7 +13,6 @@ import {
   gte,
   inArray,
   isNotNull,
-  isNull,
   lte,
   ne,
   type SQL,
@@ -70,8 +69,6 @@ export type FindTasksParams = {
   endDate?: Date;
   dueDateStart?: Date;
   dueDateEnd?: Date;
-  parentId?: string;
-  topLevelOnly?: boolean;
   offset?: number;
   cursor?: string;
   sortBy?: string;
@@ -82,8 +79,8 @@ export type FindTasksParams = {
 const _TASK_PROCESSING_QUEUE = "task-processing";
 
 interface ResolvedTaskDelegate {
-  delegateActorId: string;
-  kind: "human" | "agent" | "system" | "service";
+  delegateActorId: string | null;
+  kind: "human" | "agent" | "system" | "service" | null;
 }
 
 async function resolveTaskDelegate(
@@ -91,10 +88,16 @@ async function resolveTaskDelegate(
   currentUserId: string,
   allowFallback: boolean = true,
 ): Promise<ResolvedTaskDelegate> {
-  if (!delegateActorId || !delegateActorId.trim()) {
+  // Explicitly null = "unassigned"
+  if (delegateActorId === null) {
+    return { delegateActorId: null, kind: null };
+  }
+
+  // Undefined or empty string = "not specified" -> use fallback
+  if (delegateActorId === undefined || !delegateActorId.trim()) {
     return {
-      delegateActorId: currentUserId,
-      kind: "human",
+      delegateActorId: allowFallback ? currentUserId : null,
+      kind: allowFallback ? "human" : null,
     };
   }
 
@@ -165,7 +168,6 @@ interface CreateTaskParams {
   isPinned?: boolean;
   processingEnabled?: boolean;
   sortOrder?: number | null;
-  parentId?: string | null;
 }
 
 interface UpdateTaskParams {
@@ -196,7 +198,6 @@ interface UpdateTaskParams {
   isPinned?: boolean;
   processingEnabled?: boolean;
   sortOrder?: number | null;
-  parentId?: string | null;
   completedAt?: string | null;
 }
 
@@ -214,7 +215,6 @@ function cleanTaskForResponse(
   processingStatus?: string | null,
   // biome-ignore lint/suspicious/noExplicitAny: raw DB row formatter
   comments: any[] = [],
-  childCount?: number,
 ) {
   const dueDate = task.dueDate != null ? formatToISO8601(task.dueDate) : null;
   const completedAt =
@@ -237,8 +237,8 @@ function cleanTaskForResponse(
     processingStatus: processingStatus,
     priority: task.priority ?? 0,
     sortOrder: task.sortOrder ?? null,
-    parentId: task.parentId ?? null,
-    childCount: childCount ?? 0,
+    parentId: null,
+    childCount: 0,
     tags: tags,
     comments: comments,
   };
@@ -264,24 +264,6 @@ export async function createTask(
       true,
     );
 
-    // Validate parentId if provided (single-level nesting, same user)
-    if (taskData.parentId) {
-      const parentTask = await db.query.tasks.findFirst({
-        where: and(eq(tasks.id, taskData.parentId), eq(tasks.userId, userId)),
-        columns: { id: true, parentId: true },
-      });
-      if (!parentTask) {
-        throw new ValidationError(
-          "Parent task not found or belongs to another user",
-        );
-      }
-      if (parentTask.parentId !== null) {
-        throw new ValidationError(
-          "Cannot nest sub-tasks: parent is already a sub-task (single-level nesting only)",
-        );
-      }
-    }
-
     // Pre-generate task ID and history ID before transaction
     const taskId = generateTaskId();
     const historyId = generateHistoryId();
@@ -293,22 +275,16 @@ export async function createTask(
 
     // Atomic transaction: insert task, tags, and history together
     await txManager.withTransaction(async (tx) => {
-      // Auto-set delegateMode when assigning to an agent
-      // If delegate is an agent and mode is "manual" (the default), upgrade to "assist"
+      // Auto-set delegateMode based on delegate type
       const delegateMode =
-        resolvedDelegate.kind === "agent" &&
-        (!taskData.delegateMode || taskData.delegateMode === "manual")
-          ? "assist"
-          : (taskData.delegateMode ?? "manual");
+        resolvedDelegate.delegateActorId === null
+          ? "manual"
+          : resolvedDelegate.kind === "agent" &&
+              (!taskData.delegateMode || taskData.delegateMode === "manual")
+            ? "assist"
+            : (taskData.delegateMode ?? "manual");
 
-      // Auto-set delegatedByActorId when an agent creates a subtask for another actor
-      const delegatedByActorId =
-        taskData.delegatedByActorId ??
-        (taskData.parentId &&
-        actorId !== userId &&
-        actorId !== resolvedDelegate.delegateActorId
-          ? actorId
-          : null);
+      const delegatedByActorId = taskData.delegatedByActorId ?? null;
 
       // Default reviewStatus: "none" for manual, "pending" for agent-assisted
       const reviewStatus =
@@ -344,7 +320,6 @@ export async function createTask(
         flagColor: taskData.flagColor || null,
         isPinned: taskData.isPinned || false,
         sortOrder: taskData.sortOrder ?? null,
-        parentId: taskData.parentId || null,
       });
 
       // Handle tags inside transaction
@@ -580,30 +555,6 @@ export async function updateTask(
       taskUpdateData.delegateActorId = resolvedDelegate.delegateActorId;
     }
 
-    // Validate parentId if being changed (single-level nesting, same user)
-    if ("parentId" in taskUpdateData && taskUpdateData.parentId) {
-      const parentTask = await db.query.tasks.findFirst({
-        where: and(
-          eq(tasks.id, taskUpdateData.parentId),
-          eq(tasks.userId, userId),
-        ),
-        columns: { id: true, parentId: true },
-      });
-      if (!parentTask) {
-        throw new ValidationError(
-          "Parent task not found or belongs to another user",
-        );
-      }
-      if (parentTask.parentId !== null) {
-        throw new ValidationError(
-          "Cannot nest sub-tasks: parent is already a sub-task (single-level nesting only)",
-        );
-      }
-      if (taskUpdateData.parentId === id) {
-        throw new ValidationError("A task cannot be its own parent");
-      }
-    }
-
     // Convert dueDate string to Date object
     let dueDateValue: Date | null = null;
     let includeDueDateUpdate = false;
@@ -668,12 +619,18 @@ export async function updateTask(
 
     if (resolvedDelegate) {
       updateSet.delegateActorId = resolvedDelegate.delegateActorId;
-      // Auto-upgrade delegateMode when reassigning to an agent (if still manual)
       if (
+        resolvedDelegate.delegateActorId === null &&
+        !("delegateMode" in taskUpdateData)
+      ) {
+        // Unassigned: force manual mode
+        updateSet.delegateMode = "manual";
+      } else if (
         resolvedDelegate.kind === "agent" &&
         existingTask.delegateMode === "manual" &&
         !("delegateMode" in taskUpdateData)
       ) {
+        // Auto-upgrade delegateMode when reassigning to an agent (if still manual)
         updateSet.delegateMode = "assist";
       }
     }
@@ -1078,22 +1035,16 @@ export async function getTaskById(taskId: string, userId: string) {
       return null;
     }
 
-    const [taskTagNames, taskCommentsData, childCountResult] =
-      await Promise.all([
-        getTaskTags(taskId),
-        getTaskCommentsWithUsers(taskId, task.userId),
-        db
-          .select({ value: count() })
-          .from(tasks)
-          .where(eq(tasks.parentId, taskId)),
-      ]);
+    const [taskTagNames, taskCommentsData] = await Promise.all([
+      getTaskTags(taskId),
+      getTaskCommentsWithUsers(taskId, task.userId),
+    ]);
 
     const response = cleanTaskForResponse(
       task,
       taskTagNames,
       task.processingStatus,
       taskCommentsData,
-      childCountResult[0]?.value ?? 0,
     );
 
     return response;
@@ -1176,8 +1127,6 @@ function _buildTaskQueryConditions({
   endDate,
   dueDateStart,
   dueDateEnd,
-  parentId,
-  topLevelOnly,
 }: FindTasksParams): (SQL | undefined)[] {
   const definedConditions: (SQL | undefined)[] = [eq(tasks.userId, userId)];
 
@@ -1251,12 +1200,6 @@ function _buildTaskQueryConditions({
     );
   }
 
-  if (parentId) {
-    definedConditions.push(eq(tasks.parentId, parentId));
-  } else if (topLevelOnly) {
-    definedConditions.push(isNull(tasks.parentId));
-  }
-
   return definedConditions;
 }
 
@@ -1277,8 +1220,6 @@ export async function findTasks({
   limit = 50,
   dueDateStart,
   dueDateEnd,
-  parentId,
-  topLevelOnly,
   cursor,
   sortBy = "createdAt",
   sortDir = "desc",
@@ -1296,8 +1237,6 @@ export async function findTasks({
       endDate,
       dueDateStart,
       dueDateEnd,
-      parentId,
-      topLevelOnly,
     });
 
     // Resolve sort column
@@ -1348,35 +1287,20 @@ export async function findTasks({
     const hasMore = finalIds.length > limit;
     if (hasMore) finalIds = finalIds.slice(0, limit);
 
-    const [entriesList, tagMap, childCounts] = await Promise.all([
+    const [entriesList, tagMap] = await Promise.all([
       db
         .select()
         .from(tasks)
         .where(inArray(tasks.id, finalIds))
         .orderBy(orderDir(sortColumn), orderDir(tasks.id)),
       batchGetTags(tasksTags, tasksTags.taskId, tasksTags.tagId, finalIds),
-      db
-        .select({
-          parentId: tasks.parentId,
-          count: count(),
-        })
-        .from(tasks)
-        .where(inArray(tasks.parentId, finalIds))
-        .groupBy(tasks.parentId),
     ]);
-
-    const childCountMap = new Map<string, number>();
-    for (const row of childCounts) {
-      if (row.parentId) childCountMap.set(row.parentId, row.count);
-    }
 
     const items = entriesList.map((task) => {
       return cleanTaskForResponse(
         task,
         tagMap.get(task.id) ?? [],
         task.processingStatus,
-        [],
-        childCountMap.get(task.id) ?? 0,
       );
     });
 
@@ -1434,8 +1358,6 @@ export async function countTasks({
   endDate,
   dueDateStart,
   dueDateEnd,
-  parentId,
-  topLevelOnly,
 }: FindTasksParams): Promise<number> {
   try {
     const conditions = _buildTaskQueryConditions({
@@ -1450,8 +1372,6 @@ export async function countTasks({
       endDate,
       dueDateStart,
       dueDateEnd,
-      parentId,
-      topLevelOnly,
     });
 
     if (tagsList && tagsList.length > 0) {
@@ -1997,7 +1917,6 @@ export async function requestChanges(
     .set({
       reviewStatus: "changes_requested",
       attentionStatus: "none",
-      latestExecutionStatus: "queued",
       updatedAt: new Date(),
     })
     .where(eq(tasks.id, taskId));
@@ -2013,19 +1932,6 @@ export async function requestChanges(
         eq(taskOccurrences.reviewStatus, "pending"),
       ),
     );
-
-  // Trigger a new agent run so the agent can revise based on comments
-  if (task.delegateActorId) {
-    const { createTaskOccurrence } = await import("./task-occurrences.js");
-    await createTaskOccurrence({
-      taskId,
-      userId,
-      kind: "review_run",
-      prompt: task.prompt || `Revise the task: ${task.title}`,
-      executorActorId: task.delegateActorId,
-      requiresReview: task.delegateMode === "assist",
-    });
-  }
 }
 
 /**

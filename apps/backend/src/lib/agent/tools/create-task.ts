@@ -35,10 +35,6 @@ const inputSchema = z.object({
     .describe("Priority (0=none, 1=urgent, 2=high, 3=medium, 4=low)"),
   tags: z.array(z.string()).optional().describe("Tags for the task"),
   dueDate: z.string().optional().describe("Due date in ISO 8601 format"),
-  parentId: z
-    .string()
-    .optional()
-    .describe("Parent task ID to create this as a sub-task"),
   delegateActorId: z
     .string()
     .optional()
@@ -101,7 +97,6 @@ export const createTaskTool: RuntimeToolDefinition<typeof inputSchema> = {
         priority: input.priority,
         tags: input.tags,
         dueDate: input.dueDate,
-        parentId: input.parentId,
         delegateActorId: input.delegateActorId,
         delegateMode: input.delegateMode,
         scheduleType: input.scheduleType,

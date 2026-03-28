@@ -3,7 +3,6 @@ import {
   CalendarDays,
   Edit,
   FileText,
-  GitBranch,
   Loader2,
   MessageCircle,
   MoreHorizontal,
@@ -105,15 +104,6 @@ export function TaskTileItem({
             <div className="flex items-start gap-2">
               <CardTitle className="text-sm font-semibold line-clamp-2 flex-1 flex items-center gap-2">
                 {task.title}
-                {(task.childCount ?? 0) > 0 && (
-                  <span
-                    className="flex items-center gap-0.5 text-xs text-muted-foreground flex-shrink-0 font-normal"
-                    title={`${task.childCount} sub-task${task.childCount === 1 ? "" : "s"}`}
-                  >
-                    <GitBranch className="h-3 w-3" />
-                    {task.childCount}
-                  </span>
-                )}
               </CardTitle>
               {task.delegateMode !== "manual" ? (
                 <Badge
