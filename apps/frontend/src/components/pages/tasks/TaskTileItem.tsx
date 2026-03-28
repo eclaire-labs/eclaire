@@ -36,6 +36,7 @@ import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Task, TaskStatus, User } from "@/types/task";
 import {
+  getEffectiveStatusDisplay,
   getNextStatus,
   getPriorityIcon,
   getStatusConfig,
@@ -282,9 +283,9 @@ export function TaskTileItem({
           <div className="flex items-center gap-2">
             <Badge
               variant="outline"
-              className={`${getStatusConfig(task.taskStatus).badgeClass} whitespace-nowrap`}
+              className={`${getEffectiveStatusDisplay(task).badgeClass} whitespace-nowrap`}
             >
-              {getStatusConfig(task.taskStatus).label}
+              {getEffectiveStatusDisplay(task).label}
             </Badge>
             {getPriorityIcon(task.priority) && (
               <span className="flex items-center">

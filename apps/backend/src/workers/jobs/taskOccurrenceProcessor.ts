@@ -323,24 +323,31 @@ async function processAgentExecution(
   // Complete the occurrence
   await completeTaskOccurrence(occurrenceId, output, resultSummary);
 
-  // Post output as a task comment
-  try {
-    const { createTaskComment: createComment } = await import(
-      "../../lib/services/taskComments.js"
-    );
-    // Use a system caller for agent-generated comments
-    await createComment(
-      { taskId, content: output },
-      {
-        actor: "agent",
-        actorId: executorActorId ?? userId,
-        ownerUserId: userId,
-      },
-    );
-  } catch (err) {
+  // Post output as a task comment (skip if agent produced no text output)
+  if (output.trim()) {
+    try {
+      const { createTaskComment: createComment } = await import(
+        "../../lib/services/taskComments.js"
+      );
+      // Use a system caller for agent-generated comments
+      await createComment(
+        { taskId, content: output },
+        {
+          actor: "agent",
+          actorId: executorActorId ?? userId,
+          ownerUserId: userId,
+        },
+      );
+    } catch (err) {
+      logger.warn(
+        { occurrenceId, taskId },
+        "Failed to post agent output as comment",
+      );
+    }
+  } else {
     logger.warn(
       { occurrenceId, taskId },
-      "Failed to post agent output as comment",
+      "Agent produced no text output — skipping comment",
     );
   }
 

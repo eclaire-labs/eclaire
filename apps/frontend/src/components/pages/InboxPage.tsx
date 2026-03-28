@@ -53,9 +53,12 @@ function useTaskAction() {
       if (!res.ok) throw new Error(`Failed to ${action}`);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["inbox"] }),
+        queryClient.invalidateQueries({ queryKey: ["inbox-count"] }),
+        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+      ]);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -210,7 +213,7 @@ export default function InboxPage() {
               }
               disabled={action.isPending}
             >
-              Changes
+              Request Changes
             </Button>
           </>
         )}

@@ -32,6 +32,13 @@ const logger = createChildLogger("services:agents");
 
 export const DEFAULT_AGENT_ID = DEFAULT_AGENT_ACTOR_ID;
 
+/**
+ * Tools excluded from the default agent unless the user explicitly enables them.
+ * Browser tools are disabled by default because autonomous web browsing can be
+ * dangerous (exfiltration, unintended actions) and unreliable.
+ */
+const TOOLS_DISABLED_BY_DEFAULT = new Set(["browseWeb", "browseChrome"]);
+
 const DEFAULT_AGENT_SYSTEM_PROMPT = [
   "You are Eclaire, the user's general-purpose AI teammate.",
   "Be practical, accurate, and direct.",
@@ -242,7 +249,9 @@ export function getDefaultAgentDefinition(): AgentDefinition {
     name: "Eclaire",
     description: "Default general-purpose assistant for your workspace.",
     systemPrompt: DEFAULT_AGENT_SYSTEM_PROMPT,
-    toolNames: Object.keys(getBackendTools()),
+    toolNames: Object.keys(getBackendTools()).filter(
+      (name) => !TOOLS_DISABLED_BY_DEFAULT.has(name),
+    ),
     skillNames: discoverSkills().map((skill) => skill.name),
     modelId: null,
     isEditable: false,

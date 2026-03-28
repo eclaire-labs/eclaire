@@ -23,7 +23,7 @@ import {
 
 const routeApi = getRouteApi("/_authenticated/tasks/$id");
 
-import { useEffect, useState } from "react";
+import { createElement, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
@@ -69,6 +69,7 @@ import { TaskExecutionHistory } from "./tasks/TaskExecutionHistory";
 import {
   PRIORITY_OPTIONS,
   STATUS_OPTIONS,
+  getEffectiveStatusDisplay,
   getPriorityIcon,
   getPriorityLabel,
   getStatusConfig,
@@ -242,13 +243,17 @@ export function TaskDetailClient() {
   };
 
   const renderStatusBadge = (status: TaskStatus) => {
-    const config = getStatusConfig(status);
+    const config = task
+      ? getEffectiveStatusDisplay(task)
+      : getStatusConfig(status);
     return (
       <Badge
         variant="outline"
         className={`flex items-center gap-1 ${config.badgeClass}`}
       >
-        {getStatusIcon(status)}
+        {createElement(config.icon, {
+          className: `h-4 w-4 ${config.iconClass}`,
+        })}
         {config.label}
       </Badge>
     );
@@ -488,10 +493,19 @@ export function TaskDetailClient() {
                             Agent output needs review
                           </p>
                           <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                            The agent has completed its work on this task.
-                            Review the output in the comments below, then
-                            approve or request changes.
+                            The agent has completed its work. Review the result
+                            below, then approve or request changes.
                           </p>
+                          {task.latestResultSummary ? (
+                            <div className="mt-2 rounded bg-white/60 dark:bg-black/20 p-3 max-h-40 overflow-y-auto text-sm text-amber-900 dark:text-amber-200 whitespace-pre-wrap">
+                              {task.latestResultSummary}
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-xs italic text-amber-600 dark:text-amber-500">
+                              No text output was produced. Check the execution
+                              history in the sidebar for details.
+                            </p>
+                          )}
                           <div className="flex gap-2 mt-3">
                             <Button
                               size="sm"
@@ -1054,6 +1068,10 @@ export function TaskDetailClient() {
                         <TaskExecutionHistory
                           taskId={task.id}
                           isRecurring={task.scheduleType === "recurring"}
+                          autoOpen={
+                            task.reviewStatus === "pending" ||
+                            task.latestExecutionStatus === "failed"
+                          }
                         />
                       )}
 

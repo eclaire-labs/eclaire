@@ -146,22 +146,25 @@ function OccurrenceRow({ occurrence }: { occurrence: TaskOccurrence }) {
 interface TaskExecutionHistoryProps {
   taskId: string;
   isRecurring?: boolean;
+  autoOpen?: boolean;
 }
 
 export function TaskExecutionHistory({
   taskId,
   isRecurring,
+  autoOpen,
 }: TaskExecutionHistoryProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(isRecurring || autoOpen || false);
   const {
     occurrences,
     isLoading,
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useTaskOccurrences(taskId, { enabled: isOpen, limit: 10 });
-
-  if (!isRecurring && !isOpen) return null;
+  } = useTaskOccurrences(taskId, {
+    enabled: isRecurring || autoOpen || isOpen,
+    limit: 10,
+  });
 
   return (
     <div>

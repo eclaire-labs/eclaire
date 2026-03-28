@@ -269,6 +269,15 @@ export default function HistoryPage() {
             API
           </Badge>
         );
+      case "task_comment":
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+          >
+            Comment
+          </Badge>
+        );
       default:
         return <Badge variant="secondary">{itemType}</Badge>;
     }
@@ -301,6 +310,15 @@ export default function HistoryPage() {
   const getChangeDescription = (item: HistoryItem) => {
     const name = item.itemName || "unknown";
     const type = (item.itemType || "item").toLowerCase();
+
+    // Friendly descriptions for task comments
+    if (type === "task_comment") {
+      const taskName = name.replace("Comment on task: ", "");
+      if (item.action === "create") return `Commented on "${taskName}"`;
+      if (item.action === "update") return `Edited comment on "${taskName}"`;
+      if (item.action === "delete") return `Deleted comment on "${taskName}"`;
+    }
+
     if (item.action === "create") {
       return `Created ${type} "${name}"`;
     } else if (item.action === "update") {

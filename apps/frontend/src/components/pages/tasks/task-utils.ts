@@ -4,6 +4,7 @@ import {
   ArrowUp,
   CheckCircle2,
   Circle,
+  Eye,
   Loader2,
   Minus,
   ShieldAlert,
@@ -63,6 +64,27 @@ export function getStatusIcon(
   return createElement(config.icon, {
     className: `${sizeClass} ${config.iconClass}`,
   });
+}
+
+/**
+ * Returns status display config that accounts for composite states.
+ * When a task is in_progress but reviewStatus is pending, the user sees
+ * "Awaiting Review" instead of a spinning "In Progress".
+ */
+export function getEffectiveStatusDisplay(task: {
+  taskStatus: string;
+  reviewStatus: string;
+}) {
+  if (task.taskStatus === "in_progress" && task.reviewStatus === "pending") {
+    return {
+      label: "Awaiting Review",
+      icon: Eye,
+      iconClass: "text-amber-500",
+      badgeClass:
+        "bg-amber-100/80 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
+    };
+  }
+  return getStatusConfig(task.taskStatus);
 }
 
 /** Cycle: open -> in_progress -> completed -> open.

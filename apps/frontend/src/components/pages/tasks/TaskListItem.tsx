@@ -9,6 +9,7 @@ import {
   Trash2,
   User as UserIcon,
 } from "lucide-react";
+import { createElement } from "react";
 import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
@@ -30,6 +31,7 @@ import { formatDate } from "@/lib/list-page-utils";
 import type { Task, TaskStatus, User } from "@/types/task";
 import {
   getNextStatus,
+  getEffectiveStatusDisplay,
   getPriorityIcon,
   getPriorityLabel,
   getStatusConfig,
@@ -84,7 +86,7 @@ export function TaskListItem({
   const assigneeId = task.delegateActorId;
   const assignee = allAssignees.find((a) => a.id === assigneeId);
 
-  const statusConfig = getStatusConfig(task.taskStatus);
+  const statusConfig = getEffectiveStatusDisplay(task);
 
   return (
     <TableRow
@@ -100,13 +102,15 @@ export function TaskListItem({
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-full"
-            title={`Current: ${task.taskStatus}. Click to change.`}
+            title={`Current: ${statusConfig.label}. Click to change.`}
             onClick={(e) => {
               e.stopPropagation();
               onStatusChange(task.id, task.taskStatus as TaskStatus);
             }}
           >
-            {getStatusIcon(task.taskStatus)}
+            {createElement(statusConfig.icon, {
+              className: `h-4 w-4 ${statusConfig.iconClass}`,
+            })}
           </Button>
           {task.latestExecutionStatus === "running" ||
           task.latestExecutionStatus === "queued" ? (
