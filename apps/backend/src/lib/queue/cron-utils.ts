@@ -6,7 +6,7 @@ const logger = createChildLogger("cron-utils");
 
 /**
  * Validates a cron expression format
- * Supports both 5-field and 6-field cron formats consistent with BullMQ:
+ * Supports both 5-field and 6-field cron formats:
  * - 5-field: minute hour day-of-month month day-of-week
  * - 6-field: second minute hour day-of-month month day-of-week
  * @param cronExpression - The cron expression to validate
@@ -87,7 +87,7 @@ export function getNextExecutionTime(
 
 /**
  * Common cron expression patterns for convenience
- * Using 6-field format (second minute hour day-of-month month day-of-week) consistent with BullMQ
+ * Using 6-field format (second minute hour day-of-month month day-of-week)
  */
 export const CronPatterns = {
   // Fast patterns for testing

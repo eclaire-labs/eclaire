@@ -1,8 +1,6 @@
-import { QueueNames } from "../../lib/queue/queue-names.js";
 import { createChildLogger } from "../../lib/logger.js";
 import { updateProcessingJobStatus } from "../../lib/services/processing-status.js";
 import { config } from "../config.js";
-import { getQueue } from "../queues.js";
 
 const logger = createChildLogger("domain-rate-limiter");
 
@@ -576,36 +574,7 @@ async function handleStaleJob(
   staleTimeMs: number,
 ): Promise<void> {
   try {
-    // First, try to find and fail the job in BullMQ (only in Redis mode)
-    const bookmarkQueue = getQueue(QueueNames.BOOKMARK_PROCESSING);
-    if (!bookmarkQueue) {
-      logger.warn(
-        { jobId, domain },
-        "Stale job cleanup skipped: not in Redis mode",
-      );
-      return;
-    }
-
-    const job = await bookmarkQueue.getJob(jobId);
-
-    if (job && (await job.isActive())) {
-      const errorMessage = `Job timed out after ${Math.round(staleTimeMs / 1000)}s and was cleaned up by the rate limiter (domain: ${domain})`;
-
-      // Use the job's own methods to fail it in BullMQ
-      await job.moveToFailed(new Error(errorMessage), "stale_job_cleanup");
-
-      logger.info(
-        { jobId, domain, staleTimeMs },
-        "Successfully failed stale job in BullMQ via domain rate limiter cleanup",
-      );
-    } else {
-      logger.warn(
-        { jobId, domain },
-        "Stale job detected but could not be found or was not active in BullMQ",
-      );
-    }
-
-    // Also update the database state for consistency
+    // Update the database state for the stale job
     const dbErrorMessage = `Job timed out after ${Math.round(staleTimeMs / 1000)}s during processing (domain: ${domain})`;
     await updateProcessingJobStatus(
       "bookmarks",

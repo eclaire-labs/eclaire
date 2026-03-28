@@ -53,15 +53,6 @@ importers:
       '@better-auth/drizzle-adapter':
         specifier: 1.5.3
         version: 1.5.3(@better-auth/core@1.5.3(@better-auth/utils@0.3.1)(@better-fetch/fetch@1.1.21)(better-call@1.3.2(zod@4.3.6))(jose@6.1.3)(kysely@0.28.11)(nanostores@1.1.1))(@better-auth/utils@0.3.1)(drizzle-orm@0.45.1(@electric-sql/pglite@0.3.15)(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.6.2)(kysely@0.28.11)(pg@8.20.0)(postgres@3.4.8))
-      '@bull-board/api':
-        specifier: 6.20.3
-        version: 6.20.3(@bull-board/ui@6.20.3)
-      '@bull-board/hono':
-        specifier: 6.20.3
-        version: 6.20.3(hono@4.12.7)
-      '@bull-board/ui':
-        specifier: 6.20.3
-        version: 6.20.3
       '@eclaire/ai':
         specifier: workspace:*
         version: link:../../packages/ai
@@ -137,9 +128,6 @@ importers:
       better-sqlite3:
         specifier: 12.6.2
         version: 12.6.2
-      bullmq:
-        specifier: 5.70.2
-        version: 5.70.2
       chrome-devtools-mcp:
         specifier: ^0.20.0
         version: 0.20.0
@@ -176,9 +164,6 @@ importers:
       html-to-text:
         specifier: 9.0.5
         version: 9.0.5
-      ioredis:
-        specifier: 5.9.3
-        version: 5.9.3
       is-url:
         specifier: 1.2.4
         version: 1.2.4
@@ -1669,19 +1654,6 @@ packages:
 
   '@borewit/text-codec@0.2.1':
     resolution: {integrity: sha512-k7vvKPbf7J2fZ5klGRD9AeKfUvojuZIQ3BT5u7Jfv+puwXkUBUT5PVyMDfJZpy30CBDXGMgw7fguK/lpOMBvgw==}
-
-  '@bull-board/api@6.20.3':
-    resolution: {integrity: sha512-cDrsJJsmF4DbbY8/5oHxO4qFtyFjxexsWQKHowsud/8H4mtZN7MZg4fCmNzfaxc9Ov7V6r9Y9F5G2Mq6t7ZEJg==}
-    peerDependencies:
-      '@bull-board/ui': 6.20.3
-
-  '@bull-board/hono@6.20.3':
-    resolution: {integrity: sha512-6MyvSZZ4Kt/3o88vbmBoviamU6Us3N8tMKu56vNzzZ7d9CHcVCPw8kKm7HGVpLTuysVetzl7MduJ3UMltzXOSw==}
-    peerDependencies:
-      hono: ^4
-
-  '@bull-board/ui@6.20.3':
-    resolution: {integrity: sha512-oANyYoW0X+xd0j/09DRyh3u7Q3wqBtXiLEWyZUJIi/Bjp/hINwiw20RwWuRcaFkqkFylEJL9l+pjmeSA9X5L2A==}
 
   '@clack/core@1.1.0':
     resolution: {integrity: sha512-SVcm4Dqm2ukn64/8Gub2wnlA5nS2iWJyCkdNHcvNHPIeBTGojpdJ+9cZKwLfmqy7irD4N5qLteSilJlE0WLAtA==}
@@ -7035,9 +7007,6 @@ packages:
     resolution: {integrity: sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w==}
     engines: {node: '>=4'}
 
-  redis-info@3.1.0:
-    resolution: {integrity: sha512-ER4L9Sh/vm63DkIE0bkSjxluQlioBiBgf5w1UuldaW/3vPcecdljVDisZhmnCMvsxHNiARTTDDHGg9cGwTfrKg==}
-
   redis-parser@3.0.0:
     resolution: {integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==}
     engines: {node: '>=4'}
@@ -8913,22 +8882,6 @@ snapshots:
     optional: true
 
   '@borewit/text-codec@0.2.1': {}
-
-  '@bull-board/api@6.20.3(@bull-board/ui@6.20.3)':
-    dependencies:
-      '@bull-board/ui': 6.20.3
-      redis-info: 3.1.0
-
-  '@bull-board/hono@6.20.3(hono@4.12.7)':
-    dependencies:
-      '@bull-board/api': 6.20.3(@bull-board/ui@6.20.3)
-      '@bull-board/ui': 6.20.3
-      ejs: 3.1.10
-      hono: 4.12.7
-
-  '@bull-board/ui@6.20.3':
-    dependencies:
-      '@bull-board/api': 6.20.3(@bull-board/ui@6.20.3)
 
   '@clack/core@1.1.0':
     dependencies:
@@ -14113,10 +14066,6 @@ snapshots:
       strip-indent: 3.0.0
 
   redis-errors@1.2.0: {}
-
-  redis-info@3.1.0:
-    dependencies:
-      lodash: 4.17.23
 
   redis-parser@3.0.0:
     dependencies:

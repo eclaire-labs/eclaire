@@ -1,5 +1,4 @@
 import { generateJobId } from "@eclaire/queue/core";
-import type { Queue } from "bullmq";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { db, queueJobs, schema } from "../../db/index.js";
 
@@ -8,7 +7,7 @@ const { bookmarks, documents, notes, photos, tasks } = schema;
 import { publishProcessingEvent } from "../../routes/processing-events.js";
 import type { AssetType, ProcessingStatus } from "../../types/assets.js";
 import { createChildLogger } from "../logger.js";
-import { getQueue, QueueNames } from "../queue/index.js";
+import { QueueNames } from "../queue/index.js";
 import { processArtifacts } from "./artifact-processor.js";
 
 const logger = createChildLogger("processing-status");
@@ -1010,155 +1009,23 @@ export async function retryAssetProcessing(
   force: boolean = false,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // For photos, use the enhanced retry logic that includes job state checking
     if (assetType === "photos") {
-      if (force) {
-        // Force mode: try to remove running jobs and restart
-        const imageQueue = getQueue(QueueNames.IMAGE_PROCESSING);
-
-        if (imageQueue) {
-          // Force remove any existing jobs
-          const imageJob = await imageQueue.getJob(assetId);
-
-          if (imageJob) {
-            try {
-              await imageJob.remove();
-              logger.info(
-                { assetId, jobId: imageJob.id },
-                "Force removed image conversion job",
-              );
-            } catch (removeError) {
-              logger.warn(
-                { assetId, removeError },
-                "Could not remove image job (may not exist)",
-              );
-            }
-          }
-        }
-      }
-
-      // Use the safe photo retry logic
       return await retryPhotoProcessing(assetId, userId);
     }
 
-    // For bookmarks, use the enhanced retry logic that includes job state checking
     if (assetType === "bookmarks") {
-      if (force) {
-        // Force mode: try to remove running jobs and restart
-        const bookmarkQueue = getQueue(QueueNames.BOOKMARK_PROCESSING);
-
-        if (bookmarkQueue) {
-          // Force remove any existing job
-          const existingJob = await bookmarkQueue.getJob(assetId);
-
-          if (existingJob) {
-            try {
-              await existingJob.remove();
-              logger.info(
-                { assetId, jobId: existingJob.id },
-                "Force removed bookmark processing job",
-              );
-            } catch (removeError) {
-              logger.warn(
-                { assetId, removeError },
-                "Could not remove bookmark job (may not exist)",
-              );
-            }
-          }
-        }
-      }
-
-      // Use the safe bookmark retry logic
       return await retryBookmarkProcessing(assetId, userId);
     }
 
-    // For notes, use the enhanced retry logic that includes job state checking
     if (assetType === "notes") {
-      if (force) {
-        // Force mode: try to remove running jobs and restart
-        const noteQueue = getQueue(QueueNames.NOTE_PROCESSING);
-
-        if (noteQueue) {
-          // Force remove any existing job
-          const existingJob = await noteQueue.getJob(assetId);
-
-          if (existingJob) {
-            try {
-              await existingJob.remove();
-              logger.info(
-                { assetId, jobId: existingJob.id },
-                "Force removed note processing job",
-              );
-            } catch (removeError) {
-              logger.warn(
-                { assetId, removeError },
-                "Could not remove note job (may not exist)",
-              );
-            }
-          }
-        }
-      }
-
-      // Use the safe note retry logic
       return await retryNoteProcessing(assetId, userId);
     }
 
     if (assetType === "tasks") {
-      if (force) {
-        // Force mode: try to remove running jobs and restart
-        const taskQueue = getQueue(QueueNames.TASK_PROCESSING);
-
-        if (taskQueue) {
-          // Force remove any existing job
-          const existingJob = await taskQueue.getJob(assetId);
-
-          if (existingJob) {
-            try {
-              await existingJob.remove();
-              logger.info(
-                { assetId, jobId: existingJob.id },
-                "Force removed task processing job",
-              );
-            } catch (removeError) {
-              logger.warn(
-                { assetId, removeError },
-                "Could not remove task job (may not exist)",
-              );
-            }
-          }
-        }
-      }
-
-      // Use the safe task retry logic
       return await retryTaskProcessing(assetId, userId);
     }
 
-    // For documents, use the enhanced retry logic that includes job state checking
     if (assetType === "documents") {
-      if (force) {
-        // Force mode: try to remove running jobs from document processing queue
-        const documentQueue = getQueue(QueueNames.DOCUMENT_PROCESSING);
-
-        if (documentQueue) {
-          try {
-            const existingJob = await documentQueue.getJob(assetId);
-            if (existingJob) {
-              await existingJob.remove();
-              logger.info(
-                { assetId, jobId: existingJob.id },
-                "Force removed document processing job",
-              );
-            }
-          } catch (removeError) {
-            logger.warn(
-              { assetId, removeError },
-              "Could not remove document job (may not exist)",
-            );
-          }
-        }
-      }
-
-      // Use the safe document retry logic
       return await retryDocumentProcessing(assetId, userId);
     }
 
@@ -1207,26 +1074,6 @@ async function resetProcessingJobState(
       "Failed to reset processing job state",
     );
     throw error;
-  }
-}
-
-/**
- * Gets the appropriate queue for an asset type
- */
-function _getQueueForAssetType(assetType: AssetType): Queue | null {
-  switch (assetType) {
-    case "photos":
-      return getQueue(QueueNames.IMAGE_PROCESSING);
-    case "documents":
-      return getQueue(QueueNames.DOCUMENT_PROCESSING);
-    case "bookmarks":
-      return getQueue(QueueNames.BOOKMARK_PROCESSING);
-    case "notes":
-      return getQueue(QueueNames.NOTE_PROCESSING);
-    case "tasks":
-      return getQueue(QueueNames.TASK_PROCESSING);
-    default:
-      return null;
   }
 }
 
@@ -1309,87 +1156,21 @@ async function _queueRetryJob(
   assetId: string,
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
-  // Import necessary modules for document lookup
-  const { schema } = await import("../../db/index.js");
-  const { documents } = schema;
-  const { eq, and } = await import("drizzle-orm");
   try {
     switch (assetType) {
-      case "photos": {
-        // Use the new safe photo retry logic
+      case "photos":
         return await retryPhotoProcessing(assetId, userId);
-      }
-      case "documents": {
-        // Get document details to understand current state and reset statuses
-        const document = await db.query.documents.findFirst({
-          where: and(eq(documents.id, assetId), eq(documents.userId, userId)),
-        });
-
-        if (!document) {
-          logger.warn(
-            { assetId, userId, assetType },
-            "Document not found for retry",
-          );
-          return { success: false, error: "Document not found" };
-        }
-
-        // Reset processing statuses before retry
-        await db
-          .update(documents)
-          .set({
-            // Note: Reset document processing fields if they exist in schema
-            updatedAt: new Date(),
-          })
-          .where(eq(documents.id, assetId));
-
-        logger.info(
-          { assetId, userId, assetType },
-          "Reset document processing statuses for retry",
-        );
-
-        // Queue document processing job (matches normal flow in documents.ts)
-        const documentProcessingQueue = getQueue(
-          QueueNames.DOCUMENT_PROCESSING,
-        );
-        if (documentProcessingQueue) {
-          await documentProcessingQueue.add("processDocument", {
-            documentId: assetId,
-            storageId: document.storageId,
-            mimeType:
-              document.originalMimeType ||
-              document.mimeType ||
-              "application/pdf",
-            userId: userId,
-            originalFilename:
-              document.originalFilename || `document-${assetId}`,
-          });
-          logger.info(
-            { assetId, userId },
-            "Queued document processing job for retry",
-          );
-        } else {
-          logger.error(
-            { assetId, userId },
-            "Failed to get document processing queue for retry",
-          );
-        }
-
-        break;
-      }
-      case "bookmarks": {
+      case "documents":
+        return await retryDocumentProcessing(assetId, userId);
+      case "bookmarks":
         return await retryBookmarkProcessing(assetId, userId);
-      }
-      case "notes": {
+      case "notes":
         return await retryNoteProcessing(assetId, userId);
-      }
-      case "tasks": {
+      case "tasks":
         return await retryTaskProcessing(assetId, userId);
-      }
       default:
         return { success: false, error: "Unknown asset type" };
     }
-
-    return { success: true };
   } catch (error) {
     logger.error(
       {

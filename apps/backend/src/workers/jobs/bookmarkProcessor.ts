@@ -402,11 +402,11 @@ async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       domainRateLimiter.markDomainComplete(originalUrl, jobId);
     }
   } catch (error: unknown) {
-    // RateLimitError is not a real error - it's a signal to BullMQ to reschedule
+    // RateLimitError is not a real error - it's a signal to reschedule
     // We must let it bubble up without any error handling
     if (
       (error instanceof Error && error.name === "RateLimitError") ||
-      (error instanceof Error && error.message === "bullmq:rateLimitExceeded")
+      (error instanceof Error && error.message === "rateLimitExceeded")
     ) {
       logger.info(
         { jobId, bookmarkId, domain: availability?.domain },

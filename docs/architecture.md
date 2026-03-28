@@ -210,7 +210,7 @@ The system supports multiple deployment modes:
 
 - **Frontend ↔ Backend**: HTTP REST API, WebSocket for real-time features
 - **Backend ↔ Database**: PostgreSQL connections via Drizzle ORM
-- **Backend ↔ Workers**: Database-backed job queue (or Redis/BullMQ for scaling)
+- **Backend ↔ Workers**: Database-backed job queue (PostgreSQL or SQLite)
 - **Workers ↔ AI Services**: HTTP APIs for model inference
 - **Workers ↔ External APIs**: HTTP with rate limiting and error handling
 

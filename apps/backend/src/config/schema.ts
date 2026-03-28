@@ -16,7 +16,7 @@ import { envLoadInfo } from "@eclaire/core";
 export type EclaireRuntime = "local" | "container";
 export type SecretsSource = "env" | "environment";
 export type DatabaseType = "sqlite" | "pglite" | "postgres";
-export type QueueBackend = "sqlite" | "postgres" | "redis";
+export type QueueBackend = "sqlite" | "postgres";
 export type ServiceRole = "api" | "worker" | "all";
 
 export interface EclaireConfig {
@@ -53,8 +53,6 @@ export interface EclaireConfig {
   // Queue
   queue: {
     backend: QueueBackend;
-    redisUrl: string;
-    redisKeyPrefix: string;
   };
 
   // Directories
@@ -117,7 +115,6 @@ export interface EclaireConfig {
 
   // Worker
   worker: {
-    port: number;
     concurrency: number;
     sharedDataPath: string;
   };
@@ -230,7 +227,6 @@ export function buildConfig(): EclaireConfig {
 
   // Database wiring defaults based on runtime
   const defaultDbHost = isContainer ? "postgres" : "127.0.0.1";
-  const defaultRedisHost = isContainer ? "redis" : "127.0.0.1";
   const defaultBackendUrl = isContainer
     ? "http://eclaire:3000"
     : "http://127.0.0.1:3001";
@@ -369,10 +365,6 @@ export function buildConfig(): EclaireConfig {
     // Queue
     queue: {
       backend: queueBackend,
-      redisUrl:
-        env.REDIS_URL ||
-        `redis://${env.REDIS_HOST || defaultRedisHost}:${int(env.REDIS_PORT, 6379)}`,
-      redisKeyPrefix: env.REDIS_KEY_PREFIX || "eclaire",
     },
 
     // Directories
@@ -445,7 +437,6 @@ export function buildConfig(): EclaireConfig {
 
     // Worker
     worker: {
-      port: int(env.WORKER_PORT, 3002),
       concurrency: int(env.WORKER_CONCURRENCY, isProduction ? 5 : 3),
       sharedDataPath: env.WORKER_SHARED_DATA_PATH || `${dataDir}/users`,
     },
@@ -497,9 +488,9 @@ export function validateConfig(config: EclaireConfig): string[] {
   }
 
   // Validate QUEUE_BACKEND
-  if (!["sqlite", "postgres", "redis"].includes(config.queueBackend)) {
+  if (!["sqlite", "postgres"].includes(config.queueBackend)) {
     errors.push(
-      `QUEUE_BACKEND must be one of: sqlite, postgres, redis. Got: ${config.queueBackend}`,
+      `QUEUE_BACKEND must be one of: sqlite, postgres. Got: ${config.queueBackend}`,
     );
   }
 
@@ -521,32 +512,21 @@ export function validateConfig(config: EclaireConfig): string[] {
   // Valid combinations:
   // - DATABASE_TYPE=sqlite + QUEUE_BACKEND=sqlite
   // - DATABASE_TYPE=postgres/pglite + QUEUE_BACKEND=postgres
-  // - Any DATABASE_TYPE + QUEUE_BACKEND=redis (redis is independent)
-  if (config.queueBackend !== "redis") {
-    const dbIsPostgresLike =
-      config.databaseType === "postgres" || config.databaseType === "pglite";
-    const queueIsPostgres = config.queueBackend === "postgres";
+  const dbIsPostgresLike =
+    config.databaseType === "postgres" || config.databaseType === "pglite";
+  const queueIsPostgres = config.queueBackend === "postgres";
 
-    if (dbIsPostgresLike && !queueIsPostgres) {
-      errors.push(
-        `QUEUE_BACKEND=${config.queueBackend} is incompatible with DATABASE_TYPE=${config.databaseType}. ` +
-          `Use QUEUE_BACKEND=postgres or QUEUE_BACKEND=redis`,
-      );
-    }
-    if (config.databaseType === "sqlite" && queueIsPostgres) {
-      errors.push(
-        `QUEUE_BACKEND=postgres is incompatible with DATABASE_TYPE=sqlite. ` +
-          `Use QUEUE_BACKEND=sqlite or QUEUE_BACKEND=redis`,
-      );
-    }
+  if (dbIsPostgresLike && !queueIsPostgres) {
+    errors.push(
+      `QUEUE_BACKEND=${config.queueBackend} is incompatible with DATABASE_TYPE=${config.databaseType}. ` +
+        `Use QUEUE_BACKEND=postgres`,
+    );
   }
-
-  // Redis URL required when using redis backend
-  if (
-    config.queueBackend === "redis" &&
-    !config.queue.redisUrl.includes("redis://")
-  ) {
-    errors.push(`REDIS_URL is required when QUEUE_BACKEND=redis`);
+  if (config.databaseType === "sqlite" && queueIsPostgres) {
+    errors.push(
+      `QUEUE_BACKEND=postgres is incompatible with DATABASE_TYPE=sqlite. ` +
+        `Use QUEUE_BACKEND=sqlite`,
+    );
   }
 
   // Validate HMAC version - only v1 is currently supported

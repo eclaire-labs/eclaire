@@ -1,5 +1,3 @@
-import { Queue } from "bullmq";
-import { Redis } from "ioredis";
 import { expect } from "vitest";
 import {
   BASE_URL,
@@ -106,10 +104,6 @@ export interface TaskListResponse {
 // Global tracking for all recurring tasks (accessible to helpers and tests)
 export let allRecurringTaskIds: string[] = [];
 
-// Redis connection for scheduler inspection
-let redisConnection: Redis;
-let taskExecutionQueue: Queue;
-
 // Helper functions for recurrence testing
 export const RecurrenceTestHelpers = {
   /**
@@ -170,7 +164,7 @@ export const RecurrenceTestHelpers = {
 
     while (Date.now() - startTime < maxWaitMs) {
       // Check if there are any completed jobs for this task
-      // Since we can't directly access BullMQ in tests, we'll check for task updates
+      // Check for task updates by polling the API
       try {
         const response = await loggedFetch(`${BASE_URL}/tasks/${taskId}`, {
           method: "GET",
@@ -691,76 +685,11 @@ export const RecurrenceTestHelpers = {
   },
 
   /**
-   * Inspects the BullMQ scheduler for a specific task
-   * Returns null when running in database queue mode (no Redis)
+   * Inspects the scheduler for a specific task
+   * Returns null (scheduler inspection requires database query)
    */
-  inspectScheduler: async (taskId: string) => {
-    // Skip Redis operations in database queue mode
-    const { config } = await import("../../config/index.js");
-    if (config.queueBackend !== "redis") {
-      return null;
-    }
-
-    // Initialize connections if not already done
-    if (!redisConnection) {
-      redisConnection = new Redis(config.queue.redisUrl, {
-        maxRetriesPerRequest: null,
-      });
-    }
-
-    if (!taskExecutionQueue) {
-      const { QueueNames } = await import("../../lib/queue/index.js");
-      taskExecutionQueue = new Queue(QueueNames.TASK_OCCURRENCE, {
-        connection: redisConnection,
-      });
-    }
-
-    const schedulerId = `recurring-task-${taskId}`;
-
-    try {
-      const scheduler = await taskExecutionQueue.getJobScheduler(schedulerId);
-
-      if (!scheduler) {
-        if (VERBOSE) {
-          console.log(`No scheduler found for task ${taskId}`);
-        }
-        return null;
-      }
-
-      const schedulerInfo = {
-        id: schedulerId,
-        name: schedulerId,
-        cron: scheduler.pattern || null,
-        endDate: scheduler.endDate ? new Date(scheduler.endDate) : null,
-        nextRunAt: scheduler.next ? new Date(scheduler.next) : null,
-        limit: scheduler.limit || null,
-        immediately: (scheduler as any).immediately || false,
-        raw: scheduler,
-      };
-
-      if (VERBOSE) {
-        console.log(`--- Scheduler Info for ${taskId} ---`);
-        console.log(`ID: ${schedulerInfo.id}`);
-        console.log(`Name: ${schedulerInfo.name}`);
-        console.log(`Cron: ${schedulerInfo.cron}`);
-        console.log(
-          `End Date: ${schedulerInfo.endDate ? schedulerInfo.endDate.toISOString() : "N/A"}`,
-        );
-        console.log(
-          `Next Run At: ${schedulerInfo.nextRunAt ? schedulerInfo.nextRunAt.toISOString() : "N/A"}`,
-        );
-        console.log(`Limit: ${schedulerInfo.limit ?? "N/A"}`);
-        console.log(`Immediately: ${schedulerInfo.immediately}`);
-        console.log("------------------------------------");
-      }
-
-      return schedulerInfo;
-    } catch (error) {
-      if (VERBOSE) {
-        console.log(`Error inspecting scheduler for task ${taskId}:`, error);
-      }
-      return null;
-    }
+  inspectScheduler: async (_taskId: string) => {
+    return null;
   },
 };
 
@@ -840,43 +769,6 @@ export const globalTestCleanup = async () => {
     await RecurrenceTestHelpers.cleanupTask(taskId);
   }
   allRecurringTaskIds = [];
-
-  // Only attempt Redis queue cleanup if in redis mode
-  const { config } = await import("../../config/index.js");
-  if (config.queueBackend === "redis") {
-    // Try to clear task processing queues if available
-    try {
-      const { getQueue, QueueNames } = await import("../../lib/queue/index.js");
-      const taskQueue = getQueue(QueueNames.TASK_PROCESSING);
-      const executionQueue = getQueue(QueueNames.TASK_OCCURRENCE);
-
-      if (taskQueue) {
-        await taskQueue.drain(); // Remove all waiting jobs
-        await taskQueue.clean(0, 1000, "completed"); // Clean completed jobs
-        await taskQueue.clean(0, 1000, "failed"); // Clean failed jobs
-      }
-
-      if (executionQueue) {
-        await executionQueue.drain(); // Remove all waiting jobs
-        await executionQueue.clean(0, 1000, "completed"); // Clean completed jobs
-        await executionQueue.clean(0, 1000, "failed"); // Clean failed jobs
-      }
-    } catch (error: any) {
-      console.warn("Could not clean task queues:", error);
-    }
-
-    // Close Redis connections used for scheduler inspection
-    try {
-      if (taskExecutionQueue) {
-        await taskExecutionQueue.close();
-      }
-      if (redisConnection) {
-        await redisConnection.quit();
-      }
-    } catch (error) {
-      console.warn("Error closing Redis connections:", error);
-    }
-  }
 
   // Add a delay to ensure all cleanup completes
   await delay(2000);

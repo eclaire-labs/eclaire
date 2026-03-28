@@ -192,7 +192,7 @@ LABEL org.opencontainers.image.title="Eclaire Backend" \
       org.opencontainers.image.created=$APP_BUILD_TIMESTAMP \
       org.opencontainers.image.vendor="Eclaire Labs" \
       co.eclaire.service=$APP_SERVICE \
-      co.eclaire.supports_modes="backend,worker,unified" \
+      co.eclaire.supports_modes="backend,unified" \
       co.eclaire.origin=$APP_ORIGIN \
       co.eclaire.channel=$APP_CHANNEL \
       co.eclaire.channel_tag=$APP_CHANNEL_TAG \
@@ -236,8 +236,6 @@ RUN chmod +x /app/docker-entrypoint.sh
 
 USER nodeapp
 EXPOSE 3000
-# Also expose 3002 for Bull Board when SERVICE_ROLE=worker
-EXPOSE 3002
 
 # Healthcheck (give app time to boot)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \

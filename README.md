@@ -82,7 +82,7 @@ With AI gaining rapid adoption, there is a growing need for alternatives to clos
 - **Better AI Support**  - New vision models (including Qwen3-VL), llama.cpp router, improved MLX support.
 - **Modern Frontend**  - Migrated from Next.js to Vite + TanStack Router
 - **SQLite Support**: Full SQLite database support alongside Postgres for simpler workloads
-- **Database Queue Mode**: Support Postgres or SQLite for job processing instead of Redis/BullMQ
+- **Database Queue Mode**: Postgres or SQLite for job processing with no external dependencies
 - **New Admin CLI**  - Manage your instance from the command line
 
 See the [CHANGELOG](./CHANGELOG.md) for full details.

@@ -3,10 +3,8 @@ import {
   getDatabaseType,
   getDatabaseUrl,
 } from "@eclaire/db";
-import { createRedisConnection } from "@eclaire/queue";
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
-import type { Redis } from "ioredis";
 import type postgres from "postgres";
 import { config } from "../config/index.js";
 import { createChildLogger } from "../lib/logger.js";
@@ -18,52 +16,12 @@ const logger = createChildLogger("processing-events");
 
 export const processingEventsRoutes = new Hono<{ Variables: RouteVariables }>();
 
-// Queue backend determines how we receive events:
-// - "redis" → Redis pub/sub
-// - "postgres" → PostgreSQL LISTEN/NOTIFY
-// - "sqlite" → In-memory only (single process)
-const queueBackend = config.queueBackend;
-const useRedisPubSub = queueBackend === "redis";
-
-// Redis key prefix for pub/sub channels (avoids collisions with other apps)
-const redisKeyPrefix = config.queue.redisKeyPrefix;
-
-// Database type for Postgres LISTEN (used when not in Redis mode)
+// Database type for Postgres LISTEN (used when workers run in a separate process)
 // In "all" mode, workers run in-process and publish via publishDirectSSEEvent() (in-memory).
-// Postgres LISTEN is only needed when workers run in a separate process (serviceRole="api").
+// Postgres LISTEN is only needed when workers run in a separate process (serviceRole="api" or "worker").
 const dbType = getDatabaseType();
-const usePostgresListen =
-  !useRedisPubSub && dbType === "postgres" && config.serviceRole !== "all";
+const usePostgresListen = dbType === "postgres" && config.serviceRole !== "all";
 const postgresUrl = usePostgresListen ? getDatabaseUrl() : null;
-
-// Redis connection for pub/sub (only used in redis mode)
-// Use config.queue.redisUrl - includes fallback construction from REDIS_HOST+REDIS_PORT
-const redisUrl = config.queue.redisUrl;
-
-// Warn if redis mode but no valid URL
-if (useRedisPubSub && (!redisUrl || !redisUrl.startsWith("redis://"))) {
-  logger.warn(
-    {},
-    "Redis URL not available but queue mode is 'redis' - pub/sub will not work",
-  );
-}
-
-// Reusable Redis publisher connection (only created in redis mode with valid URL)
-let publisherConnection: Redis | null =
-  useRedisPubSub && redisUrl && redisUrl.startsWith("redis://")
-    ? createRedisConnection({
-        url: redisUrl,
-        logger,
-        serviceName: "Processing Events Publisher",
-      })
-    : null;
-
-if (!publisherConnection) {
-  logger.info(
-    { queueBackend },
-    "Using in-memory events only (no Redis pub/sub)",
-  );
-}
 
 // Map to track active SSE streams by userId → clientId → stream ref
 type StreamRef = {
@@ -129,48 +87,12 @@ processingEventsRoutes.get(
       };
       userStreams.set(clientId, streamRef);
 
-      let subscriber: Redis | null = null;
       let pgSubscriber: postgres.Sql | null = null;
       let pgListenSubscription: { unlisten: () => Promise<void> } | null = null;
       let keepAliveInterval: NodeJS.Timeout | null = null;
 
       try {
-        // Create Redis subscriber only if in redis mode with valid URL
-        if (useRedisPubSub && redisUrl && redisUrl.startsWith("redis://")) {
-          subscriber = createRedisConnection({
-            url: redisUrl,
-            logger,
-            serviceName: `Processing Events Subscriber (${userId})`,
-          });
-
-          if (subscriber) {
-            await subscriber.subscribe(
-              `${redisKeyPrefix}:processing:${userId}`,
-            );
-
-            // Handle incoming messages
-            subscriber.on("message", (_channel, message) => {
-              try {
-                // Send the message as SSE data
-                stream.write(`data: ${message}\n\n`);
-              } catch (error) {
-                logger.error(
-                  {
-                    userId,
-                    error:
-                      error instanceof Error ? error.message : "Unknown error",
-                  },
-                  "Error sending SSE message from Redis",
-                );
-              }
-            });
-
-            logger.info(
-              { userId },
-              "Redis subscriber active for processing events",
-            );
-          }
-        } else if (usePostgresListen && postgresUrl) {
+        if (usePostgresListen && postgresUrl) {
           // Create Postgres LISTEN subscriber for remote database workers
           // Uses a dedicated connection per SSE client for LISTEN
           try {
@@ -219,7 +141,7 @@ processingEventsRoutes.get(
           }
         } else {
           logger.info(
-            { userId, queueBackend, dbType },
+            { userId, dbType },
             "Using in-memory events only (unified mode)",
           );
         }
@@ -232,13 +154,7 @@ processingEventsRoutes.get(
         });
         stream.write(`data: ${connectionMessage}\n\n`);
 
-        logger.info(
-          {
-            userId,
-            useRedisPubSub,
-          },
-          "Processing events SSE connection established",
-        );
+        logger.info({ userId }, "Processing events SSE connection established");
 
         // Keep connection alive with periodic pings
         keepAliveInterval = setInterval(() => {
@@ -285,26 +201,6 @@ processingEventsRoutes.get(
         // Cleanup
         if (keepAliveInterval) {
           clearInterval(keepAliveInterval);
-        }
-
-        if (subscriber) {
-          try {
-            await subscriber.unsubscribe(
-              `${redisKeyPrefix}:processing:${userId}`,
-            );
-            await subscriber.quit();
-          } catch (cleanupError) {
-            logger.warn(
-              {
-                userId,
-                error:
-                  cleanupError instanceof Error
-                    ? cleanupError.message
-                    : "Unknown error",
-              },
-              "Error during Redis SSE cleanup",
-            );
-          }
         }
 
         // Cleanup Postgres LISTEN subscriber
@@ -385,46 +281,8 @@ export async function publishProcessingEvent(
     timestamp: Date.now(),
   };
 
-  // ALWAYS publish to in-memory streams (works in all modes)
+  // Publish to in-memory streams
   await publishDirectSSEEvent(userId, eventWithTimestamp);
-
-  // Conditionally publish to Redis pub/sub (only in redis mode)
-  if (useRedisPubSub && publisherConnection) {
-    try {
-      await publisherConnection.publish(
-        `${redisKeyPrefix}:processing:${userId}`,
-        JSON.stringify(eventWithTimestamp),
-      );
-
-      logger.debug(
-        {
-          userId,
-          eventType: event.type,
-          assetType: event.assetType,
-          assetId: event.assetId,
-        },
-        "Published processing event to Redis",
-      );
-    } catch (error) {
-      logger.error(
-        {
-          userId,
-          event,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Failed to publish processing event to Redis",
-      );
-    }
-  } else {
-    logger.debug(
-      {
-        userId,
-        eventType: event.type,
-        queueBackend,
-      },
-      "Skipped Redis pub/sub (using in-memory only)",
-    );
-  }
 }
 
 /**
@@ -518,18 +376,5 @@ export async function publishDirectSSEEvent(
  * Close processing events resources (for graceful shutdown)
  */
 export async function closeProcessingEvents(): Promise<void> {
-  if (publisherConnection) {
-    try {
-      await publisherConnection.quit();
-      publisherConnection = null;
-      logger.info({}, "Publisher Redis connection closed");
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        "Error closing publisher Redis connection",
-      );
-    }
-  }
+  // No external connections to close — in-memory streams clean up on disconnect
 }

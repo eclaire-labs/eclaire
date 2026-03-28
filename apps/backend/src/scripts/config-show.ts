@@ -56,9 +56,6 @@ console.log("");
 
 console.log("Queue:");
 console.log(`  backend:        ${config.queue.backend}`);
-if (config.queue.backend === "redis") {
-  console.log(`  redisUrl:       ${config.queue.redisUrl}`);
-}
 console.log("");
 
 console.log("Directories:");
@@ -87,7 +84,6 @@ console.log(`  backend:        ${config.services.backendUrl}`);
 console.log("");
 
 console.log("Worker:");
-console.log(`  port:           ${config.worker.port}`);
 console.log(`  concurrency:    ${config.worker.concurrency}`);
 console.log("");
 

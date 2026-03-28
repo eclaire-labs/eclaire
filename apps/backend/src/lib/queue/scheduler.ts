@@ -1,18 +1,16 @@
 /**
  * Unified Scheduler abstraction layer
  *
- * Provides a single interface for managing recurring job schedules,
- * abstracting over BullMQ (Redis) and Database-backed implementations.
+ * Provides a single interface for managing recurring job schedules
+ * using database-backed implementations.
  */
 
 import type { ScheduleConfig, Scheduler } from "@eclaire/queue/core";
-import { createBullMQScheduler } from "@eclaire/queue/driver-bullmq";
 import {
   createDbQueueClient,
   createDbScheduler,
   getQueueSchema,
 } from "@eclaire/queue/driver-db";
-import { config } from "../../config/index.js";
 import { db, dbType } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 
@@ -29,8 +27,7 @@ let schedulerInitPromise: Promise<Scheduler> | null = null;
 /**
  * Get the singleton scheduler instance
  *
- * Creates the appropriate scheduler based on queue backend:
- * - redis: BullMQ scheduler using Redis
+ * Creates the database scheduler based on queue backend:
  * - postgres/sqlite: Database scheduler using queue_schedules table
  */
 export async function getScheduler(): Promise<Scheduler> {
@@ -47,53 +44,35 @@ export async function getScheduler(): Promise<Scheduler> {
 }
 
 async function initializeScheduler(): Promise<Scheduler> {
-  const queueBackend = config.queueBackend;
+  const queueDbType = dbType as "postgres" | "sqlite";
+  const schema = getQueueSchema(queueDbType);
 
-  if (queueBackend === "redis") {
-    const redisUrl = config.queue.redisUrl;
-    if (!redisUrl) {
-      throw new Error("REDIS_URL is required for QUEUE_BACKEND=redis");
-    }
+  const queueClient = createDbQueueClient({
+    db,
+    schema,
+    capabilities: {
+      skipLocked: queueDbType === "postgres",
+      notify: false,
+      jsonb: queueDbType === "postgres",
+      type: queueDbType,
+    },
+    logger,
+  });
 
-    schedulerInstance = createBullMQScheduler({
-      redis: { url: redisUrl },
-      logger,
-    });
+  schedulerInstance = createDbScheduler({
+    db,
+    queueSchedules: schema.queueSchedules,
+    queueClient,
+    logger,
+  });
 
-    logger.info({}, "Using BullMQ scheduler");
-  } else {
-    // postgres or sqlite backend - create scheduler with queueClient
-    // Use actual database type for schema - dbType comes from DATABASE_TYPE
-    const queueDbType = dbType as "postgres" | "sqlite";
-    const schema = getQueueSchema(queueDbType);
-
-    const queueClient = createDbQueueClient({
-      db,
-      schema,
-      capabilities: {
-        skipLocked: queueDbType === "postgres",
-        notify: false,
-        jsonb: queueDbType === "postgres",
-        type: queueDbType,
-      },
-      logger,
-    });
-
-    schedulerInstance = createDbScheduler({
-      db,
-      queueSchedules: schema.queueSchedules,
-      queueClient,
-      logger,
-    });
-
-    logger.info({}, "Using database scheduler");
-  }
+  logger.info({}, "Using database scheduler");
 
   return schedulerInstance;
 }
 
 /**
- * Start the scheduler (required for database mode, no-op for BullMQ)
+ * Start the scheduler
  */
 export async function startScheduler(): Promise<void> {
   const scheduler = await getScheduler();

@@ -37,7 +37,7 @@ async function main() {
 
   console.log(`OpenAPI spec written to ${outputPath}`);
 
-  // Gracefully close any Redis/BullMQ connections that may have been opened
+  // Gracefully close any queue connections that may have been opened
   try {
     const { closeQueues } = await import("../src/lib/queue/index.js");
     await closeQueues();

@@ -1,59 +1,28 @@
 /**
  * Worker initialization module
- * Exports functions to start BullMQ workers (Redis mode) or database workers
+ * Exports functions to start database workers (in-process or remote)
  */
 
 import fs from "node:fs";
-import { createBullBoard } from "@bull-board/api";
-import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
-import { HonoAdapter } from "@bull-board/hono";
 import { isAIInitialized, validateAIConfigOnStartup } from "@eclaire/ai";
-import { runWithRequestId } from "@eclaire/logger";
-import { QueueNames } from "../lib/queue/queue-names.js";
-import type { Worker } from "@eclaire/queue/core";
-import {
-  type BullMQWorkerConfig,
-  createBullMQWorker,
-} from "@eclaire/queue/driver-bullmq";
-import { serve } from "@hono/node-server";
-import { serveStatic } from "@hono/node-server/serve-static";
-import { Hono } from "hono";
 import { config as appConfig } from "../config/index.js";
 import { initializeAI, initializeMcp } from "../lib/ai-init.js";
 import { createChildLogger } from "../lib/logger.js";
-import { config } from "./config.js";
-import processBookmarkJob from "./jobs/bookmarkProcessor.js";
-import { processDocumentJob } from "./jobs/documentProcessor.js";
-import processImageJob from "./jobs/imageProcessor.js";
-import processMediaJob from "./jobs/mediaProcessor.js";
-import processNoteJob from "./jobs/noteProcessor.js";
-import processTaskJob from "./jobs/taskProcessor.js";
-import processTaskOccurrence from "./jobs/taskOccurrenceProcessor.js";
-import processTaskScheduleTick from "./jobs/taskScheduleTickProcessor.js";
-import processTaskOverdueChecker from "./jobs/taskOverdueCheckerProcessor.js";
 import {
   startDirectDbWorkers,
   stopDirectDbWorkers,
 } from "./lib/direct-db-workers.js";
-import { createRedisPublisher } from "./lib/redis-publisher.js";
-import { closeQueues, getAllQueues } from "./queues.js";
+import {
+  startRemoteDbWorkers,
+  stopRemoteDbWorkers,
+} from "./lib/remote-db-workers.js";
 
 const logger = createChildLogger("workers");
 
-// Track active BullMQ workers for graceful shutdown
-const bullmqWorkers: Worker[] = [];
-
-// Hono app for Bull Board
-let app: Hono | null = null;
-
 /**
- * Start BullMQ workers (Redis mode)
- * Used when SERVICE_ROLE=worker
+ * Ensure browser data directory exists and initialize AI
  */
-export async function startBullMQWorkers(): Promise<void> {
-  logger.info("Starting BullMQ workers (Redis mode)");
-
-  // Ensure browser data directory exists
+async function prepareWorkerEnvironment(): Promise<void> {
   const browserDataDir = appConfig.dirs.browserData;
   try {
     fs.mkdirSync(browserDataDir, { recursive: true });
@@ -69,231 +38,30 @@ export async function startBullMQWorkers(): Promise<void> {
     throw error;
   }
 
-  // Initialize and validate AI configuration (skip if already initialized by API)
   if (!isAIInitialized()) {
     await initializeAI();
   }
   await initializeMcp();
   validateAIConfigOnStartup();
-
-  // Initialize Hono app for Bull Board
-  app = new Hono();
-
-  const serverAdapter = new HonoAdapter(serveStatic);
-  createBullBoard({
-    queues: getAllQueues().map((q) => new BullMQAdapter(q)),
-    serverAdapter: serverAdapter,
-  });
-  serverAdapter.setBasePath(config.server.basePath);
-
-  // Register Bull Board routes
-  app.route(config.server.basePath, serverAdapter.registerPlugin());
-
-  // Health endpoint
-  app.get("/health", (c) => {
-    return c.json({
-      status: "ok",
-      service: "eclaire",
-      mode: "bullmq",
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-    });
-  });
-
-  // Initialize all BullMQ workers
-  logger.info(
-    { concurrency: config.worker.concurrency },
-    "Initializing BullMQ workers",
-  );
-
-  // Create event callbacks for SSE publishing via Redis pub/sub
-  const eventCallbacks = createRedisPublisher(
-    config.redis.url,
-    logger,
-    config.redis.keyPrefix,
-  );
-
-  // Shared worker configuration
-  const workerConfig: BullMQWorkerConfig = {
-    redis: { url: config.redis.url },
-    logger,
-    prefix: config.redis.keyPrefix,
-    eventCallbacks,
-    // Wrap job execution in AsyncLocalStorage context for request tracing
-    wrapJobExecution: async (requestId, execute) => {
-      if (requestId) {
-        return runWithRequestId(requestId, execute);
-      }
-      return execute();
-    },
-  };
-
-  // Long task options (5 min lock, 1 min heartbeat)
-  const longTaskOptions = {
-    concurrency: config.worker.concurrency,
-    lockDuration: 300000,
-    stalledInterval: 30000,
-  };
-
-  // Medium task options (2 min lock)
-  const mediumTaskOptions = {
-    concurrency: config.worker.concurrency,
-    lockDuration: 120000,
-    stalledInterval: 30000,
-  };
-
-  // Short task options (30s lock)
-  const shortTaskOptions = {
-    concurrency: config.worker.concurrency,
-    lockDuration: 30000,
-    stalledInterval: 10000,
-  };
-
-  // Bookmark Worker (with rate limiter)
-  const bookmarkWorker = createBullMQWorker(
-    QueueNames.BOOKMARK_PROCESSING,
-    processBookmarkJob,
-    {
-      ...workerConfig,
-      bullmqOptions: { limiter: { max: 1, duration: 1000 } },
-    },
-    longTaskOptions,
-  );
-  bullmqWorkers.push(bookmarkWorker);
-
-  // Image Worker
-  const imageWorker = createBullMQWorker(
-    QueueNames.IMAGE_PROCESSING,
-    processImageJob,
-    workerConfig,
-    { ...longTaskOptions, concurrency: 1 },
-  );
-  bullmqWorkers.push(imageWorker);
-
-  // Document Worker (concurrency capped to 1 — each job may spawn Chromium + LibreOffice)
-  const documentWorker = createBullMQWorker(
-    QueueNames.DOCUMENT_PROCESSING,
-    processDocumentJob,
-    workerConfig,
-    { ...longTaskOptions, concurrency: 1 },
-  );
-  bullmqWorkers.push(documentWorker);
-
-  // Note Worker
-  const noteWorker = createBullMQWorker(
-    QueueNames.NOTE_PROCESSING,
-    processNoteJob,
-    workerConfig,
-    shortTaskOptions,
-  );
-  bullmqWorkers.push(noteWorker);
-
-  // Task Worker
-  const taskWorker = createBullMQWorker(
-    QueueNames.TASK_PROCESSING,
-    processTaskJob,
-    workerConfig,
-    shortTaskOptions,
-  );
-  bullmqWorkers.push(taskWorker);
-
-  // Media Worker
-  const mediaWorker = createBullMQWorker(
-    QueueNames.MEDIA_PROCESSING,
-    processMediaJob,
-    workerConfig,
-    { ...longTaskOptions, concurrency: 1 },
-  );
-  bullmqWorkers.push(mediaWorker);
-
-  // Task Occurrence Worker
-  const taskOccurrenceWorker = createBullMQWorker(
-    QueueNames.TASK_OCCURRENCE,
-    processTaskOccurrence,
-    workerConfig,
-    mediumTaskOptions,
-  );
-  bullmqWorkers.push(taskOccurrenceWorker);
-
-  // Task Schedule Tick Worker
-  const taskScheduleTickWorker = createBullMQWorker(
-    QueueNames.TASK_SCHEDULE_TICK,
-    processTaskScheduleTick,
-    workerConfig,
-    shortTaskOptions,
-  );
-  bullmqWorkers.push(taskScheduleTickWorker);
-
-  // Task Overdue Checker Worker
-  const taskOverdueCheckerWorker = createBullMQWorker(
-    QueueNames.TASK_OVERDUE_CHECKER,
-    processTaskOverdueChecker,
-    workerConfig,
-    shortTaskOptions,
-  );
-  bullmqWorkers.push(taskOverdueCheckerWorker);
-
-  // Start all workers
-  for (const worker of bullmqWorkers) {
-    await worker.start();
-  }
-
-  logger.info(
-    { workerCount: bullmqWorkers.length },
-    "All BullMQ workers initialized",
-  );
-
-  // Start Bull Board server
-  const port = config.server.port || 3002;
-  serve(
-    {
-      fetch: app.fetch,
-      port,
-      hostname: "0.0.0.0",
-    },
-    () => {
-      logger.info(
-        {
-          port,
-          bullBoardUrl: `http://localhost:${port}${config.server.basePath}`,
-        },
-        "Workers service running (Redis/BullMQ mode)",
-      );
-    },
-  );
 }
 
 /**
- * Start database queue workers (Database mode)
- * Used when SERVICE_ROLE=unified
+ * Start remote database workers (SERVICE_ROLE=worker)
+ * Connects to Postgres remotely with NOTIFY for SSE events
+ */
+export async function startRemoteWorkers(): Promise<void> {
+  logger.info("Starting remote database workers");
+  await prepareWorkerEnvironment();
+  await startRemoteDbWorkers();
+}
+
+/**
+ * Start database queue workers (SERVICE_ROLE=all)
+ * In-process workers using direct database access
  */
 export async function startDatabaseWorkers(): Promise<void> {
-  logger.info("Starting database queue workers (Database mode)");
-
-  // Ensure browser data directory exists
-  const browserDataDir = appConfig.dirs.browserData;
-  try {
-    fs.mkdirSync(browserDataDir, { recursive: true });
-    logger.info({ browserDataDir }, "Browser data directory ensured");
-  } catch (error) {
-    logger.error(
-      {
-        browserDataDir,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      "Failed to create browser data directory",
-    );
-    throw error;
-  }
-
-  // Initialize and validate AI configuration (skip if already initialized by API)
-  if (!isAIInitialized()) {
-    await initializeAI();
-  }
-  await initializeMcp();
-  validateAIConfigOnStartup();
-
-  // Start direct database workers with event callbacks
+  logger.info("Starting database queue workers (in-process)");
+  await prepareWorkerEnvironment();
   await startDirectDbWorkers();
 }
 
@@ -302,15 +70,7 @@ export async function startDatabaseWorkers(): Promise<void> {
  */
 export async function shutdownWorkers(): Promise<void> {
   logger.info("Shutting down workers...");
-
-  // Shutdown BullMQ workers
-  await Promise.all(bullmqWorkers.map((worker) => worker.stop()));
-  bullmqWorkers.length = 0;
-
-  await closeQueues();
-
-  // Shutdown direct DB workers
   await stopDirectDbWorkers();
-
+  await stopRemoteDbWorkers();
   logger.info("All workers shut down");
 }

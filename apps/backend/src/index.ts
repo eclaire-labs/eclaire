@@ -33,11 +33,7 @@ import { auth } from "./lib/auth.js";
 import { validateEncryptionService } from "./lib/encryption.js";
 import { logger, smartLogger } from "./lib/logger.js";
 import { createSpaMiddleware } from "./middleware/static-spa.js";
-import {
-  closeQueues,
-  startScheduler,
-  stopScheduler,
-} from "./lib/queue/index.js";
+import { startScheduler, stopScheduler } from "./lib/queue/index.js";
 import { getScheduler } from "./lib/queue/scheduler.js";
 import { QueueNames } from "./lib/queue/queue-names.js";
 import { channelRegistry } from "./lib/channels.js";
@@ -279,21 +275,18 @@ const start = async () => {
       }
     }
 
-    // Start workers based on SERVICE_ROLE and QUEUE_BACKEND
-    if (SERVICE_ROLE === "all" || SERVICE_ROLE === "worker") {
-      if (QUEUE_BACKEND === "redis") {
-        logger.info("Starting BullMQ workers (redis backend)");
-        const { startBullMQWorkers } = await import("./workers/index.js");
-        await startBullMQWorkers();
-      } else {
-        // postgres or sqlite backend
-        logger.info(
-          { queueBackend: QUEUE_BACKEND },
-          "Starting database queue workers",
-        );
-        const { startDatabaseWorkers } = await import("./workers/index.js");
-        await startDatabaseWorkers();
-      }
+    // Start workers based on SERVICE_ROLE
+    if (SERVICE_ROLE === "worker") {
+      logger.info("Starting remote database workers");
+      const { startRemoteWorkers } = await import("./workers/index.js");
+      await startRemoteWorkers();
+    } else if (SERVICE_ROLE === "all") {
+      logger.info(
+        { queueBackend: QUEUE_BACKEND },
+        "Starting database queue workers",
+      );
+      const { startDatabaseWorkers } = await import("./workers/index.js");
+      await startDatabaseWorkers();
     }
 
     logger.info({ SERVICE_ROLE, QUEUE_BACKEND }, "Service startup complete");
@@ -361,13 +354,6 @@ const shutdown = async (signal: string) => {
     logger.info("Processing events closed");
   } catch (error) {
     logger.error({ error }, "Error closing processing events");
-  }
-
-  try {
-    await closeQueues();
-    logger.info("Queue connections closed");
-  } catch (error) {
-    logger.error({ error }, "Error closing queue connections");
   }
 
   logger.info("Shutdown complete");

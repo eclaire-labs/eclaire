@@ -3,11 +3,6 @@ import { QueueNames } from "../lib/queue/index.js";
 
 // Worker-specific config that wraps the central config and adds worker-only properties
 export const config = {
-  // Redis config from central config
-  redis: {
-    url: appConfig.queue.redisUrl,
-    keyPrefix: appConfig.queue.redisKeyPrefix,
-  },
   // Backend URL from central config
   backend: {
     url: appConfig.services.backendUrl,
@@ -23,11 +18,6 @@ export const config = {
   },
   // Timeouts from central config
   timeouts: appConfig.timeouts,
-  // Worker server settings
-  server: {
-    port: appConfig.worker.port,
-    basePath: "/ui", // Base path for Bull Board UI
-  },
   // Queue names
   queues: {
     bookmarkProcessing: QueueNames.BOOKMARK_PROCESSING,

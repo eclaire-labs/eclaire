@@ -4,12 +4,6 @@
  * All queue-related functionality for the backend service.
  */
 
-// Redis connection
-export {
-  createRedisConnection,
-  type RedisConnectionOptions,
-} from "@eclaire/queue";
-
 // Queue names
 export { type QueueName, QueueNames } from "./queue-names.js";
 // Queue adapter (main entry point for enqueuing jobs)
@@ -42,7 +36,7 @@ export {
   isJobReady,
 } from "./db-helpers.js";
 
-// BullMQ queue access (for Redis mode)
+// Queue access stubs
 export { closeQueues, getQueue } from "./queues.js";
 
 // Scheduler

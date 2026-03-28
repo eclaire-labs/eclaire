@@ -4,10 +4,9 @@
  * This module provides a single source of truth for:
  * - Worker option factories for different task durations
  * - Queue-to-worker-category mapping
- * - Default BullMQ job options per queue
+ * - Default job options per queue
  */
 
-import type { JobsOptions } from "bullmq";
 import { type QueueName, QueueNames } from "./queue-names.js";
 
 // --- Worker Timeout Constants ---
@@ -114,50 +113,3 @@ export const queueWorkerCategory: Record<QueueName, WorkerCategory> = {
   [QueueNames.TASK_SCHEDULE_TICK]: "short",
   [QueueNames.TASK_OVERDUE_CHECKER]: "short",
 };
-
-// --- BullMQ Default Job Options ---
-
-/**
- * Default job options for bookmark processing
- * Higher retry count (3) with shorter initial delay due to network variability
- */
-export const bookmarkJobOptions: JobsOptions = {
-  attempts: 3,
-  backoff: { type: "exponential", delay: 1000 },
-  removeOnComplete: { count: 1000 },
-  removeOnFail: { count: 5000 },
-};
-
-/**
- * Default job options for standard processing queues
- * (image, document, note, task, task-execution)
- * 2 attempts with longer backoff for resource-intensive operations
- */
-export const standardJobOptions: JobsOptions = {
-  attempts: 2,
-  backoff: { type: "exponential", delay: 10000 },
-  removeOnComplete: { count: 1000 },
-  removeOnFail: { count: 5000 },
-};
-
-/**
- * Get default job options for a specific queue
- */
-export function getDefaultJobOptions(queueName: QueueName): JobsOptions {
-  if (queueName === QueueNames.BOOKMARK_PROCESSING) {
-    return bookmarkJobOptions;
-  }
-  return standardJobOptions;
-}
-
-/**
- * Build the default job options map for all Eclaire queues.
- * Pass this to createQueueManager's `defaultJobOptions` config.
- */
-export function getDefaultJobOptionsMap(): Record<string, JobsOptions> {
-  const map: Record<string, JobsOptions> = {};
-  for (const name of Object.values(QueueNames)) {
-    map[name] = getDefaultJobOptions(name);
-  }
-  return map;
-}
