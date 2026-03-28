@@ -1718,6 +1718,7 @@ export async function reprocessPhoto(
   photoId: string,
   userId: string,
   force: boolean = false,
+  caller?: CallerContext,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // 1. Get the existing photo to ensure it exists and user has access
@@ -1735,6 +1736,24 @@ export async function reprocessPhoto(
         { photoId, userId },
         "Successfully queued photo for reprocessing using retry logic",
       );
+
+      if (caller) {
+        const { recordHistory } = await import("./history.js");
+        await recordHistory({
+          action: "update",
+          itemType: "photo",
+          itemId: photoId,
+          itemName: photo.title || undefined,
+          beforeData: null,
+          afterData: { force },
+          actor: caller.actor,
+          actorId: callerActorId(caller),
+          authorizedByActorId: caller.authorizedByActorId ?? null,
+          grantId: caller.grantId ?? null,
+          userId: callerOwnerUserId(caller),
+          metadata: { trigger: "reprocess" },
+        });
+      }
     } else {
       logger.error(
         { photoId, userId, error: result.error },

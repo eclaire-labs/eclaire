@@ -1288,6 +1288,7 @@ export async function reprocessBookmark(
   bookmarkId: string,
   userId: string,
   force: boolean = false,
+  caller?: CallerContext,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // 1. Get the existing bookmark to ensure it exists and user has access
@@ -1310,6 +1311,24 @@ export async function reprocessBookmark(
         { bookmarkId, userId },
         "Successfully queued bookmark for reprocessing using retry logic",
       );
+
+      if (caller) {
+        const { recordHistory } = await import("./history.js");
+        await recordHistory({
+          action: "update",
+          itemType: "bookmark",
+          itemId: bookmarkId,
+          itemName: bookmark.title || bookmark.url,
+          beforeData: null,
+          afterData: { force },
+          actor: caller.actor,
+          actorId: callerActorId(caller),
+          authorizedByActorId: caller.authorizedByActorId ?? null,
+          grantId: caller.grantId ?? null,
+          userId: callerOwnerUserId(caller),
+          metadata: { trigger: "reprocess" },
+        });
+      }
     } else {
       logger.error(
         { bookmarkId, userId, error: result.error },

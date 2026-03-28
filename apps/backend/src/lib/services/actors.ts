@@ -3,6 +3,8 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 import {
   DEFAULT_AGENT_ACTOR_ID,
   DEFAULT_AGENT_ACTOR_NAME,
@@ -250,6 +252,7 @@ export async function isAgentActor(
 export async function createServiceActor(
   ownerUserId: string,
   displayName: string,
+  caller?: CallerContext,
 ): Promise<ActorSummary> {
   const trimmedName = displayName.trim();
   if (!trimmedName) {
@@ -273,49 +276,32 @@ export async function createServiceActor(
     throw new Error("Failed to create service actor");
   }
 
-  return serviceActor;
-}
-
-export async function updateServiceActor(
-  ownerUserId: string,
-  actorId: string,
-  displayName: string,
-): Promise<ActorSummary> {
-  const trimmedName = displayName.trim();
-  if (!trimmedName) {
-    throw new ValidationError("Display name is required", "displayName");
-  }
-
-  const [updated] = await db
-    .update(actors)
-    .set({
-      displayName: trimmedName,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(actors.id, actorId),
-        eq(actors.ownerUserId, ownerUserId),
-        eq(actors.kind, "service"),
-      ),
-    )
-    .returning({
-      id: actors.id,
-      kind: actors.kind,
-      displayName: actors.displayName,
+  if (caller) {
+    await recordHistory({
+      action: "create",
+      itemType: "actor",
+      itemId: serviceActor.id,
+      itemName: trimmedName,
+      beforeData: null,
+      afterData: { kind: "service", displayName: trimmedName },
+      actor: caller.actor,
+      actorId: caller.actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: caller.ownerUserId,
     });
-
-  if (!updated) {
-    throw new NotFoundError("Actor", actorId);
   }
 
-  return updated;
+  return serviceActor;
 }
 
 export async function deleteServiceActor(
   ownerUserId: string,
   actorId: string,
+  caller?: CallerContext,
 ): Promise<void> {
+  const existing = await getActorSummaryOrNull(ownerUserId, actorId);
+
   const deleted = await db
     .delete(actors)
     .where(
@@ -329,5 +315,23 @@ export async function deleteServiceActor(
 
   if (deleted.length === 0) {
     throw new NotFoundError("Actor", actorId);
+  }
+
+  if (caller) {
+    await recordHistory({
+      action: "delete",
+      itemType: "actor",
+      itemId: actorId,
+      itemName: existing?.displayName ?? undefined,
+      beforeData: existing
+        ? { kind: existing.kind, displayName: existing.displayName }
+        : null,
+      afterData: null,
+      actor: caller.actor,
+      actorId: caller.actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: caller.ownerUserId,
+    });
   }
 }

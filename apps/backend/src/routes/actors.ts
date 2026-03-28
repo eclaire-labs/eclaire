@@ -16,14 +16,13 @@ import {
   deleteServiceActor,
   getActorSummary,
   listActorSummaries,
-  updateServiceActor,
 } from "../lib/services/actors.js";
+import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {
   CreateActorApiKeySchema,
   CreateServiceActorSchema,
   UpdateActorApiKeySchema,
-  UpdateServiceActorSchema,
 } from "../schemas/actors-params.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
@@ -51,31 +50,14 @@ actorsRoutes.post(
   "/services",
   zValidator("json", CreateServiceActorSchema),
   withAuth(
-    async (c, userId) => {
+    async (c, userId, principal) => {
+      const caller = principalCaller(principal);
       const actor = await createServiceActor(
         userId,
         c.req.valid("json").displayName,
+        caller,
       );
       return c.json(actor, 201);
-    },
-    logger,
-    {
-      allowApiKey: false,
-    },
-  ),
-);
-
-actorsRoutes.put(
-  "/services/:id",
-  zValidator("json", UpdateServiceActorSchema),
-  withAuth(
-    async (c, userId) => {
-      const actor = await updateServiceActor(
-        userId,
-        c.req.param("id"),
-        c.req.valid("json").displayName,
-      );
-      return c.json(actor);
     },
     logger,
     {
@@ -87,8 +69,9 @@ actorsRoutes.put(
 actorsRoutes.delete(
   "/services/:id",
   withAuth(
-    async (c, userId) => {
-      await deleteServiceActor(userId, c.req.param("id"));
+    async (c, userId, principal) => {
+      const caller = principalCaller(principal);
+      await deleteServiceActor(userId, c.req.param("id"), caller);
       return new Response(null, { status: 204 });
     },
     logger,
@@ -125,11 +108,13 @@ actorsRoutes.post(
       if (body.adminAccess && body.adminAccess !== "none") {
         await assertInstanceAdmin(userId);
       }
+      const caller = principalCaller(principal);
       const key = await createActorApiKey(
         userId,
         actorId,
         body,
         principal.actorId,
+        caller,
       );
       return c.json(key, 201);
     },
@@ -151,11 +136,13 @@ actorsRoutes.patch(
       if (body.adminAccess && body.adminAccess !== "none") {
         await assertInstanceAdmin(userId);
       }
+      const caller = principalCaller(principal);
       const key = await updateActorApiKey(
         userId,
         actorId,
         c.req.param("keyId"),
         body,
+        caller,
       );
       return c.json(key);
     },
@@ -172,7 +159,8 @@ actorsRoutes.delete(
     async (c, userId, principal) => {
       const actorId = c.req.param("id");
       await assertActorCredentialAccess(userId, actorId, principal.actorId);
-      await revokeActorApiKey(userId, actorId, c.req.param("keyId"));
+      const caller = principalCaller(principal);
+      await revokeActorApiKey(userId, actorId, c.req.param("keyId"), caller);
       return new Response(null, { status: 204 });
     },
     logger,

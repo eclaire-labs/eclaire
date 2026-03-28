@@ -183,6 +183,9 @@ export const HISTORY_ITEM_TYPES = [
   "feedback",
   "user_account",
   "media",
+  "api_key",
+  "agent",
+  "actor",
 ] as const;
 export type HistoryItemType = (typeof HISTORY_ITEM_TYPES)[number];
 

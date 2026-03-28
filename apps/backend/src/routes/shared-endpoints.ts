@@ -29,6 +29,7 @@ type ReprocessFn = (
   id: string,
   userId: string,
   force: boolean,
+  caller: CallerContext,
 ) => Promise<{ success: boolean; error?: string }>;
 
 // biome-ignore lint/suspicious/noExplicitAny: route description objects are untyped OpenAPI specs
@@ -110,11 +111,12 @@ export function registerReprocessEndpoint(
   router.post(
     "/:id/reprocess",
     zValidator("json", reprocessBodySchema),
-    withAuth(async (c, userId) => {
+    withAuth(async (c, userId, principal) => {
+      const caller = principalCaller(principal);
       const id = c.req.param("id");
       const { force } = c.req.valid("json");
 
-      const result = await reprocessFn(id, userId, force);
+      const result = await reprocessFn(id, userId, force, caller);
 
       if (result.success) {
         return c.json(

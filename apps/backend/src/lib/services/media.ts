@@ -1477,6 +1477,7 @@ export async function reprocessMedia(
   mediaId: string,
   userId: string,
   force: boolean = false,
+  caller?: CallerContext,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const mediaItem = await getMediaById(mediaId, userId);
@@ -1492,6 +1493,24 @@ export async function reprocessMedia(
         { mediaId, userId },
         "Successfully queued media for reprocessing using retry logic",
       );
+
+      if (caller) {
+        const { recordHistory } = await import("./history.js");
+        await recordHistory({
+          action: "update",
+          itemType: "media",
+          itemId: mediaId,
+          itemName: mediaItem.title || undefined,
+          beforeData: null,
+          afterData: { force },
+          actor: caller.actor,
+          actorId: callerActorId(caller),
+          authorizedByActorId: caller.authorizedByActorId ?? null,
+          grantId: caller.grantId ?? null,
+          userId: callerOwnerUserId(caller),
+          metadata: { trigger: "reprocess" },
+        });
+      }
     } else {
       logger.error(
         { mediaId, userId, error: result.error },

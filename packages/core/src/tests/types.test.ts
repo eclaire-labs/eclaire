@@ -86,7 +86,7 @@ describe("HISTORY_ACTIONS", () => {
 });
 
 describe("HISTORY_ITEM_TYPES", () => {
-  it("has 21 entries", () => {
-    expect(HISTORY_ITEM_TYPES.length).toBe(21);
+  it("has 24 entries", () => {
+    expect(HISTORY_ITEM_TYPES.length).toBe(24);
   });
 });

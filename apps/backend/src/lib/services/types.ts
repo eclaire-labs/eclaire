@@ -50,17 +50,6 @@ export function systemCaller(
   };
 }
 
-export function serviceCaller(
-  actorId: string,
-  ownerUserId?: string,
-): CallerContext {
-  return {
-    actorId,
-    actor: "service",
-    ownerUserId: ownerUserId ?? actorId,
-  };
-}
-
 export function principalCaller(principal: AuthPrincipal): CallerContext {
   return {
     actorId: principal.actorId,

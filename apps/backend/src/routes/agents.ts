@@ -10,6 +10,7 @@ import {
   updateAgent,
 } from "../lib/services/agents.js";
 import { createChildLogger } from "../lib/logger.js";
+import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {
   CreateAgentSchema,
@@ -53,8 +54,9 @@ agentsRoutes.get(
 agentsRoutes.post(
   "/",
   zValidator("json", CreateAgentSchema),
-  withAuth(async (c, userId) => {
-    const agent = await createAgent(userId, c.req.valid("json"));
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
+    const agent = await createAgent(userId, c.req.valid("json"), caller);
     return c.json(agent, 201);
   }, logger),
 );
@@ -62,11 +64,13 @@ agentsRoutes.post(
 agentsRoutes.put(
   "/:id",
   zValidator("json", UpdateAgentSchema),
-  withAuth(async (c, userId) => {
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
     const agent = await updateAgent(
       userId,
       c.req.param("id"),
       c.req.valid("json"),
+      caller,
     );
     return c.json(agent);
   }, logger),
@@ -74,8 +78,9 @@ agentsRoutes.put(
 
 agentsRoutes.delete(
   "/:id",
-  withAuth(async (c, userId) => {
-    await deleteAgent(userId, c.req.param("id"));
+  withAuth(async (c, userId, principal) => {
+    const caller = principalCaller(principal);
+    await deleteAgent(userId, c.req.param("id"), caller);
     return new Response(null, { status: 204 });
   }, logger),
 );

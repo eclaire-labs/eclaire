@@ -23,6 +23,8 @@ import {
 } from "../auth-principal.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 import {
   DEFAULT_AGENT_ACTOR_ID,
   DEFAULT_AGENT_ACTOR_NAME,
@@ -232,6 +234,7 @@ export async function createActorApiKey(
   actorId: string,
   input: CreateActorApiKeyInput,
   grantedByActorId: string | null = ownerUserId,
+  caller?: CallerContext,
 ): Promise<CreatedActorApiKey> {
   const actor = await resolveOwnedActor(ownerUserId, actorId);
   const resolvedScopes = resolvePermissionScopes(
@@ -292,6 +295,28 @@ export async function createActorApiKey(
     { ownerUserId, actorId: actor.id, credentialId: credential.id },
     "Created actor API key",
   );
+
+  if (caller) {
+    await recordHistory({
+      action: "create",
+      itemType: "api_key",
+      itemId: credential.id,
+      itemName: keyName,
+      beforeData: null,
+      afterData: {
+        actorId: actor.id,
+        actorKind: actor.kind,
+        dataAccess: input.dataAccess,
+        adminAccess: input.adminAccess,
+        keySuffix: suffix,
+      },
+      actor: caller.actor,
+      actorId: caller.actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: caller.ownerUserId,
+    });
+  }
 
   const permissionLevels = derivePermissionLevels(scopes);
   return {
@@ -362,6 +387,7 @@ export async function updateActorApiKey(
   actorId: string,
   credentialId: string,
   input: UpdateActorApiKeyInput,
+  caller?: CallerContext,
 ): Promise<ActorApiKey> {
   const existing = await getOwnedCredentialRow(
     ownerUserId,
@@ -404,6 +430,27 @@ export async function updateActorApiKey(
     actorId,
     credentialId,
   );
+
+  if (caller) {
+    await recordHistory({
+      action: "update",
+      itemType: "api_key",
+      itemId: credentialId,
+      itemName: nextName,
+      beforeData: { name: existing.name, keySuffix: existing.keySuffix },
+      afterData: {
+        name: nextName,
+        dataAccess: input.dataAccess,
+        adminAccess: input.adminAccess,
+      },
+      actor: caller.actor,
+      actorId: caller.actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: caller.ownerUserId,
+    });
+  }
+
   return mapCredentialRowToApiKey(updated);
 }
 
@@ -411,6 +458,7 @@ export async function revokeActorApiKey(
   ownerUserId: string,
   actorId: string,
   credentialId: string,
+  caller?: CallerContext,
 ): Promise<void> {
   const existing = await getOwnedCredentialRow(
     ownerUserId,
@@ -434,6 +482,27 @@ export async function revokeActorApiKey(
       updatedAt: now,
     })
     .where(eq(actorGrants.id, existing.grantId));
+
+  if (caller) {
+    await recordHistory({
+      action: "delete",
+      itemType: "api_key",
+      itemId: credentialId,
+      itemName: existing.name,
+      beforeData: {
+        actorId: existing.actorId,
+        actorKind: existing.actorKind,
+        name: existing.name,
+        keySuffix: existing.keySuffix,
+      },
+      afterData: null,
+      actor: caller.actor,
+      actorId: caller.actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: caller.ownerUserId,
+    });
+  }
 }
 
 export async function resolveApiKeyCredential(

@@ -14,6 +14,8 @@ import { getBackendTools } from "../agent/tools/index.js";
 import type { AgentCatalogItem, AgentDefinition } from "../agent/types.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 import { getMcpRegistry } from "../mcp/index.js";
 import {
   normalizeCreateAgentCapabilities,
@@ -320,6 +322,7 @@ export async function getAgent(
 export async function createAgent(
   userId: string,
   input: CreateAgentInput,
+  caller?: CallerContext,
 ): Promise<AgentDefinition> {
   const capabilities = normalizeCreateAgentCapabilities(input);
   validateAgentCapabilities(capabilities);
@@ -352,6 +355,29 @@ export async function createAgent(
   await createAgentActor(userId, agent.id, trimmedName);
 
   logger.info({ userId, agentId: agent.id }, "Created custom agent");
+
+  if (caller) {
+    await recordHistory({
+      action: "create",
+      itemType: "agent",
+      itemId: agent.id,
+      itemName: trimmedName,
+      beforeData: null,
+      afterData: {
+        name: trimmedName,
+        description: input.description,
+        modelId: input.modelId,
+        toolNames: capabilities.toolNames,
+        skillNames: capabilities.skillNames,
+      },
+      actor: caller.actor,
+      actorId: caller.actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: caller.ownerUserId,
+    });
+  }
+
   return normalizeAgentRecord(agent);
 }
 
@@ -359,6 +385,7 @@ export async function updateAgent(
   userId: string,
   agentId: string,
   updates: UpdateAgentInput,
+  caller?: CallerContext,
 ): Promise<AgentDefinition> {
   if (agentId === DEFAULT_AGENT_ID) {
     throw new ValidationError("The default Eclaire agent is read-only");
@@ -425,12 +452,40 @@ export async function updateAgent(
   }
 
   logger.info({ userId, agentId }, "Updated custom agent");
+
+  if (caller) {
+    const normalizedUpdated = normalizeAgentRecord(updated);
+    await recordHistory({
+      action: "update",
+      itemType: "agent",
+      itemId: agentId,
+      itemName: normalizedUpdated.name,
+      beforeData: {
+        name: existingAgent.name,
+        description: existingAgent.description,
+        modelId: existingAgent.modelId,
+      },
+      afterData: {
+        name: normalizedUpdated.name,
+        description: normalizedUpdated.description,
+        modelId: normalizedUpdated.modelId,
+      },
+      actor: caller.actor,
+      actorId: caller.actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: caller.ownerUserId,
+    });
+    return normalizedUpdated;
+  }
+
   return normalizeAgentRecord(updated);
 }
 
 export async function deleteAgent(
   userId: string,
   agentId: string,
+  caller?: CallerContext,
 ): Promise<void> {
   if (agentId === DEFAULT_AGENT_ID) {
     throw new ValidationError("The default Eclaire agent cannot be deleted");
@@ -448,4 +503,24 @@ export async function deleteAgent(
   await deleteAgentActor(userId, agentId);
 
   logger.info({ userId, agentId }, "Deleted custom agent");
+
+  if (caller) {
+    await recordHistory({
+      action: "delete",
+      itemType: "agent",
+      itemId: agentId,
+      itemName: deleted.name,
+      beforeData: {
+        name: deleted.name,
+        description: deleted.description,
+        modelId: deleted.modelId,
+      },
+      afterData: null,
+      actor: caller.actor,
+      actorId: caller.actorId,
+      authorizedByActorId: caller.authorizedByActorId ?? null,
+      grantId: caller.grantId ?? null,
+      userId: caller.ownerUserId,
+    });
+  }
 }

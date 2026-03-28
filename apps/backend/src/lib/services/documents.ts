@@ -1037,6 +1037,7 @@ export async function reprocessDocument(
   documentId: string,
   userId: string,
   force: boolean = false,
+  caller?: CallerContext,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // 1. Get the existing document to ensure it exists and user has access
@@ -1059,6 +1060,24 @@ export async function reprocessDocument(
         { documentId, userId },
         "Successfully queued document for reprocessing using retry logic",
       );
+
+      if (caller) {
+        const { recordHistory } = await import("./history.js");
+        await recordHistory({
+          action: "update",
+          itemType: "document",
+          itemId: documentId,
+          itemName: document.title || undefined,
+          beforeData: null,
+          afterData: { force },
+          actor: caller.actor,
+          actorId: callerActorId(caller),
+          authorizedByActorId: caller.authorizedByActorId ?? null,
+          grantId: caller.grantId ?? null,
+          userId: callerOwnerUserId(caller),
+          metadata: { trigger: "reprocess" },
+        });
+      }
     } else {
       logger.error(
         { documentId, userId, error: result.error },

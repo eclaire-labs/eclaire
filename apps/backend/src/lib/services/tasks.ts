@@ -80,7 +80,7 @@ const _TASK_PROCESSING_QUEUE = "task-processing";
 
 interface ResolvedTaskDelegate {
   delegateActorId: string | null;
-  kind: "human" | "agent" | "system" | "service" | null;
+  kind: "human" | "agent" | null;
 }
 
 async function resolveTaskDelegate(

@@ -949,6 +949,7 @@ export async function reprocessNote(
   noteId: string,
   userId: string,
   force: boolean = false,
+  caller?: CallerContext,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // 1. Get the existing note to ensure it exists and user has access
@@ -966,6 +967,24 @@ export async function reprocessNote(
         { noteId, userId },
         "Successfully queued note for reprocessing using retry logic",
       );
+
+      if (caller) {
+        const { recordHistory } = await import("./history.js");
+        await recordHistory({
+          action: "update",
+          itemType: "note",
+          itemId: noteId,
+          itemName: note.title || undefined,
+          beforeData: null,
+          afterData: { force },
+          actor: caller.actor,
+          actorId: callerActorId(caller),
+          authorizedByActorId: caller.authorizedByActorId ?? null,
+          grantId: caller.grantId ?? null,
+          userId: callerOwnerUserId(caller),
+          metadata: { trigger: "reprocess" },
+        });
+      }
     } else {
       logger.error(
         { noteId, userId, error: result.error },
