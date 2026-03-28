@@ -207,32 +207,14 @@ function validateRuntimeCapabilityPolicy(
 function normalizeAgentRecord(
   record: typeof agents.$inferSelect,
 ): AgentDefinition {
-  let toolNames = Array.isArray(record.toolNames) ? record.toolNames : [];
-  let skillNames = Array.isArray(record.skillNames) ? record.skillNames : [];
-
-  // Sanitize capabilities for external harness models (handles pre-existing data)
-  if (record.modelId) {
-    const runtimeKind = getAgentRuntimeKindForModel(record.modelId);
-    if (runtimeKind === "external_harness") {
-      if (toolNames.length > 0 || skillNames.length > 0) {
-        logger.debug(
-          { agentId: record.id, modelId: record.modelId },
-          "Sanitizing tools/skills for external harness agent on read",
-        );
-        toolNames = [];
-        skillNames = [];
-      }
-    }
-  }
-
   return {
     id: record.id,
     kind: "custom",
     name: record.name,
     description: record.description,
     systemPrompt: record.systemPrompt,
-    toolNames,
-    skillNames,
+    toolNames: Array.isArray(record.toolNames) ? record.toolNames : [],
+    skillNames: Array.isArray(record.skillNames) ? record.skillNames : [],
     modelId: record.modelId ?? null,
     isEditable: true,
     createdAt: record.createdAt,

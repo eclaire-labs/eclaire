@@ -842,24 +842,10 @@ describe("deleteAgent", () => {
 });
 
 // ==========================================================================
-// normalizeAgentRecord — external harness sanitization
+// normalizeAgentRecord
 // ==========================================================================
 
 describe("normalizeAgentRecord (via getAgent)", () => {
-  it("strips tools and skills for external harness agents on read", async () => {
-    const row = makeAgentRow({
-      modelId: "external:harness-model",
-      toolNames: ["findContent", "sendEmail"],
-      skillNames: ["coding-assistant"],
-    });
-    dbMock.selectRows.current = [row];
-
-    const agent = await getAgent(TEST_USER, "agent-001");
-
-    expect(agent.toolNames).toEqual([]);
-    expect(agent.skillNames).toEqual([]);
-  });
-
   it("preserves tools and skills for native model agents", async () => {
     const row = makeAgentRow({
       modelId: "anthropic:claude-3",
