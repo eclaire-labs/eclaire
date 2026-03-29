@@ -14,14 +14,10 @@ vi.mock("@/providers/ProcessingEventsProvider", () => ({
   useSSEConnectionStatus: () => ({ isConnected: mockIsConnected.value }),
 }));
 
+const mockApiFetch = vi.fn();
+
 vi.mock("@/lib/api-client", () => ({
-  apiFetch: vi.fn().mockResolvedValue({
-    ok: true,
-    json: () =>
-      Promise.resolve({
-        items: [{ id: "1" }, { id: "2" }, { id: "3" }],
-      }),
-  }),
+  apiFetch: (...args: unknown[]) => mockApiFetch(...args),
 }));
 
 import { useDueNowCount } from "@/hooks/use-due-now-count";
@@ -39,51 +35,103 @@ function createWrapper() {
   );
 }
 
+function mockFetchOk(items: { id: string }[]) {
+  mockApiFetch.mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ items }),
+  });
+}
+
+function mockFetchError(status = 500) {
+  mockApiFetch.mockResolvedValue({
+    ok: false,
+    status,
+    json: () => Promise.resolve({ error: "Server error" }),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe("useDueNowCount", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     mockIsConnected.value = false;
+    mockFetchOk([]);
   });
 
-  it("returns the count of due-now items", async () => {
+  it("returns the count of due-now items from API", async () => {
+    mockFetchOk([{ id: "1" }, { id: "2" }, { id: "3" }]);
+
     const { result } = renderHook(() => useDueNowCount(), {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.count).toBe(3);
   });
 
-  it("returns 0 when loading", () => {
+  it("returns 0 when no items are due", async () => {
+    mockFetchOk([]);
+
     const { result } = renderHook(() => useDueNowCount(), {
       wrapper: createWrapper(),
     });
 
-    // Before the query resolves, count defaults to 0
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
     expect(result.current.count).toBe(0);
   });
 
-  it("uses query key due-now-count", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
+  it("returns 0 when API returns an error", async () => {
+    mockFetchError(500);
+
+    const { result } = renderHook(() => useDueNowCount(), {
+      wrapper: createWrapper(),
     });
 
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.count).toBe(0);
+  });
+
+  it("returns 0 while loading", () => {
+    mockFetchOk([{ id: "1" }]);
+
+    const { result } = renderHook(() => useDueNowCount(), {
+      wrapper: createWrapper(),
+    });
+
+    // Before query resolves, count defaults to 0
+    expect(result.current.count).toBe(0);
+  });
+
+  it("fetches due_now items with correct endpoint", async () => {
+    mockFetchOk([]);
+
+    const { result } = renderHook(() => useDueNowCount(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/api/all?dueStatus=due_now&limit=100",
     );
+  });
 
-    renderHook(() => useDueNowCount(), { wrapper });
+  it("counts items correctly with varying response sizes", async () => {
+    const items = Array.from({ length: 42 }, (_, i) => ({ id: String(i) }));
+    mockFetchOk(items);
 
-    await waitFor(() => {
-      const cache = queryClient.getQueryCache().findAll();
-      const keys = cache.map((q) => q.queryKey);
-      expect(keys).toContainEqual(["due-now-count"]);
+    const { result } = renderHook(() => useDueNowCount(), {
+      wrapper: createWrapper(),
     });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.count).toBe(42);
   });
 });

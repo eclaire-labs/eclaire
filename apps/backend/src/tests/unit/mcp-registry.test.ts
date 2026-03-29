@@ -103,7 +103,7 @@ describe("McpRegistry", () => {
   });
 
   describe("initialize", () => {
-    it("connects servers with autoConnect", async () => {
+    it("connects servers with autoConnect and exposes discovered tools", async () => {
       const registry = new McpRegistry({
         a: makeConfig({ autoConnect: true, toolMode: "individual" }),
       });
@@ -112,7 +112,16 @@ describe("McpRegistry", () => {
       connA.discoverTools.mockResolvedValue([
         {
           name: "tool1",
-          description: "T1",
+          description: "A test tool",
+          inputSchema: {
+            type: "object",
+            properties: { x: { type: "number" } },
+          },
+          serverKey: "a",
+        },
+        {
+          name: "tool2",
+          description: "Another tool",
           inputSchema: {},
           serverKey: "a",
         },
@@ -122,7 +131,77 @@ describe("McpRegistry", () => {
 
       expect(connA.discoverTools).toHaveBeenCalled();
       const tools = registry.getMcpTools();
+      expect(Object.keys(tools)).toHaveLength(2);
+      expect(tools.tool1).toBeDefined();
+      expect(tools.tool2).toBeDefined();
+      expect(tools.tool1.name).toBe("tool1");
+      expect(tools.tool1.description).toBe("A test tool");
+      // Verify tools are associated with the correct server
+      expect(registry.getServerKeyForTool("tool1")).toBe("a");
+      expect(registry.getServerKeyForTool("tool2")).toBe("a");
+      expect(registry.isMcpTool("tool1")).toBe(true);
+    });
+
+    it("discovers tools from multiple servers independently", async () => {
+      const registry = new McpRegistry({
+        a: makeConfig({ autoConnect: true, toolMode: "individual" }),
+        b: makeConfig({ autoConnect: true, toolMode: "individual" }),
+      });
+
+      mockConnections
+        .get("a")!
+        .discoverTools.mockResolvedValue([
+          {
+            name: "toolA",
+            description: "From A",
+            inputSchema: {},
+            serverKey: "a",
+          },
+        ]);
+      mockConnections
+        .get("b")!
+        .discoverTools.mockResolvedValue([
+          {
+            name: "toolB",
+            description: "From B",
+            inputSchema: {},
+            serverKey: "b",
+          },
+        ]);
+
+      await registry.initialize();
+
+      const tools = registry.getMcpTools();
+      expect(Object.keys(tools)).toHaveLength(2);
+      expect(registry.getServerKeyForTool("toolA")).toBe("a");
+      expect(registry.getServerKeyForTool("toolB")).toBe("b");
+    });
+
+    it("still exposes tools from healthy servers when one server fails", async () => {
+      const registry = new McpRegistry({
+        good: makeConfig({ autoConnect: true, toolMode: "individual" }),
+        bad: makeConfig({ autoConnect: true, toolMode: "individual" }),
+      });
+
+      mockConnections
+        .get("good")!
+        .discoverTools.mockResolvedValue([
+          {
+            name: "goodTool",
+            description: "Works",
+            inputSchema: {},
+            serverKey: "good",
+          },
+        ]);
+      mockConnections
+        .get("bad")!
+        .discoverTools.mockRejectedValue(new Error("connection failed"));
+
+      await registry.initialize();
+
+      const tools = registry.getMcpTools();
       expect(Object.keys(tools)).toHaveLength(1);
+      expect(tools.goodTool).toBeDefined();
     });
 
     it("skips managed-mode servers during auto-discovery", async () => {
@@ -142,6 +221,8 @@ describe("McpRegistry", () => {
       connA.discoverTools.mockRejectedValue(new Error("connection failed"));
       // Should not throw — uses Promise.allSettled
       await registry.initialize();
+      // No tools should be registered from the failed server
+      expect(Object.keys(registry.getMcpTools())).toHaveLength(0);
     });
   });
 

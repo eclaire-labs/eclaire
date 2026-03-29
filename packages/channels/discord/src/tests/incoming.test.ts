@@ -142,11 +142,16 @@ describe("handleIncomingMessage", () => {
     await handleIncomingMessage(message as any, "ch-1", "user-1");
 
     expect(mockFindChannel).toHaveBeenCalledWith("ch-1", "user-1");
-    expect(mockRouteChannelPrompt).toHaveBeenCalled();
+    expect(mockRouteChannelPrompt).toHaveBeenCalledWith(
+      "user-1",
+      "hello world",
+      "eclaire",
+    );
     expect(mockProcessPromptRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
         prompt: "hello world",
+        context: expect.objectContaining({ agentActorId: "eclaire" }),
       }),
     );
     expect(message.reply).toHaveBeenCalledWith("bot reply");
@@ -155,6 +160,9 @@ describe("handleIncomingMessage", () => {
         action: "discord_message_processed",
         itemType: "discord_chat",
         userId: "user-1",
+        afterData: expect.objectContaining({
+          response: "bot reply",
+        }),
       }),
     );
   });
@@ -336,7 +344,11 @@ describe("handleIncomingMessage", () => {
         prompt: "stream this",
       }),
     );
-    expect(sendStreamingResponse).toHaveBeenCalled();
+    expect(sendStreamingResponse).toHaveBeenCalledWith(
+      message.channel,
+      expect.anything(),
+      expect.objectContaining({ logger: expect.anything() }),
+    );
     // Non-streaming processPromptRequest should NOT be called
     expect(mockProcessPromptRequest).not.toHaveBeenCalled();
     expect(mockRecordHistory).toHaveBeenCalledWith(

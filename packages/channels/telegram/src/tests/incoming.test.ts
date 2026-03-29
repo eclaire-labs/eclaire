@@ -256,6 +256,7 @@ describe("handleIncomingMessage", () => {
       expect.objectContaining({
         userId: "user-1",
         prompt: "hello",
+        context: expect.objectContaining({ agentActorId: "eclaire" }),
       }),
     );
     expect(sendStreamingResponse).toHaveBeenCalledWith(
@@ -264,7 +265,15 @@ describe("handleIncomingMessage", () => {
       expect.anything(),
       expect.objectContaining({ logger: mockLogger }),
     );
-    expect(mockRecordHistory).toHaveBeenCalled();
+    expect(mockRecordHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "telegram_message_processed",
+        userId: "user-1",
+        afterData: expect.objectContaining({
+          response: "AI reply",
+        }),
+      }),
+    );
   });
 
   it("splits long response into multiple messages", async () => {

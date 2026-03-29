@@ -134,8 +134,19 @@ describe("handleIncomingMessage", () => {
     );
 
     expect(mockFindChannel).toHaveBeenCalledWith(channelId, userId);
-    expect(addThinkingReaction).toHaveBeenCalled();
-    expect(mockProcessPromptRequest).toHaveBeenCalled();
+    expect(addThinkingReaction).toHaveBeenCalledWith(
+      client,
+      slackChannelId,
+      messageTs,
+      expect.objectContaining({ info: expect.any(Function) }),
+    );
+    expect(mockProcessPromptRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId,
+        prompt: "hello",
+        context: expect.objectContaining({ agentActorId: "eclaire" }),
+      }),
+    );
     expect(client.chat.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         channel: slackChannelId,
@@ -147,6 +158,10 @@ describe("handleIncomingMessage", () => {
       expect.objectContaining({
         action: "slack_message_processed",
         itemType: "slack_chat",
+        userId,
+        afterData: expect.objectContaining({
+          response: "AI reply",
+        }),
       }),
     );
   });

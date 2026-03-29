@@ -216,9 +216,12 @@ describe("Audio Service", () => {
           defaultTtsVoice: "",
         },
       });
-      const result = await svc.transcribe({ file: Buffer.from("audio") });
+      const audioInput = Buffer.from("audio");
+      const result = await svc.transcribe({ file: audioInput });
       expect(result.text).toBe("test transcription");
-      expect(mockProviders["mlx-audio"]!.transcribe).toHaveBeenCalled();
+      expect(mockProviders["mlx-audio"]!.transcribe).toHaveBeenCalledWith(
+        expect.objectContaining({ file: audioInput }),
+      );
     });
 
     it("routes to specified provider", async () => {
@@ -378,6 +381,12 @@ describe("Audio Service", () => {
       });
       const health = await svc.getAudioHealth();
       expect(health.providers).toHaveLength(2);
+      const providerIds = health.providers.map(
+        (p: { providerId: string }) => p.providerId,
+      );
+      expect(providerIds).toContain("mlx-audio");
+      expect(providerIds).toContain("whisper-cpp");
+      expect(health.status).toBe("ready");
     });
 
     it('top-level status is "ready" if any provider is ready', async () => {
@@ -508,7 +517,8 @@ describe("Audio Service", () => {
         recordHistory,
       });
 
-      const result = await process("user-1", Buffer.from("audio"), {
+      const audioInput = Buffer.from("audio");
+      const result = await process("user-1", audioInput, {
         format: "wav",
         ttsEnabled: true,
         ttsFormat: "mp3",
@@ -516,7 +526,22 @@ describe("Audio Service", () => {
         agentActorId: "eclaire",
       });
 
-      expect(processPromptRequest).toHaveBeenCalled();
+      // Verify STT received the audio input
+      expect(mockProviders["mlx-audio"]!.transcribe).toHaveBeenCalledWith(
+        expect.objectContaining({ file: audioInput }),
+      );
+      // Verify AI received the transcribed text
+      expect(processPromptRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "user-1",
+          prompt: "test transcription",
+        }),
+      );
+      // Verify TTS received the AI response
+      expect(mockProviders["mlx-audio"]!.synthesize).toHaveBeenCalledWith(
+        expect.objectContaining({ text: "AI reply" }),
+      );
+      // Verify result
       expect(result.response).toBe("AI reply");
       expect(result.audioResponse).toBeDefined();
     });

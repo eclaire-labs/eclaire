@@ -42,6 +42,16 @@ const mockTools = vi.hoisted(() => ({
     needsApproval: false,
     execute: vi.fn(),
   },
+  loadSkill: {
+    name: "loadSkill",
+    label: "Load Skill",
+    description: "Load a skill into the conversation",
+    inputSchema: {} as never,
+    accessLevel: "read" as const,
+    visibility: "all" as const,
+    needsApproval: false,
+    execute: vi.fn(),
+  },
 }));
 
 const mockSkills = vi.hoisted(() => [
@@ -100,24 +110,6 @@ const aiMocks = vi.hoisted(() => ({
     if (modelId === "external:harness-model") return "external_harness";
     return "native";
   }),
-  normalizeCreateAgentCapabilities: vi.fn(
-    (input: { toolNames?: string[]; skillNames?: string[] }) => ({
-      toolNames: input.toolNames ?? [],
-      skillNames: input.skillNames ?? [],
-    }),
-  ),
-  normalizeUpdatedAgentCapabilities: vi.fn(
-    (
-      _current: { toolNames: string[]; skillNames: string[] },
-      updates: { toolNames?: string[]; skillNames?: string[] },
-    ) => {
-      const result: { toolNames?: string[]; skillNames?: string[] } = {};
-      if (updates.toolNames !== undefined) result.toolNames = updates.toolNames;
-      if (updates.skillNames !== undefined)
-        result.skillNames = updates.skillNames;
-      return result;
-    },
-  ),
 }));
 
 // ---------------------------------------------------------------------------
@@ -173,6 +165,9 @@ const dbMock = vi.hoisted(() => {
   const updateChain = createChain(() => updateRows.current);
   const deleteChain = createChain(() => deleteRows.current);
 
+  /** Captures the values passed to tx.insert().values() inside transactions */
+  const txInsertCalls: { current: Record<string, unknown>[] } = { current: [] };
+
   return {
     selectRows,
     insertRows,
@@ -182,6 +177,7 @@ const dbMock = vi.hoisted(() => {
     insertChain,
     updateChain,
     deleteChain,
+    txInsertCalls,
     db: {
       select: vi.fn(() => selectChain),
       insert: vi.fn(() => insertChain),
@@ -191,6 +187,12 @@ const dbMock = vi.hoisted(() => {
         // The transaction callback receives a tx that looks like db
         const txInsertChain = createChain(() => insertRows.current);
         const txDeleteChain = createChain(() => deleteRows.current);
+        // Capture values passed to insert().values()
+        const origValues = txInsertChain.values;
+        txInsertChain.values = vi.fn((vals: Record<string, unknown>) => {
+          txInsertCalls.current.push(vals);
+          return origValues(vals);
+        });
         const tx = {
           insert: vi.fn(() => txInsertChain),
           delete: vi.fn(() => txDeleteChain),
@@ -222,25 +224,27 @@ vi.mock("../../lib/mcp/index.js", () => ({
   getMcpRegistry: () => mcpRegistryMock,
 }));
 
-vi.mock("@eclaire/ai", () => ({
-  discoverSkills: aiMocks.discoverSkills,
-  getSkill: aiMocks.getSkill,
-  loadSkillContent: aiMocks.loadSkillContent,
-  isValidModelIdFormat: aiMocks.isValidModelIdFormat,
-  getModelConfigById: aiMocks.getModelConfigById,
-  resolveProviderForModel: aiMocks.resolveProviderForModel,
-  getAgentRuntimeKindForModel: aiMocks.getAgentRuntimeKindForModel,
-  normalizeCreateAgentCapabilities: aiMocks.normalizeCreateAgentCapabilities,
-  normalizeUpdatedAgentCapabilities: aiMocks.normalizeUpdatedAgentCapabilities,
-  LOAD_SKILL_TOOL_NAME: "loadSkill",
-}));
+vi.mock("@eclaire/ai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@eclaire/ai")>();
+  return {
+    discoverSkills: aiMocks.discoverSkills,
+    getSkill: aiMocks.getSkill,
+    loadSkillContent: aiMocks.loadSkillContent,
+    isValidModelIdFormat: aiMocks.isValidModelIdFormat,
+    getModelConfigById: aiMocks.getModelConfigById,
+    resolveProviderForModel: aiMocks.resolveProviderForModel,
+    getAgentRuntimeKindForModel: aiMocks.getAgentRuntimeKindForModel,
+    // Use REAL implementations for capability normalization:
+    normalizeCreateAgentCapabilities: actual.normalizeCreateAgentCapabilities,
+    normalizeUpdatedAgentCapabilities: actual.normalizeUpdatedAgentCapabilities,
+    normalizeToolNamesForSkills: actual.normalizeToolNamesForSkills,
+    LOAD_SKILL_TOOL_NAME: actual.LOAD_SKILL_TOOL_NAME,
+  };
+});
 
-vi.mock("../../lib/services/agent-capabilities.js", () => ({
-  normalizeCreateAgentCapabilities: aiMocks.normalizeCreateAgentCapabilities,
-  normalizeUpdatedAgentCapabilities: aiMocks.normalizeUpdatedAgentCapabilities,
-  LOAD_SKILL_TOOL_NAME: "loadSkill",
-  normalizeToolNamesForSkills: vi.fn((tools: string[]) => tools),
-}));
+vi.mock("../../lib/services/agent-capabilities.js", async (importOriginal) => {
+  return importOriginal();
+});
 
 vi.mock("../../lib/services/actors.js", () => ({
   updateAgentActorDisplayName: vi.fn(async () => {}),
@@ -316,6 +320,7 @@ beforeEach(() => {
   dbMock.insertRows.current = [];
   dbMock.updateRows.current = [];
   dbMock.deleteRows.current = [];
+  dbMock.txInsertCalls.current = [];
 });
 
 // ==========================================================================
@@ -518,10 +523,41 @@ describe("createAgent", () => {
     expect(result.id).toBe("agent-new");
     expect(result.kind).toBe("custom");
     expect(result.isEditable).toBe(true);
+
+    // Verify the DB insert received trimmed + normalized values
+    const agentInsert = dbMock.txInsertCalls.current[0];
+    expect(agentInsert).toBeDefined();
+    expect(agentInsert!.name).toBe("New Agent");
+    expect(agentInsert!.systemPrompt).toBe("Be helpful.");
+    expect(agentInsert!.userId).toBe(TEST_USER);
   });
 
-  it("calls normalizeCreateAgentCapabilities with the input", async () => {
-    dbMock.insertRows.current = [makeAgentRow()];
+  it("auto-adds loadSkill tool when skills are assigned", async () => {
+    dbMock.insertRows.current = [
+      makeAgentRow({
+        toolNames: ["findContent", "loadSkill"],
+        skillNames: ["coding-assistant"],
+      }),
+    ];
+
+    const result = await createAgent(TEST_USER, {
+      name: "Agent",
+      systemPrompt: "Prompt",
+      toolNames: ["findContent"],
+      skillNames: ["coding-assistant"],
+    });
+
+    expect(result.toolNames).toContain("loadSkill");
+    expect(result.toolNames).toContain("findContent");
+  });
+
+  it("writes normalized capabilities (with loadSkill) to the database", async () => {
+    dbMock.insertRows.current = [
+      makeAgentRow({
+        toolNames: ["findContent", "loadSkill"],
+        skillNames: ["coding-assistant"],
+      }),
+    ];
 
     await createAgent(TEST_USER, {
       name: "Agent",
@@ -530,12 +566,26 @@ describe("createAgent", () => {
       skillNames: ["coding-assistant"],
     });
 
-    expect(aiMocks.normalizeCreateAgentCapabilities).toHaveBeenCalledWith({
+    // The DB insert should contain normalized toolNames with loadSkill added
+    const agentInsert = dbMock.txInsertCalls.current[0];
+    expect(agentInsert!.toolNames).toContain("loadSkill");
+    expect(agentInsert!.toolNames).toContain("findContent");
+    expect(agentInsert!.skillNames).toEqual(["coding-assistant"]);
+  });
+
+  it("does not add loadSkill when no skills are assigned", async () => {
+    dbMock.insertRows.current = [
+      makeAgentRow({ toolNames: ["findContent"], skillNames: [] }),
+    ];
+
+    const result = await createAgent(TEST_USER, {
       name: "Agent",
       systemPrompt: "Prompt",
       toolNames: ["findContent"],
-      skillNames: ["coding-assistant"],
+      skillNames: [],
     });
+
+    expect(result.toolNames).not.toContain("loadSkill");
   });
 });
 
@@ -663,6 +713,8 @@ describe("createAgent — runtime capability policy", () => {
   });
 
   it("rejects external harness model with skills", async () => {
+    // When skills are assigned, normalizeCreateAgentCapabilities auto-adds
+    // the loadSkill tool, so the runtime policy rejects on tools first.
     await expect(
       createAgent(TEST_USER, {
         name: "Agent",
@@ -679,7 +731,7 @@ describe("createAgent — runtime capability policy", () => {
         modelId: "external:harness-model",
         skillNames: ["coding-assistant"],
       }),
-    ).rejects.toThrow(/skills/i);
+    ).rejects.toThrow(/tools|skills/i);
   });
 
   it("allows native model with tools", async () => {
