@@ -169,7 +169,7 @@ export function createTestDeps(
   };
 
   const deleteSession = async (sessionId: string, userId: string) => {
-    const result = await db
+    await db
       .delete(schema.conversations)
       .where(
         and(

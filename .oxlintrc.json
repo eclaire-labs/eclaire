@@ -102,6 +102,12 @@
     "import/namespace": "off",
     "import/no-unassigned-import": "off",
 
+    // ── TypeScript: disable rules that fire on vi.mock class constructors ──
+    "typescript/no-extraneous-class": "off",
+
+    // ── Unicorn: Drizzle mock chains intentionally use .then ──────
+    "unicorn/no-thenable": "off",
+
     // ── Suspicious: disable noisy / false-positive-heavy rules ─────
     "no-await-in-loop": "off",
     "no-shadow": "off",

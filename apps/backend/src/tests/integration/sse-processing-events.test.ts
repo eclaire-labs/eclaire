@@ -381,7 +381,7 @@ describe("SSE Processing Events — Integration", { timeout: 30000 }, () => {
     }
 
     // session_completed should arrive after execution finishes
-    const completedOrError = sse.events.find(
+    const _completedOrError = sse.events.find(
       (e) =>
         (e.type === "session_completed" || e.type === "session_error") &&
         e.sessionId === session.id,

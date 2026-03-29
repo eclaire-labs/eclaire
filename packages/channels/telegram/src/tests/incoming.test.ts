@@ -23,7 +23,6 @@ import {
   handleIncomingVoiceMessage,
 } from "../incoming.js";
 import { stopBot } from "../bot-manager.js";
-import { safeSendChatAction } from "../typing-indicator.js";
 import { sendStreamingResponse } from "../stream-sender.js";
 import { splitMessage } from "../message-utils.js";
 

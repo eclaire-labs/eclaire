@@ -72,7 +72,6 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-// biome-ignore lint/suspicious/noExplicitAny: test helper allows arbitrary shapes to exercise truncation paths
 function makeStep(overrides: Record<string, any> = {}): RuntimeAgentStep {
   return {
     stepNumber: 1,

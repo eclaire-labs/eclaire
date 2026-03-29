@@ -40,7 +40,9 @@ export async function ensureInstanceAdmin(): Promise<void> {
     const firstUser = allUsers.sort(
       (a, b) =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-    )[0]!;
+    )[0];
+
+    if (!firstUser) return null;
 
     await tx.users.update(eq(schema.users.id, firstUser.id), {
       isInstanceAdmin: true,

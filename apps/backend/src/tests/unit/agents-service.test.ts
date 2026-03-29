@@ -121,7 +121,6 @@ const aiMocks = vi.hoisted(() => ({
  * The terminal `returning()` or the final chain call resolves `rows`.
  */
 function createChain(rows: () => Record<string, unknown>[]) {
-  // biome-ignore lint/suspicious/noExplicitAny: mock chain uses symbol keys and thenable patterns
   const chain: Record<string | symbol, any> = {};
   const self = () => chain;
   for (const m of [

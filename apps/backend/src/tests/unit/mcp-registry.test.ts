@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -26,6 +26,7 @@ vi.mock("@eclaire/ai", async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
+    // biome-ignore lint/complexity/useArrowFunction: Proxy construct target must be a regular function
     McpServerConnection: new Proxy(function () {}, {
       construct(_target, [key, _config]: [string, unknown]) {
         const conn = createMockConn();

@@ -90,7 +90,7 @@ describe("loadMcpServersConfig", () => {
     ]);
 
     const servers = await loadMcpServersConfig();
-    expect(servers["disabled"]).toBeUndefined();
+    expect(servers.disabled).toBeUndefined();
   });
 
   it("normalizes DB transport 'http' to 'streamable-http'", async () => {
