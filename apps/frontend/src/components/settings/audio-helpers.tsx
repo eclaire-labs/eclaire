@@ -66,6 +66,15 @@ const KOKORO_VOICES: SelectOption[] = [
   { value: "zm_yunxi", label: "Yunxi (ZH, M)" },
 ];
 
+/** Voxtral TTS voice presets (English) */
+const VOXTRAL_VOICES: SelectOption[] = [
+  { value: "casual_male", label: "Casual (EN, M)" },
+  { value: "casual_female", label: "Casual (EN, F)" },
+  { value: "cheerful_female", label: "Cheerful (EN, F)" },
+  { value: "neutral_male", label: "Neutral (EN, M)" },
+  { value: "neutral_female", label: "Neutral (EN, F)" },
+];
+
 /** Qwen3-TTS voice presets (CustomVoice variants only — Base has no spk_id) */
 const QWEN3_TTS_VOICES: SelectOption[] = [
   { value: "Vivian", label: "Vivian (EN, F)" },
@@ -114,6 +123,9 @@ export function getMlxVoiceOptions(ttsModel: string): {
   }
   if (lower.includes("soprano")) {
     return { hide: true };
+  }
+  if (lower.includes("voxtral") && lower.includes("tts")) {
+    return { voices: VOXTRAL_VOICES };
   }
   if (lower.includes("vibevoice")) {
     return {
@@ -184,6 +196,10 @@ export const PROVIDER_OPTIONS: Record<string, ProviderOptions> = {
       {
         value: "mlx-community/Soprano-1.1-80M-bf16",
         label: "Soprano 80M",
+      },
+      {
+        value: "mlx-community/Voxtral-4B-TTS-2603-mlx-4bit",
+        label: "Voxtral 4B TTS (4-bit)",
       },
     ],
   },
