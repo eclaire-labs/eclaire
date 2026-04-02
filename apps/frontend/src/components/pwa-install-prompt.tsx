@@ -98,10 +98,11 @@ export function PWAInstallPrompt({ className }: PWAInstallPromptProps) {
     sessionStorage.setItem("pwa-prompt-dismissed", "true");
   };
 
-  // Don't show if already installed or dismissed this session
+  // Don't show if already installed, in Electron, or dismissed this session
   if (
     isInstalled ||
     !showPrompt ||
+    navigator.userAgent.includes("Electron") ||
     sessionStorage.getItem("pwa-prompt-dismissed")
   ) {
     return null;

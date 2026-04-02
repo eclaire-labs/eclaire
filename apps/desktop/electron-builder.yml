@@ -1,0 +1,41 @@
+appId: co.eclaire.desktop
+productName: Eclaire
+copyright: Copyright (c) Eclaire Labs
+
+directories:
+  output: release
+  buildResources: resources
+
+files:
+  - dist/**/*
+  - resources/**/*
+
+mac:
+  category: public.app-category.productivity
+  icon: resources/icon.icns
+  target:
+    - dmg
+    - zip
+  hardenedRuntime: true
+  gatekeeperAssess: false
+
+win:
+  icon: resources/icon.ico
+  target:
+    - nsis
+
+linux:
+  icon: resources/icon.png
+  target:
+    - AppImage
+    - deb
+  category: Office
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+publish:
+  provider: github
+  owner: eclaire-labs
+  repo: eclaire-public

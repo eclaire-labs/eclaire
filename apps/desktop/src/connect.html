@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect to Eclaire</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0a0a0b;
+      color: #e4e4e7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      -webkit-app-region: drag;
+    }
+
+    .container {
+      -webkit-app-region: no-drag;
+      width: 100%;
+      max-width: 420px;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #fafafa;
+    }
+
+    p {
+      font-size: 0.875rem;
+      color: #a1a1aa;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #a1a1aa;
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 0.5rem;
+      color: #fafafa;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus { border-color: #7c3aed; }
+
+    button {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.625rem;
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover { background: #6d28d9; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .status {
+      margin-top: 1rem;
+      font-size: 0.8125rem;
+      text-align: center;
+      min-height: 1.25rem;
+    }
+
+    .status.error { color: #f87171; }
+    .status.connecting { color: #a1a1aa; }
+    .status.success { color: #4ade80; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Connect to Eclaire</h1>
+    <p>Enter the URL of your Eclaire server. Make sure the server is running before connecting.</p>
+
+    <label for="server-url">Server URL</label>
+    <input type="url" id="server-url" placeholder="http://localhost:3001" spellcheck="false" />
+
+    <button type="button" id="connect-btn">Connect</button>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script>
+    const urlInput = document.getElementById("server-url");
+    const connectBtn = document.getElementById("connect-btn");
+    const statusEl = document.getElementById("status");
+
+    // Load saved URL
+    window.eclaire.getServerUrl().then((url) => {
+      urlInput.value = url || "http://localhost:3001";
+    });
+
+    async function connect() {
+      const url = urlInput.value.trim().replace(/\/+$/, "");
+      if (!url) return;
+
+      connectBtn.disabled = true;
+      statusEl.className = "status connecting";
+      statusEl.textContent = "Connecting\u2026";
+
+      await window.eclaire.setServerUrl(url);
+      const result = await window.eclaire.connectToServer();
+
+      if (result.success) {
+        statusEl.className = "status success";
+        statusEl.textContent = "Connected!";
+      } else {
+        statusEl.className = "status error";
+        statusEl.textContent = "Could not reach server. Is it running?";
+        connectBtn.disabled = false;
+      }
+    }
+
+    connectBtn.addEventListener("click", connect);
+    urlInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") connect();
+    });
+  </script>
+</body>
+</html>

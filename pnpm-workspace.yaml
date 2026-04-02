@@ -14,6 +14,7 @@ onlyBuiltDependencies:
   - better-sqlite3
   - sharp
   - bcrypt
+  - electron
 
 packageExtensions:
   sharp:

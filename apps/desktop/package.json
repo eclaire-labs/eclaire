@@ -1,0 +1,32 @@
+{
+  "name": "@eclaire/desktop",
+  "version": "0.0.0",
+  "productName": "Eclaire",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "NODE_ENV=development tsc && cp src/connect.html dist/connect.html && cp -r resources dist/resources && NODE_ENV=development electron dist/main.js",
+    "build": "tsc && cp src/connect.html dist/connect.html && cp -r resources dist/resources",
+    "pack": "tsc && electron-builder --dir",
+    "dist": "tsc && electron-builder",
+    "dist:mac": "tsc && electron-builder --mac",
+    "dist:win": "tsc && electron-builder --win",
+    "dist:linux": "tsc && electron-builder --linux",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src/ && oxlint src/",
+    "format": "biome check --fix src/"
+  },
+  "dependencies": {
+    "electron-store": "^10.0.1",
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@types/node": "catalog:",
+    "electron": "^35.1.2",
+    "electron-builder": "^26.0.12",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

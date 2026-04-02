@@ -35,6 +35,23 @@ const initializedAdapter = drizzleAdapter(db, {
   },
 });
 
+/**
+ * For each URL, if it uses localhost or 127.0.0.1, emit both variants
+ * so Better Auth's exact-match origin check accepts either.
+ */
+function localhostVariants(urls: string[]): string[] {
+  const set = new Set<string>();
+  for (const url of urls) {
+    set.add(url);
+    if (url.includes("localhost")) {
+      set.add(url.replace("localhost", "127.0.0.1"));
+    } else if (url.includes("127.0.0.1")) {
+      set.add(url.replace("127.0.0.1", "localhost"));
+    }
+  }
+  return [...set];
+}
+
 export const auth = betterAuth({
   baseURL: config.services.backendUrl,
   database: initializedAdapter,
@@ -91,13 +108,11 @@ export const auth = betterAuth({
   },
   // Secret is provided by config system (auto-generated in dev, required in production)
   secret: config.security.betterAuthSecret,
-  trustedOrigins: [
+  trustedOrigins: localhostVariants([
     config.services.frontendUrl,
+    config.services.backendUrl, // Electron desktop client loads the backend-served SPA
     "http://frontend:3000", // Docker container name — not externally routable
-    ...(config.isProduction
-      ? []
-      : ["http://localhost:3000", "http://127.0.0.1:3000"]),
-  ],
+  ]),
   advanced: {
     database: {
       generateId: (options) => {
