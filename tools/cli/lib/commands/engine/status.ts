@@ -75,9 +75,9 @@ export async function statusCommand(options: CommandOptions): Promise<void> {
     console.log(`  Health:  ${healthLine}`);
     console.log("");
 
-    // Show models from selection.json
+    // Show models from active selection
     if (resolution.modelsToPreload.length > 0) {
-      console.log(colors.subheader("  Models from selection.json:"));
+      console.log(colors.subheader("  Active models:"));
       for (const m of resolution.modelsToPreload) {
         console.log(`    ${colors.info(m.context)}: ${m.modelId}`);
         console.log(colors.dim(`             ${m.providerModel}`));
@@ -85,7 +85,7 @@ export async function statusCommand(options: CommandOptions): Promise<void> {
       console.log("");
     } else if (resolution.status === "no-managed") {
       console.log(
-        colors.dim("  No managed llama-cpp models in selection.json"),
+        colors.dim("  No managed llama-cpp models in active selection"),
       );
       console.log("");
     } else if (resolution.status === "conflict") {

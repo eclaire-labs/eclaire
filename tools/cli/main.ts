@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
-import path from "node:path";
-import { type AILogger, setConfigPath, setLoggerFactory } from "@eclaire/ai";
+import { type AILogger, setInlineConfig, setLoggerFactory } from "@eclaire/ai";
 import boxen from "boxen";
 import chalk from "chalk";
 import { Command } from "commander";
@@ -16,7 +15,7 @@ import { registerModelCommands } from "./lib/commands/model/index.js";
 import { registerProviderCommands } from "./lib/commands/provider/index.js";
 import { registerSettingsCommands } from "./lib/commands/settings/index.js";
 import { registerUserCommands } from "./lib/commands/user/index.js";
-import { setConfigDir } from "./lib/config/models.js";
+import { loadAIConfigFromDb } from "./lib/config/models.js";
 
 // Logger factories for --verbose flag
 const silentLogger: AILogger = {
@@ -32,18 +31,6 @@ const createVerboseLogger = (name: string): AILogger => ({
   warn: (obj, msg) => console.warn(`[${name}] ${msg || ""}`, obj),
   error: (obj, msg) => console.error(`[${name}] ${msg || ""}`, obj),
 });
-
-/**
- * Get default config directory from environment or relative path
- */
-function getDefaultConfigDir(): string {
-  const configDir = process.env.CONFIG_DIR;
-  if (configDir) {
-    return path.join(configDir, "ai");
-  }
-  // From main.ts go up 2 levels to reach the repo root: cli/ -> tools/ -> root/
-  return path.join(import.meta.dirname, "..", "..", "config", "ai");
-}
 
 // Suppress banner for chat TUI (it takes over the terminal)
 const isChatCommand = process.argv[2] === "chat";
@@ -67,7 +54,6 @@ program
     "Eclaire CLI - Manage providers, models, channels, and chat with AI",
   )
   .version("1.0.0")
-  .option("-c, --config <path>", "Path to config/ai directory")
   .option("-v, --verbose", "Enable verbose output (debug logging)");
 
 // Register subcommand groups
@@ -89,7 +75,7 @@ if (process.env.ECLAIRE_RUNTIME !== "container") {
 }
 
 // Hook to handle global options before command execution
-program.hook("preAction", (thisCommand) => {
+program.hook("preAction", async (thisCommand) => {
   const options = thisCommand.opts();
 
   // Set up logger factory based on verbose flag (must be done before config loads)
@@ -98,11 +84,16 @@ program.hook("preAction", (thisCommand) => {
     : () => silentLogger;
   setLoggerFactory(loggerFactory);
 
-  // Set config path
-  if (options.config) {
-    setConfigDir(options.config);
-  } else {
-    setConfigPath(getDefaultConfigDir());
+  // Load AI config from database into in-memory caches
+  try {
+    await loadAIConfigFromDb();
+  } catch {
+    // DB not available — set empty config so commands fail gracefully
+    setInlineConfig({
+      providers: { providers: {} },
+      models: { models: {} },
+      selection: { active: {} },
+    });
   }
 });
 

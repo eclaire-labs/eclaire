@@ -178,7 +178,7 @@ See [AI Model Configuration](docs/ai-models.md) to use other AI providers and mo
 
 Configuration lives in two places:
 - **`.env`**  - secrets, database settings, ports
-- **`config/ai/`**  - LLM provider URLs and model definitions
+- **Admin UI / CLI**  - LLM providers, models, and active selection (stored in DB)
 
 
 ### Stopping

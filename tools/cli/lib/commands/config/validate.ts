@@ -72,7 +72,7 @@ function validateConfig(): ValidationResult {
     const msg = error instanceof Error ? error.message : String(error);
     issues.push({
       type: "error",
-      message: `Failed to load providers.json: ${msg}`,
+      message: `Failed to load providers config: ${msg}`,
     });
     return { valid: false, issues };
   }
@@ -83,7 +83,7 @@ function validateConfig(): ValidationResult {
     const msg = error instanceof Error ? error.message : String(error);
     issues.push({
       type: "error",
-      message: `Failed to load models.json: ${msg}`,
+      message: `Failed to load models config: ${msg}`,
     });
     return { valid: false, issues };
   }
@@ -94,7 +94,7 @@ function validateConfig(): ValidationResult {
     const msg = error instanceof Error ? error.message : String(error);
     issues.push({
       type: "error",
-      message: `Failed to load selection.json: ${msg}`,
+      message: `Failed to load selection config: ${msg}`,
     });
     return { valid: false, issues };
   }
@@ -106,7 +106,7 @@ function validateConfig(): ValidationResult {
   ) {
     issues.push({
       type: "error",
-      message: 'providers.json: Missing or invalid "providers" object',
+      message: 'providers config: Missing or invalid "providers" object',
     });
   } else {
     // Validate each provider
@@ -121,7 +121,7 @@ function validateConfig(): ValidationResult {
   if (!modelsConfig.models || typeof modelsConfig.models !== "object") {
     issues.push({
       type: "error",
-      message: 'models.json: Missing or invalid "models" object',
+      message: 'models config: Missing or invalid "models" object',
     });
   } else {
     // Validate each model
@@ -134,7 +134,7 @@ function validateConfig(): ValidationResult {
   if (!selectionConfig.active || typeof selectionConfig.active !== "object") {
     issues.push({
       type: "warning",
-      message: 'selection.json: Missing or invalid "active" object',
+      message: 'selection config: Missing or invalid "active" object',
     });
   } else {
     validateSelection(selectionConfig.active, modelsConfig.models, issues);
@@ -373,7 +373,7 @@ function validateModel(
     if (!providers[model.provider]) {
       issues.push({
         type: "error",
-        message: `${ref}: Provider '${model.provider}' not found in providers.json`,
+        message: `${ref}: Provider '${model.provider}' not found in providers config`,
         modelId,
       });
     }
@@ -518,12 +518,12 @@ function validateSelection(
     if (!model) {
       issues.push({
         type: "error",
-        message: `selection.json: Backend active model '${active.backend}' not found in models.json`,
+        message: `selection config: Backend active model '${active.backend}' not found in models config`,
       });
     } else if (!isModelSuitableForBackend(model)) {
       issues.push({
         type: "error",
-        message: `selection.json: Backend active model '${active.backend}' is not suitable for backend context (requires text input)`,
+        message: `selection config: Backend active model '${active.backend}' is not suitable for backend context (requires text input)`,
       });
     }
   }
@@ -534,12 +534,12 @@ function validateSelection(
     if (!model) {
       issues.push({
         type: "error",
-        message: `selection.json: Workers active model '${active.workers}' not found in models.json`,
+        message: `selection config: Workers active model '${active.workers}' not found in models config`,
       });
     } else if (!isModelSuitableForWorkers(model)) {
       issues.push({
         type: "error",
-        message: `selection.json: Workers active model '${active.workers}' is not suitable for workers context (requires text + image input)`,
+        message: `selection config: Workers active model '${active.workers}' is not suitable for workers context (requires text + image input)`,
       });
     }
   }

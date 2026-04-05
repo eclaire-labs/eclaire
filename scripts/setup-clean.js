@@ -29,9 +29,6 @@ async function clean() {
   );
   console.log("\nThe following files will be deleted:");
   console.log("  - .env");
-  console.log("  - config/ai/models.json");
-  console.log("  - config/ai/providers.json");
-  console.log("  - config/ai/selection.json");
 
   const answer = await question(
     `\n${colors.red}Are you sure you want to continue? [y/N] ${colors.reset}`,
@@ -44,12 +41,7 @@ async function clean() {
     return;
   }
 
-  const files = [
-    ".env",
-    "config/ai/models.json",
-    "config/ai/providers.json",
-    "config/ai/selection.json",
-  ];
+  const files = [".env"];
 
   let deletedCount = 0;
   let notFoundCount = 0;

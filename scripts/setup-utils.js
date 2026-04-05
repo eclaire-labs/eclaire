@@ -472,18 +472,6 @@ async function copyEnvFiles(force = false) {
       dest: ".env",
       generateSecrets: true,
     },
-    {
-      source: "config/ai/models.json.example",
-      dest: "config/ai/models.json",
-    },
-    {
-      source: "config/ai/providers.json.example",
-      dest: "config/ai/providers.json",
-    },
-    {
-      source: "config/ai/selection.json.example",
-      dest: "config/ai/selection.json",
-    },
   ];
 
   let copiedCount = 0;

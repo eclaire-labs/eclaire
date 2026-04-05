@@ -87,13 +87,10 @@ check_prerequisites() {
 download_files() {
   info "Downloading files..."
 
-  mkdir -p config/ai data/postgres
+  mkdir -p data/postgres
 
   curl -fsSL "$REPO_URL/compose.yaml" -o compose.yaml
   curl -fsSL "$REPO_URL/.env.example" -o .env
-  curl -fsSL "$REPO_URL/config/ai/providers.json.example" -o config/ai/providers.json
-  curl -fsSL "$REPO_URL/config/ai/models.json.example" -o config/ai/models.json
-  curl -fsSL "$REPO_URL/config/ai/selection.json.example" -o config/ai/selection.json
 
   success "Downloaded configuration files"
 }

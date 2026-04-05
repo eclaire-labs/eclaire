@@ -148,7 +148,7 @@ async function checkLlamaServerBinary(): Promise<DoctorCheck> {
 }
 
 /**
- * Check if managed llama-cpp engine is configured via selection.json
+ * Check if managed llama-cpp engine is configured via active model selection
  */
 async function checkManagedProviders(): Promise<DoctorCheck> {
   try {
@@ -158,7 +158,7 @@ async function checkManagedProviders(): Promise<DoctorCheck> {
       return {
         name: "Managed engine",
         status: "warn",
-        message: "No managed llama-cpp models in selection.json",
+        message: "No managed llama-cpp models in active selection",
         fix: "Select a model that uses a managed llama-cpp provider",
       };
     }
@@ -168,7 +168,7 @@ async function checkManagedProviders(): Promise<DoctorCheck> {
         name: "Managed engine",
         status: "fail",
         message: resolution.message,
-        fix: "Update selection.json to use models from the same managed provider",
+        fix: "Update model selection to use models from the same managed provider",
       };
     }
 
@@ -187,7 +187,7 @@ async function checkManagedProviders(): Promise<DoctorCheck> {
       name: "Managed engine",
       status: "fail",
       message,
-      fix: "Check config/ai/*.json for syntax errors",
+      fix: "Check AI configuration via 'eclaire config validate'",
     };
   }
 }
@@ -217,8 +217,8 @@ async function checkModelsExist(): Promise<DoctorCheck[]> {
       checks.push({
         name: `Model for ${context}`,
         status: "fail",
-        message: `Model '${modelId}' not found in models.json`,
-        fix: `Add the model to models.json or choose a different model`,
+        message: `Model '${modelId}' not found in models config`,
+        fix: `Add the model via admin UI/CLI or choose a different model`,
       });
       continue;
     }
@@ -290,7 +290,7 @@ async function checkPortsAvailable(): Promise<DoctorCheck[]> {
         name: `Port ${port} (llama-cpp)`,
         status: "warn",
         message: "In use by another process",
-        fix: `Stop the process using port ${port} or change the baseUrl in providers.json`,
+        fix: `Stop the process using port ${port} or change the baseUrl in provider config`,
       });
     }
   }

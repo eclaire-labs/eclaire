@@ -66,11 +66,6 @@ docker-compose.local.yml
 compose.local.yaml
 setup-local.sh
 
-# AI provider configuration (use *.json.example as template)
-config/ai/models.json
-config/ai/providers.json
-config/ai/selection.json
-
 backups/
 
 # Local working directory

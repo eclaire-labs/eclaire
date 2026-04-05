@@ -2,7 +2,7 @@
  * Engine subcommand registration
  *
  * Commands for managing the llama-cpp inference engine.
- * Uses selection.json to determine which models to load.
+ * Uses active model selection to determine which models to load.
  */
 
 import { Command } from "commander";
@@ -34,7 +34,7 @@ export function registerEngineCommands(program: Command): void {
 
   engine
     .command("up")
-    .description("Start llama-cpp engine with models from selection.json")
+    .description("Start llama-cpp engine with active models")
     .option("--foreground", "Run in foreground (do not daemonize)")
     .option("--force", "Start even if memory check warns of insufficient VRAM")
     .action((options) => upCommand(options));

@@ -2,7 +2,7 @@
  * Process management for llama-server
  *
  * Handles starting, stopping, and monitoring llama-server processes.
- * Uses selection.json to determine which models to load into a single llama-server instance.
+ * Uses active model selection to determine which models to load into a single llama-server instance.
  */
 
 import { type ChildProcess, spawn } from "node:child_process";
@@ -69,7 +69,7 @@ export interface ManagedEngineResolution {
 /**
  * Resolve which models need to be loaded into the managed llama-cpp engine.
  *
- * Reads selection.json and finds all models that use a managed llama-cpp provider.
+ * Reads active model selection and finds all models that use a managed llama-cpp provider.
  * Validates that all such models use the SAME provider.
  */
 export function resolveSelectionEngine(): ManagedEngineResolution {
@@ -113,7 +113,7 @@ export function resolveSelectionEngine(): ManagedEngineResolution {
   if (managedModels.length === 0) {
     return {
       status: "no-managed",
-      message: "No managed llama-cpp models configured in selection.json",
+      message: "No managed llama-cpp models configured in active selection",
       modelsToPreload: [],
     };
   }

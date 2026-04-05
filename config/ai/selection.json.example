@@ -1,6 +1,0 @@
-{
-  "active": {
-    "backend": "openrouter:gemini-2.5-flash-lite",
-    "workers": "openrouter:gemini-2.5-flash-lite"
-  }
-}

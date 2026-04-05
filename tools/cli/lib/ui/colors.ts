@@ -172,7 +172,7 @@ export function printProviderReminder(
   if (provider === "llama-cpp") {
     console.log(colors.info("- Start the engine with: eclaire engine up"));
     console.log(
-      colors.dim("  The engine port is configured in providers.json"),
+      colors.dim("  The engine port is configured in provider settings"),
     );
   } else {
     console.log(colors.info("- Ensure the provider is running"));

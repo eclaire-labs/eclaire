@@ -70,7 +70,7 @@ export interface EclaireConfig {
     backend: "local" | "s3";
   };
 
-  // AI Settings (provider URLs moved to config/ai/providers.json)
+  // AI Settings (provider config is DB-backed)
   ai: {
     debugLogPath?: string;
     timeout: number;
@@ -382,7 +382,7 @@ export function buildConfig(): EclaireConfig {
       backend: (env.STORAGE_BACKEND || "local") as "local" | "s3",
     },
 
-    // AI (provider URLs now in config/ai/providers.json)
+    // AI (provider config is DB-backed)
     ai: {
       debugLogPath: env.AI_DEBUG_LOG_PATH || undefined,
       timeout: int(env.AI_TIMEOUT, 180000),

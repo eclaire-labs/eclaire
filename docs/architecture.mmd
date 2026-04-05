@@ -77,7 +77,7 @@ graph TB
     %% Storage Access
     Workers -->|File I/O<br/>Screenshots, PDFs| DataVol
     Workers -->|Browser Cache<br/>Playwright Data| BrowserData
-    Backend -->|Config Files<br/>models.json| DataVol
+    Backend -->|AI Config<br/>DB-backed| DataVol
     Backend -->|Logs, Uploads| DataVol
 
     %% Styling

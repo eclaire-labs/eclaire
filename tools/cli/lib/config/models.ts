@@ -32,16 +32,10 @@ import {
   loadModelsConfiguration,
   loadProvidersConfiguration,
   loadSelectionConfiguration,
-  saveModelsConfiguration,
-  saveProvidersConfiguration,
-  saveSelectionConfiguration,
-  setConfigPath,
   setInlineConfig,
 } from "@eclaire/ai";
 import type { pgSchema } from "@eclaire/db";
 import { getDb } from "../db/index.js";
-
-import path from "node:path";
 
 type Schema = typeof pgSchema;
 
@@ -55,17 +49,6 @@ function getTables() {
     selection: (schema as Schema).aiModelSelection,
     providers: (schema as Schema).aiProviders,
   };
-}
-
-// ============================================================================
-// CLI-specific config path initialization
-// ============================================================================
-
-/**
- * Set a custom config directory (used by CLI --config option)
- */
-export function setConfigDir(customDir: string): void {
-  setConfigPath(path.resolve(customDir));
 }
 
 // ============================================================================
@@ -94,7 +77,7 @@ export async function addModel(id: string, model: ModelConfig): Promise<void> {
     source: model.source ?? null,
     pricing: model.pricing ?? null,
   });
-  await refreshInlineConfig();
+  await loadAIConfigFromDb();
 }
 
 /**
@@ -129,7 +112,7 @@ export async function updateModel(
       updatedAt: new Date(),
     })
     .where(eq(models.id, id));
-  await refreshInlineConfig();
+  await loadAIConfigFromDb();
 }
 
 /**
@@ -146,7 +129,7 @@ export async function removeModel(id: string): Promise<void> {
     throw new Error(`Model '${id}' not found`);
   }
   await db.delete(models).where(eq(models.id, id));
-  await refreshInlineConfig();
+  await loadAIConfigFromDb();
 }
 
 /**
@@ -172,7 +155,7 @@ export async function setActiveModel(
       target: selection.context,
       set: { modelId, updatedAt: new Date() },
     });
-  await refreshInlineConfig();
+  await loadAIConfigFromDb();
 }
 
 /**
@@ -181,14 +164,14 @@ export async function setActiveModel(
 export async function removeActiveModel(context: AIContext): Promise<void> {
   const { db, selection } = getTables();
   await db.delete(selection).where(eq(selection.context, context));
-  await refreshInlineConfig();
+  await loadAIConfigFromDb();
 }
 
 /**
- * Refresh the in-memory config caches from DB data.
- * Called after write operations so that subsequent reads see the new state.
+ * Load AI config from DB and populate the in-memory caches.
+ * Called by the CLI preAction hook and after write operations.
  */
-async function refreshInlineConfig(): Promise<void> {
+export async function loadAIConfigFromDb(): Promise<void> {
   const { db } = getTables();
 
   const providerRows = await db.query.aiProviders.findMany();
@@ -246,11 +229,6 @@ export const loadProvidersConfig = loadProvidersConfiguration;
 export const loadModelsConfig = loadModelsConfiguration;
 export const loadSelectionConfig = loadSelectionConfiguration;
 
-// Config saving (keep for backward compat / config import-export)
-export const saveProvidersConfig = saveProvidersConfiguration;
-export const saveModelsConfig = saveModelsConfiguration;
-export const saveSelectionConfig = saveSelectionConfiguration;
-
 export {
   // Accessors (with CLI-friendly aliases)
   getProviderConfig as getProvider,
@@ -260,8 +238,6 @@ export {
   getActiveModelsAsObjects,
   getActiveModelIdForContext,
   getActiveModelForContext,
-  // Config path (re-export for main.ts)
-  setConfigPath,
 };
 
 // ============================================================================

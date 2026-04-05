@@ -2,12 +2,9 @@
  * AI Configuration Service
  *
  * DB-backed CRUD for AI providers, models, and model selection.
- * Replaces file-based config/ai/*.json as the runtime source of truth.
- * JSON files are used only for initial bootstrap (first startup).
+ * The database is the sole runtime source of truth for AI config.
  */
 
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { eq } from "drizzle-orm";
 import type {
   ModelConfig,
@@ -375,8 +372,6 @@ export async function setActiveModelForContext(
 /**
  * Rebuild the in-memory config caches from DB data.
  * Call after any write operation to keep the AI package in sync.
- * Directly repopulates caches from DB rather than clearing them,
- * to avoid a window where reads would fall back to JSON files.
  */
 async function invalidateCaches() {
   await loadConfigFromDb();
@@ -389,7 +384,7 @@ async function invalidateCaches() {
 export async function loadConfigFromDb(): Promise<boolean> {
   const providerRows = await listProviders();
   if (providerRows.length === 0) {
-    return false; // DB is empty, caller should bootstrap from JSON
+    return false; // DB is empty, no AI config yet
   }
 
   const modelRows = await listModels();
@@ -449,140 +444,6 @@ export async function loadConfigFromDb(): Promise<boolean> {
   );
 
   return true;
-}
-
-// =============================================================================
-// Bootstrap from JSON files
-// =============================================================================
-
-/**
- * Seed DB tables from JSON config files (first-run bootstrap).
- * Only seeds if the ai_providers table is empty.
- */
-export async function seedFromJsonFiles(
-  configDir: string,
-): Promise<{ providers: number; models: number; selections: number }> {
-  const existingProviders = await listProviders();
-  if (existingProviders.length > 0) {
-    logger.debug("AI config already seeded in database, skipping JSON import");
-    return { providers: 0, models: 0, selections: 0 };
-  }
-
-  let providers = 0;
-  let models = 0;
-  let selections = 0;
-
-  // Import providers
-  const providersPath = path.join(configDir, "providers.json");
-  if (fs.existsSync(providersPath)) {
-    try {
-      const raw = JSON.parse(
-        fs.readFileSync(providersPath, "utf-8"),
-      ) as ProvidersConfiguration;
-      for (const [id, config] of Object.entries(raw.providers)) {
-        await db.insert(aiProviders).values({
-          id,
-          dialect: config.dialect,
-          baseUrl: config.baseUrl,
-          auth: config.auth,
-          headers: config.headers ?? null,
-          engine: config.engine ?? null,
-          overrides: config.overrides ?? null,
-          cli: config.cli ?? null,
-        });
-        providers++;
-      }
-      logger.info({ count: providers }, "Seeded providers from JSON");
-    } catch (error) {
-      logger.warn({ error }, "Failed to seed providers from JSON");
-    }
-  }
-
-  // Import models
-  const modelsPath = path.join(configDir, "models.json");
-  if (fs.existsSync(modelsPath)) {
-    try {
-      const raw = JSON.parse(
-        fs.readFileSync(modelsPath, "utf-8"),
-      ) as ModelsConfiguration;
-      for (const [id, config] of Object.entries(raw.models)) {
-        await db.insert(aiModels).values({
-          id,
-          name: config.name,
-          providerId: config.provider,
-          providerModel: config.providerModel,
-          capabilities: config.capabilities,
-          tokenizer: config.tokenizer ?? null,
-          source: config.source ?? null,
-          pricing: config.pricing ?? null,
-        });
-        models++;
-      }
-      logger.info({ count: models }, "Seeded models from JSON");
-    } catch (error) {
-      logger.warn({ error }, "Failed to seed models from JSON");
-    }
-  }
-
-  // Import selection
-  const selectionPath = path.join(configDir, "selection.json");
-  if (fs.existsSync(selectionPath)) {
-    try {
-      const raw = JSON.parse(
-        fs.readFileSync(selectionPath, "utf-8"),
-      ) as SelectionConfiguration;
-      for (const [context, modelId] of Object.entries(raw.active)) {
-        if (!modelId) continue;
-        await db
-          .insert(aiModelSelection)
-          .values({ context, modelId })
-          .onConflictDoUpdate({
-            target: aiModelSelection.context,
-            set: { modelId, updatedAt: new Date() },
-          });
-        selections++;
-      }
-      logger.info({ count: selections }, "Seeded model selection from JSON");
-    } catch (error) {
-      logger.warn({ error }, "Failed to seed model selection from JSON");
-    }
-  }
-
-  // Import MCP servers
-  let mcpCount = 0;
-  const mcpPath = path.join(configDir, "mcp-servers.json");
-  if (fs.existsSync(mcpPath)) {
-    try {
-      const raw = JSON.parse(fs.readFileSync(mcpPath, "utf-8")) as {
-        servers?: Record<string, Record<string, unknown>>;
-      };
-      const existingMcp = await db.query.mcpServers.findMany({
-        columns: { id: true },
-      });
-      if (existingMcp.length === 0 && raw.servers) {
-        for (const [id, srv] of Object.entries(raw.servers)) {
-          await db.insert(mcpServers).values({
-            id,
-            name: (srv.name as string) ?? id,
-            description: (srv.description as string) ?? null,
-            transport: srv.transport as "stdio" | "sse" | "http",
-            command: (srv.command as string) ?? null,
-            args: (srv.args as string[]) ?? null,
-            connectTimeout: (srv.connectTimeout as number) ?? null,
-            enabled: srv.enabled !== false,
-            toolMode: (srv.toolMode as string) ?? "managed",
-            availability: (srv.availability as Record<string, unknown>) ?? null,
-          });
-          mcpCount++;
-        }
-        logger.info({ count: mcpCount }, "Seeded MCP servers from JSON");
-      }
-    } catch (error) {
-      logger.warn({ error }, "Failed to seed MCP servers from JSON");
-    }
-  }
-
-  return { providers, models, selections };
 }
 
 // =============================================================================

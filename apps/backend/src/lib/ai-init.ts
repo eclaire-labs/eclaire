@@ -4,20 +4,26 @@
  * Initializes the @eclaire/ai package with backend configuration.
  * Call this early in application startup, before using any AI functions.
  *
- * Config loading order:
- * 1. Try loading from database (runtime source of truth)
- * 2. If DB is empty, seed from JSON config files (first-run bootstrap)
- * 3. Initialize AI package with inline config from DB or file path fallback
+ * Config is loaded exclusively from the database. If the DB is empty
+ * (fresh install), the system starts with no AI config — users configure
+ * providers and models via the admin UI or CLI.
  */
 
 import * as path from "node:path";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { initAI, registerSkillSource } from "@eclaire/ai";
+import {
+  initAI,
+  loadModelsConfiguration,
+  loadProvidersConfiguration,
+  loadSelectionConfiguration,
+  registerSkillSource,
+  setInlineConfig,
+} from "@eclaire/ai";
 import { config } from "../config/index.js";
 import { createChildLogger } from "./logger.js";
 import { initMcpRegistry, loadMcpServersConfig } from "./mcp/index.js";
-import { loadConfigFromDb, seedFromJsonFiles } from "./services/ai-config.js";
+import { loadConfigFromDb } from "./services/ai-config.js";
 
 const logger = createChildLogger("ai-init");
 
@@ -75,38 +81,39 @@ export function resolveAISkillSources(
  * Initialize the AI client with backend configuration.
  * Must be called before validateAIConfigOnStartup() or any AI calls.
  *
- * Config loading order:
- * 1. Try loading from database (runtime source of truth)
- * 2. If DB is empty, seed from JSON config files, then load from DB
- * 3. Fall back to file-based config if DB loading fails entirely
+ * Config is loaded from the database. If the DB has no AI config yet
+ * (fresh install), empty config is used — users configure via admin UI or CLI.
  */
 export async function initializeAI(): Promise<void> {
-  const configAiDir = path.join(config.dirs.config, "ai");
-
-  // Try loading from DB, seeding from JSON files if empty
+  // Load config from DB (the only runtime source of truth)
   try {
-    let loaded = await loadConfigFromDb();
-    if (!loaded) {
-      const result = await seedFromJsonFiles(configAiDir);
-      if (result.providers > 0) {
-        loaded = await loadConfigFromDb();
-      }
-    }
+    const loaded = await loadConfigFromDb();
     if (loaded) {
       logger.info("AI configuration loaded from database");
+    } else {
+      logger.info(
+        "No AI configuration in database yet — configure via admin UI or CLI",
+      );
+      setInlineConfig({
+        providers: { providers: {} },
+        models: { models: {} },
+        selection: { active: {} },
+      });
     }
   } catch (error) {
-    logger.debug(
-      { error },
-      "Could not load AI config from database, falling back to JSON files",
-    );
+    logger.warn({ error }, "Could not load AI config from database");
+    setInlineConfig({
+      providers: { providers: {} },
+      models: { models: {} },
+      selection: { active: {} },
+    });
   }
 
-  // initAI sets up logger, debug path, and config path as fallback.
-  // If loadConfigFromDb succeeded, the caches are already populated via setInlineConfig
-  // and the configPath is only set as a fallback (never used while caches exist).
+  // Initialize AI package with inline config already in caches
   initAI({
-    configPath: configAiDir,
+    providers: loadProvidersConfiguration(),
+    models: loadModelsConfiguration(),
+    selection: loadSelectionConfiguration(),
     createChildLogger,
     debugLogPath: config.ai.debugLogPath,
   });

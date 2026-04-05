@@ -1,7 +1,7 @@
 /**
  * Engine up command
  *
- * Starts the llama-cpp engine with models from selection.json.
+ * Starts the llama-cpp engine with active models.
  */
 
 import ora from "ora";
@@ -26,21 +26,17 @@ interface UpOptions {
 
 export async function upCommand(options: UpOptions = {}): Promise<void> {
   try {
-    // Resolve what models need to be loaded from selection.json
+    // Resolve what models need to be loaded from active selection
     const resolution = resolveSelectionEngine();
 
     if (resolution.status === "no-managed") {
       console.log(colors.info(`${icons.info} ${resolution.message}`));
       console.log(
         colors.dim(
-          "  Configure a managed llama-cpp provider in providers.json",
+          "  Configure a managed llama-cpp provider via admin UI or CLI",
         ),
       );
-      console.log(
-        colors.dim(
-          "  and select a model using that provider in selection.json",
-        ),
-      );
+      console.log(colors.dim("  and select a model using that provider"));
       return;
     }
 
@@ -48,7 +44,7 @@ export async function upCommand(options: UpOptions = {}): Promise<void> {
       console.log(colors.error(`${icons.error} ${resolution.message}`));
       console.log(
         colors.dim(
-          "  Update selection.json so all models use the same managed provider",
+          "  Update model selection so all models use the same managed provider",
         ),
       );
       process.exit(1);
