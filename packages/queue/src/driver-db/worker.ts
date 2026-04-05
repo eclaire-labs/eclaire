@@ -89,6 +89,16 @@ export function createDbWorker<T = unknown>(
   let stopRequested = false;
   let abortController: AbortController | null = null;
   let stopDeferred = createDeferred<void>();
+  let notifyUnsubscribe: (() => void) | null = null;
+  let notifyResolver: (() => void) | null = null;
+  let notified = false;
+
+  // Persistent notification callback — resolves the current wait if one is active,
+  // and sets the flag so notifications during claimJob() aren't lost.
+  const onNotification = () => {
+    notified = true;
+    notifyResolver?.();
+  };
 
   // Select claim function based on database type
   const claimJob = capabilities.skipLocked ? claimJobPostgres : claimJobSqlite;
@@ -400,6 +410,11 @@ export function createDbWorker<T = unknown>(
   async function runLoop(): Promise<void> {
     logger.info({ queue, workerId, concurrency }, "Worker started");
 
+    // Subscribe once for the entire worker lifecycle
+    if (notifyListener) {
+      notifyUnsubscribe = notifyListener.subscribe(queue, onNotification);
+    }
+
     while (running && !stopRequested) {
       // Check if we can take more jobs
       if (activeJobs >= concurrency) {
@@ -408,6 +423,9 @@ export function createDbWorker<T = unknown>(
       }
 
       try {
+        // Reset flag before claim so we detect notifications during the DB query
+        notified = false;
+
         // Try to claim a job
         const claimed = await claimJob(
           db,
@@ -428,19 +446,19 @@ export function createDbWorker<T = unknown>(
               "Unexpected error processing job",
             );
           });
+        } else if (notified) {
+          // A notification arrived during claimJob() — retry immediately
+          continue;
+        } else if (notifyListener) {
+          // No job available, wait for notification or timeout
+          await waitForNotification(
+            queue,
+            notifyWaitTimeout,
+            abortController?.signal,
+          );
         } else {
-          // No job available, wait for notification or poll interval
-          if (notifyListener) {
-            // Wait for notification (use separate timeout for Postgres NOTIFY)
-            await waitForNotification(
-              queue,
-              notifyWaitTimeout,
-              abortController?.signal,
-            );
-          } else {
-            // Fall back to polling
-            await cancellableSleep(pollInterval, abortController?.signal);
-          }
+          // Fall back to polling
+          await cancellableSleep(pollInterval, abortController?.signal);
         }
       } catch (error) {
         logger.error(
@@ -465,15 +483,23 @@ export function createDbWorker<T = unknown>(
       await sleep(100);
     }
 
+    // Unsubscribe from notifications
+    if (notifyUnsubscribe) {
+      notifyUnsubscribe();
+      notifyUnsubscribe = null;
+    }
+
     logger.info({ queue, workerId }, "Worker stopped");
     stopDeferred.resolve();
   }
 
   /**
-   * Wait for notification or timeout (cancellable via abort signal)
+   * Wait for notification or timeout (cancellable via abort signal).
+   * Uses the persistent subscription established in runLoop() —
+   * the onNotification callback will call notifyResolver when a job arrives.
    */
   async function waitForNotification(
-    queueName: string,
+    _queueName: string,
     timeout: number,
     signal?: AbortSignal,
   ): Promise<void> {
@@ -491,20 +517,19 @@ export function createDbWorker<T = unknown>(
 
       let resolved = false;
       let timer: ReturnType<typeof setTimeout>;
-      let unsubscribe: (() => void) | null = null;
 
       const cleanup = () => {
         if (!resolved) {
           resolved = true;
           clearTimeout(timer);
-          unsubscribe?.();
+          notifyResolver = null;
           // oxlint-disable-next-line promise/no-multiple-resolved -- guarded by `resolved` flag
           resolve();
         }
       };
 
-      // Subscribe to notifications - returns unsubscribe function
-      unsubscribe = notifyListener.subscribe(queueName, cleanup);
+      // Wire up the persistent subscription to resolve this wait
+      notifyResolver = cleanup;
 
       // Set timeout
       timer = setTimeout(cleanup, timeout);
@@ -537,6 +562,7 @@ export function createDbWorker<T = unknown>(
 
       logger.info({ queue, workerId }, "Stopping worker...");
       stopRequested = true;
+      notifyResolver = null;
 
       // Signal sleep/wait calls to cancel immediately
       abortController?.abort();
