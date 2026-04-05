@@ -13,6 +13,7 @@ import {
   validateApiCredentials,
 } from "../lib/bookmarks/index.js";
 import { processRedditApiBookmark } from "../lib/bookmarks/reddit-api.js";
+import { processTwitterApiBookmark } from "../lib/bookmarks/twitter-api.js";
 import {
   type DomainErrorCategory,
   domainRateLimiter,
@@ -392,6 +393,8 @@ async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         await processGitHubBookmark(ctx);
       } else if (handlerType === "reddit") {
         await processRedditApiBookmark(ctx);
+      } else if (handlerType === "twitter") {
+        await processTwitterApiBookmark(ctx);
       } else {
         await processRegularBookmarkJob(ctx);
       }

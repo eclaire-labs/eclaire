@@ -4,6 +4,7 @@ import { createChildLogger } from "../../../lib/logger.js";
 export * from "./github.js";
 export * from "./lightweight-fetch.js";
 export * from "./reddit-api.js";
+export * from "./twitter-api.js";
 // Re-export platform-specific handlers
 export * from "./utils.js";
 
@@ -15,7 +16,7 @@ export interface BookmarkJobData {
   userId: string;
 }
 
-export type BookmarkHandlerType = "regular" | "github" | "reddit";
+export type BookmarkHandlerType = "regular" | "github" | "reddit" | "twitter";
 
 export interface BookmarkArtifacts {
   normalizedUrl: string;
@@ -77,11 +78,19 @@ function hasGitHubCredentials(): boolean {
 }
 
 /**
+ * Check if X (Twitter) Bearer Token is available for tweet lookup
+ */
+function hasXCredentials(): boolean {
+  return !!process.env.X_BEARER_TOKEN;
+}
+
+/**
  * Validate and log API credential availability
  */
 export function validateApiCredentials(): void {
   const hasGitHub = hasGitHubCredentials();
   const hasReddit = hasRedditCredentials();
+  const hasX = hasXCredentials();
 
   console.log("\n=== API Credentials Status ===");
 
@@ -111,6 +120,19 @@ export function validateApiCredentials(): void {
     );
   }
 
+  if (hasX) {
+    console.log(
+      "✅ X (Twitter) Bearer Token found - enhanced X/Twitter post processing available",
+    );
+  } else {
+    console.log(
+      "⚠️  No X (Twitter) Bearer Token found - X/Twitter posts will be processed as regular web pages",
+    );
+    console.log(
+      "   Set X_BEARER_TOKEN environment variable for enhanced X features",
+    );
+  }
+
   console.log("==============================\n");
 
   // Log to structured logger as well
@@ -119,6 +141,7 @@ export function validateApiCredentials(): void {
     {
       github: hasGitHub,
       reddit: hasReddit,
+      x: hasX,
     },
     "API credential availability check",
   );
@@ -131,14 +154,14 @@ export function getHandlerForUrl(url: string): BookmarkHandlerType {
   try {
     const hostname = new URL(url).hostname.toLowerCase();
 
-    // Twitter/X URLs now use regular handler (Twitter API integration moved to snippets)
+    // Twitter/X URLs use the dedicated handler if app credentials are configured
     if (
       hostname === "twitter.com" ||
       hostname === "www.twitter.com" ||
       hostname === "x.com" ||
       hostname === "www.x.com"
     ) {
-      return "regular";
+      return hasXCredentials() ? "twitter" : "regular";
     }
 
     if (hostname === "github.com" || hostname === "www.github.com") {

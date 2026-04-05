@@ -41,12 +41,12 @@ export const config = {
       "twitter.com": {
         delaySeconds: 10,
         maxConcurrent: 1,
-        handler: "regular",
+        handler: "twitter",
       },
       "x.com": {
         delaySeconds: 10,
         maxConcurrent: 1,
-        handler: "regular",
+        handler: "twitter",
       },
       "reddit.com": {
         delaySeconds: 10,

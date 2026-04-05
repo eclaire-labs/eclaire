@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/api-client";
 import { authClient } from "@/lib/auth";
+import ConnectedAccounts from "./ConnectedAccounts";
 
 const passwordFormSchema = z
   .object({
@@ -326,6 +327,9 @@ export default function AccountSettings() {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Connected Accounts */}
+      <ConnectedAccounts />
 
       {/* Danger Zone */}
       <Card className="border-destructive/50">

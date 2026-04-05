@@ -3,6 +3,7 @@
 import { generateSecurityId, generateUserId } from "@eclaire/core";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { twitter } from "better-auth/social-providers";
 import { config } from "../config/index.js";
 import { db, dbType, schema } from "../db/index.js"; // Your drizzle database instance and conditional schema
 import { createChildLogger } from "./logger.js";
@@ -39,6 +40,28 @@ const initializedAdapter = drizzleAdapter(db, {
  * For each URL, if it uses localhost or 127.0.0.1, emit both variants
  * so Better Auth's exact-match origin check accepts either.
  */
+/**
+ * Build social providers config. X (Twitter) is only enabled when
+ * X_CLIENT_ID and X_CLIENT_SECRET are both set. Users cannot sign up
+ * via Twitter — they must have an existing account and link it.
+ */
+function buildSocialProviders() {
+  // biome-ignore lint/suspicious/noExplicitAny: Better Auth social provider config is dynamically constructed
+  const providers: Record<string, any> = {};
+
+  if (process.env.X_CLIENT_ID && process.env.X_CLIENT_SECRET) {
+    providers.twitter = twitter({
+      clientId: process.env.X_CLIENT_ID,
+      clientSecret: process.env.X_CLIENT_SECRET,
+      // bookmark.read: needed for bookmarks sync; offline.access: needed for refresh tokens
+      scope: ["tweet.read", "users.read", "bookmark.read", "offline.access"],
+      disableSignUp: true, // Only allow linking to existing accounts, not sign-up
+    });
+  }
+
+  return Object.keys(providers).length > 0 ? providers : undefined;
+}
+
 function localhostVariants(urls: string[]): string[] {
   const set = new Set<string>();
   for (const url of urls) {
@@ -55,6 +78,7 @@ function localhostVariants(urls: string[]): string[] {
 export const auth = betterAuth({
   baseURL: config.services.backendUrl,
   database: initializedAdapter,
+  socialProviders: buildSocialProviders(),
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,

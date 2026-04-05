@@ -1,5 +1,7 @@
+import { eq, and } from "drizzle-orm";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
+import { db, schema } from "../db/index.js";
 import { ValidationError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
@@ -318,6 +320,68 @@ userRoutes.get(
     );
 
     return c.json(stats);
+  }, logger),
+);
+
+// GET /api/user/connections - List connected social accounts
+userRoutes.get(
+  "/connections",
+  withAuth(async (c, userId) => {
+    // Only return non-credential (social provider) accounts, exclude the email/password "credential" account
+    const connections = await db
+      .select({
+        id: schema.accounts.id,
+        providerId: schema.accounts.providerId,
+        accountId: schema.accounts.accountId,
+        scope: schema.accounts.scope,
+        createdAt: schema.accounts.createdAt,
+      })
+      .from(schema.accounts)
+      .where(
+        and(
+          eq(schema.accounts.userId, userId),
+          // credential accounts have a passwordHash set; social accounts do not
+        ),
+      );
+
+    // Filter to social provider accounts only (no passwordHash = social provider)
+    const socialConnections = connections
+      .filter((acc) => acc.providerId !== "credential")
+      .map((acc) => ({
+        id: acc.id,
+        provider: acc.providerId,
+        accountId: acc.accountId,
+        scope: acc.scope,
+        connectedAt: acc.createdAt,
+      }));
+
+    return c.json({ items: socialConnections });
+  }, logger),
+);
+
+// DELETE /api/user/connections/:provider - Disconnect a social account
+userRoutes.delete(
+  "/connections/:provider",
+  withAuth(async (c, userId) => {
+    const provider = c.req.param("provider");
+
+    const deleted = await db
+      .delete(schema.accounts)
+      .where(
+        and(
+          eq(schema.accounts.userId, userId),
+          eq(schema.accounts.providerId, provider),
+        ),
+      )
+      .returning({ id: schema.accounts.id });
+
+    if (deleted.length === 0) {
+      return c.json({ error: "Connection not found" }, 404);
+    }
+
+    logger.info({ userId, provider }, "Social account disconnected");
+
+    return c.json({ message: `${provider} account disconnected` });
   }, logger),
 );
 
