@@ -41,7 +41,7 @@ export const generateAgentId = () => `agent-${generateCleanId()}`;
 export const generateTaskExecutionId = () => `txe-${generateCleanId()}`;
 export const generateTaskOccurrenceId = () => `tocc-${generateCleanId()}`;
 export const generateAgentStepId = () => `step-${generateCleanId()}`;
-export const generateMediaId = () => `med-${generateCleanId()}`;
+export const generateMediaId = () => `media-${generateCleanId()}`;
 
 /**
  * ID Generation for Storage Files
@@ -80,7 +80,7 @@ export const isValidAgentId = createIdValidator("agent");
 export const isValidTaskExecutionId = createIdValidator("txe");
 export const isValidTaskOccurrenceId = createIdValidator("tocc");
 export const isValidAgentStepId = createIdValidator("step");
-export const isValidMediaId = createIdValidator("med");
+export const isValidMediaId = createIdValidator("media");
 
 /**
  * Utility to extract entity type from ID
@@ -119,6 +119,6 @@ export const ID_CONSTANTS = {
     TASK_EXECUTION: "txe-",
     TASK_OCCURRENCE: "tocc-",
     AGENT_STEP: "step-",
-    MEDIA: "med-",
+    MEDIA: "media-",
   },
 } as const;

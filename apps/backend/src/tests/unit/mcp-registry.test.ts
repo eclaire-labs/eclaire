@@ -149,26 +149,22 @@ describe("McpRegistry", () => {
         b: makeConfig({ autoConnect: true, toolMode: "individual" }),
       });
 
-      mockConnections
-        .get("a")!
-        .discoverTools.mockResolvedValue([
-          {
-            name: "toolA",
-            description: "From A",
-            inputSchema: {},
-            serverKey: "a",
-          },
-        ]);
-      mockConnections
-        .get("b")!
-        .discoverTools.mockResolvedValue([
-          {
-            name: "toolB",
-            description: "From B",
-            inputSchema: {},
-            serverKey: "b",
-          },
-        ]);
+      mockConnections.get("a")!.discoverTools.mockResolvedValue([
+        {
+          name: "toolA",
+          description: "From A",
+          inputSchema: {},
+          serverKey: "a",
+        },
+      ]);
+      mockConnections.get("b")!.discoverTools.mockResolvedValue([
+        {
+          name: "toolB",
+          description: "From B",
+          inputSchema: {},
+          serverKey: "b",
+        },
+      ]);
 
       await registry.initialize();
 
@@ -184,16 +180,14 @@ describe("McpRegistry", () => {
         bad: makeConfig({ autoConnect: true, toolMode: "individual" }),
       });
 
-      mockConnections
-        .get("good")!
-        .discoverTools.mockResolvedValue([
-          {
-            name: "goodTool",
-            description: "Works",
-            inputSchema: {},
-            serverKey: "good",
-          },
-        ]);
+      mockConnections.get("good")!.discoverTools.mockResolvedValue([
+        {
+          name: "goodTool",
+          description: "Works",
+          inputSchema: {},
+          serverKey: "good",
+        },
+      ]);
       mockConnections
         .get("bad")!
         .discoverTools.mockRejectedValue(new Error("connection failed"));

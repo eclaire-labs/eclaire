@@ -940,6 +940,17 @@ importers:
         specifier: 4.0.18
         version: 4.0.18(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@2.0.1))(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
+  snippets/cpu_llm: {}
+
+  snippets/mlx-vlm-falcon:
+    devDependencies:
+      tsx:
+        specifier: ^4
+        version: 4.21.0
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
   tools/cli:
     dependencies:
       '@clack/prompts':

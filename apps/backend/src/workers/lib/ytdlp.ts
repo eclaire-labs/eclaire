@@ -199,6 +199,8 @@ export async function downloadMedia(
   const args = [
     "-f",
     "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+    "-S",
+    "vcodec:h264,acodec:aac",
     "--no-playlist",
     "--merge-output-format",
     "mp4",

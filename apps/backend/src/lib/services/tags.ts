@@ -1,12 +1,20 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 
-const { tags, bookmarksTags, documentsTags, notesTags, photosTags, tasksTags } =
-  schema;
+const {
+  tags,
+  bookmarksTags,
+  documentsTags,
+  mediaTags,
+  notesTags,
+  photosTags,
+  tasksTags,
+} = schema;
 
 export type EntityType =
   | "bookmarks"
   | "documents"
+  | "media"
   | "notes"
   | "photos"
   | "tasks";
@@ -14,6 +22,7 @@ export type EntityType =
 const junctionMap = {
   bookmarks: { table: bookmarksTags, tagIdCol: bookmarksTags.tagId },
   documents: { table: documentsTags, tagIdCol: documentsTags.tagId },
+  media: { table: mediaTags, tagIdCol: mediaTags.tagId },
   notes: { table: notesTags, tagIdCol: notesTags.tagId },
   photos: { table: photosTags, tagIdCol: photosTags.tagId },
   tasks: { table: tasksTags, tagIdCol: tasksTags.tagId },
@@ -71,6 +80,8 @@ export async function findPopularTags(
       SELECT ${notesTags.tagId} as tag_id FROM ${notesTags}
       UNION ALL
       SELECT ${photosTags.tagId} as tag_id FROM ${photosTags}
+      UNION ALL
+      SELECT ${mediaTags.tagId} as tag_id FROM ${mediaTags}
       UNION ALL
       SELECT ${tasksTags.tagId} as tag_id FROM ${tasksTags}
     ) all_usages ON ${tags.id} = all_usages.tag_id

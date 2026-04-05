@@ -171,6 +171,9 @@ export function createEventCallbacks(
 ): JobEventCallbacks {
   const { publisher, artifactProcessor, statusChangeCallback, logger } = config;
 
+  // Track which jobs have already been marked "processing" to avoid redundant DB writes
+  const jobsMarkedProcessing = new Set<string>();
+
   /**
    * Safely publish an event, catching any errors
    */
@@ -217,6 +220,31 @@ export function createEventCallbacks(
 
   return {
     onStageStart: async (jobId, stage, metadata) => {
+      // Set entity status to "processing" on the first stage start
+      if (statusChangeCallback && !jobsMarkedProcessing.has(jobId)) {
+        const assetMetadata = extractAssetMetadata(metadata);
+        if (assetMetadata) {
+          try {
+            await statusChangeCallback(
+              assetMetadata.assetType,
+              assetMetadata.assetId,
+              "processing",
+            );
+            jobsMarkedProcessing.add(jobId);
+          } catch (err) {
+            logger?.error(
+              {
+                jobId,
+                assetType: assetMetadata.assetType,
+                assetId: assetMetadata.assetId,
+                error: getErrorMessage(err),
+              },
+              "Failed to update entity processing status to processing",
+            );
+          }
+        }
+      }
+
       await safePublish(jobId, metadata, {
         type: "stage_started",
         stage,
@@ -284,6 +312,7 @@ export function createEventCallbacks(
     },
 
     onJobComplete: async (jobId, metadata) => {
+      jobsMarkedProcessing.delete(jobId);
       await safePublish(jobId, metadata, {
         type: "job_completed",
         progress: 100,
@@ -291,6 +320,7 @@ export function createEventCallbacks(
     },
 
     onJobFail: async (jobId, error, metadata) => {
+      jobsMarkedProcessing.delete(jobId);
       await safePublish(jobId, metadata, {
         type: "job_failed",
         error,

@@ -265,11 +265,16 @@ async function generateWaveform(audioBuffer: Buffer): Promise<Buffer> {
   });
 }
 
-async function generateThumbnail(videoBuffer: Buffer): Promise<Buffer> {
+async function generateThumbnail(
+  videoBuffer: Buffer,
+  seekSeconds = 3,
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const proc = spawn(
       "ffmpeg",
       [
+        "-ss",
+        String(seekSeconds),
         "-i",
         "pipe:0",
         "-vframes",
@@ -612,6 +617,8 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
   let effectiveMimeType = jobMimeType || "";
   let effectiveOriginalFilename = jobOriginalFilename;
   let preExtractedSubtitles: YtdlpSubtitleResult | null = null;
+  let sourceTitle: string | undefined;
+  let sourceDescription: string | undefined;
 
   const isVideo = () => effectiveMimeType.startsWith("video/");
 
@@ -665,6 +672,8 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
                 `Estimated file size ${Math.round(ytdlpInfo.estimatedFileSize / 1024 / 1024)}MB exceeds 500MB limit`,
               );
             }
+            sourceTitle = ytdlpInfo.title;
+            sourceDescription = ytdlpInfo.description ?? undefined;
             logger.info(
               {
                 mediaId,
@@ -804,6 +813,8 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
       extractedData.mimeType = effectiveMimeType;
       extractedData.originalFilename = effectiveOriginalFilename;
       extractedData.sourceUrl = sourceUrl;
+      extractedData.sourceTitle = sourceTitle;
+      extractedData.sourceDescription = sourceDescription;
 
       await ctx.completeStage(STAGES.URL_DOWNLOAD);
     }
@@ -880,7 +891,12 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
       if (await isFFmpegAvailable()) {
         await ctx.updateStageProgress(STAGES.WAVEFORM_GENERATION, 30);
         if (isVideo()) {
-          const thumbnailBuffer = await generateThumbnail(mediaBuffer);
+          const duration = allArtifacts.duration as number | undefined;
+          const seekSeconds = duration && duration < 3 ? duration * 0.5 : 3;
+          const thumbnailBuffer = await generateThumbnail(
+            mediaBuffer,
+            seekSeconds,
+          );
           const thumbnailKey = buildKey(
             userId,
             "media",
@@ -1090,10 +1106,71 @@ Respond with JSON: { "description": "...", "tags": ["tag1", "tag2"], "category":
           "AI analysis complete",
         );
       } else {
-        logger.info(
-          { mediaId },
-          "No transcript available, skipping AI analysis",
-        );
+        // No transcript — try metadata-based analysis (title, description, filename)
+        const metadataParts: string[] = [];
+        if (extractedData.sourceTitle)
+          metadataParts.push(`Title: ${extractedData.sourceTitle}`);
+        if (extractedData.sourceDescription) {
+          const desc =
+            extractedData.sourceDescription.length > 2000
+              ? `${extractedData.sourceDescription.slice(0, 2000)}…`
+              : extractedData.sourceDescription;
+          metadataParts.push(`Description: ${desc}`);
+        }
+        if (effectiveOriginalFilename)
+          metadataParts.push(`Filename: ${effectiveOriginalFilename}`);
+
+        if (metadataParts.length > 0) {
+          await ctx.updateStageProgress(STAGES.AI_ANALYSIS, 20);
+          const mediaLabel = isVideo() ? "video" : "audio";
+          const categoryList = isVideo()
+            ? "tutorial, presentation, interview, vlog, screencast, music_video, meeting, short_clip, other"
+            : "speech, podcast, interview, lecture, meeting, voice_memo, music, audiobook, sound_effect, other";
+
+          const metaMessages: AIMessage[] = [
+            {
+              role: "system",
+              content: `You are a media analysis AI. Analyze the provided ${mediaLabel} metadata and return ONLY valid JSON. No transcript is available — base your analysis on the title, description, and filename.`,
+            },
+            {
+              role: "user",
+              content: `Analyze this ${mediaLabel} based on its metadata (no transcript available). Provide:
+- A brief one-sentence description of the content
+- 3-8 relevant tags (keywords)
+- Category: ${categoryList}
+
+${metadataParts.join("\n")}
+
+Respond with JSON: { "description": "...", "tags": ["tag1", "tag2"], "category": "..." }`,
+            },
+          ];
+
+          const metaResponse = await callAI(metaMessages, "workers", {
+            temperature: 0.2,
+            maxTokens: 500,
+            timeout: config.worker.aiTimeout || 180000,
+          });
+
+          const parsed = parseModelResponse(metaResponse);
+          allArtifacts.description = parsed.description;
+          allArtifacts.tags = (parsed.tags || []).slice(0, 15);
+          extractedData.aiAnalysis = parsed;
+          extractedData.processedTags = allArtifacts.tags;
+          logger.info(
+            {
+              mediaId,
+              category: parsed.category,
+              tagCount: allArtifacts.tags?.length,
+              source: "metadata",
+            },
+            "AI analysis complete (from metadata)",
+          );
+        } else {
+          logger.info(
+            { mediaId },
+            "No transcript or metadata available, skipping AI analysis",
+          );
+        }
       }
     } catch (error) {
       logger.warn(

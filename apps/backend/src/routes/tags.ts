@@ -10,7 +10,7 @@ const logger = createChildLogger("tags");
 
 const TagsQuerySchema = z.object({
   type: z
-    .enum(["bookmarks", "documents", "notes", "photos", "tasks"])
+    .enum(["bookmarks", "documents", "media", "notes", "photos", "tasks"])
     .optional(),
 });
 

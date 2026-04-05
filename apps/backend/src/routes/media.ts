@@ -251,6 +251,41 @@ mediaRoutes.get(
   }, logger),
 );
 
+// GET /api/media/:id/original - Serve the original media file
+mediaRoutes.get(
+  "/:id/original",
+  withAuth(async (c, userId) => {
+    const { stream, metadata, filename } = await getMediaStream(
+      c.req.param("id"),
+      userId,
+    );
+    return createAssetResponse(c, {
+      stream,
+      contentType: metadata.contentType,
+      contentLength: metadata.size,
+      cacheControl: "private, max-age=3600",
+      disposition: { type: "auto", filename },
+    });
+  }, logger),
+);
+
+// GET /api/media/:id/waveform - Serve the audio waveform image
+mediaRoutes.get(
+  "/:id/waveform",
+  withAuth(async (c, userId) => {
+    const { stream, metadata } = await getThumbnailStream(
+      c.req.param("id"),
+      userId,
+    );
+    return createAssetResponse(c, {
+      stream,
+      contentType: metadata.contentType,
+      contentLength: metadata.size,
+      cacheControl: "public, max-age=604800",
+    });
+  }, logger),
+);
+
 // GET /api/media/:id/thumbnail - Serve the waveform thumbnail
 mediaRoutes.get(
   "/:id/thumbnail",

@@ -239,7 +239,7 @@ export function createDbWorker<T = unknown>(
               { jobId: claimed.id, stage: stageName },
               "Stage started",
             );
-            eventCallbacks?.onStageStart?.(
+            await eventCallbacks?.onStageStart?.(
               claimed.id,
               stageName,
               claimed.metadata || undefined,

@@ -197,7 +197,7 @@ export function createBullMQWorker<T = unknown>(
           const updatedStages = startStageInList(currentStages, stageName);
           await persistStages(updatedStages, stageName);
           logger.debug({ jobId: job.id, stage: stageName }, "Stage started");
-          eventCallbacks?.onStageStart?.(job.id, stageName, metadata);
+          await eventCallbacks?.onStageStart?.(job.id, stageName, metadata);
         },
 
         async updateStageProgress(stageName: string, percent: number) {
