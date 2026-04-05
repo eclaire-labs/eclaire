@@ -160,7 +160,7 @@ export function createTestDeps(
       limit,
       offset,
     });
-    return rows.map((r) => ({
+    return rows.map((r: (typeof rows)[number]) => ({
       id: r.id,
       title: r.title,
       messageCount: r.messageCount,
@@ -200,15 +200,18 @@ export function createTestDeps(
       where: eq(schema.agents.userId, userId),
     });
 
-    const matchedAgent = availableAgents.find((agent) =>
-      buildAgentHandleCandidates(agent.name).includes(addressedPrompt.handle),
+    const matchedAgent = availableAgents.find(
+      (agent: (typeof availableAgents)[number]) =>
+        buildAgentHandleCandidates(agent.name).includes(addressedPrompt.handle),
     );
 
     if (!matchedAgent) {
       const knownHandles = availableAgents
-        .flatMap((agent) => buildAgentHandleCandidates(agent.name).slice(0, 1))
+        .flatMap((agent: (typeof availableAgents)[number]) =>
+          buildAgentHandleCandidates(agent.name).slice(0, 1),
+        )
         .slice(0, 6)
-        .map((handle) => `@${handle}`)
+        .map((handle: string) => `@${handle}`)
         .join(", ");
 
       return {

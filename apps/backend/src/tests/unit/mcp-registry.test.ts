@@ -135,8 +135,8 @@ describe("McpRegistry", () => {
       expect(Object.keys(tools)).toHaveLength(2);
       expect(tools.tool1).toBeDefined();
       expect(tools.tool2).toBeDefined();
-      expect(tools.tool1.name).toBe("tool1");
-      expect(tools.tool1.description).toBe("A test tool");
+      expect(tools.tool1!.name).toBe("tool1");
+      expect(tools.tool1!.description).toBe("A test tool");
       // Verify tools are associated with the correct server
       expect(registry.getServerKeyForTool("tool1")).toBe("a");
       expect(registry.getServerKeyForTool("tool2")).toBe("a");

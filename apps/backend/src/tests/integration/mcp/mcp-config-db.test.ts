@@ -227,9 +227,9 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Config Database Integration", ({
 
       const config = await loadMcpServersConfig();
       expect(config["fs-srv"]).toBeDefined();
-      expect(config["fs-srv"].name).toBe("Filesystem");
-      expect(config["fs-srv"].transport).toBe("stdio");
-      expect(config["fs-srv"].command).toBe("fs-cmd");
+      expect(config["fs-srv"]!.name).toBe("Filesystem");
+      expect(config["fs-srv"]!.transport).toBe("stdio");
+      expect(config["fs-srv"]!.command).toBe("fs-cmd");
     });
 
     it("loadMcpServersConfig skips disabled servers", async () => {
@@ -253,7 +253,7 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Config Database Integration", ({
       });
 
       const config = await loadMcpServersConfig();
-      expect(config["http-srv"].transport).toBe("streamable-http");
+      expect(config["http-srv"]!.transport).toBe("streamable-http");
     });
 
     it("loadMcpServersConfig maps command to url for HTTP transports", async () => {
@@ -265,8 +265,8 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Config Database Integration", ({
       });
 
       const config = await loadMcpServersConfig();
-      expect(config["http-url-srv"].url).toBe("http://localhost:3001/mcp");
-      expect(config["http-url-srv"].command).toBeUndefined();
+      expect(config["http-url-srv"]!.url).toBe("http://localhost:3001/mcp");
+      expect(config["http-url-srv"]!.command).toBeUndefined();
     });
 
     it("loadMcpServersConfig maps command to url for SSE transports", async () => {
@@ -278,8 +278,8 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Config Database Integration", ({
       });
 
       const config = await loadMcpServersConfig();
-      expect(config["sse-srv"].url).toBe("http://localhost:3001/sse");
-      expect(config["sse-srv"].command).toBeUndefined();
+      expect(config["sse-srv"]!.url).toBe("http://localhost:3001/sse");
+      expect(config["sse-srv"]!.command).toBeUndefined();
     });
 
     it("loadMcpServersConfig preserves command for stdio transport", async () => {
@@ -291,8 +291,8 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Config Database Integration", ({
       });
 
       const config = await loadMcpServersConfig();
-      expect(config["stdio-srv"].command).toBe("my-mcp-server");
-      expect(config["stdio-srv"].url).toBeUndefined();
+      expect(config["stdio-srv"]!.command).toBe("my-mcp-server");
+      expect(config["stdio-srv"]!.url).toBeUndefined();
     });
 
     it("loadMcpServersConfig always generates chrome-devtools entry", async () => {
@@ -305,8 +305,8 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Config Database Integration", ({
 
       const config = await loadMcpServersConfig();
       expect(config["chrome-devtools"]).toBeDefined();
-      expect(config["chrome-devtools"].name).toBe("Chrome DevTools");
-      expect(config["chrome-devtools"].toolMode).toBe("managed");
+      expect(config["chrome-devtools"]!.name).toBe("Chrome DevTools");
+      expect(config["chrome-devtools"]!.toolMode).toBe("managed");
     });
 
     it("loadMcpServersConfig preserves existing chrome-devtools from DB", async () => {
@@ -322,7 +322,7 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Config Database Integration", ({
       expect(config["chrome-devtools"]).toBeDefined();
       // The DB entry should take precedence; the auto-generated one
       // should not overwrite it
-      expect(config["chrome-devtools"].command).toBe("custom-chrome-mcp");
+      expect(config["chrome-devtools"]!.command).toBe("custom-chrome-mcp");
     });
   });
 

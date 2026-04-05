@@ -381,7 +381,7 @@ describe("Audio Service", () => {
       });
       const health = await svc.getAudioHealth();
       expect(health.providers).toHaveLength(2);
-      const providerIds = health.providers.map(
+      const providerIds = health.providers!.map(
         (p: { providerId: string }) => p.providerId,
       );
       expect(providerIds).toContain("mlx-audio");

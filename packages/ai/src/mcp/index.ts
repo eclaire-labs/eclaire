@@ -30,3 +30,5 @@ export {
   type TestMcpServerOptions,
   type TestToolDef,
 } from "./testing.js";
+
+export type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";

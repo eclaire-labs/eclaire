@@ -6,6 +6,7 @@ import type {
   ChannelPlatform,
 } from "@eclaire/channels-core";
 import { generateChannelId } from "@eclaire/core/id";
+import { eq } from "drizzle-orm";
 import type { TestDatabase } from "../../../db/setup.js";
 import { createTestUser } from "../../../db/setup.js";
 
@@ -48,7 +49,7 @@ export async function seedChannel(
   });
 
   const channel = await db.query.channels.findFirst({
-    where: (c, { eq }) => eq(c.id, channelId),
+    where: eq(schema.channels.id, channelId),
   });
 
   return { userId, channelId, channel: channel! };

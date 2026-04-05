@@ -485,7 +485,7 @@ describe.each(DB_TEST_CONFIGS)("$label - Agents DB Integration Tests", ({
         await db
           .update(s.agents)
           .set({ updatedAt: new Date(now + i * 1000) })
-          .where(eq(s.agents.id, ids[i]));
+          .where(eq(s.agents.id, ids[i]!));
       }
 
       const result = await db

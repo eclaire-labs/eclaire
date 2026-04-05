@@ -110,7 +110,7 @@ describe("Agent API Integration Tests", () => {
       expect(data.items.length).toBeGreaterThanOrEqual(1);
 
       // First agent should be the built-in default
-      const defaultAgent = data.items[0];
+      const defaultAgent = data.items[0]!;
       expect(defaultAgent.kind).toBe("builtin");
       expect(defaultAgent.isEditable).toBe(false);
     });

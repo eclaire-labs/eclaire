@@ -216,7 +216,7 @@ describe("Audio Service Integration Tests", { timeout: 60_000 }, () => {
         const formData = new FormData();
         formData.append(
           "file",
-          new Blob([wav], { type: "audio/wav" }),
+          new Blob([new Uint8Array(wav)], { type: "audio/wav" }),
           "silence.wav",
         );
 
@@ -240,7 +240,7 @@ describe("Audio Service Integration Tests", { timeout: 60_000 }, () => {
         const formData = new FormData();
         formData.append(
           "file",
-          new Blob([wav], { type: "audio/wav" }),
+          new Blob([new Uint8Array(wav)], { type: "audio/wav" }),
           "silence.wav",
         );
         formData.append("provider", "mlx-audio");
@@ -265,7 +265,7 @@ describe("Audio Service Integration Tests", { timeout: 60_000 }, () => {
         const formData = new FormData();
         formData.append(
           "file",
-          new Blob([wav], { type: "audio/wav" }),
+          new Blob([new Uint8Array(wav)], { type: "audio/wav" }),
           "silence.wav",
         );
         formData.append("provider", "whisper-cpp");

@@ -248,7 +248,7 @@ describe("McpServerConnection - real MCP protocol", () => {
 
       const result = await conn.callTool("add", { a: 3, b: 7 });
       const r = result as { content: Array<{ type: string; text: string }> };
-      expect(r.content[0].text).toBe("10");
+      expect(r.content[0]!.text).toBe("10");
 
       await conn.disconnect();
     });
@@ -269,7 +269,7 @@ describe("McpServerConnection - real MCP protocol", () => {
       };
 
       expect(r.isError).toBe(true);
-      expect(r.content[0].text).toBe("Something went wrong");
+      expect(r.content[0]!.text).toBe("Something went wrong");
 
       await conn.disconnect();
     });
@@ -289,7 +289,7 @@ describe("McpServerConnection - real MCP protocol", () => {
         { userId: "user-123" },
       );
       const r = result as { content: Array<{ type: string; text: string }> };
-      expect(r.content[0].text).toBe("with-meta");
+      expect(r.content[0]!.text).toBe("with-meta");
 
       await conn.disconnect();
     });

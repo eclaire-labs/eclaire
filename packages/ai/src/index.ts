@@ -551,6 +551,7 @@ export {
   type TestMcpServer,
   type TestMcpServerOptions,
   type TestToolDef,
+  type InMemoryTransport,
 } from "./mcp/index.js";
 
 // =============================================================================

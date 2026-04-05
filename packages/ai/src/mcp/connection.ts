@@ -9,6 +9,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { Transport as SdkTransport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Mutex } from "async-mutex";
 import type {
   McpConnectionState,
@@ -46,7 +47,7 @@ export class McpServerConnection {
   constructor(
     private readonly serverKey: string,
     private readonly config: McpServerConfig,
-    private readonly _testTransport?: Transport,
+    private readonly _testTransport?: SdkTransport,
   ) {}
 
   getState(): McpConnectionState {

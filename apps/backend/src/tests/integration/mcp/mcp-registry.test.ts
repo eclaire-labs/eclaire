@@ -9,8 +9,11 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createTestMcpServer, type TestMcpServer } from "@eclaire/ai";
-import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import {
+  createTestMcpServer,
+  type InMemoryTransport,
+  type TestMcpServer,
+} from "@eclaire/ai";
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------
@@ -152,8 +155,8 @@ describe("McpRegistry - real tool discovery and mapping", () => {
       const tools = registry.getMcpTools();
       expect(Object.keys(tools)).toEqual(["browse"]);
       // The grouped tool should have a description listing actions
-      expect(tools.browse.description).toContain("list_pages");
-      expect(tools.browse.description).toContain("navigate");
+      expect(tools.browse!.description).toContain("list_pages");
+      expect(tools.browse!.description).toContain("navigate");
 
       await registry.disconnectAll();
     });
@@ -274,7 +277,7 @@ describe("McpRegistry - real tool discovery and mapping", () => {
       await registry.initialize();
 
       const tools = registry.getMcpTools();
-      const result = await tools.greet.execute!("call-1", { name: "Alice" }, {
+      const result = await tools.greet!.execute!("call-1", { name: "Alice" }, {
         userId: "user-1",
       } as any);
 
@@ -329,14 +332,14 @@ describe("McpRegistry - real tool discovery and mapping", () => {
 
       const tools = registry.getMcpTools();
 
-      const addResult = await tools.math.execute!(
+      const addResult = await tools.math!.execute!(
         "call-1",
         { action: "add", args: { a: 10, b: 5 } },
         { userId: "user-1" } as any,
       );
       expect(addResult.content[0]).toEqual({ type: "text", text: "15" });
 
-      const subResult = await tools.math.execute!(
+      const subResult = await tools.math!.execute!(
         "call-2",
         { action: "subtract", args: { a: 10, b: 3 } },
         { userId: "user-1" } as any,
@@ -435,7 +438,7 @@ describe("McpRegistry - real tool discovery and mapping", () => {
       await registry.disconnectAll();
 
       const status = registry.getStatus();
-      expect(status[0].state).toBe("disconnected");
+      expect(status[0]!.state).toBe("disconnected");
     });
 
     it("getStatus returns accurate state after initialization", async () => {

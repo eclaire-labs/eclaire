@@ -105,10 +105,10 @@ describe("useConversations", () => {
       "This Week",
       "Older",
     ]);
-    expect(result.current.groups[0].conversations[0].id).toBe("today");
-    expect(result.current.groups[1].conversations[0].id).toBe("yesterday");
-    expect(result.current.groups[2].conversations[0].id).toBe("this-week");
-    expect(result.current.groups[3].conversations[0].id).toBe("older");
+    expect(result.current.groups[0]!.conversations[0]!.id).toBe("today");
+    expect(result.current.groups[1]!.conversations[0]!.id).toBe("yesterday");
+    expect(result.current.groups[2]!.conversations[0]!.id).toBe("this-week");
+    expect(result.current.groups[3]!.conversations[0]!.id).toBe("older");
   });
 
   it("omits empty groups", async () => {
@@ -159,8 +159,8 @@ describe("useConversations", () => {
 
     // Both should land in "Today" — one via lastMessageAt, one via createdAt fallback
     expect(result.current.groups).toHaveLength(1);
-    expect(result.current.groups[0].label).toBe("Today");
-    expect(result.current.groups[0].conversations).toHaveLength(2);
+    expect(result.current.groups[0]!.label).toBe("Today");
+    expect(result.current.groups[0]!.conversations).toHaveLength(2);
   });
 
   it("exposes flat conversations list alongside groups", async () => {

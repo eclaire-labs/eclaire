@@ -9,9 +9,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createTestMcpServer, type TestMcpServer } from "@eclaire/ai";
+import {
+  createTestMcpServer,
+  type InMemoryTransport,
+  type TestMcpServer,
+} from "@eclaire/ai";
 import { z } from "zod";
-import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import {
   DB_TEST_CONFIGS,
   initTestDatabase,
@@ -189,7 +192,7 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Full Pipeline", ({ dbType }) => {
 
       // 4. Initialize registry (auto-connect since we set autoConnect via config)
       // Note: seedMcpServer doesn't set autoConnect, so we patch it
-      config["echo-srv"].autoConnect = true;
+      config["echo-srv"]!.autoConnect = true;
       const registry = new McpRegistry(config);
       await registry.initialize();
 
@@ -198,7 +201,7 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Full Pipeline", ({ dbType }) => {
       expect(tools.echo).toBeDefined();
 
       // 6. Call the tool
-      const result = await tools.echo.execute!(
+      const result = await tools.echo!.execute!(
         "call-1",
         { message: "pipeline test" },
         { userId: "user-1" } as any,
@@ -240,9 +243,9 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Full Pipeline", ({ dbType }) => {
       ]);
 
       const config = await loadMcpServersConfig();
-      config["ind-srv"].autoConnect = true;
-      config["grp-srv"].autoConnect = true;
-      config["grp-srv"].groupedToolName = "browser";
+      config["ind-srv"]!.autoConnect = true;
+      config["grp-srv"]!.autoConnect = true;
+      config["grp-srv"]!.groupedToolName = "browser";
       const registry = new McpRegistry(config);
       await registry.initialize();
 
@@ -275,7 +278,7 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Full Pipeline", ({ dbType }) => {
       await registerInProcessServer("enabled-srv", [{ name: "active_tool" }]);
 
       const config = await loadMcpServersConfig();
-      config["enabled-srv"].autoConnect = true;
+      config["enabled-srv"]!.autoConnect = true;
       const registry = new McpRegistry(config);
       await registry.initialize();
 
@@ -313,11 +316,11 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Full Pipeline", ({ dbType }) => {
       ]);
 
       const config = await loadMcpServersConfig();
-      config["norm-srv"].autoConnect = true;
+      config["norm-srv"]!.autoConnect = true;
       const registry = new McpRegistry(config);
       await registry.initialize();
 
-      const result = await registry.getMcpTools().get_info.execute!(
+      const result = await registry.getMcpTools().get_info!.execute!(
         "call-1",
         {},
         { userId: "u1" } as any,
@@ -371,22 +374,22 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Full Pipeline", ({ dbType }) => {
       ]);
 
       const config = await loadMcpServersConfig();
-      config["math-srv"].autoConnect = true;
-      config["math-srv"].groupedToolName = "math";
+      config["math-srv"]!.autoConnect = true;
+      config["math-srv"]!.groupedToolName = "math";
       const registry = new McpRegistry(config);
       await registry.initialize();
 
       const tools = registry.getMcpTools();
       expect(tools.math).toBeDefined();
 
-      const addResult = await tools.math.execute!(
+      const addResult = await tools.math!.execute!(
         "c1",
         { action: "add", args: { a: 4, b: 6 } },
         { userId: "u1" } as any,
       );
       expect(addResult.content[0]).toEqual({ type: "text", text: "10" });
 
-      const mulResult = await tools.math.execute!(
+      const mulResult = await tools.math!.execute!(
         "c2",
         { action: "multiply", args: { a: 3, b: 7 } },
         { userId: "u1" } as any,
@@ -417,11 +420,11 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Full Pipeline", ({ dbType }) => {
       ]);
 
       const config = await loadMcpServersConfig();
-      config["err-srv"].autoConnect = true;
+      config["err-srv"]!.autoConnect = true;
       const registry = new McpRegistry(config);
       await registry.initialize();
 
-      const result = await registry.getMcpTools().fail.execute!("c1", {}, {
+      const result = await registry.getMcpTools().fail!.execute!("c1", {}, {
         userId: "u1",
       } as any);
 
@@ -452,8 +455,8 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Full Pipeline", ({ dbType }) => {
       await registerInProcessServer("ok-srv", [{ name: "working_tool" }]);
 
       const config = await loadMcpServersConfig();
-      config["ok-srv"].autoConnect = true;
-      config["broken-srv"].autoConnect = true;
+      config["ok-srv"]!.autoConnect = true;
+      config["broken-srv"]!.autoConnect = true;
       const registry = new McpRegistry(config);
 
       // Should not throw

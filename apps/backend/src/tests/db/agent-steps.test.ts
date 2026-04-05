@@ -291,7 +291,9 @@ describe.each(DB_TEST_CONFIGS)("$label - Agent Steps DB Integration Tests", ({
         .orderBy(asc(s.agentSteps.stepNumber));
 
       expect(result).toHaveLength(5);
-      expect(result.map((s) => s.stepNumber)).toEqual([1, 2, 3, 4, 5]);
+      expect(result.map((s: (typeof result)[number]) => s.stepNumber)).toEqual([
+        1, 2, 3, 4, 5,
+      ]);
     });
   });
 
@@ -338,7 +340,11 @@ describe.each(DB_TEST_CONFIGS)("$label - Agent Steps DB Integration Tests", ({
         .where(eq(s.agentSteps.messageId, testMessageId));
 
       expect(msg1Steps).toHaveLength(2);
-      expect(msg1Steps.every((s) => s.messageId === testMessageId)).toBe(true);
+      expect(
+        msg1Steps.every(
+          (s: (typeof msg1Steps)[number]) => s.messageId === testMessageId,
+        ),
+      ).toBe(true);
 
       // Query for message 2 only
       const msg2Steps = await db
@@ -347,7 +353,11 @@ describe.each(DB_TEST_CONFIGS)("$label - Agent Steps DB Integration Tests", ({
         .where(eq(s.agentSteps.messageId, message2.id));
 
       expect(msg2Steps).toHaveLength(2);
-      expect(msg2Steps.every((s) => s.messageId === message2.id)).toBe(true);
+      expect(
+        msg2Steps.every(
+          (s: (typeof msg2Steps)[number]) => s.messageId === message2.id,
+        ),
+      ).toBe(true);
     });
   });
 });

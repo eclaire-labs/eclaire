@@ -139,7 +139,7 @@ describe("useUpcoming", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.items).toHaveLength(1);
-    const item: UpcomingItem = result.current.items[0];
+    const item: UpcomingItem = result.current.items[0]!;
     expect(item).toEqual({
       id: "t-1",
       title: "Review PR",
@@ -166,7 +166,7 @@ describe("useUpcoming", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.items[0].when).toBe("2026-05-01T08:00:00Z");
+    expect(result.current.items[0]!.when).toBe("2026-05-01T08:00:00Z");
   });
 
   it("falls back to dueDate then createdAt for the when field", async () => {
@@ -190,8 +190,8 @@ describe("useUpcoming", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.items[0].when).toBe("2026-04-15T12:00:00Z");
-    expect(result.current.items[1].when).toBe("2026-01-01T00:00:00.000Z");
+    expect(result.current.items[0]!.when).toBe("2026-04-15T12:00:00Z");
+    expect(result.current.items[1]!.when).toBe("2026-01-01T00:00:00.000Z");
   });
 
   it("generates correct linkTo paths", async () => {
@@ -230,7 +230,7 @@ describe("useUpcoming", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    const url: string = mockApiFetch.mock.calls[0][0];
+    const url: string = mockApiFetch.mock.calls[0]![0];
     expect(url).toContain("limit=5");
   });
 
@@ -243,7 +243,7 @@ describe("useUpcoming", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    const url: string = mockApiFetch.mock.calls[0][0];
+    const url: string = mockApiFetch.mock.calls[0]![0];
     expect(url).toContain("sortBy=dueDate");
     expect(url).toContain("sortDir=asc");
     expect(url).toContain("dueDateStart=");
@@ -265,7 +265,7 @@ describe("useUpcoming", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.items).toHaveLength(1);
-    expect(result.current.items[0].id).toBe("bare-1");
+    expect(result.current.items[0]!.id).toBe("bare-1");
   });
 
   it("does not fetch when enabled is false", async () => {
