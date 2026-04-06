@@ -20,6 +20,15 @@ const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 /** HTTP fetch timeout in milliseconds */
 const FETCH_TIMEOUT_MS = 12_000;
 
+/** Pre-parsed Readability article from the validation step */
+export interface PrefetchedArticle {
+  title: string;
+  content: string;
+  textContent: string;
+  byline: string | null;
+  excerpt: string;
+}
+
 export interface LightweightFetchResult {
   /** The raw HTML string from the HTTP response */
   html: string;
@@ -31,6 +40,8 @@ export interface LightweightFetchResult {
   etag: string;
   /** Last-Modified header if present */
   lastModified: string;
+  /** Pre-parsed Readability article (avoids re-parsing in extractContentFromHtml) */
+  article: PrefetchedArticle;
 }
 
 /**
@@ -127,6 +138,13 @@ export async function lightweightFetch(
       contentType: response.headers["content-type"] || "",
       etag: response.headers.etag || "",
       lastModified: response.headers["last-modified"] || "",
+      article: {
+        title: article.title ?? "",
+        content: article.content ?? "",
+        textContent: article.textContent ?? "",
+        byline: article.byline ?? null,
+        excerpt: article.excerpt ?? "",
+      },
     };
   } catch (error: unknown) {
     logger.debug(

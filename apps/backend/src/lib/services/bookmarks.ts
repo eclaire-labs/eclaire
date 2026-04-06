@@ -36,6 +36,7 @@ import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { createOrUpdateProcessingJob } from "./processing-status.js";
+import { setEntityProcessingStatus } from "./artifact-processor.js";
 import {
   callerActorId,
   callerOwnerUserId,
@@ -332,7 +333,20 @@ export async function createBookmarkAndQueueJob(
           },
           "Failed to enqueue bookmark processing job",
         );
-        // Optionally update the job status to 'failed' here
+        try {
+          await setEntityProcessingStatus("bookmarks", bookmarkId, "failed");
+        } catch (statusError) {
+          logger.error(
+            {
+              bookmarkId,
+              error:
+                statusError instanceof Error
+                  ? statusError.message
+                  : "Unknown error",
+            },
+            "Failed to mark bookmark as failed after enqueue failure",
+          );
+        }
       }
     } else {
       logger.info(

@@ -8,6 +8,7 @@ import TurndownService from "turndown";
 import { tables, strikethrough } from "turndown-plugin-gfm";
 import { createChildLogger } from "../../../lib/logger.js";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
+import type { PrefetchedArticle } from "./lightweight-fetch.js";
 
 const logger = createChildLogger("bookmark-utils");
 
@@ -187,6 +188,7 @@ export async function extractContentFromHtml(
   userId: string,
   bookmarkId: string,
   prefetchedFaviconStorageId?: string | null,
+  prefetchedArticle?: PrefetchedArticle | null,
 ): Promise<{
   title: string;
   description: string;
@@ -222,7 +224,7 @@ export async function extractContentFromHtml(
       script.remove();
     });
 
-    article = new Readability(document).parse();
+    article = prefetchedArticle || new Readability(document).parse();
     readableHtml = article?.content || "";
 
     // --- Helper functions for favicon processing ---
@@ -366,34 +368,7 @@ export async function extractContentFromHtml(
       }
     }
 
-    // Save raw HTML
-    const storageForHtml = getStorage();
-    const rawHtmlKey = buildKey(
-      userId,
-      "bookmarks",
-      bookmarkId,
-      "content-raw.html",
-    );
-    await storageForHtml.writeBuffer(rawHtmlKey, Buffer.from(rawHtml), {
-      contentType: "text/html",
-    });
-    const rawHtmlStorageId = rawHtmlKey;
-
-    // Save readable HTML (unstyled, Readability output)
-    const readableHtmlKey = buildKey(
-      userId,
-      "bookmarks",
-      bookmarkId,
-      "content-readable.html",
-    );
-    await storageForHtml.writeBuffer(
-      readableHtmlKey,
-      Buffer.from(readableHtml),
-      { contentType: "text/html" },
-    );
-    const readableHtmlStorageId = readableHtmlKey;
-
-    // Save styled readable HTML for offline reading
+    // Generate all content variants (CPU-bound, must be sequential)
     const title = article?.title || document.title || "";
     const lang = document.documentElement.getAttribute("lang") || "en";
     const styledHtml = generateStyledReadableHtml(
@@ -402,36 +377,57 @@ export async function extractContentFromHtml(
       readableHtml,
       lang,
     );
+    const markdownContent = turndownService.turndown(readableHtml);
+    const plainTextContent = convertHtmlToText(readableHtml, {
+      wordwrap: false,
+    });
+
+    // Build storage keys
+    const storage = getStorage();
+    const rawHtmlKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "content-raw.html",
+    );
+    const readableHtmlKey = buildKey(
+      userId,
+      "bookmarks",
+      bookmarkId,
+      "content-readable.html",
+    );
     const styledHtmlKey = buildKey(
       userId,
       "bookmarks",
       bookmarkId,
       "content-readable-styled.html",
     );
-    await storageForHtml.writeBuffer(styledHtmlKey, Buffer.from(styledHtml), {
-      contentType: "text/html",
-    });
-    const readableStyledHtmlStorageId = styledHtmlKey;
-
-    // Convert to markdown (with GFM table and code language support)
-    const markdownContent = turndownService.turndown(readableHtml);
-
-    // Convert to plain text
-    const plainTextContent = convertHtmlToText(readableHtml, {
-      wordwrap: false,
-    });
-
-    // Save both versions to storage
     const mdKey = buildKey(userId, "bookmarks", bookmarkId, "extracted.md");
-    await storageForHtml.writeBuffer(mdKey, Buffer.from(markdownContent), {
-      contentType: "text/markdown",
-    });
-    const extractedMdStorageId = mdKey;
-
     const txtKey = buildKey(userId, "bookmarks", bookmarkId, "extracted.txt");
-    await storageForHtml.writeBuffer(txtKey, Buffer.from(plainTextContent), {
-      contentType: "text/plain",
-    });
+
+    // Write all files in parallel (all independent I/O)
+    await Promise.all([
+      storage.writeBuffer(rawHtmlKey, Buffer.from(rawHtml), {
+        contentType: "text/html",
+      }),
+      storage.writeBuffer(readableHtmlKey, Buffer.from(readableHtml), {
+        contentType: "text/html",
+      }),
+      storage.writeBuffer(styledHtmlKey, Buffer.from(styledHtml), {
+        contentType: "text/html",
+      }),
+      storage.writeBuffer(mdKey, Buffer.from(markdownContent), {
+        contentType: "text/markdown",
+      }),
+      storage.writeBuffer(txtKey, Buffer.from(plainTextContent), {
+        contentType: "text/plain",
+      }),
+    ]);
+
+    const rawHtmlStorageId = rawHtmlKey;
+    const readableHtmlStorageId = readableHtmlKey;
+    const readableStyledHtmlStorageId = styledHtmlKey;
+    const extractedMdStorageId = mdKey;
     const extractedTxtStorageId = txtKey;
 
     return {
@@ -500,7 +496,7 @@ export async function generateOptimizedPdf(
     );
   });
 
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(1000);
   await page.emulateMedia({ media: "screen" });
 
   return await page.pdf({
@@ -587,6 +583,6 @@ export async function generateBookmarkTags(
       { error: error instanceof Error ? error.message : "Unknown error" },
       "Error generating bookmark tags with AI",
     );
-    return [];
+    throw error;
   }
 }

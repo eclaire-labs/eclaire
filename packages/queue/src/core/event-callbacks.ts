@@ -237,9 +237,10 @@ export function createEventCallbacks(
                 jobId,
                 assetType: assetMetadata.assetType,
                 assetId: assetMetadata.assetId,
+                targetStatus: "processing",
                 error: getErrorMessage(err),
               },
-              "Failed to update entity processing status to processing",
+              "Failed to update entity processing status",
             );
           }
         }
@@ -296,8 +297,9 @@ export function createEventCallbacks(
                 assetId: assetMetadata.assetId,
                 error: getErrorMessage(error),
               },
-              "Failed to process artifacts",
+              "Failed to process artifacts — re-throwing to fail the job",
             );
+            throw error;
           }
         }
       }
@@ -342,9 +344,10 @@ export function createEventCallbacks(
                 jobId,
                 assetType: assetMetadata.assetType,
                 assetId: assetMetadata.assetId,
+                targetStatus: "failed",
                 error: getErrorMessage(err),
               },
-              "Failed to update entity processing status",
+              "CRITICAL: Failed to update entity processing status — entity may show stale status",
             );
           }
         }

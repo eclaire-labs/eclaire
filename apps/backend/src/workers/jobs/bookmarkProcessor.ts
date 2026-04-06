@@ -149,6 +149,8 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
           lightweightResult.finalUrl,
           userId,
           bookmarkId,
+          undefined,
+          lightweightResult.article,
         );
         Object.assign(allArtifacts, contentData);
         if (lightweightResult.finalUrl !== processUrl) {
@@ -172,14 +174,12 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         Object.assign(allArtifacts, contentData);
       }
     } catch (contentError: unknown) {
+      const errorMessage =
+        contentError instanceof Error
+          ? contentError.message
+          : String(contentError);
       logger.error(
-        {
-          bookmarkId,
-          error:
-            contentError instanceof Error
-              ? contentError.message
-              : String(contentError),
-        },
+        { bookmarkId, error: errorMessage },
         "Content extraction failed",
       );
       allArtifacts.title = allArtifacts.title || "Content extraction failed";
@@ -188,6 +188,8 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       allArtifacts.extractedText = "";
       allArtifacts.author = null;
       allArtifacts.lang = "en";
+      allArtifacts.contentExtractionFailed = true;
+      allArtifacts.contentExtractionError = errorMessage;
     }
 
     await ctx.completeStage("content_extraction");
