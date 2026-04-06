@@ -1,4 +1,8 @@
-import type { JobContext } from "@eclaire/queue/core";
+import {
+  type JobContext,
+  PermanentError,
+  RateLimitError,
+} from "@eclaire/queue/core";
 import { createChildLogger } from "../../lib/logger.js";
 import { BrowserPipeline } from "../lib/bookmarks/browser-pipeline.js";
 import {
@@ -18,7 +22,6 @@ import {
   type DomainErrorCategory,
   domainRateLimiter,
 } from "../lib/domainRateLimiter.js";
-import { RateLimitError } from "@eclaire/queue/core";
 
 const logger = createChildLogger("bookmark-processor");
 
@@ -173,6 +176,7 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         );
         Object.assign(allArtifacts, contentData);
       }
+      await ctx.completeStage("content_extraction");
     } catch (contentError: unknown) {
       const errorMessage =
         contentError instanceof Error
@@ -180,7 +184,7 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
           : String(contentError);
       logger.error(
         { bookmarkId, error: errorMessage },
-        "Content extraction failed",
+        "Content extraction failed, continuing with degraded results",
       );
       allArtifacts.title = allArtifacts.title || "Content extraction failed";
       allArtifacts.description =
@@ -190,9 +194,11 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       allArtifacts.lang = "en";
       allArtifacts.contentExtractionFailed = true;
       allArtifacts.contentExtractionError = errorMessage;
+      await ctx.failStage(
+        "content_extraction",
+        contentError instanceof Error ? contentError : new Error(errorMessage),
+      );
     }
-
-    await ctx.completeStage("content_extraction");
 
     // AI tagging (pass structured metadata for better results)
     currentStage = "ai_tagging";
@@ -213,6 +219,7 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
         "AI tagging failed, using fallback tags",
       );
       allArtifacts.tags = ["webpage", "bookmark"];
+      allArtifacts.aiTaggingFailed = true;
     }
 
     const { extractedText: _excludeText, ...finalArtifacts } = allArtifacts;
@@ -326,7 +333,7 @@ async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       },
       "Missing required job data - cannot process bookmark",
     );
-    throw new Error(
+    throw new PermanentError(
       `Missing required job data: bookmarkId=${bookmarkId}, url=${originalUrl}, userId=${userId}`,
     );
   }

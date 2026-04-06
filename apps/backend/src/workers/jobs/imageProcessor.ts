@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { type AIMessage, callAI } from "@eclaire/ai";
-import type { JobContext } from "@eclaire/queue/core";
+import { type JobContext, PermanentError } from "@eclaire/queue/core";
 import sharp from "sharp";
 import { createChildLogger } from "../../lib/logger.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
@@ -45,6 +45,35 @@ const STAGES = {
 } as const;
 
 type Stage = (typeof STAGES)[keyof typeof STAGES];
+
+interface ImageArtifacts {
+  [key: string]: unknown;
+  convertedJpgStorageId?: string;
+  thumbnailStorageId?: string;
+  photoType?: string;
+  description?: string;
+  extractedText?: string;
+  dominantColors?: string[] | null;
+  tags?: string[];
+  extractedJsonStorageId?: string;
+  extractedMdStorageId?: string;
+  extractedTxtStorageId?: string;
+}
+
+interface ImageExtractedData {
+  photoId: string;
+  mimeType: string;
+  originalFilename?: string;
+  processedAt: string;
+  conversion?: {
+    originalMimeType: string;
+    convertedTo: string;
+    convertedJpgStorageId: string;
+  };
+  thumbnail?: { thumbnailStorageId: string };
+  aiAnalysis: Record<string, Record<string, unknown>>;
+  processedTags?: string[];
+}
 
 const WORKFLOW_BRANCHES: Record<string, Stage[]> = {
   photograph_general: [STAGES.OBJECT_DETECTION, STAGES.VISUAL_ANALYSIS],
@@ -590,14 +619,14 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
 
   // Validate required job data
   if (!photoId || !userId) {
-    throw new Error(
+    throw new PermanentError(
       `Missing required job data: photoId=${photoId}, userId=${userId}`,
     );
   }
   if (!storageId || storageId.trim() === "") {
     const errorMsg = `Invalid or missing storageId for photo ${photoId}. Received: ${storageId}`;
     logger.error({ photoId, jobId: ctx.job.id, storageId }, errorMsg);
-    throw new Error(errorMsg);
+    throw new PermanentError(errorMsg);
   }
 
   // Check if the mimeType is in our list of formats that need conversion.
@@ -612,10 +641,8 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
 
   await ctx.initStages(initialStages);
 
-  // biome-ignore lint/suspicious/noExplicitAny: parsed AI model output
-  const allArtifacts: Record<string, any> = {};
-  // biome-ignore lint/suspicious/noExplicitAny: parsed AI model output
-  const extractedData: Record<string, any> = {
+  const allArtifacts: ImageArtifacts = {};
+  const extractedData: ImageExtractedData = {
     photoId,
     mimeType,
     originalFilename,
@@ -632,7 +659,7 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
     const MAX_IMAGE_SIZE = 100 * 1024 * 1024; // 100MB
     const meta = await storage.head(storageId);
     if (meta && meta.size > MAX_IMAGE_SIZE) {
-      throw new Error(
+      throw new PermanentError(
         `Image too large: ${meta.size} bytes exceeds ${MAX_IMAGE_SIZE} byte limit`,
       );
     }
@@ -640,7 +667,7 @@ async function processImageJob(ctx: JobContext<ImageJobData>): Promise<void> {
     const { buffer: imageBufferRaw } = await storage.readBuffer(storageId);
     let imageBuffer = imageBufferRaw;
     if (imageBuffer.length === 0)
-      throw new Error("Fetched image file is empty.");
+      throw new PermanentError("Fetched image file is empty.");
     await ctx.completeStage(STAGES.PREPARATION);
 
     // STAGE: CONVERSION (Conditional)

@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { type AIMessage, callAI } from "@eclaire/ai";
-import type { JobContext } from "@eclaire/queue/core";
+import { type JobContext, PermanentError } from "@eclaire/queue/core";
 import { Readability } from "@mozilla/readability";
 import axios from "axios";
 import { parse as parseCsv } from "csv-parse/sync";
@@ -24,7 +24,6 @@ import { config } from "../config.js";
 // Use createRequire for CJS-only packages in ESM context
 const require = createRequire(import.meta.url);
 const rtfToHTML = require("@iarna/rtf-to-html");
-const rtf2text = require("rtf2text");
 // Removed pdfjs-dist and canvas dependencies - using pdftocairo instead
 
 const logger = createChildLogger("document-processor");
@@ -176,6 +175,7 @@ interface DocumentArtifacts {
   title?: string | null;
   description?: string | null;
   tags?: string[];
+  extractionError?: string;
   // extractedText is stored in blob storage via extractedTxtStorageId, not inline
   extractedMdStorageId?: string;
   extractedTxtStorageId?: string;
@@ -198,14 +198,14 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
 
   // Validate required job data
   if (!documentId || !userId) {
-    throw new Error(
+    throw new PermanentError(
       `Missing required job data: documentId=${documentId}, userId=${userId}`,
     );
   }
   if (!storageId || storageId.trim() === "") {
     const errorMsg = `Invalid or missing storageId for document ${documentId}. Received: ${storageId}`;
     jobLogger.error({ documentId, jobId: ctx.job.id, storageId }, errorMsg);
-    throw new Error(errorMsg);
+    throw new PermanentError(errorMsg);
   }
 
   const allArtifacts: DocumentArtifacts = {};
@@ -244,7 +244,7 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
     const MAX_DOCUMENT_SIZE = 200 * 1024 * 1024; // 200MB
     const meta = await storage.head(storageId);
     if (meta && meta.size > MAX_DOCUMENT_SIZE) {
-      throw new Error(
+      throw new PermanentError(
         `Document too large: ${meta.size} bytes exceeds ${MAX_DOCUMENT_SIZE} byte limit`,
       );
     }
@@ -258,6 +258,7 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
 
     // 3. Content Extraction Stage
     let extractedText = "";
+    let extractionFailed = false;
     if (useDocling) {
       currentStage = "docling_processing";
       await ctx.startStage(currentStage);
@@ -364,17 +365,17 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
             tempDir,
           );
         } catch (fallbackError: unknown) {
+          const fallbackMsg =
+            fallbackError instanceof Error
+              ? fallbackError.message
+              : String(fallbackError);
           jobLogger.warn(
-            {
-              error:
-                fallbackError instanceof Error
-                  ? fallbackError.message
-                  : String(fallbackError),
-            },
+            { error: fallbackMsg },
             "Standard extraction fallback also failed after Docling failure",
           );
-          allArtifacts.description = `Content extraction failed: ${errMsg}`;
+          allArtifacts.extractionError = `Content extraction failed: ${errMsg}; fallback also failed: ${fallbackMsg}`;
           allArtifacts.tags = ["extraction-failed"];
+          extractionFailed = true;
         }
       }
     } else {
@@ -394,46 +395,64 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
             ? extractionError.message
             : String(extractionError);
         jobLogger.warn({ error: errMsg }, "Content extraction failed");
-        allArtifacts.description = `Content extraction failed: ${errMsg}`;
+        allArtifacts.extractionError = `Content extraction failed: ${errMsg}`;
         allArtifacts.tags = ["extraction-failed"];
+        extractionFailed = true;
       }
-      jobLogger.info(
-        { textLength: extractedText.length },
-        "Standard content extraction complete.",
-      );
     }
 
     // Surface a warning if extraction produced no text
-    if (!extractedText || extractedText.trim().length === 0) {
+    if (
+      !extractionFailed &&
+      (!extractedText || extractedText.trim().length === 0)
+    ) {
       jobLogger.warn("Content extraction produced no text");
-      allArtifacts.description ??=
-        "No text could be extracted from this document";
       if (!allArtifacts.tags?.includes("extraction-failed")) {
         allArtifacts.tags = [...(allArtifacts.tags || []), "extraction-empty"];
       }
     }
 
-    await ctx.completeStage(currentStage);
+    if (extractionFailed) {
+      await ctx.failStage(
+        currentStage,
+        new Error(allArtifacts.extractionError || "Content extraction failed"),
+      );
+    } else {
+      await ctx.completeStage(currentStage);
+    }
     // extractedText is stored via extractedTxtStorageId, not inline in artifacts
 
     // 4. AI Analysis Stage
     currentStage = "ai_analysis";
     await ctx.startStage(currentStage);
-    if (extractedText && extractedText.length > 50) {
-      jobLogger.info("Starting AI metadata analysis.");
-      const aiMetadata = await generateDocumentMetadata(
-        extractedText,
-        originalFilename,
+    try {
+      if (extractedText && extractedText.length > 50) {
+        jobLogger.info("Starting AI metadata analysis.");
+        const aiMetadata = await generateDocumentMetadata(
+          extractedText,
+          originalFilename,
+        );
+        Object.assign(allArtifacts, aiMetadata);
+        jobLogger.info(
+          { title: aiMetadata.title, tags: aiMetadata.tags },
+          "AI metadata analysis complete",
+        );
+      } else {
+        jobLogger.info("Skipping AI analysis due to insufficient text.");
+      }
+      await ctx.completeStage(currentStage);
+    } catch (error) {
+      jobLogger.warn(
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "AI analysis failed, continuing with degraded results",
       );
-      Object.assign(allArtifacts, aiMetadata);
-      jobLogger.info(
-        { title: aiMetadata.title, tags: aiMetadata.tags },
-        "AI metadata analysis complete",
+      await ctx.failStage(
+        currentStage,
+        error instanceof Error ? error : new Error(String(error)),
       );
-    } else {
-      jobLogger.info("Skipping AI analysis due to insufficient text.");
     }
-    await ctx.completeStage(currentStage);
 
     // 5. PDF Generation + 6. Thumbnail Generation
     // For HTML documents, share a single Chromium browser across both stages
@@ -828,7 +847,9 @@ async function extractTextFromDocument(
   if (officeTypes.includes(mimeType))
     return extractOfficeDocumentText(tempDocPath, tempDir);
 
-  throw new Error(`Unsupported file type for text extraction: ${mimeType}`);
+  throw new PermanentError(
+    `Unsupported file type for text extraction: ${mimeType}`,
+  );
 }
 
 async function extractRTFText(
@@ -836,18 +857,14 @@ async function extractRTFText(
 ): Promise<{ text: string; html: string }> {
   try {
     const rtfString = rtfBuffer.toString();
-    const text = await new Promise<string>((resolve, reject) =>
-      rtf2text.string(rtfString, (err: Error | null, res: string) =>
-        err ? reject(err) : resolve(res || ""),
-      ),
-    );
     const html = await new Promise<string>((resolve, reject) =>
       rtfToHTML.fromString(rtfString, (err: Error | null, res: string) =>
         // oxlint-disable-next-line promise/no-multiple-resolved -- ternary ensures exactly one branch
         err ? reject(err) : resolve(res || ""),
       ),
     );
-    if (!text && !html) throw new Error("RTF converters produced no output.");
+    if (!html) throw new Error("RTF converter produced no output.");
+    const text = htmlToText(html, { wordwrap: false });
     return { text, html };
   } catch (error) {
     logger.warn(
@@ -1093,7 +1110,7 @@ async function generateDocumentMetadata(
       { error: error instanceof Error ? error.message : String(error) },
       "AI metadata generation failed",
     );
-    return { title: null, description: null, tags: [] };
+    throw error;
   }
 }
 

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { type AIMessage, callAI } from "@eclaire/ai";
-import type { JobContext } from "@eclaire/queue/core";
+import { type JobContext, PermanentError } from "@eclaire/queue/core";
 import { createChildLogger } from "../../lib/logger.js";
 import { isAudioAvailable, transcribe } from "../../lib/services/audio.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
@@ -82,6 +82,36 @@ interface VideoMetadata extends AudioMetadata {
   height?: number;
   frameRate?: number;
   videoCodec?: string;
+}
+
+interface MediaArtifacts extends VideoMetadata {
+  [key: string]: unknown;
+  thumbnailStorageId?: string;
+  waveformStorageId?: string;
+  extractedText?: string;
+  language?: string;
+  description?: string;
+  tags?: string[];
+  extractedMdStorageId?: string;
+  extractedTxtStorageId?: string;
+}
+
+interface MediaExtractedData {
+  mediaId: string;
+  mimeType: string;
+  originalFilename?: string;
+  processedAt: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
+  sourceDescription?: string;
+  metadata?: AudioMetadata | VideoMetadata;
+  thumbnail?: { storageId: string };
+  waveform?: { storageId: string };
+  transcript?: string;
+  language?: string;
+  transcriptSource?: "provider_captions" | "embedded_subtitles" | "stt" | null;
+  aiAnalysis?: Record<string, unknown>;
+  processedTags?: string[];
 }
 
 async function extractAudioMetadata(
@@ -595,7 +625,7 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
   );
 
   if (!mediaId || !userId) {
-    throw new Error(
+    throw new PermanentError(
       `Missing required job data: mediaId=${mediaId}, userId=${userId}`,
     );
   }
@@ -605,7 +635,7 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
   // For file uploads, storageId is required
   if (!isUrlImport) {
     if (!jobStorageId || jobStorageId.trim() === "") {
-      throw new Error(
+      throw new PermanentError(
         `Invalid or missing storageId for media ${mediaId}. Received: ${jobStorageId}`,
       );
     }
@@ -635,15 +665,12 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
 
   await ctx.initStages(allStages);
 
-  // biome-ignore lint/suspicious/noExplicitAny: parsed AI model output
-  const allArtifacts: Record<string, any> = {};
-  // biome-ignore lint/suspicious/noExplicitAny: parsed AI model output
-  const extractedData: Record<string, any> = {
+  const allArtifacts: MediaArtifacts = {};
+  const extractedData: MediaExtractedData = {
     mediaId,
     mimeType: effectiveMimeType,
     originalFilename: effectiveOriginalFilename,
     processedAt: new Date().toISOString(),
-    aiAnalysis: {},
   };
 
   try {
@@ -668,7 +695,7 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
               ytdlpInfo.estimatedFileSize &&
               ytdlpInfo.estimatedFileSize > MAX_MEDIA_SIZE
             ) {
-              throw new Error(
+              throw new PermanentError(
                 `Estimated file size ${Math.round(ytdlpInfo.estimatedFileSize / 1024 / 1024)}MB exceeds 500MB limit`,
               );
             }
@@ -825,7 +852,7 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
 
     const meta = await storage.head(effectiveStorageId);
     if (meta && meta.size > MAX_MEDIA_SIZE) {
-      throw new Error(
+      throw new PermanentError(
         `Media too large: ${meta.size} bytes exceeds ${MAX_MEDIA_SIZE} byte limit`,
       );
     }
@@ -833,7 +860,7 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
     const { buffer: mediaBuffer } =
       await storage.readBuffer(effectiveStorageId);
     if (mediaBuffer.length === 0)
-      throw new Error("Fetched media file is empty.");
+      throw new PermanentError("Fetched media file is empty.");
     await ctx.completeStage(STAGES.PREPARATION);
 
     // --- METADATA EXTRACTION ---
@@ -874,16 +901,20 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
           "FFprobe not available, skipping metadata extraction",
         );
       }
+      await ctx.completeStage(STAGES.METADATA_EXTRACTION, allArtifacts);
     } catch (error) {
       logger.warn(
         {
           mediaId,
           error: error instanceof Error ? error.message : String(error),
         },
-        "Metadata extraction failed, continuing",
+        "Metadata extraction failed, continuing with degraded results",
+      );
+      await ctx.failStage(
+        STAGES.METADATA_EXTRACTION,
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
-    await ctx.completeStage(STAGES.METADATA_EXTRACTION, allArtifacts);
 
     // --- WAVEFORM / THUMBNAIL GENERATION ---
     await ctx.startStage(STAGES.WAVEFORM_GENERATION);
@@ -937,19 +968,23 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
           "FFmpeg not available, skipping visual generation",
         );
       }
+      await ctx.completeStage(STAGES.WAVEFORM_GENERATION, {
+        thumbnailStorageId: allArtifacts.thumbnailStorageId,
+        waveformStorageId: allArtifacts.waveformStorageId,
+      });
     } catch (error) {
       logger.warn(
         {
           mediaId,
           error: error instanceof Error ? error.message : String(error),
         },
-        "Visual generation failed, continuing",
+        "Visual generation failed, continuing with degraded results",
+      );
+      await ctx.failStage(
+        STAGES.WAVEFORM_GENERATION,
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
-    await ctx.completeStage(STAGES.WAVEFORM_GENERATION, {
-      thumbnailStorageId: allArtifacts.thumbnailStorageId,
-      waveformStorageId: allArtifacts.waveformStorageId,
-    });
 
     // --- TRANSCRIPTION (3-tier precedence) ---
     await ctx.startStage(STAGES.TRANSCRIPTION);
@@ -1036,20 +1071,24 @@ async function processMediaJob(ctx: JobContext<MediaJobData>): Promise<void> {
       } else {
         logger.info({ mediaId }, "No transcript obtained from any source");
       }
+      await ctx.completeStage(STAGES.TRANSCRIPTION, {
+        extractedText: transcriptText || undefined,
+        language: detectedLanguage,
+        transcriptSource,
+      });
     } catch (error) {
       logger.warn(
         {
           mediaId,
           error: error instanceof Error ? error.message : String(error),
         },
-        "Transcription failed, continuing",
+        "Transcription failed, continuing with degraded results",
+      );
+      await ctx.failStage(
+        STAGES.TRANSCRIPTION,
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
-    await ctx.completeStage(STAGES.TRANSCRIPTION, {
-      extractedText: transcriptText || undefined,
-      language: detectedLanguage,
-      transcriptSource,
-    });
 
     // --- AI ANALYSIS ---
     await ctx.startStage(STAGES.AI_ANALYSIS);
@@ -1172,19 +1211,23 @@ Respond with JSON: { "description": "...", "tags": ["tag1", "tag2"], "category":
           );
         }
       }
+      await ctx.completeStage(STAGES.AI_ANALYSIS, {
+        description: allArtifacts.description,
+        tags: allArtifacts.tags,
+      });
     } catch (error) {
       logger.warn(
         {
           mediaId,
           error: error instanceof Error ? error.message : String(error),
         },
-        "AI analysis failed, continuing",
+        "AI analysis failed, continuing with degraded results",
+      );
+      await ctx.failStage(
+        STAGES.AI_ANALYSIS,
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
-    await ctx.completeStage(STAGES.AI_ANALYSIS, {
-      description: allArtifacts.description,
-      tags: allArtifacts.tags,
-    });
 
     // --- FINALIZATION ---
     await ctx.startStage(STAGES.FINALIZATION);

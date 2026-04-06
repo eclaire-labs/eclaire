@@ -1,5 +1,5 @@
 import { type AIMessage, callAI } from "@eclaire/ai";
-import type { JobContext } from "@eclaire/queue/core";
+import { type JobContext, PermanentError } from "@eclaire/queue/core";
 import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("task-processor");
@@ -100,7 +100,7 @@ async function processTaskJob(ctx: JobContext<TaskJobData>) {
   const { taskId, title, description, userId } = ctx.job.data;
 
   if (!taskId || !userId) {
-    throw new Error(
+    throw new PermanentError(
       `Missing required job data: taskId=${taskId}, userId=${userId}`,
     );
   }
