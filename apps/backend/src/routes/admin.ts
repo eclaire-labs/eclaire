@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import z from "zod/v4";
-import type { ModelConfig, ProviderConfig } from "@eclaire/ai";
+import type { ModelConfig, ProviderAuth, ProviderConfig } from "@eclaire/ai";
 import { assertInstanceAdmin } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
   createMcpServer,
   createModel,
   createProvider,
+  decryptProviderAuth,
   deleteMcpServer,
   deleteModel,
   deleteProvider,
@@ -18,6 +19,7 @@ import {
   listMcpServers,
   listModels,
   listProviders,
+  sanitizeProviderForResponse,
   setActiveModelForContext,
   testProviderConnection,
   updateMcpServer,
@@ -116,7 +118,7 @@ adminRoutes.get(
   "/providers",
   withAuth(async (c, userId) => {
     await assertInstanceAdmin(userId);
-    const items = await listProviders();
+    const items = (await listProviders()).map(sanitizeProviderForResponse);
     return c.json({ items });
   }, logger),
 );
@@ -130,7 +132,7 @@ adminRoutes.get(
     if (!provider) {
       return c.json({ error: "Provider not found" }, 404);
     }
-    return c.json(provider);
+    return c.json(sanitizeProviderForResponse(provider));
   }, logger),
 );
 
@@ -152,7 +154,10 @@ adminRoutes.post(
     const { id, ...config } = body;
     await createProvider(id, config as unknown as ProviderConfig, userId);
     const created = await getProvider(id);
-    return c.json(created, 201);
+    return c.json(
+      created ? sanitizeProviderForResponse(created) : created,
+      201,
+    );
   }, logger),
 );
 
@@ -168,7 +173,7 @@ adminRoutes.put(
       userId,
     );
     const updated = await getProvider(c.req.param("id"));
-    return c.json(updated);
+    return c.json(updated ? sanitizeProviderForResponse(updated) : updated);
   }, logger),
 );
 
@@ -493,7 +498,11 @@ adminRoutes.post(
       return c.json({ error: "Provider not found" }, 404);
     }
     try {
-      const items = await fetchProviderCatalog(provider);
+      const decrypted = {
+        ...provider,
+        auth: decryptProviderAuth(provider.auth as ProviderAuth | undefined),
+      };
+      const items = await fetchProviderCatalog(decrypted);
       return c.json({ providerId: provider.id, items });
     } catch (error) {
       const message =

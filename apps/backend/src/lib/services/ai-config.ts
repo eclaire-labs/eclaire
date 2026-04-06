@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import type {
   ModelConfig,
   ModelsConfiguration,
+  ProviderAuth,
   ProviderConfig,
   ProvidersConfiguration,
   SelectionConfiguration,
@@ -16,12 +17,65 @@ import type {
 import type { ImportModelsResult } from "./ai-import-types.js";
 import { setInlineConfig } from "@eclaire/ai";
 import { db, schema } from "../../db/index.js";
+import {
+  encrypt,
+  decrypt,
+  isEncryptedValue,
+  isEncryptionConfigured,
+} from "../encryption.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("services:ai-config");
 
 const { aiProviders, aiModels, aiModelSelection, mcpServers } = schema;
+
+const ENV_VAR_PATTERN = /\$\{ENV:[^}]+\}/;
+
+/**
+ * Encrypt a provider auth value if it's a literal secret (not an env var reference).
+ * Returns a new auth object with the value encrypted, or the original if no encryption needed.
+ */
+function encryptProviderAuth(
+  auth: ProviderAuth | undefined,
+): ProviderAuth | undefined {
+  if (!auth?.value || !isEncryptionConfigured()) return auth;
+  // Don't encrypt env var references or already-encrypted values
+  if (ENV_VAR_PATTERN.test(auth.value) || isEncryptedValue(auth.value))
+    return auth;
+  return { ...auth, value: encrypt(auth.value) };
+}
+
+/**
+ * Decrypt a provider auth value if it was encrypted at rest.
+ * Returns a new auth object with the value decrypted, or the original if not encrypted.
+ */
+export function decryptProviderAuth(
+  auth: ProviderAuth | undefined,
+): ProviderAuth | undefined {
+  if (!auth?.value || !isEncryptionConfigured()) return auth;
+  if (!isEncryptedValue(auth.value)) return auth;
+  return { ...auth, value: decrypt(auth.value) };
+}
+
+/**
+ * Mask sensitive auth values for API responses.
+ * Env var references like ${ENV:KEY} are shown as-is (not secrets).
+ * Literal/encrypted values are replaced with a masked placeholder.
+ */
+export function sanitizeProviderForResponse<T extends { auth?: unknown }>(
+  provider: T,
+): T {
+  const auth = provider.auth as ProviderAuth | undefined;
+  if (!auth?.value) return provider;
+  // Env var references are safe to show
+  if (ENV_VAR_PATTERN.test(auth.value)) return provider;
+  // Mask literal or encrypted values
+  return {
+    ...provider,
+    auth: { ...auth, value: "****" },
+  };
+}
 
 // =============================================================================
 // Providers
@@ -50,7 +104,7 @@ export async function createProvider(
     id,
     dialect: config.dialect,
     baseUrl: config.baseUrl,
-    auth: config.auth,
+    auth: encryptProviderAuth(config.auth) ?? null,
     headers: config.headers ?? null,
     engine: config.engine ?? null,
     overrides: config.overrides ?? null,
@@ -75,7 +129,9 @@ export async function updateProvider(
     .set({
       ...(config.dialect !== undefined && { dialect: config.dialect }),
       ...(config.baseUrl !== undefined && { baseUrl: config.baseUrl }),
-      ...(config.auth !== undefined && { auth: config.auth }),
+      ...(config.auth !== undefined && {
+        auth: encryptProviderAuth(config.auth) ?? null,
+      }),
       ...(config.headers !== undefined && { headers: config.headers }),
       ...(config.engine !== undefined && { engine: config.engine }),
       ...(config.overrides !== undefined && { overrides: config.overrides }),
@@ -120,11 +176,7 @@ export async function testProviderConnection(providerId: string): Promise<{
   }
   const testUrl = `${baseUrl.replace(/\/+$/, "")}/models`;
   const headers: Record<string, string> = {};
-  const auth = provider.auth as {
-    type: string;
-    header?: string;
-    value?: string;
-  };
+  const auth = decryptProviderAuth(provider.auth as ProviderAuth | undefined);
   if (auth?.type === "bearer" && auth.value) {
     headers.Authorization = `Bearer ${interpolateEnvVars(auth.value, false)}`;
   } else if (auth?.type === "header" && auth.header && auth.value) {
@@ -396,7 +448,9 @@ export async function loadConfigFromDb(): Promise<boolean> {
     providers[row.id] = {
       dialect: row.dialect as ProviderConfig["dialect"],
       baseUrl: row.baseUrl ?? "",
-      auth: row.auth as ProviderConfig["auth"],
+      auth: decryptProviderAuth(
+        row.auth as ProviderAuth,
+      ) as ProviderConfig["auth"],
       headers: (row.headers as ProviderConfig["headers"]) ?? undefined,
       engine: (row.engine as ProviderConfig["engine"]) ?? undefined,
       overrides: (row.overrides as ProviderConfig["overrides"]) ?? undefined,
