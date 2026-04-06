@@ -7,7 +7,7 @@
 
 const DEFAULT_BACKEND_URL = "http://localhost:3000";
 
-function getBackendUrl(): string {
+export function getBackendUrl(): string {
   return (process.env.ECLAIRE_BACKEND_URL || DEFAULT_BACKEND_URL).replace(
     /\/$/,
     "",

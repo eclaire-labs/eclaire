@@ -272,12 +272,9 @@ async function evaluateStepCompletion(
     }
 
     case "health_check":
-      // Health check is evaluated on demand — the step is considered
-      // "complete" once the user has run it at least once and the critical
-      // checks (DB + at least one provider) passed. We don't store a flag
-      // because health is ephemeral. Instead, treat it as complete if the
-      // later steps (registration_policy) have been reached.
-      return settings["instance.registrationEnabled"] !== undefined;
+      // Health check is complete once the user has explicitly run it
+      // (we store a timestamp when the step is advanced).
+      return typeof settings["onboarding.healthCheckRanAt"] === "string";
 
     case "registration_policy":
       return settings["instance.registrationEnabled"] !== undefined;
@@ -303,6 +300,24 @@ export async function advanceStep(
   userId: string | null,
 ): Promise<StepAdvanceResult> {
   try {
+    // Enforce step ordering: all prior steps must be complete
+    const stepIndex = ONBOARDING_STEPS.indexOf(step);
+    if (stepIndex > 0) {
+      const settings = await getAllInstanceSettings();
+      for (let i = 0; i < stepIndex; i++) {
+        const priorStep = ONBOARDING_STEPS[i];
+        if (!priorStep) continue;
+        const isComplete = await evaluateStepCompletion(priorStep, settings);
+        if (!isComplete) {
+          return {
+            ok: false,
+            state: await getOnboardingState(),
+            error: `Cannot advance to "${step}": step "${priorStep}" is not complete`,
+          };
+        }
+      }
+    }
+
     switch (step) {
       case "welcome":
         // No-op, welcome is always complete
@@ -358,12 +373,15 @@ export async function advanceStep(
           const setupPreset = getSetupPresetById(presetId);
           // For the "custom" preset (no providers in the definition),
           // create a generic OpenAI-compatible provider from the supplied baseUrl.
-          if (
-            setupPreset &&
-            setupPreset.providers.length === 0 &&
-            typeof data.baseUrl === "string" &&
-            data.baseUrl
-          ) {
+          if (setupPreset && setupPreset.providers.length === 0) {
+            if (typeof data.baseUrl !== "string" || !data.baseUrl) {
+              return {
+                ok: false,
+                state: await getOnboardingState(),
+                error:
+                  "baseUrl is required for the custom preset. Provide the URL of your OpenAI-compatible API.",
+              };
+            }
             const existingCustom = await getProvider("custom");
             if (!existingCustom) {
               const auth: ProviderConfig["auth"] =
@@ -373,7 +391,7 @@ export async function advanceStep(
               await createProvider(
                 "custom",
                 {
-                  dialect: "openai" as Dialect,
+                  dialect: "openai_compatible" as Dialect,
                   baseUrl: data.baseUrl,
                   auth,
                 },
@@ -408,11 +426,12 @@ export async function advanceStep(
       }
 
       case "health_check":
-        // Health check doesn't persist — it's evaluated on demand.
-        // Advance past it by updating the currentStep hint.
-        await setInstanceSetting(
-          "onboarding.currentStep",
-          "registration_policy",
+        // Record that the health check step was explicitly visited.
+        await setInstanceSettings(
+          {
+            "onboarding.healthCheckRanAt": new Date().toISOString(),
+            "onboarding.currentStep": "registration_policy",
+          },
           userId ?? undefined,
         );
         break;
@@ -534,6 +553,16 @@ export async function applySetupPreset(
         "Created provider from setup preset",
       );
     }
+    // If the preset defines providers but none were created (and none
+    // already existed), the preset catalog is broken — fail loudly.
+    if (setupPreset.providers.length > 0 && createdProviderIds.length === 0) {
+      const existingProviders = await listProviders();
+      if (existingProviders.length === 0) {
+        throw new Error(
+          `Setup preset "${presetId}" defines ${setupPreset.providers.length} provider(s) but none could be created. Check provider preset catalog.`,
+        );
+      }
+    }
   } catch (error) {
     // Roll back any providers created in this batch
     for (const id of createdProviderIds) {
@@ -635,10 +664,25 @@ async function checkProviders(): Promise<
  * from marking a fresh instance as "completed" before an admin is created.
  */
 export async function completeOnboarding(userId: string | null): Promise<void> {
-  const adminExists = await hasAdmin();
+  const [adminExists, providers, models, selections] = await Promise.all([
+    hasAdmin(),
+    listProviders(),
+    listModels(),
+    getAllSelections(),
+  ]);
   if (!adminExists) {
     throw new Error(
       "Cannot complete onboarding: no admin account exists. Create an admin first.",
+    );
+  }
+  if (providers.length === 0) {
+    throw new Error(
+      "Cannot complete onboarding: no AI providers configured. Configure a provider first.",
+    );
+  }
+  if (models.length === 0 || !selections.backend) {
+    throw new Error(
+      "Cannot complete onboarding: no AI models configured or no backend model selected.",
     );
   }
 
@@ -667,6 +711,7 @@ export async function resetOnboarding(userId: string): Promise<void> {
       "onboarding.selectedPreset": "",
       "onboarding.completedAt": "",
       "onboarding.completedByUserId": "",
+      "onboarding.healthCheckRanAt": "",
     },
     userId,
   );

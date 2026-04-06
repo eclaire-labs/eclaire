@@ -24,6 +24,7 @@ export const KNOWN_SETTINGS_KEYS = {
   "onboarding.selectedPreset": "string",
   "onboarding.completedAt": "string",
   "onboarding.completedByUserId": "string",
+  "onboarding.healthCheckRanAt": "string",
 } as const;
 
 type SettingsKey = keyof typeof KNOWN_SETTINGS_KEYS;

@@ -17,6 +17,7 @@ import {
   completeOnboardingViaApi,
   fetchOnboardingState,
   fetchSetupPresets,
+  getBackendUrl,
   registerUser,
   resetOnboardingViaApi,
   runOnboardingHealthCheck,
@@ -142,12 +143,21 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
       }
 
       s.start("Saving preset selection...");
-      const result = await advanceOnboardingStep("choose_preset", {
-        presetId,
-      });
-      s.stop(result.ok ? "Preset selected" : "Failed to save preset");
-      if (result.warning) {
-        log.warn(result.warning);
+      try {
+        const result = await advanceOnboardingStep("choose_preset", {
+          presetId,
+        });
+        s.stop("Preset selected");
+        if (result.warning) {
+          log.warn(result.warning);
+        }
+      } catch (error) {
+        s.stop("Failed to save preset");
+        log.error(
+          error instanceof Error ? error.message : "Preset selection failed",
+        );
+        cancel("Setup cancelled");
+        return;
       }
     } else {
       log.step(`Preset: ${chalk.cyan(state.selectedPreset ?? "unknown")}`);
@@ -163,6 +173,8 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
       const preset = presets?.find((p) => p.id === state.selectedPreset);
 
       let apiKey: string | undefined;
+      let baseUrl: string | undefined;
+
       if (preset?.requiresApiKey) {
         apiKey = await passwordInput({
           message: `Enter your ${preset.name} API key:`,
@@ -171,14 +183,44 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
         });
       }
 
+      // Custom preset requires a base URL
+      if (preset?.id === "custom") {
+        baseUrl = await textInput({
+          message: "Base URL of your OpenAI-compatible API:",
+          placeholder: "http://127.0.0.1:8080/v1",
+          validate: (v) =>
+            v.trim().length === 0 ? "Base URL is required" : undefined,
+        });
+
+        const wantApiKey = await confirm({
+          message: "Does this provider require an API key?",
+          initialValue: false,
+        });
+        if (wantApiKey) {
+          apiKey = await passwordInput({
+            message: "API key:",
+            validate: (v) =>
+              v.length < 1 ? "API key cannot be empty" : undefined,
+          });
+        }
+      }
+
       s.start("Creating provider(s)...");
-      const result = await advanceOnboardingStep("configure_provider", {
-        presetId: state.selectedPreset,
-        ...(apiKey && { apiKey }),
-      });
-      s.stop(
-        result.ok ? "Provider(s) configured" : "Failed to configure provider",
-      );
+      try {
+        await advanceOnboardingStep("configure_provider", {
+          presetId: state.selectedPreset,
+          ...(apiKey && { apiKey }),
+          ...(baseUrl && { baseUrl }),
+        });
+        s.stop("Provider(s) configured");
+      } catch (error) {
+        s.stop("Failed to configure provider");
+        log.error(
+          error instanceof Error ? error.message : "Provider setup failed",
+        );
+        cancel("Setup cancelled");
+        return;
+      }
     } else {
       log.step("Provider: configured");
     }
@@ -254,13 +296,20 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
       }
 
       s.start("Importing models...");
-      const modelResult = await advanceOnboardingStep("select_models", {
-        models,
-        setDefaults,
-      });
-      s.stop(
-        modelResult.ok ? "Models configured" : "Failed to configure models",
-      );
+      try {
+        await advanceOnboardingStep("select_models", {
+          models,
+          setDefaults,
+        });
+        s.stop("Models configured");
+      } catch (error) {
+        s.stop("Failed to configure models");
+        log.error(
+          error instanceof Error ? error.message : "Model import failed",
+        );
+        cancel("Setup cancelled");
+        return;
+      }
     } else {
       log.step("Models: configured");
     }
@@ -314,21 +363,40 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
       });
 
       s.start("Saving registration policy...");
-      await advanceOnboardingStep("registration_policy", {
-        registrationEnabled,
-      });
-      s.stop(`Registration: ${registrationEnabled ? "open" : "admin-only"}`);
+      try {
+        await advanceOnboardingStep("registration_policy", {
+          registrationEnabled,
+        });
+        s.stop(`Registration: ${registrationEnabled ? "open" : "admin-only"}`);
+      } catch (error) {
+        s.stop("Failed to save registration policy");
+        log.error(
+          error instanceof Error
+            ? error.message
+            : "Registration policy update failed",
+        );
+        cancel("Setup cancelled");
+        return;
+      }
     } else {
       log.step("Registration: configured");
     }
 
     // Step: Complete
     s.start("Completing setup...");
-    await completeOnboardingViaApi();
-    s.stop("Setup complete!");
+    try {
+      await completeOnboardingViaApi();
+      s.stop("Setup complete!");
+    } catch (error) {
+      s.stop("Failed to complete setup");
+      log.error(error instanceof Error ? error.message : "Completion failed");
+      cancel("Setup cancelled");
+      return;
+    }
 
+    const url = getBackendUrl();
     outro(
-      `${icons.success} Eclaire is ready! Open ${chalk.cyan("http://localhost:3000")} to get started.`,
+      `${icons.success} Eclaire is ready! Open ${chalk.cyan(url)} to get started.`,
     );
   } catch (error) {
     if (isCancelled(error)) {

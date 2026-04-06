@@ -13,6 +13,7 @@ import {
   assertInstanceAdmin,
   getAuthenticatedPrincipal,
 } from "../lib/auth-utils.js";
+import { ForbiddenError } from "../lib/errors.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
 type HonoContext = Context<{ Variables: RouteVariables }>;
@@ -48,10 +49,7 @@ export function withOnboardingAuth(handler: OnboardingHandler, logger: Logger) {
       await assertInstanceAdmin(principal.ownerUserId);
       return await handler(c, principal.ownerUserId);
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("admin access required")
-      ) {
+      if (error instanceof ForbiddenError) {
         return c.json({ error: "Instance admin access required" }, 403);
       }
       logger.error(

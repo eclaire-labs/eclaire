@@ -127,7 +127,6 @@ export function SelectModelsStep({
       }
 
       // Use onboarding step endpoint so model import goes through the shared engine
-      toast.success("Models configured!");
       onNext({ models, setDefaults });
     } catch (error) {
       toast.error("Failed to import models", {

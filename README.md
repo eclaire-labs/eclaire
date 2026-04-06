@@ -168,9 +168,7 @@ llama-server -hf unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --ctx-size 16384 --port 
 # 2. Start Eclaire
 docker compose up -d
 ```
-Open http://localhost:3000 and click "Sign up" to create your account.
-
-See [AI Model Configuration](docs/ai-models.md) to use other AI providers and models.
+Complete the setup wizard — open http://localhost:3000 in your browser, or run `./eclaire onboard` for CLI setup. The wizard guides you through admin account creation, AI provider configuration, and model selection.
 
 
 
@@ -199,7 +197,7 @@ Eclaire uses AI models for two purposes:
 Use the CLI to manage models:
 
 ```bash
-docker compose run --rm eclaire model list
+./eclaire model list
 ```
 
 See [AI Model Configuration](docs/ai-models.md) for detailed setup and model recommendations. 

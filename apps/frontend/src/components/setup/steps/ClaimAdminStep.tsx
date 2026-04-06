@@ -67,8 +67,7 @@ export function ClaimAdminStep({ state, onNext, isAdvancing }: StepProps) {
       });
       if (error) throw new Error(error.message || "Registration failed");
       toast.success("Account created! You are now the instance admin.");
-      // Give the backend a moment to promote to admin, then advance
-      setTimeout(() => onNext(), 500);
+      onNext();
     } catch (error) {
       toast.error("Registration failed", {
         description:
