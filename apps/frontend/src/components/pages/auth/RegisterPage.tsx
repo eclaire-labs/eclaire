@@ -79,7 +79,7 @@ export default function RegisterPage() {
       toast.success("Account created!", {
         description: "Welcome to Eclaire! You're now signed in.",
       });
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/" });
     } catch (error) {
       toast.error("Registration failed", {
         description:

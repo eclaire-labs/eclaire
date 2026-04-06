@@ -59,24 +59,12 @@ export const Route = createFileRoute("/_authenticated")({
     // Redirect admins to /setup if onboarding is incomplete
     if (context.auth.user?.isInstanceAdmin) {
       try {
-        const cached = sessionStorage.getItem("eclaire_onboarding_complete");
-        if (cached === "true") return;
-      } catch {
-        // sessionStorage unavailable
-      }
-      try {
         const res = await fetch("/api/onboarding/state", {
           credentials: "include",
         });
         if (res.ok) {
           const state = (await res.json()) as { status: string };
-          if (state.status === "completed") {
-            try {
-              sessionStorage.setItem("eclaire_onboarding_complete", "true");
-            } catch {
-              // sessionStorage unavailable
-            }
-          } else {
+          if (state.status !== "completed") {
             throw redirect({ to: "/setup" });
           }
         }

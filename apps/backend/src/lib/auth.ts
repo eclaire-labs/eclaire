@@ -12,6 +12,7 @@ import {
   isEncryptionConfigured,
 } from "./encryption.js";
 import { createChildLogger } from "./logger.js";
+import { ensureInstanceAdmin } from "./services/admin.js";
 import { deleteQueueJobsByUserId } from "./services/user-data.js";
 
 const logger = createChildLogger("auth");
@@ -170,6 +171,20 @@ export const auth = betterAuth({
     "http://frontend:3000", // Docker container name — not externally routable
   ]),
   databaseHooks: {
+    user: {
+      create: {
+        after: async (_user) => {
+          try {
+            await ensureInstanceAdmin();
+          } catch (e) {
+            logger.error(
+              { error: e instanceof Error ? e.message : String(e) },
+              "Failed to ensure instance admin during user creation hook",
+            );
+          }
+        },
+      },
+    },
     account: {
       create: {
         before: async (account) => {

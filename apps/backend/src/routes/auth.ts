@@ -4,7 +4,6 @@ import { eq } from "drizzle-orm";
 import { auth } from "../lib/auth.js";
 import { db, schema } from "../db/index.js";
 import { createChildLogger } from "../lib/logger.js";
-import { ensureInstanceAdmin } from "../lib/services/admin.js";
 import { getInstanceSetting } from "../lib/services/instance-settings.js";
 import {
   recordLoginHistory,
@@ -58,9 +57,6 @@ async function recordAuthenticationEvent(
         });
       }
     } else if (path.includes("/sign-up/email") && responseData.user) {
-      // Auto-promote first user to admin on registration
-      await ensureInstanceAdmin();
-
       await recordLoginHistory({
         userId: responseData.user.id,
         sessionId: responseData.token || "session",
