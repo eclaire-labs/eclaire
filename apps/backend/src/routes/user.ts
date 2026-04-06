@@ -326,63 +326,71 @@ userRoutes.get(
 // GET /api/user/connections - List connected social accounts
 userRoutes.get(
   "/connections",
-  withAuth(async (c, userId) => {
-    // Only return non-credential (social provider) accounts, exclude the email/password "credential" account
-    const connections = await db
-      .select({
-        id: schema.accounts.id,
-        providerId: schema.accounts.providerId,
-        accountId: schema.accounts.accountId,
-        scope: schema.accounts.scope,
-        createdAt: schema.accounts.createdAt,
-      })
-      .from(schema.accounts)
-      .where(
-        and(
-          eq(schema.accounts.userId, userId),
-          // credential accounts have a passwordHash set; social accounts do not
-        ),
-      );
+  withAuth(
+    async (c, userId) => {
+      // Only return non-credential (social provider) accounts, exclude the email/password "credential" account
+      const connections = await db
+        .select({
+          id: schema.accounts.id,
+          providerId: schema.accounts.providerId,
+          accountId: schema.accounts.accountId,
+          scope: schema.accounts.scope,
+          createdAt: schema.accounts.createdAt,
+        })
+        .from(schema.accounts)
+        .where(
+          and(
+            eq(schema.accounts.userId, userId),
+            // credential accounts have a passwordHash set; social accounts do not
+          ),
+        );
 
-    // Filter to social provider accounts only (no passwordHash = social provider)
-    const socialConnections = connections
-      .filter((acc) => acc.providerId !== "credential")
-      .map((acc) => ({
-        id: acc.id,
-        provider: acc.providerId,
-        accountId: acc.accountId,
-        scope: acc.scope,
-        connectedAt: acc.createdAt,
-      }));
+      // Filter to social provider accounts only (no passwordHash = social provider)
+      const socialConnections = connections
+        .filter((acc) => acc.providerId !== "credential")
+        .map((acc) => ({
+          id: acc.id,
+          provider: acc.providerId,
+          accountId: acc.accountId,
+          scope: acc.scope,
+          connectedAt: acc.createdAt,
+        }));
 
-    return c.json({ items: socialConnections });
-  }, logger),
+      return c.json({ items: socialConnections });
+    },
+    logger,
+    { allowApiKey: false },
+  ),
 );
 
 // DELETE /api/user/connections/:provider - Disconnect a social account
 userRoutes.delete(
   "/connections/:provider",
-  withAuth(async (c, userId) => {
-    const provider = c.req.param("provider");
+  withAuth(
+    async (c, userId) => {
+      const provider = c.req.param("provider");
 
-    const deleted = await db
-      .delete(schema.accounts)
-      .where(
-        and(
-          eq(schema.accounts.userId, userId),
-          eq(schema.accounts.providerId, provider),
-        ),
-      )
-      .returning({ id: schema.accounts.id });
+      const deleted = await db
+        .delete(schema.accounts)
+        .where(
+          and(
+            eq(schema.accounts.userId, userId),
+            eq(schema.accounts.providerId, provider),
+          ),
+        )
+        .returning({ id: schema.accounts.id });
 
-    if (deleted.length === 0) {
-      return c.json({ error: "Connection not found" }, 404);
-    }
+      if (deleted.length === 0) {
+        return c.json({ error: "Connection not found" }, 404);
+      }
 
-    logger.info({ userId, provider }, "Social account disconnected");
+      logger.info({ userId, provider }, "Social account disconnected");
 
-    return c.json({ message: `${provider} account disconnected` });
-  }, logger),
+      return c.json({ message: `${provider} account disconnected` });
+    },
+    logger,
+    { allowApiKey: false },
+  ),
 );
 
 // GET /api/user/:userId - Get user information by ID (for workers/AI assistants)

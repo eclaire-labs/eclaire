@@ -71,6 +71,61 @@ async function findExistingTweetIds(
 }
 
 /**
+ * Filter the page-level `includes` object to only the entries relevant to a
+ * specific tweet, avoiding duplicating the full shared payload across every
+ * bookmark row.
+ */
+function filterIncludesForTweet(
+  // biome-ignore lint/suspicious/noExplicitAny: X API tweet data shape
+  tweet: any,
+  // biome-ignore lint/suspicious/noExplicitAny: X API includes object
+  includes: any,
+  // biome-ignore lint/suspicious/noExplicitAny: X API includes subset
+): any {
+  // biome-ignore lint/suspicious/noExplicitAny: building a filtered includes subset
+  const filtered: any = {};
+
+  // Collect relevant user IDs: tweet author + referenced tweet authors
+  const userIds = new Set<string>();
+  if (tweet.author_id) userIds.add(tweet.author_id);
+
+  const referencedTweetIds = new Set<string>(
+    (tweet.referenced_tweets || []).map((r: { id: string }) => r.id),
+  );
+
+  // Filter referenced tweets and collect their author IDs
+  if (includes.tweets) {
+    filtered.tweets = includes.tweets.filter(
+      // biome-ignore lint/suspicious/noExplicitAny: X API tweet object
+      (t: any) => {
+        if (referencedTweetIds.has(t.id)) {
+          if (t.author_id) userIds.add(t.author_id);
+          return true;
+        }
+        return false;
+      },
+    );
+  }
+
+  // Filter users to only relevant author IDs
+  if (includes.users) {
+    // biome-ignore lint/suspicious/noExplicitAny: X API user object
+    filtered.users = includes.users.filter((u: any) => userIds.has(u.id));
+  }
+
+  // Filter media to only keys referenced by this tweet's attachments
+  const mediaKeys = new Set<string>(tweet.attachments?.media_keys || []);
+  if (includes.media && mediaKeys.size > 0) {
+    // biome-ignore lint/suspicious/noExplicitAny: X API media object
+    filtered.media = includes.media.filter((m: any) =>
+      mediaKeys.has(m.media_key),
+    );
+  }
+
+  return filtered;
+}
+
+/**
  * Sync a user's X bookmarks into Eclaire.
  *
  * Fetches the user's bookmarks from the X API, deduplicates against existing
@@ -164,8 +219,8 @@ export async function syncXBookmarks(
 
       try {
         // Pass the pre-fetched tweet data so the handler skips the API call.
-        // The includes from the page are shared across tweets but the extractor
-        // resolves by ID, so extra entries are harmless.
+        // includes is filtered to only the entries relevant to this tweet to
+        // avoid duplicating the full page payload across every bookmark row.
         await createBookmarkAndQueueJob(
           {
             url: tweetUrl,
@@ -173,7 +228,10 @@ export async function syncXBookmarks(
             rawMetadata: {
               title: tweet.text?.slice(0, 100) || `Tweet ${info.tweetId}`,
               importedFrom: "x-bookmarks-sync",
-              twitterApiData: { data: tweet, includes },
+              twitterApiData: {
+                data: tweet,
+                includes: filterIncludesForTweet(tweet, includes),
+              },
             },
             userAgent: "Eclaire X Bookmarks Sync",
           },

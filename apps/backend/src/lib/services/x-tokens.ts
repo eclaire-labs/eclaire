@@ -1,9 +1,37 @@
 import https from "node:https";
 import { eq, and } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import {
+  decrypt,
+  encrypt,
+  isEncryptedValue,
+  isEncryptionConfigured,
+} from "../encryption.js";
 import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("x-tokens");
+
+/**
+ * Decrypt a token value if it is encrypted (v1: prefix), otherwise return as-is.
+ * Handles backward compatibility with existing plaintext tokens.
+ */
+function decryptToken(value: string): string {
+  if (isEncryptionConfigured() && isEncryptedValue(value)) {
+    return decrypt(value);
+  }
+  return value;
+}
+
+/**
+ * Encrypt a token value if encryption is configured. Returns plaintext in dev
+ * when MASTER_ENCRYPTION_KEY is not set.
+ */
+function encryptToken(value: string): string {
+  if (isEncryptionConfigured() && !isEncryptedValue(value)) {
+    return encrypt(value);
+  }
+  return value;
+}
 
 const X_TOKEN_ENDPOINT = "https://api.x.com/2/oauth2/token";
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
@@ -59,6 +87,8 @@ export async function getXTokenForUser(
     return null;
   }
 
+  const accessToken = decryptToken(account.accessToken);
+
   // Check if token is still valid (with buffer)
   const now = Date.now();
   const expiresAt = account.accessTokenExpiresAt
@@ -67,7 +97,7 @@ export async function getXTokenForUser(
 
   if (expiresAt > now + TOKEN_EXPIRY_BUFFER_MS) {
     return {
-      accessToken: account.accessToken,
+      accessToken,
       xUserId: account.accountId,
     };
   }
@@ -81,13 +111,10 @@ export async function getXTokenForUser(
     return null;
   }
 
+  const refreshToken = decryptToken(account.refreshToken);
+
   logger.info({ userId }, "Refreshing expired X access token");
-  return refreshXToken(
-    userId,
-    account.id,
-    account.refreshToken,
-    account.accountId,
-  );
+  return refreshXToken(userId, account.id, refreshToken, account.accountId);
 }
 
 /**
@@ -182,13 +209,13 @@ async function refreshXToken(
       return null;
     }
 
-    // Update tokens in database
+    // Update tokens in database (encrypt before writing since this bypasses Better Auth hooks)
     const expiresAt = new Date(Date.now() + (expiresIn || 7200) * 1000);
     await db
       .update(schema.accounts)
       .set({
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken || refreshToken, // X may or may not rotate the refresh token
+        accessToken: encryptToken(newAccessToken),
+        refreshToken: encryptToken(newRefreshToken || refreshToken), // X may or may not rotate the refresh token
         accessTokenExpiresAt: expiresAt,
         updatedAt: new Date(),
       })

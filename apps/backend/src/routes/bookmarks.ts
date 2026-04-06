@@ -387,28 +387,32 @@ bookmarksRoutes.post(
 // POST /api/bookmarks/x-sync - Sync bookmarks from user's X account
 bookmarksRoutes.post(
   "/x-sync",
-  withAuth(async (c, userId) => {
-    try {
-      const result = await syncXBookmarks(userId);
+  withAuth(
+    async (c, userId) => {
+      try {
+        const result = await syncXBookmarks(userId);
 
-      return c.json({
-        message: `Imported ${result.imported} bookmarks from X`,
-        imported: result.imported,
-        skipped: result.skipped,
-        total: result.total,
-        errors: result.errors.length > 0 ? result.errors : undefined,
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to sync X bookmarks";
-      logger.error(
-        {
-          userId,
-          error: error instanceof Error ? error.message : String(error),
-        },
-        "X bookmarks sync failed",
-      );
-      return c.json({ error: message }, 400);
-    }
-  }, logger),
+        return c.json({
+          message: `Imported ${result.imported} bookmarks from X`,
+          imported: result.imported,
+          skipped: result.skipped,
+          total: result.total,
+          errors: result.errors.length > 0 ? result.errors : undefined,
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to sync X bookmarks";
+        logger.error(
+          {
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "X bookmarks sync failed",
+        );
+        return c.json({ error: message }, 400);
+      }
+    },
+    logger,
+    { allowApiKey: false },
+  ),
 );

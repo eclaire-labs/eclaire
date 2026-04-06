@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "../../../db/index.js";
 import { createChildLogger } from "../../../lib/logger.js";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
-import { TwitterApiClient } from "../twitter-api-client.js";
+import { TWITTER_HOSTNAMES, TwitterApiClient } from "../twitter-api-client.js";
 import { extractTwitterData } from "../twitter-extractor.js";
 import {
   generateTwitterHTMLNoReplies,
@@ -288,12 +288,7 @@ export class TwitterApiBookmarkHandler implements BookmarkHandler {
   canHandle(url: string): boolean {
     try {
       const hostname = new URL(url).hostname.toLowerCase();
-      return (
-        hostname === "twitter.com" ||
-        hostname === "www.twitter.com" ||
-        hostname === "x.com" ||
-        hostname === "www.x.com"
-      );
+      return TWITTER_HOSTNAMES.has(hostname);
     } catch {
       return false;
     }

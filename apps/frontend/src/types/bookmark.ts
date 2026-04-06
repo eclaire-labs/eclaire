@@ -8,26 +8,35 @@ export interface Bookmark extends ApiBookmark {
 // Frontend-only metadata display types
 
 export interface TwitterMetadata {
+  // Engagement stats
   replies: number;
   retweets: number;
   likes: number;
   bookmarks: number;
-  views: number;
+  impressions: number;
+  quotes: number;
+
+  // Author info
   author_id: string;
   author_name: string;
-  author_screen_name: string;
-  author_verified: boolean;
+  author_username: string;
+  author_verified_type: string | null;
   author_profile_image: string;
-  tweet_type: "text" | "image" | "video" | "link" | "thread";
+
+  // Content classification
+  tweet_type: "tweet" | "reply" | "retweet" | "quote";
   has_media: boolean;
   media_count: number;
+  media_types: string[];
   has_links: boolean;
   link_count: number;
+
+  // Temporal
   created_at: string;
-  age_category: "fresh" | "recent" | "viral";
-  is_thread: boolean;
-  reply_count_actual: number;
-  has_author_replies: boolean;
+  age_category: "fresh" | "recent" | "older";
+  lang: string;
+
+  // Content analysis
   text_length: number;
 }
 

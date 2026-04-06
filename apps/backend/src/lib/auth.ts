@@ -6,6 +6,11 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { twitter } from "better-auth/social-providers";
 import { config } from "../config/index.js";
 import { db, dbType, schema } from "../db/index.js"; // Your drizzle database instance and conditional schema
+import {
+  encrypt,
+  isEncryptedValue,
+  isEncryptionConfigured,
+} from "./encryption.js";
 import { createChildLogger } from "./logger.js";
 import { deleteQueueJobsByUserId } from "./services/user-data.js";
 
@@ -75,6 +80,33 @@ function localhostVariants(urls: string[]): string[] {
   return [...set];
 }
 
+/**
+ * Encrypt token fields on an account record before it is written to the DB.
+ * Returns the (possibly mutated) account. No-ops when encryption is not
+ * configured (dev without MASTER_ENCRYPTION_KEY) or fields are already encrypted.
+ */
+function encryptAccountTokens<T extends Record<string, unknown>>(
+  account: T,
+): T {
+  if (!isEncryptionConfigured()) return account;
+
+  const tokenFields = ["accessToken", "refreshToken", "idToken"] as const;
+
+  // biome-ignore lint/suspicious/noExplicitAny: mutating a generic record
+  const out: any = { ...account };
+  for (const field of tokenFields) {
+    const value = out[field];
+    if (
+      typeof value === "string" &&
+      value.length > 0 &&
+      !isEncryptedValue(value)
+    ) {
+      out[field] = encrypt(value);
+    }
+  }
+  return out as T;
+}
+
 export const auth = betterAuth({
   baseURL: config.services.backendUrl,
   database: initializedAdapter,
@@ -137,6 +169,22 @@ export const auth = betterAuth({
     config.services.backendUrl, // Electron desktop client loads the backend-served SPA
     "http://frontend:3000", // Docker container name — not externally routable
   ]),
+  databaseHooks: {
+    account: {
+      create: {
+        before: async (account) => {
+          // Credential accounts have no OAuth tokens to encrypt
+          if (account.providerId === "credential") return;
+          return { data: encryptAccountTokens(account) };
+        },
+      },
+      update: {
+        before: async (account) => {
+          return { data: encryptAccountTokens(account) };
+        },
+      },
+    },
+  },
   advanced: {
     database: {
       generateId: (options) => {

@@ -788,12 +788,13 @@ export function BookmarkDetailClient() {
                           <span className="font-medium text-sm">
                             {bookmark.rawMetadata.twitter.author_name}
                           </span>
-                          {bookmark.rawMetadata.twitter.author_verified && (
+                          {bookmark.rawMetadata.twitter
+                            .author_verified_type && (
                             <Shield className="h-3 w-3 text-blue-500" />
                           )}
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          @{bookmark.rawMetadata.twitter.author_screen_name}
+                          @{bookmark.rawMetadata.twitter.author_username}
                         </span>
                       </div>
                     </div>
@@ -815,7 +816,7 @@ export function BookmarkDetailClient() {
                         <Badge
                           variant={
                             bookmark.rawMetadata.twitter.age_category ===
-                            "viral"
+                            "older"
                               ? "default"
                               : bookmark.rawMetadata.twitter.age_category ===
                                   "fresh"
@@ -865,32 +866,25 @@ export function BookmarkDetailClient() {
                     <div>
                       <Label className="flex items-center gap-2">
                         <Eye className="h-4 w-4" />
-                        Views
+                        Impressions
                       </Label>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {bookmark.rawMetadata.twitter.views > 0
-                          ? formatCount(bookmark.rawMetadata.twitter.views)
+                        {bookmark.rawMetadata.twitter.impressions > 0
+                          ? formatCount(
+                              bookmark.rawMetadata.twitter.impressions,
+                            )
                           : "N/A"}
                       </p>
                     </div>
                   </div>
 
-                  {/* Thread Information */}
-                  {bookmark.rawMetadata.twitter.is_thread && (
+                  {/* Quotes */}
+                  {bookmark.rawMetadata.twitter.quotes > 0 && (
                     <div>
-                      <Label>Thread Information</Label>
-                      <div className="mt-1 space-y-1">
-                        <p className="text-sm text-muted-foreground">
-                          This is part of a thread with{" "}
-                          {bookmark.rawMetadata.twitter.reply_count_actual}{" "}
-                          replies
-                        </p>
-                        {bookmark.rawMetadata.twitter.has_author_replies && (
-                          <p className="text-xs text-muted-foreground">
-                            • Author replied to their own tweet
-                          </p>
-                        )}
-                      </div>
+                      <Label className="flex items-center gap-2">Quotes</Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {formatCount(bookmark.rawMetadata.twitter.quotes)}
+                      </p>
                     </div>
                   )}
 

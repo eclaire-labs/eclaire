@@ -1,5 +1,6 @@
 import type { JobContext } from "@eclaire/queue/core";
 import { createChildLogger } from "../../../lib/logger.js";
+import { TWITTER_HOSTNAMES } from "../twitter-api-client.js";
 
 export * from "./github.js";
 export * from "./lightweight-fetch.js";
@@ -155,12 +156,7 @@ export function getHandlerForUrl(url: string): BookmarkHandlerType {
     const hostname = new URL(url).hostname.toLowerCase();
 
     // Twitter/X URLs use the dedicated handler if app credentials are configured
-    if (
-      hostname === "twitter.com" ||
-      hostname === "www.twitter.com" ||
-      hostname === "x.com" ||
-      hostname === "www.x.com"
-    ) {
+    if (TWITTER_HOSTNAMES.has(hostname)) {
       return hasXCredentials() ? "twitter" : "regular";
     }
 

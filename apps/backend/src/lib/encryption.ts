@@ -45,3 +45,10 @@ export const validateEncryptionService = (): void => {
   }
   encryptionService.validate();
 };
+
+/** Whether encryption is available (MASTER_ENCRYPTION_KEY is set). */
+export const isEncryptionConfigured = (): boolean => encryptionService !== null;
+
+/** Encrypted values use the format `v1:iv:authTag:data`. */
+export const isEncryptedValue = (value: string): boolean =>
+  value.startsWith("v1:");

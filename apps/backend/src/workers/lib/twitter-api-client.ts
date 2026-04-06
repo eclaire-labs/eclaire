@@ -5,6 +5,15 @@ const logger = createChildLogger("twitter-api-client");
 
 const X_API_BASE = "api.x.com";
 
+/** Canonical set of Twitter/X hostnames recognized for routing and extraction. */
+export const TWITTER_HOSTNAMES: ReadonlySet<string> = new Set([
+  "twitter.com",
+  "www.twitter.com",
+  "mobile.twitter.com",
+  "x.com",
+  "www.x.com",
+]);
+
 // Tweet fields to request from the API
 const TWEET_FIELDS = [
   "author_id",
@@ -98,15 +107,7 @@ export class TwitterApiClient {
       const urlObj = new URL(url);
       const hostname = urlObj.hostname.toLowerCase();
 
-      const validDomains = [
-        "twitter.com",
-        "www.twitter.com",
-        "mobile.twitter.com",
-        "x.com",
-        "www.x.com",
-      ];
-
-      if (!validDomains.includes(hostname)) {
+      if (!TWITTER_HOSTNAMES.has(hostname)) {
         logger.error(
           { url, hostname },
           "URL is not from a valid Twitter/X domain",
