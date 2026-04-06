@@ -47,7 +47,7 @@ export interface StepProps {
 
 export default function SetupWizard() {
   const navigate = useNavigate();
-  const { data: state, isLoading, refetch } = useOnboardingState();
+  const { data: state, isLoading, isError, refetch } = useOnboardingState();
   const advanceStep = useAdvanceStep();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
@@ -72,11 +72,8 @@ export default function SetupWizard() {
 
       const result = await advanceStep.mutateAsync({ step, data });
       if (result.ok) {
-        // Move to next step
-        if (currentStepIndex < STEPS.length - 1) {
-          setCurrentStepIndex((i) => i + 1);
-        }
-        // Refetch to get updated state
+        // Refetch state — the useEffect sync will update currentStepIndex
+        // from the backend's computed state (single source of truth)
         refetch();
       }
     },
@@ -88,6 +85,25 @@ export default function SetupWizard() {
       setCurrentStepIndex((i) => i - 1);
     }
   }, [currentStepIndex]);
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4">
+        <p className="text-muted-foreground">
+          Unable to load setup. You may need to sign in first.
+        </p>
+        <button
+          type="button"
+          className="text-primary underline text-sm"
+          onClick={() =>
+            navigate({ to: "/auth/login", search: { callbackUrl: "/setup" } })
+          }
+        >
+          Go to login
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading || !state) {
     return (

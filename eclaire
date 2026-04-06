@@ -22,4 +22,10 @@ fi
 COMPOSE_FILE="${ECLAIRE_COMPOSE_FILE:-compose.yaml}"
 SERVICE="${ECLAIRE_SERVICE:-eclaire}"
 
-exec docker compose -f "$COMPOSE_FILE" exec -T "$SERVICE" cli "$@"
+# Use interactive TTY when stdin is a terminal (needed for @clack/prompts),
+# otherwise use -T for piped/scripted usage
+if [ -t 0 ]; then
+  exec docker compose -f "$COMPOSE_FILE" exec -it "$SERVICE" cli "$@"
+else
+  exec docker compose -f "$COMPOSE_FILE" exec -T "$SERVICE" cli "$@"
+fi

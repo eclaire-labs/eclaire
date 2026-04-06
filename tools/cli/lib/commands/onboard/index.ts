@@ -8,6 +8,7 @@ import {
   spinner,
   selectOne,
   confirm,
+  textInput,
   passwordInput,
   isCancelled,
 } from "../../ui/clack.js";
@@ -16,6 +17,7 @@ import {
   completeOnboardingViaApi,
   fetchOnboardingState,
   fetchSetupPresets,
+  registerUser,
   resetOnboardingViaApi,
   runOnboardingHealthCheck,
 } from "../../backend-client.js";
@@ -73,6 +75,51 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
       `Instance: ${state.userCount} users, ${state.adminExists ? "admin exists" : "no admin"}`,
     );
 
+    // Step: Claim Admin
+    if (!state.adminExists) {
+      log.step("No admin account exists. Let's create one.");
+
+      const name = await textInput({
+        message: "Admin name:",
+        placeholder: "Your name",
+        validate: (v) =>
+          v.length < 2 ? "Name must be at least 2 characters" : undefined,
+      });
+
+      const email = await textInput({
+        message: "Admin email:",
+        placeholder: "admin@example.com",
+        validate: (v) =>
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+            ? undefined
+            : "Please enter a valid email",
+      });
+
+      const password = await passwordInput({
+        message: "Admin password:",
+        validate: (v) =>
+          v.length < 8 ? "Password must be at least 8 characters" : undefined,
+      });
+
+      s.start("Creating admin account...");
+      const regResult = await registerUser(name, email, password);
+      if (!regResult.ok) {
+        s.stop("Registration failed");
+        log.error(regResult.error ?? "Failed to create admin account");
+        cancel("Setup cancelled");
+        return;
+      }
+      s.stop("Admin account created");
+
+      // Re-fetch state after admin creation
+      const updatedState = await fetchOnboardingState();
+      if (updatedState) {
+        Object.assign(state, updatedState);
+      }
+    } else {
+      log.step("Admin account exists");
+    }
+
     // Step: Choose Preset
     if (!state.completedSteps.includes("choose_preset")) {
       const presets = await fetchSetupPresets();
@@ -108,11 +155,12 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
 
     // Step: Configure Provider
     if (!state.completedSteps.includes("configure_provider")) {
-      const currentState = await fetchOnboardingState();
+      // Re-fetch state to pick up the selected preset from the previous step
+      const refreshedState = await fetchOnboardingState();
+      if (refreshedState) Object.assign(state, refreshedState);
+
       const presets = await fetchSetupPresets();
-      const preset = presets?.find(
-        (p) => p.id === (currentState?.selectedPreset ?? state.selectedPreset),
-      );
+      const preset = presets?.find((p) => p.id === state.selectedPreset);
 
       let apiKey: string | undefined;
       if (preset?.requiresApiKey) {
@@ -125,7 +173,7 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
 
       s.start("Creating provider(s)...");
       const result = await advanceOnboardingStep("configure_provider", {
-        presetId: currentState?.selectedPreset ?? state.selectedPreset,
+        presetId: state.selectedPreset,
         ...(apiKey && { apiKey }),
       });
       s.stop(
@@ -137,24 +185,82 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
 
     // Step: Select Models
     if (!state.completedSteps.includes("select_models")) {
-      log.info(
-        "Models need to be configured. Use the web wizard or CLI model commands to import models.",
-      );
-      log.info(
-        `  ${chalk.cyan("eclaire model import")} or configure at ${chalk.cyan("http://localhost:3000/setup")}`,
-      );
-
-      const skipModels = await confirm({
-        message:
-          "Have you already configured models (or want to skip for now)?",
-        initialValue: false,
+      const backendModelName = await textInput({
+        message: "Backend model name (powers the assistant):",
+        placeholder: "e.g., qwen3-14b or gpt-4o",
+        validate: (v) =>
+          v.trim().length === 0 ? "Model name is required" : undefined,
       });
 
-      if (!skipModels) {
-        log.info("Please configure models first, then re-run this command.");
-        outro("Setup paused. Run `eclaire onboard` to resume.");
-        return;
+      const workersModelName = await textInput({
+        message:
+          "Workers model name (content processing, leave empty to reuse backend):",
+        placeholder: "Same as backend if empty",
+      });
+
+      // Determine provider IDs
+      const providerState = await fetchOnboardingState();
+      const presetList = await fetchSetupPresets();
+      const activePreset = presetList?.find(
+        (p) => p.id === (providerState?.selectedPreset ?? state.selectedPreset),
+      );
+      const firstProviderId = activePreset?.providers[0]
+        ? `${activePreset.providers[0].presetId}${activePreset.providers[0].idSuffix ?? ""}`
+        : "custom";
+      const secondProviderId = activePreset?.providers[1]
+        ? `${activePreset.providers[1].presetId}${activePreset.providers[1].idSuffix ?? ""}`
+        : firstProviderId;
+
+      const backendId = backendModelName
+        .trim()
+        .replace(/[^a-zA-Z0-9-_.]/g, "-");
+      const actualWorkers = workersModelName.trim() || backendModelName.trim();
+      const models = [
+        {
+          id: backendId,
+          name: backendModelName.trim(),
+          provider: firstProviderId,
+          providerModel: backendModelName.trim(),
+          capabilities: {
+            chat: true,
+            tools: true,
+            streaming: true,
+            vision: false,
+          },
+        },
+      ];
+      const setDefaults: Record<string, string> = { backend: backendId };
+
+      if (
+        actualWorkers !== backendModelName.trim() ||
+        secondProviderId !== firstProviderId
+      ) {
+        const workersId = `${actualWorkers.replace(/[^a-zA-Z0-9-_.]/g, "-")}-workers`;
+        models.push({
+          id: workersId,
+          name: `${actualWorkers} (workers)`,
+          provider: secondProviderId,
+          providerModel: actualWorkers,
+          capabilities: {
+            chat: true,
+            tools: false,
+            streaming: true,
+            vision: false,
+          },
+        });
+        setDefaults.workers = workersId;
+      } else {
+        setDefaults.workers = backendId;
       }
+
+      s.start("Importing models...");
+      const modelResult = await advanceOnboardingStep("select_models", {
+        models,
+        setDefaults,
+      });
+      s.stop(
+        modelResult.ok ? "Models configured" : "Failed to configure models",
+      );
     } else {
       log.step("Models: configured");
     }
@@ -191,7 +297,13 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
         s.stop("Health check failed");
       }
 
-      await advanceOnboardingStep("health_check", {});
+      try {
+        await advanceOnboardingStep("health_check", {});
+      } catch (err) {
+        log.warn(
+          `Could not advance health check step: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
 
     // Step: Registration Policy

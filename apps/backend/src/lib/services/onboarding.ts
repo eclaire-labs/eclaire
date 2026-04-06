@@ -13,6 +13,7 @@ import { db, schema } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 import {
   createProvider,
+  deleteProvider,
   getProvider,
   importModels,
   listModels,
@@ -20,6 +21,7 @@ import {
   getAllSelections,
   testProviderConnection,
 } from "./ai-config.js";
+import { normalizeImportedModel } from "./ai-import.js";
 import { getProviderPresetById } from "./ai-provider-presets.js";
 import {
   getAllInstanceSettings,
@@ -266,7 +268,7 @@ async function evaluateStepCompletion(
         listModels(),
         getAllSelections(),
       ]);
-      return models.length > 0 && "backend" in selections;
+      return models.length > 0 && !!selections.backend;
     }
 
     case "health_check":
@@ -311,14 +313,14 @@ export async function advanceStep(
         break;
 
       case "choose_preset": {
-        const presetId = data.presetId as string;
-        if (!presetId) {
+        if (typeof data.presetId !== "string" || !data.presetId) {
           return {
             ok: false,
             state: await getOnboardingState(),
-            error: "presetId is required",
+            error: "presetId (string) is required",
           };
         }
+        const presetId = data.presetId;
         const preset = getSetupPresetById(presetId);
         if (!preset) {
           return {
@@ -350,20 +352,60 @@ export async function advanceStep(
       }
 
       case "configure_provider": {
-        // The caller can either pass provider config directly or use the preset
-        const presetId = data.presetId as string | undefined;
+        const presetId =
+          typeof data.presetId === "string" ? data.presetId : undefined;
         if (presetId) {
-          await applySetupPreset(presetId, data, userId ?? undefined);
+          const setupPreset = getSetupPresetById(presetId);
+          // For the "custom" preset (no providers in the definition),
+          // create a generic OpenAI-compatible provider from the supplied baseUrl.
+          if (
+            setupPreset &&
+            setupPreset.providers.length === 0 &&
+            typeof data.baseUrl === "string" &&
+            data.baseUrl
+          ) {
+            const existingCustom = await getProvider("custom");
+            if (!existingCustom) {
+              const auth: ProviderConfig["auth"] =
+                typeof data.apiKey === "string" && data.apiKey
+                  ? { type: "bearer" as const, value: data.apiKey }
+                  : { type: "none" as const };
+              await createProvider(
+                "custom",
+                {
+                  dialect: "openai" as Dialect,
+                  baseUrl: data.baseUrl,
+                  auth,
+                },
+                userId ?? undefined,
+              );
+              logger.info("Created custom provider from onboarding");
+            }
+          } else {
+            await applySetupPreset(presetId, data, userId ?? undefined);
+          }
         }
         // If no presetId, the caller is expected to have created providers
         // via the admin API directly. We just re-evaluate.
         break;
       }
 
-      case "select_models":
-        // Model import/selection is done via admin API.
-        // This step just re-evaluates.
+      case "select_models": {
+        // Accept model data inline so both web and CLI can import through
+        // the shared onboarding engine instead of calling admin endpoints.
+        const models = data.models as
+          | import("./ai-import-types.js").ImportModelEntry[]
+          | undefined;
+        if (Array.isArray(models) && models.length > 0) {
+          const entries = models.map((m) => normalizeImportedModel(m));
+          const setDefaults = data.setDefaults as
+            | { backend?: string; workers?: string }
+            | undefined;
+          await importModels(entries, setDefaults, userId ?? undefined);
+        }
+        // If no models data provided, just re-evaluate (may have been configured out-of-band)
         break;
+      }
 
       case "health_check":
         // Health check doesn't persist — it's evaluated on demand.
@@ -430,58 +472,79 @@ export async function applySetupPreset(
     throw new Error(`Unknown setup preset: ${presetId}`);
   }
 
-  for (const providerDef of setupPreset.providers) {
-    const basePreset = getProviderPresetById(providerDef.presetId);
-    if (!basePreset) continue;
+  const createdProviderIds: string[] = [];
+  try {
+    for (const providerDef of setupPreset.providers) {
+      const basePreset = getProviderPresetById(providerDef.presetId);
+      if (!basePreset) {
+        logger.warn(
+          { presetId: providerDef.presetId },
+          "Provider preset not found — skipping",
+        );
+        continue;
+      }
 
-    const providerId = `${providerDef.presetId}${providerDef.idSuffix ?? ""}`;
+      const providerId = `${providerDef.presetId}${providerDef.idSuffix ?? ""}`;
 
-    // Skip if provider already exists
-    const existing = await getProvider(providerId);
-    if (existing) continue;
+      // Skip if provider already exists
+      const existing = await getProvider(providerId);
+      if (existing) continue;
 
-    // Build the base URL with port override
-    let baseUrl = basePreset.config.baseUrl;
-    if (providerDef.portOverride) {
-      const url = new URL(baseUrl);
-      url.port = String(providerDef.portOverride);
-      baseUrl = url.toString().replace(/\/$/, "");
+      // Build the base URL with port override
+      let baseUrl = basePreset.config.baseUrl;
+      if (providerDef.portOverride) {
+        const url = new URL(baseUrl);
+        url.port = String(providerDef.portOverride);
+        baseUrl = url.toString().replace(/\/$/, "");
+      }
+
+      // Apply API key override from request data
+      let auth = basePreset.config.auth as ProviderConfig["auth"];
+      if (overrides.apiKey && typeof overrides.apiKey === "string") {
+        auth = {
+          ...auth,
+          type: auth?.type ?? "bearer",
+          value: overrides.apiKey,
+        } as ProviderConfig["auth"];
+      }
+
+      // Apply base URL override from request data
+      if (overrides.baseUrl && typeof overrides.baseUrl === "string") {
+        baseUrl = overrides.baseUrl;
+      }
+
+      const providerConfig: ProviderConfig = {
+        dialect: basePreset.config.dialect as Dialect,
+        baseUrl,
+        auth,
+        headers: basePreset.config.headers,
+        engine: basePreset.defaultEngine
+          ? {
+              managed: false,
+              name: basePreset.defaultEngine.name,
+              gpuLayers: basePreset.defaultEngine.gpuLayers,
+            }
+          : undefined,
+      };
+
+      await createProvider(providerId, providerConfig, userId);
+      createdProviderIds.push(providerId);
+      logger.info(
+        { providerId, presetId: providerDef.presetId },
+        "Created provider from setup preset",
+      );
     }
-
-    // Apply API key override from request data
-    let auth = basePreset.config.auth as ProviderConfig["auth"];
-    if (overrides.apiKey && typeof overrides.apiKey === "string") {
-      auth = {
-        ...auth,
-        type: auth?.type ?? "bearer",
-        value: overrides.apiKey,
-      } as ProviderConfig["auth"];
+  } catch (error) {
+    // Roll back any providers created in this batch
+    for (const id of createdProviderIds) {
+      try {
+        await deleteProvider(id);
+        logger.info({ providerId: id }, "Rolled back provider after failure");
+      } catch {
+        // Best-effort cleanup
+      }
     }
-
-    // Apply base URL override from request data
-    if (overrides.baseUrl && typeof overrides.baseUrl === "string") {
-      baseUrl = overrides.baseUrl;
-    }
-
-    const providerConfig: ProviderConfig = {
-      dialect: basePreset.config.dialect as Dialect,
-      baseUrl,
-      auth,
-      headers: basePreset.config.headers,
-      engine: basePreset.defaultEngine
-        ? {
-            managed: false,
-            name: basePreset.defaultEngine.name,
-            gpuLayers: basePreset.defaultEngine.gpuLayers,
-          }
-        : undefined,
-    };
-
-    await createProvider(providerId, providerConfig, userId);
-    logger.info(
-      { providerId, presetId: providerDef.presetId },
-      "Created provider from setup preset",
-    );
+    throw error;
   }
 }
 
@@ -568,8 +631,17 @@ async function checkProviders(): Promise<
 
 /**
  * Mark onboarding as complete.
+ * Refuses to complete if no admin exists — prevents the CLI or any client
+ * from marking a fresh instance as "completed" before an admin is created.
  */
 export async function completeOnboarding(userId: string | null): Promise<void> {
+  const adminExists = await hasAdmin();
+  if (!adminExists) {
+    throw new Error(
+      "Cannot complete onboarding: no admin account exists. Create an admin first.",
+    );
+  }
+
   await setInstanceSettings(
     {
       "onboarding.status": "completed",
@@ -640,7 +712,7 @@ export async function autoCompleteOnboardingIfConfigured(): Promise<void> {
 
   const hasProviders = providers.length > 0;
   const hasModels = models.length > 0;
-  const hasBackendSelection = "backend" in selections;
+  const hasBackendSelection = !!selections.backend;
 
   if (hasProviders && hasModels && hasBackendSelection) {
     await setInstanceSettings({

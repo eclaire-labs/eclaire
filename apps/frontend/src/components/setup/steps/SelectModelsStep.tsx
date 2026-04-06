@@ -40,15 +40,15 @@ export function SelectModelsStep({
   const [workersModel, setWorkersModel] = useState("");
   const [isImporting, setIsImporting] = useState(false);
 
-  // Load existing providers and catalog
-  // biome-ignore lint/correctness/useExhaustiveDependencies: run once based on preset
+  // Load existing providers and catalog when preset changes
+  const isCloud = preset?.isCloud ?? false;
   useEffect(() => {
     apiGet("/api/admin/providers")
       .then((res) => res.json())
       .then(async (data: { items: Array<{ id: string }> }) => {
         setProviders(data.items);
         // Try to load catalog from first provider
-        if (data.items.length > 0 && preset?.isCloud && data.items[0]) {
+        if (data.items.length > 0 && isCloud && data.items[0]) {
           setIsLoadingCatalog(true);
           try {
             const catRes = await apiPost(
@@ -66,7 +66,7 @@ export function SelectModelsStep({
         }
       })
       .catch(() => {});
-  }, [preset?.isCloud]);
+  }, [isCloud]);
 
   async function handleImportAndContinue() {
     if (!backendModel) {
@@ -126,9 +126,9 @@ export function SelectModelsStep({
         setDefaults.workers = firstModelId;
       }
 
-      await apiPost("/api/admin/models/import", { models, setDefaults });
+      // Use onboarding step endpoint so model import goes through the shared engine
       toast.success("Models configured!");
-      onNext();
+      onNext({ models, setDefaults });
     } catch (error) {
       toast.error("Failed to import models", {
         description:

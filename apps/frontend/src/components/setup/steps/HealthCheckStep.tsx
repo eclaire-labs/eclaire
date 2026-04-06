@@ -65,7 +65,9 @@ export function HealthCheckStep({ onNext, onBack, isAdvancing }: StepProps) {
   }, [runCheck]);
 
   const allCriticalPassed =
-    result?.db?.ok && (result?.providers?.length ?? 0) > 0;
+    result?.db?.ok &&
+    (result?.providers?.length ?? 0) > 0 &&
+    result?.providers?.some((p) => p.ok);
 
   return (
     <Card>

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -42,10 +42,12 @@ export function ClaimAdminStep({ state, onNext, isAdvancing }: StepProps) {
 
   const isLoggedIn = !!session?.user;
   const isAdmin = state.adminExists;
+  const hasAutoAdvanced = useRef(false);
 
-  // Auto-advance if already admin
+  // Auto-advance if already admin (once only to prevent re-render loops)
   useEffect(() => {
-    if (isAdmin && isLoggedIn) {
+    if (isAdmin && isLoggedIn && !hasAutoAdvanced.current) {
+      hasAutoAdvanced.current = true;
       onNext();
     }
   }, [isAdmin, isLoggedIn, onNext]);

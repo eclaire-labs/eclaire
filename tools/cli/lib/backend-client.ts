@@ -349,6 +349,12 @@ export async function advanceOnboardingStep(
     method: "POST",
     body: JSON.stringify(data ?? {}),
   });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    };
+    throw new Error(body.error || `Step advance failed: ${response.status}`);
+  }
   return response.json() as Promise<StepAdvanceResult>;
 }
 
@@ -380,6 +386,42 @@ export async function resetOnboardingViaApi(): Promise<OnboardingState> {
     throw new Error(`Failed to reset onboarding: ${response.status}`);
   }
   return response.json() as Promise<OnboardingState>;
+}
+
+/**
+ * Register a new user account via the auth API.
+ * Used by CLI onboarding to create the first admin.
+ */
+export async function registerUser(
+  name: string,
+  email: string,
+  password: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const response = await backendFetch("/api/auth/sign-up/email", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    });
+    if (!response.ok) {
+      const data = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        error?: string;
+      };
+      return {
+        ok: false,
+        error:
+          data.message ||
+          data.error ||
+          `Registration failed: ${response.status}`,
+      };
+    }
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Registration failed",
+    };
+  }
 }
 
 /**

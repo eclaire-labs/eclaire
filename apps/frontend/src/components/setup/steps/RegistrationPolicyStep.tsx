@@ -17,6 +17,8 @@ export function RegistrationPolicyStep({
   onBack,
   isAdvancing,
 }: StepProps) {
+  // Default to true; if user goes back and returns, this resets.
+  // Acceptable since this is the last config step before summary.
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
 
   return (

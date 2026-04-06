@@ -147,7 +147,12 @@ export async function getAuthenticatedPrincipal(
     );
   }
 
-  if (!config.isProduction) {
+  // Localhost auth bypass — enabled in two cases:
+  // 1. Non-production mode (dev): any localhost request is trusted
+  // 2. Container runtime: CLI exec'd into the container has physical access,
+  //    so localhost requests are trusted (enables CLI onboarding/doctor/status)
+  const isContainerRuntime = process.env.ECLAIRE_RUNTIME === "container";
+  if (!config.isProduction || isContainerRuntime) {
     const clientIP =
       c.req.header("x-forwarded-for") ||
       c.req.header("x-real-ip") ||
@@ -163,9 +168,10 @@ export async function getAuthenticatedPrincipal(
       const firstUser = await db.query.users.findFirst();
       if (firstUser) {
         await ensureHumanActorForUserId(firstUser.id);
-        logger.debug(
-          "Localhost auth bypass: authenticating as first user (non-production only)",
-        );
+        const bypassReason = isContainerRuntime
+          ? "Container CLI auth bypass"
+          : "Localhost auth bypass (non-production only)";
+        logger.debug(bypassReason);
         return {
           actorId: firstUser.id,
           actorKind: "human",
