@@ -1,5 +1,4 @@
 import type { Buffer } from "node:buffer"; // Node.js Buffer
-import { Readable } from "node:stream";
 import {
   and,
   asc,
@@ -218,38 +217,28 @@ async function queuePhotoBackgroundJobs(
   originalFilename: string,
 ): Promise<void> {
   try {
-    // Queue unified image processing job for ALL images
-    // The worker will handle conversion, thumbnails, and AI analysis as needed
-    try {
-      const queueAdapter = await getQueueAdapter();
-      await queueAdapter.enqueueImage({
-        imageId: photoData.id,
-        photoId: photoData.id, // Worker expects 'photoId'
-        storageId: photoData.storageId,
-        mimeType: originalMimeType,
-        originalFilename: originalFilename,
-        userId: userId,
-      });
+    const queueAdapter = await getQueueAdapter();
+    await queueAdapter.enqueueImage({
+      imageId: photoData.id,
+      photoId: photoData.id, // Worker expects 'photoId'
+      storageId: photoData.storageId,
+      mimeType: originalMimeType,
+      originalFilename: originalFilename,
+      userId: userId,
+    });
 
-      logger.info(
-        { photoId: photoData.id },
-        "Enqueued unified image processing job for photo",
-      );
-    } catch (innerError) {
-      logger.error(
-        {
-          photoId: photoData.id,
-          error:
-            innerError instanceof Error ? innerError.message : "Unknown error",
-        },
-        `Failed to enqueue image processing job`,
-      );
-    }
+    logger.info(
+      { photoId: photoData.id },
+      "Enqueued unified image processing job for photo",
+    );
   } catch (error) {
     // Log the error but don't fail the photo creation
     logger.error(
-      { err: error, photoId: photoData.id },
-      "Error queueing unified processing job for photo",
+      {
+        photoId: photoData.id,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      "Failed to enqueue image processing job",
     );
   }
 }
@@ -369,13 +358,9 @@ export async function createPhoto(
       photoId,
       `original.${fileExtension}`,
     );
-    await storage.write(
-      storageKey,
-      Readable.from(content) as unknown as NodeJS.ReadableStream,
-      {
-        contentType: verifiedMimeType,
-      },
-    );
+    await storage.writeBuffer(storageKey, content, {
+      contentType: verifiedMimeType,
+    });
 
     storageInfo = { storageId: storageKey };
 
@@ -505,23 +490,11 @@ export async function createPhoto(
 
     // 4. Initialize processing job status tracking
     if (processingEnabled) {
-      // Determine processing stages based on image type
-      const needsHeicConversion =
-        originalMimeType === "image/heic" || originalMimeType === "image/heif";
-
-      const stages: string[] = [];
-      if (needsHeicConversion) {
-        stages.push("image_conversion", "ai_analysis");
-      } else {
-        stages.push("ai_analysis");
-      }
-
-      await createOrUpdateProcessingJob(
-        "photos",
-        photoId,
-        userId,
-        stages,
-      ).catch((error) => {
+      // Pass only the first stage — the worker will set the full stage list
+      // via initStages() and addStages() once it determines what's needed.
+      await createOrUpdateProcessingJob("photos", photoId, userId, [
+        "image_preparation",
+      ]).catch((error) => {
         logger.error(
           { photoId, userId, error: error.message },
           "Failed to initialize processing job for photo",
@@ -1719,7 +1692,9 @@ export async function updatePhotoArtifacts(
       },
       "Database error updating photo artifacts",
     );
-    throw new Error(`Database error updating photo artifacts for ${photoId}`);
+    throw new Error(`Database error updating photo artifacts for ${photoId}`, {
+      cause: error,
+    });
   }
 }
 

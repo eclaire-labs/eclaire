@@ -101,6 +101,13 @@ photosRoutes.post(
     }
 
     const contentBuffer = Buffer.from(await contentPart.arrayBuffer());
+
+    // Validate file size before any further processing
+    const MAX_UPLOAD_SIZE = 100 * 1024 * 1024; // 100MB — matches worker limit
+    if (contentBuffer.length > MAX_UPLOAD_SIZE) {
+      return c.json({ error: "File too large. Maximum size is 100MB." }, 400);
+    }
+
     const finalMimeType = await detectAndVerifyMimeType(
       contentBuffer,
       contentPart.type,

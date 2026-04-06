@@ -28,6 +28,7 @@ const CONVERSION_REQUIRED_MIME_TYPES = new Set([
   "image/png", // Normalize: avoids alpha-channel artifacts in JPEG thumbnails
   "image/tiff", // Normalize: some variants (CMYK, 16-bit, multi-page) can fail
   "image/bmp", // Normalize: unnecessarily large format
+  "image/gif", // Normalize: sharp only processes the first frame
 ]);
 
 const STAGES = {
