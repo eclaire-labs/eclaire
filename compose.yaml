@@ -29,7 +29,7 @@ services:
   eclaire:
     image: ghcr.io/eclaire-labs/eclaire:${ECLAIRE_VERSION:-latest}
     ports:
-      - "${PORT:-3000}:3000"
+      - "${HOST_PORT:-3000}:3000"
     env_file:
       - .env
     environment:
@@ -37,6 +37,8 @@ services:
       ECLAIRE_RUNTIME: container
       ECLAIRE_HOME: /app
       NODE_ENV: production
+      # Fix internal port to 3000 regardless of .env PORT value
+      PORT: 3000
     volumes:
       - ./data:/app/data
       - ./config:/app/config
@@ -64,9 +66,7 @@ services:
   # Document Processing
   # ===========================================================================
   docling:
-    image: ghcr.io/docling-project/docling-serve:latest
-    ports:
-      - "5001:5001"
+    image: ghcr.io/docling-project/docling-serve:${DOCLING_VERSION:-latest}
     # CPU mode by default (no GPU passthrough needed)
     restart: unless-stopped
     logging:

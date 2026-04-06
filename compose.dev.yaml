@@ -5,9 +5,14 @@
 #
 # This overlay exposes additional ports for local development:
 #   - PostgreSQL on host port 5432 (for migrations, scripts, IDE tools)
+#   - Docling on host port 5001 (for direct API access / debugging)
 # =============================================================================
 
 services:
   postgres:
     ports:
       - "5432:5432"
+
+  docling:
+    ports:
+      - "5001:5001"
