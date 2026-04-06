@@ -15,7 +15,7 @@ import FormData from "form-data";
 import { convert as htmlToText } from "html-to-text";
 import { JSDOM } from "jsdom";
 import { marked } from "marked";
-import { chromium } from "patchright";
+import { type Browser, chromium } from "patchright";
 import sharp from "sharp";
 import { createChildLogger } from "../../lib/logger.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
@@ -132,7 +132,7 @@ async function generatePdfThumbnailWithPdftocairo(
         error: error instanceof Error ? error.message : String(error),
         pdfPath,
       },
-      "pdftocairo thumbnail generation failed, falling back to pdfjs-dist",
+      "pdftocairo thumbnail generation failed",
     );
     throw error;
   }
@@ -262,100 +262,157 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
       currentStage = "docling_processing";
       await ctx.startStage(currentStage);
       jobLogger.info("Starting Docling processing.");
-      const doclingResult = await processWithDoclingServer(
-        documentBuffer,
-        mimeType,
-        originalFilename,
-      );
-
-      // Extract text content from the new multi-format response
-      // text_content may contain markdown markup, so we need to convert it to plain text
-      const rawTextContent =
-        doclingResult.document.text_content ||
-        doclingResult.document.md_content ||
-        "";
-
-      // Convert markdown to plain text if needed
-      extractedText = rawTextContent ? markdownToText(rawTextContent) : "";
-
-      // Save the complete Docling response as docling.json
-      const doclingJsonKey = buildKey(
-        userId,
-        "documents",
-        documentId,
-        "docling.json",
-      );
-      await storage.write(
-        doclingJsonKey,
-        Readable.from([
-          JSON.stringify(doclingResult, null, 2),
-        ]) as unknown as NodeJS.ReadableStream,
-        { contentType: "application/json" },
-      );
-
-      // Save individual format outputs
-      if (doclingResult.document.md_content) {
-        const mdKey = buildKey(userId, "documents", documentId, "extracted.md");
-        await storage.write(
-          mdKey,
-          Readable.from([
-            doclingResult.document.md_content,
-          ]) as unknown as NodeJS.ReadableStream,
-          { contentType: "text/markdown" },
+      try {
+        const doclingResult = await processWithDoclingServer(
+          documentBuffer,
+          mimeType,
+          originalFilename,
         );
-        allArtifacts.extractedMdStorageId = mdKey;
-      }
 
-      // Save the cleaned plain text as extracted.txt
-      if (extractedText) {
-        const txtKey = buildKey(
+        // Extract text content from the new multi-format response
+        // text_content may contain markdown markup, so we need to convert it to plain text
+        const rawTextContent =
+          doclingResult.document.text_content ||
+          doclingResult.document.md_content ||
+          "";
+
+        // Convert markdown to plain text if needed
+        extractedText = rawTextContent ? markdownToText(rawTextContent) : "";
+
+        // Save the complete Docling response as docling.json
+        const doclingJsonKey = buildKey(
           userId,
           "documents",
           documentId,
-          "extracted.txt",
+          "docling.json",
         );
         await storage.write(
-          txtKey,
-          Readable.from([extractedText]) as unknown as NodeJS.ReadableStream,
-          { contentType: "text/plain" },
-        );
-        allArtifacts.extractedTxtStorageId = txtKey;
-      }
-
-      if (doclingResult.document.json_content) {
-        const extractedJsonKey = buildKey(
-          userId,
-          "documents",
-          documentId,
-          "extracted.json",
-        );
-        await storage.write(
-          extractedJsonKey,
+          doclingJsonKey,
           Readable.from([
-            JSON.stringify(doclingResult.document.json_content, null, 2),
+            JSON.stringify(doclingResult, null, 2),
           ]) as unknown as NodeJS.ReadableStream,
           { contentType: "application/json" },
         );
+
+        // Save individual format outputs
+        if (doclingResult.document.md_content) {
+          const mdKey = buildKey(
+            userId,
+            "documents",
+            documentId,
+            "extracted.md",
+          );
+          await storage.write(
+            mdKey,
+            Readable.from([
+              doclingResult.document.md_content,
+            ]) as unknown as NodeJS.ReadableStream,
+            { contentType: "text/markdown" },
+          );
+          allArtifacts.extractedMdStorageId = mdKey;
+        }
+
+        // Save the cleaned plain text as extracted.txt
+        if (extractedText) {
+          const txtKey = buildKey(
+            userId,
+            "documents",
+            documentId,
+            "extracted.txt",
+          );
+          await storage.write(
+            txtKey,
+            Readable.from([extractedText]) as unknown as NodeJS.ReadableStream,
+            { contentType: "text/plain" },
+          );
+          allArtifacts.extractedTxtStorageId = txtKey;
+        }
+
+        if (doclingResult.document.json_content) {
+          const extractedJsonKey = buildKey(
+            userId,
+            "documents",
+            documentId,
+            "extracted.json",
+          );
+          await storage.write(
+            extractedJsonKey,
+            Readable.from([
+              JSON.stringify(doclingResult.document.json_content, null, 2),
+            ]) as unknown as NodeJS.ReadableStream,
+            { contentType: "application/json" },
+          );
+        }
+        jobLogger.info(
+          { textLength: extractedText.length },
+          "Docling processing complete.",
+        );
+      } catch (doclingError: unknown) {
+        const errMsg =
+          doclingError instanceof Error
+            ? doclingError.message
+            : String(doclingError);
+        jobLogger.warn(
+          { error: errMsg },
+          "Docling processing failed, falling back to standard extraction",
+        );
+        try {
+          extractedText = await extractTextFromDocument(
+            documentBuffer,
+            mimeType,
+            originalFilename,
+            tempDir,
+          );
+        } catch (fallbackError: unknown) {
+          jobLogger.warn(
+            {
+              error:
+                fallbackError instanceof Error
+                  ? fallbackError.message
+                  : String(fallbackError),
+            },
+            "Standard extraction fallback also failed after Docling failure",
+          );
+          allArtifacts.description = `Content extraction failed: ${errMsg}`;
+          allArtifacts.tags = ["extraction-failed"];
+        }
       }
-      jobLogger.info(
-        { textLength: extractedText.length },
-        "Docling processing complete.",
-      );
     } else {
       currentStage = "content_extraction";
       await ctx.startStage(currentStage);
       jobLogger.info("Starting standard content extraction.");
-      extractedText = await extractTextFromDocument(
-        documentBuffer,
-        mimeType,
-        originalFilename,
-        tempDir,
-      );
+      try {
+        extractedText = await extractTextFromDocument(
+          documentBuffer,
+          mimeType,
+          originalFilename,
+          tempDir,
+        );
+      } catch (extractionError: unknown) {
+        const errMsg =
+          extractionError instanceof Error
+            ? extractionError.message
+            : String(extractionError);
+        jobLogger.warn({ error: errMsg }, "Content extraction failed");
+        allArtifacts.description = `Content extraction failed: ${errMsg}`;
+        allArtifacts.tags = ["extraction-failed"];
+      }
       jobLogger.info(
         { textLength: extractedText.length },
         "Standard content extraction complete.",
       );
     }
+
+    // Surface a warning if extraction produced no text
+    if (!extractedText || extractedText.trim().length === 0) {
+      jobLogger.warn("Content extraction produced no text");
+      allArtifacts.description ??=
+        "No text could be extracted from this document";
+      if (!allArtifacts.tags?.includes("extraction-failed")) {
+        allArtifacts.tags = [...(allArtifacts.tags || []), "extraction-empty"];
+      }
+    }
+
     await ctx.completeStage(currentStage);
     // extractedText is stored via extractedTxtStorageId, not inline in artifacts
 
@@ -378,79 +435,116 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
     }
     await ctx.completeStage(currentStage);
 
-    // 5. PDF Generation Stage (if needed)
+    // 5. PDF Generation + 6. Thumbnail Generation
+    // For HTML documents, share a single Chromium browser across both stages
     let pdfBuffer: Buffer | null = null;
-    if (needsPdf) {
-      currentStage = "pdf_generation";
-      await ctx.startStage(currentStage);
-      jobLogger.info("Starting PDF generation.");
-      const tempDocPath = path.join(
-        tempDir,
-        `source${getFileExtensionFromMimeType(mimeType)}`,
-      );
-      await fs.writeFile(tempDocPath, documentBuffer);
-      pdfBuffer = await generatePdf(
-        documentBuffer,
-        mimeType,
-        originalFilename,
-        tempDocPath,
-        tempDir,
-      );
-      const pdfKey = buildKey(userId, "documents", documentId, "converted.pdf");
-      await storage.writeBuffer(pdfKey, pdfBuffer, {
-        contentType: "application/pdf",
-      });
-      allArtifacts.pdfStorageId = pdfKey;
-      jobLogger.info(
-        { pdfStorageId: pdfKey },
-        "PDF generation and storage complete",
-      );
-      await ctx.completeStage(currentStage);
-    } else {
-      pdfBuffer = documentBuffer;
-    }
-
-    // 6. Thumbnail Generation Stage
     if (isHtml) {
-      currentStage = "html_thumbnail_generation";
-      await ctx.startStage(currentStage);
-      jobLogger.info("Starting HTML thumbnail and screenshot generation.");
+      const htmlBrowser = await chromium.launch();
+      try {
+        // 5a. PDF Generation Stage (HTML)
+        currentStage = "pdf_generation";
+        await ctx.startStage(currentStage);
+        jobLogger.info("Starting PDF generation.");
+        pdfBuffer = await generateHtmlPdf(
+          documentBuffer.toString("utf-8"),
+          htmlBrowser,
+        );
+        const pdfKey = buildKey(
+          userId,
+          "documents",
+          documentId,
+          "converted.pdf",
+        );
+        await storage.writeBuffer(pdfKey, pdfBuffer, {
+          contentType: "application/pdf",
+        });
+        allArtifacts.pdfStorageId = pdfKey;
+        jobLogger.info(
+          { pdfStorageId: pdfKey },
+          "PDF generation and storage complete",
+        );
+        await ctx.completeStage(currentStage);
 
-      const { thumbnail: thumbnailBuffer, screenshot: screenshotBuffer } =
-        await generateHtmlThumbnailAndScreenshot(documentBuffer);
+        // 6a. Thumbnail Generation Stage (HTML)
+        currentStage = "html_thumbnail_generation";
+        await ctx.startStage(currentStage);
+        jobLogger.info("Starting HTML thumbnail and screenshot generation.");
 
-      const thumbnailKey = buildKey(
-        userId,
-        "documents",
-        documentId,
-        "thumbnail.webp",
-      );
-      const screenshotKey = buildKey(
-        userId,
-        "documents",
-        documentId,
-        "screenshot.jpg",
-      );
-      await Promise.all([
-        storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
-          contentType: "image/webp",
-        }),
-        storage.writeBuffer(screenshotKey, screenshotBuffer, {
-          contentType: "image/jpeg",
-        }),
-      ]);
-      allArtifacts.thumbnailStorageId = thumbnailKey;
-      allArtifacts.screenshotStorageId = screenshotKey;
+        const { thumbnail: thumbnailBuffer, screenshot: screenshotBuffer } =
+          await generateHtmlThumbnailAndScreenshot(documentBuffer, htmlBrowser);
 
-      jobLogger.info(
-        {
-          thumbnailStorageId: thumbnailKey,
-          screenshotStorageId: screenshotKey,
-        },
-        "HTML thumbnail and screenshot generation complete",
-      );
-      await ctx.completeStage(currentStage);
+        const thumbnailKey = buildKey(
+          userId,
+          "documents",
+          documentId,
+          "thumbnail.webp",
+        );
+        const screenshotKey = buildKey(
+          userId,
+          "documents",
+          documentId,
+          "screenshot.jpg",
+        );
+        await Promise.all([
+          storage.writeBuffer(thumbnailKey, thumbnailBuffer, {
+            contentType: "image/webp",
+          }),
+          storage.writeBuffer(screenshotKey, screenshotBuffer, {
+            contentType: "image/jpeg",
+          }),
+        ]);
+        allArtifacts.thumbnailStorageId = thumbnailKey;
+        allArtifacts.screenshotStorageId = screenshotKey;
+
+        jobLogger.info(
+          {
+            thumbnailStorageId: thumbnailKey,
+            screenshotStorageId: screenshotKey,
+          },
+          "HTML thumbnail and screenshot generation complete",
+        );
+        await ctx.completeStage(currentStage);
+      } finally {
+        await htmlBrowser.close();
+      }
     } else {
+      // 5b. PDF Generation Stage (non-HTML)
+      if (needsPdf) {
+        currentStage = "pdf_generation";
+        await ctx.startStage(currentStage);
+        jobLogger.info("Starting PDF generation.");
+        const tempDocPath = path.join(
+          tempDir,
+          `source${getFileExtensionFromMimeType(mimeType)}`,
+        );
+        await fs.writeFile(tempDocPath, documentBuffer);
+        pdfBuffer = await generatePdf(
+          documentBuffer,
+          mimeType,
+          originalFilename,
+          tempDocPath,
+          tempDir,
+        );
+        const pdfKey = buildKey(
+          userId,
+          "documents",
+          documentId,
+          "converted.pdf",
+        );
+        await storage.writeBuffer(pdfKey, pdfBuffer, {
+          contentType: "application/pdf",
+        });
+        allArtifacts.pdfStorageId = pdfKey;
+        jobLogger.info(
+          { pdfStorageId: pdfKey },
+          "PDF generation and storage complete",
+        );
+        await ctx.completeStage(currentStage);
+      } else {
+        pdfBuffer = documentBuffer;
+      }
+
+      // 6b. Thumbnail Generation Stage (non-HTML)
       currentStage = "thumbnail_generation";
       await ctx.startStage(currentStage);
       if (pdfBuffer) {
@@ -545,44 +639,6 @@ export async function processDocumentJob(ctx: JobContext<DocumentJobData>) {
       { error: errMsg, stack: errStack, currentStage },
       "Document processing job failed.",
     );
-
-    // Enhanced error handling with context
-    const errorMessage = errMsg || "Unknown error";
-    const isModuleError =
-      errorMessage.includes("ERR_MODULE_NOT_FOUND") ||
-      errorMessage.includes("Cannot find module");
-    const isHappyDomError = errorMessage.includes("happy-dom");
-
-    if (isModuleError || isHappyDomError) {
-      jobLogger.warn(
-        { documentId, currentStage, error: errorMessage },
-        "Document processing failed with module/happy-dom error, providing fallback result",
-      );
-
-      // Provide minimal fallback artifacts for happy-dom/module errors
-      try {
-        const fallbackArtifacts = {
-          title: `Document processing failed: ${originalFilename}`,
-          description:
-            "Content extraction failed due to JavaScript module error",
-          tags: ["document", "processing-failed"],
-          // No extractedText - it would be stored in blob storage if extraction succeeded
-        };
-        await ctx.completeStage(currentStage, fallbackArtifacts);
-        return; // Don't throw error for recoverable module issues
-      } catch (fallbackError: unknown) {
-        jobLogger.error(
-          {
-            documentId,
-            fallbackError:
-              fallbackError instanceof Error
-                ? fallbackError.message
-                : String(fallbackError),
-          },
-          "Failed to provide fallback result",
-        );
-      }
-    }
 
     // Report the error on the current stage
     try {
@@ -772,11 +828,7 @@ async function extractTextFromDocument(
   if (officeTypes.includes(mimeType))
     return extractOfficeDocumentText(tempDocPath, tempDir);
 
-  logger.warn(
-    { mimeType },
-    "Unsupported file type for standard text extraction, returning empty.",
-  );
-  return "";
+  throw new Error(`Unsupported file type for text extraction: ${mimeType}`);
 }
 
 async function extractRTFText(
@@ -858,18 +910,10 @@ async function extractTextFromHtml(
 }
 
 async function extractPdfText(pdfPath: string): Promise<string> {
-  try {
-    const { stdout } = await execa("pdftotext", [pdfPath, "-"], {
-      timeout: 120_000,
-    });
-    return stdout;
-  } catch (error: unknown) {
-    logger.warn(
-      { error: error instanceof Error ? error.message : String(error) },
-      "pdftotext extraction failed",
-    );
-    return "";
-  }
+  const { stdout } = await execa("pdftotext", [pdfPath, "-"], {
+    timeout: 120_000,
+  });
+  return stdout;
 }
 
 async function extractNumbersDocumentText(
@@ -891,20 +935,15 @@ async function extractNumbersDocumentText(
       const csvBuffer = await fs.readFile(path.join(csvOutputDir, csvFile));
       return extractTextFromCsv(csvBuffer);
     }
-    logger.warn(
-      { docPath, files },
-      "LibreOffice conversion succeeded but no CSV file found for .numbers",
+    throw new Error(
+      `LibreOffice conversion succeeded but no CSV file found for .numbers (files: ${files.join(", ")})`,
     );
-    return "";
   } catch (error: unknown) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        docPath,
-      },
-      "Failed to extract text from .numbers file",
-    );
-    return "";
+    throw error instanceof Error
+      ? error
+      : new Error(
+          `Failed to extract text from .numbers file: ${String(error)}`,
+        );
   }
 }
 
@@ -926,20 +965,15 @@ async function extractOfficeDocumentText(
     if (txtFile) {
       return await fs.readFile(path.join(textOutputDir, txtFile), "utf-8");
     }
-    logger.warn(
-      { docPath, files },
-      "LibreOffice conversion succeeded but no txt file found",
+    throw new Error(
+      `LibreOffice conversion succeeded but no txt file found (files: ${files.join(", ")})`,
     );
-    return "";
   } catch (error: unknown) {
-    logger.error(
-      {
-        error: error instanceof Error ? error.message : String(error),
-        docPath,
-      },
-      "Failed to extract text from office document",
-    );
-    return "";
+    throw error instanceof Error
+      ? error
+      : new Error(
+          `Failed to extract text from office document: ${String(error)}`,
+        );
   }
 }
 
@@ -1090,8 +1124,11 @@ async function generateMarkdownPdf(markdownContent: string): Promise<Buffer> {
   return generateHtmlPdf(html);
 }
 
-async function generateHtmlPdf(htmlContent: string): Promise<Buffer> {
-  const browser = await chromium.launch();
+async function generateHtmlPdf(
+  htmlContent: string,
+  existingBrowser?: Browser,
+): Promise<Buffer> {
+  const browser = existingBrowser ?? (await chromium.launch());
   const page = await browser.newPage();
   try {
     // Block network requests to prevent SSRF from user-uploaded HTML
@@ -1109,7 +1146,8 @@ async function generateHtmlPdf(htmlContent: string): Promise<Buffer> {
       printBackground: true,
     });
   } finally {
-    await browser.close();
+    await page.close();
+    if (!existingBrowser) await browser.close();
   }
 }
 
@@ -1165,8 +1203,9 @@ async function attemptLibreOfficeConversion(
 
 async function generateHtmlThumbnailAndScreenshot(
   htmlBuffer: Buffer,
+  existingBrowser?: Browser,
 ): Promise<{ thumbnail: Buffer; screenshot: Buffer }> {
-  const browser = await chromium.launch();
+  const browser = existingBrowser ?? (await chromium.launch());
   const page = await browser.newPage();
   try {
     // Block network requests to prevent SSRF from user-uploaded HTML
@@ -1200,7 +1239,8 @@ async function generateHtmlThumbnailAndScreenshot(
 
     return { thumbnail, screenshot };
   } finally {
-    await browser.close();
+    await page.close();
+    if (!existingBrowser) await browser.close();
   }
 }
 
