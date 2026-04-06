@@ -35,16 +35,25 @@ WORKDIR /app
 # Enable pnpm via corepack
 RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
-# Copy workspace root files and frontend package.json
+# Copy workspace root files and frontend package.json (+ workspace deps)
 COPY pnpm-lock.yaml package.json pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/frontend/package.json ./apps/frontend/
+COPY packages/api-types/package.json ./packages/api-types/
+COPY packages/core/package.json ./packages/core/
 
-# Install frontend dependencies
+# Install frontend dependencies (includes workspace deps via filter)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --filter=@eclaire/frontend...
 
-# Copy frontend source and build
+# Copy frontend source and workspace package sources needed at build time
 COPY apps/frontend ./apps/frontend/
+COPY packages/api-types ./packages/api-types/
+COPY packages/core ./packages/core/
+
+# Build workspace deps first, then frontend
+WORKDIR /app
+RUN pnpm --filter @eclaire/core build && \
+    pnpm --filter @eclaire/api-types build
 WORKDIR /app/apps/frontend
 RUN pnpm build
 
@@ -89,7 +98,12 @@ COPY packages/logger/package.json ./packages/logger/
 COPY packages/storage/package.json ./packages/storage/
 COPY packages/ai/package.json ./packages/ai/
 COPY packages/api-types/package.json ./packages/api-types/
-COPY tools/admin-cli/package.json ./tools/admin-cli/
+COPY packages/audio/package.json ./packages/audio/
+COPY packages/channels/core/package.json ./packages/channels/core/
+COPY packages/channels/discord/package.json ./packages/channels/discord/
+COPY packages/channels/slack/package.json ./packages/channels/slack/
+COPY packages/channels/telegram/package.json ./packages/channels/telegram/
+COPY tools/cli/package.json ./tools/cli/
 
 # Install dependencies for backend workspace + CLI (includes workspace packages)
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
@@ -98,7 +112,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 # Copy source code
 COPY apps/backend ./apps/backend/
 COPY packages ./packages/
-COPY tools/admin-cli ./tools/admin-cli/
+COPY tools/cli ./tools/cli/
 WORKDIR /app/apps/backend
 # If you generate code (e.g., drizzle generate/prisma generate), do it here before build
 # RUN pnpm run db:generate
@@ -107,10 +121,15 @@ WORKDIR /app/apps/backend
 RUN pnpm --filter @eclaire/core build && \
     pnpm --filter @eclaire/logger build && \
     pnpm --filter @eclaire/storage build && \
+    pnpm --filter @eclaire/audio build && \
     pnpm --filter @eclaire/ai build && \
     pnpm --filter @eclaire/db build && \
     pnpm --filter @eclaire/queue build && \
     pnpm --filter @eclaire/api-types build && \
+    pnpm --filter @eclaire/channels-core build && \
+    pnpm --filter @eclaire/channels-discord build && \
+    pnpm --filter @eclaire/channels-slack build && \
+    pnpm --filter @eclaire/channels-telegram build && \
     pnpm --filter @eclaire/cli build
 
 RUN pnpm build
