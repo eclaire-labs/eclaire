@@ -55,6 +55,7 @@ case "${1:-}" in
       fi
       echo ""
       echo "  Initialization complete."
+      echo "  Run './eclaire onboard' or open http://localhost:3000 to complete setup."
       echo ""
     elif [ $upgrade_result -eq 4 ]; then
       # Safe upgrade - auto-apply without user intervention

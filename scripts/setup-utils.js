@@ -793,18 +793,16 @@ function printSummary(results) {
     `  🚀 ${colors.green}Your development environment is ready!${colors.reset}`,
   );
   console.log("");
-  console.log(`  To start the application:`);
+  console.log(`  1. Start the application:`);
   console.log(`     ${colors.cyan}pnpm dev${colors.reset}`);
   console.log("");
-  console.log(`  Access the app at:`);
+  console.log(`  2. Complete the setup wizard (choose one):`);
   console.log(
-    `     Frontend: ${colors.blue}http://localhost:3000${colors.reset}`,
+    `     ${colors.cyan}a)${colors.reset} Open ${colors.blue}http://localhost:3000${colors.reset} in your browser`,
   );
   console.log(
-    `     Backend:  ${colors.blue}http://localhost:3001/health${colors.reset}`,
+    `     ${colors.cyan}b)${colors.reset} Run ${colors.cyan}pnpm eclaire onboard${colors.reset}`,
   );
-  console.log("");
-  console.log(`  Create an account at the frontend to get started.`);
   console.log("");
   console.log(`  For AI model configuration:`);
   console.log(`     ${colors.cyan}docs/ai-models.md${colors.reset}`);

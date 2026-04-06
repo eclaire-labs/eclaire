@@ -1,10 +1,12 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   Bot,
   Cpu,
   Key,
   Plug,
   Radio,
+  RefreshCw,
   Server,
   Sliders,
   Sparkles,
@@ -13,6 +15,8 @@ import {
   Volume2,
   Wrench,
 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
@@ -20,6 +24,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import { useOnboardingState, useResetOnboarding } from "@/hooks/use-onboarding";
 
 interface QuickLink {
   id: string;
@@ -110,12 +115,17 @@ const quickLinks: QuickLink[] = [
 ];
 
 export default function SettingsOverview() {
+  const navigate = useNavigate();
   const { data: authData } = useAuth();
   const isAdmin =
     (authData?.user as Record<string, unknown> | undefined)?.isInstanceAdmin ===
     true;
+  const { data: onboardingState } = useOnboardingState(isAdmin);
+  const resetOnboarding = useResetOnboarding();
 
   const visibleLinks = quickLinks.filter((link) => !link.adminOnly || isAdmin);
+  const isOnboardingIncomplete =
+    isAdmin && onboardingState && onboardingState.status !== "completed";
 
   return (
     <div className="space-y-6">
@@ -125,6 +135,47 @@ export default function SettingsOverview() {
           Manage your account, assistant, and system configuration.
         </p>
       </div>
+
+      {isOnboardingIncomplete && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Setup Incomplete</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              Some features may not work correctly until setup is complete.
+            </span>
+            <Link to="/setup">
+              <Button size="sm" variant="outline" className="ml-4 shrink-0">
+                Resume Setup
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isAdmin && onboardingState?.status === "completed" && (
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div>
+            <p className="text-sm font-medium">Instance Setup</p>
+            <p className="text-xs text-muted-foreground">
+              Re-run the setup wizard to reconfigure AI providers and models.
+              Existing configuration is preserved.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={resetOnboarding.isPending}
+            onClick={async () => {
+              await resetOnboarding.mutateAsync();
+              navigate({ to: "/setup" });
+            }}
+          >
+            <RefreshCw className="mr-2 h-3.5 w-3.5" />
+            Re-run Setup
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {visibleLinks.map((link) => {

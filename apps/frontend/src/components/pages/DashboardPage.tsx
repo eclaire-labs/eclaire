@@ -1,8 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
 import { DashboardClientContent } from "@/components/dashboard/DashboardClientContent";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { useOnboardingState } from "@/hooks/use-onboarding";
 import { apiFetch } from "@/lib/api-client";
 
 interface DashboardData {
@@ -87,13 +92,41 @@ export default function DashboardPage() {
     session.user.email;
 
   return (
-    <DashboardClientContent
-      userName={userName}
-      initialStats={dashboardData.stats}
-      initialActivity={dashboardData.recentActivities}
-      initialTimeline={dashboardData.activityTimeline}
-      initialDueItems={dashboardData.dueItems}
-      initialQuickStats={dashboardData.quickStats}
-    />
+    <>
+      <SetupBanner />
+      <DashboardClientContent
+        userName={userName}
+        initialStats={dashboardData.stats}
+        initialActivity={dashboardData.recentActivities}
+        initialTimeline={dashboardData.activityTimeline}
+        initialDueItems={dashboardData.dueItems}
+        initialQuickStats={dashboardData.quickStats}
+      />
+    </>
+  );
+}
+
+function SetupBanner() {
+  const { data: authData } = useAuth();
+  const isAdmin =
+    (authData?.user as Record<string, unknown> | undefined)?.isInstanceAdmin ===
+    true;
+  const { data: state } = useOnboardingState(isAdmin);
+
+  if (!isAdmin || !state || state.status === "completed") return null;
+
+  return (
+    <Alert className="mb-6">
+      <AlertTriangle className="h-4 w-4" />
+      <AlertTitle>Setup Incomplete</AlertTitle>
+      <AlertDescription className="flex items-center justify-between">
+        <span>Complete setup to configure AI providers and models.</span>
+        <Link to="/setup">
+          <Button size="sm" variant="outline" className="ml-4 shrink-0">
+            Complete Setup
+          </Button>
+        </Link>
+      </AlertDescription>
+    </Alert>
   );
 }

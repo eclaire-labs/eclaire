@@ -55,6 +55,36 @@ export const Route = createFileRoute("/_authenticated")({
         search: { callbackUrl: location.pathname },
       });
     }
+
+    // Redirect admins to /setup if onboarding is incomplete
+    if (context.auth.user?.isInstanceAdmin) {
+      try {
+        const cached = sessionStorage.getItem("eclaire_onboarding_complete");
+        if (cached === "true") return;
+      } catch {
+        // sessionStorage unavailable
+      }
+      try {
+        const res = await fetch("/api/onboarding/state", {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const state = (await res.json()) as { status: string };
+          if (state.status === "completed") {
+            try {
+              sessionStorage.setItem("eclaire_onboarding_complete", "true");
+            } catch {
+              // sessionStorage unavailable
+            }
+          } else {
+            throw redirect({ to: "/setup" });
+          }
+        }
+      } catch (e) {
+        if (e instanceof Error && "to" in e) throw e;
+        // API error — don't block navigation
+      }
+    }
   },
   component: function AuthenticatedLayout() {
     const { data: session, isPending } = useSession();

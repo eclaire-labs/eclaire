@@ -164,6 +164,12 @@ const start = async () => {
     const { ensureInstanceAdmin } = await import("./lib/services/admin.js");
     await ensureInstanceAdmin();
 
+    // Auto-complete onboarding for pre-configured instances (upgrade path)
+    const { autoCompleteOnboardingIfConfigured } = await import(
+      "./lib/services/onboarding.js"
+    );
+    await autoCompleteOnboardingIfConfigured();
+
     // Reset any stale "running" session executions from a previous crash/restart
     const { resetStaleExecutions } = await import(
       "./lib/services/conversations.js"

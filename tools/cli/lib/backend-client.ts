@@ -276,6 +276,112 @@ export async function inspectModelUrl(url: string): Promise<InspectUrlResult> {
   return response.json() as Promise<InspectUrlResult>;
 }
 
+// ============================================================================
+// Onboarding API
+// ============================================================================
+
+export interface OnboardingState {
+  status: "not_started" | "in_progress" | "completed";
+  currentStep: string;
+  completedSteps: string[];
+  selectedPreset: string | null;
+  userCount: number;
+  adminExists: boolean;
+  completedAt: string | null;
+  completedByUserId: string | null;
+}
+
+export interface SetupPreset {
+  id: string;
+  name: string;
+  description: string;
+  audience: string;
+  isCloud: boolean;
+  requiresApiKey: boolean;
+  providers: Array<{
+    presetId: string;
+    idSuffix?: string;
+    portOverride?: number;
+    nameOverride?: string;
+  }>;
+}
+
+export interface HealthCheckResult {
+  db: { ok: boolean; error?: string };
+  docling: { ok: boolean; error?: string };
+  providers: Array<{ id: string; name: string; ok: boolean; error?: string }>;
+  modelSelections: { backend: string | null; workers: string | null };
+}
+
+export interface StepAdvanceResult {
+  ok: boolean;
+  state: OnboardingState;
+  warning?: string;
+  error?: string;
+}
+
+export async function fetchOnboardingState(): Promise<OnboardingState | null> {
+  try {
+    const response = await backendFetch("/api/onboarding/state");
+    if (!response.ok) return null;
+    return response.json() as Promise<OnboardingState>;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchSetupPresets(): Promise<SetupPreset[] | null> {
+  try {
+    const response = await backendFetch("/api/onboarding/presets");
+    if (!response.ok) return null;
+    const data = (await response.json()) as { items: SetupPreset[] };
+    return data.items;
+  } catch {
+    return null;
+  }
+}
+
+export async function advanceOnboardingStep(
+  step: string,
+  data?: Record<string, unknown>,
+): Promise<StepAdvanceResult> {
+  const response = await backendFetch(`/api/onboarding/step/${step}`, {
+    method: "POST",
+    body: JSON.stringify(data ?? {}),
+  });
+  return response.json() as Promise<StepAdvanceResult>;
+}
+
+export async function runOnboardingHealthCheck(): Promise<HealthCheckResult> {
+  const response = await backendFetch("/api/onboarding/health-check", {
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new Error(`Health check failed: ${response.status}`);
+  }
+  return response.json() as Promise<HealthCheckResult>;
+}
+
+export async function completeOnboardingViaApi(): Promise<OnboardingState> {
+  const response = await backendFetch("/api/onboarding/complete", {
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to complete onboarding: ${response.status}`);
+  }
+  return response.json() as Promise<OnboardingState>;
+}
+
+export async function resetOnboardingViaApi(): Promise<OnboardingState> {
+  const response = await backendFetch("/api/onboarding/reset", {
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to reset onboarding: ${response.status}`);
+  }
+  return response.json() as Promise<OnboardingState>;
+}
+
 /**
  * Import models via the backend API.
  */

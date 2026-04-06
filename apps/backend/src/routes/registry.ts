@@ -21,6 +21,7 @@ import { feedbackRoutes } from "./feedback.js";
 import { historyRoutes } from "./history.js";
 import { instanceRoutes } from "./instance.js";
 import { modelRoutes } from "./model.js";
+import { onboardingRoutes } from "./onboarding.js";
 import { modelsRoutes } from "./models.js";
 import { notesRoutes } from "./notes.js";
 import { notificationsRoutes } from "./notifications.js";
@@ -60,4 +61,5 @@ export function registerApiRoutes(app: Hono<any>): void {
   app.route("/api/processing-events", processingEventsRoutes);
   app.route("/api/tags", tagsRoutes);
   app.route("/api/instance", instanceRoutes);
+  app.route("/api/onboarding", onboardingRoutes);
 }

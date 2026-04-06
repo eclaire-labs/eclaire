@@ -1,0 +1,25 @@
+#!/bin/sh
+# Eclaire CLI wrapper for Docker self-hosters.
+#
+# Place this script on your PATH, then use:
+#   eclaire onboard     — interactive setup wizard
+#   eclaire doctor      — check system health
+#   eclaire status      — show instance status
+#   eclaire <command>   — any CLI command
+#
+# Environment variables:
+#   ECLAIRE_COMPOSE_FILE  — compose file path (default: compose.yaml)
+#   ECLAIRE_SERVICE       — service name (default: eclaire)
+
+set -e
+
+# If we're inside the container, run the CLI directly
+if [ "${ECLAIRE_RUNTIME}" = "container" ]; then
+  exec /usr/local/bin/cli "$@"
+fi
+
+# Host-side: exec into the running container
+COMPOSE_FILE="${ECLAIRE_COMPOSE_FILE:-compose.yaml}"
+SERVICE="${ECLAIRE_SERVICE:-eclaire}"
+
+exec docker compose -f "$COMPOSE_FILE" exec -T "$SERVICE" cli "$@"

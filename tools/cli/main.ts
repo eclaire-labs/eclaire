@@ -9,11 +9,14 @@ import { registerApiKeyCommands } from "./lib/commands/api-key/index.js";
 import { registerChannelCommands } from "./lib/commands/channel/index.js";
 import { registerChatCommand } from "./lib/commands/chat/index.js";
 import { registerConfigCommands } from "./lib/commands/config/index.js";
+import { registerDoctorCommands } from "./lib/commands/doctor/index.js";
 import { registerEngineCommands } from "./lib/commands/engine/index.js";
 import { registerMcpCommands } from "./lib/commands/mcp/index.js";
 import { registerModelCommands } from "./lib/commands/model/index.js";
+import { registerOnboardCommands } from "./lib/commands/onboard/index.js";
 import { registerProviderCommands } from "./lib/commands/provider/index.js";
 import { registerSettingsCommands } from "./lib/commands/settings/index.js";
+import { registerStatusCommands } from "./lib/commands/status/index.js";
 import { registerUserCommands } from "./lib/commands/user/index.js";
 import { loadAIConfigFromDb } from "./lib/config/models.js";
 
@@ -67,6 +70,9 @@ registerSettingsCommands(program);
 registerUserCommands(program);
 registerAgentCommands(program);
 registerApiKeyCommands(program);
+registerOnboardCommands(program);
+registerDoctorCommands(program);
+registerStatusCommands(program);
 
 // Only register engine commands if not in container
 // (engine runs on host, not accessible from container)

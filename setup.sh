@@ -91,6 +91,7 @@ download_files() {
 
   curl -fsSL "$REPO_URL/compose.yaml" -o compose.yaml
   curl -fsSL "$REPO_URL/.env.example" -o .env
+  curl -fsSL "$REPO_URL/eclaire" -o eclaire && chmod +x eclaire
 
   success "Downloaded configuration files"
 }
@@ -156,15 +157,18 @@ print_next_steps() {
 
   printf "${BOLD}Next steps:${NC}\n\n"
 
-  printf "1. Start your LLM servers (in separate terminals):\n"
-  printf "   ${CYAN}llama-server -hf unsloth/Qwen3-14B-GGUF:Q4_K_XL --ctx-size 16384 --port 11500${NC}\n"
-  printf "   ${CYAN}llama-server -hf unsloth/gemma-3-4b-it-qat-GGUF:Q4_K_XL --ctx-size 16384 --port 11501${NC}\n"
-  printf "   ${YELLOW}(Models download automatically on first run, if not already cached)${NC}\n\n"
-
-  printf "2. Start Eclaire:\n"
+  printf "1. Start Eclaire:\n"
   printf "   ${CYAN}docker compose up -d${NC}\n\n"
 
-  printf "3. Open ${CYAN}http://localhost:3000${NC} and register an account.\n\n"
+  printf "2. Complete the setup wizard (choose one):\n"
+  printf "   ${CYAN}a)${NC} Open ${CYAN}http://localhost:3000${NC} in your browser\n"
+  printf "   ${CYAN}b)${NC} Run ${CYAN}./eclaire onboard${NC}\n\n"
+
+  printf "   The wizard will guide you through:\n"
+  printf "   - Creating your admin account\n"
+  printf "   - Choosing an AI backend (local or cloud)\n"
+  printf "   - Configuring providers and models\n"
+  printf "   - Running health checks\n\n"
 
   printf "For alternative AI model configuration, see: ${CYAN}docs/ai-models.md${NC}\n\n"
 }

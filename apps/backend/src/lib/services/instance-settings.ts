@@ -19,6 +19,11 @@ export const KNOWN_SETTINGS_KEYS = {
   "audio.useStreamingStt": "boolean",
   "audio.useStreamingTts": "boolean",
   "instance.registrationEnabled": "boolean",
+  "onboarding.status": "string",
+  "onboarding.currentStep": "string",
+  "onboarding.selectedPreset": "string",
+  "onboarding.completedAt": "string",
+  "onboarding.completedByUserId": "string",
 } as const;
 
 type SettingsKey = keyof typeof KNOWN_SETTINGS_KEYS;
