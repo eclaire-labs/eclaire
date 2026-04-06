@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  AlertTriangle,
   Bot,
   Cpu,
   Key,
@@ -137,9 +136,9 @@ export default function SettingsOverview() {
       </div>
 
       {isOnboardingIncomplete && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Setup Incomplete</AlertTitle>
+        <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+          <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertTitle>Finish Setting Up Eclaire</AlertTitle>
           <AlertDescription className="flex items-center justify-between">
             <span>
               Some features may not work correctly until setup is complete.

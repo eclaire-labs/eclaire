@@ -31,7 +31,7 @@ export function ChoosePresetStep({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Choose AI Setup</CardTitle>
+        <CardTitle>Choose AI Provider</CardTitle>
         <CardDescription>
           Select how you want to power your AI assistant and content processing.
           You can change this later in settings.

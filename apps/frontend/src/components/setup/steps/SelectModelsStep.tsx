@@ -1,6 +1,7 @@
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,17 +10,107 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSetupPresets } from "@/hooks/use-onboarding";
 import { apiGet, apiPost } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
 import type { StepProps } from "../SetupWizard";
 
 interface CatalogModel {
   providerModel: string;
   name: string;
   contextWindow?: number;
+  inputModalities: string[];
+  tools?: boolean;
+  jsonSchema?: boolean;
+  sourceUrl?: string;
+}
+
+function ModelPicker({
+  label,
+  hint,
+  catalog,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  catalog: CatalogModel[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {value && (
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="gap-1 text-sm font-normal">
+            {value}
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="ml-1 rounded-sm hover:bg-muted"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        </div>
+      )}
+      <Command className="rounded-lg border" shouldFilter={true}>
+        <CommandInput placeholder="Search models..." />
+        <CommandList className="max-h-48">
+          <CommandEmpty>No models found.</CommandEmpty>
+          <CommandGroup>
+            {catalog.map((m) => (
+              <CommandItem
+                key={m.providerModel}
+                value={`${m.name} ${m.providerModel}`}
+                onSelect={() => onChange(m.providerModel)}
+              >
+                <div className="flex flex-1 items-center justify-between gap-2 min-w-0">
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm truncate">{m.name}</span>
+                    <span className="text-xs text-muted-foreground font-mono truncate">
+                      {m.providerModel}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {m.inputModalities?.includes("image") && (
+                      <Badge variant="secondary" className="text-xs px-1.5">
+                        vision
+                      </Badge>
+                    )}
+                    {m.tools && (
+                      <Badge variant="secondary" className="text-xs px-1.5">
+                        tools
+                      </Badge>
+                    )}
+                    {m.contextWindow && (
+                      <span className="text-xs text-muted-foreground">
+                        {Math.round(m.contextWindow / 1024)}k
+                      </span>
+                    )}
+                    {value === m.providerModel && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
+                  </div>
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </div>
+  );
 }
 
 export function SelectModelsStep({
@@ -68,6 +159,12 @@ export function SelectModelsStep({
       .catch(() => {});
   }, [isCloud]);
 
+  // Compute filtered catalogs for each picker
+  const visionModels = catalog.filter((m) =>
+    m.inputModalities?.includes("image"),
+  );
+  const backendCatalog = visionModels.length > 0 ? visionModels : catalog;
+
   async function handleImportAndContinue() {
     if (!backendModel) {
       toast.error("Please specify at least a backend model.");
@@ -82,6 +179,9 @@ export function SelectModelsStep({
         return;
       }
 
+      const backendCatalogEntry = catalog.find(
+        (m) => m.providerModel === backendModel,
+      );
       const models = [
         {
           id: `${backendModel.replace(/[^a-zA-Z0-9-_.]/g, "-")}`,
@@ -90,9 +190,10 @@ export function SelectModelsStep({
           providerModel: backendModel,
           capabilities: {
             chat: true,
-            tools: true,
+            tools: backendCatalogEntry?.tools ?? true,
             streaming: true,
-            vision: false,
+            vision:
+              backendCatalogEntry?.inputModalities?.includes("image") ?? false,
           },
         },
       ];
@@ -102,6 +203,9 @@ export function SelectModelsStep({
         providers.length > 1 ? (providers[1]?.id ?? providerId) : providerId;
       const actualWorkersModel = workersModel || backendModel;
       if (actualWorkersModel !== backendModel || providers.length > 1) {
+        const workersCatalogEntry = catalog.find(
+          (m) => m.providerModel === actualWorkersModel,
+        );
         models.push({
           id: `${actualWorkersModel.replace(/[^a-zA-Z0-9-_.]/g, "-")}-workers`,
           name: `${actualWorkersModel} (workers)`,
@@ -111,7 +215,8 @@ export function SelectModelsStep({
             chat: true,
             tools: false,
             streaming: true,
-            vision: false,
+            vision:
+              workersCatalogEntry?.inputModalities?.includes("image") ?? false,
           },
         });
       }
@@ -138,6 +243,8 @@ export function SelectModelsStep({
     }
   }
 
+  const hasCatalog = preset?.isCloud && catalog.length > 0;
+
   return (
     <Card>
       <CardHeader>
@@ -147,73 +254,60 @@ export function SelectModelsStep({
           the workers model handles content processing.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Catalog for cloud providers */}
-        {preset?.isCloud && catalog.length > 0 && (
-          <div className="space-y-2">
-            <Label>Available Models</Label>
-            <div className="max-h-48 overflow-y-auto rounded-lg border">
-              {catalog.slice(0, 30).map((m) => (
-                <button
-                  key={m.providerModel}
-                  type="button"
-                  onClick={() => {
-                    if (!backendModel) {
-                      setBackendModel(m.providerModel);
-                    } else if (!workersModel) {
-                      setWorkersModel(m.providerModel);
-                    }
-                  }}
-                  className={cn(
-                    "w-full flex items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted/50 border-b last:border-b-0",
-                    (backendModel === m.providerModel ||
-                      workersModel === m.providerModel) &&
-                      "bg-primary/5",
-                  )}
-                >
-                  <span className="truncate">{m.name}</span>
-                  {m.contextWindow && (
-                    <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                      {Math.round(m.contextWindow / 1024)}k
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-            {isLoadingCatalog && (
-              <p className="text-xs text-muted-foreground">
-                Loading model catalog...
-              </p>
-            )}
+      <CardContent className="space-y-6">
+        {isLoadingCatalog && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading model catalog...
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="backendModel">Backend Model (assistant)</Label>
-            <Input
-              id="backendModel"
-              placeholder="e.g., qwen3-14b"
+        {hasCatalog ? (
+          <div className="space-y-6">
+            <ModelPicker
+              label="Backend Model (assistant)"
+              hint="Vision-capable models are recommended for the assistant."
+              catalog={backendCatalog}
               value={backendModel}
-              onChange={(e) => setBackendModel(e.target.value)}
+              onChange={setBackendModel}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="workersModel">Workers Model (processing)</Label>
-            <Input
-              id="workersModel"
-              placeholder="Same as backend if empty"
+            <ModelPicker
+              label="Workers Model (processing)"
+              hint="Defaults to backend model if empty. All models shown."
+              catalog={catalog}
               value={workersModel}
-              onChange={(e) => setWorkersModel(e.target.value)}
+              onChange={setWorkersModel}
             />
           </div>
-        </div>
-
-        {!preset?.isCloud && (
-          <p className="text-xs text-muted-foreground">
-            Enter the model name exactly as your local server reports it (e.g.,
-            the model ID from llama-server or Ollama).
-          </p>
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="backendModel">Backend Model (assistant)</Label>
+                <Input
+                  id="backendModel"
+                  placeholder="e.g., qwen3-14b"
+                  value={backendModel}
+                  onChange={(e) => setBackendModel(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="workersModel">Workers Model (processing)</Label>
+                <Input
+                  id="workersModel"
+                  placeholder="Same as backend if empty"
+                  value={workersModel}
+                  onChange={(e) => setWorkersModel(e.target.value)}
+                />
+              </div>
+            </div>
+            {!preset?.isCloud && (
+              <p className="text-xs text-muted-foreground">
+                Enter the model name exactly as your local server reports it
+                (e.g., the model ID from llama-server or Ollama).
+              </p>
+            )}
+          </>
         )}
 
         <div className="flex justify-between pt-2">

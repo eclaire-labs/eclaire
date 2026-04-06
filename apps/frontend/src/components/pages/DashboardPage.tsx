@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { DashboardClientContent } from "@/components/dashboard/DashboardClientContent";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
@@ -116,14 +116,17 @@ function SetupBanner() {
   if (!isAdmin || !state || state.status === "completed") return null;
 
   return (
-    <Alert className="mb-6">
-      <AlertTriangle className="h-4 w-4" />
-      <AlertTitle>Setup Incomplete</AlertTitle>
+    <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+      <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+      <AlertTitle>Finish Setting Up Eclaire</AlertTitle>
       <AlertDescription className="flex items-center justify-between">
-        <span>Complete setup to configure AI providers and models.</span>
+        <span>
+          Complete the setup wizard to configure your instance and unlock all
+          features.
+        </span>
         <Link to="/setup">
           <Button size="sm" variant="outline" className="ml-4 shrink-0">
-            Complete Setup
+            Continue Setup
           </Button>
         </Link>
       </AlertDescription>

@@ -42,7 +42,7 @@ function CheckRow({
   error?: string;
 }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b last:border-b-0">
+    <div className="flex items-center justify-between px-4 py-3 border-b last:border-b-0">
       <div>
         <span className="text-sm font-medium">{label}</span>
         {error && (

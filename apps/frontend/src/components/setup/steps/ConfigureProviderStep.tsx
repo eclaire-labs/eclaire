@@ -186,31 +186,49 @@ export function ConfigureProviderStep({
           </div>
         )}
 
-        <div className="flex justify-between pt-2">
-          <Button variant="ghost" onClick={onBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCreateAndTest}
-              disabled={isCreating || isTesting || (requiresApiKey && !apiKey)}
-            >
-              {isCreating || isTesting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isCreating ? "Creating..." : "Testing..."}
-                </>
-              ) : (
-                "Create & Test"
-              )}
+        <div className="flex flex-col gap-2 pt-2">
+          <div className="flex justify-between">
+            <Button variant="ghost" onClick={onBack}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
             </Button>
-            <Button onClick={handleContinue} disabled={isAdvancing}>
-              Continue
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleCreateAndTest}
+                disabled={
+                  isCreating || isTesting || (requiresApiKey && !apiKey)
+                }
+              >
+                {isCreating || isTesting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isCreating ? "Saving..." : "Testing..."}
+                  </>
+                ) : (
+                  "Save & Test"
+                )}
+              </Button>
+              <Button
+                onClick={handleContinue}
+                disabled={isAdvancing || !testResult?.ok}
+              >
+                Continue
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </div>
+          {!testResult?.ok && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline hover:text-foreground"
+                onClick={handleContinue}
+              >
+                Skip testing and continue
+              </button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

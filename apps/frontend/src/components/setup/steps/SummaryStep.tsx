@@ -16,7 +16,7 @@ import type { StepProps } from "../SetupWizard";
 export function SummaryStep({ state, onBack }: StepProps) {
   const navigate = useNavigate();
   const completeOnboarding = useCompleteOnboarding();
-  const [isComplete, setIsComplete] = useState(state.status === "completed");
+  const [isComplete, setIsComplete] = useState(false);
 
   async function handleComplete() {
     try {

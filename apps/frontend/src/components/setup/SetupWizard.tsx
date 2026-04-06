@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/shared/logo";
 import {
   useAdvanceStep,
@@ -30,7 +30,7 @@ const STEPS = [
 const STEP_LABELS: Record<string, string> = {
   welcome: "Welcome",
   claim_admin: "Admin Account",
-  choose_preset: "AI Setup",
+  choose_preset: "AI Provider",
   configure_provider: "Provider",
   select_models: "Models",
   health_check: "Health Check",
@@ -47,22 +47,25 @@ export interface StepProps {
 
 export default function SetupWizard() {
   const navigate = useNavigate();
-  const { data: state, isLoading, isError, refetch } = useOnboardingState();
+  const { data: state, isLoading, isError } = useOnboardingState();
   const advanceStep = useAdvanceStep();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const hasInitialized = useRef(false);
 
-  // Sync step index with backend state
+  // Sync step index with backend state on initial load only.
+  // After initialization, navigation is driven by handleNext/handleBack
+  // to avoid the useEffect overriding local back navigation.
   useEffect(() => {
-    if (state) {
-      if (state.status === "completed") {
-        navigate({ to: "/dashboard" });
-        return;
-      }
-      const idx = STEPS.indexOf(state.currentStep as (typeof STEPS)[number]);
-      if (idx >= 0) {
-        setCurrentStepIndex(idx);
-      }
+    if (!state || hasInitialized.current) return;
+    if (state.status === "completed") {
+      navigate({ to: "/dashboard" });
+      return;
     }
+    const idx = STEPS.indexOf(state.currentStep as (typeof STEPS)[number]);
+    if (idx >= 0) {
+      setCurrentStepIndex(idx);
+    }
+    hasInitialized.current = true;
   }, [state, navigate]);
 
   const handleNext = useCallback(
@@ -72,12 +75,17 @@ export default function SetupWizard() {
 
       const result = await advanceStep.mutateAsync({ step, data });
       if (result.ok) {
-        // Refetch state — the useEffect sync will update currentStepIndex
-        // from the backend's computed state (single source of truth)
-        refetch();
+        // The mutation's onSuccess already updates the query cache.
+        // Advance the step index directly from the result.
+        const nextIdx = STEPS.indexOf(
+          result.state.currentStep as (typeof STEPS)[number],
+        );
+        if (nextIdx >= 0) {
+          setCurrentStepIndex(nextIdx);
+        }
       }
     },
-    [currentStepIndex, advanceStep, refetch],
+    [currentStepIndex, advanceStep],
   );
 
   const handleBack = useCallback(() => {
