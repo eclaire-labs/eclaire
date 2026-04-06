@@ -24,7 +24,7 @@ import {
   getOrCreateTags,
 } from "../db-helpers.js";
 import { buildSearchRank, buildTextSearchCondition } from "../search.js";
-import { NotFoundError } from "../errors.js";
+import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
   buildCursorCondition,
@@ -300,6 +300,11 @@ export async function createNoteEntry(
           },
           "Failed to enqueue note processing job",
         );
+        // Update status so the user sees the failure and can retry
+        await db
+          .update(notes)
+          .set({ processingStatus: "failed", updatedAt: new Date() })
+          .where(eq(notes.id, entryId));
       }
     } else {
       logger.info(
@@ -315,6 +320,12 @@ export async function createNoteEntry(
     const entryWithTags = await getNoteEntryWithTags(entryId);
     return entryWithTags;
   } catch (error) {
+    if (
+      error instanceof NotFoundError ||
+      error instanceof ValidationError ||
+      error instanceof ForbiddenError
+    )
+      throw error;
     logger.error(
       {
         data,
@@ -417,6 +428,12 @@ export async function updateNoteEntry(
     const entryWithTags = await getNoteEntryWithTags(id);
     return entryWithTags;
   } catch (error) {
+    if (
+      error instanceof NotFoundError ||
+      error instanceof ValidationError ||
+      error instanceof ForbiddenError
+    )
+      throw error;
     logger.error(
       {
         noteId: id,
@@ -479,6 +496,12 @@ export async function deleteNoteEntry(
 
     return { success: true };
   } catch (error) {
+    if (
+      error instanceof NotFoundError ||
+      error instanceof ValidationError ||
+      error instanceof ForbiddenError
+    )
+      throw error;
     logger.error(
       {
         noteId: id,
@@ -523,6 +546,12 @@ export async function getNoteEntryById(entryId: string, userId: string) {
       tags: entryTagNames,
     };
   } catch (error) {
+    if (
+      error instanceof NotFoundError ||
+      error instanceof ValidationError ||
+      error instanceof ForbiddenError
+    )
+      throw error;
     logger.error(
       {
         entryId,
@@ -774,6 +803,12 @@ export async function findNotes({
 
     return { items, nextCursor, hasMore };
   } catch (error) {
+    if (
+      error instanceof NotFoundError ||
+      error instanceof ValidationError ||
+      error instanceof ForbiddenError
+    )
+      throw error;
     logger.error(
       {
         userId,
@@ -836,6 +871,12 @@ export async function countNotes({
       .where(and(...baseConditions));
     return result?.value ?? 0;
   } catch (error) {
+    if (
+      error instanceof NotFoundError ||
+      error instanceof ValidationError ||
+      error instanceof ForbiddenError
+    )
+      throw error;
     logger.error(
       {
         userId,

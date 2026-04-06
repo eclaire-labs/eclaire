@@ -18,7 +18,7 @@ import {
   type DomainErrorCategory,
   domainRateLimiter,
 } from "../lib/domainRateLimiter.js";
-import { createRateLimitError } from "../lib/job-utils.js";
+import { RateLimitError } from "@eclaire/queue/core";
 
 const logger = createChildLogger("bookmark-processor");
 
@@ -373,7 +373,7 @@ async function processBookmarkJob(ctx: JobContext<BookmarkJobData>) {
       );
 
       // Throw rate limit error to signal queue to reschedule
-      throw createRateLimitError(availability.delayMs);
+      throw new RateLimitError(availability.delayMs);
     }
 
     domainRateLimiter.markDomainProcessing(originalUrl, jobId);

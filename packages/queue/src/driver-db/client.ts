@@ -6,6 +6,7 @@ import { getErrorMessage } from "../core/error-utils.js";
 import { and, count, eq, or, sql } from "drizzle-orm";
 import {
   isPermanentError,
+  isQueueError,
   isRateLimitError,
   JobAlreadyActiveError,
   type RateLimitError,
@@ -474,6 +475,14 @@ export async function markJobCompleted(
  * @param logger - Logger instance
  * @returns true if the job was marked failed, false if lock was lost
  */
+/** Build a serializable error details object for the errorDetails JSONB column. */
+function buildErrorDetails(error: Error): Record<string, unknown> {
+  const details: Record<string, unknown> = {};
+  if (error.stack) details.stack = error.stack;
+  if (isQueueError(error)) details.code = error.code;
+  return details;
+}
+
 export async function markJobFailed(
   // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM instance — generic across Postgres/SQLite dialects
   db: any,
@@ -551,6 +560,7 @@ export async function markJobFailed(
       .set({
         status: "failed",
         errorMessage: error.message,
+        errorDetails: buildErrorDetails(error),
         completedAt: now,
         lockedBy: null,
         lockedAt: null,
@@ -580,6 +590,7 @@ export async function markJobFailed(
       .set({
         status: "failed",
         errorMessage: error.message,
+        errorDetails: buildErrorDetails(error),
         completedAt: now,
         lockedBy: null,
         lockedAt: null,
@@ -620,6 +631,7 @@ export async function markJobFailed(
       status: "retry_pending",
       nextRetryAt,
       errorMessage: error.message,
+      errorDetails: buildErrorDetails(error),
       lockedBy: null,
       lockedAt: null,
       expiresAt: null,
