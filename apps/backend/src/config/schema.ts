@@ -227,8 +227,11 @@ export function buildConfig(): EclaireConfig {
 
   // Database wiring defaults based on runtime
   const defaultDbHost = isContainer ? "postgres" : "127.0.0.1";
+  // In containers, backend + frontend are the same server on port 3000,
+  // so backendUrl must be browser-reachable (for OAuth callbacks, API docs).
+  // Follow FRONTEND_URL if set, otherwise default to localhost:3000.
   const defaultBackendUrl = isContainer
-    ? "http://eclaire:3000"
+    ? env.FRONTEND_URL || "http://localhost:3000"
     : "http://127.0.0.1:3001";
   const defaultDoclingUrl = isContainer
     ? "http://docling:5001"
