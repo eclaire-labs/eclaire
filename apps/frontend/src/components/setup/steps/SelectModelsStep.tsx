@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, Check, Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -127,18 +128,18 @@ export function SelectModelsStep({
   >([]);
   const [catalog, setCatalog] = useState<CatalogModel[]>([]);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
-  const [backendModel, setBackendModel] = useState("");
-  const [workersModel, setWorkersModel] = useState("");
+  const [mainModel, setMainModel] = useState("");
+  const [visionModel, setVisionModel] = useState("");
   const [isImporting, setIsImporting] = useState(false);
 
-  // Load existing providers and catalog when preset changes
   const isCloud = preset?.isCloud ?? false;
+
+  // Load existing providers and catalog when preset changes
   useEffect(() => {
     apiGet("/api/admin/providers")
       .then((res) => res.json())
       .then(async (data: { items: Array<{ id: string }> }) => {
         setProviders(data.items);
-        // Try to load catalog from first provider
         if (data.items.length > 0 && isCloud && data.items[0]) {
           setIsLoadingCatalog(true);
           try {
@@ -159,15 +160,21 @@ export function SelectModelsStep({
       .catch(() => {});
   }, [isCloud]);
 
-  // Compute filtered catalogs for each picker
-  const visionModels = catalog.filter((m) =>
+  // Determine if the selected main model has vision capability
+  const selectedEntry = catalog.find((m) => m.providerModel === mainModel);
+  const mainHasVision =
+    selectedEntry?.inputModalities?.includes("image") ?? false;
+  const visionCatalog = catalog.filter((m) =>
     m.inputModalities?.includes("image"),
   );
-  const backendCatalog = visionModels.length > 0 ? visionModels : catalog;
+  const needsVisionPicker =
+    isCloud && mainModel && !mainHasVision && visionCatalog.length > 0;
 
-  async function handleImportAndContinue() {
-    if (!backendModel) {
-      toast.error("Please specify at least a backend model.");
+  const hasCatalog = isCloud && catalog.length > 0;
+
+  async function handleContinue() {
+    if (!mainModel) {
+      toast.error("Please select a model.");
       return;
     }
 
@@ -179,44 +186,46 @@ export function SelectModelsStep({
         return;
       }
 
-      const backendCatalogEntry = catalog.find(
-        (m) => m.providerModel === backendModel,
+      const mainCatalogEntry = catalog.find(
+        (m) => m.providerModel === mainModel,
       );
       const models = [
         {
-          id: `${backendModel.replace(/[^a-zA-Z0-9-_.]/g, "-")}`,
-          name: backendModel,
+          id: `${mainModel.replace(/[^a-zA-Z0-9-_.]/g, "-")}`,
+          name: mainModel,
           provider: providerId,
-          providerModel: backendModel,
+          providerModel: mainModel,
           capabilities: {
             chat: true,
-            tools: backendCatalogEntry?.tools ?? true,
+            tools: mainCatalogEntry?.tools ?? true,
             streaming: true,
             vision:
-              backendCatalogEntry?.inputModalities?.includes("image") ?? false,
+              mainCatalogEntry?.inputModalities?.includes("image") ?? false,
           },
         },
       ];
 
-      // Add workers model if different from backend
+      // Determine workers model
       const workersProviderId =
         providers.length > 1 ? (providers[1]?.id ?? providerId) : providerId;
-      const actualWorkersModel = workersModel || backendModel;
-      if (actualWorkersModel !== backendModel || providers.length > 1) {
-        const workersCatalogEntry = catalog.find(
-          (m) => m.providerModel === actualWorkersModel,
+      const effectiveVisionModel =
+        needsVisionPicker && visionModel ? visionModel : mainModel;
+
+      if (effectiveVisionModel !== mainModel || providers.length > 1) {
+        const visionCatalogEntry = catalog.find(
+          (m) => m.providerModel === effectiveVisionModel,
         );
         models.push({
-          id: `${actualWorkersModel.replace(/[^a-zA-Z0-9-_.]/g, "-")}-workers`,
-          name: `${actualWorkersModel} (workers)`,
+          id: `${effectiveVisionModel.replace(/[^a-zA-Z0-9-_.]/g, "-")}-workers`,
+          name: `${effectiveVisionModel} (workers)`,
           provider: workersProviderId,
-          providerModel: actualWorkersModel,
+          providerModel: effectiveVisionModel,
           capabilities: {
             chat: true,
             tools: false,
             streaming: true,
             vision:
-              workersCatalogEntry?.inputModalities?.includes("image") ?? false,
+              visionCatalogEntry?.inputModalities?.includes("image") ?? false,
           },
         });
       }
@@ -231,7 +240,6 @@ export function SelectModelsStep({
         setDefaults.workers = firstModelId;
       }
 
-      // Use onboarding step endpoint so model import goes through the shared engine
       onNext({ models, setDefaults });
     } catch (error) {
       toast.error("Failed to import models", {
@@ -243,15 +251,13 @@ export function SelectModelsStep({
     }
   }
 
-  const hasCatalog = preset?.isCloud && catalog.length > 0;
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Select Models</CardTitle>
         <CardDescription>
-          Choose which AI models to use. The backend model powers the assistant;
-          the workers model handles content processing.
+          Choose which AI model to use. You can configure additional models
+          later in settings.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -265,49 +271,51 @@ export function SelectModelsStep({
         {hasCatalog ? (
           <div className="space-y-6">
             <ModelPicker
-              label="Backend Model (assistant)"
-              hint="Vision-capable models are recommended for the assistant."
-              catalog={backendCatalog}
-              value={backendModel}
-              onChange={setBackendModel}
-            />
-            <ModelPicker
-              label="Workers Model (processing)"
-              hint="Defaults to backend model if empty. All models shown."
+              label="Model"
+              hint="Vision-capable models are recommended so Eclaire can process documents."
               catalog={catalog}
-              value={workersModel}
-              onChange={setWorkersModel}
+              value={mainModel}
+              onChange={(v) => {
+                setMainModel(v);
+                setVisionModel("");
+              }}
             />
+            {needsVisionPicker && (
+              <>
+                <Alert>
+                  <AlertDescription className="text-sm">
+                    The selected model doesn't support image input. Pick a
+                    vision-capable model below for document processing, or
+                    continue without one.
+                  </AlertDescription>
+                </Alert>
+                <ModelPicker
+                  label="Document Processing Model"
+                  hint="Used for processing images and documents."
+                  catalog={visionCatalog}
+                  value={visionModel}
+                  onChange={setVisionModel}
+                />
+              </>
+            )}
           </div>
         ) : (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="backendModel">Backend Model (assistant)</Label>
-                <Input
-                  id="backendModel"
-                  placeholder="e.g., qwen3-14b"
-                  value={backendModel}
-                  onChange={(e) => setBackendModel(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="workersModel">Workers Model (processing)</Label>
-                <Input
-                  id="workersModel"
-                  placeholder="Same as backend if empty"
-                  value={workersModel}
-                  onChange={(e) => setWorkersModel(e.target.value)}
-                />
-              </div>
-            </div>
-            {!preset?.isCloud && (
+          <div className="space-y-2">
+            <Label htmlFor="mainModel">Model Name</Label>
+            <Input
+              id="mainModel"
+              placeholder="e.g., qwen3-14b"
+              value={mainModel}
+              onChange={(e) => setMainModel(e.target.value)}
+            />
+            {!isCloud && (
               <p className="text-xs text-muted-foreground">
-                Enter the model name exactly as your local server reports it
-                (e.g., the model ID from llama-server or Ollama).
+                Enter the model name exactly as your local server reports it.
+                You can configure a separate vision model for document
+                processing later in settings.
               </p>
             )}
-          </>
+          </div>
         )}
 
         <div className="flex justify-between pt-2">
@@ -316,8 +324,8 @@ export function SelectModelsStep({
             Back
           </Button>
           <Button
-            onClick={handleImportAndContinue}
-            disabled={!backendModel || isImporting || isAdvancing}
+            onClick={handleContinue}
+            disabled={!mainModel || isImporting || isAdvancing}
           >
             {isImporting ? (
               <>
@@ -326,7 +334,7 @@ export function SelectModelsStep({
               </>
             ) : (
               <>
-                Import & Continue
+                Continue
                 <ArrowRight className="ml-2 h-4 w-4" />
               </>
             )}

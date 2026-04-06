@@ -38,18 +38,17 @@ export function ConfigureProviderStep({
     ok: boolean;
     error?: string;
   } | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
 
   const isCloud = preset?.isCloud ?? false;
   const requiresApiKey = preset?.requiresApiKey ?? false;
 
-  async function handleCreateAndTest() {
+  async function handleTestConnection() {
     if (!preset) return;
-    setIsCreating(true);
+    setIsTesting(true);
     setTestResult(null);
 
     try {
-      // First, apply the preset to create provider(s)
+      // Save the provider first (idempotent on backend)
       await apiPost(`/api/onboarding/step/configure_provider`, {
         presetId: preset.id,
         ...(apiKey && { apiKey }),
@@ -60,7 +59,6 @@ export function ConfigureProviderStep({
       const providerId =
         preset.providers[0]?.presetId + (preset.providers[0]?.idSuffix ?? "");
       if (providerId) {
-        setIsTesting(true);
         try {
           const testRes = await apiPost(
             `/api/admin/providers/${providerId}/test`,
@@ -76,20 +74,23 @@ export function ConfigureProviderStep({
         } catch {
           setTestResult({ ok: false, error: "Connection test failed" });
         }
-        setIsTesting(false);
       }
     } catch (error) {
-      toast.error("Failed to create provider", {
+      toast.error("Failed to save provider", {
         description:
           error instanceof Error ? error.message : "Something went wrong",
       });
     } finally {
-      setIsCreating(false);
+      setIsTesting(false);
     }
   }
 
   function handleContinue() {
-    onNext({ presetId: state.selectedPreset });
+    onNext({
+      presetId: state.selectedPreset,
+      ...(apiKey && { apiKey }),
+      ...(baseUrl && { baseUrl }),
+    });
   }
 
   if (!preset) {
@@ -186,49 +187,39 @@ export function ConfigureProviderStep({
           </div>
         )}
 
-        <div className="flex flex-col gap-2 pt-2">
-          <div className="flex justify-between">
-            <Button variant="ghost" onClick={onBack}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
+        <div className="flex justify-between pt-2">
+          <Button variant="ghost" onClick={onBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleTestConnection}
+              disabled={isTesting || (requiresApiKey && !apiKey)}
+            >
+              {isTesting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Testing...
+                </>
+              ) : (
+                "Test Connection"
+              )}
             </Button>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={handleCreateAndTest}
-                disabled={
-                  isCreating || isTesting || (requiresApiKey && !apiKey)
-                }
-              >
-                {isCreating || isTesting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isCreating ? "Saving..." : "Testing..."}
-                  </>
-                ) : (
-                  "Save & Test"
-                )}
-              </Button>
-              <Button
-                onClick={handleContinue}
-                disabled={isAdvancing || !testResult?.ok}
-              >
-                Continue
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              onClick={handleContinue}
+              disabled={
+                isAdvancing ||
+                isTesting ||
+                (requiresApiKey && !apiKey) ||
+                (preset?.id === "custom" && !baseUrl)
+              }
+            >
+              Continue
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
-          {!testResult?.ok && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                className="text-xs text-muted-foreground underline hover:text-foreground"
-                onClick={handleContinue}
-              >
-                Skip testing and continue
-              </button>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>

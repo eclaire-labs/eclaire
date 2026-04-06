@@ -61,9 +61,15 @@ export default function SetupWizard() {
       navigate({ to: "/dashboard" });
       return;
     }
-    const idx = STEPS.indexOf(state.currentStep as (typeof STEPS)[number]);
-    if (idx >= 0) {
-      setCurrentStepIndex(idx);
+    if (state.status === "not_started") {
+      // Fresh instance: always show the welcome screen first
+      setCurrentStepIndex(0);
+    } else {
+      // Resuming: jump to the backend's current step
+      const idx = STEPS.indexOf(state.currentStep as (typeof STEPS)[number]);
+      if (idx >= 0) {
+        setCurrentStepIndex(idx);
+      }
     }
     hasInitialized.current = true;
   }, [state, navigate]);
