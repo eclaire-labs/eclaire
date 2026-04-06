@@ -37,6 +37,7 @@ export async function textInput(opts: {
   message: string;
   placeholder?: string;
   defaultValue?: string;
+  initialValue?: string;
   validate?: (value: string) => string | undefined;
 }): Promise<string> {
   // Cast validate to match @clack/prompts' broader signature
@@ -77,4 +78,15 @@ export async function confirm(opts: {
   initialValue?: boolean;
 }): Promise<boolean> {
   return assertNotCancelled(await p.confirm(opts));
+}
+
+export async function autocompleteSelect<T>(opts: {
+  message: string;
+  options: { value: T; label: string; hint?: string }[];
+  maxItems?: number;
+  placeholder?: string;
+}): Promise<T> {
+  // biome-ignore lint/suspicious/noExplicitAny: AutocompleteOptions generics are hard to satisfy
+  const result = await p.autocomplete(opts as any);
+  return assertNotCancelled(result) as T;
 }

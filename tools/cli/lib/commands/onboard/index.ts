@@ -10,12 +10,14 @@ import {
   confirm,
   textInput,
   passwordInput,
+  autocompleteSelect,
   isCancelled,
 } from "../../ui/clack.js";
 import {
   advanceOnboardingStep,
   completeOnboardingViaApi,
   fetchOnboardingState,
+  fetchProviderCatalog,
   fetchSetupPresets,
   getBackendUrl,
   registerUser,
@@ -82,14 +84,14 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
 
       const name = await textInput({
         message: "Admin name:",
-        placeholder: "Your name",
+        initialValue: "admin",
         validate: (v) =>
           v.length < 2 ? "Name must be at least 2 characters" : undefined,
       });
 
       const email = await textInput({
         message: "Admin email:",
-        placeholder: "admin@example.com",
+        initialValue: "admin@example.com",
         validate: (v) =>
           /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
             ? undefined
@@ -100,6 +102,12 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
         message: "Admin password:",
         validate: (v) =>
           v.length < 8 ? "Password must be at least 8 characters" : undefined,
+      });
+
+      const confirmPassword = await passwordInput({
+        message: "Confirm password:",
+        validate: (v) =>
+          v !== password ? "Passwords do not match" : undefined,
       });
 
       s.start("Creating admin account...");
@@ -147,7 +155,7 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
         const result = await advanceOnboardingStep("choose_preset", {
           presetId,
         });
-        s.stop("Preset selected");
+        s.stop(`Preset: ${chalk.cyan(presetId)}`);
         if (result.warning) {
           log.warn(result.warning);
         }
@@ -227,19 +235,6 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
 
     // Step: Select Models
     if (!state.completedSteps.includes("select_models")) {
-      const backendModelName = await textInput({
-        message: "Backend model name (powers the assistant):",
-        placeholder: "e.g., qwen3-14b or gpt-4o",
-        validate: (v) =>
-          v.trim().length === 0 ? "Model name is required" : undefined,
-      });
-
-      const workersModelName = await textInput({
-        message:
-          "Workers model name (content processing, leave empty to reuse backend):",
-        placeholder: "Same as backend if empty",
-      });
-
       // Determine provider IDs
       const providerState = await fetchOnboardingState();
       const presetList = await fetchSetupPresets();
@@ -253,41 +248,123 @@ async function onboardCommand(opts: { preset?: string; reset?: boolean }) {
         ? `${activePreset.providers[1].presetId}${activePreset.providers[1].idSuffix ?? ""}`
         : firstProviderId;
 
-      const backendId = backendModelName
-        .trim()
-        .replace(/[^a-zA-Z0-9-_.]/g, "-");
-      const actualWorkers = workersModelName.trim() || backendModelName.trim();
+      // Try to fetch the model catalog from the provider
+      s.start("Fetching available models...");
+      const catalog = await fetchProviderCatalog(firstProviderId);
+      s.stop(
+        catalog && catalog.length > 0
+          ? `Found ${catalog.length} models`
+          : "Could not fetch model catalog — you can type a model ID manually",
+      );
+
+      // Backend model: filter to vision-capable models for the assistant
+      const visionModels = catalog?.filter((m) =>
+        m.inputModalities.includes("image"),
+      );
+      const backendCatalog =
+        visionModels && visionModels.length > 0 ? visionModels : catalog;
+
+      let backendModelId: string;
+      if (backendCatalog && backendCatalog.length > 0) {
+        backendModelId = await autocompleteSelect<string>({
+          message:
+            "Backend model ID (powers the assistant, vision-capable recommended):",
+          options: backendCatalog.map((m) => ({
+            value: m.providerModel,
+            label: m.providerModel,
+            hint: m.contextWindow
+              ? `${m.name} — ${Math.round(m.contextWindow / 1024)}k ctx`
+              : m.name,
+          })),
+          maxItems: 15,
+          placeholder: "Type to search...",
+        });
+      } else {
+        backendModelId = await textInput({
+          message: "Backend model ID (powers the assistant):",
+          placeholder: "e.g., anthropic/claude-sonnet-4",
+          validate: (v) =>
+            v.trim().length === 0 ? "Model ID is required" : undefined,
+        });
+      }
+
+      // Workers model: show full catalog (no vision filter)
+      let workersModelId: string;
+      if (catalog && catalog.length > 0) {
+        const useBackendForWorkers = await confirm({
+          message: `Use the same model for content processing? (${backendModelId})`,
+          initialValue: true,
+        });
+        if (useBackendForWorkers) {
+          workersModelId = backendModelId;
+        } else {
+          workersModelId = await autocompleteSelect<string>({
+            message: "Workers model ID (content processing):",
+            options: catalog.map((m) => ({
+              value: m.providerModel,
+              label: m.providerModel,
+              hint: m.contextWindow
+                ? `${m.name} — ${Math.round(m.contextWindow / 1024)}k ctx`
+                : m.name,
+            })),
+            maxItems: 15,
+            placeholder: "Type to search...",
+          });
+        }
+      } else {
+        workersModelId = await textInput({
+          message:
+            "Workers model ID (content processing, leave empty to reuse backend):",
+          placeholder: "Same as backend if empty",
+        });
+        if (!workersModelId.trim()) workersModelId = backendModelId;
+      }
+
+      // Look up capabilities from catalog if available
+      const backendCatalogEntry = catalog?.find(
+        (m) => m.providerModel === backendModelId,
+      );
+      const workersCatalogEntry = catalog?.find(
+        (m) => m.providerModel === workersModelId,
+      );
+
+      const backendId = backendModelId.trim().replace(/[^a-zA-Z0-9-_.]/g, "-");
       const models = [
         {
           id: backendId,
-          name: backendModelName.trim(),
+          name: backendCatalogEntry?.name || backendModelId.trim(),
           provider: firstProviderId,
-          providerModel: backendModelName.trim(),
+          providerModel: backendModelId.trim(),
           capabilities: {
             chat: true,
-            tools: true,
+            tools: backendCatalogEntry?.tools ?? true,
             streaming: true,
-            vision: false,
+            vision: backendCatalogEntry
+              ? backendCatalogEntry.inputModalities.includes("image")
+              : false,
           },
         },
       ];
       const setDefaults: Record<string, string> = { backend: backendId };
 
       if (
-        actualWorkers !== backendModelName.trim() ||
+        workersModelId.trim() !== backendModelId.trim() ||
         secondProviderId !== firstProviderId
       ) {
-        const workersId = `${actualWorkers.replace(/[^a-zA-Z0-9-_.]/g, "-")}-workers`;
+        const workersId = `${workersModelId.trim().replace(/[^a-zA-Z0-9-_.]/g, "-")}-workers`;
         models.push({
           id: workersId,
-          name: `${actualWorkers} (workers)`,
+          name:
+            workersCatalogEntry?.name || `${workersModelId.trim()} (workers)`,
           provider: secondProviderId,
-          providerModel: actualWorkers,
+          providerModel: workersModelId.trim(),
           capabilities: {
             chat: true,
-            tools: false,
+            tools: workersCatalogEntry?.tools ?? false,
             streaming: true,
-            vision: false,
+            vision: workersCatalogEntry
+              ? workersCatalogEntry.inputModalities.includes("image")
+              : false,
           },
         });
         setDefaults.workers = workersId;

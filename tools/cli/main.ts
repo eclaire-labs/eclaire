@@ -123,5 +123,6 @@ program.exitOverride((err) => {
   throw err;
 });
 
-// Parse command line arguments
-program.parse();
+// Parse command line arguments (parseAsync so we can exit cleanly after async actions)
+await program.parseAsync();
+process.exit(0);

@@ -19,8 +19,10 @@ function getApiKey(): string | undefined {
 }
 
 function getHeaders(): Record<string, string> {
+  const backendUrl = getBackendUrl();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    Origin: backendUrl,
   };
   const apiKey = getApiKey();
   if (apiKey) {
@@ -421,6 +423,42 @@ export async function registerUser(
       ok: false,
       error: error instanceof Error ? error.message : "Registration failed",
     };
+  }
+}
+
+// ============================================================================
+// Provider Catalog
+// ============================================================================
+
+export interface CatalogModel {
+  providerModel: string;
+  name: string;
+  contextWindow?: number;
+  inputModalities: string[];
+  tools?: boolean;
+  jsonSchema?: boolean;
+  structuredOutputs?: boolean;
+  sourceUrl?: string;
+}
+
+/**
+ * Fetch the model catalog from a provider.
+ */
+export async function fetchProviderCatalog(
+  providerId: string,
+): Promise<CatalogModel[] | null> {
+  try {
+    const response = await backendFetch(
+      `/api/admin/providers/${providerId}/catalog`,
+      { method: "POST" },
+    );
+    if (!response.ok) return null;
+    const data = (await response.json()) as {
+      items: CatalogModel[];
+    };
+    return data.items;
+  } catch {
+    return null;
   }
 }
 

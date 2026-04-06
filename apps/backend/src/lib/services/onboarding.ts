@@ -226,8 +226,10 @@ export async function getOnboardingState(): Promise<OnboardingState> {
     currentStep = "summary";
   }
 
+  // "welcome" is always auto-complete — only count real user-driven steps
+  const meaningfulSteps = completedSteps.filter((s) => s !== "welcome");
   const derivedStatus: OnboardingStatus =
-    completedSteps.length === 0 ? "not_started" : "in_progress";
+    meaningfulSteps.length === 0 ? "not_started" : "in_progress";
 
   return {
     status: derivedStatus,

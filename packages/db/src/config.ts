@@ -30,24 +30,12 @@ export function getDatabaseUrl(): string | null {
   // In containers, use Docker service name; locally use localhost
   const isContainer = process.env.ECLAIRE_RUNTIME === "container";
   const defaultHost = isContainer ? "postgres" : "127.0.0.1";
-  const isProduction = process.env.NODE_ENV === "production";
-
   // Fall back to individual components (using DATABASE_* naming to match compose.yaml)
   const host = process.env.DATABASE_HOST || defaultHost;
   const port = process.env.DATABASE_PORT || "5432";
-  const database =
-    process.env.DATABASE_NAME || (isProduction ? undefined : "eclaire");
-  const username =
-    process.env.DATABASE_USER || (isProduction ? undefined : "eclaire");
-  const password =
-    process.env.DATABASE_PASSWORD || (isProduction ? undefined : "eclaire");
-
-  if (isProduction && (!database || !username || !password)) {
-    throw new Error(
-      "DATABASE_NAME, DATABASE_USER, and DATABASE_PASSWORD are required in production. " +
-        "Set these environment variables or provide DATABASE_URL directly.",
-    );
-  }
+  const database = process.env.DATABASE_NAME || "eclaire";
+  const username = process.env.DATABASE_USER || "eclaire";
+  const password = process.env.DATABASE_PASSWORD || "eclaire";
 
   return `postgresql://${username}:${password}@${host}:${port}/${database}`;
 }

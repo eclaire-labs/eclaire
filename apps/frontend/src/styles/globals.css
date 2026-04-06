@@ -1,16 +1,5 @@
 /* ———————————————————————————————————————————
-   self-hosted Inter font (no external requests)
-——————————————————————————————————————————— */
-@font-face {
-  font-family: "Inter";
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url("/fonts/inter-latin.woff2") format("woff2");
-}
-
-/* ———————————————————————————————————————————
-   imports FIRST (per CSS spec)
+   @import must precede all other statements
 ——————————————————————————————————————————— */
 @import url("highlight.js/styles/github.css") layer(base)
   (prefers-color-scheme: light);
@@ -20,6 +9,17 @@
 /* tailwind layers */
 @import "tailwindcss";
 @import "tw-animate-css";
+
+/* ———————————————————————————————————————————
+   self-hosted Inter font (no external requests)
+——————————————————————————————————————————— */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/inter-latin.woff2") format("woff2");
+}
 
 /* plugins */
 @plugin '@tailwindcss/typography';
