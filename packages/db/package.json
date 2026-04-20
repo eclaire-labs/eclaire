@@ -82,7 +82,7 @@
     "async-mutex": "0.5.0",
     "better-sqlite3": "12.6.2",
     "dotenv": "17.3.1",
-    "drizzle-orm": "0.45.1",
+    "drizzle-orm": "0.45.2",
     "postgres": "3.4.8"
   },
   "devDependencies": {

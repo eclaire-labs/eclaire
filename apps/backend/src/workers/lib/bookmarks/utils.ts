@@ -302,7 +302,7 @@ export async function extractContentFromHtml(
           const faviconBuffer = Buffer.from(response.data);
           if (faviconBuffer.length > 0) {
             const contentType =
-              response.headers["content-type"] || "image/x-icon";
+              String(response.headers["content-type"] || "image/x-icon");
             const fileName = generateFaviconFileName(
               absoluteFaviconUrl,
               contentType,
@@ -341,7 +341,7 @@ export async function extractContentFromHtml(
           const faviconBuffer = Buffer.from(response.data);
           if (faviconBuffer.length > 0) {
             const contentType =
-              response.headers["content-type"] || "image/x-icon";
+              String(response.headers["content-type"] || "image/x-icon");
 
             const storage = getStorage();
             const faviconKey = buildKey(

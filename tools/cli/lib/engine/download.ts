@@ -190,7 +190,7 @@ async function downloadDirect(
       },
     });
 
-    const totalSize = parseInt(response.headers["content-length"] || "0", 10);
+    const totalSize = parseInt(String(response.headers["content-length"] || "0"), 10);
     let downloadedSize = 0;
 
     const writer = fs.createWriteStream(tempPath);

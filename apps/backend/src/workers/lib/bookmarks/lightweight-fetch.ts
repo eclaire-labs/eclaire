@@ -84,7 +84,7 @@ export async function lightweightFetch(
       return null;
     }
 
-    const contentType = (response.headers["content-type"] || "").toLowerCase();
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
     if (
       !contentType.includes("text/html") &&
       !contentType.includes("application/xhtml")
@@ -135,9 +135,9 @@ export async function lightweightFetch(
     return {
       html,
       finalUrl,
-      contentType: response.headers["content-type"] || "",
-      etag: response.headers.etag || "",
-      lastModified: response.headers["last-modified"] || "",
+      contentType: String(response.headers["content-type"] || ""),
+      etag: String(response.headers.etag || ""),
+      lastModified: String(response.headers["last-modified"] || ""),
       article: {
         title: article.title ?? "",
         content: article.content ?? "",

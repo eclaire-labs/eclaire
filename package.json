@@ -20,7 +20,7 @@
     "overrides": {
       "npm-run-path": "5.3.0",
       "rollup": ">=4.59.0",
-      "serialize-javascript": ">=7.0.3",
+      "serialize-javascript": ">=7.0.5",
       "minimatch": ">=10.2.3",
       "tar": ">=7.5.11"
     }

@@ -32,7 +32,7 @@
     "@eclaire/channels-core": "workspace:*",
     "@eclaire/core": "workspace:*",
     "@discordjs/voice": "^0.18.0",
-    "discord.js": "14.18.0"
+    "discord.js": "14.26.3"
   },
   "peerDependencies": {
     "zod": "^4.0.0",
