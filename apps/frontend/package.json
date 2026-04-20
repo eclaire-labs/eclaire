@@ -76,7 +76,7 @@
     "react-dom": "19.2.5",
     "react-dropzone": "14.3.8",
     "react-hook-form": "7.72.1",
-    "recharts": "2.15.4",
+    "recharts": "3.8.1",
     "rehype-highlight": "7.0.2",
     "rehype-stringify": "10.0.1",
     "remark": "15.0.1",
