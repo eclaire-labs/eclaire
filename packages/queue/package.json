@@ -63,9 +63,9 @@
     "test:all": "pnpm test:sqlite && pnpm test:pglite && pnpm test:bullmq"
   },
   "dependencies": {
-    "bullmq": "5.70.2",
+    "bullmq": "5.74.2",
     "cron-parser": "5.5.0",
-    "ioredis": "5.9.3",
+    "ioredis": "5.10.1",
     "axios": "1.15.1",
     "drizzle-orm": "0.45.2"
   },
@@ -74,11 +74,11 @@
     "@electric-sql/pglite": "0.3.15",
     "@types/better-sqlite3": "7.6.13",
     "@types/node": "catalog:",
-    "better-sqlite3": "12.6.2",
+    "better-sqlite3": "12.9.0",
     "drizzle-kit": "0.31.9",
     "oxlint": "catalog:",
-    "postgres": "3.4.8",
+    "postgres": "3.4.9",
     "typescript": "catalog:",
-    "vitest": "4.0.18"
+    "vitest": "4.1.4"
   }
 }

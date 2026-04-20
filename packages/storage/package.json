@@ -67,6 +67,6 @@
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",
-    "vitest": "4.0.18"
+    "vitest": "4.1.4"
   }
 }

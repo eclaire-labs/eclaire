@@ -80,10 +80,10 @@
     "@eclaire/logger": "workspace:*",
     "@electric-sql/pglite": "0.3.15",
     "async-mutex": "0.5.0",
-    "better-sqlite3": "12.6.2",
-    "dotenv": "17.3.1",
+    "better-sqlite3": "12.9.0",
+    "dotenv": "17.4.2",
     "drizzle-orm": "0.45.2",
-    "postgres": "3.4.8"
+    "postgres": "3.4.9"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

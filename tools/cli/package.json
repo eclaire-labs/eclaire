@@ -5,7 +5,7 @@
   "description": "Eclaire CLI - Manage providers, models, channels, and chat with AI",
   "main": "dist/main.js",
   "type": "module",
-  "packageManager": "pnpm@10.30.3",
+  "packageManager": "pnpm@10.33.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/eclaire-labs/eclaire.git",
@@ -44,7 +44,7 @@
   "author": "Eclaire Labs",
   "license": "MIT",
   "dependencies": {
-    "@clack/prompts": "^1.1.0",
+    "@clack/prompts": "^1.2.0",
     "@eclaire/ai": "workspace:*",
     "@eclaire/channels-core": "workspace:*",
     "@eclaire/channels-discord": "workspace:*",
@@ -63,14 +63,14 @@
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
     "marked": "17.0.4",
-    "nanoid": "5.1.6",
+    "nanoid": "5.1.9",
     "ora": "9.3.0",
-    "react": "^19.1.0"
+    "react": "^19.2.5"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
-    "@types/react": "^19.1.0",
+    "@types/react": "^19.2.14",
     "oxlint": "catalog:",
     "tsx": "4.21.0",
     "typescript": "catalog:"

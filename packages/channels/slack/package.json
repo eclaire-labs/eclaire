@@ -31,8 +31,8 @@
   "dependencies": {
     "@eclaire/channels-core": "workspace:*",
     "@eclaire/core": "workspace:*",
-    "@slack/bolt": "^4.1.0",
-    "@slack/web-api": "^7.0.0"
+    "@slack/bolt": "^4.7.0",
+    "@slack/web-api": "^7.15.1"
   },
   "peerDependencies": {
     "zod": "^4.0.0"
@@ -42,7 +42,7 @@
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",
-    "vitest": "4.0.18",
+    "vitest": "4.1.4",
     "zod": "4.3.6"
   }
 }
