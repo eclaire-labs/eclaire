@@ -191,11 +191,11 @@ export class MemoryStorage implements Storage {
     }
 
     // Sort for consistent ordering
-    matchingKeys.sort();
+    const sortedKeys = matchingKeys.toSorted();
 
     // Apply pagination
-    const paginatedKeys = matchingKeys.slice(offset, offset + limit);
-    const hasMore = offset + limit < matchingKeys.length;
+    const paginatedKeys = sortedKeys.slice(offset, offset + limit);
+    const hasMore = offset + limit < sortedKeys.length;
 
     return {
       keys: paginatedKeys,

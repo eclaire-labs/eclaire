@@ -621,7 +621,7 @@ export async function findAllEntries({
     }
 
     // Sort by createdAt desc, then id desc for tie-breaking
-    allItems.sort((a, b) => {
+    let sortedItems = allItems.toSorted((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
       const dateB = new Date(b.createdAt || 0).getTime();
       if (dateB !== dateA) return dateB - dateA;
@@ -633,18 +633,18 @@ export async function findAllEntries({
       const { date: cursorDate, id: cursorId } =
         decodeCrossEntityCursor(cursor);
       const cursorTime = new Date(cursorDate).getTime();
-      const idx = allItems.findIndex((item) => {
+      const idx = sortedItems.findIndex((item) => {
         const t = new Date(item.createdAt || 0).getTime();
         return t < cursorTime || (t === cursorTime && item.id <= cursorId);
       });
       if (idx > 0) {
-        allItems = allItems.slice(idx);
+        sortedItems = sortedItems.slice(idx);
       }
     }
 
     // Check hasMore and trim to limit
-    const hasMore = allItems.length > limit;
-    const items = hasMore ? allItems.slice(0, limit) : allItems;
+    const hasMore = sortedItems.length > limit;
+    const items = hasMore ? sortedItems.slice(0, limit) : sortedItems;
 
     // Build next cursor from last item
     const lastItem = items[items.length - 1];

@@ -74,35 +74,3 @@ export function createTestLogger(options?: {
     error: log("error"),
   };
 }
-
-/**
- * Deferred promise for controlling test flow.
- *
- * @example
- * ```typescript
- * const deferred = createDeferred<void>();
- *
- * // In handler:
- * await deferred.promise;  // Blocks until resolved
- *
- * // In test:
- * deferred.resolve();  // Unblocks handler
- * ```
- */
-export interface Deferred<T> {
-  promise: Promise<T>;
-  resolve: (value?: T) => void;
-  reject: (error: Error) => void;
-}
-
-export function createDeferred<T>(): Deferred<T> {
-  let resolve!: (value?: T) => void;
-  let reject!: (error: Error) => void;
-
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res as (value?: T) => void;
-    reject = rej;
-  });
-
-  return { promise, resolve, reject };
-}

@@ -106,8 +106,7 @@ describe("McpServerConnection - real MCP protocol", () => {
       );
 
       const tools = await conn.discoverTools();
-      // oxlint-disable-next-line unicorn/no-array-sort
-      const names = tools.map((t) => t.name).sort();
+      const names = tools.map((t) => t.name).toSorted();
       expect(names).toEqual(["add", "echo", "fail_tool"]);
 
       await conn.disconnect();
@@ -146,8 +145,7 @@ describe("McpServerConnection - real MCP protocol", () => {
       );
 
       const tools = await conn.discoverTools();
-      // oxlint-disable-next-line unicorn/no-array-sort
-      expect(tools.map((t) => t.name).sort()).toEqual([
+      expect(tools.map((t) => t.name).toSorted()).toEqual([
         "alpha_read",
         "gamma_delete",
       ]);
@@ -169,8 +167,7 @@ describe("McpServerConnection - real MCP protocol", () => {
       );
 
       const tools = await conn.discoverTools();
-      // oxlint-disable-next-line unicorn/no-array-sort
-      expect(tools.map((t) => t.name).sort()).toEqual([
+      expect(tools.map((t) => t.name).toSorted()).toEqual([
         "alpha_read",
         "epsilon_search",
         "gamma_delete",
@@ -194,8 +191,7 @@ describe("McpServerConnection - real MCP protocol", () => {
       );
 
       const tools = await conn.discoverTools();
-      // oxlint-disable-next-line unicorn/no-array-sort
-      expect(tools.map((t) => t.name).sort()).toEqual([
+      expect(tools.map((t) => t.name).toSorted()).toEqual([
         "alpha_read",
         "gamma_delete",
       ]);

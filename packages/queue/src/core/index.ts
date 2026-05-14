@@ -117,7 +117,6 @@ export {
   addJitter,
   calculateBackoff,
   calculateBackoffWithJitter,
-  createDeferred,
   createWorkerId,
   // Backoff
   DEFAULT_BACKOFF,

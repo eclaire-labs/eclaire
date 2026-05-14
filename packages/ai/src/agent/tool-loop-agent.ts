@@ -321,13 +321,11 @@ export class ToolLoopAgent<TContext extends AgentContext = AgentContext> {
     const logger = getLogger();
     const { context, aiOptions } = options;
 
-    // Create a promise that will resolve to the final result
-    let resolveResult: (result: AgentResult) => void;
-    let rejectResult: (error: Error) => void;
-    const resultPromise = new Promise<AgentResult>((resolve, reject) => {
-      resolveResult = resolve;
-      rejectResult = reject;
-    });
+    const {
+      promise: resultPromise,
+      resolve: resolveResult,
+      reject: rejectResult,
+    } = Promise.withResolvers<AgentResult>();
 
     // Create the event stream
     const eventStream = new ReadableStream<AgentStreamEvent>({

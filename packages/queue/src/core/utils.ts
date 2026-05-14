@@ -297,29 +297,6 @@ export function cancellableSleep(
 }
 
 /**
- * Create a deferred promise
- *
- * Useful for creating promises that can be resolved/rejected externally.
- *
- * @returns Object with promise and resolve/reject functions
- */
-export function createDeferred<T>(): {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (error: unknown) => void;
-} {
-  let resolve!: (value: T) => void;
-  let reject!: (error: unknown) => void;
-
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-
-  return { promise, resolve, reject };
-}
-
-/**
  * Create a timeout promise that rejects after specified milliseconds
  *
  * @param ms - Timeout in milliseconds

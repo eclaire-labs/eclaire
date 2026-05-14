@@ -9,7 +9,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  createDeferred,
   eventually,
   type QueueTestHarness,
   sleep,
@@ -35,8 +34,8 @@ describe("BullMQ: Shutdown", () => {
 
   describe("stop()", () => {
     it("should wait for active job to complete before stopping", async () => {
-      const jobStarted = createDeferred<void>();
-      const canFinish = createDeferred<void>();
+      const jobStarted = Promise.withResolvers<void>();
+      const canFinish = Promise.withResolvers<void>();
       let jobCompleted = false;
 
       await client.enqueue("test-queue", { id: 1 });
@@ -69,8 +68,8 @@ describe("BullMQ: Shutdown", () => {
 
     it("should not pick up new jobs after stop is called", async () => {
       const processedIds: number[] = [];
-      const firstJobStarted = createDeferred<void>();
-      const canFinishFirst = createDeferred<void>();
+      const firstJobStarted = Promise.withResolvers<void>();
+      const canFinishFirst = Promise.withResolvers<void>();
 
       // Create two jobs
       await client.enqueue("test-queue", { id: 1 });
@@ -178,8 +177,8 @@ describe("BullMQ: Shutdown", () => {
     });
 
     it("should return correct state during job processing", async () => {
-      const jobStarted = createDeferred<void>();
-      const canFinish = createDeferred<void>();
+      const jobStarted = Promise.withResolvers<void>();
+      const canFinish = Promise.withResolvers<void>();
 
       await client.enqueue("test-queue", { id: 1 });
 

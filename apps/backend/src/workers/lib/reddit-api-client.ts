@@ -357,7 +357,7 @@ export class RedditApiClient {
     logger.info("Starting smart comment fetching with batching");
 
     while (moreCalls < this.maxMoreCalls) {
-      const moreObjects = this.collectMoreObjects(allComments);
+      let moreObjects = this.collectMoreObjects(allComments);
 
       if (moreObjects.length === 0) {
         logger.info("No more comments to fetch");
@@ -365,12 +365,12 @@ export class RedditApiClient {
       }
 
       if (this.prioritizeShallow) {
-        moreObjects.sort((a, b) => {
+        moreObjects = moreObjects.toSorted((a, b) => {
           if (a.depth !== b.depth) return a.depth - b.depth;
           return b.count - a.count;
         });
       } else {
-        moreObjects.sort((a, b) => b.count - a.count);
+        moreObjects = moreObjects.toSorted((a, b) => b.count - a.count);
       }
 
       const batchIds: string[] = [];

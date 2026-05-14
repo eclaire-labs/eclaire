@@ -13,7 +13,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { JobStage, QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  createDeferred,
   type QueueTestHarness,
 } from "../testkit/index.js";
 
@@ -37,7 +36,7 @@ describe("BullMQ: Job Stages", () => {
 
   it("ctx.initStages() creates stages in job", async () => {
     let capturedStages: JobStage[] | undefined;
-    const done = createDeferred<void>();
+    const done = Promise.withResolvers<void>();
 
     const _jobId = await client.enqueue("test-queue", { value: "test" });
 
@@ -60,7 +59,7 @@ describe("BullMQ: Job Stages", () => {
 
   it("ctx.startStage() updates stage to processing", async () => {
     let stageAfterStart: JobStage | undefined;
-    const done = createDeferred<void>();
+    const done = Promise.withResolvers<void>();
 
     await client.enqueue("test-queue", { value: "test" });
 
@@ -81,7 +80,7 @@ describe("BullMQ: Job Stages", () => {
 
   it("ctx.completeStage() marks stage completed with artifacts", async () => {
     let stageAfterComplete: JobStage | undefined;
-    const done = createDeferred<void>();
+    const done = Promise.withResolvers<void>();
 
     await client.enqueue("test-queue", { value: "test" });
 
@@ -107,7 +106,7 @@ describe("BullMQ: Job Stages", () => {
 
   it("ctx.failStage() marks stage failed", async () => {
     let stageAfterFail: JobStage | undefined;
-    const done = createDeferred<void>();
+    const done = Promise.withResolvers<void>();
 
     await client.enqueue("test-queue", { value: "test" });
 
@@ -133,7 +132,7 @@ describe("BullMQ: Job Stages", () => {
 
   it("ctx.updateStageProgress() updates progress in context", async () => {
     const progressUpdates: number[] = [];
-    const done = createDeferred<void>();
+    const done = Promise.withResolvers<void>();
 
     await client.enqueue("test-queue", { value: "test" });
 
@@ -160,7 +159,7 @@ describe("BullMQ: Job Stages", () => {
 
   it("ctx.addStages() appends dynamic stages", async () => {
     let stagesAfterAdd: JobStage[] | undefined;
-    const done = createDeferred<void>();
+    const done = Promise.withResolvers<void>();
 
     await client.enqueue("test-queue", { value: "test" });
 
@@ -191,7 +190,7 @@ describe("BullMQ: Job Stages", () => {
 
   it("job.overallProgress is calculated correctly", async () => {
     let progressSnapshot: number | undefined;
-    const done = createDeferred<void>();
+    const done = Promise.withResolvers<void>();
 
     await client.enqueue("test-queue", { value: "test" });
 
@@ -225,7 +224,7 @@ describe("BullMQ: Job Stages", () => {
   it("stages persist through job lifecycle with initialStages option", async () => {
     let initialStagesInContext: JobStage[] | undefined;
     let finalStages: JobStage[] | undefined;
-    const done = createDeferred<void>();
+    const done = Promise.withResolvers<void>();
 
     // Enqueue with initialStages option
     await client.enqueue(
@@ -261,7 +260,7 @@ describe("BullMQ: Job Stages", () => {
 
   it("dynamic workflow pattern (classification -> stages)", async () => {
     const processedStages: string[] = [];
-    const done = createDeferred<void>();
+    const done = Promise.withResolvers<void>();
 
     await client.enqueue("test-queue", { filename: "photo.jpg" });
 
@@ -303,7 +302,7 @@ describe("BullMQ: Job Stages", () => {
 
   it("metadata is preserved and accessible in job context", async () => {
     let capturedMetadata: Record<string, unknown> | undefined;
-    const done = createDeferred<void>();
+    const done = Promise.withResolvers<void>();
 
     await client.enqueue(
       "test-queue",

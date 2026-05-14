@@ -20,12 +20,7 @@ import type {
   Worker,
   WorkerOptions,
 } from "../core/types.js";
-import {
-  cancellableSleep,
-  createDeferred,
-  createWorkerId,
-  sleep,
-} from "../core/utils.js";
+import { cancellableSleep, createWorkerId, sleep } from "../core/utils.js";
 import { claimJobPostgres } from "./claim-postgres.js";
 import { claimJobSqlite } from "./claim-sqlite.js";
 import {
@@ -88,7 +83,7 @@ export function createDbWorker<T = unknown>(
   let activeJobs = 0;
   let stopRequested = false;
   let abortController: AbortController | null = null;
-  let stopDeferred = createDeferred<void>();
+  let stopDeferred = Promise.withResolvers<void>();
   let notifyUnsubscribe: (() => void) | null = null;
   let notifyResolver: (() => void) | null = null;
   let notified = false;
@@ -549,7 +544,7 @@ export function createDbWorker<T = unknown>(
       running = true;
       stopRequested = false;
       abortController = new AbortController();
-      stopDeferred = createDeferred<void>(); // Reset for new start
+      stopDeferred = Promise.withResolvers<void>(); // Reset for new start
 
       // Start the worker loop (don't await)
       runLoop();

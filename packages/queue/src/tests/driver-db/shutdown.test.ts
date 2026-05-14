@@ -15,7 +15,6 @@ import {
   createDbWorker,
 } from "../../driver-db/index.js";
 import {
-  createDeferred,
   createQueueTestDatabase,
   createTestLogger,
   DB_TEST_CONFIGS,
@@ -64,7 +63,7 @@ describe.each(DB_TEST_CONFIGS)("Suite F: Shutdown ($label)", ({ dbType }) => {
 
   describe("F1: Graceful Shutdown", () => {
     it("F1.1: Worker completes active jobs before stopping", async () => {
-      const deferred = createDeferred<void>();
+      const deferred = Promise.withResolvers<void>();
       let jobStarted = false;
       let jobCompleted = false;
 
@@ -119,7 +118,7 @@ describe.each(DB_TEST_CONFIGS)("Suite F: Shutdown ($label)", ({ dbType }) => {
 
     it("F1.2: Worker stops polling for new jobs after stop requested", async () => {
       const processedJobs: string[] = [];
-      const firstJobDeferred = createDeferred<void>();
+      const firstJobDeferred = Promise.withResolvers<void>();
 
       // 1. Enqueue multiple jobs
       const jobId1 = await client.enqueue("test-queue", { index: 1 });
@@ -236,17 +235,14 @@ describe.each(DB_TEST_CONFIGS)("Suite F: Shutdown ($label)", ({ dbType }) => {
 
     it("F1.4: Multiple workers graceful shutdown", async () => {
       const processedJobs = new Set<string>();
-      const deferreds = new Map<
-        string,
-        ReturnType<typeof createDeferred<void>>
-      >();
+      const deferreds = new Map<string, PromiseWithResolvers<void>>();
 
       // 1. Enqueue jobs
       const jobIds: string[] = [];
       for (let i = 0; i < 4; i++) {
         const id = await client.enqueue("test-queue", { index: i });
         jobIds.push(id);
-        deferreds.set(id, createDeferred<void>());
+        deferreds.set(id, Promise.withResolvers<void>());
       }
 
       // 2. Start multiple workers

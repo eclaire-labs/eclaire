@@ -76,8 +76,7 @@ describe("Tags API Integration Tests", { timeout: 30000 }, () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    // oxlint-disable-next-line unicorn/no-array-sort
-    const sorted = [...data.items].sort((a: string, b: string) =>
+    const sorted = data.items.toSorted((a: string, b: string) =>
       a.toLowerCase().localeCompare(b.toLowerCase()),
     );
     expect(data.items).toEqual(sorted);

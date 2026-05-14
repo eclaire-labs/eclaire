@@ -10,7 +10,6 @@ import { PermanentError } from "../../core/errors.js";
 import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  createDeferred,
   eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
@@ -56,7 +55,7 @@ describe("BullMQ: Cancel and Retry", () => {
     });
 
     it("should not cancel a job that is being processed", async () => {
-      const deferred = createDeferred<void>();
+      const deferred = Promise.withResolvers<void>();
 
       const jobId = await client.enqueue("test-queue", { value: 1 });
 

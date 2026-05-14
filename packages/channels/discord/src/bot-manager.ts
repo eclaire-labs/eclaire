@@ -708,26 +708,24 @@ export async function startAllBots(): Promise<void> {
 
     logger.info({ count: discordChannels.length }, "Starting Discord bots");
 
-    // Group by bot token to create one client per token
-    const tokenGroups = new Map<
-      string,
-      { channel: (typeof discordChannels)[number]; config: DiscordConfig }[]
-    >();
-
-    for (const channel of discordChannels) {
+    // Decrypt configs, filtering out failures
+    const decryptedChannels = discordChannels.flatMap((channel) => {
       const config = decryptConfig(channel.config);
       if (!config) {
         logger.error(
           { channelId: channel.id },
           "Failed to decrypt Discord config, skipping",
         );
-        continue;
+        return [];
       }
+      return [{ channel, config }];
+    });
 
-      const group = tokenGroups.get(config.bot_token) ?? [];
-      group.push({ channel, config });
-      tokenGroups.set(config.bot_token, group);
-    }
+    // Group by bot token to create one client per token
+    const tokenGroups = Map.groupBy(
+      decryptedChannels,
+      ({ config }) => config.bot_token,
+    );
 
     for (const [botToken, group] of tokenGroups) {
       try {

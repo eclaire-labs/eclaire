@@ -223,12 +223,11 @@ export class RuntimeAgent {
     const logger = getLogger();
     const { context, aiOptions } = options;
 
-    let resolveResult: (result: RuntimeAgentResult) => void;
-    let rejectResult: (error: Error) => void;
-    const resultPromise = new Promise<RuntimeAgentResult>((resolve, reject) => {
-      resolveResult = resolve;
-      rejectResult = reject;
-    });
+    const {
+      promise: resultPromise,
+      resolve: resolveResult,
+      reject: rejectResult,
+    } = Promise.withResolvers<RuntimeAgentResult>();
 
     const eventStream = new ReadableStream<RuntimeStreamEvent>({
       start: async (controller) => {

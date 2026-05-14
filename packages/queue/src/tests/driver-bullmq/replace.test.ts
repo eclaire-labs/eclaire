@@ -11,7 +11,6 @@ import { JobAlreadyActiveError, PermanentError } from "../../core/errors.js";
 import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  createDeferred,
   eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
@@ -179,8 +178,8 @@ describe("BullMQ: Replace Semantics", () => {
     });
 
     it("should throw JobAlreadyActiveError when job is processing", async () => {
-      const processingStarted = createDeferred<void>();
-      const canFinishProcessing = createDeferred<void>();
+      const processingStarted = Promise.withResolvers<void>();
+      const canFinishProcessing = Promise.withResolvers<void>();
 
       // Create a job
       await client.enqueue("test-queue", { value: 1 }, { key: "active-key" });

@@ -644,26 +644,24 @@ export async function startAllBots(): Promise<void> {
 
     logger.info({ count: slackChannels.length }, "Starting Slack bots");
 
-    // Group by bot token to create one app per token
-    const tokenGroups = new Map<
-      string,
-      { channel: (typeof slackChannels)[number]; config: SlackConfig }[]
-    >();
-
-    for (const channel of slackChannels) {
+    // Decrypt configs, filtering out failures
+    const decryptedChannels = slackChannels.flatMap((channel) => {
       const config = decryptConfig(channel.config);
       if (!config) {
         logger.error(
           { channelId: channel.id },
           "Failed to decrypt Slack config, skipping",
         );
-        continue;
+        return [];
       }
+      return [{ channel, config }];
+    });
 
-      const group = tokenGroups.get(config.bot_token) ?? [];
-      group.push({ channel, config });
-      tokenGroups.set(config.bot_token, group);
-    }
+    // Group by bot token to create one app per token
+    const tokenGroups = Map.groupBy(
+      decryptedChannels,
+      ({ config }) => config.bot_token,
+    );
 
     for (const [botToken, group] of tokenGroups) {
       try {

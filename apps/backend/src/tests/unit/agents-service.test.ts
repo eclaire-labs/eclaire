@@ -374,8 +374,7 @@ describe("getAgentCatalog", () => {
 
     // Verify sorted by label
     const labels = catalog.tools.map((t) => t.label);
-    // oxlint-disable-next-line unicorn/no-array-sort
-    const sorted = [...labels].sort((a, b) => a.localeCompare(b));
+    const sorted = labels.toSorted((a, b) => a.localeCompare(b));
     expect(labels).toEqual(sorted);
   });
 
@@ -386,8 +385,7 @@ describe("getAgentCatalog", () => {
     expect(skillNames).toContain("coding-assistant");
     expect(skillNames).toContain("writing-helper");
 
-    // oxlint-disable-next-line unicorn/no-array-sort
-    const sorted = [...skillNames].sort((a, b) => a.localeCompare(b));
+    const sorted = skillNames.toSorted((a, b) => a.localeCompare(b));
     expect(skillNames).toEqual(sorted);
   });
 

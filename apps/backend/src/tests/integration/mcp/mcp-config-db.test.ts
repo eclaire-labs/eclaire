@@ -208,8 +208,7 @@ describe.each(DB_TEST_CONFIGS)(
 
         const servers = await listMcpServers();
         expect(servers).toHaveLength(2);
-        // oxlint-disable-next-line unicorn/no-array-sort
-        const ids = servers.map((s) => s.id).sort();
+        const ids = servers.map((s) => s.id).toSorted();
         expect(ids).toEqual(["srv-1", "srv-2"]);
       });
 

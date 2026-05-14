@@ -10,7 +10,6 @@ import { PermanentError } from "../../core/errors.js";
 import type { QueueClient, Worker } from "../../core/types.js";
 import { createDbQueueClient, createDbWorker } from "../../driver-db/index.js";
 import {
-  createDeferred,
   createQueueTestDatabase,
   createTestLogger,
   DB_TEST_CONFIGS,
@@ -149,8 +148,8 @@ describe.each(DB_TEST_CONFIGS)("A13: Stats ($label)", ({ dbType }) => {
   });
 
   it("should track processing jobs", async () => {
-    const processingStarted = createDeferred<void>();
-    const continueProcessing = createDeferred<void>();
+    const processingStarted = Promise.withResolvers<void>();
+    const continueProcessing = Promise.withResolvers<void>();
 
     // Enqueue job BEFORE starting worker
     const jobId = await client.enqueue("test-queue", { value: 1 });
@@ -194,8 +193,8 @@ describe.each(DB_TEST_CONFIGS)("A13: Stats ($label)", ({ dbType }) => {
   });
 
   it("should reflect mixed job states", async () => {
-    const continueJob2 = createDeferred<void>();
-    const job2Started = createDeferred<void>();
+    const continueJob2 = Promise.withResolvers<void>();
+    const job2Started = Promise.withResolvers<void>();
     let jobCounter = 0;
 
     // Enqueue 4 jobs BEFORE starting worker

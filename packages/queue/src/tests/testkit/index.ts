@@ -79,10 +79,4 @@ export type {
   TestDbType,
 } from "./types.js";
 // Utilities
-export {
-  createDeferred,
-  createTestLogger,
-  type Deferred,
-  eventually,
-  sleep,
-} from "./utils.js";
+export { createTestLogger, eventually, sleep } from "./utils.js";

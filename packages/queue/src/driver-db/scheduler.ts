@@ -21,7 +21,6 @@ import type {
 } from "../core/types.js";
 import {
   cancellableSleep,
-  createDeferred,
   generateScheduleId,
   isValidCronExpression,
 } from "../core/utils.js";
@@ -77,7 +76,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
   let running = false;
   let stopRequested = false;
   let abortController: AbortController | null = null;
-  let stopDeferred = createDeferred<void>();
+  let stopDeferred = Promise.withResolvers<void>();
 
   /**
    * Calculate next run time from cron expression
@@ -423,7 +422,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
       running = true;
       stopRequested = false;
       abortController = new AbortController();
-      stopDeferred = createDeferred<void>(); // Reset for new start
+      stopDeferred = Promise.withResolvers<void>(); // Reset for new start
 
       // Start loop (don't await - runs in background)
       runLoop();

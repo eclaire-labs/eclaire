@@ -10,7 +10,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  createDeferred,
   eventually,
   type QueueTestHarness,
   sleep,
@@ -40,7 +39,7 @@ describe("BullMQ: Driver-Specific Features", () => {
       // With maxStalledCount: 1 (set in worker.ts), a stalled job
       // is automatically failed after detection.
 
-      const jobStarted = createDeferred<void>();
+      const jobStarted = Promise.withResolvers<void>();
       let processCount = 0;
 
       const jobId = await client.enqueue("test-queue", { value: 1 });
@@ -111,8 +110,8 @@ describe("BullMQ: Driver-Specific Features", () => {
   describe("Job State Transitions", () => {
     it("should transition through waiting -> active -> completed", async () => {
       const states: string[] = [];
-      const processingStarted = createDeferred<void>();
-      const canFinish = createDeferred<void>();
+      const processingStarted = Promise.withResolvers<void>();
+      const canFinish = Promise.withResolvers<void>();
 
       const jobId = await client.enqueue("test-queue", { value: 1 });
 
@@ -261,8 +260,7 @@ describe("BullMQ: Driver-Specific Features", () => {
       await workerB.stop();
 
       // Jobs should be processed by correct queue workers
-      // oxlint-disable-next-line unicorn/no-array-sort
-      expect(queueAJobs.sort()).toEqual(["a1", "a2"]);
+      expect(queueAJobs.toSorted()).toEqual(["a1", "a2"]);
       expect(queueBJobs).toEqual(["b1"]);
     });
   });

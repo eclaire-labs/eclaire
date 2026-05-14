@@ -252,8 +252,7 @@ describe.each(DB_TEST_CONFIGS)("$label - MCP Full Pipeline", ({ dbType }) => {
 
       const tools = registry.getMcpTools();
       // Individual: 2 tools; Grouped: 1 tool
-      // oxlint-disable-next-line unicorn/no-array-sort
-      expect(Object.keys(tools).sort()).toEqual([
+      expect(Object.keys(tools).toSorted()).toEqual([
         "browser",
         "read_file",
         "write_file",

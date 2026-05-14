@@ -12,7 +12,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  createDeferred,
   eventually,
   type QueueTestHarness,
   sleep,
@@ -39,7 +38,7 @@ describe("BullMQ: Job Context", () => {
   describe("heartbeat()", () => {
     // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
     it("should be callable without error", async () => {
-      const heartbeatCalled = createDeferred<void>();
+      const heartbeatCalled = Promise.withResolvers<void>();
 
       await client.enqueue("test-queue", { value: 1 });
 
@@ -54,7 +53,7 @@ describe("BullMQ: Job Context", () => {
 
     it("should allow multiple heartbeat calls", async () => {
       let heartbeatCount = 0;
-      const processingDone = createDeferred<void>();
+      const processingDone = Promise.withResolvers<void>();
 
       await client.enqueue("test-queue", { value: 1 });
 
@@ -78,7 +77,7 @@ describe("BullMQ: Job Context", () => {
       // Use a short lock duration to test heartbeat keeps job alive
       const jobId = await client.enqueue("test-queue", { value: 1 });
 
-      const jobStarted = createDeferred<void>();
+      const jobStarted = Promise.withResolvers<void>();
 
       worker = harness.createWorker(
         "test-queue",
@@ -136,7 +135,7 @@ describe("BullMQ: Job Context", () => {
 
     // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
     it("should handle empty log messages", async () => {
-      const completed = createDeferred<void>();
+      const completed = Promise.withResolvers<void>();
 
       await client.enqueue("test-queue", { value: 1 });
 
@@ -151,7 +150,7 @@ describe("BullMQ: Job Context", () => {
 
     // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
     it("should handle special characters in log messages", async () => {
-      const completed = createDeferred<void>();
+      const completed = Promise.withResolvers<void>();
 
       await client.enqueue("test-queue", { value: 1 });
 
@@ -170,7 +169,7 @@ describe("BullMQ: Job Context", () => {
   describe("progress()", () => {
     it("should update job progress", async () => {
       const progressValues: number[] = [];
-      const completed = createDeferred<void>();
+      const completed = Promise.withResolvers<void>();
 
       await client.enqueue("test-queue", { value: 1 });
 
@@ -205,7 +204,7 @@ describe("BullMQ: Job Context", () => {
 
     // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
     it("should handle progress values 0-100", async () => {
-      const completed = createDeferred<void>();
+      const completed = Promise.withResolvers<void>();
 
       await client.enqueue("test-queue", { value: 1 });
 
@@ -222,7 +221,7 @@ describe("BullMQ: Job Context", () => {
 
     it("should allow rapid progress updates", async () => {
       let updateCount = 0;
-      const completed = createDeferred<void>();
+      const completed = Promise.withResolvers<void>();
 
       await client.enqueue("test-queue", { value: 1 });
 

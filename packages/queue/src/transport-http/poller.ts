@@ -24,12 +24,7 @@ import type {
   Worker,
   WorkerOptions,
 } from "../core/types.js";
-import {
-  cancellableSleep,
-  createDeferred,
-  createWorkerId,
-  sleep,
-} from "../core/utils.js";
+import { cancellableSleep, createWorkerId, sleep } from "../core/utils.js";
 import { createHttpClient } from "./client.js";
 import type { HttpJobResponse, HttpPollerConfig } from "./types.js";
 
@@ -89,7 +84,7 @@ export function createHttpWorker<T = unknown>(
   let stopRequested = false;
   let activeJobs = 0;
   let abortController: AbortController | null = null;
-  let stopDeferred = createDeferred<void>();
+  let stopDeferred = Promise.withResolvers<void>();
 
   /**
    * Convert HTTP job response to Job interface
@@ -341,7 +336,7 @@ export function createHttpWorker<T = unknown>(
       running = true;
       stopRequested = false;
       abortController = new AbortController();
-      stopDeferred = createDeferred<void>(); // Reset for new start
+      stopDeferred = Promise.withResolvers<void>(); // Reset for new start
 
       // Start the worker loop (don't await)
       runLoop();

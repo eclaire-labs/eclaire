@@ -10,11 +10,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { QueueClient, Worker } from "../../core/types.js";
 import { createDbQueueClient, createDbWorker } from "../../driver-db/index.js";
 import {
-  createDeferred,
   createQueueTestDatabase,
   createTestLogger,
   DB_TEST_CONFIGS,
-  type Deferred,
   eventually,
   type QueueTestDatabase,
   sleep,
@@ -158,7 +156,7 @@ describe.each(DB_TEST_CONFIGS)(
     it("B10.3: all concurrent jobs complete before stop() returns", async () => {
       const jobsInProgress: string[] = [];
       const jobsCompleted: string[] = [];
-      const jobDeferreds = new Map<string, Deferred<void>>();
+      const jobDeferreds = new Map<string, PromiseWithResolvers<void>>();
 
       // Create worker with concurrency: 3
       worker = createDbWorker(
@@ -167,7 +165,7 @@ describe.each(DB_TEST_CONFIGS)(
           jobsInProgress.push(ctx.job.id);
 
           // Create a deferred that we control
-          const deferred = createDeferred<void>();
+          const deferred = Promise.withResolvers<void>();
           jobDeferreds.set(ctx.job.id, deferred);
 
           // Wait for external signal to complete

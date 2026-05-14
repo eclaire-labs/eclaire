@@ -82,8 +82,7 @@ describe("Agent API Integration Tests", () => {
 
       // Verify tools are sorted by label
       const labels = data.tools.map((t) => t.label);
-      // oxlint-disable-next-line unicorn/no-array-sort
-      const sorted = [...labels].sort((a, b) => a.localeCompare(b));
+      const sorted = labels.toSorted((a, b) => a.localeCompare(b));
       expect(labels).toEqual(sorted);
     });
 

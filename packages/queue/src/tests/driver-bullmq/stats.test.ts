@@ -14,7 +14,6 @@ import { PermanentError } from "../../core/errors.js";
 import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
-  createDeferred,
   eventually,
   type QueueTestHarness,
 } from "../testkit/index.js";
@@ -72,8 +71,8 @@ describe("BullMQ: Stats", () => {
 
   describe("Processing count", () => {
     it("should count active jobs as processing", async () => {
-      const processingStarted = createDeferred<void>();
-      const canFinish = createDeferred<void>();
+      const processingStarted = Promise.withResolvers<void>();
+      const canFinish = Promise.withResolvers<void>();
 
       await client.enqueue("stats-queue", { id: 1 });
 
@@ -179,8 +178,8 @@ describe("BullMQ: Stats", () => {
 
   describe("Stats state transitions", () => {
     it("should update stats as jobs transition through states", async () => {
-      const processingStarted = createDeferred<void>();
-      const canFinish = createDeferred<void>();
+      const processingStarted = Promise.withResolvers<void>();
+      const canFinish = Promise.withResolvers<void>();
 
       // Initial: 2 pending
       await client.enqueue("stats-queue", { id: 1 }, { key: "job-1" });

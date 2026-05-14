@@ -13,7 +13,6 @@ import {
   calculateBackoff,
   calculateBackoffWithJitter,
   cancellableSleep,
-  createDeferred,
   createWorkerId,
   DEFAULT_BACKOFF,
   generateJobId,
@@ -353,20 +352,6 @@ describe("cancellableSleep", () => {
 
   it("works without signal", async () => {
     await expect(cancellableSleep(10)).resolves.toBeUndefined();
-  });
-});
-
-describe("createDeferred", () => {
-  it("creates a resolvable deferred", async () => {
-    const { promise, resolve } = createDeferred<number>();
-    resolve(42);
-    await expect(promise).resolves.toBe(42);
-  });
-
-  it("creates a rejectable deferred", async () => {
-    const { promise, reject } = createDeferred<number>();
-    reject(new Error("test error"));
-    await expect(promise).rejects.toThrow("test error");
   });
 });
 

@@ -18,7 +18,6 @@ import {
 import type { QueueClient, Worker } from "../../core/types.js";
 import { createDbQueueClient, createDbWorker } from "../../driver-db/index.js";
 import {
-  createDeferred,
   createQueueTestDatabase,
   createTestLogger,
   DB_TEST_CONFIGS,
@@ -61,8 +60,8 @@ describe.each(DB_TEST_CONFIGS)(
 
     it("A3.1: should throw JobAlreadyActiveError when replacing active job", async () => {
       const key = "active-job-key";
-      const handlerStarted = createDeferred<void>();
-      const continueHandler = createDeferred<void>();
+      const handlerStarted = Promise.withResolvers<void>();
+      const continueHandler = Promise.withResolvers<void>();
 
       // 1. Enqueue initial job
       await client.enqueue("test-queue", { value: "original" }, { key });
@@ -128,8 +127,8 @@ describe.each(DB_TEST_CONFIGS)(
 
     it("A3.2: should not interrupt active job handler (sees original payload)", async () => {
       const key = "no-interrupt-key";
-      const handlerStarted = createDeferred<void>();
-      const continueHandler = createDeferred<void>();
+      const handlerStarted = Promise.withResolvers<void>();
+      const continueHandler = Promise.withResolvers<void>();
       let handlerPayload: unknown = null;
       let handlerCompleted = false;
 
@@ -367,8 +366,8 @@ describe.each(DB_TEST_CONFIGS)(
 
     it("A3.7: should maintain backward compatibility without replace option", async () => {
       const key = "backward-compat-key";
-      const handlerStarted = createDeferred<void>();
-      const continueHandler = createDeferred<void>();
+      const handlerStarted = Promise.withResolvers<void>();
+      const continueHandler = Promise.withResolvers<void>();
 
       // 1. Enqueue initial job
       await client.enqueue("test-queue", { value: "original" }, { key });
