@@ -136,7 +136,7 @@ function formatTweetText(tweet: TwitterTweet): string {
   text = escapeHtml(text);
 
   // Replace t.co links from the links array (process in reverse order to preserve indices)
-  const sortedLinks = [...tweet.links].sort((a, b) => b.start - a.start);
+  const sortedLinks = [...tweet.links].toSorted((a, b) => b.start - a.start);
   for (const link of sortedLinks) {
     const escapedUrl = escapeHtml(link.url);
     const escapedExpandedUrl = escapeHtml(link.expandedUrl);

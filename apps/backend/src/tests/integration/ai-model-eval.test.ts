@@ -94,6 +94,7 @@ const TEST_PROMPTS = [
 ];
 
 describe("Model Evaluation Integration Tests", () => {
+  // oxlint-disable-next-line vitest/expect-expect -- benchmark test; results are logged to console
   it("Model Performance Comparison - Simple Greeting", async () => {
     const prompt = TEST_PROMPTS[0]; // "hey"
     const results: ModelEvalResult[] = [];

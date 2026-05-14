@@ -366,6 +366,7 @@ function parseModelResponse(responseText: string | any): any {
     );
     throw new Error(
       `Could not parse AI response: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
     );
   }
 }

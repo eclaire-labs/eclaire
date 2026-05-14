@@ -134,9 +134,9 @@ describe("JsonRpcTransport", () => {
       fastTransport.close();
     });
 
-    it("rejects when transport is closed", () => {
+    it("rejects when transport is closed", async () => {
       transport.close();
-      expect(() => transport.sendRequest("method")).rejects.toThrow(
+      await expect(() => transport.sendRequest("method")).rejects.toThrow(
         "Transport is closed",
       );
     });

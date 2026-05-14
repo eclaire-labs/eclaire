@@ -127,6 +127,7 @@ describe("McpRegistry - real tool discovery and mapping", () => {
       await registry.initialize();
 
       const tools = registry.getMcpTools();
+      // oxlint-disable-next-line unicorn/no-array-sort
       const names = Object.keys(tools).sort();
       expect(names).toEqual(["read_file", "write_file"]);
 
@@ -191,6 +192,7 @@ describe("McpRegistry - real tool discovery and mapping", () => {
       await registry.initialize();
 
       const tools = registry.getMcpTools();
+      // oxlint-disable-next-line unicorn/no-array-sort
       expect(Object.keys(tools).sort()).toEqual([
         "group_tool",
         "tool_a",
@@ -367,6 +369,7 @@ describe("McpRegistry - real tool discovery and mapping", () => {
       await registry.initialize();
 
       const tools = registry.getMcpTools();
+      // oxlint-disable-next-line unicorn/no-array-sort
       expect(Object.keys(tools).sort()).toEqual(["fs_read", "fs_write"]);
 
       await registry.disconnectAll();

@@ -265,7 +265,9 @@ export const TIMEZONES = [
     label: "East Africa Time (Nairobi) - GMT+3",
     offset: "UTC+3",
   },
-].sort((a, b) => a.label.localeCompare(b.label));
+]
+  // oxlint-disable-next-line unicorn/no-array-sort
+  .sort((a, b) => a.label.localeCompare(b.label));
 
 // Country data with common countries
 export const COUNTRIES = [
@@ -330,7 +332,9 @@ export const COUNTRIES = [
   { value: "CO", label: "Colombia" },
   { value: "PE", label: "Peru" },
   { value: "NZ", label: "New Zealand" },
-].sort((a, b) => a.label.localeCompare(b.label));
+]
+  // oxlint-disable-next-line unicorn/no-array-sort
+  .sort((a, b) => a.label.localeCompare(b.label));
 
 // Major cities worldwide
 export const CITIES = [
@@ -424,7 +428,9 @@ export const CITIES = [
   { value: "Lagos", label: "Lagos", country: "NG" },
   { value: "Nairobi", label: "Nairobi", country: "KE" },
   { value: "Cairo", label: "Cairo", country: "EG" },
-].sort((a, b) => a.label.localeCompare(b.label));
+]
+  // oxlint-disable-next-line unicorn/no-array-sort
+  .sort((a, b) => a.label.localeCompare(b.label));
 
 // Helper function to get user's timezone
 export function getUserTimezone(): string {

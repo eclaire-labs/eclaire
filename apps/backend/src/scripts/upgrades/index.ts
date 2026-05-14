@@ -79,7 +79,7 @@ export function getUpgradeSteps(
       // Include step if its version is > fromVersion AND <= toVersion
       return semver.gt(stepVersion, from) && semver.lte(stepVersion, to);
     })
-    .sort((a, b) => semver.compare(a.version, b.version));
+    .toSorted((a, b) => semver.compare(a.version, b.version));
 }
 
 /**

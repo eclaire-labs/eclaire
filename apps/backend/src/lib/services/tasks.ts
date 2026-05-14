@@ -514,7 +514,7 @@ export async function createTask(
       throw error;
     }
 
-    throw new Error("Failed to create task");
+    throw new Error("Failed to create task", { cause: error });
   }
 }
 
@@ -774,7 +774,7 @@ export async function updateTask(
       throw error;
     }
 
-    throw new Error("Failed to update task");
+    throw new Error("Failed to update task", { cause: error });
   }
 }
 
@@ -1015,7 +1015,7 @@ export async function deleteTask(
       },
       "Error deleting task",
     );
-    throw new Error("Failed to delete task");
+    throw new Error("Failed to delete task", { cause: error });
   }
 }
 
@@ -1053,7 +1053,9 @@ export async function getTaskById(taskId: string, userId: string) {
       },
       "Error getting task by ID",
     );
-    throw new Error("Failed to fetch task due to an unexpected error");
+    throw new Error("Failed to fetch task due to an unexpected error", {
+      cause: error,
+    });
   }
 }
 
@@ -1343,7 +1345,7 @@ export async function findTasks({
       },
       "Error searching tasks",
     );
-    throw new Error("Failed to search tasks");
+    throw new Error("Failed to search tasks", { cause: error });
   }
 }
 
@@ -1413,7 +1415,7 @@ export async function countTasks({
       },
       "Error counting tasks",
     );
-    throw new Error("Failed to count tasks");
+    throw new Error("Failed to count tasks", { cause: error });
   }
 }
 

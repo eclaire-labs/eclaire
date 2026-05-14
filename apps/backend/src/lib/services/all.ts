@@ -670,7 +670,7 @@ export async function findAllEntries({
       },
       "Error finding all entries",
     );
-    throw new Error("Failed to search across all items");
+    throw new Error("Failed to search across all items", { cause: error });
   }
 }
 
@@ -732,7 +732,9 @@ export async function countAllEntries({
       },
       "Error counting all entries",
     );
-    throw new Error("Failed to count items across all collections");
+    throw new Error("Failed to count items across all collections", {
+      cause: error,
+    });
   }
 }
 

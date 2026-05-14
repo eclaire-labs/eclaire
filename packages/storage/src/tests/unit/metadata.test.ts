@@ -170,6 +170,7 @@ describe("deleteMetadata", () => {
     expect(await readMetadata(filePath)).toBeNull();
   });
 
+  // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
   it("is a no-op when sidecar does not exist", async () => {
     const filePath = join(tempDir, "nonexistent.txt");
     // Should not throw

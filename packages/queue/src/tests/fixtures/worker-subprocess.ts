@@ -156,6 +156,7 @@ async function runPostgresWorker() {
   output({ type: "ready" });
 
   // Wait for max jobs or shutdown signal
+  // oxlint-disable-next-line no-unmodified-loop-condition
   while (!shouldStop) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
@@ -204,6 +205,7 @@ async function runRedisWorker() {
   output({ type: "ready" });
 
   // Wait for max jobs or shutdown signal
+  // oxlint-disable-next-line no-unmodified-loop-condition
   while (!shouldStop) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }

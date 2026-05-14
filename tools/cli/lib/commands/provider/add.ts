@@ -105,7 +105,7 @@ export async function addCommand(options: CommandOptions): Promise<void> {
         "mlx-lm",
         "mlx-vlm",
       ];
-      const sorted = [...allPresets].sort((a, b) => {
+      const sorted = [...allPresets].toSorted((a, b) => {
         const aIdx = priority.indexOf(a.id);
         const bIdx = priority.indexOf(b.id);
         if (aIdx === -1 && bIdx === -1) return 0;

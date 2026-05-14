@@ -269,6 +269,7 @@ export function createHttpWorker<T = unknown>(
       "HTTP worker started",
     );
 
+    // oxlint-disable-next-line no-unmodified-loop-condition
     while (running && !stopRequested) {
       // Check if we can take more jobs
       if (activeJobs >= concurrency) {
@@ -317,6 +318,7 @@ export function createHttpWorker<T = unknown>(
     }
 
     // Wait for active jobs to complete (NOT interruptible - we want jobs to finish)
+    // oxlint-disable-next-line no-unmodified-loop-condition
     while (activeJobs > 0) {
       logger.debug(
         { queue, workerId, activeJobs },

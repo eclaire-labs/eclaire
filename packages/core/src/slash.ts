@@ -190,7 +190,7 @@ export function filterSlashItems(
       item.label.toLowerCase().startsWith(q),
   );
 
-  return matches.sort((a, b) => {
+  return matches.toSorted((a, b) => {
     // Group by kind order
     const kindOrder: Record<SlashItemKind, number> = {
       command: 0,

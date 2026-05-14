@@ -1511,7 +1511,9 @@ export async function updateMediaArtifacts(
       },
       "Database error updating media artifacts",
     );
-    throw new Error(`Database error updating media artifacts for ${mediaId}`);
+    throw new Error(`Database error updating media artifacts for ${mediaId}`, {
+      cause: error,
+    });
   }
 }
 

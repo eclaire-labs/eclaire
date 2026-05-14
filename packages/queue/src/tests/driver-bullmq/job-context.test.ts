@@ -37,6 +37,7 @@ describe("BullMQ: Job Context", () => {
   });
 
   describe("heartbeat()", () => {
+    // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
     it("should be callable without error", async () => {
       const heartbeatCalled = createDeferred<void>();
 
@@ -109,6 +110,7 @@ describe("BullMQ: Job Context", () => {
   });
 
   describe("log()", () => {
+    // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw; log output verified via eventually()
     it("should record log messages", async () => {
       const _logMessages: string[] = [];
 
@@ -132,6 +134,7 @@ describe("BullMQ: Job Context", () => {
       // but the test verifies the method is callable
     });
 
+    // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
     it("should handle empty log messages", async () => {
       const completed = createDeferred<void>();
 
@@ -146,6 +149,7 @@ describe("BullMQ: Job Context", () => {
       await completed.promise;
     });
 
+    // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
     it("should handle special characters in log messages", async () => {
       const completed = createDeferred<void>();
 
@@ -199,6 +203,7 @@ describe("BullMQ: Job Context", () => {
       expect(progressValues).toEqual([0, 25, 50, 75, 100]);
     });
 
+    // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
     it("should handle progress values 0-100", async () => {
       const completed = createDeferred<void>();
 

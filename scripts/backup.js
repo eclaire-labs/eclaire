@@ -911,7 +911,7 @@ function getMostRecentBackup() {
       mtime: fs.statSync(path.join(backupsDir, dir)).mtime,
     }))
     .filter((item) => fs.statSync(item.path).isDirectory())
-    .sort((a, b) => b.mtime - a.mtime);
+    .toSorted((a, b) => b.mtime - a.mtime);
 
   return backupDirs.length > 0 ? backupDirs[0].path : null;
 }

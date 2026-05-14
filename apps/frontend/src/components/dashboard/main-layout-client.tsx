@@ -1209,12 +1209,22 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
           >
             {/* Resize Handle - spans full height with higher z-index */}
             <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize assistant panel"
+              tabIndex={0}
               className={`absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/20 ${
                 isResizing ? "bg-primary/40" : ""
               } transition-colors z-50`}
               onMouseDown={handleMouseDown}
-              style={{ marginLeft: "-4px" }} // Offset to center the handle on the border
-              title="Drag to resize assistant panel"
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft") {
+                  setAssistantWidth((w) => Math.min(w + 20, 800));
+                } else if (e.key === "ArrowRight") {
+                  setAssistantWidth((w) => Math.max(w - 20, 300));
+                }
+              }}
+              style={{ marginLeft: "-4px" }}
             />
             <GlobalAssistant
               open={assistantOpen}

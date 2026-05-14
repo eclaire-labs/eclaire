@@ -144,7 +144,7 @@ export function MarkdownDisplayWithAssets({
           ) : (
             <div className="space-y-2">
               {contentLinks.map((link, index) => (
-                <ContentLinkPreview key={`${link.url}-${index}`} link={link} />
+                <ContentLinkPreview key={link.id} link={link} />
               ))}
             </div>
           )}

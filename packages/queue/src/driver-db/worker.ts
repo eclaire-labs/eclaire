@@ -415,6 +415,7 @@ export function createDbWorker<T = unknown>(
       notifyUnsubscribe = notifyListener.subscribe(queue, onNotification);
     }
 
+    // oxlint-disable-next-line no-unmodified-loop-condition
     while (running && !stopRequested) {
       // Check if we can take more jobs
       if (activeJobs >= concurrency) {
@@ -473,6 +474,7 @@ export function createDbWorker<T = unknown>(
     }
 
     // Wait for active jobs to complete (NOT interruptible - we want jobs to finish)
+    // oxlint-disable-next-line no-unmodified-loop-condition
     while (activeJobs > 0) {
       logger.debug(
         { queue, workerId, activeJobs },

@@ -234,6 +234,7 @@ export function createDbScheduler(config: DbSchedulerConfig): Scheduler {
   async function runLoop(): Promise<void> {
     logger.info({ checkInterval }, "Scheduler started");
 
+    // oxlint-disable-next-line no-unmodified-loop-condition
     while (running && !stopRequested) {
       await processSchedules();
       await cancellableSleep(checkInterval, abortController?.signal);

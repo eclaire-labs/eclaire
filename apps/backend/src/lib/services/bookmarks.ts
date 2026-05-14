@@ -455,7 +455,7 @@ export async function updateBookmark(
       },
       "Error updating bookmark",
     );
-    throw new Error("Failed to update bookmark");
+    throw new Error("Failed to update bookmark", { cause: error });
   }
 }
 
@@ -547,7 +547,7 @@ export async function deleteBookmark(
       },
       "Error deleting bookmark",
     );
-    throw new Error("Failed to delete bookmark");
+    throw new Error("Failed to delete bookmark", { cause: error });
   }
 }
 
@@ -710,7 +710,7 @@ export async function getBookmarkById(bookmarkId: string, userId: string) {
       },
       "Error getting bookmark by ID",
     );
-    throw new Error("Failed to fetch bookmark");
+    throw new Error("Failed to fetch bookmark", { cause: error });
   }
 }
 
@@ -1007,7 +1007,7 @@ export async function findBookmarks({
       },
       "Error searching bookmarks",
     );
-    throw new Error("Failed to search bookmarks");
+    throw new Error("Failed to search bookmarks", { cause: error });
   }
 }
 
@@ -1062,7 +1062,7 @@ export async function countBookmarks({
       },
       "Error counting bookmarks",
     );
-    throw new Error("Failed to count bookmarks");
+    throw new Error("Failed to count bookmarks", { cause: error });
   }
 }
 

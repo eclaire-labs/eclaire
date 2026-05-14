@@ -75,6 +75,7 @@ describe("ChannelRegistry", () => {
     expect(startAll2).toHaveBeenCalledOnce();
   });
 
+  // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
   it("startAll() skips adapters without startAll", async () => {
     const registry = new ChannelRegistry();
     registry.register(createMockAdapter("telegram"));
@@ -139,6 +140,7 @@ describe("ChannelRegistry", () => {
     expect(stopAll2).toHaveBeenCalledOnce();
   });
 
+  // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
   it("stopAll() skips adapters without stopAll", async () => {
     const registry = new ChannelRegistry();
     registry.register(createMockAdapter("telegram"));

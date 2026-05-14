@@ -344,7 +344,7 @@ export async function getUserDataSummary(userId: string) {
     };
   } catch (error) {
     logger.error({ err: error }, "Error getting user data summary");
-    throw new Error("Failed to get user data summary");
+    throw new Error("Failed to get user data summary", { cause: error });
   }
 }
 
@@ -474,7 +474,7 @@ export async function getDashboardStatistics(userId: string) {
       },
       "Error getting dashboard statistics",
     );
-    throw new Error("Failed to get dashboard statistics");
+    throw new Error("Failed to get dashboard statistics", { cause: error });
   }
 }
 
@@ -608,12 +608,12 @@ export async function getActivityTimeline(userId: string, days: number = 30) {
           entry.notes +
           entry.tasks,
       }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .toSorted((a, b) => a.date.localeCompare(b.date));
 
     return result;
   } catch (error) {
     logger.error({ err: error }, "Error getting activity timeline");
-    throw new Error("Failed to get activity timeline");
+    throw new Error("Failed to get activity timeline", { cause: error });
   }
 }
 
@@ -753,7 +753,7 @@ export async function getDueItems(userId: string) {
     };
   } catch (error) {
     logger.error({ err: error }, "Error getting due items");
-    throw new Error("Failed to get due items");
+    throw new Error("Failed to get due items", { cause: error });
   }
 }
 
@@ -880,7 +880,7 @@ export async function getQuickStats(userId: string) {
     };
   } catch (error) {
     logger.error({ err: error }, "Error getting quick stats");
-    throw new Error("Failed to get quick stats");
+    throw new Error("Failed to get quick stats", { cause: error });
   }
 }
 

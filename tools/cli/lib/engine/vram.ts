@@ -136,7 +136,7 @@ export async function detectVRAM(): Promise<VRAMStatus> {
     }
 
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to detect VRAM: ${message}`);
+    throw new Error(`Failed to detect VRAM: ${message}`, { cause: error });
   }
 }
 

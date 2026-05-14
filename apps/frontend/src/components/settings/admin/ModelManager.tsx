@@ -153,7 +153,7 @@ export default function ModelManager() {
     acc[key].push(model);
     return acc;
   }, {});
-  const providerGroups = Object.keys(grouped).sort();
+  const providerGroups = Object.keys(grouped).toSorted();
 
   async function handleModelChange(
     context: "backend" | "workers",

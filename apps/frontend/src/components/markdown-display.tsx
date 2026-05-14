@@ -190,7 +190,7 @@ export function MarkdownDisplay({
             Referenced assets:
           </div>
           {processedContent.contentLinks.map((link, index) => (
-            <ContentLinkPreview key={`${link.url}-${index}`} link={link} />
+            <ContentLinkPreview key={link.id} link={link} />
           ))}
         </div>
       )}

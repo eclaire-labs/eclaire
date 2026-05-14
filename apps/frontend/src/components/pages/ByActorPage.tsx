@@ -76,7 +76,7 @@ function ActorCard({ actor }: { actor: ActorTaskSummary }) {
           <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-muted">
             {Object.entries(actor.counts)
               .filter(([, c]) => c > 0)
-              .sort(([a], [b]) => {
+              .toSorted(([a], [b]) => {
                 const order = [
                   "in-progress",
                   "open",

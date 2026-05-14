@@ -312,7 +312,7 @@ async function inspectHuggingFaceUrl(url: string): Promise<InspectUrlResult> {
               filename: file.path,
               sizeBytes: file.size,
             }))
-            .sort(
+            .toSorted(
               (a: QuantizationInfo, b: QuantizationInfo) =>
                 a.sizeBytes - b.sizeBytes,
             );

@@ -334,7 +334,7 @@ export async function createNoteEntry(
       },
       "Error creating note entry",
     );
-    throw new Error("Failed to create note entry");
+    throw new Error("Failed to create note entry", { cause: error });
   }
 }
 
@@ -442,7 +442,7 @@ export async function updateNoteEntry(
       },
       "Error updating note entry",
     );
-    throw new Error("Failed to update note entry");
+    throw new Error("Failed to update note entry", { cause: error });
   }
 }
 
@@ -509,7 +509,7 @@ export async function deleteNoteEntry(
       },
       "Error deleting note entry",
     );
-    throw new Error("Failed to delete note entry");
+    throw new Error("Failed to delete note entry", { cause: error });
   }
 }
 
@@ -559,7 +559,7 @@ export async function getNoteEntryById(entryId: string, userId: string) {
       },
       "Error getting note entry by ID",
     );
-    throw new Error("Failed to fetch note entry");
+    throw new Error("Failed to fetch note entry", { cause: error });
   }
 }
 
@@ -819,7 +819,7 @@ export async function findNotes({
       },
       "Error finding note entries",
     );
-    throw new Error("Failed to search note entries");
+    throw new Error("Failed to search note entries", { cause: error });
   }
 }
 
@@ -886,7 +886,7 @@ export async function countNotes({
       },
       "Error counting note entries",
     );
-    throw new Error("Failed to count note entries");
+    throw new Error("Failed to count note entries", { cause: error });
   }
 }
 

@@ -216,7 +216,7 @@ tasksRoutes.get(
       summary.total += row.count;
     }
 
-    const actors = [...summaryMap.values()].sort((a, b) => {
+    const actors = [...summaryMap.values()].toSorted((a, b) => {
       if (a.kind === "agent" && b.kind !== "agent") return -1;
       if (a.kind !== "agent" && b.kind === "agent") return 1;
       return b.total - a.total;

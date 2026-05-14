@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicolo-ribaudo/oxc/json-schema-for-oxlintrc/npm/oxlint/configuration_file_schema.json",
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": [
     "react",
     "jsx-a11y",
@@ -8,7 +8,6 @@
     "typescript",
     "oxc",
     "vitest",
-    "react-perf",
     "promise",
     "node"
   ],
@@ -26,24 +25,16 @@
     "typescript/no-explicit-any": "error",
     "typescript/no-non-null-assertion": "error",
     "typescript/no-extraneous-class": "off",
-    "no-unused-vars": "warn",
+    "no-unused-vars": "error",
 
-    // ── React: Not needed with React 17+ JSX transform ────────────
+    // ── React ──────────────────────────────────────────────────────
+    // Not needed with React 17+ JSX transform
     "react/react-in-jsx-scope": "off",
-    "react/no-array-index-key": "off",
-
-    // ── React: useful non-overlapping rules ────────────────────────
-    "react/rules-of-hooks": "warn",
-    "react/exhaustive-deps": "warn",
-
-    // ── React perf: too noisy for inline callbacks/objects ──────────
-    "react-perf/jsx-no-new-object-as-prop": "off",
-    "react-perf/jsx-no-new-array-as-prop": "off",
-    "react-perf/jsx-no-new-function-as-prop": "off",
-    "react-perf/jsx-no-jsx-as-prop": "off",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
 
     // ── Unicorn ────────────────────────────────────────────────────
-    // False positive: fires on Slack SDK chat.postMessage(), not window.postMessage()
+    // Slack SDK chat.postMessage() false positive
     "unicorn/require-post-message-target-origin": "off",
     "unicorn/no-useless-spread": "warn",
     "unicorn/no-useless-fallback-in-spread": "warn",
@@ -52,18 +43,21 @@
     "unicorn/prefer-array-some": "warn",
     "unicorn/no-single-promise-in-promise-methods": "warn",
     "unicorn/prefer-add-event-listener": "off",
-    // Noisy — intentional patterns in this codebase
+    // Noisy with React component patterns
     "unicorn/consistent-function-scoping": "off",
-    "unicorn/no-array-sort": "off",
+    // Drizzle ORM query builders implement .then() for await support
+    "unicorn/no-thenable": "off",
 
     // ── Promise ────────────────────────────────────────────────────
     "promise/no-new-statics": "warn",
     "promise/valid-params": "warn",
     "promise/no-multiple-resolved": "warn",
+    // Codebase uses async/await, not .then() chains
     "promise/always-return": "off",
 
     // ── Import ─────────────────────────────────────────────────────
     "import/no-self-import": "warn",
+    // TypeScript handles module resolution
     "import/no-named-as-default-member": "off",
     "import/no-cycle": "off",
     "import/default": "off",
@@ -71,30 +65,27 @@
     "import/namespace": "off",
     "import/no-unassigned-import": "off",
 
-    // ── Unicorn: Drizzle mock chains intentionally use .then ──────
-    "unicorn/no-thenable": "off",
-
-    // ── Suspicious: disable noisy / false-positive-heavy rules ─────
-    "no-await-in-loop": "off",
-    "no-shadow": "off",
+    // ── Suspicious: justified to keep off ───────────────────────────
     "no-new": "off",
     "no-underscore-dangle": "off",
     "no-this-alias": "off",
     "oxc/no-map-spread": "off",
+    // Sequential awaits are intentional in queue workers, agent loops, and tests
+    "no-await-in-loop": "off",
 
-    // ── Oxc: noisy for intentional error-wrapping patterns ─────────
-    "preserve-caught-error": "off",
-    "no-unmodified-loop-condition": "off",
+    // ── Suspicious ────────────────────────────────────────────────────
+    // 93% benign (React Query error destructuring, Drizzle re-imports, callbacks); no allow-list support
+    "no-shadow": "off",
 
-    // ── Vitest / Jest ────────────────────────────────────────────────
-    "vitest/no-conditional-expect": "off",
-    "vitest/valid-expect": "off",
-    "vitest/no-standalone-expect": "off",
-    "vitest/expect-expect": "off",
-    "vitest/valid-describe-callback": "off",
-    "vitest/no-disabled-tests": "off",
-    "vitest/require-to-throw-message": "off",
+    // ── Perf: promoted to error ─────────────────────────────────────
+    "react/no-array-index-key": "error",
+
+    // ── Vitest ──────────────────────────────────────────────────────
+    "vitest/no-disabled-tests": "warn",
+    // 566 findings — impractical to enforce across all vi.fn() calls
     "vitest/require-mock-type-parameters": "off",
+
+    // ── Jest: disabled (test runner is vitest, not jest) ────────────
     "jest/no-conditional-expect": "off",
     "jest/valid-expect": "off",
     "jest/no-standalone-expect": "off",
@@ -102,12 +93,19 @@
     "jest/valid-describe-callback": "off",
     "jest/no-disabled-tests": "off",
     "jest/require-to-throw-message": "off",
+    "jest/no-export": "off",
+    "jest/no-focused-tests": "off",
+    "jest/prefer-snapshot-hint": "off",
+    "jest/valid-expect-in-promise": "off",
+    "jest/valid-title": "off",
+    "jest/no-commented-out-tests": "off",
 
     // ── JSX a11y ───────────────────────────────────────────────────
     "jsx-a11y/prefer-tag-over-role": "warn",
+    // UX decision for productivity app
     "jsx-a11y/no-autofocus": "off",
-    "jsx-a11y/no-static-element-interactions": "off",
-    "jsx-a11y/click-events-have-key-events": "off"
+    "jsx-a11y/no-static-element-interactions": "warn",
+    "jsx-a11y/click-events-have-key-events": "warn"
   },
   "overrides": [
     {
@@ -115,7 +113,9 @@
       "rules": {
         "typescript/no-explicit-any": "off",
         "typescript/no-non-null-assertion": "off",
-        "typescript/no-non-null-asserted-optional-chain": "off"
+        "typescript/no-non-null-asserted-optional-chain": "off",
+        // Common pattern in integration tests: if (result.field) { expect(result.field)... }
+        "vitest/no-conditional-expect": "off"
       }
     }
   ],

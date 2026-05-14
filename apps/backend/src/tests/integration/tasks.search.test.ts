@@ -37,6 +37,7 @@ describe("Task Search and Filtering", { timeout: 30000 }, () => {
       const data = (await response.json()) as TaskEntry;
       searchTaskId = data.id;
       expect(data.title).toBe(searchTaskData.title);
+      // oxlint-disable-next-line unicorn/no-array-sort
       expect(data.tags.sort()).toEqual(searchTaskData.tags.sort());
     });
 

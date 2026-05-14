@@ -788,6 +788,7 @@ export function PhotoDetailClient() {
               <X className="h-4 w-4" />
             </Button>
             <img
+              role="presentation"
               src={normalizeApiUrl(photo.imageUrl)}
               alt={photo.title || "Full size view"}
               className="max-w-full max-h-full object-contain"

@@ -159,7 +159,9 @@ async function createBotInstance(
         },
         "Bot token validation failed",
       );
-      throw new Error("Invalid bot token or network error");
+      throw new Error("Invalid bot token or network error", {
+        cause: validationError,
+      });
     }
 
     // Start the bot polling in background (non-blocking)

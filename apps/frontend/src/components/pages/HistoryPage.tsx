@@ -536,6 +536,7 @@ export default function HistoryPage() {
       {isLoading ? (
         <div className="grid gap-4 grid-cols-1">
           {Array.from({ length: 5 }).map((_, index) => (
+            // oxlint-disable-next-line react/no-array-index-key -- static skeleton
             <Card key={index} className="animate-pulse">
               <CardHeader className="pb-2">
                 <div className="h-5 bg-muted rounded w-1/4 mb-2"></div>

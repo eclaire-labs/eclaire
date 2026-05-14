@@ -421,7 +421,7 @@ export async function createDocument(
         logger.error({ err: cleanupError }, "Document file cleanup failed");
       }
     }
-    throw new Error("Failed to create document");
+    throw new Error("Failed to create document", { cause: error });
   }
 }
 
@@ -503,7 +503,7 @@ export async function updateDocument(
   } catch (error) {
     logger.error({ err: error, documentId: id }, "Error updating document");
     if (error instanceof NotFoundError) throw error;
-    throw new Error("Failed to update document metadata");
+    throw new Error("Failed to update document metadata", { cause: error });
   }
 }
 
@@ -579,7 +579,7 @@ export async function deleteDocument(
     return { success: true };
   } catch (error) {
     logger.error({ err: error, documentId: id }, "Error deleting document");
-    throw new Error("Failed to delete document");
+    throw new Error("Failed to delete document", { cause: error });
   }
 }
 
@@ -592,7 +592,7 @@ export async function getDocumentById(
   } catch (error) {
     if (error instanceof NotFoundError) throw error;
     logger.error({ err: error, documentId }, "Error getting document by ID");
-    throw new Error("Failed to fetch document");
+    throw new Error("Failed to fetch document", { cause: error });
   }
 }
 
@@ -762,7 +762,7 @@ export async function findDocuments({
     return { items, nextCursor, hasMore };
   } catch (error) {
     logger.error({ err: error, userId }, "Error searching documents");
-    throw new Error("Failed to search documents");
+    throw new Error("Failed to search documents", { cause: error });
   }
 }
 
@@ -804,7 +804,7 @@ export async function countDocuments({
     return result?.value ?? 0;
   } catch (error) {
     logger.error({ err: error, userId }, "Error counting documents");
-    throw new Error("Failed to count documents");
+    throw new Error("Failed to count documents", { cause: error });
   }
 }
 

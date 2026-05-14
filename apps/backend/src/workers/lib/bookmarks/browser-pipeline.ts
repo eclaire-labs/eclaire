@@ -84,6 +84,7 @@ export class BrowserPipeline {
       if (error instanceof TimeoutError) {
         throw new Error(
           `Browser launch timed out after ${config.timeouts.browserContext}ms`,
+          { cause: error },
         );
       }
       throw error;
@@ -145,6 +146,7 @@ export class BrowserPipeline {
         if (retryError instanceof TimeoutError) {
           throw new Error(
             `Page navigation timed out after retries (${retryError.message})`,
+            { cause: retryError },
           );
         }
         throw retryError;

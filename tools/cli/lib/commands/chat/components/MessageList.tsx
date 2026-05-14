@@ -30,6 +30,7 @@ export function MessageList({ messages, options }: MessageListProps) {
           !isFirst && msg.role !== "tool" && prevMsg?.role !== "tool";
 
         return (
+          // oxlint-disable-next-line react/no-array-index-key -- append-only list
           <Box key={`msg-${i}`} flexDirection="column">
             {showSeparator && <Box marginTop={1} />}
             {msg.role === "tool" ? (

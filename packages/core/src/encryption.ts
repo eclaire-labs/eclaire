@@ -70,7 +70,7 @@ export function createEncryption(
       return `v1:${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted.toString("hex")}`;
     } catch (error) {
       logger?.error({ error: getErrorMessage(error) }, "Encryption failed");
-      throw new Error("Encryption failed");
+      throw new Error("Encryption failed", { cause: error });
     }
   }
 
@@ -136,7 +136,7 @@ export function createEncryption(
         { error: getErrorMessage(error) },
         "Encryption service validation failed",
       );
-      throw new Error("Encryption service validation failed");
+      throw new Error("Encryption service validation failed", { cause: error });
     }
   }
 

@@ -141,7 +141,7 @@ export async function getUserChannels(
       },
       "Error fetching user channels",
     );
-    throw new Error("Failed to fetch channels");
+    throw new Error("Failed to fetch channels", { cause: error });
   }
 }
 
@@ -267,7 +267,7 @@ export async function createChannel(
       throw error;
     }
 
-    throw new Error("Failed to create channel");
+    throw new Error("Failed to create channel", { cause: error });
   }
 }
 
@@ -408,7 +408,7 @@ export async function updateChannel(
       throw error;
     }
 
-    throw new Error("Failed to update channel");
+    throw new Error("Failed to update channel", { cause: error });
   }
 }
 
@@ -486,7 +486,7 @@ export async function deleteChannel(
       throw error;
     }
 
-    throw new Error("Failed to delete channel");
+    throw new Error("Failed to delete channel", { cause: error });
   }
 }
 
@@ -532,6 +532,6 @@ export async function getNotificationChannels(
       },
       "Error fetching notification channels",
     );
-    throw new Error("Failed to fetch notification channels");
+    throw new Error("Failed to fetch notification channels", { cause: error });
   }
 }

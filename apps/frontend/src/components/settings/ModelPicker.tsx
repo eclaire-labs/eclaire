@@ -63,7 +63,7 @@ export function ModelPicker({ value, onChange, disabled }: ModelPickerProps) {
     {},
   );
 
-  const providers = Object.keys(grouped).sort();
+  const providers = Object.keys(grouped).toSorted();
 
   return (
     <Select

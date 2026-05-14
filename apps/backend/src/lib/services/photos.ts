@@ -1410,7 +1410,7 @@ export async function extractAndGeocode(
             logger.debug(
               {
                 fieldCount: Object.keys(parsedExif).length,
-                keys: Object.keys(parsedExif).sort(),
+                keys: Object.keys(parsedExif).toSorted(),
               },
               "[EXIF] SUCCESS! Parsed EXIF from Sharp buffer",
             );
@@ -1521,7 +1521,7 @@ export async function extractAndGeocode(
       {
         hasData: !!exifData,
         fieldCount: exifData ? Object.keys(exifData).length : 0,
-        keys: exifData ? Object.keys(exifData).sort() : [],
+        keys: exifData ? Object.keys(exifData).toSorted() : [],
         sampleData: exifData
           ? Object.fromEntries(Object.entries(exifData).slice(0, 8))
           : null,

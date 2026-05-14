@@ -261,6 +261,7 @@ describe("BullMQ: Driver-Specific Features", () => {
       await workerB.stop();
 
       // Jobs should be processed by correct queue workers
+      // oxlint-disable-next-line unicorn/no-array-sort
       expect(queueAJobs.sort()).toEqual(["a1", "a2"]);
       expect(queueBJobs).toEqual(["b1"]);
     });

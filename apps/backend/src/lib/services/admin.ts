@@ -38,6 +38,7 @@ export async function ensureInstanceAdmin(): Promise<void> {
       return null;
     }
 
+    // oxlint-disable-next-line unicorn/no-array-sort
     const firstUser = allUsers.sort(
       (a, b) =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),

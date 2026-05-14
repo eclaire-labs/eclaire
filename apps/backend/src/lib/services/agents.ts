@@ -118,7 +118,7 @@ function listToolCatalog(): AgentCatalogItem[] {
         ...mcpAvailability,
       };
     })
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .toSorted((a, b) => a.label.localeCompare(b.label));
 }
 
 function listSkillCatalog(): SkillCatalogItem[] {
@@ -130,7 +130,7 @@ function listSkillCatalog(): SkillCatalogItem[] {
       alwaysInclude: skill.alwaysInclude,
       tags: skill.tags ?? [],
     }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 function validateAgentModelId(modelId: string | null | undefined): void {

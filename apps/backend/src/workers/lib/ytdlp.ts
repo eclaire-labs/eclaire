@@ -155,7 +155,7 @@ export async function fetchMediaInfo(url: string): Promise<YtdlpMediaInfo> {
     uploaderName: (data.uploader as string) ?? null,
     mediaType,
     estimatedFileSize: typeof filesize === "number" ? filesize : null,
-    subtitleLanguages: [...subtitleLangs].sort(),
+    subtitleLanguages: [...subtitleLangs].toSorted(),
   };
 }
 

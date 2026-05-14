@@ -227,7 +227,10 @@ describe("Task CRUD Operations", { timeout: 30000 }, () => {
     });
 
     it("teardown — delete the specialized endpoint task", async () => {
-      await loggedFetch(`/tasks/${specialTaskId}`, { method: "DELETE" });
+      const response = await loggedFetch(`/tasks/${specialTaskId}`, {
+        method: "DELETE",
+      });
+      expect(response.status).toBe(204);
     });
   });
 

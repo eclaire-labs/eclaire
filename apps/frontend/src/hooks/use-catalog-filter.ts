@@ -69,7 +69,7 @@ export function useCatalogFilter<T>(
           values.add(extracted);
         }
       }
-      opts[dim.key] = Array.from(values).sort();
+      opts[dim.key] = Array.from(values).toSorted();
     }
     return opts;
   }, [items, filterDimensions]);
@@ -105,7 +105,7 @@ export function useCatalogFilter<T>(
     // Sort
     const sortOption = sortOptions.find((o) => o.key === sortKey);
     if (sortOption) {
-      result = [...result].sort((a, b) => {
+      result = [...result].toSorted((a, b) => {
         const cmp = sortOption.compare(a, b);
         return sortDir === "asc" ? cmp : -cmp;
       });

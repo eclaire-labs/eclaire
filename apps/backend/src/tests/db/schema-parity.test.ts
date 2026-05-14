@@ -36,7 +36,9 @@ describe("Schema Structural Parity", () => {
   );
 
   it("should have the same set of table exports", () => {
+    // oxlint-disable-next-line unicorn/no-array-sort
     const pgNames = pgTables.map(([key]) => key).sort();
+    // oxlint-disable-next-line unicorn/no-array-sort
     const sqliteNames = sqliteTables.map(([key]) => key).sort();
     expect(pgNames).toEqual(sqliteNames);
   });
@@ -59,10 +61,11 @@ describe("Schema Structural Parity", () => {
 
       const pgCols = Object.keys(getTableColumns(pgTable as any))
         .filter((col) => !PG_ONLY_COLUMNS.has(col))
+        // oxlint-disable-next-line unicorn/no-array-sort
         .sort();
-      const sqliteCols = Object.keys(
-        getTableColumns(sqliteTable as any),
-      ).sort();
+      const sqliteCols = Object.keys(getTableColumns(sqliteTable as any))
+        // oxlint-disable-next-line unicorn/no-array-sort
+        .sort();
       expect(pgCols).toEqual(sqliteCols);
     });
   }
@@ -71,9 +74,11 @@ describe("Schema Structural Parity", () => {
   it("should have the same set of relation exports", () => {
     const pgRelations = Object.keys(pgSchema)
       .filter((k) => k.endsWith("Relations"))
+      // oxlint-disable-next-line unicorn/no-array-sort
       .sort();
     const sqliteRelations = Object.keys(sqliteSchema)
       .filter((k) => k.endsWith("Relations"))
+      // oxlint-disable-next-line unicorn/no-array-sort
       .sort();
     expect(pgRelations).toEqual(sqliteRelations);
   });

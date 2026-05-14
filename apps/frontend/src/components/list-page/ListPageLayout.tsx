@@ -371,6 +371,7 @@ function LoadingSkeleton() {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, index) => (
+        // oxlint-disable-next-line react/no-array-index-key -- static skeleton
         <Card key={index} className="animate-pulse">
           <CardHeader>
             <div className="h-5 bg-muted rounded-full w-3/4 mb-2" />

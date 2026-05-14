@@ -166,7 +166,7 @@ export default function TasksPage() {
         }
       });
 
-      return assigneeList.sort((a, b) => {
+      return assigneeList.toSorted((a, b) => {
         if (a.userType !== b.userType) {
           return a.userType === "assistant" ? -1 : 1;
         }

@@ -637,6 +637,7 @@ describe.each(DB_TEST_CONFIGS)(
         });
 
         expect(createdTags).toHaveLength(3);
+        // oxlint-disable-next-line unicorn/no-array-sort
         expect(createdTags.map((t) => t.name).sort()).toEqual([
           "tag1",
           "tag2",
@@ -665,6 +666,7 @@ describe.each(DB_TEST_CONFIGS)(
         });
 
         expect(tags).toHaveLength(2);
+        // oxlint-disable-next-line unicorn/no-array-sort
         expect(tags.map((t) => t.name).sort()).toEqual(["existing1", "new1"]);
 
         // Total should be 3 unique tags
@@ -698,6 +700,7 @@ describe.each(DB_TEST_CONFIGS)(
 
         // Should dedupe and normalize
         expect(tags).toHaveLength(2);
+        // oxlint-disable-next-line unicorn/no-array-sort
         expect(tags.map((t) => t.name).sort()).toEqual(["tag1", "tag2"]);
       });
     });

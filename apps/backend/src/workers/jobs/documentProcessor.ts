@@ -875,7 +875,9 @@ async function extractRTFText(
     );
     const rtfString = rtfBuffer.toString("utf-8");
     if (!rtfString.includes("\\rtf"))
-      throw new Error("File does not appear to be valid RTF.");
+      throw new Error("File does not appear to be valid RTF.", {
+        cause: error,
+      });
     const fallbackText = rtfString
       .replace(/\\rtf\d+/gi, "")
       .replace(/\\[a-z]+\d*/gi, "")
@@ -1048,7 +1050,7 @@ async function processWithDoclingServer(
       { error: errMsg, status: errStatus },
       "Docling server API call failed",
     );
-    throw new Error(`Docling processing failed: ${errMsg}`);
+    throw new Error(`Docling processing failed: ${errMsg}`, { cause: error });
   }
 }
 

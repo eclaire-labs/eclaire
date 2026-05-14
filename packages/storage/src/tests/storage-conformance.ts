@@ -228,6 +228,7 @@ export function runStorageConformanceTests(opts: ConformanceOptions): void {
         expect(await storage.exists(key)).toBe(false);
       });
 
+      // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
       it("is a no-op for non-existing key", async () => {
         // Should not throw
         await storage.delete("user-1/docs/doc-1/nonexistent.txt");
@@ -408,6 +409,7 @@ export function runStorageConformanceTests(opts: ConformanceOptions): void {
     // ================================================================
 
     describe("close", () => {
+      // oxlint-disable-next-line vitest/expect-expect -- asserts no-throw
       it("can be called without error", async () => {
         await storage.writeBuffer(
           "user-1/docs/doc-1/a.txt",

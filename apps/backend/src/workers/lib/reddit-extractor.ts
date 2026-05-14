@@ -171,7 +171,9 @@ export function extractRedditData(rawApiResponse: any): RedditExtractedData {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error({ error: message }, "Failed to extract Reddit data");
-    throw new Error(`Reddit data extraction failed: ${message}`);
+    throw new Error(`Reddit data extraction failed: ${message}`, {
+      cause: error,
+    });
   }
 }
 

@@ -238,6 +238,7 @@ function renderBlock(token: Token, index: number): React.ReactNode {
         }
         if ("text" in t) {
           return (
+            // oxlint-disable-next-line react/no-array-index-key -- static parsed tokens
             <Text key={`bq-text-${index}-${i}`}>
               {(t as { text: string }).text}
             </Text>
@@ -318,6 +319,7 @@ function renderBlock(token: Token, index: number): React.ReactNode {
           <Text>{headerLine}</Text>
           <Text dimColor>{separator}</Text>
           {rows.map((row, ri) => (
+            // oxlint-disable-next-line react/no-array-index-key -- static parsed rows
             <Text key={`row-${ri}`}>
               {row
                 .map((cell, ci) => padCell(cell, colWidths[ci] ?? 0))
