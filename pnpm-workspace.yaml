@@ -8,14 +8,14 @@ allowBuilds:
   bcrypt: true
   better-sqlite3: true
   electron: true
-  electron-winstaller: false
+  electron-winstaller: true
   esbuild: true
-  msgpackr-extract: false
+  msgpackr-extract: true
   sharp: true
 
 catalog:
   '@biomejs/biome': '2.4.13'
-  '@types/node': '25.6.0'
+  '@types/node': '24.10.4'
   oxlint: '1.62.0'
   typescript: '6.0.3'
 
