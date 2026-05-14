@@ -2,12 +2,13 @@ import {
   ChannelRateLimiter,
   DEFAULT_CHANNEL_AGENT_ACTOR_ID,
 } from "@eclaire/channels-core";
-import { MessageFlags, type Message, type TextChannel } from "discord.js";
+import { type Message, MessageFlags, type TextChannel } from "discord.js";
 
 const rateLimiter = new ChannelRateLimiter();
-import { getDeps } from "./deps.js";
-import { stopBot, sendVoiceMessage } from "./bot-manager.js";
+
+import { sendVoiceMessage, stopBot } from "./bot-manager.js";
 import { getSession } from "./commands.js";
+import { getDeps } from "./deps.js";
 import { splitMessage } from "./message-utils.js";
 import { sendStreamingResponse } from "./stream-sender.js";
 import { safeSendTyping } from "./typing-indicator.js";

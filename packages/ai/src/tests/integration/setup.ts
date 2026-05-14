@@ -424,4 +424,4 @@ export async function collectStream(
 // EXPORTS
 // =============================================================================
 
-export { path, fs };
+export { fs, path };

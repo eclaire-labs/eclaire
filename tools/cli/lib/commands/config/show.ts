@@ -5,8 +5,8 @@ import {
 } from "@eclaire/ai";
 import { colors, icons } from "../../ui/colors.js";
 import {
-  createProvidersTable,
   createActiveModelsTable,
+  createProvidersTable,
 } from "../../ui/tables.js";
 
 export async function showCommand(): Promise<void> {

@@ -1,13 +1,9 @@
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import { db, schema } from "../db/index.js";
 import { ValidationError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
-import {
-  getUserPreferences,
-  setUserPreferences,
-} from "../lib/services/user-preferences.js";
 import {
   createApiKey,
   // Dashboard & data functions (already delegated)
@@ -27,6 +23,10 @@ import {
   updateUserProfile,
   uploadUserAvatar,
 } from "../lib/services/user-data.js";
+import {
+  getUserPreferences,
+  setUserPreferences,
+} from "../lib/services/user-preferences.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas
 import {

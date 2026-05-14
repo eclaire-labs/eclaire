@@ -1,10 +1,10 @@
+import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
+import { BUILTIN_COMMANDS, generateHelpText } from "@eclaire/core";
 import {
   type ChatInputCommandInteraction,
   type Client,
   SlashCommandBuilder,
 } from "discord.js";
-import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
-import { BUILTIN_COMMANDS, generateHelpText } from "@eclaire/core";
 import { getDeps } from "./deps.js";
 
 /** Per-channel session state (in-memory, resets on bot restart). */

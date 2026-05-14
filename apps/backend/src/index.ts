@@ -30,16 +30,15 @@ import { cors } from "hono/cors";
 import { showRoutes } from "hono/dev";
 import { initializeAI, initializeMcp } from "./lib/ai-init.js";
 import { auth } from "./lib/auth.js";
+import { channelRegistry } from "./lib/channels.js";
 import { validateEncryptionService } from "./lib/encryption.js";
 import { logger, smartLogger } from "./lib/logger.js";
-import { createSpaMiddleware } from "./middleware/static-spa.js";
 import { startScheduler, stopScheduler } from "./lib/queue/index.js";
-import { getScheduler } from "./lib/queue/scheduler.js";
 import { QueueNames } from "./lib/queue/queue-names.js";
-import { channelRegistry } from "./lib/channels.js";
-
-import { registerApiRoutes } from "./routes/registry.js";
+import { getScheduler } from "./lib/queue/scheduler.js";
 import { getInjectWebSocket, initWebSocket } from "./lib/websocket.js";
+import { createSpaMiddleware } from "./middleware/static-spa.js";
+import { registerApiRoutes } from "./routes/registry.js";
 
 import type { RouteVariables } from "./types/route-variables.js";
 

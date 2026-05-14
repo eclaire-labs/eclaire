@@ -17,8 +17,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  useRunHealthCheck,
   type HealthCheckResult,
+  useRunHealthCheck,
 } from "@/hooks/use-onboarding";
 import type { StepProps } from "../SetupWizard";
 

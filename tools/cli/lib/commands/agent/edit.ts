@@ -1,23 +1,23 @@
 import { getAgentRuntimeKindForModel } from "@eclaire/ai";
+import {
+  getAvailableSkills,
+  getAvailableTools,
+} from "../../config/agent-catalog.js";
 import { getAgent, updateAgent } from "../../db/agents.js";
-import { getDefaultUser } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
+import { getDefaultUser } from "../../db/users.js";
+import {
+  CancelledError,
+  cancel,
+  intro,
+  isCancelled,
+  note,
+  outro,
+  selectMany,
+  textInput,
+} from "../../ui/clack.js";
 import { colors, icons } from "../../ui/colors.js";
 import { createAgentInfoTable } from "../../ui/format.js";
-import {
-  getAvailableTools,
-  getAvailableSkills,
-} from "../../config/agent-catalog.js";
-import {
-  intro,
-  outro,
-  cancel,
-  note,
-  textInput,
-  selectMany,
-  isCancelled,
-  CancelledError,
-} from "../../ui/clack.js";
 
 function parseCommaSeparated(value: string): string[] {
   return value

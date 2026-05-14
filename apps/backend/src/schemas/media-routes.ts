@@ -23,17 +23,18 @@ export const MediaPinUpdateSchema = isPinnedUpdateSchema(
   "media",
   "MediaPinUpdate",
 );
+
 import {
-  MediaSchema,
   MediaImportSchema,
+  MediaSchema,
   PartialMediaSchema,
 } from "./media-params.js";
 import {
   CreatedMediaResponseSchema,
   MediaFileNotFoundSchema,
+  MediaListResponseSchema,
   MediaNotFoundSchema,
   MediaResponseSchema,
-  MediaListResponseSchema,
 } from "./media-responses.js";
 
 // GET /api/media - Get all media or search media

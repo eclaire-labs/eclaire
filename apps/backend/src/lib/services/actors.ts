@@ -3,12 +3,12 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
-import { recordHistory } from "./history.js";
-import type { CallerContext } from "./types.js";
 import {
   DEFAULT_AGENT_ACTOR_ID,
   DEFAULT_AGENT_ACTOR_NAME,
 } from "./actor-constants.js";
+import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 
 const { actors, humanActors, users } = schema;
 

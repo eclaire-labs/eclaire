@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   BASE_URL,
-  TEST_API_KEY,
   delay,
   logger,
+  TEST_API_KEY,
 } from "../utils/test-helpers.js";
 import type { Bookmark } from "../utils/types.js";
 

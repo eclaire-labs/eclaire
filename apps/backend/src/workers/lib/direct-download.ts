@@ -1,7 +1,7 @@
+import { lookup as dnsLookup } from "node:dns/promises";
 import { createWriteStream } from "node:fs";
 import { stat } from "node:fs/promises";
-import { lookup as dnsLookup } from "node:dns/promises";
-import { join, basename, extname } from "node:path";
+import { basename, extname, join } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";

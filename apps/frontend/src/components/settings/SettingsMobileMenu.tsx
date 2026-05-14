@@ -4,8 +4,8 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import {
-  SETTINGS_NAV,
   isSeparator,
+  SETTINGS_NAV,
   type SettingsNavItem,
 } from "./settings-nav-config";
 

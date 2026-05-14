@@ -1,12 +1,12 @@
-import { describe, expect, it } from "vitest";
 import {
-  DATA_ACCESS_SCOPES,
   ADMIN_ACCESS_SCOPES,
-  resolvePermissionScopes,
-  derivePermissionLevels,
-  type DataAccessLevel,
   type AdminAccessLevel,
+  DATA_ACCESS_SCOPES,
+  type DataAccessLevel,
+  derivePermissionLevels,
+  resolvePermissionScopes,
 } from "@eclaire/api-types";
+import { describe, expect, it } from "vitest";
 
 describe("resolvePermissionScopes", () => {
   it("read + none returns only read scopes", () => {

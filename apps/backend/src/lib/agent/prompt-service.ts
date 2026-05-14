@@ -15,12 +15,12 @@ import {
   createRuntimeContext,
   getAgentRuntimeKindForModel,
   RuntimeAgent,
-  selectTools,
   type RuntimeStreamEvent,
+  selectTools,
 } from "@eclaire/ai";
 import type { Context } from "../../schemas/prompt-params.js";
-import { getMcpRegistry } from "../mcp/index.js";
 import { createChildLogger } from "../logger.js";
+import { getMcpRegistry } from "../mcp/index.js";
 import { DEFAULT_AGENT_ID, getAgent } from "../services/agents.js";
 import { getUserContextForPrompt } from "../user.js";
 import { fetchAssetContents } from "./asset-fetcher.js";

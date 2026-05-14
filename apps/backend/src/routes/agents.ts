@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { validator as zValidator } from "hono-openapi";
+import { createChildLogger } from "../lib/logger.js";
 import {
   createAgent,
   deleteAgent,
@@ -9,7 +10,6 @@ import {
   listAgents,
   updateAgent,
 } from "../lib/services/agents.js";
-import { createChildLogger } from "../lib/logger.js";
 import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {

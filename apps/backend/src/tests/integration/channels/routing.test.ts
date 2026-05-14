@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DB_TEST_CONFIGS,
-  type TestDatabase,
   initTestDatabase,
+  type TestDatabase,
 } from "../../db/setup.js";
 import { createTestDeps } from "./helpers/create-test-deps.js";
 import { seedAgent, seedChannel } from "./helpers/seed-channel.js";

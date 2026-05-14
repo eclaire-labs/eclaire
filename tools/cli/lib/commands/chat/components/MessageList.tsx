@@ -1,8 +1,8 @@
 import { Box, Text } from "ink";
-import { Markdown } from "./Markdown.js";
-import { ToolCallDisplay } from "./ToolCallDisplay.js";
-import { ThinkingBlock } from "./ThinkingBlock.js";
 import type { DisplayMessage, DisplayOptions } from "../types.js";
+import { Markdown } from "./Markdown.js";
+import { ThinkingBlock } from "./ThinkingBlock.js";
+import { ToolCallDisplay } from "./ToolCallDisplay.js";
 
 interface MessageListProps {
   messages: DisplayMessage[];

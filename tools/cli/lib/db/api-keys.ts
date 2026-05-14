@@ -3,13 +3,13 @@
  * Direct database access using Drizzle ORM.
  */
 
-import { and, eq } from "drizzle-orm";
 import { generateApiKeyId, generateSecurityId } from "@eclaire/core";
-import { getDb } from "./index.js";
+import { and, eq } from "drizzle-orm";
 import {
   formatApiKeyForDisplay,
   generateFullApiKey,
 } from "./api-key-security.js";
+import { getDb } from "./index.js";
 
 export interface ApiKeyRow {
   id: string;

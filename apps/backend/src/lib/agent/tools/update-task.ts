@@ -4,7 +4,7 @@
  * Update an existing task's properties.
  */
 
-import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import { type RuntimeToolDefinition, textResult } from "@eclaire/ai";
 import z from "zod/v4";
 import { updateTask as updateTaskService } from "../../services/tasks.js";
 import { agentToolCaller } from "./caller.js";

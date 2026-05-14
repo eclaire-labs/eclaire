@@ -3,8 +3,8 @@
  * Direct database access using Drizzle ORM.
  */
 
-import { and, eq } from "drizzle-orm";
 import { generateActorId } from "@eclaire/core";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "./index.js";
 
 export interface ActorRow {

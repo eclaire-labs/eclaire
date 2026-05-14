@@ -8,27 +8,27 @@
 
 import {
   errorResult,
-  textResult,
   type RuntimeToolDefinition,
+  textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
 import { assertInstanceAdmin } from "../../auth-utils.js";
+import { listUsersAdminExtended } from "../../services/admin-lifecycle.js";
 import {
-  listProviders,
-  getProvider,
-  listModels,
-  getModel,
-  listMcpServers,
-  getMcpServer,
-  testProviderConnection,
   getAllSelections,
+  getMcpServer,
+  getModel,
+  getProvider,
+  listMcpServers,
+  listModels,
+  listProviders,
+  testProviderConnection,
 } from "../../services/ai-config.js";
 import {
   fetchProviderCatalog,
   inspectImportUrl,
 } from "../../services/ai-import.js";
 import { listProviderPresets } from "../../services/ai-provider-presets.js";
-import { listUsersAdminExtended } from "../../services/admin-lifecycle.js";
 import { getAllInstanceSettings } from "../../services/instance-settings.js";
 
 const inputSchema = z.object({

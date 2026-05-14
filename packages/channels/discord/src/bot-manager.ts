@@ -1,20 +1,20 @@
 import {
+  type ChatInputCommandInteraction,
   Client,
   GatewayIntentBits,
-  type ChatInputCommandInteraction,
   type TextChannel,
 } from "discord.js";
-import { getDeps } from "./deps.js";
-import { decryptConfig, type DiscordConfig } from "./config.js";
-import { handleIncomingMessage } from "./incoming.js";
 import {
   handleCommandInteraction,
   registerApplicationCommands,
 } from "./commands.js";
+import { type DiscordConfig, decryptConfig } from "./config.js";
+import { getDeps } from "./deps.js";
+import { handleIncomingMessage } from "./incoming.js";
 import { splitMessage } from "./message-utils.js";
+import { checkBotPermissions } from "./permissions.js";
 import { withRetry } from "./retry.js";
 import { resetCircuitBreaker } from "./typing-indicator.js";
-import { checkBotPermissions } from "./permissions.js";
 import { joinChannel, leaveAllChannels } from "./voice-manager.js";
 
 interface ChannelMeta {

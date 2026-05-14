@@ -37,14 +37,14 @@ import type {
   TransactionManager,
 } from "./types.js";
 
+export { createPgTransactionManager } from "./adapters/postgres/tx.js";
+export { createSqliteTransactionManager } from "./adapters/sqlite/tx.js";
 export * from "./clients.js";
 export * from "./config.js";
 // Re-export everything from submodules
 export * from "./types.js";
 export * from "./utils.js";
 export { pgSchema, sqliteSchema };
-export { createPgTransactionManager } from "./adapters/postgres/tx.js";
-export { createSqliteTransactionManager } from "./adapters/sqlite/tx.js";
 
 /**
  * Configuration interface for database initialization.

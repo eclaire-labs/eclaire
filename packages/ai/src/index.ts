@@ -266,10 +266,10 @@ export {
   hasAllInputModalities,
   // Engine helpers
   hasEngine,
-  // Env var interpolation
-  interpolateEnvVars,
   // Modality helpers (generic)
   hasInputModality,
+  // Env var interpolation
+  interpolateEnvVars,
   isManaged,
   isValidModelIdFormat,
   loadModelsConfiguration,
@@ -415,117 +415,115 @@ export {
 // RUNTIME (v2)
 // =============================================================================
 
+// Registries
+export {
+  clearProviders,
+  clearSkillSources,
+  clearTools,
+  discoverSkills,
+  getActiveTools,
+  getAdapterByDialect,
+  getAlwaysIncludeSkills,
+  getPromptContributions,
+  getProvider,
+  getSkill,
+  getSkillSummary,
+  getTool,
+  getToolDefinition,
+  hasProvider,
+  hasTool as hasRuntimeTool,
+  invalidateSkillCache,
+  // Skill normalization
+  LOAD_SKILL_TOOL_NAME,
+  listProviders,
+  listTools,
+  loadSkillContent,
+  normalizeCreateAgentCapabilities,
+  normalizeToolNamesForSkills,
+  normalizeUpdatedAgentCapabilities,
+  type ProviderRegistration,
+  // Provider registry
+  registerProvider,
+  // Skill registry
+  registerSkillSource,
+  // Tool registry
+  registerTool,
+  setActiveTools,
+  unregisterProvider,
+  unregisterTool,
+} from "./registries/index.js";
 export type {
-  // Message model
-  TextBlock,
-  ThinkingBlock,
-  ToolCallBlock,
-  ImageBlock,
-  AssistantContentBlock,
-  UserContentBlock,
-  ResultContentBlock,
-  UserMessage as RuntimeUserMessage,
-  AssistantMessage as RuntimeAssistantMessage,
-  ToolResultMessage as RuntimeToolResultMessage,
-  SystemMessage as RuntimeSystemMessage,
-  RuntimeMessage,
-  AnyRuntimeMessage,
-  StopReason as RuntimeStopReason,
-  RuntimeStreamEvent,
-  ToolProgressUpdate,
-  // Tool types
-  RuntimeToolDefinition,
-  RuntimeToolResult,
-  ToolResultContent,
-  ToolContext,
-  ToolUpdateCallback,
-  ToolProgressInfo,
-  ApprovalRequest,
-  ApprovalResponse,
-  OnApprovalRequired,
-  // Skill types
-  Skill,
-  SkillFrontmatter,
-  SkillScope,
-  SkillSource,
   // Agent definition types
   AgentDefinitionBase,
   AgentKind,
+  AnyRuntimeMessage,
   // Prompt helper types
   AppendCapabilitiesOptions,
+  ApprovalRequest,
+  ApprovalResponse,
+  AssistantContentBlock,
+  AssistantMessage as RuntimeAssistantMessage,
+  CreateRuntimeContextOptions,
+  ImageBlock,
+  OnApprovalRequired,
+  ResultContentBlock,
   // Agent types
   RuntimeAgentConfig,
   RuntimeAgentContext,
   RuntimeAgentResult,
   RuntimeAgentStep,
   RuntimeGenerateOptions,
+  RuntimeMessage,
   RuntimeStepToolExecution,
+  RuntimeStreamEvent,
   RuntimeStreamResult,
-  CreateRuntimeContextOptions,
+  // Tool types
+  RuntimeToolDefinition,
+  RuntimeToolResult,
+  // Skill types
+  Skill,
+  SkillFrontmatter,
+  SkillScope,
+  SkillSource,
+  StopReason as RuntimeStopReason,
+  SystemMessage as RuntimeSystemMessage,
+  // Message model
+  TextBlock,
+  ThinkingBlock,
+  ToolCallBlock,
+  ToolContext,
+  ToolProgressInfo,
+  ToolProgressUpdate,
+  ToolResultContent,
+  ToolResultMessage as RuntimeToolResultMessage,
+  ToolUpdateCallback,
+  UserContentBlock,
+  UserMessage as RuntimeUserMessage,
 } from "./runtime/index.js";
-
 export {
+  appendAgentCapabilities,
+  collectToolPromptContributions,
+  convertFromLlm,
+  // LLM boundary
+  convertToLlm,
+  createRuntimeContext,
+  errorResult,
+  executeRuntimeTool,
   // Message helpers
   getTextContent,
-  getToolCalls,
   getThinkingContent,
-  userMessage,
+  getToolCalls,
+  // Prompt helpers
+  getToolSignatures,
+  // Agent
+  RuntimeAgent,
+  runtimeToolToOpenAI,
+  selectTools,
   systemMessage,
   // Tool result helpers
   textResult,
-  errorResult,
-  // LLM boundary
-  convertToLlm,
-  convertFromLlm,
-  // Agent
-  RuntimeAgent,
-  createRuntimeContext,
-  runtimeToolToOpenAI,
-  executeRuntimeTool,
-  // Prompt helpers
-  getToolSignatures,
-  collectToolPromptContributions,
-  appendAgentCapabilities,
-  selectTools,
+  userMessage,
 } from "./runtime/index.js";
-
-// Registries
-export {
-  // Provider registry
-  registerProvider,
-  getProvider,
-  getAdapterByDialect,
-  listProviders,
-  unregisterProvider,
-  hasProvider,
-  clearProviders,
-  type ProviderRegistration,
-  // Tool registry
-  registerTool,
-  getTool,
-  getToolDefinition,
-  getActiveTools,
-  setActiveTools,
-  listTools,
-  unregisterTool,
-  hasTool as hasRuntimeTool,
-  getPromptContributions,
-  clearTools,
-  // Skill registry
-  registerSkillSource,
-  discoverSkills,
-  getSkill,
-  getSkillSummary,
-  loadSkillContent,
-  getAlwaysIncludeSkills,
-  invalidateSkillCache,
-  clearSkillSources,
-  // Skill normalization
-  LOAD_SKILL_TOOL_NAME,
-  normalizeToolNamesForSkills,
-  normalizeCreateAgentCapabilities,
-  normalizeUpdatedAgentCapabilities,
-} from "./registries/index.js";
 
 // =============================================================================
 // MCP
@@ -542,33 +540,32 @@ export type {
 } from "./mcp/index.js";
 
 export {
-  McpServerConnection,
-  mcpToolToRuntimeTool,
-  mcpToolsToGroupedRuntimeTool,
-  normalizeMcpResult,
-  createTestMcpServer,
   createTestConnection,
+  createTestMcpServer,
+  type InMemoryTransport,
+  McpServerConnection,
+  mcpToolsToGroupedRuntimeTool,
+  mcpToolToRuntimeTool,
+  normalizeMcpResult,
   type TestMcpServer,
   type TestMcpServerOptions,
   type TestToolDef,
-  type InMemoryTransport,
 } from "./mcp/index.js";
 
 // =============================================================================
 // CLI PROVIDERS
 // =============================================================================
 
-export {
-  callAICli,
-  callAICliStream,
-  CliSubprocessRunner,
-  createDecoder as createCliDecoder,
-} from "./cli/index.js";
-
 export type {
   CliEvent,
   CliJsonlDecoder,
   CliSpawnConfig,
+} from "./cli/index.js";
+export {
+  CliSubprocessRunner,
+  callAICli,
+  callAICliStream,
+  createDecoder as createCliDecoder,
 } from "./cli/index.js";
 
 // =============================================================================
@@ -624,10 +621,10 @@ export type {
   // Message types
   TextContentPart,
   TokenizerConfig,
-  // Tool calling mode
-  ToolCallingMode,
   // API call types
   TokenUsage,
+  // Tool calling mode
+  ToolCallingMode,
   ToolCallResult,
   ToolChoice,
   ToolDefinition,

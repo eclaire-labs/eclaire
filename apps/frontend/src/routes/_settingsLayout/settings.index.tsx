@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { TAB_TO_SECTION } from "@/components/settings/settings-nav-config";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SettingsOverview = lazy(
   () => import("@/components/settings/SettingsOverview"),

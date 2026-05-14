@@ -19,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useUpcoming, type UpcomingItem } from "@/hooks/use-upcoming";
+import { type UpcomingItem, useUpcoming } from "@/hooks/use-upcoming";
 
 function formatNextTime(dateStr: string): string {
   const diff = new Date(dateStr).getTime() - Date.now();

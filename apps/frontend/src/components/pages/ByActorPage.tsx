@@ -3,8 +3,8 @@ import { Bot, Loader2, User, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  useTasksByActor,
   type ActorTaskSummary,
+  useTasksByActor,
 } from "@/hooks/use-tasks-by-actor";
 
 const STATUS_COLORS: Record<string, string> = {

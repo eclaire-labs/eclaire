@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  normalizeMcpResult,
-  mcpToolToRuntimeTool,
   mcpToolsToGroupedRuntimeTool,
+  mcpToolToRuntimeTool,
+  normalizeMcpResult,
 } from "../mcp/tool-bridge.js";
 import type { McpServerConfig, McpToolDescriptor } from "../mcp/types.js";
 

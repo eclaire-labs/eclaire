@@ -17,7 +17,7 @@ import { createChildLogger } from "../logger.js";
 const logger = createChildLogger("scheduler");
 
 // Re-export types for convenience
-export type { Scheduler, ScheduleConfig };
+export type { ScheduleConfig, Scheduler };
 
 // --- Singleton Instance ---
 

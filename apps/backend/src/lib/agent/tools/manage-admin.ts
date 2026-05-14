@@ -8,37 +8,11 @@
 
 import {
   errorResult,
-  textResult,
   type RuntimeToolDefinition,
+  textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
 import { assertInstanceAdmin } from "../../auth-utils.js";
-import {
-  listProviders,
-  getProvider,
-  createProvider,
-  updateProvider,
-  deleteProvider,
-  listModels,
-  getModel,
-  createModel,
-  updateModel,
-  deleteModel,
-  importModels,
-  testProviderConnection,
-  listMcpServers,
-  getMcpServer,
-  createMcpServer,
-  updateMcpServer,
-  deleteMcpServer,
-  getAllSelections,
-  setActiveModelForContext,
-} from "../../services/ai-config.js";
-import {
-  fetchProviderCatalog,
-  inspectImportUrl,
-} from "../../services/ai-import.js";
-import { listProviderPresets } from "../../services/ai-provider-presets.js";
 import { setUserRole } from "../../services/admin.js";
 import {
   createUserByAdmin,
@@ -49,6 +23,32 @@ import {
   revokeAllUserSessions,
   suspendUser,
 } from "../../services/admin-lifecycle.js";
+import {
+  createMcpServer,
+  createModel,
+  createProvider,
+  deleteMcpServer,
+  deleteModel,
+  deleteProvider,
+  getAllSelections,
+  getMcpServer,
+  getModel,
+  getProvider,
+  importModels,
+  listMcpServers,
+  listModels,
+  listProviders,
+  setActiveModelForContext,
+  testProviderConnection,
+  updateMcpServer,
+  updateModel,
+  updateProvider,
+} from "../../services/ai-config.js";
+import {
+  fetchProviderCatalog,
+  inspectImportUrl,
+} from "../../services/ai-import.js";
+import { listProviderPresets } from "../../services/ai-provider-presets.js";
 import {
   getAllInstanceSettings,
   setInstanceSettings,

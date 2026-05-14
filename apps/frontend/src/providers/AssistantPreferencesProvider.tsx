@@ -10,8 +10,8 @@ import {
   useState,
 } from "react";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
-import { useSession } from "@/lib/auth";
 import { apiGet, apiPatch } from "@/lib/api-client";
+import { useSession } from "@/lib/auth";
 
 // ---------------------------------------------------------------------------
 // Types (public interface stays the same for backward compatibility)

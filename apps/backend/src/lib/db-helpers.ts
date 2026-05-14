@@ -1,5 +1,5 @@
 import { formatToISO8601 } from "@eclaire/core";
-import { and, eq, ilike, inArray, like, sql, type SQL } from "drizzle-orm";
+import { and, eq, ilike, inArray, like, type SQL, sql } from "drizzle-orm";
 import { db, dbType, schema, txManager } from "../db/index.js";
 
 const { tags } = schema;

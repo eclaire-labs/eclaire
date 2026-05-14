@@ -5,7 +5,6 @@
  * The database is the sole runtime source of truth for AI config.
  */
 
-import { eq } from "drizzle-orm";
 import type {
   ModelConfig,
   ModelsConfiguration,
@@ -14,17 +13,18 @@ import type {
   ProvidersConfiguration,
   SelectionConfiguration,
 } from "@eclaire/ai";
-import type { ImportModelsResult } from "./ai-import-types.js";
 import { setInlineConfig } from "@eclaire/ai";
+import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import {
-  encrypt,
   decrypt,
+  encrypt,
   isEncryptedValue,
   isEncryptionConfigured,
 } from "../encryption.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import type { ImportModelsResult } from "./ai-import-types.js";
 
 const logger = createChildLogger("services:ai-config");
 

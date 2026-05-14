@@ -6,7 +6,6 @@
  */
 
 import { readAudioFile } from "./mlx-client.js";
-import { WhisperCppClient } from "./whisper-cpp-client.js";
 import type {
   AudioProvider,
   AudioProviderCapabilities,
@@ -17,6 +16,7 @@ import type {
   TranscriptionResult,
   WhisperCppProviderConfig,
 } from "./types.js";
+import { WhisperCppClient } from "./whisper-cpp-client.js";
 
 export class WhisperCppProvider implements AudioProvider {
   readonly providerId: AudioProviderId = "whisper-cpp";

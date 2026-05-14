@@ -7,13 +7,12 @@
  */
 
 import { runWithRequestId } from "@eclaire/logger";
-import { createEventCallbacks } from "@eclaire/queue/core";
-import { QueueNames } from "../../lib/queue/queue-names.js";
 import type {
   JobContext,
   JobEventCallbacks,
   Worker,
 } from "@eclaire/queue/core";
+import { createEventCallbacks } from "@eclaire/queue/core";
 import {
   createDbWorker,
   type DbWorkerConfig,
@@ -23,13 +22,17 @@ import {
 import { db, dbCapabilities, dbType } from "../../db/index.js";
 import { createChildLogger } from "../../lib/logger.js";
 import { getNotifyListener } from "../../lib/queue/notify.js";
+import { QueueNames } from "../../lib/queue/queue-names.js";
+import type {
+  TaskOccurrenceJobData,
+  TaskScheduleTickJobData,
+} from "../../lib/queue/types.js";
 import {
   processArtifacts,
   setEntityProcessingStatus,
 } from "../../lib/services/artifact-processor.js";
 import { publishDirectSSEEvent } from "../../routes/processing-events.js";
 import type { AssetType } from "../../types/assets.js";
-
 // Import job processors and their data types
 import processBookmarkJob from "../jobs/bookmarkProcessor.js";
 import type { DocumentJobData } from "../jobs/documentProcessor.js";
@@ -39,15 +42,11 @@ import processImageJob from "../jobs/imageProcessor.js";
 import type { MediaJobData } from "../jobs/mediaProcessor.js";
 import processMediaJob from "../jobs/mediaProcessor.js";
 import processNoteJob from "../jobs/noteProcessor.js";
+import processTaskOccurrence from "../jobs/taskOccurrenceProcessor.js";
+import processTaskOverdueChecker from "../jobs/taskOverdueCheckerProcessor.js";
 import type { TaskJobData } from "../jobs/taskProcessor.js";
 import processTaskJob from "../jobs/taskProcessor.js";
-import processTaskOccurrence from "../jobs/taskOccurrenceProcessor.js";
 import processTaskScheduleTick from "../jobs/taskScheduleTickProcessor.js";
-import processTaskOverdueChecker from "../jobs/taskOverdueCheckerProcessor.js";
-import type {
-  TaskOccurrenceJobData,
-  TaskScheduleTickJobData,
-} from "../../lib/queue/types.js";
 import type { BookmarkJobData } from "./bookmarks/index.js";
 
 const logger = createChildLogger("direct-db-workers");

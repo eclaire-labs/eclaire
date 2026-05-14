@@ -28,8 +28,8 @@ const { stopBot } = await import(
 
 import {
   DB_TEST_CONFIGS,
-  type TestDatabase,
   initTestDatabase,
+  type TestDatabase,
 } from "../../db/setup.js";
 import { createTestDeps } from "./helpers/create-test-deps.js";
 import {

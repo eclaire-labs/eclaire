@@ -30,22 +30,22 @@ import {
   buildTagFilterCondition,
   getOrCreateTags,
 } from "../db-helpers.js";
-import { buildSearchRank, buildTextSearchCondition } from "../search.js";
-import {
-  buildCursorCondition,
-  encodeCursor,
-  type CursorPaginatedResponse,
-} from "../pagination.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
-import { getQueueAdapter } from "../queue/index.js";
-import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
 import {
+  buildCursorCondition,
+  type CursorPaginatedResponse,
+  encodeCursor,
+} from "../pagination.js";
+import { getQueueAdapter } from "../queue/index.js";
+import { buildSearchRank, buildTextSearchCondition } from "../search.js";
+import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
+import { createOrUpdateProcessingJob } from "./processing-status.js";
+import {
+  type CallerContext,
   callerActorId,
   callerOwnerUserId,
-  type CallerContext,
 } from "./types.js";
-import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:documents");
 

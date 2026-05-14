@@ -10,8 +10,8 @@
  * 3. Derived config (computed): connection strings, full paths
  */
 
-import type { LogLevel } from "@eclaire/logger";
 import { envLoadInfo } from "@eclaire/core";
+import type { LogLevel } from "@eclaire/logger";
 
 export type EclaireRuntime = "local" | "container";
 export type SecretsSource = "env" | "environment";

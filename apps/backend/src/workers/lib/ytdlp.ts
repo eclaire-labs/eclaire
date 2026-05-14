@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { readFile, readdir, rm, stat } from "node:fs/promises";
+import { readdir, readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { fileTypeFromFile } from "file-type";
 import { createChildLogger } from "../../lib/logger.js";

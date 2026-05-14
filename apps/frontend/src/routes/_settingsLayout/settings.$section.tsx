@@ -1,12 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
-  SETTINGS_NAV,
-  VALID_SECTIONS,
   isSeparator,
+  SETTINGS_NAV,
   type SettingsNavItem,
+  VALID_SECTIONS,
 } from "@/components/settings/settings-nav-config";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /** Redirects for renamed/removed sections */
 const SECTION_REDIRECTS: Record<string, string> = {

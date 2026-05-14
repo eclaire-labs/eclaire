@@ -42,11 +42,11 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import type { ListParams } from "@/hooks/create-crud-hooks";
+import { useActors } from "@/hooks/use-actors";
 import { useAuth } from "@/hooks/use-auth";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
-import { useActors } from "@/hooks/use-actors";
 import { useTags } from "@/hooks/use-tags";
 import { useTasks } from "@/hooks/use-tasks";
 import type { Task, TaskStatus } from "@/types/task";
@@ -54,9 +54,9 @@ import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
 import { TaskListItem } from "./tasks/TaskListItem";
 import { TaskTileItem } from "./tasks/TaskTileItem";
 import {
+  getNextStatus,
   PRIORITY_OPTIONS,
   STATUS_OPTIONS,
-  getNextStatus,
 } from "./tasks/task-utils";
 import { tasksConfig } from "./tasks/tasks-config";
 

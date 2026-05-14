@@ -1,5 +1,5 @@
-import type { SlashItem } from "@eclaire/core/slash";
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
+import type { SlashItem } from "@eclaire/core/slash";
 import { Bot, Edit2, History, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ChatPanel } from "@/components/assistant/chat-panel";

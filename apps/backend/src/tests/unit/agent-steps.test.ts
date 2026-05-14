@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RuntimeAgentStep } from "@eclaire/ai";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mocks (vi.hoisted ensures values are available inside vi.mock factories)

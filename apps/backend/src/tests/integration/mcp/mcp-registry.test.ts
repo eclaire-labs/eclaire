@@ -8,12 +8,12 @@
  * tool calling) runs real code over real JSON-RPC.
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createTestMcpServer,
   type InMemoryTransport,
   type TestMcpServer,
 } from "@eclaire/ai";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------

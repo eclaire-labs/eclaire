@@ -4,7 +4,7 @@
  * Get items that are overdue, due today, or due this week.
  */
 
-import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import { type RuntimeToolDefinition, textResult } from "@eclaire/ai";
 import z from "zod/v4";
 import { getDueItems } from "../../services/user-data.js";
 

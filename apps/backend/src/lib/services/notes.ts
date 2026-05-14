@@ -23,19 +23,19 @@ import {
   buildTagFilterCondition,
   getOrCreateTags,
 } from "../db-helpers.js";
-import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
   buildCursorCondition,
-  encodeCursor,
   type CursorPaginatedResponse,
+  encodeCursor,
 } from "../pagination.js";
 import { getQueueAdapter } from "../queue/index.js";
+import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 import {
+  type CallerContext,
   callerActorId,
   callerOwnerUserId,
-  type CallerContext,
 } from "./types.js";
 
 const logger = createChildLogger("services:notes");

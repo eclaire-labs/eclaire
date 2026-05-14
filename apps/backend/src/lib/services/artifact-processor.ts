@@ -1,11 +1,11 @@
 import { eq, type sql } from "drizzle-orm";
-import type { AssetType } from "../../types/assets.js";
 import { db, schema } from "../../db/index.js";
+import type { AssetType } from "../../types/assets.js";
 import { createChildLogger } from "../logger.js";
 import { updateBookmarkArtifacts } from "./bookmarks.js";
 import { updateDocumentArtifacts } from "./documents.js";
-import { updateNoteArtifacts } from "./notes.js";
 import { updateMediaArtifacts } from "./media.js";
+import { updateNoteArtifacts } from "./notes.js";
 import { updatePhotoArtifacts } from "./photos.js";
 import { updateTaskArtifacts } from "./tasks.js";
 

@@ -11,11 +11,11 @@
  */
 
 import type { Logger } from "@eclaire/logger";
+import type { JobEventCallbacks } from "@eclaire/queue/core";
 import {
   createEventCallbacks,
   type ProcessingSSEEvent,
 } from "@eclaire/queue/core";
-import type { JobEventCallbacks } from "@eclaire/queue/core";
 import { sql } from "drizzle-orm";
 
 // Use the exported db type from the backend

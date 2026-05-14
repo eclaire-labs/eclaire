@@ -22,8 +22,8 @@ import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatus
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
-import { TagEditor } from "@/components/shared/TagEditor";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
+import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

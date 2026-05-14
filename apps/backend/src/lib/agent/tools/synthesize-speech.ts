@@ -7,8 +7,8 @@
 
 import {
   errorResult,
-  textResult,
   type RuntimeToolDefinition,
+  textResult,
 } from "@eclaire/ai";
 import { generateCleanId } from "@eclaire/core/id";
 import z from "zod/v4";

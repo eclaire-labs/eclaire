@@ -6,15 +6,15 @@
 
 import {
   errorResult,
-  textResult,
   type RuntimeToolDefinition,
+  textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+import type { AssetType } from "../../../types/assets.js";
 import {
   getProcessingJob,
   getUserProcessingSummary,
 } from "../../services/processing-status.js";
-import type { AssetType } from "../../../types/assets.js";
 
 const inputSchema = z.object({
   assetType: z

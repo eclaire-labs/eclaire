@@ -4,7 +4,7 @@
  * Update an existing media item's metadata.
  */
 
-import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import { type RuntimeToolDefinition, textResult } from "@eclaire/ai";
 import z from "zod/v4";
 import { updateMedia } from "../../services/media.js";
 import { agentToolCaller } from "./caller.js";

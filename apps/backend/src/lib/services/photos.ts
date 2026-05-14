@@ -33,17 +33,17 @@ import { ForbiddenError, NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
   buildCursorCondition,
-  encodeCursor,
   type CursorPaginatedResponse,
+  encodeCursor,
 } from "../pagination.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { assetPrefix, buildKey, getStorage } from "../storage/index.js";
+import { createOrUpdateProcessingJob } from "./processing-status.js";
 import {
+  type CallerContext,
   callerActorId,
   callerOwnerUserId,
-  type CallerContext,
 } from "./types.js";
-import { createOrUpdateProcessingJob } from "./processing-status.js";
 
 const logger = createChildLogger("services:photos");
 
@@ -57,9 +57,9 @@ function isStorageNotFound(error: unknown): boolean {
 
 // Backward-compatible re-exports for route files
 export {
+  ForbiddenError as PhotoForbiddenError,
   NotFoundError as PhotoNotFoundError,
   NotFoundError as PhotoFileNotFoundError,
-  ForbiddenError as PhotoForbiddenError,
 };
 
 // ============================================================================

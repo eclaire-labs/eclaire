@@ -3,13 +3,13 @@
  * Only provides encrypt/decrypt and stubs for the rest.
  */
 
-import { and, eq } from "drizzle-orm";
 import type { ChannelRecord } from "@eclaire/channels-core";
 import { ChannelRegistry } from "@eclaire/channels-core";
-import { initTelegramAdapter } from "@eclaire/channels-telegram";
 import { initDiscordAdapter } from "@eclaire/channels-discord";
 import { initSlackAdapter } from "@eclaire/channels-slack";
-import { encrypt, decrypt } from "./encryption.js";
+import { initTelegramAdapter } from "@eclaire/channels-telegram";
+import { and, eq } from "drizzle-orm";
+import { decrypt, encrypt } from "./encryption.js";
 import { getDb } from "./index.js";
 
 let _registry: ChannelRegistry | null = null;

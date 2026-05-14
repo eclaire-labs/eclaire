@@ -2,9 +2,9 @@
  * BullMQ queue management
  */
 
+import { type JobsOptions, Queue } from "bullmq";
 import { getErrorMessage } from "../core/error-utils.js";
 import type { QueueLogger } from "../core/types.js";
-import { type JobsOptions, Queue } from "bullmq";
 import {
   closeRedisConnection,
   createRedisConnection,

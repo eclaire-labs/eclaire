@@ -1,11 +1,19 @@
+import { count, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
-import { count, eq, sql } from "drizzle-orm";
 import z from "zod/v4";
+import { db, schema } from "../db/index.js";
 import { NotFoundError } from "../lib/errors.js";
+import {
+  emitOccurrenceCancelled,
+  emitOccurrenceQueued,
+  emitTaskCreated,
+  emitTaskDeleted,
+  emitTaskStatusChanged,
+  emitTaskUpdated,
+} from "../lib/events/task-events.js";
 import { createChildLogger } from "../lib/logger.js";
 import { parseSearchFields } from "../lib/search-params.js";
-import { db, schema } from "../db/index.js";
 import {
   createTaskComment,
   deleteTaskComment,
@@ -56,14 +64,6 @@ import {
 } from "../schemas/tasks-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";
 import { registerCommonEndpoints } from "./shared-endpoints.js";
-import {
-  emitTaskCreated,
-  emitTaskUpdated,
-  emitTaskDeleted,
-  emitTaskStatusChanged,
-  emitOccurrenceQueued,
-  emitOccurrenceCancelled,
-} from "../lib/events/task-events.js";
 
 const logger = createChildLogger("tasks");
 

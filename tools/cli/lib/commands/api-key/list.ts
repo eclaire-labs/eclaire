@@ -3,10 +3,10 @@
  */
 
 import { listApiKeys } from "../../db/api-keys.js";
-import { getDefaultUser } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
-import { createApiKeysTable } from "../../ui/format.js";
+import { getDefaultUser } from "../../db/users.js";
 import { colors, icons } from "../../ui/colors.js";
+import { createApiKeysTable } from "../../ui/format.js";
 
 export async function listCommand(options: { json?: boolean }): Promise<void> {
   try {

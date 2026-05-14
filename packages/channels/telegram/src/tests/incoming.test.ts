@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setDeps } from "../deps.js";
 
 vi.mock("../bot-manager.js", () => ({ stopBot: vi.fn() }));
@@ -18,13 +18,13 @@ vi.mock("@eclaire/channels-core", () => {
   };
 });
 
+import { stopBot } from "../bot-manager.js";
 import {
   handleIncomingMessage,
   handleIncomingVoiceMessage,
 } from "../incoming.js";
-import { stopBot } from "../bot-manager.js";
-import { sendStreamingResponse } from "../stream-sender.js";
 import { splitMessage } from "../message-utils.js";
+import { sendStreamingResponse } from "../stream-sender.js";
 
 const mockLogger = {
   info: vi.fn(),

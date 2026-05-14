@@ -6,8 +6,8 @@
  * Does NOT support streaming STT (realtime WebSocket).
  */
 
-import { readAudioFile } from "./mlx-client.js";
 import { ElevenLabsClient } from "./elevenlabs-client.js";
+import { readAudioFile } from "./mlx-client.js";
 import type {
   AudioProvider,
   AudioProviderCapabilities,

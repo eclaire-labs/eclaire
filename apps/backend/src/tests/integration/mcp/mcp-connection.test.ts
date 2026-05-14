@@ -6,12 +6,12 @@
  * lifecycle, tool discovery, and tool calling use real code and real JSON-RPC.
  */
 
-import { afterEach, describe, expect, it } from "vitest";
 import {
   createTestMcpServer,
-  type TestMcpServer,
   McpServerConnection,
+  type TestMcpServer,
 } from "@eclaire/ai";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   createEchoServer,
   createFilterTestServer,

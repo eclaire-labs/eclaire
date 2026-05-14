@@ -8,9 +8,9 @@
  * Frontend and CLI consume this via admin API endpoints.
  */
 
-import axios from "axios";
 import type { InputModality, ModelConfig } from "@eclaire/ai";
 import { interpolateEnvVars } from "@eclaire/ai";
+import axios from "axios";
 import { ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import type {

@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   BASE_URL,
-  TEST_EMAIL,
-  TEST_PASSWORD,
   delay,
   logger,
+  TEST_EMAIL,
+  TEST_PASSWORD,
 } from "../utils/test-helpers.js";
 
 // Cookie storage to persist session across requests

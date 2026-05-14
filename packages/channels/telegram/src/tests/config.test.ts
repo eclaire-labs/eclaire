@@ -1,6 +1,6 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { decryptConfig, validateAndEncryptConfig } from "../config.js";
 import { setDeps } from "../deps.js";
-import { validateAndEncryptConfig, decryptConfig } from "../config.js";
 
 const mockEncrypt = vi.fn((v: string) => `encrypted:${v}`);
 const mockDecrypt = vi.fn((v: string) =>

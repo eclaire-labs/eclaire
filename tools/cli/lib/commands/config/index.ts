@@ -3,10 +3,10 @@
  */
 
 import { Command } from "commander";
-import { validateCommand } from "./validate.js";
-import { showCommand } from "./show.js";
-import { envCommand } from "./env.js";
 import { dbCommand } from "./db.js";
+import { envCommand } from "./env.js";
+import { showCommand } from "./show.js";
+import { validateCommand } from "./validate.js";
 
 export function registerConfigCommands(program: Command): void {
   const config = new Command("config")

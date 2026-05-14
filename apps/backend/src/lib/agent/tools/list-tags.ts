@@ -4,7 +4,7 @@
  * List the user's existing tags, optionally filtered by content type or sorted by popularity.
  */
 
-import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import { type RuntimeToolDefinition, textResult } from "@eclaire/ai";
 import z from "zod/v4";
 import { findPopularTags, findUserTags } from "../../services/tags.js";
 

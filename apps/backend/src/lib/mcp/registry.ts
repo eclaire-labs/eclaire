@@ -6,10 +6,10 @@
  */
 
 import {
-  McpServerConnection,
-  mcpToolToRuntimeTool,
-  mcpToolsToGroupedRuntimeTool,
   type McpServerConfig,
+  McpServerConnection,
+  mcpToolsToGroupedRuntimeTool,
+  mcpToolToRuntimeTool,
   type RuntimeToolDefinition,
 } from "@eclaire/ai";
 import { config } from "../../config/index.js";

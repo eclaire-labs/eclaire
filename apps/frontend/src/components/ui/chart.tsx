@@ -1,6 +1,6 @@
 import * as React from "react";
+import type { DefaultLegendContentProps, TooltipContentProps } from "recharts";
 import * as RechartsPrimitive from "recharts";
-import type { TooltipContentProps, DefaultLegendContentProps } from "recharts";
 
 import { cn } from "@/lib/utils";
 
@@ -367,9 +367,9 @@ function getPayloadConfigFromPayload(
 
 export {
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
   ChartStyle,
+  ChartTooltip,
+  ChartTooltipContent,
 };

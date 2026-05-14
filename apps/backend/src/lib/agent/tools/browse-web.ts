@@ -3,8 +3,8 @@ import net from "node:net";
 import path from "node:path";
 import {
   errorResult,
-  textResult,
   type RuntimeToolDefinition,
+  textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
 import { config } from "../../../config/index.js";

@@ -4,7 +4,7 @@
  * Update an existing photo's title, description, tags, or due date.
  */
 
-import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import { type RuntimeToolDefinition, textResult } from "@eclaire/ai";
 import z from "zod/v4";
 import { updatePhotoMetadata } from "../../services/photos.js";
 import { agentToolCaller } from "./caller.js";

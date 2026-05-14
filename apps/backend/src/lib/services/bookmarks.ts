@@ -26,21 +26,21 @@ import {
   buildTagFilterCondition,
   getOrCreateTags,
 } from "../db-helpers.js";
-import {
-  buildCursorCondition,
-  encodeCursor,
-  type CursorPaginatedResponse,
-} from "../pagination.js";
-import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
-import { getQueueAdapter } from "../queue/index.js";
-import { createOrUpdateProcessingJob } from "./processing-status.js";
-import { setEntityProcessingStatus } from "./artifact-processor.js";
 import {
+  buildCursorCondition,
+  type CursorPaginatedResponse,
+  encodeCursor,
+} from "../pagination.js";
+import { getQueueAdapter } from "../queue/index.js";
+import { buildSearchRank, buildTextSearchCondition } from "../search.js";
+import { setEntityProcessingStatus } from "./artifact-processor.js";
+import { createOrUpdateProcessingJob } from "./processing-status.js";
+import {
+  type CallerContext,
   callerActorId,
   callerOwnerUserId,
-  type CallerContext,
 } from "./types.js";
 
 const logger = createChildLogger("services:bookmarks");

@@ -1,6 +1,6 @@
+import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import {
   Activity,
   AlertTriangle,
@@ -38,6 +38,7 @@ import { MobileChatView } from "@/components/mobile/mobile-chat-view";
 import { MobileFoldersView } from "@/components/mobile/mobile-folders-view";
 import { MobileLayout } from "@/components/mobile/mobile-layout";
 import type { MobileTab } from "@/components/mobile/mobile-tab-bar";
+import { SidebarShell } from "@/components/sidebar/sidebar-shell";
 import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAgentExecutionStatus } from "@/hooks/use-session-status";
@@ -50,10 +51,8 @@ import {
   useSidebarModeShortcut,
 } from "@/hooks/use-sidebar-mode";
 import { useSlashCommands } from "@/hooks/use-slash-commands";
-import { SidebarShell } from "@/components/sidebar/sidebar-shell";
 import { listAgents } from "@/lib/api-agents";
 import { apiFetch } from "@/lib/api-client";
-import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
 import {
   abortSession,
   createSession,
@@ -63,6 +62,7 @@ import {
   markSessionRead,
   updateSession,
 } from "@/lib/api-sessions";
+import { convertBackendMessage } from "@/lib/message-utils";
 import {
   getMobileTabFromPathname,
   getRouteForMobileTab,
@@ -71,8 +71,8 @@ import {
   type StreamingRequest,
   useStreamingClient,
 } from "@/lib/streaming-client";
-import { convertBackendMessage } from "@/lib/message-utils";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
+import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
 import type { Agent } from "@/types/agent";
 import type { Bookmark as BookmarkType } from "@/types/bookmark";
 import type { ConversationSummary } from "@/types/conversation";

@@ -271,8 +271,10 @@ vi.mock("../../lib/logger.js", () => ({
 // Import the module under test (AFTER all vi.mock calls)
 // ---------------------------------------------------------------------------
 
+import { NotFoundError, ValidationError } from "../../lib/errors.js";
 import {
   createAgent,
+  DEFAULT_AGENT_ID,
   deleteAgent,
   getAgent,
   getAgentCatalog,
@@ -280,10 +282,7 @@ import {
   getSkillDetail,
   listAgents,
   updateAgent,
-  DEFAULT_AGENT_ID,
 } from "../../lib/services/agents.js";
-
-import { NotFoundError, ValidationError } from "../../lib/errors.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

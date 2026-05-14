@@ -6,8 +6,8 @@
 
 import {
   errorResult,
-  textResult,
   type RuntimeToolDefinition,
+  textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
 import { deleteMedia } from "../../services/media.js";

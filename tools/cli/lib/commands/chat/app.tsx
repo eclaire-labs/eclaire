@@ -1,5 +1,3 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { render, Box, Text, useInput, useApp } from "ink";
 import {
   buildSlashItems,
   generateHelpText,
@@ -7,22 +5,24 @@ import {
   type SlashContext,
   type SlashItem,
 } from "@eclaire/core";
+import { Box, render, Text, useApp, useInput } from "ink";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  getModelInfo,
+  type AgentSummary,
+  abortSession,
   createSession,
+  getModelInfo,
   getSession as getSessionApi,
   listAgents,
   listSessions,
   sendMessage,
-  abortSession,
-  type AgentSummary,
 } from "../../backend-client.js";
 import { ChatInput } from "./components/ChatInput.js";
 import { MessageList } from "./components/MessageList.js";
+import { SettingsPanel } from "./components/SettingsPanel.js";
+import { Spinner } from "./components/Spinner.js";
 import { StatusBar } from "./components/StatusBar.js";
 import { StreamingMessage } from "./components/StreamingMessage.js";
-import { Spinner } from "./components/Spinner.js";
-import { SettingsPanel } from "./components/SettingsPanel.js";
 import type { DisplayMessage, DisplayOptions } from "./types.js";
 
 interface ChatOptions {

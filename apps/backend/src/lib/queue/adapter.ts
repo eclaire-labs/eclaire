@@ -21,14 +21,14 @@ const logger = createChildLogger("queue-adapter");
 
 // Re-export types for convenience
 export type {
-  QueueAdapter,
-  JobData,
-  BookmarkJobData,
-  ImageJobData,
-  DocumentJobData,
-  NoteJobData,
-  TaskJobData,
   AssetType,
+  BookmarkJobData,
+  DocumentJobData,
+  ImageJobData,
+  JobData,
+  NoteJobData,
+  QueueAdapter,
+  TaskJobData,
 };
 
 // --- Factory Function ---

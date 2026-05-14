@@ -55,9 +55,9 @@ function isStorageNotFound(error: unknown): boolean {
 
 // Backward-compatible re-exports for route files
 export {
+  ForbiddenError as MediaForbiddenError,
   NotFoundError as MediaNotFoundError,
   NotFoundError as MediaFileNotFoundError,
-  ForbiddenError as MediaForbiddenError,
 };
 
 // ============================================================================

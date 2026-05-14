@@ -1,6 +1,6 @@
 import {
-  fetchProviderPresets,
   type AdminProviderPreset,
+  fetchProviderPresets,
 } from "../../backend-client.js";
 import { addProvider, isProviderIdAvailable } from "../../config/providers.js";
 import { closeDb } from "../../db/index.js";
@@ -10,8 +10,8 @@ import type {
   ProviderPreset,
 } from "../../types/index.js";
 import {
-  cancel,
   CancelledError,
+  cancel,
   confirm,
   intro,
   isCancelled,

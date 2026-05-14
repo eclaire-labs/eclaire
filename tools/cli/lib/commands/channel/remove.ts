@@ -1,13 +1,13 @@
-import { getChannel, deleteChannel } from "../../db/channels.js";
-import { promptConfirmation } from "../../ui/prompts.js";
-import { colors, icons } from "../../ui/colors.js";
+import { deleteChannel, getChannel } from "../../db/channels.js";
 import {
-  intro,
-  outro,
-  cancel,
-  isCancelled,
   CancelledError,
+  cancel,
+  intro,
+  isCancelled,
+  outro,
 } from "../../ui/clack.js";
+import { colors, icons } from "../../ui/colors.js";
+import { promptConfirmation } from "../../ui/prompts.js";
 
 export async function removeCommand(
   id: string,

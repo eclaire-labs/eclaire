@@ -1,5 +1,5 @@
-import { Box, Text } from "ink";
 import type { SlashItem } from "@eclaire/core";
+import { Box, Text } from "ink";
 
 interface CommandMenuProps {
   items: SlashItem[];

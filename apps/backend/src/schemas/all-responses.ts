@@ -160,7 +160,7 @@ export const CreatedItemSchema = z
 
 // Error response schemas (extracted to error-schemas.ts to break circular dependency with common.ts)
 export {
-  ValidationErrorSchema,
   ErrorResponseSchema,
   UnauthorizedSchema,
+  ValidationErrorSchema,
 } from "./error-schemas.js";

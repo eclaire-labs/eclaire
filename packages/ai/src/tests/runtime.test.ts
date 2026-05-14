@@ -5,66 +5,60 @@
  * and skill system.
  */
 
-import { describe, expect, it, beforeEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-
-// Message model
-import {
-  getTextContent,
-  getToolCalls,
-  getThinkingContent,
-  userMessage,
-  systemMessage,
-  type AssistantMessage,
-  type ToolResultMessage,
-  type RuntimeMessage,
-} from "../runtime/messages.js";
-
-// Convert to/from LLM
-import { convertToLlm } from "../runtime/agent/convert-to-llm.js";
-import { convertFromLlm } from "../runtime/agent/convert-from-llm.js";
-import type { AIMessage } from "../types.js";
-
-// Tool types
-import {
-  textResult,
-  errorResult,
-  type RuntimeToolDefinition,
-} from "../runtime/tools/types.js";
-
 // Registries
 import {
-  registerProvider,
-  getProvider,
-  listProviders,
-  unregisterProvider,
   clearProviders,
   getAdapterByDialect,
+  getProvider,
+  listProviders,
+  registerProvider,
+  unregisterProvider,
 } from "../registries/provider-registry.js";
-
 import {
-  registerTool,
-  getTool,
-  getActiveTools,
-  setActiveTools,
-  listTools,
-  unregisterTool,
-  getPromptContributions,
-  clearTools,
-} from "../registries/tool-registry.js";
-
-import {
-  registerSkillSource,
+  clearSkillSources,
   discoverSkills,
+  getAlwaysIncludeSkills,
   getSkill,
   getSkillSummary,
-  loadSkillContent,
-  getAlwaysIncludeSkills,
   invalidateSkillCache,
-  clearSkillSources,
+  loadSkillContent,
+  registerSkillSource,
 } from "../registries/skill-registry.js";
+import {
+  clearTools,
+  getActiveTools,
+  getPromptContributions,
+  getTool,
+  listTools,
+  registerTool,
+  setActiveTools,
+  unregisterTool,
+} from "../registries/tool-registry.js";
+import { convertFromLlm } from "../runtime/agent/convert-from-llm.js";
+// Convert to/from LLM
+import { convertToLlm } from "../runtime/agent/convert-to-llm.js";
+// Message model
+import {
+  type AssistantMessage,
+  getTextContent,
+  getThinkingContent,
+  getToolCalls,
+  type RuntimeMessage,
+  systemMessage,
+  type ToolResultMessage,
+  userMessage,
+} from "../runtime/messages.js";
+// Tool types
+import {
+  errorResult,
+  type RuntimeToolDefinition,
+  textResult,
+} from "../runtime/tools/types.js";
+import type { AIMessage } from "../types.js";
 
 import { createTempDir } from "./setup.js";
 

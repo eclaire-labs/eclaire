@@ -1,9 +1,9 @@
 import { App } from "@slack/bolt";
-import { getDeps } from "./deps.js";
-import { decryptConfig, type SlackConfig } from "./config.js";
-import { handleIncomingMessage, handleIncomingAudioFile } from "./incoming.js";
 import { registerCommands } from "./commands.js";
-import { splitMessage, convertMarkdownToMrkdwn } from "./message-utils.js";
+import { decryptConfig, type SlackConfig } from "./config.js";
+import { getDeps } from "./deps.js";
+import { handleIncomingAudioFile, handleIncomingMessage } from "./incoming.js";
+import { convertMarkdownToMrkdwn, splitMessage } from "./message-utils.js";
 import { withRetry } from "./retry.js";
 import { resetCircuitBreaker } from "./typing-indicator.js";
 

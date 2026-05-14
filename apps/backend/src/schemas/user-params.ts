@@ -1,8 +1,8 @@
-import z from "zod/v4";
 import {
   AdminAccessLevelSchema,
   DataAccessLevelSchema,
 } from "@eclaire/api-types";
+import z from "zod/v4";
 
 // User profile schema (complete user record)
 export const UserProfileSchema = z.object({

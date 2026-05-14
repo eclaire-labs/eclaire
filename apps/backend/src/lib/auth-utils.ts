@@ -6,11 +6,11 @@ import { parseApiKey, verifyApiKeyHash } from "./api-key-security.js";
 import type { AuthPrincipal } from "./auth-principal.js";
 import { ForbiddenError } from "./errors.js";
 import { createChildLogger } from "./logger.js";
-import { ensureHumanActorForUserId } from "./services/actors.js";
 import {
   resolveApiKeyCredential,
   touchActorCredentialUsage,
 } from "./services/actor-credentials.js";
+import { ensureHumanActorForUserId } from "./services/actors.js";
 
 const logger = createChildLogger("auth-utils");
 

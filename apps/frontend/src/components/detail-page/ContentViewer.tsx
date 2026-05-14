@@ -1,6 +1,6 @@
 import { AlertCircle, FileText, Loader2 } from "lucide-react";
-import { useContentFetch } from "@/hooks/use-content-fetch";
 import { MarkdownDisplay } from "@/components/markdown-display";
+import { useContentFetch } from "@/hooks/use-content-fetch";
 
 interface ContentViewerProps {
   contentUrl: string | null;

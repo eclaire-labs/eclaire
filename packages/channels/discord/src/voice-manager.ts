@@ -1,16 +1,16 @@
+import { Readable } from "node:stream";
 import {
-  joinVoiceChannel,
+  type AudioPlayer,
+  AudioPlayerStatus,
+  type AudioReceiveStream,
   createAudioPlayer,
   createAudioResource,
   entersState,
-  VoiceConnectionStatus,
-  AudioPlayerStatus,
+  joinVoiceChannel,
   StreamType,
   type VoiceConnection,
-  type AudioPlayer,
-  type AudioReceiveStream,
+  VoiceConnectionStatus,
 } from "@discordjs/voice";
-import { Readable } from "node:stream";
 import type { Client, VoiceBasedChannel } from "discord.js";
 import type { DiscordLogger } from "./deps.js";
 

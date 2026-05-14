@@ -6,7 +6,7 @@ const { feedback } = schema;
 
 import { createChildLogger } from "../logger.js";
 import { recordHistory } from "./history.js";
-import { callerActorId, type CallerContext } from "./types.js";
+import { type CallerContext, callerActorId } from "./types.js";
 
 const logger = createChildLogger("services:feedback");
 

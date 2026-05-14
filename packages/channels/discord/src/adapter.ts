@@ -3,15 +3,15 @@ import type {
   ChannelRecord,
   SendResult,
 } from "@eclaire/channels-core";
-import { validateAndEncryptConfig, decryptConfig } from "./config.js";
 import {
+  sendMessage,
   startAllBots,
   startBot,
   stopAllBots,
   stopBot,
-  sendMessage,
 } from "./bot-manager.js";
-import { setDeps, type DiscordDeps } from "./deps.js";
+import { decryptConfig, validateAndEncryptConfig } from "./config.js";
+import { type DiscordDeps, setDeps } from "./deps.js";
 
 const discordAdapter: ChannelAdapter = {
   platform: "discord",

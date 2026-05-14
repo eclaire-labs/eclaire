@@ -8,16 +8,16 @@
 
 import type {
   AIMessage,
-  TextContentPart,
   ImageContentPart,
+  TextContentPart,
   ToolCallResult,
 } from "../../types.js";
 import type {
-  RuntimeMessage,
-  UserMessage,
-  AssistantMessage,
-  ToolResultMessage,
   AssistantContentBlock,
+  AssistantMessage,
+  RuntimeMessage,
+  ToolResultMessage,
+  UserMessage,
 } from "../messages.js";
 
 /**

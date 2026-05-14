@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { decryptConfig, validateAndEncryptConfig } from "../config.js";
 import { setDeps } from "../deps.js";
-import { validateAndEncryptConfig, decryptConfig } from "../config.js";
 
 const mockLogger = {
   info: () => {},

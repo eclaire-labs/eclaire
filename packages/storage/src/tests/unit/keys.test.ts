@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { StorageInvalidKeyError } from "../../core/errors.js";
 import {
-  assetPrefix,
   assertSafeKey,
   assertSafePrefix,
+  assetPrefix,
   buildKey,
   categoryPrefix,
   isSafeKey,

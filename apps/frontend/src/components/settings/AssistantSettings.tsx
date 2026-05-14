@@ -19,13 +19,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { ChatPanel } from "@/components/assistant/chat-panel";
-import { useSlashCommands } from "@/hooks/use-slash-commands";
 import { ConversationHistoryDialog } from "@/components/assistant/conversation-history-dialog";
-import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import {
-  useToolExecutionTracker,
   type ToolCall,
+  useToolExecutionTracker,
 } from "@/components/assistant/tool-execution-tracker";
+import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ModelPicker } from "@/components/settings/ModelPicker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -42,14 +41,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useSlashCommands } from "@/hooks/use-slash-commands";
 import {
+  type AgentPayload,
   createAgent,
   deleteAgent,
   getAgent,
   getAgentCatalog,
   listAgents,
   updateAgent,
-  type AgentPayload,
 } from "@/lib/api-agents";
 import {
   createSession,

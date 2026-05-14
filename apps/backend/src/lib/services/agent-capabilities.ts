@@ -1,6 +1,6 @@
 export {
   LOAD_SKILL_TOOL_NAME,
-  normalizeToolNamesForSkills,
   normalizeCreateAgentCapabilities,
+  normalizeToolNamesForSkills,
   normalizeUpdatedAgentCapabilities,
 } from "@eclaire/ai";

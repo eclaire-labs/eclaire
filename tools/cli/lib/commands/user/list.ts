@@ -2,10 +2,10 @@
  * List all users with admin status highlighted.
  */
 
-import { listUsers } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
-import { createUsersTable } from "../../ui/format.js";
+import { listUsers } from "../../db/users.js";
 import { colors, icons } from "../../ui/colors.js";
+import { createUsersTable } from "../../ui/format.js";
 
 export async function listCommand(options: { json?: boolean }): Promise<void> {
   try {

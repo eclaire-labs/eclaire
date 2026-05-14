@@ -25,7 +25,7 @@ const { logger, createChildLogger } = createLoggerFactory({
   contextKey: isWorker ? "worker" : "module",
 });
 
-export { logger, createChildLogger };
+export { createChildLogger, logger };
 
 /**
  * Checks if the content type represents large/binary content that shouldn't be logged

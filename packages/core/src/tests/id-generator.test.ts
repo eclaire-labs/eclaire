@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  ID_CONSTANTS,
+  generateAgentStepId,
+  generateApiKeyId,
   generateAssetProcessingJobId,
   generateBookmarkId,
   generateChannelId,
@@ -16,9 +17,13 @@ import {
   generateStorageId,
   generateTagId,
   generateTaskCommentId,
+  generateTaskExecutionId,
   generateTaskId,
   generateUserId,
   getEntityTypeFromId,
+  ID_CONSTANTS,
+  isValidAgentStepId,
+  isValidApiKeyId,
   isValidAssetProcessingJobId,
   isValidBookmarkId,
   isValidChannelId,
@@ -31,14 +36,9 @@ import {
   isValidPhotoId,
   isValidTagId,
   isValidTaskCommentId,
+  isValidTaskExecutionId,
   isValidTaskId,
   isValidUserId,
-  isValidApiKeyId,
-  isValidTaskExecutionId,
-  isValidAgentStepId,
-  generateApiKeyId,
-  generateTaskExecutionId,
-  generateAgentStepId,
 } from "../id-generator.js";
 
 describe("generateCleanId", () => {

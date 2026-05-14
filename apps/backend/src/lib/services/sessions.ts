@@ -14,9 +14,13 @@
  */
 
 import { EventEmitter } from "node:events";
-import type { AIMessage, ApprovalResponse } from "@eclaire/ai";
-import type { OnApprovalRequired } from "@eclaire/ai";
+import type {
+  AIMessage,
+  ApprovalResponse,
+  OnApprovalRequired,
+} from "@eclaire/ai";
 import { convertFromLlm, createRuntimeContext } from "@eclaire/ai";
+import { publishProcessingEvent } from "../../routes/processing-events.js";
 import type { Context } from "../../schemas/prompt-params.js";
 import { fetchAssetContents } from "../agent/asset-fetcher.js";
 import {
@@ -30,27 +34,26 @@ import {
   transformRuntimeEvent,
 } from "../agent/index.js";
 import type { UserContext } from "../agent/types.js";
-import { DEFAULT_AGENT_ID, getAgent } from "./agents.js";
 import { createChildLogger } from "../logger.js";
 import { getUserContextForPrompt } from "../user.js";
+import { DEFAULT_AGENT_ID, getAgent } from "./agents.js";
 import {
   type ConversationSummary,
   type ConversationWithMessages,
   countConversations,
   createConversation,
+  deleteConversation,
   generateConversationTitle,
   getConversation,
-  deleteConversation,
   getConversationWithMessages,
   listConversations,
   updateConversation,
 } from "./conversations.js";
-import { publishProcessingEvent } from "../../routes/processing-events.js";
 import { recordHistory } from "./history.js";
 import {
+  type CallerContext,
   callerActorId,
   callerOwnerUserId,
-  type CallerContext,
 } from "./types.js";
 
 const logger = createChildLogger("services:sessions");

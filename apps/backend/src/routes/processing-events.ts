@@ -9,10 +9,10 @@ import type postgres from "postgres";
 import { config } from "../config/index.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
-  type StreamRef,
   getStreamsForUser,
   registerStream,
   removeStreamsByClientIds,
+  type StreamRef,
   unregisterStream,
 } from "../lib/sse/stream-registry.js";
 import { withAuth } from "../middleware/with-auth.js";

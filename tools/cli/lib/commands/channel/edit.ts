@@ -1,17 +1,17 @@
 import { getChannelRegistry } from "../../db/adapters.js";
 import { getChannel, updateChannel } from "../../db/channels.js";
-import { colors, icons } from "../../ui/colors.js";
 import {
-  intro,
-  outro,
-  cancel,
-  textInput,
-  passwordInput,
-  selectOne,
-  selectMany,
-  isCancelled,
   CancelledError,
+  cancel,
+  intro,
+  isCancelled,
+  outro,
+  passwordInput,
+  selectMany,
+  selectOne,
+  textInput,
 } from "../../ui/clack.js";
+import { colors, icons } from "../../ui/colors.js";
 
 export async function editCommand(id: string): Promise<void> {
   try {

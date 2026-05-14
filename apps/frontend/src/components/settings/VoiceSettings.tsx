@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
   Mic,
@@ -8,9 +9,10 @@ import {
   Square,
   Volume2,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -18,19 +20,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useAudio } from "@/hooks/use-audio";
-import { useAuth } from "@/hooks/use-auth";
 import { useAudioLevel } from "@/hooks/use-audio-level";
 import { useAudioRecorder } from "@/hooks/use-audio-recorder";
+import { useAuth } from "@/hooks/use-auth";
 import { useStreamingTranscription } from "@/hooks/use-streaming-transcription";
-import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 import { apiGet, apiPatch } from "@/lib/api-client";
+import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
+import type { SelectOption } from "./audio-helpers";
 import {
   isTtsSpeedSupported,
   modelLabel,
@@ -41,7 +42,6 @@ import {
   SPEED_STEPS,
   TtsVoiceField,
 } from "./audio-helpers";
-import type { SelectOption } from "./audio-helpers";
 
 // ---------------------------------------------------------------------------
 // Types & helpers

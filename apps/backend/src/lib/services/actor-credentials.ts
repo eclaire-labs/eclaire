@@ -23,8 +23,6 @@ import {
 } from "../auth-principal.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
-import { recordHistory } from "./history.js";
-import type { CallerContext } from "./types.js";
 import {
   DEFAULT_AGENT_ACTOR_ID,
   DEFAULT_AGENT_ACTOR_NAME,
@@ -34,6 +32,8 @@ import {
   getActorSummaryOrNull,
   getDefaultAgentActorSummary,
 } from "./actors.js";
+import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 
 const logger = createChildLogger("services:actor-credentials");
 

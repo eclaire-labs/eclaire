@@ -10,7 +10,6 @@
  * not yet covered by the API (activate, deactivate, refresh).
  */
 
-import { eq } from "drizzle-orm";
 import type {
   AIContext,
   ModelConfig,
@@ -35,6 +34,7 @@ import {
   setInlineConfig,
 } from "@eclaire/ai";
 import type { pgSchema } from "@eclaire/db";
+import { eq } from "drizzle-orm";
 import { getDb } from "../db/index.js";
 
 type Schema = typeof pgSchema;
@@ -230,14 +230,14 @@ export const loadModelsConfig = loadModelsConfiguration;
 export const loadSelectionConfig = loadSelectionConfiguration;
 
 export {
+  getActiveModelForContext,
+  getActiveModelIdForContext,
+  getActiveModelsAsObjects,
+  getModelConfigById as findModelById,
+  getModels,
   // Accessors (with CLI-friendly aliases)
   getProviderConfig as getProvider,
-  getModelConfigById as findModelById,
   getProviders,
-  getModels,
-  getActiveModelsAsObjects,
-  getActiveModelIdForContext,
-  getActiveModelForContext,
 };
 
 // ============================================================================

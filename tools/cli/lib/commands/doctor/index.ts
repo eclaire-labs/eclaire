@@ -1,17 +1,17 @@
-import type { Command } from "commander";
 import chalk from "chalk";
-import {
-  intro,
-  outro,
-  cancel,
-  log,
-  spinner,
-  isCancelled,
-} from "../../ui/clack.js";
+import type { Command } from "commander";
 import {
   backendFetch,
   runOnboardingHealthCheck,
 } from "../../backend-client.js";
+import {
+  cancel,
+  intro,
+  isCancelled,
+  log,
+  outro,
+  spinner,
+} from "../../ui/clack.js";
 import { icons } from "../../ui/colors.js";
 
 async function doctorCommand() {

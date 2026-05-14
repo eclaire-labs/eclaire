@@ -1,14 +1,14 @@
-import type { Command } from "commander";
 import chalk from "chalk";
-import {
-  intro,
-  outro,
-  log,
-  spinner,
-  cancel,
-  isCancelled,
-} from "../../ui/clack.js";
+import type { Command } from "commander";
 import { backendFetch, fetchOnboardingState } from "../../backend-client.js";
+import {
+  cancel,
+  intro,
+  isCancelled,
+  log,
+  outro,
+  spinner,
+} from "../../ui/clack.js";
 import { icons } from "../../ui/colors.js";
 
 async function statusCommand(opts: { json?: boolean }) {

@@ -8,11 +8,11 @@ import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import { getUserProfile } from "../user.js";
 import {
+  type CreateActorApiKeyInput,
   createActorApiKey,
   listActorApiKeys,
   revokeActorApiKey,
   updateActorApiKey,
-  type CreateActorApiKeyInput,
 } from "./actor-credentials.js";
 import { listActorSummaries } from "./actors.js";
 

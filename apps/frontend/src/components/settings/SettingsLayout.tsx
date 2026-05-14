@@ -1,11 +1,11 @@
 import { Link, Outlet, useParams } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft } from "lucide-react";
 import { Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { SettingsNav } from "./SettingsNav";
 import { SettingsMobileMenu } from "./SettingsMobileMenu";
+import { SettingsNav } from "./SettingsNav";
 
 function SectionLoading() {
   return (

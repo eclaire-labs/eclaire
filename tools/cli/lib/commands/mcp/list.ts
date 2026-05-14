@@ -1,5 +1,5 @@
-import { listMcpServers } from "../../db/mcp-servers.js";
 import { closeDb } from "../../db/index.js";
+import { listMcpServers } from "../../db/mcp-servers.js";
 import type { CommandOptions } from "../../types/index.js";
 import { colors, icons } from "../../ui/colors.js";
 import { createMcpServersTable } from "../../ui/format.js";

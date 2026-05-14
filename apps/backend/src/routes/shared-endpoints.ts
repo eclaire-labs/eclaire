@@ -3,7 +3,7 @@ import { describeRoute, validator as zValidator } from "hono-openapi";
 import type { Logger } from "pino";
 import z from "zod/v4";
 import { NotFoundError } from "../lib/errors.js";
-import { principalCaller, type CallerContext } from "../lib/services/types.js";
+import { type CallerContext, principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {
   flagColorUpdateSchema,

@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  listActors,
   type ActorKind,
   type ActorSummary,
+  listActors,
 } from "@/lib/api-actors";
 
 export interface ActorOption extends ActorSummary {

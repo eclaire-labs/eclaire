@@ -3,9 +3,9 @@
  */
 
 import { Command } from "commander";
+import { demoteCommand } from "./demote.js";
 import { listCommand } from "./list.js";
 import { promoteCommand } from "./promote.js";
-import { demoteCommand } from "./demote.js";
 
 export function registerUserCommands(program: Command): void {
   const user = new Command("user")

@@ -1,17 +1,17 @@
-import { getMcpServer, updateMcpServer } from "../../db/mcp-servers.js";
 import { closeDb } from "../../db/index.js";
+import { getMcpServer, updateMcpServer } from "../../db/mcp-servers.js";
+import {
+  CancelledError,
+  cancel,
+  intro,
+  isCancelled,
+  outro,
+  selectMany,
+  selectOne,
+  textInput,
+} from "../../ui/clack.js";
 import { colors, icons } from "../../ui/colors.js";
 import { createMcpServerInfoTable } from "../../ui/format.js";
-import {
-  intro,
-  outro,
-  cancel,
-  textInput,
-  selectOne,
-  selectMany,
-  isCancelled,
-  CancelledError,
-} from "../../ui/clack.js";
 
 export async function editCommand(id: string): Promise<void> {
   try {

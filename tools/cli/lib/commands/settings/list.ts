@@ -2,13 +2,13 @@
  * `eclaire settings list` — List all instance settings.
  */
 
-import { colors, icons } from "../../ui/colors.js";
-import { createSettingsTable } from "../../ui/format.js";
+import { closeDb } from "../../db/index.js";
 import {
   getAllSettings,
   KNOWN_SETTINGS_KEYS,
 } from "../../db/instance-settings.js";
-import { closeDb } from "../../db/index.js";
+import { colors, icons } from "../../ui/colors.js";
+import { createSettingsTable } from "../../ui/format.js";
 
 export async function listCommand(options: { json?: boolean }): Promise<void> {
   try {

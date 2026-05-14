@@ -23,6 +23,7 @@ export const PhotoPinUpdateSchema = isPinnedUpdateSchema(
   "photo",
   "PhotoPinUpdate",
 );
+
 import { PartialPhotoSchema, PhotoSchema } from "./photos-params.js";
 import {
   CreatedPhotoResponseSchema,

@@ -6,10 +6,10 @@
  * Only checks active tasks (not completed or cancelled).
  */
 
-import { and, lte, ne, inArray } from "drizzle-orm";
-import { createChildLogger } from "../../lib/logger.js";
-import { emitTasksOverdue } from "../../lib/events/task-events.js";
+import { and, inArray, lte, ne } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import { emitTasksOverdue } from "../../lib/events/task-events.js";
+import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("task-overdue-checker");
 

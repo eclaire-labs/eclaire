@@ -7,8 +7,8 @@
  * fetchProviderPresets() in backend-client.ts.
  */
 
-import { eq } from "drizzle-orm";
 import type { pgSchema } from "@eclaire/db";
+import { eq } from "drizzle-orm";
 import { getDb } from "../db/index.js";
 import type { ProviderConfig } from "../types/index.js";
 

@@ -4,30 +4,28 @@
  * Tests for the new RuntimeAgent using mock AI responses.
  */
 
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-
+import { initAI, resetAI } from "../index.js";
 import { RuntimeAgent } from "../runtime/agent/runtime-agent.js";
 import { createRuntimeContext } from "../runtime/agent/types.js";
-import type { RuntimeToolDefinition } from "../runtime/tools/types.js";
-import { textResult } from "../runtime/tools/types.js";
 import type {
   RuntimeMessage,
   RuntimeStreamEvent,
 } from "../runtime/messages.js";
-
-import { initAI, resetAI } from "../index.js";
+import type { RuntimeToolDefinition } from "../runtime/tools/types.js";
+import { textResult } from "../runtime/tools/types.js";
 import {
   createMockFetch,
   createMockLoggerFactory,
   createOpenAIResponse,
-  getFixturesPath,
   createSSEStream,
+  getFixturesPath,
   sseContentDelta,
-  sseFinishReason,
-  sseUsage,
   sseDone,
+  sseFinishReason,
   sseToolCallDelta,
+  sseUsage,
 } from "./setup.js";
 
 // =============================================================================

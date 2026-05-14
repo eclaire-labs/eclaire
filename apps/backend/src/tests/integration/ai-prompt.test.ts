@@ -594,58 +594,56 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     expect(data.toolCalls?.length).toBe(data.trace.toolCalls.length);
   });
 
-  it(
-    "POST /api/prompt - should return thinking content when enableThinking=true",
-    { timeout: 60000 },
-    async () => {
-      // Skip this test if the current model doesn't support thinking
-      if (!modelSupportsThinking()) {
-        console.info(
-          `Skipping thinking test - current model (${currentModelConfig?.provider}:${currentModelConfig?.modelShortName}) has thinking mode: ${currentModelConfig?.capabilities.thinking.mode}`,
-        );
-        return;
-      }
+  it("POST /api/prompt - should return thinking content when enableThinking=true", {
+    timeout: 60000,
+  }, async () => {
+    // Skip this test if the current model doesn't support thinking
+    if (!modelSupportsThinking()) {
+      console.info(
+        `Skipping thinking test - current model (${currentModelConfig?.provider}:${currentModelConfig?.modelShortName}) has thinking mode: ${currentModelConfig?.capabilities.thinking.mode}`,
+      );
+      return;
+    }
 
-      await delay(200);
+    await delay(200);
 
-      const promptData = {
-        prompt: "What is 2 + 2?",
-        deviceInfo: {
-          dateTime: new Date().toISOString(),
-          timeZone: "America/New_York",
-        },
-        enableThinking: true,
-      };
+    const promptData = {
+      prompt: "What is 2 + 2?",
+      deviceInfo: {
+        dateTime: new Date().toISOString(),
+        timeZone: "America/New_York",
+      },
+      enableThinking: true,
+    };
 
-      const response = await loggedFetch(`${BASE_URL}/prompt`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${TEST_API_KEY}`,
-        },
-        body: JSON.stringify(promptData),
-      });
+    const response = await loggedFetch(`${BASE_URL}/prompt`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${TEST_API_KEY}`,
+      },
+      body: JSON.stringify(promptData),
+    });
 
-      expect(response.status).toBe(200);
+    expect(response.status).toBe(200);
 
-      const data = (await response.json()) as PromptResponse;
+    const data = (await response.json()) as PromptResponse;
 
-      expect(data).toBeDefined();
-      expect(data.status).toBe("OK");
-      expect(data.type).toBe("text_response");
-      expect(data.response).toBeTypeOf("string");
-      expect(data.response.length).toBeGreaterThan(0);
+    expect(data).toBeDefined();
+    expect(data.status).toBe("OK");
+    expect(data.type).toBe("text_response");
+    expect(data.response).toBeTypeOf("string");
+    expect(data.response.length).toBeGreaterThan(0);
 
-      // Thinking content should be present and separate from main response
-      expect(data.thinkingContent).toBeDefined();
-      expect(data.thinkingContent).toBeTypeOf("string");
-      expect(data.thinkingContent?.length).toBeGreaterThan(0);
+    // Thinking content should be present and separate from main response
+    expect(data.thinkingContent).toBeDefined();
+    expect(data.thinkingContent).toBeTypeOf("string");
+    expect(data.thinkingContent?.length).toBeGreaterThan(0);
 
-      // Thinking content should not be included in the main response
-      expect(data.response).not.toContain("<think>");
-      expect(data.response).not.toContain("</think>");
-    },
-  );
+    // Thinking content should not be included in the main response
+    expect(data.response).not.toContain("<think>");
+    expect(data.response).not.toContain("</think>");
+  });
 
   it("POST /api/prompt - should not return thinking content when enableThinking=false", async () => {
     await delay(200);
@@ -878,61 +876,59 @@ describe("Prompt API Integration Tests", { timeout: 30000 }, () => {
     expect(hasCorrectNoteLinks || hasTestNoteReference).toBe(true);
   });
 
-  it(
-    "POST /api/prompt - should properly clean thinking content of tags",
-    { timeout: 60000 },
-    async () => {
-      // Skip this test if the current model doesn't support thinking
-      if (!modelSupportsThinking()) {
-        console.info(
-          `Skipping thinking content cleaning test - current model (${currentModelConfig?.provider}:${currentModelConfig?.modelShortName}) has thinking mode: ${currentModelConfig?.capabilities.thinking.mode}`,
-        );
-        return;
-      }
+  it("POST /api/prompt - should properly clean thinking content of tags", {
+    timeout: 60000,
+  }, async () => {
+    // Skip this test if the current model doesn't support thinking
+    if (!modelSupportsThinking()) {
+      console.info(
+        `Skipping thinking content cleaning test - current model (${currentModelConfig?.provider}:${currentModelConfig?.modelShortName}) has thinking mode: ${currentModelConfig?.capabilities.thinking.mode}`,
+      );
+      return;
+    }
 
-      await delay(200);
+    await delay(200);
 
-      const promptData = {
-        prompt: "What is 2 + 2?",
-        deviceInfo: {
-          dateTime: new Date().toISOString(),
-          timeZone: "America/New_York",
-        },
-        enableThinking: true,
-      };
+    const promptData = {
+      prompt: "What is 2 + 2?",
+      deviceInfo: {
+        dateTime: new Date().toISOString(),
+        timeZone: "America/New_York",
+      },
+      enableThinking: true,
+    };
 
-      const response = await loggedFetch(`${BASE_URL}/prompt`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${TEST_API_KEY}`,
-        },
-        body: JSON.stringify(promptData),
-      });
+    const response = await loggedFetch(`${BASE_URL}/prompt`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${TEST_API_KEY}`,
+      },
+      body: JSON.stringify(promptData),
+    });
 
-      expect(response.status).toBe(200);
+    expect(response.status).toBe(200);
 
-      const data = (await response.json()) as PromptResponse;
+    const data = (await response.json()) as PromptResponse;
 
-      expect(data).toBeDefined();
-      expect(data.status).toBe("OK");
-      expect(data.type).toBe("text_response");
+    expect(data).toBeDefined();
+    expect(data.status).toBe("OK");
+    expect(data.type).toBe("text_response");
 
-      // Critical: main response should never contain thinking tags
-      expect(data.response).not.toContain("<think>");
-      expect(data.response).not.toContain("</think>");
+    // Critical: main response should never contain thinking tags
+    expect(data.response).not.toContain("<think>");
+    expect(data.response).not.toContain("</think>");
 
-      // If thinking content is present, it should also be clean of tags
-      if (data.thinkingContent) {
-        expect(data.thinkingContent).toBeTypeOf("string");
-        expect(data.thinkingContent.length).toBeGreaterThan(0);
+    // If thinking content is present, it should also be clean of tags
+    if (data.thinkingContent) {
+      expect(data.thinkingContent).toBeTypeOf("string");
+      expect(data.thinkingContent.length).toBeGreaterThan(0);
 
-        // Critical: thinking content itself should not contain thinking tags
-        expect(data.thinkingContent).not.toContain("<think>");
-        expect(data.thinkingContent).not.toContain("</think>");
-      }
-    },
-  );
+      // Critical: thinking content itself should not contain thinking tags
+      expect(data.thinkingContent).not.toContain("<think>");
+      expect(data.thinkingContent).not.toContain("</think>");
+    }
+  });
 
   it("POST /api/prompt - should not leak tool call JSON into text response", async () => {
     await delay(200);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isRecoverableError, getRetryAfterMs, withRetry } from "../retry.js";
+import { getRetryAfterMs, isRecoverableError, withRetry } from "../retry.js";
 
 describe("isRecoverableError", () => {
   it("returns false for non-Error values", () => {

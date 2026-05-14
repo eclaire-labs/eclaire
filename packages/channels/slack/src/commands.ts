@@ -1,6 +1,6 @@
-import type { App } from "@slack/bolt";
 import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
 import { BUILTIN_COMMANDS, generateHelpText } from "@eclaire/core";
+import type { App } from "@slack/bolt";
 import { getDeps } from "./deps.js";
 
 /** Per-channel session state (in-memory, resets on bot restart). */

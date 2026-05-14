@@ -2,19 +2,19 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/shared/logo";
 import {
+  type OnboardingState,
   useAdvanceStep,
   useOnboardingState,
-  type OnboardingState,
 } from "@/hooks/use-onboarding";
 import { SetupProgress } from "./SetupProgress";
-import { WelcomeStep } from "./steps/WelcomeStep";
-import { ClaimAdminStep } from "./steps/ClaimAdminStep";
 import { ChoosePresetStep } from "./steps/ChoosePresetStep";
+import { ClaimAdminStep } from "./steps/ClaimAdminStep";
 import { ConfigureProviderStep } from "./steps/ConfigureProviderStep";
-import { SelectModelsStep } from "./steps/SelectModelsStep";
 import { HealthCheckStep } from "./steps/HealthCheckStep";
 import { RegistrationPolicyStep } from "./steps/RegistrationPolicyStep";
+import { SelectModelsStep } from "./steps/SelectModelsStep";
 import { SummaryStep } from "./steps/SummaryStep";
+import { WelcomeStep } from "./steps/WelcomeStep";
 
 const STEPS = [
   "welcome",

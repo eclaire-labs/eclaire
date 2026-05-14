@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
-import { Spinner } from "./Spinner.js";
 import type { DisplayOptions } from "../types.js";
+import { Spinner } from "./Spinner.js";
 
 interface ThinkingBlockProps {
   content: string;

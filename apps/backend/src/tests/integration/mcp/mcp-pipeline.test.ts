@@ -8,12 +8,12 @@
  * and real registry logic. Only transports and the DB singleton are redirected.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createTestMcpServer,
   type InMemoryTransport,
   type TestMcpServer,
 } from "@eclaire/ai";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
   DB_TEST_CONFIGS,

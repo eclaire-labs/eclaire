@@ -6,13 +6,13 @@
  * approval auto-response, and auto-restart on crash.
  */
 
-import { spawn, type ChildProcess } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { Mutex } from "async-mutex";
 import { interpolateEnvVars } from "../../config.js";
 import { createLazyLogger, getErrorMessage } from "../../logger.js";
 import type { AppServerConfig, CliConfig } from "../../types.js";
-import type { CliEvent } from "../types.js";
 import { terminateProcess } from "../subprocess-runner.js";
+import type { CliEvent } from "../types.js";
 import { decodeAppServerNotification } from "./decoder.js";
 import { JsonRpcTransport } from "./jsonrpc.js";
 import type {

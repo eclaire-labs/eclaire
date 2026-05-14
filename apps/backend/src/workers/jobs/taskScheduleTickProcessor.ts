@@ -6,19 +6,19 @@
  */
 
 import { eq } from "drizzle-orm";
-import { createChildLogger } from "../../lib/logger.js";
+import { db, schema } from "../../db/index.js";
 import {
   emitOccurrenceQueued,
   emitTaskUpdated,
 } from "../../lib/events/task-events.js";
+import { createChildLogger } from "../../lib/logger.js";
 import { getNextExecutionTime } from "../../lib/queue/cron-utils.js";
 import {
-  getScheduler,
   getRecurringTaskScheduleKey,
+  getScheduler,
 } from "../../lib/queue/scheduler.js";
-import { createTaskOccurrence } from "../../lib/services/task-occurrences.js";
 import type { TaskScheduleTickJobData } from "../../lib/queue/types.js";
-import { db, schema } from "../../db/index.js";
+import { createTaskOccurrence } from "../../lib/services/task-occurrences.js";
 
 const logger = createChildLogger("task-schedule-tick-processor");
 

@@ -26,31 +26,31 @@ import {
   buildTagFilterCondition,
   getOrCreateTags,
 } from "../db-helpers.js";
-import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
   buildCursorCondition,
-  encodeCursor,
   type CursorPaginatedResponse,
+  encodeCursor,
 } from "../pagination.js";
 import {
-  isValidCronExpression,
   getNextExecutionTime,
+  isValidCronExpression,
 } from "../queue/cron-utils.js";
 import { getQueueAdapter } from "../queue/index.js";
 import { QueueNames } from "../queue/queue-names.js";
 import {
-  getScheduler,
   getRecurringTaskScheduleKey,
+  getScheduler,
 } from "../queue/scheduler.js";
+import { buildSearchRank, buildTextSearchCondition } from "../search.js";
 import { getActorSummaryOrNull } from "./actors.js";
 import { recordHistory } from "./history.js";
 import { formatTaskCommentForResponse } from "./taskComments.js";
 import {
+  type CallerContext,
   callerActorId,
   callerOwnerUserId,
-  type CallerContext,
 } from "./types.js";
 
 const logger = createChildLogger("services:tasks");
@@ -888,8 +888,8 @@ export async function updateTaskStatusAsAssistant(
 
 // Backward-compatible re-exports for route files
 export {
-  NotFoundError as TaskNotFoundError,
   ForbiddenError as TaskUnauthorizedError,
+  NotFoundError as TaskNotFoundError,
 };
 
 export async function updateTaskArtifacts(

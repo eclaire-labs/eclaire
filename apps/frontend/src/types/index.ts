@@ -25,7 +25,7 @@ export interface RegisterCredentials extends LoginCredentials {
   name: string;
 }
 
-export * from "./conversation";
 export * from "./agent";
+export * from "./conversation";
 // Export message and conversation types
 export * from "./message";

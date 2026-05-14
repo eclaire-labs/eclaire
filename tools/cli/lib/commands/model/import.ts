@@ -1,8 +1,8 @@
 import ora from "ora";
 import {
+  type InspectUrlCandidate,
   importModelsViaApi,
   inspectModelUrl,
-  type InspectUrlCandidate,
 } from "../../backend-client.js";
 import {
   getProviders,

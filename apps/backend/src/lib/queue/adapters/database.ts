@@ -5,12 +5,12 @@
  * Uses the queue_jobs table (via driver-db) for job storage.
  */
 
+import type { DbInstance } from "@eclaire/db";
+import { getRequestId, type Logger } from "@eclaire/logger";
 import { getErrorMessage } from "@eclaire/queue";
 import type { QueueClient } from "@eclaire/queue/core";
-import { createDbQueueClient, getQueueSchema } from "@eclaire/queue/driver-db";
 import type { NotifyEmitter } from "@eclaire/queue/driver-db";
-import { getRequestId, type Logger } from "@eclaire/logger";
-import type { DbInstance } from "@eclaire/db";
+import { createDbQueueClient, getQueueSchema } from "@eclaire/queue/driver-db";
 import { QueueNames } from "../queue-names.js";
 import type {
   AssetType,

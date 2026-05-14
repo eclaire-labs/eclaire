@@ -4,7 +4,7 @@
  * Update an existing note's title, content, tags, or due date.
  */
 
-import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import { type RuntimeToolDefinition, textResult } from "@eclaire/ai";
 import z from "zod/v4";
 import { updateNoteEntry } from "../../services/notes.js";
 import { agentToolCaller } from "./caller.js";

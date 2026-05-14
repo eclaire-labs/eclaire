@@ -9,9 +9,9 @@
  * providers and models via the admin UI or CLI.
  */
 
-import * as path from "node:path";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
+import * as path from "node:path";
 import {
   initAI,
   loadModelsConfiguration,

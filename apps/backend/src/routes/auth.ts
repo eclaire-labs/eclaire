@@ -1,14 +1,14 @@
+import { eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
-import { auth } from "../lib/auth.js";
 import { db, schema } from "../db/index.js";
+import { auth } from "../lib/auth.js";
 import { createChildLogger } from "../lib/logger.js";
-import { getInstanceSetting } from "../lib/services/instance-settings.js";
 import {
   recordLoginHistory,
   recordLogoutHistory,
 } from "../lib/services/history.js";
+import { getInstanceSetting } from "../lib/services/instance-settings.js";
 import type { RouteVariables } from "../types/route-variables.js";
 
 const logger = createChildLogger("auth");

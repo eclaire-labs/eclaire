@@ -1,5 +1,5 @@
 import https from "node:https";
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import {
   decrypt,

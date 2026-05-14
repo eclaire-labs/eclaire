@@ -20,8 +20,8 @@ vi.mock("@/lib/api-client", () => ({
   apiFetch: (...args: unknown[]) => mockApiFetch(...args),
 }));
 
-import { useUpcoming } from "@/hooks/use-upcoming";
 import type { UpcomingItem } from "@/hooks/use-upcoming";
+import { useUpcoming } from "@/hooks/use-upcoming";
 
 // ---------------------------------------------------------------------------
 // Helpers

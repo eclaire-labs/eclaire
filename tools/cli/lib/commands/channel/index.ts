@@ -3,13 +3,13 @@
  */
 
 import { Command } from "commander";
-import { listCommand } from "./list.js";
 import { addCommand } from "./add.js";
+import { disableCommand } from "./disable.js";
 import { editCommand } from "./edit.js";
+import { enableCommand } from "./enable.js";
+import { listCommand } from "./list.js";
 import { removeCommand } from "./remove.js";
 import { testCommand } from "./test.js";
-import { enableCommand } from "./enable.js";
-import { disableCommand } from "./disable.js";
 
 export function registerChannelCommands(program: Command): void {
   const channel = new Command("channel")

@@ -6,9 +6,9 @@
 import "@eclaire/core/env-loader";
 
 import {
-  initializeDatabase,
   closeDatabase,
   type DatabaseInitResult,
+  initializeDatabase,
 } from "@eclaire/db";
 
 let _result: DatabaseInitResult | null = null;

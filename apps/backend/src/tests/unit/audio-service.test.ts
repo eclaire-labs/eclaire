@@ -5,13 +5,13 @@
  * Uses vi.resetModules() for isolation since the service uses module-level state.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   AudioProvider,
   AudioProviderCapabilities,
   AudioProviderHealth,
   AudioProviderId,
 } from "@eclaire/audio";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mock provider factory

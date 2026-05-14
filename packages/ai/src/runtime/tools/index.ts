@@ -3,15 +3,15 @@
  */
 
 export type {
-  RuntimeToolDefinition,
-  RuntimeToolResult,
-  ToolResultContent,
-  ToolContext,
-  ToolUpdateCallback,
-  ToolProgressInfo,
   ApprovalRequest,
   ApprovalResponse,
   OnApprovalRequired,
+  RuntimeToolDefinition,
+  RuntimeToolResult,
+  ToolContext,
+  ToolProgressInfo,
+  ToolResultContent,
+  ToolUpdateCallback,
 } from "./types.js";
 
-export { textResult, errorResult } from "./types.js";
+export { errorResult, textResult } from "./types.js";

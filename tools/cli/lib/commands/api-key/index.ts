@@ -3,8 +3,8 @@
  */
 
 import { Command } from "commander";
-import { listCommand } from "./list.js";
 import { createCommand } from "./create.js";
+import { listCommand } from "./list.js";
 import { revokeCommand } from "./revoke.js";
 
 export function registerApiKeyCommands(program: Command): void {

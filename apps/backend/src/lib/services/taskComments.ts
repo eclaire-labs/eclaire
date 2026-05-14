@@ -1,17 +1,17 @@
+import { formatToISO8601 } from "@eclaire/core";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
-import { formatToISO8601 } from "@eclaire/core";
 
 const { taskComments, tasks, users } = schema;
 
-import { getActorSummaryOrNull } from "./actors.js";
 import { NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
+import { getActorSummaryOrNull } from "./actors.js";
 import { recordHistory } from "./history.js";
 import {
+  type CallerContext,
   callerActorId,
   callerOwnerUserId,
-  type CallerContext,
 } from "./types.js";
 
 const logger = createChildLogger("services:taskComments");

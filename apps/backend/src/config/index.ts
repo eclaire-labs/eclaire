@@ -29,16 +29,16 @@ export const config: EclaireConfig = _config;
 
 // Re-export types
 export type {
+  DatabaseType,
   EclaireConfig,
   EclaireRuntime,
-  DatabaseType,
   QueueBackend,
-  ServiceRole,
   SecretsSource,
+  ServiceRole,
 };
 
 // Re-export utilities
-export { validateConfig, getConfigSummary, buildConfig };
+export { buildConfig, getConfigSummary, validateConfig };
 
 /**
  * Validate the configuration.

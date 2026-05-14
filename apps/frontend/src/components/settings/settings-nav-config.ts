@@ -10,11 +10,11 @@ import {
   Server,
   Shield,
   Sliders,
+  Sparkles,
   User,
   Users,
   Volume2,
   Wrench,
-  Sparkles,
 } from "lucide-react";
 
 export interface SettingsNavItem {

@@ -1,6 +1,6 @@
 import chalk from "chalk";
-import { getMcpServer, updateMcpServer } from "../../db/mcp-servers.js";
 import { closeDb } from "../../db/index.js";
+import { getMcpServer, updateMcpServer } from "../../db/mcp-servers.js";
 import { colors, icons } from "../../ui/colors.js";
 
 export async function enableCommand(id: string): Promise<void> {

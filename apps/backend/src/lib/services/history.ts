@@ -5,8 +5,8 @@ import type {
   HistoryItemType,
 } from "@eclaire/core/types";
 import { db, schema } from "../../db/index.js";
-import { humanCaller } from "./types.js";
 import { createChildLogger } from "../logger.js";
+import { humanCaller } from "./types.js";
 
 const { history } = schema;
 

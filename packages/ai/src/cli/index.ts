@@ -7,10 +7,6 @@
 
 // Client functions
 export { callAICli, callAICliStream } from "./client-cli.js";
-
-// Subprocess runner
-export { CliSubprocessRunner } from "./subprocess-runner.js";
-
 // Decoders
 export {
   ClaudeCliDecoder,
@@ -18,6 +14,8 @@ export {
   createDecoder,
   OpenCodeCliDecoder,
 } from "./decoders/index.js";
+// Subprocess runner
+export { CliSubprocessRunner } from "./subprocess-runner.js";
 
 // Types
 export type {

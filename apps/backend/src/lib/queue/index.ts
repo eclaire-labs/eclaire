@@ -4,8 +4,6 @@
  * All queue-related functionality for the backend service.
  */
 
-// Queue names
-export { type QueueName, QueueNames } from "./queue-names.js";
 // Queue adapter (main entry point for enqueuing jobs)
 export {
   type AssetType,
@@ -19,7 +17,6 @@ export {
   type QueueAdapter,
   type TaskJobData,
 } from "./adapter.js";
-
 // Cron utilities
 export {
   CronPatterns,
@@ -27,7 +24,6 @@ export {
   getNextExecutionTime,
   isValidCronExpression,
 } from "./cron-utils.js";
-
 // Database queue helpers
 export {
   getExpirationTime,
@@ -35,6 +31,8 @@ export {
   isJobExpired,
   isJobReady,
 } from "./db-helpers.js";
+// Queue names
+export { type QueueName, QueueNames } from "./queue-names.js";
 
 // Queue access stubs
 export { closeQueues, getQueue } from "./queues.js";

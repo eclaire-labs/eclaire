@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { sendStreamingResponse } from "../stream-sender.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { StreamEvent } from "../deps.js";
+import { sendStreamingResponse } from "../stream-sender.js";
 
 const mockLogger = {
   info: vi.fn(),

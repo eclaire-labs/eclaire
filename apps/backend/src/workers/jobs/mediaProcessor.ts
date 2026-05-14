@@ -12,11 +12,11 @@ import { buildKey, getStorage } from "../../lib/storage/index.js";
 import { config } from "../config.js";
 import { directDownload } from "../lib/direct-download.js";
 import {
-  type YtdlpSubtitleResult,
-  downloadMedia as ytdlpDownload,
   extractSubtitles,
   fetchMediaInfo,
   isYtdlpAvailable,
+  type YtdlpSubtitleResult,
+  downloadMedia as ytdlpDownload,
 } from "../lib/ytdlp.js";
 
 const logger = createChildLogger("media-processor");

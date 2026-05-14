@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,12 +8,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getAgentCatalog } from "@/lib/api-agents";
 import {
   type CatalogFilterDimension,
   type CatalogSortOption,
   useCatalogFilter,
 } from "@/hooks/use-catalog-filter";
+import { getAgentCatalog } from "@/lib/api-agents";
 import type { SkillCatalogItem } from "@/types/agent";
 import { CatalogSearchBar } from "./CatalogSearchBar";
 import { SkillCard } from "./SkillCard";

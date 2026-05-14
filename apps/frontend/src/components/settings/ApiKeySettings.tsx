@@ -1,3 +1,4 @@
+import { Key } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -5,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Key } from "lucide-react";
 import ApiKeyManager from "./ApiKeyManager";
 
 export default function ApiKeySettings() {

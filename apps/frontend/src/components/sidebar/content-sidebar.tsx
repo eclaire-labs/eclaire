@@ -1,6 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
 import { PopularTagsSection } from "@/components/dashboard/popular-tags-section";
+import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
 import {
   Tooltip,
   TooltipContent,

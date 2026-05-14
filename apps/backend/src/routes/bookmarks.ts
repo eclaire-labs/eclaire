@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
-import { syncXBookmarks } from "../lib/services/x-bookmarks-sync.js";
+import { parseDeleteStorage, parseSearchFields } from "../lib/search-params.js";
 import {
   type BookmarkAssetType,
   createBookmarkAndQueueJob,
@@ -14,8 +14,8 @@ import {
   updateBookmark,
   validateAndNormalizeBookmarkUrl,
 } from "../lib/services/bookmarks.js";
-import { parseDeleteStorage, parseSearchFields } from "../lib/search-params.js";
 import { principalCaller } from "../lib/services/types.js";
+import { syncXBookmarks } from "../lib/services/x-bookmarks-sync.js";
 import { getStorage } from "../lib/storage/index.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas

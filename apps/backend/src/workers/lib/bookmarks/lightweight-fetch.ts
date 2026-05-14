@@ -84,7 +84,9 @@ export async function lightweightFetch(
       return null;
     }
 
-    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+    const contentType = String(
+      response.headers["content-type"] || "",
+    ).toLowerCase();
     if (
       !contentType.includes("text/html") &&
       !contentType.includes("application/xhtml")

@@ -1,13 +1,13 @@
-import { getMcpServer, deleteMcpServer } from "../../db/mcp-servers.js";
 import { closeDb } from "../../db/index.js";
-import { colors, icons } from "../../ui/colors.js";
-import { createMcpServerInfoTable } from "../../ui/format.js";
+import { deleteMcpServer, getMcpServer } from "../../db/mcp-servers.js";
 import {
+  CancelledError,
   cancel,
   confirm,
   isCancelled,
-  CancelledError,
 } from "../../ui/clack.js";
+import { colors, icons } from "../../ui/colors.js";
+import { createMcpServerInfoTable } from "../../ui/format.js";
 
 export async function removeCommand(
   id: string,

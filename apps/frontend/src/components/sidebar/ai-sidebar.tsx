@@ -1,8 +1,10 @@
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Bot, MessageSquare, Plus } from "lucide-react";
 import { useState } from "react";
 import { AgentStatusDot } from "@/components/assistant/agent-status-dot";
+import { AiActivityFeed } from "@/components/sidebar/ai-activity-feed";
+import { AiConversationList } from "@/components/sidebar/ai-conversation-list";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -10,8 +12,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AiActivityFeed } from "@/components/sidebar/ai-activity-feed";
-import { AiConversationList } from "@/components/sidebar/ai-conversation-list";
 import type { AgentExecutionStatus } from "@/hooks/use-session-status";
 import type { Agent } from "@/types/agent";
 import type { ConversationSummary } from "@/types/conversation";

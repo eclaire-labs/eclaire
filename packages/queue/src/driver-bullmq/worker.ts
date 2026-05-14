@@ -2,7 +2,6 @@
  * @eclaire/queue/driver-bullmq - BullMQ Worker implementation
  */
 
-import { getErrorMessage } from "../core/error-utils.js";
 import {
   type Job as BullMQJob,
   Worker as BullMQWorker,
@@ -10,6 +9,7 @@ import {
   DelayedError,
   UnrecoverableError,
 } from "bullmq";
+import { getErrorMessage } from "../core/error-utils.js";
 import {
   isPermanentError,
   isRateLimitError,

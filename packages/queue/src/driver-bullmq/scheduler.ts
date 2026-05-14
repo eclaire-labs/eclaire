@@ -4,8 +4,8 @@
  * Uses BullMQ's native job scheduler (upsertJobScheduler) for recurring jobs.
  */
 
-import { getErrorMessage } from "../core/error-utils.js";
 import { Queue } from "bullmq";
+import { getErrorMessage } from "../core/error-utils.js";
 import type { ScheduleConfig, Scheduler } from "../core/types.js";
 import { closeRedisConnection, createRedisConnection } from "./connection.js";
 import type { BullMQSchedulerConfig } from "./types.js";

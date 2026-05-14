@@ -1,9 +1,9 @@
-import { and, eq } from "drizzle-orm";
 import { getActiveModelForContext } from "@eclaire/ai";
 import { type ChannelPlatform, ChannelRegistry } from "@eclaire/channels-core";
 import { initDiscordAdapter } from "@eclaire/channels-discord";
 import { initSlackAdapter } from "@eclaire/channels-slack";
 import { initTelegramAdapter } from "@eclaire/channels-telegram";
+import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 import {
   processPromptRequest,

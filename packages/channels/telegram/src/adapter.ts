@@ -3,14 +3,14 @@ import type {
   ChannelRecord,
   SendResult,
 } from "@eclaire/channels-core";
-import { validateAndEncryptConfig, decryptConfig } from "./config.js";
 import {
+  sendMessage,
   startAllBots,
   startBot,
   stopAllBots,
   stopBot,
-  sendMessage,
 } from "./bot-manager.js";
+import { decryptConfig, validateAndEncryptConfig } from "./config.js";
 import { setDeps, type TelegramDeps } from "./deps.js";
 
 const telegramAdapter: ChannelAdapter = {

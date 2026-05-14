@@ -3,15 +3,15 @@ import type {
   ChannelRecord,
   SendResult,
 } from "@eclaire/channels-core";
-import { validateAndEncryptConfig, decryptConfig } from "./config.js";
 import {
+  sendMessage,
   startAllBots,
   startBot,
   stopAllBots,
   stopBot,
-  sendMessage,
 } from "./bot-manager.js";
-import { setDeps, type SlackDeps } from "./deps.js";
+import { decryptConfig, validateAndEncryptConfig } from "./config.js";
+import { type SlackDeps, setDeps } from "./deps.js";
 
 const slackAdapter: ChannelAdapter = {
   platform: "slack",

@@ -3,23 +3,23 @@
  */
 
 import chalk from "chalk";
+import { getOrCreateHumanActor, listActors } from "../../db/actors.js";
 import { createApiKey } from "../../db/api-keys.js";
-import { listActors, getOrCreateHumanActor } from "../../db/actors.js";
-import { getDefaultUser } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
-import { colors, icons } from "../../ui/colors.js";
+import { getDefaultUser } from "../../db/users.js";
 import {
-  intro,
-  outro,
-  cancel,
-  note,
-  log,
-  textInput,
-  selectOne,
-  confirm,
-  isCancelled,
   CancelledError,
+  cancel,
+  confirm,
+  intro,
+  isCancelled,
+  log,
+  note,
+  outro,
+  selectOne,
+  textInput,
 } from "../../ui/clack.js";
+import { colors, icons } from "../../ui/colors.js";
 
 type DataAccessLevel = "read" | "read_write";
 type AdminAccessLevel = "none" | "read" | "read_write";

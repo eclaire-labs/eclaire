@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
+import type { DisplayOptions, ToolCallInfo } from "../types.js";
 import { Spinner } from "./Spinner.js";
-import type { ToolCallInfo, DisplayOptions } from "../types.js";
 
 interface ToolCallDisplayProps {
   toolCall: ToolCallInfo;

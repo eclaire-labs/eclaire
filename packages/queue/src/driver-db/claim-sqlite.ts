@@ -8,8 +8,8 @@
  * Requires SQLite 3.35+ (March 2021) for RETURNING support.
  */
 
-import { getErrorMessage } from "../core/error-utils.js";
 import { sql } from "drizzle-orm";
+import { getErrorMessage } from "../core/error-utils.js";
 import type { JobStage, QueueLogger } from "../core/types.js";
 import { generateJobId } from "../core/utils.js";
 import type { ClaimedJob, ClaimOptions, DbInstance } from "./types.js";

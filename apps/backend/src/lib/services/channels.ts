@@ -16,13 +16,13 @@ import type {
 import { channelRegistry } from "../channels.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
-import { DEFAULT_AGENT_ID } from "./agents.js";
 import { getActorSummaryOrNull, isAgentActor } from "./actors.js";
+import { DEFAULT_AGENT_ID } from "./agents.js";
 import { recordHistory } from "./history.js";
 import {
+  type CallerContext,
   callerActorId,
   callerOwnerUserId,
-  type CallerContext,
 } from "./types.js";
 
 const logger = createChildLogger("channels");

@@ -61,12 +61,12 @@ import { formatDate } from "@/lib/date-utils";
 import type { TaskComment, TaskStatus } from "@/types/task";
 import { TaskExecutionHistory } from "./tasks/TaskExecutionHistory";
 import {
-  PRIORITY_OPTIONS,
-  STATUS_OPTIONS,
   getEffectiveStatusDisplay,
   getPriorityIcon,
   getPriorityLabel,
   getStatusConfig,
+  PRIORITY_OPTIONS,
+  STATUS_OPTIONS,
 } from "./tasks/task-utils";
 
 export function TaskDetailClient() {

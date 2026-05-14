@@ -3,26 +3,26 @@
  */
 
 import { Command } from "commander";
-import { listCommand } from "./list.js";
-import { getCommand } from "./get.js";
-import { setCommand } from "./set.js";
+import { discoverAudioModels } from "../../db/audio.js";
 import { closeDb } from "../../db/index.js";
 import {
   getAllSettings,
-  setSetting,
   KNOWN_SETTINGS_KEYS,
+  setSetting,
 } from "../../db/instance-settings.js";
-import { discoverAudioModels } from "../../db/audio.js";
 import {
-  intro,
-  outro,
+  CancelledError,
   cancel,
+  confirm,
+  intro,
+  isCancelled,
+  outro,
   selectOne,
   textInput,
-  confirm,
-  isCancelled,
-  CancelledError,
 } from "../../ui/clack.js";
+import { getCommand } from "./get.js";
+import { listCommand } from "./list.js";
+import { setCommand } from "./set.js";
 
 const AUDIO_MODEL_KEYS = new Set([
   "audio.defaultSttModel",

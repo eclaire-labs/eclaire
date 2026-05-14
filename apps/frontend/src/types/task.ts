@@ -1,9 +1,9 @@
 import type {
+  InboxResponse as ApiInboxResponse,
+  InboxTask as ApiInboxTask,
   Task as ApiTask,
   TaskComment as ApiTaskComment,
   TaskOccurrence as ApiTaskOccurrence,
-  InboxTask as ApiInboxTask,
-  InboxResponse as ApiInboxResponse,
 } from "@eclaire/api-types";
 
 // Re-export base types — Task matches the API exactly

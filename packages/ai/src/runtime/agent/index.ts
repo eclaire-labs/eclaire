@@ -2,15 +2,25 @@
  * Runtime Agent Exports
  */
 
-export { RuntimeAgent } from "./runtime-agent.js";
-export { convertToLlm } from "./convert-to-llm.js";
+// Agent definition types
+export type { AgentDefinitionBase, AgentKind } from "./agent-definition.js";
 export { convertFromLlm } from "./convert-from-llm.js";
+export { convertToLlm } from "./convert-to-llm.js";
+// Prompt helpers
 export {
-  runtimeToolToOpenAI,
+  type AppendCapabilitiesOptions,
+  appendAgentCapabilities,
+  collectToolPromptContributions,
+  getToolSignatures,
+  selectTools,
+} from "./prompt-helpers.js";
+export { RuntimeAgent } from "./runtime-agent.js";
+export {
   executeRuntimeTool,
+  runtimeToolToOpenAI,
 } from "./runtime-tool-helpers.js";
-
 export type {
+  CreateRuntimeContextOptions,
   RuntimeAgentConfig,
   RuntimeAgentContext,
   RuntimeAgentResult,
@@ -18,19 +28,5 @@ export type {
   RuntimeGenerateOptions,
   RuntimeStepToolExecution,
   RuntimeStreamResult,
-  CreateRuntimeContextOptions,
 } from "./types.js";
-
 export { createRuntimeContext } from "./types.js";
-
-// Agent definition types
-export type { AgentDefinitionBase, AgentKind } from "./agent-definition.js";
-
-// Prompt helpers
-export {
-  getToolSignatures,
-  collectToolPromptContributions,
-  appendAgentCapabilities,
-  selectTools,
-  type AppendCapabilitiesOptions,
-} from "./prompt-helpers.js";

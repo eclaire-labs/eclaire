@@ -27,9 +27,9 @@ import {
 } from "../../core/errors.js";
 import { assertSafeKey, isSafePrefix } from "../../core/keys.js";
 import {
+  buildObjectMetadata,
   type ListOptions,
   type ListResult,
-  buildObjectMetadata,
   noopLogger,
   type ObjectMetadata,
   type Storage,

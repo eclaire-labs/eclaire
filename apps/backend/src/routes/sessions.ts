@@ -4,6 +4,10 @@ import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import { getAgentSteps } from "../lib/services/agent-steps.js";
 import {
+  clearUnreadResponse,
+  getSessionStatuses,
+} from "../lib/services/conversations.js";
+import {
   abortExecution,
   approveToolExecution,
   createSession,
@@ -13,10 +17,6 @@ import {
   sendMessage,
   updateSession,
 } from "../lib/services/sessions.js";
-import {
-  clearUnreadResponse,
-  getSessionStatuses,
-} from "../lib/services/conversations.js";
 import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 import {

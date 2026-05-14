@@ -6,8 +6,8 @@
 
 import {
   errorResult,
-  textResult,
   type RuntimeToolDefinition,
+  textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
 import { getNoteEntryById } from "../../services/notes.js";

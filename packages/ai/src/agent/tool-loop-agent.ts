@@ -23,9 +23,9 @@ import type {
   AIContext,
   AIMessage,
   FinishReason,
-  ToolCallResult,
-  ToolCallingMode,
   TokenUsage,
+  ToolCallingMode,
+  ToolCallResult,
   ToolDefinition,
 } from "../types.js";
 import {

@@ -1,100 +1,91 @@
 // Shared schemas and inferred types for the Eclaire API
 
 export {
-  DEFAULT_AGENT_ACTOR_ID,
-  ActorKindSchema,
-  ActorSummarySchema,
   type ActorKind,
+  ActorKindSchema,
   type ActorSummary,
+  ActorSummarySchema,
+  DEFAULT_AGENT_ACTOR_ID,
 } from "./actors.js";
-
 export {
-  ApiKeyScopeSchema,
-  ApiKeyScopeCatalogItemSchema,
+  ADMIN_ACCESS_INFO,
+  ADMIN_ACCESS_SCOPES,
+  type AdminAccessLevel,
+  AdminAccessLevelSchema,
+  DATA_ACCESS_INFO,
+  DATA_ACCESS_SCOPES,
+  type DataAccessLevel,
+  DataAccessLevelSchema,
+  derivePermissionLevels,
+  resolvePermissionScopes,
+} from "./api-key-permissions.js";
+export {
+  type ActorApiKey,
   ActorApiKeySchema,
-  CreatedActorApiKeySchema,
   type ApiKeyScope,
   type ApiKeyScopeCatalogItem,
-  type ActorApiKey,
+  ApiKeyScopeCatalogItemSchema,
+  ApiKeyScopeSchema,
   type CreatedActorApiKey,
+  CreatedActorApiKeySchema,
 } from "./auth.js";
-
 export {
-  DataAccessLevelSchema,
-  AdminAccessLevelSchema,
-  DATA_ACCESS_SCOPES,
-  ADMIN_ACCESS_SCOPES,
-  DATA_ACCESS_INFO,
-  ADMIN_ACCESS_INFO,
-  resolvePermissionScopes,
-  derivePermissionLevels,
-  type DataAccessLevel,
-  type AdminAccessLevel,
-} from "./api-key-permissions.js";
-
-export {
-  reviewStatusSchema,
-  flagColorSchema,
-  taskStatusSchema,
-  paginatedResponseSchema,
-  type ReviewStatus,
-  type FlagColor,
-  type TaskStatus as TaskStatusType,
-} from "./common.js";
-
-export {
-  NoteResponseSchema,
-  NotesListResponseSchema,
-  type Note,
-  type NotesListResponse,
-} from "./notes.js";
-
-export {
-  BookmarkResponseSchema,
-  BookmarksListResponseSchema,
   type Bookmark,
+  BookmarkResponseSchema,
   type BookmarksListResponse,
+  BookmarksListResponseSchema,
 } from "./bookmarks.js";
-
-export {
-  DocumentResponseSchema,
-  DocumentsListResponseSchema,
-  type Document,
-  type DocumentsListResponse,
-} from "./documents.js";
-
-export {
-  PhotoResponseSchema,
-  PhotosListResponseSchema,
-  type Photo,
-  type PhotosListResponse,
-} from "./photos.js";
-
-export {
-  MediaResponseSchema,
-  MediaListResponseSchema,
-  type Media,
-  type MediaListResponse,
-} from "./media.js";
-
-export {
-  TaskResponseSchema,
-  TaskCommentSchema,
-  CommentUserSchema,
-  TaskOccurrenceSchema,
-  InboxTaskSchema,
-  InboxResponseSchema,
-  TasksListResponseSchema,
-  type Task,
-  type TaskComment,
-  type TaskStatus,
-  type TaskOccurrence,
-  type InboxTask,
-  type InboxResponse,
-  type TasksListResponse,
-} from "./tasks.js";
-
 export {
   PLATFORM_METADATA,
   type PlatformMetadata,
 } from "./channels.js";
+export {
+  type FlagColor,
+  flagColorSchema,
+  paginatedResponseSchema,
+  type ReviewStatus,
+  reviewStatusSchema,
+  type TaskStatus as TaskStatusType,
+  taskStatusSchema,
+} from "./common.js";
+
+export {
+  type Document,
+  DocumentResponseSchema,
+  type DocumentsListResponse,
+  DocumentsListResponseSchema,
+} from "./documents.js";
+export {
+  type Media,
+  type MediaListResponse,
+  MediaListResponseSchema,
+  MediaResponseSchema,
+} from "./media.js";
+export {
+  type Note,
+  NoteResponseSchema,
+  type NotesListResponse,
+  NotesListResponseSchema,
+} from "./notes.js";
+export {
+  type Photo,
+  PhotoResponseSchema,
+  type PhotosListResponse,
+  PhotosListResponseSchema,
+} from "./photos.js";
+export {
+  CommentUserSchema,
+  type InboxResponse,
+  InboxResponseSchema,
+  type InboxTask,
+  InboxTaskSchema,
+  type Task,
+  type TaskComment,
+  TaskCommentSchema,
+  type TaskOccurrence,
+  TaskOccurrenceSchema,
+  TaskResponseSchema,
+  type TaskStatus,
+  type TasksListResponse,
+  TasksListResponseSchema,
+} from "./tasks.js";

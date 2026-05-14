@@ -3,11 +3,11 @@
  */
 
 import { Command } from "commander";
-import { listCommand } from "./list.js";
 import { addCommand } from "./add.js";
 import { editCommand } from "./edit.js";
+import { listCommand } from "./list.js";
 import { removeCommand } from "./remove.js";
-import { enableCommand, disableCommand } from "./toggle.js";
+import { disableCommand, enableCommand } from "./toggle.js";
 
 export function registerMcpCommands(program: Command): void {
   const mcp = new Command("mcp")

@@ -25,9 +25,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import type { ActorOption } from "@/hooks/use-actors";
 import type { ActorKind } from "@/lib/api-actors";
+import { cn } from "@/lib/utils";
 
 interface ActorPickerProps {
   actors: ActorOption[];

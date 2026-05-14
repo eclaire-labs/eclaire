@@ -8,7 +8,6 @@
  * Use this when SERVICE_ROLE=worker with DATABASE_TYPE=postgres.
  */
 
-import { QueueNames } from "../../lib/queue/queue-names.js";
 import type { JobContext, Worker } from "@eclaire/queue/core";
 import {
   createDbWorker,
@@ -18,6 +17,7 @@ import {
 } from "@eclaire/queue/driver-db";
 import { db, dbCapabilities, dbType } from "../../db/index.js";
 import { createChildLogger } from "../../lib/logger.js";
+import { QueueNames } from "../../lib/queue/queue-names.js";
 // Import job processors and their data types
 import processBookmarkJob from "../jobs/bookmarkProcessor.js";
 import type { DocumentJobData } from "../jobs/documentProcessor.js";

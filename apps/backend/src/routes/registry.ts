@@ -6,12 +6,10 @@
  */
 
 import type { Hono } from "hono";
-
-import { adminRoutes } from "./admin.js";
-import { allRoutes } from "./all.js";
-import { agentsRoutes } from "./agents.js";
 import { actorsRoutes } from "./actors.js";
-import { speechRoutes } from "./speech.js";
+import { adminRoutes } from "./admin.js";
+import { agentsRoutes } from "./agents.js";
+import { allRoutes } from "./all.js";
 import { authRoutes } from "./auth.js";
 import { bookmarksRoutes } from "./bookmarks.js";
 import { browserRoutes } from "./browser.js";
@@ -20,16 +18,17 @@ import { documentsRoutes } from "./documents.js";
 import { feedbackRoutes } from "./feedback.js";
 import { historyRoutes } from "./history.js";
 import { instanceRoutes } from "./instance.js";
+import { mediaRoutes } from "./media.js";
 import { modelRoutes } from "./model.js";
-import { onboardingRoutes } from "./onboarding.js";
 import { modelsRoutes } from "./models.js";
 import { notesRoutes } from "./notes.js";
 import { notificationsRoutes } from "./notifications.js";
-import { mediaRoutes } from "./media.js";
+import { onboardingRoutes } from "./onboarding.js";
 import { photosRoutes } from "./photos.js";
 import { processingEventsRoutes } from "./processing-events.js";
 import { processingStatusRoutes } from "./processing-status.js";
 import { sessionsRoutes } from "./sessions.js";
+import { speechRoutes } from "./speech.js";
 import { tagsRoutes } from "./tags.js";
 import { tasksRoutes } from "./tasks.js";
 import { userRoutes } from "./user.js";

@@ -1,18 +1,5 @@
-import type { Command } from "commander";
 import chalk from "chalk";
-import {
-  intro,
-  outro,
-  cancel,
-  log,
-  spinner,
-  selectOne,
-  confirm,
-  textInput,
-  passwordInput,
-  autocompleteSelect,
-  isCancelled,
-} from "../../ui/clack.js";
+import type { Command } from "commander";
 import {
   advanceOnboardingStep,
   completeOnboardingViaApi,
@@ -24,6 +11,19 @@ import {
   resetOnboardingViaApi,
   runOnboardingHealthCheck,
 } from "../../backend-client.js";
+import {
+  autocompleteSelect,
+  cancel,
+  confirm,
+  intro,
+  isCancelled,
+  log,
+  outro,
+  passwordInput,
+  selectOne,
+  spinner,
+  textInput,
+} from "../../ui/clack.js";
 import { icons } from "../../ui/colors.js";
 
 async function onboardCommand(opts: { preset?: string; reset?: boolean }) {

@@ -10,8 +10,8 @@ import { AlertCircle, Home, RefreshCw } from "lucide-react";
 import { Suspense, useEffect } from "react";
 import { AuthLoadingSkeleton } from "@/components/auth/AuthLoadingSkeleton";
 import { MainLayoutClient } from "@/components/dashboard/main-layout-client";
-import { useSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { useSession } from "@/lib/auth";
 
 function RouteErrorComponent({ error }: { error: Error }) {
   const router = useRouter();

@@ -1,6 +1,6 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { AppRail } from "@/components/sidebar/app-rail";
 import { AiSidebar } from "@/components/sidebar/ai-sidebar";
+import { AppRail } from "@/components/sidebar/app-rail";
 import { ContentSidebar } from "@/components/sidebar/content-sidebar";
 import { SidebarSettingsButton } from "@/components/sidebar/sidebar-settings-button";
 import {
@@ -9,8 +9,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { SidebarMode } from "@/hooks/use-sidebar-mode";
 import type { AgentExecutionStatus } from "@/hooks/use-session-status";
+import type { SidebarMode } from "@/hooks/use-sidebar-mode";
 import type { Agent } from "@/types/agent";
 import type { ConversationSummary } from "@/types/conversation";
 

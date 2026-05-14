@@ -2,8 +2,8 @@
  * @eclaire/queue/transport-http - HTTP client for remote workers
  */
 
-import { getErrorMessage } from "../core/error-utils.js";
 import axios, { type AxiosInstance } from "axios";
+import { getErrorMessage } from "../core/error-utils.js";
 import type { QueueStats } from "../core/types.js";
 import type { HttpClientConfig, HttpJobResponse } from "./types.js";
 

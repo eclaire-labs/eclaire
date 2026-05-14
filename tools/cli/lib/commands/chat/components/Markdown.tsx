@@ -1,6 +1,6 @@
-import React, { useMemo } from "react";
 import { Box, Text } from "ink";
 import { Lexer, type Token, type Tokens } from "marked";
+import React, { useMemo } from "react";
 
 interface MarkdownProps {
   content: string;

@@ -10,9 +10,9 @@ import { MlxAudioClient, readAudioFile } from "./mlx-client.js";
 import type {
   AudioProvider,
   AudioProviderCapabilities,
-  AudioProviderId,
   AudioProviderConfig,
   AudioProviderHealth,
+  AudioProviderId,
   SynthesizeInput,
   TranscribeInput,
   TranscriptionResult,

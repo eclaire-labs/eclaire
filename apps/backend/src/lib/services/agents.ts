@@ -7,22 +7,22 @@ import {
   loadSkillContent,
   resolveProviderForModel,
 } from "@eclaire/ai";
-import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
+import { z } from "zod";
 import { db, schema } from "../../db/index.js";
 import { getBackendTools } from "../agent/tools/index.js";
 import type { AgentCatalogItem, AgentDefinition } from "../agent/types.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
-import { recordHistory } from "./history.js";
-import type { CallerContext } from "./types.js";
 import { getMcpRegistry } from "../mcp/index.js";
+import { DEFAULT_AGENT_ACTOR_ID } from "./actor-constants.js";
+import { updateAgentActorDisplayName } from "./actors.js";
 import {
   normalizeCreateAgentCapabilities,
   normalizeUpdatedAgentCapabilities,
 } from "./agent-capabilities.js";
-import { DEFAULT_AGENT_ACTOR_ID } from "./actor-constants.js";
-import { updateAgentActorDisplayName } from "./actors.js";
+import { recordHistory } from "./history.js";
+import type { CallerContext } from "./types.js";
 
 const { agents } = schema;
 

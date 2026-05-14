@@ -1,23 +1,23 @@
-import chalk from "chalk";
-import { TelegramConfigSchema } from "@eclaire/channels-telegram";
 import { DiscordConfigSchema } from "@eclaire/channels-discord";
 import { SlackConfigSchema } from "@eclaire/channels-slack";
+import { TelegramConfigSchema } from "@eclaire/channels-telegram";
+import chalk from "chalk";
 import { getChannelRegistry } from "../../db/adapters.js";
 import { createChannel } from "../../db/channels.js";
 import { getDefaultUser } from "../../db/users.js";
-import { colors, icons } from "../../ui/colors.js";
 import {
-  intro,
-  outro,
+  CancelledError,
   cancel,
+  confirm,
+  intro,
+  isCancelled,
   note,
-  textInput,
+  outro,
   passwordInput,
   selectOne,
-  confirm,
-  isCancelled,
-  CancelledError,
+  textInput,
 } from "../../ui/clack.js";
+import { colors, icons } from "../../ui/colors.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: Zod schemas from different packages, using shape at runtime
 const PLATFORM_SCHEMAS: Record<string, any> = {

@@ -1,14 +1,15 @@
-import type { WebClient } from "@slack/web-api";
 import {
   ChannelRateLimiter,
   DEFAULT_CHANNEL_AGENT_ACTOR_ID,
 } from "@eclaire/channels-core";
+import type { WebClient } from "@slack/web-api";
 
 const rateLimiter = new ChannelRateLimiter();
-import { getDeps } from "./deps.js";
+
 import { stopBot } from "./bot-manager.js";
 import { getSession } from "./commands.js";
-import { splitMessage, convertMarkdownToMrkdwn } from "./message-utils.js";
+import { getDeps } from "./deps.js";
+import { convertMarkdownToMrkdwn, splitMessage } from "./message-utils.js";
 import { sendStreamingResponse } from "./stream-sender.js";
 import {
   addThinkingReaction,

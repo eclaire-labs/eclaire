@@ -2,8 +2,8 @@
  * @eclaire/queue/driver-db - Database QueueClient implementation
  */
 
-import { getErrorMessage } from "../core/error-utils.js";
 import { and, count, eq, or, sql } from "drizzle-orm";
+import { getErrorMessage } from "../core/error-utils.js";
 import {
   isPermanentError,
   isQueueError,

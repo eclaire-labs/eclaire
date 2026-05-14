@@ -5,7 +5,7 @@ import { convert as convertHtmlToText } from "html-to-text";
 import { JSDOM } from "jsdom";
 import type { Page } from "patchright";
 import TurndownService from "turndown";
-import { tables, strikethrough } from "turndown-plugin-gfm";
+import { strikethrough, tables } from "turndown-plugin-gfm";
 import { createChildLogger } from "../../../lib/logger.js";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
 import type { PrefetchedArticle } from "./lightweight-fetch.js";
@@ -301,8 +301,9 @@ export async function extractContentFromHtml(
           });
           const faviconBuffer = Buffer.from(response.data);
           if (faviconBuffer.length > 0) {
-            const contentType =
-              String(response.headers["content-type"] || "image/x-icon");
+            const contentType = String(
+              response.headers["content-type"] || "image/x-icon",
+            );
             const fileName = generateFaviconFileName(
               absoluteFaviconUrl,
               contentType,
@@ -340,8 +341,9 @@ export async function extractContentFromHtml(
           });
           const faviconBuffer = Buffer.from(response.data);
           if (faviconBuffer.length > 0) {
-            const contentType =
-              String(response.headers["content-type"] || "image/x-icon");
+            const contentType = String(
+              response.headers["content-type"] || "image/x-icon",
+            );
 
             const storage = getStorage();
             const faviconKey = buildKey(

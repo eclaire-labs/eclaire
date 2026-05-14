@@ -3,15 +3,15 @@
  */
 
 import { listApiKeys, revokeApiKey } from "../../db/api-keys.js";
-import { getDefaultUser } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
-import { colors, icons } from "../../ui/colors.js";
+import { getDefaultUser } from "../../db/users.js";
 import {
+  CancelledError,
   cancel,
   confirm,
   isCancelled,
-  CancelledError,
 } from "../../ui/clack.js";
+import { colors, icons } from "../../ui/colors.js";
 
 export async function revokeCommand(
   id: string,

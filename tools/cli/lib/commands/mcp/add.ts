@@ -1,17 +1,17 @@
-import { getMcpServer, createMcpServer } from "../../db/mcp-servers.js";
 import { closeDb } from "../../db/index.js";
-import { colors, icons } from "../../ui/colors.js";
+import { createMcpServer, getMcpServer } from "../../db/mcp-servers.js";
 import {
-  intro,
-  outro,
-  cancel,
-  note,
-  textInput,
-  selectOne,
-  confirm,
-  isCancelled,
   CancelledError,
+  cancel,
+  confirm,
+  intro,
+  isCancelled,
+  note,
+  outro,
+  selectOne,
+  textInput,
 } from "../../ui/clack.js";
+import { colors, icons } from "../../ui/colors.js";
 
 export async function addCommand(): Promise<void> {
   try {

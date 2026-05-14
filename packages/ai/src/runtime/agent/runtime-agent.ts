@@ -24,10 +24,10 @@ import {
 import { createToolCallSummary } from "../../tools/native.js";
 import type { ToolCallSummaryOutput } from "../../tools/types.js";
 import type {
-  ToolCallResult,
-  ToolCallingMode,
-  ToolDefinition,
   TokenUsage,
+  ToolCallingMode,
+  ToolCallResult,
+  ToolDefinition,
 } from "../../types.js";
 import type {
   AssistantMessage,
@@ -47,8 +47,8 @@ import type {
 } from "../tools/types.js";
 import { convertToLlm } from "./convert-to-llm.js";
 import {
-  runtimeToolToOpenAI,
   executeRuntimeTool,
+  runtimeToolToOpenAI,
 } from "./runtime-tool-helpers.js";
 import type {
   RuntimeAgentConfig,

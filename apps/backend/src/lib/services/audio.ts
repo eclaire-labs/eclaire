@@ -7,23 +7,23 @@
  */
 
 import {
-  MlxAudioProvider,
-  MlxRealtimeClient,
-  ElevenLabsProvider,
-  WhisperCppProvider,
-  PocketTtsProvider,
   type AudioHealth,
   type AudioProvider,
   type AudioProviderConfig,
-  type AudioProviderId,
   type AudioProviderHealth,
+  type AudioProviderId,
+  ElevenLabsProvider,
   type ElevenLabsProviderConfig,
-  type WhisperCppProviderConfig,
+  MlxAudioProvider,
+  MlxRealtimeClient,
+  PocketTtsProvider,
   type PocketTtsProviderConfig,
   type RealtimeTranscriptionClient,
   type SynthesizeInput,
   type TranscribeInput,
   type TranscriptionResult,
+  WhisperCppProvider,
+  type WhisperCppProviderConfig,
 } from "@eclaire/audio";
 import { createChildLogger } from "../logger.js";
 

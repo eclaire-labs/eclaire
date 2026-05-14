@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -9,7 +10,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { listModels, type ModelSummary } from "@/lib/api-models";
-import { useEffect, useRef, useState } from "react";
 
 const SYSTEM_DEFAULT_VALUE = "__system_default__";
 

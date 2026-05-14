@@ -6,8 +6,8 @@
  * All three bookmark handlers (regular, GitHub, Reddit) use this pipeline.
  */
 import { type BrowserContext, chromium, type Page } from "patchright";
-import sharp from "sharp";
 import type { Logger } from "pino";
+import sharp from "sharp";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
 import { config } from "../../config.js";
 import { TimeoutError, withTimeout } from "../utils/timeout.js";

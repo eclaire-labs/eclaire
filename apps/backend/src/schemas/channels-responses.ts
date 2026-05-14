@@ -1,5 +1,5 @@
-import z from "zod/v4";
 import { ActorSummarySchema } from "@eclaire/api-types";
+import z from "zod/v4";
 import {
   ChannelCapabilitySchema,
   ChannelPlatformSchema,

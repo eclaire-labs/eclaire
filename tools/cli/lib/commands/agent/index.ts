@@ -3,10 +3,10 @@
  */
 
 import { Command } from "commander";
-import { listCommand } from "./list.js";
-import { infoCommand } from "./info.js";
 import { createCommand } from "./create.js";
 import { editCommand } from "./edit.js";
+import { infoCommand } from "./info.js";
+import { listCommand } from "./list.js";
 import { removeCommand } from "./remove.js";
 
 export function registerAgentCommands(program: Command): void {

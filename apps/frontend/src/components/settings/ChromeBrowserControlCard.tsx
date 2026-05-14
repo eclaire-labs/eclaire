@@ -1,12 +1,6 @@
 import { Chrome, Loader2, RefreshCw, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  attachBrowser,
-  detachBrowser,
-  getBrowserStatus,
-} from "@/lib/api-browser";
-import type { BrowserStatus } from "@/types/browser";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +11,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  attachBrowser,
+  detachBrowser,
+  getBrowserStatus,
+} from "@/lib/api-browser";
+import type { BrowserStatus } from "@/types/browser";
 
 function getStatusBadgeVariant(
   state: BrowserStatus["state"],

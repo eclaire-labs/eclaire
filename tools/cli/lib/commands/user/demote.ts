@@ -2,14 +2,14 @@
  * Demote a user from instance admin.
  */
 
-import { intro, outro, log, confirm, isCancelled } from "../../ui/clack.js";
-import {
-  listUsers,
-  getUserByEmail,
-  setUserAdmin,
-  countAdmins,
-} from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
+import {
+  countAdmins,
+  getUserByEmail,
+  listUsers,
+  setUserAdmin,
+} from "../../db/users.js";
+import { confirm, intro, isCancelled, log, outro } from "../../ui/clack.js";
 import { colors, icons } from "../../ui/colors.js";
 
 export async function demoteCommand(email: string): Promise<void> {

@@ -31,8 +31,8 @@ import {
   patchNotePinRouteDescription,
   patchNoteReviewRouteDescription,
   patchNoteRouteDescription,
-  postNoteUploadRouteDescription,
   postNotesRouteDescription,
+  postNoteUploadRouteDescription,
   putNoteRouteDescription,
 } from "../schemas/notes-routes.js";
 import type { RouteVariables } from "../types/route-variables.js";

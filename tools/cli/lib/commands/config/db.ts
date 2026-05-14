@@ -1,8 +1,8 @@
-import ora from "ora";
 import { getDatabaseType } from "@eclaire/db";
-import { createInfoTable } from "../../ui/tables.js";
+import ora from "ora";
+import { closeDb, getDb } from "../../db/index.js";
 import { colors, icons } from "../../ui/colors.js";
-import { getDb, closeDb } from "../../db/index.js";
+import { createInfoTable } from "../../ui/tables.js";
 
 export async function dbCommand(): Promise<void> {
   // Load .env first

@@ -3,13 +3,13 @@ import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import { ValidationError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
+import { parseSearchFields } from "../lib/search-params.js";
 // Import service functions
 import {
   classifyAndCreateContent,
   detectAndVerifyMimeType,
   findAllEntriesPaginated,
 } from "../lib/services/all.js";
-import { parseSearchFields } from "../lib/search-params.js";
 import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
 // Import schemas

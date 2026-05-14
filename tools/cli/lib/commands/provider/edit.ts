@@ -2,8 +2,8 @@ import { getProviderById, updateProvider } from "../../config/providers.js";
 import { closeDb } from "../../db/index.js";
 import type { ProviderConfig } from "../../types/index.js";
 import {
-  cancel,
   CancelledError,
+  cancel,
   confirm,
   intro,
   isCancelled,

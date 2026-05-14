@@ -6,10 +6,10 @@
  */
 
 import {
-  loadSkillContent,
-  textResult,
   errorResult,
+  loadSkillContent,
   type RuntimeToolDefinition,
+  textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
 

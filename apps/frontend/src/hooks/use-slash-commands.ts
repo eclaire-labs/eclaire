@@ -1,4 +1,3 @@
-import { useCallback, useMemo } from "react";
 import type { SlashItem } from "@eclaire/core/slash";
 import {
   buildSlashItems,
@@ -6,6 +5,7 @@ import {
   parseSlashInput,
   type SlashContext,
 } from "@eclaire/core/slash";
+import { useCallback, useMemo } from "react";
 
 interface SlashCommandActions {
   onNewConversation: () => void;

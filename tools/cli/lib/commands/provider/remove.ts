@@ -6,8 +6,8 @@ import {
 import { closeDb } from "../../db/index.js";
 import type { CommandOptions } from "../../types/index.js";
 import {
-  cancel,
   CancelledError,
+  cancel,
   intro,
   isCancelled,
   log,

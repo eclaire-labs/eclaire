@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  type AuthPrincipal,
   assertPrincipalScopes,
   inferRequiredScopesForRequest,
   normalizeGrantedScopes,
-  type AuthPrincipal,
 } from "../../lib/auth-principal.js";
 import { ForbiddenError } from "../../lib/errors.js";
 

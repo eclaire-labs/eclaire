@@ -1,14 +1,14 @@
-import { getAgent, deleteAgent } from "../../db/agents.js";
-import { getDefaultUser } from "../../db/users.js";
+import { deleteAgent, getAgent } from "../../db/agents.js";
 import { closeDb } from "../../db/index.js";
-import { colors, icons } from "../../ui/colors.js";
-import { createAgentInfoTable } from "../../ui/format.js";
+import { getDefaultUser } from "../../db/users.js";
 import {
+  CancelledError,
   cancel,
   confirm,
   isCancelled,
-  CancelledError,
 } from "../../ui/clack.js";
+import { colors, icons } from "../../ui/colors.js";
+import { createAgentInfoTable } from "../../ui/format.js";
 
 export async function removeCommand(
   id: string,

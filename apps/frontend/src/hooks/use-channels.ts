@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/api-client";
 import type { ActorSummary } from "@/lib/api-actors";
+import { apiFetch } from "@/lib/api-client";
 
 // Channel types based on backend schemas
 export interface Channel {

@@ -1,6 +1,6 @@
 import { listAgents } from "../../db/agents.js";
-import { getDefaultUser } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
+import { getDefaultUser } from "../../db/users.js";
 import { colors, icons } from "../../ui/colors.js";
 import { createAgentsTable } from "../../ui/format.js";
 

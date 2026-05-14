@@ -2,8 +2,8 @@
  * Shared Redis connection setup for BullMQ
  */
 
-import { getErrorMessage } from "../core/error-utils.js";
 import { Redis } from "ioredis";
+import { getErrorMessage } from "../core/error-utils.js";
 import type { QueueLogger } from "../core/types.js";
 
 export interface RedisConnectionOptions {

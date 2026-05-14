@@ -447,8 +447,6 @@ export function createDbWorker<T = unknown>(
             );
           });
         } else if (notified) {
-          // A notification arrived during claimJob() — retry immediately
-          continue;
         } else if (notifyListener) {
           // No job available, wait for notification or timeout
           await waitForNotification(

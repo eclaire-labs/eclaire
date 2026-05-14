@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -36,8 +36,8 @@ vi.mock("node:fs", () => ({
   readFileSync: vi.fn(),
 }));
 
-import { loadMcpServersConfig } from "../../lib/mcp/config.js";
 import { existsSync, readFileSync } from "node:fs";
+import { loadMcpServersConfig } from "../../lib/mcp/config.js";
 
 // ---------------------------------------------------------------------------
 // Tests

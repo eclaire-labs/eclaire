@@ -4,8 +4,8 @@
  * Uses FOR UPDATE SKIP LOCKED for optimal concurrent claiming.
  */
 
-import { getErrorMessage } from "../core/error-utils.js";
 import { sql } from "drizzle-orm";
+import { getErrorMessage } from "../core/error-utils.js";
 import type { QueueLogger } from "../core/types.js";
 import { generateJobId } from "../core/utils.js";
 import type { ClaimedJob, ClaimOptions, DbInstance } from "./types.js";

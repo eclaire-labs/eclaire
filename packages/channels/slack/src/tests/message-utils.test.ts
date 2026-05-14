@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { splitMessage, convertMarkdownToMrkdwn } from "../message-utils.js";
+import { describe, expect, it } from "vitest";
+import { convertMarkdownToMrkdwn, splitMessage } from "../message-utils.js";
 
 describe("splitMessage", () => {
   it("returns empty array for empty string", () => {

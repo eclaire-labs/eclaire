@@ -2,9 +2,9 @@
  * `eclaire settings get <key>` — Get a single instance setting.
  */
 
-import { colors, icons } from "../../ui/colors.js";
-import { getSetting, KNOWN_SETTINGS_KEYS } from "../../db/instance-settings.js";
 import { closeDb } from "../../db/index.js";
+import { getSetting, KNOWN_SETTINGS_KEYS } from "../../db/instance-settings.js";
+import { colors, icons } from "../../ui/colors.js";
 
 export async function getCommand(key: string): Promise<void> {
   try {

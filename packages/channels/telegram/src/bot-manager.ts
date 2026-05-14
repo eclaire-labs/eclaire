@@ -1,16 +1,16 @@
 import { type Context, session, Telegraf } from "telegraf";
-import { getDeps } from "./deps.js";
+import {
+  type BotContext,
+  getCommandList,
+  registerCommands,
+  type TelegramSessionData,
+} from "./commands.js";
 import { decryptConfig, type TelegramConfig } from "./config.js";
+import { getDeps } from "./deps.js";
 import {
   handleIncomingMessage,
   handleIncomingVoiceMessage,
 } from "./incoming.js";
-import {
-  type BotContext,
-  type TelegramSessionData,
-  registerCommands,
-  getCommandList,
-} from "./commands.js";
 import { splitMessage } from "./message-utils.js";
 import { withRetry } from "./retry.js";
 import { resetCircuitBreaker } from "./typing-indicator.js";

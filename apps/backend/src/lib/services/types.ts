@@ -1,5 +1,5 @@
-import type { AuthPrincipal } from "../auth-principal.js";
 import type { HistoryActor } from "@eclaire/core/types";
+import type { AuthPrincipal } from "../auth-principal.js";
 
 /**
  * Identifies who is performing a service operation.

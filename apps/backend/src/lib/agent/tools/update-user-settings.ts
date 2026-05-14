@@ -4,7 +4,7 @@
  * Update the current user's profile settings.
  */
 
-import { textResult, type RuntimeToolDefinition } from "@eclaire/ai";
+import { type RuntimeToolDefinition, textResult } from "@eclaire/ai";
 import z from "zod/v4";
 import { updateUserProfile } from "../../services/user-data.js";
 

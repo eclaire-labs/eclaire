@@ -5,11 +5,11 @@
  * Reuses shared Codex item decoding logic from codex-items.ts.
  */
 
-import type { CliEvent } from "../types.js";
 import {
   type CodexThreadItem,
   decodeCodexItem,
 } from "../decoders/codex-items.js";
+import type { CliEvent } from "../types.js";
 import type {
   AppServerItem,
   ItemCompletedParams,

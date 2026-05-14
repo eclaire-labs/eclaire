@@ -14,8 +14,8 @@ import type {
   McpTransportType,
 } from "@eclaire/ai";
 import { config } from "../../config/index.js";
-import { listMcpServers } from "../services/ai-config.js";
 import { createChildLogger } from "../logger.js";
+import { listMcpServers } from "../services/ai-config.js";
 
 const logger = createChildLogger("mcp:config");
 

@@ -9,25 +9,25 @@
  * Replaces: agentRunProcessor, scheduledActionProcessor, taskSeriesProcessor
  */
 
-import { createChildLogger } from "../../lib/logger.js";
+import { desc, eq } from "drizzle-orm";
+import { db, schema } from "../../db/index.js";
+import { channelRegistry } from "../../lib/channels.js";
 import {
-  emitOccurrenceStarted,
   emitOccurrenceCompleted,
   emitOccurrenceFailed,
+  emitOccurrenceStarted,
   emitTaskStatusChanged,
 } from "../../lib/events/task-events.js";
+import { createChildLogger } from "../../lib/logger.js";
 import type { TaskOccurrenceJobData } from "../../lib/queue/types.js";
+import { getNotificationChannels } from "../../lib/services/channels.js";
 import {
-  startTaskOccurrence,
   completeTaskOccurrence,
   failTaskOccurrence,
   getTaskOccurrenceStatus,
   setDeliveryResult,
+  startTaskOccurrence,
 } from "../../lib/services/task-occurrences.js";
-import { channelRegistry } from "../../lib/channels.js";
-import { getNotificationChannels } from "../../lib/services/channels.js";
-import { db, schema } from "../../db/index.js";
-import { eq, desc } from "drizzle-orm";
 
 const logger = createChildLogger("task-occurrence-processor");
 

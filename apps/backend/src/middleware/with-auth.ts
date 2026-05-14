@@ -1,11 +1,11 @@
+import type { ApiKeyScope } from "@eclaire/api-types";
 import type { Context } from "hono";
 import type { Logger } from "pino";
 import z from "zod/v4";
-import type { ApiKeyScope } from "@eclaire/api-types";
 import {
+  type AuthPrincipal,
   assertPrincipalScopes,
   inferRequiredScopesForRequest,
-  type AuthPrincipal,
 } from "../lib/auth-principal.js";
 import { getAuthenticatedPrincipal } from "../lib/auth-utils.js";
 import {

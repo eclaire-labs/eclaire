@@ -9,9 +9,9 @@ minimumReleaseAge: 20160
 minimumReleaseAgeExclude: []
 
 catalog:
-  '@biomejs/biome': '2.4.4'
+  '@biomejs/biome': '2.4.13'
   '@types/node': '24.10.4'
-  oxlint: '1.50.0'
+  oxlint: '1.62.0'
   typescript: '5.9.3'
 
 onlyBuiltDependencies:

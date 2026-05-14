@@ -21,15 +21,14 @@
  * ```
  */
 
-export { MlxAudioProvider } from "./mlx-provider.js";
-export { MlxAudioClient, readAudioFile } from "./mlx-client.js";
-export { MlxRealtimeClient } from "./mlx-ws-client.js";
-export { ElevenLabsProvider } from "./elevenlabs-provider.js";
 export { ElevenLabsClient } from "./elevenlabs-client.js";
-export { WhisperCppProvider } from "./whisper-cpp-provider.js";
-export { WhisperCppClient } from "./whisper-cpp-client.js";
-export { PocketTtsProvider } from "./pocket-tts-provider.js";
+export { ElevenLabsProvider } from "./elevenlabs-provider.js";
+export { MlxAudioClient, readAudioFile } from "./mlx-client.js";
+export { MlxAudioProvider } from "./mlx-provider.js";
+export type { MlxRealtimeConfig } from "./mlx-ws-client.js";
+export { MlxRealtimeClient } from "./mlx-ws-client.js";
 export { PocketTtsClient } from "./pocket-tts-client.js";
+export { PocketTtsProvider } from "./pocket-tts-provider.js";
 export type {
   AudioHealth,
   AudioProvider,
@@ -38,12 +37,13 @@ export type {
   AudioProviderHealth,
   AudioProviderId,
   ElevenLabsProviderConfig,
-  WhisperCppProviderConfig,
   PocketTtsProviderConfig,
   RealtimeTranscriptionClient,
   StreamingTranscriptionEvent,
   SynthesizeInput,
   TranscribeInput,
   TranscriptionResult,
+  WhisperCppProviderConfig,
 } from "./types.js";
-export type { MlxRealtimeConfig } from "./mlx-ws-client.js";
+export { WhisperCppClient } from "./whisper-cpp-client.js";
+export { WhisperCppProvider } from "./whisper-cpp-provider.js";

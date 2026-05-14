@@ -3,8 +3,8 @@ import z from "zod/v4";
 
 // Re-export the shared response schema from @eclaire/api-types
 export {
-  MediaResponseSchema,
   MediaListResponseSchema,
+  MediaResponseSchema,
 } from "@eclaire/api-types/media";
 
 import { MediaResponseSchema } from "@eclaire/api-types/media";

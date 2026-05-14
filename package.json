@@ -31,7 +31,7 @@
     "@biomejs/biome": "catalog:",
     "@playwright/test": "1.59.1",
     "node-addon-api": "8.7.0",
-    "node-gyp": "12.2.0",
+    "node-gyp": "12.3.0",
     "oxlint": "catalog:"
   },
   "scripts": {

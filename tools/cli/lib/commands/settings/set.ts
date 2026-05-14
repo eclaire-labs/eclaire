@@ -2,13 +2,13 @@
  * `eclaire settings set <key> <value>` — Set an instance setting.
  */
 
-import { colors, icons } from "../../ui/colors.js";
-import {
-  setSetting,
-  parseSettingValue,
-  KNOWN_SETTINGS_KEYS,
-} from "../../db/instance-settings.js";
 import { closeDb } from "../../db/index.js";
+import {
+  KNOWN_SETTINGS_KEYS,
+  parseSettingValue,
+  setSetting,
+} from "../../db/instance-settings.js";
+import { colors, icons } from "../../ui/colors.js";
 
 export async function setCommand(key: string, rawValue: string): Promise<void> {
   try {

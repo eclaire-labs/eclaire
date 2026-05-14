@@ -1,23 +1,23 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  createActorApiKey,
-  createServiceActor,
-  deleteActorApiKey,
-  deleteServiceActor,
-  listActorApiKeys,
-  listActorCredentialScopes,
-  listActors,
-  updateActorApiKey,
   type AccessLevelInfo,
   type ActorApiKey,
   type ActorSummary,
   type AdminAccessLevel,
   type ApiKeyScopeCatalogItem,
   type CreateActorApiKeyPayload,
+  createActorApiKey,
+  createServiceActor,
   type DataAccessLevel,
+  deleteActorApiKey,
+  deleteServiceActor,
+  listActorApiKeys,
+  listActorCredentialScopes,
+  listActors,
   type UpdateActorApiKeyPayload,
+  updateActorApiKey,
 } from "@/lib/api-actors";
 
 export interface ActorApiKeyGroup {

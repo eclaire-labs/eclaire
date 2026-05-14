@@ -8,6 +8,10 @@
 import type { RuntimeToolDefinition } from "@eclaire/ai";
 import { getMcpRegistry } from "../../mcp/index.js";
 import { isAudioAvailable } from "../../services/audio.js";
+// Task comment tools
+import { addTaskCommentTool } from "./add-task-comment.js";
+import { browseChromeTool } from "./browse-chrome.js";
+import { browseWebTool } from "./browse-web.js";
 // Create tools
 import { createBookmarkTool } from "./create-bookmark.js";
 import { createNoteTool } from "./create-note.js";
@@ -19,9 +23,9 @@ import { deleteMediaTool } from "./delete-media.js";
 import { deleteNoteTool } from "./delete-note.js";
 import { deletePhotoTool } from "./delete-photo.js";
 import { deleteTaskTool } from "./delete-task.js";
+import { findContentTool } from "./find-content.js";
 // Find/Search tools
 import { findTasksTool } from "./find-tasks.js";
-import { findContentTool } from "./find-content.js";
 // Get tools
 import { getBookmarkTool } from "./get-bookmark.js";
 import { getDocumentTool } from "./get-document.js";
@@ -31,25 +35,28 @@ import { getMediaTool } from "./get-media.js";
 import { getMediaInfoTool } from "./get-media-info.js";
 import { getNoteTool } from "./get-note.js";
 import { getPhotoTool } from "./get-photo.js";
+// Processing status tools
+import { getProcessingStatusTool } from "./get-processing-status.js";
 import { getTaskTool } from "./get-task.js";
 import { getTaskCommentsTool } from "./get-task-comments.js";
+// User settings tools
+import { getUserSettingsTool } from "./get-user-settings.js";
+// Media tools
+import { importMediaUrlTool } from "./import-media-url.js";
+// Tag tools
+import { listTagsTool } from "./list-tags.js";
 // Skill tools
 import { loadSkillTool } from "./load-skill.js";
+// Admin tools
+import { manageAdminReadTool } from "./manage-admin-read.js";
+import { manageAdminWriteTool } from "./manage-admin-write.js";
 // Quick action tools
 import { quickActionTool } from "./quick-action.js";
 // Notification tools
 import { sendNotificationTool } from "./send-notification.js";
-// Task comment tools
-import { addTaskCommentTool } from "./add-task-comment.js";
-import { browseChromeTool } from "./browse-chrome.js";
-import { browseWebTool } from "./browse-web.js";
 // Audio tools
 import { synthesizeSpeechTool } from "./synthesize-speech.js";
 import { transcribeAudioTool } from "./transcribe-audio.js";
-// Tag tools
-import { listTagsTool } from "./list-tags.js";
-// Media tools
-import { importMediaUrlTool } from "./import-media-url.js";
 // Update tools
 import { updateBookmarkTool } from "./update-bookmark.js";
 import { updateDocumentTool } from "./update-document.js";
@@ -57,14 +64,7 @@ import { updateMediaTool } from "./update-media.js";
 import { updateNoteTool } from "./update-note.js";
 import { updatePhotoTool } from "./update-photo.js";
 import { updateTaskTool } from "./update-task.js";
-// User settings tools
-import { getUserSettingsTool } from "./get-user-settings.js";
 import { updateUserSettingsTool } from "./update-user-settings.js";
-// Processing status tools
-import { getProcessingStatusTool } from "./get-processing-status.js";
-// Admin tools
-import { manageAdminReadTool } from "./manage-admin-read.js";
-import { manageAdminWriteTool } from "./manage-admin-write.js";
 
 /**
  * Static backend tools (always available).
@@ -169,37 +169,37 @@ export { deleteMediaTool } from "./delete-media.js";
 export { deleteNoteTool } from "./delete-note.js";
 export { deletePhotoTool } from "./delete-photo.js";
 export { deleteTaskTool } from "./delete-task.js";
+export { findContentTool } from "./find-content.js";
 export { findTasksTool } from "./find-tasks.js";
 export { getBookmarkTool } from "./get-bookmark.js";
 export { getDocumentTool } from "./get-document.js";
 export { getDueItemsTool } from "./get-due-items.js";
+export { getHistoryTool } from "./get-history.js";
 export { getMediaTool } from "./get-media.js";
 export { getMediaInfoTool } from "./get-media-info.js";
-export { getHistoryTool } from "./get-history.js";
 export { getNoteTool } from "./get-note.js";
 export { getPhotoTool } from "./get-photo.js";
+// Processing status tools
+export { getProcessingStatusTool } from "./get-processing-status.js";
 export { getTaskTool } from "./get-task.js";
 export { getTaskCommentsTool } from "./get-task-comments.js";
+// User settings tools
+export { getUserSettingsTool } from "./get-user-settings.js";
+export { importMediaUrlTool } from "./import-media-url.js";
 export { listTagsTool } from "./list-tags.js";
 export { loadSkillTool } from "./load-skill.js";
+// Admin tools
+export { manageAdminReadTool } from "./manage-admin-read.js";
+export { manageAdminWriteTool } from "./manage-admin-write.js";
 export { quickActionTool } from "./quick-action.js";
-export { findContentTool } from "./find-content.js";
 export { sendNotificationTool } from "./send-notification.js";
-export { importMediaUrlTool } from "./import-media-url.js";
+// Audio tools
+export { synthesizeSpeechTool } from "./synthesize-speech.js";
+export { transcribeAudioTool } from "./transcribe-audio.js";
 export { updateBookmarkTool } from "./update-bookmark.js";
 export { updateDocumentTool } from "./update-document.js";
 export { updateMediaTool } from "./update-media.js";
 export { updateNoteTool } from "./update-note.js";
 export { updatePhotoTool } from "./update-photo.js";
 export { updateTaskTool } from "./update-task.js";
-// Audio tools
-export { synthesizeSpeechTool } from "./synthesize-speech.js";
-export { transcribeAudioTool } from "./transcribe-audio.js";
-// User settings tools
-export { getUserSettingsTool } from "./get-user-settings.js";
 export { updateUserSettingsTool } from "./update-user-settings.js";
-// Processing status tools
-export { getProcessingStatusTool } from "./get-processing-status.js";
-// Admin tools
-export { manageAdminReadTool } from "./manage-admin-read.js";
-export { manageAdminWriteTool } from "./manage-admin-write.js";

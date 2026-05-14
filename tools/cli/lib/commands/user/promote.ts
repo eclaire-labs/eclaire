@@ -2,9 +2,9 @@
  * Promote a user to instance admin.
  */
 
-import { intro, outro, log, confirm, isCancelled } from "../../ui/clack.js";
-import { listUsers, getUserByEmail, setUserAdmin } from "../../db/users.js";
 import { closeDb } from "../../db/index.js";
+import { getUserByEmail, listUsers, setUserAdmin } from "../../db/users.js";
+import { confirm, intro, isCancelled, log, outro } from "../../ui/clack.js";
 import { colors, icons } from "../../ui/colors.js";
 
 export async function promoteCommand(email: string): Promise<void> {

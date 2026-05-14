@@ -28,8 +28,8 @@ import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Task, TaskStatus, User } from "@/types/task";
 import {
-  getNextStatus,
   getEffectiveStatusDisplay,
+  getNextStatus,
   getPriorityIcon,
   getPriorityLabel,
   getStatusConfig,

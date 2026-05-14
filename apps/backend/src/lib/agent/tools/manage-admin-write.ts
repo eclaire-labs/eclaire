@@ -8,24 +8,11 @@
 
 import {
   errorResult,
-  textResult,
   type RuntimeToolDefinition,
+  textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
 import { assertInstanceAdmin } from "../../auth-utils.js";
-import {
-  createProvider,
-  updateProvider,
-  deleteProvider,
-  createModel,
-  updateModel,
-  deleteModel,
-  importModels,
-  createMcpServer,
-  updateMcpServer,
-  deleteMcpServer,
-  setActiveModelForContext,
-} from "../../services/ai-config.js";
 import { setUserRole } from "../../services/admin.js";
 import {
   createUserByAdmin,
@@ -35,6 +22,19 @@ import {
   revokeAllUserSessions,
   suspendUser,
 } from "../../services/admin-lifecycle.js";
+import {
+  createMcpServer,
+  createModel,
+  createProvider,
+  deleteMcpServer,
+  deleteModel,
+  deleteProvider,
+  importModels,
+  setActiveModelForContext,
+  updateMcpServer,
+  updateModel,
+  updateProvider,
+} from "../../services/ai-config.js";
 import { setInstanceSettings } from "../../services/instance-settings.js";
 
 const inputSchema = z.object({

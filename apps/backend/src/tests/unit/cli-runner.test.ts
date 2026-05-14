@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { execa } from "execa";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type CliExecutionError,
   runAllowedCliCommand,

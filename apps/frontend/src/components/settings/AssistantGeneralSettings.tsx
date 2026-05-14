@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 import { useModelCapabilities } from "@/hooks/use-model-capabilities";
+import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 
 export default function AssistantGeneralSettings() {
   const [preferences, updatePreference, isLoaded] = useAssistantPreferences();

@@ -6,19 +6,19 @@
  * making the flow resumable, idempotent, and tolerant of out-of-band changes.
  */
 
-import { count, eq } from "drizzle-orm";
 import type { Dialect, ProviderConfig } from "@eclaire/ai";
+import { count, eq } from "drizzle-orm";
 import { config as appConfig } from "../../config/index.js";
 import { db, schema } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 import {
   createProvider,
   deleteProvider,
+  getAllSelections,
   getProvider,
   importModels,
   listModels,
   listProviders,
-  getAllSelections,
   testProviderConnection,
 } from "./ai-config.js";
 import { normalizeImportedModel } from "./ai-import.js";

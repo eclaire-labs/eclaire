@@ -57,8 +57,8 @@ vi.mock("../../config/index.js", () => ({
   config: { isContainer: false },
 }));
 
-import { McpRegistry } from "../../lib/mcp/registry.js";
 import type { McpServerConfig } from "@eclaire/ai";
+import { McpRegistry } from "../../lib/mcp/registry.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

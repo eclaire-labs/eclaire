@@ -1,5 +1,5 @@
-import { createInfoTable } from "../../ui/tables.js";
 import { colors, icons } from "../../ui/colors.js";
+import { createInfoTable } from "../../ui/tables.js";
 
 const ENV_VARS = [
   { key: "DATABASE_TYPE", secret: false },
