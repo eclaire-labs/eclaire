@@ -12,7 +12,7 @@
  *   baseUrl: "http://127.0.0.1:9100",
  *   requestTimeoutMs: 30000,
  *   defaultSttModel: "mlx-community/parakeet-tdt-0.6b-v3",
- *   defaultTtsModel: "pocket_tts",
+ *   defaultTtsModel: "mlx-community/pocket-tts-4bit",
  *   defaultTtsVoice: "",
  * });
  *

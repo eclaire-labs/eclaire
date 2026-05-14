@@ -25,7 +25,7 @@ export const SpeechRequestSchema = z.object({
     .max(500)
     .optional()
     .describe(
-      "Model-specific instruction (e.g., emotion/style for Qwen3-TTS CustomVoice)",
+      "Model-specific instruction (e.g., emotion/style hint for supported models)",
     ),
   stream: z
     .boolean()

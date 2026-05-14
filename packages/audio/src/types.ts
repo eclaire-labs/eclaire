@@ -128,7 +128,7 @@ export interface SynthesizeInput {
   speed?: number;
   /** Output audio format */
   format?: "mp3" | "wav";
-  /** Model-specific instruction (e.g., emotion/style for Qwen3-TTS CustomVoice) */
+  /** Model-specific instruction (e.g., emotion/style hint for supported models) */
   instruct?: string;
 }
 

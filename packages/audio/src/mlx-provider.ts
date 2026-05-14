@@ -68,11 +68,7 @@ export class MlxAudioProvider implements AudioProvider {
 
   async synthesize(input: SynthesizeInput): Promise<Buffer> {
     const model = input.model ?? this.config.defaultTtsModel;
-    let voice = input.voice ?? (this.config.defaultTtsVoice || undefined);
-    // VibeVoice requires an explicit voice cache — default to en-Emma_woman
-    if (!voice && model?.toLowerCase().includes("vibevoice")) {
-      voice = "en-Emma_woman";
-    }
+    const voice = input.voice ?? (this.config.defaultTtsVoice || undefined);
     const format = input.format ?? "mp3";
 
     const buffer = await this.client.synthesize({
@@ -89,11 +85,7 @@ export class MlxAudioProvider implements AudioProvider {
 
   async synthesizeStream(input: SynthesizeInput): Promise<Response> {
     const model = input.model ?? this.config.defaultTtsModel;
-    let voice = input.voice ?? (this.config.defaultTtsVoice || undefined);
-    // VibeVoice requires an explicit voice cache — default to en-Emma_woman
-    if (!voice && model?.toLowerCase().includes("vibevoice")) {
-      voice = "en-Emma_woman";
-    }
+    const voice = input.voice ?? (this.config.defaultTtsVoice || undefined);
     const format = input.format ?? "wav";
 
     return this.client.synthesizeStream({

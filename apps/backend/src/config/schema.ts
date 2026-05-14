@@ -409,7 +409,7 @@ export function buildConfig(): EclaireConfig {
         requestTimeoutMs: int(env.AUDIO_REQUEST_TIMEOUT, 30000),
         defaultSttModel:
           env.AUDIO_STT_MODEL || "mlx-community/parakeet-tdt-0.6b-v3",
-        defaultTtsModel: env.AUDIO_TTS_MODEL || "mlx-community/Kokoro-82M-bf16",
+        defaultTtsModel: env.AUDIO_TTS_MODEL || "mlx-community/pocket-tts-4bit",
         defaultTtsVoice: env.AUDIO_TTS_VOICE || "",
       },
       elevenLabs: env.ELEVENLABS_API_KEY
@@ -442,9 +442,9 @@ export function buildConfig(): EclaireConfig {
             baseUrl: env.OMLX_BASE_URL,
             requestTimeoutMs: int(env.OMLX_AUDIO_TIMEOUT, 30000),
             defaultSttModel:
-              env.OMLX_STT_MODEL || "mlx-community/whisper-large-v3-turbo",
+              env.OMLX_STT_MODEL || "mlx-community/parakeet-tdt-0.6b-v3",
             defaultTtsModel:
-              env.OMLX_TTS_MODEL || "mlx-community/Kokoro-82M-bf16",
+              env.OMLX_TTS_MODEL || "mlx-community/pocket-tts-4bit",
             defaultTtsVoice: env.OMLX_TTS_VOICE || "",
           }
         : null,

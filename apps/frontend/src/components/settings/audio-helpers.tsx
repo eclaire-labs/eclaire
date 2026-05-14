@@ -17,6 +17,7 @@ import type { AudioProviderHealth } from "@/hooks/use-audio";
 
 export const PROVIDER_LABELS: Record<string, string> = {
   "mlx-audio": "mlx-audio (local)",
+  omlx: "oMLX (local)",
   elevenlabs: "ElevenLabs (cloud)",
   "whisper-cpp": "Whisper.cpp (local)",
   "pocket-tts": "Pocket TTS (local)",
@@ -67,24 +68,16 @@ const KOKORO_VOICES: SelectOption[] = [
   { value: "zm_yunxi", label: "Yunxi (ZH, M)" },
 ];
 
-/** Voxtral TTS voice presets (English) */
-const VOXTRAL_VOICES: SelectOption[] = [
-  { value: "casual_male", label: "Casual (EN, M)" },
-  { value: "casual_female", label: "Casual (EN, F)" },
-  { value: "cheerful_female", label: "Cheerful (EN, F)" },
-  { value: "neutral_male", label: "Neutral (EN, M)" },
-  { value: "neutral_female", label: "Neutral (EN, F)" },
-];
-
-/** Qwen3-TTS voice presets (CustomVoice variants only — Base has no spk_id) */
-const QWEN3_TTS_VOICES: SelectOption[] = [
-  { value: "Vivian", label: "Vivian (EN, F)" },
-  { value: "Serena", label: "Serena (EN, F)" },
-  { value: "Ryan", label: "Ryan (EN, M)" },
-  { value: "Aiden", label: "Aiden (EN, M)" },
-  { value: "Uncle_Fu", label: "Uncle Fu (ZH, M)" },
-  { value: "Dylan", label: "Dylan (ZH-Beijing, M)" },
-  { value: "Eric", label: "Eric (ZH-Sichuan, M)" },
+/** Pocket TTS voice presets */
+const POCKET_TTS_VOICES: SelectOption[] = [
+  { value: "alba", label: "Alba" },
+  { value: "marius", label: "Marius" },
+  { value: "javert", label: "Javert" },
+  { value: "jean", label: "Jean" },
+  { value: "fantine", label: "Fantine" },
+  { value: "cosette", label: "Cosette" },
+  { value: "eponine", label: "Eponine" },
+  { value: "azelma", label: "Azelma" },
 ];
 
 /**
@@ -95,7 +88,11 @@ export function isTtsSpeedSupported(provider: string, model: string): boolean {
     case "elevenlabs":
       return true;
     case "mlx-audio":
-      return model.toLowerCase().includes("kokoro");
+    case "omlx":
+      return (
+        model.toLowerCase().includes("kokoro") ||
+        model.toLowerCase().includes("kitten")
+      );
     default:
       return false;
   }
@@ -113,33 +110,19 @@ export function getMlxVoiceOptions(ttsModel: string): {
   hide?: boolean;
 } {
   const lower = ttsModel.toLowerCase();
-  if (lower.includes("kokoro")) {
+  if (lower.includes("kokoro") || lower.includes("kitten")) {
     return { voices: KOKORO_VOICES };
   }
+  if (lower.includes("pocket-tts")) {
+    return { voices: POCKET_TTS_VOICES };
+  }
   if (
-    lower.includes("customvoice") &&
-    (lower.includes("qwen3-tts") || lower.includes("qwen3_tts"))
+    lower.includes("soprano") ||
+    lower.includes("chatterbox") ||
+    lower.includes("marvis") ||
+    (lower.includes("qwen3") && lower.includes("tts"))
   ) {
-    return { voices: QWEN3_TTS_VOICES };
-  }
-  if (lower.includes("soprano")) {
     return { hide: true };
-  }
-  if (lower.includes("voxtral") && lower.includes("tts")) {
-    return { voices: VOXTRAL_VOICES };
-  }
-  if (lower.includes("vibevoice")) {
-    return {
-      voices: [
-        { value: "en-Emma_woman", label: "Emma (English, woman)" },
-        { value: "en-Carter_man", label: "Carter (English, man)" },
-        { value: "en-Davis_man", label: "Davis (English, man)" },
-        { value: "en-Frank_man", label: "Frank (English, man)" },
-        { value: "en-Grace_woman", label: "Grace (English, woman)" },
-        { value: "en-Mike_man", label: "Mike (English, man)" },
-      ],
-      help: "Voice cache files are loaded from the model's voices/ directory.",
-    };
   }
   return {};
 }
@@ -156,53 +139,76 @@ export function modelLabel(value: string): string {
   return value;
 }
 
+const MLX_STT_MODELS: SelectOption[] = [
+  {
+    value: "mlx-community/whisper-tiny-asr-fp16",
+    label: "Whisper Tiny (English)",
+  },
+  {
+    value: "mlx-community/SenseVoiceSmall",
+    label: "SenseVoice Small (50+ langs)",
+  },
+  {
+    value: "mlx-community/whisper-base-asr-fp16",
+    label: "Whisper Base (English)",
+  },
+  {
+    value: "mlx-community/parakeet-tdt-0.6b-v2",
+    label: "Parakeet TDT v2 (English)",
+  },
+  {
+    value: "mlx-community/parakeet-tdt-0.6b-v3",
+    label: "Parakeet TDT v3 (25 EU langs)",
+  },
+  { value: "UsefulSensors/moonshine-tiny", label: "Moonshine Tiny (English)" },
+  {
+    value: "mlx-community/Qwen3-ASR-0.6B-8bit",
+    label: "Qwen3 ASR 0.6B (11 langs)",
+  },
+  { value: "UsefulSensors/moonshine-base", label: "Moonshine Base (English)" },
+  {
+    value: "mlx-community/whisper-large-v3-turbo",
+    label: "Whisper Large v3 Turbo (99+ langs)",
+  },
+];
+
+const MLX_TTS_MODELS: SelectOption[] = [
+  { value: "mlx-community/pocket-tts-4bit", label: "Pocket TTS (4-bit)" },
+  {
+    value: "Marvis-AI/marvis-tts-100m-v0.2",
+    label: "Marvis TTS 100M",
+  },
+  {
+    value: "mlx-community/kitten-tts-nano-0.8-fp16",
+    label: "Kitten TTS Nano (fp16)",
+  },
+  {
+    value: "mlx-community/chatterbox-turbo-fp16",
+    label: "Chatterbox Turbo",
+  },
+  {
+    value: "mlx-community/kitten-tts-nano-0.8-8bit",
+    label: "Kitten TTS Nano (8-bit)",
+  },
+  { value: "mlx-community/Kokoro-82M-bf16", label: "Kokoro 82M (8 langs)" },
+  {
+    value: "mlx-community/Soprano-1.1-80M-bf16",
+    label: "Soprano 80M (English)",
+  },
+  {
+    value: "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16",
+    label: "Qwen3 TTS 0.6B Base",
+  },
+];
+
 export const PROVIDER_OPTIONS: Record<string, ProviderOptions> = {
   "mlx-audio": {
-    sttModels: [
-      {
-        value: "mlx-community/parakeet-tdt-0.6b-v3",
-        label: "Parakeet TDT v3",
-      },
-      {
-        value: "mlx-community/whisper-large-v3-turbo",
-        label: "Whisper Large v3 Turbo",
-      },
-      {
-        value: "mlx-community/SenseVoiceSmall",
-        label: "SenseVoice Small (50+ langs)",
-      },
-      {
-        value: "mlx-community/Qwen3-ASR-0.6B-8bit",
-        label: "Qwen3 ASR 0.6B",
-      },
-      {
-        value: "mlx-community/Voxtral-Mini-3B-2507-bf16",
-        label: "Voxtral Mini 3B",
-      },
-      {
-        value: "mlx-community/VibeVoice-ASR-4bit",
-        label: "VibeVoice ASR 4-bit (9B, diarization)",
-      },
-    ],
-    ttsModels: [
-      { value: "mlx-community/Kokoro-82M-bf16", label: "Kokoro 82M" },
-      {
-        value: "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16",
-        label: "Qwen3 TTS 0.6B CustomVoice",
-      },
-      {
-        value: "mlx-community/VibeVoice-Realtime-0.5B-8bit",
-        label: "VibeVoice Realtime 0.5B",
-      },
-      {
-        value: "mlx-community/Soprano-1.1-80M-bf16",
-        label: "Soprano 80M",
-      },
-      {
-        value: "mlx-community/Voxtral-4B-TTS-2603-mlx-4bit",
-        label: "Voxtral 4B TTS (4-bit)",
-      },
-    ],
+    sttModels: MLX_STT_MODELS,
+    ttsModels: MLX_TTS_MODELS,
+  },
+  omlx: {
+    sttModels: MLX_STT_MODELS,
+    ttsModels: MLX_TTS_MODELS,
   },
   elevenlabs: {
     sttModels: [{ value: "scribe_v1", label: "Scribe v1" }],
@@ -400,8 +406,8 @@ export function TtsVoiceField({
     );
   }
 
-  // mlx-audio: model-dependent voice options
-  if (activeTtsProvider === "mlx-audio") {
+  // mlx-audio / omlx: model-dependent voice options
+  if (activeTtsProvider === "mlx-audio" || activeTtsProvider === "omlx") {
     const modelKey = ttsModel || ttsModelDefault || "";
     const mlxVoice = getMlxVoiceOptions(modelKey);
     if (mlxVoice.hide) return null;
