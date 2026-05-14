@@ -30,12 +30,12 @@
     "fix": "biome check --write ./"
   },
   "dependencies": {
-    "ws": "^8.20.0"
+    "ws": "8.20.0"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
-    "@types/ws": "^8.18.1",
+    "@types/ws": "8.18.1",
     "oxlint": "catalog:",
     "typescript": "catalog:",
     "vitest": "4.1.4"
