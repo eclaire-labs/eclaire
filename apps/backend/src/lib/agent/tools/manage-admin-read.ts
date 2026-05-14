@@ -12,6 +12,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { assertInstanceAdmin } from "../../auth-utils.js";
 import { listUsersAdminExtended } from "../../services/admin-lifecycle.js";
 import {

@@ -12,6 +12,7 @@ import {
   mcpToolToRuntimeTool,
   type RuntimeToolDefinition,
 } from "@eclaire/ai";
+
 import { config } from "../../config/index.js";
 import { resolveBrowserCommand } from "../browser/command.js";
 import { createChildLogger } from "../logger.js";

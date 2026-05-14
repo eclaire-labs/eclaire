@@ -1,4 +1,5 @@
 import { app } from "electron";
+
 import { store } from "./store.js";
 import { getMainWindow } from "./window.js";
 

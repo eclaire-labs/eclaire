@@ -15,6 +15,7 @@ import {
   getQueueSchema,
   type DbCapabilities as QueueDbCapabilities,
 } from "@eclaire/queue/driver-db";
+
 import { db, dbCapabilities, dbType } from "../../db/index.js";
 import { createChildLogger } from "../../lib/logger.js";
 import { QueueNames } from "../../lib/queue/queue-names.js";
@@ -87,7 +88,6 @@ export async function startRemoteDbWorkers(): Promise<void> {
   logger.info({}, "Starting remote database workers (Postgres mode)");
 
   // Create event callbacks that publish via Postgres NOTIFY
-  // biome-ignore lint/suspicious/noExplicitAny: db type mismatch between backend drizzle instance and postgres-publisher type alias
   const eventCallbacks = createPostgresPublisher(db as any, logger);
 
   const baseConfig = getWorkerConfig();

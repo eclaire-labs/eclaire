@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import type { AssetType } from "../../../types/assets.js";
 import {
   getProcessingJob,

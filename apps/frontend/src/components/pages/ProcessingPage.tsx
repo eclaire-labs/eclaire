@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { Suspense } from "react";
+
 import ProcessingContent from "./ProcessingContent";
 
 export default function ProcessingPage() {

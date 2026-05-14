@@ -3,6 +3,7 @@
  */
 
 import { Command } from "commander";
+
 import { discoverAudioModels } from "../../db/audio.js";
 import { closeDb } from "../../db/index.js";
 import {

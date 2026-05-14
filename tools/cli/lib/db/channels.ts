@@ -7,6 +7,7 @@
  */
 
 import { eq } from "drizzle-orm";
+
 import { getDb } from "./index.js";
 
 export interface ChannelRow {
@@ -29,7 +30,6 @@ export interface CreateChannelInput {
   config: Record<string, unknown>;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type, queries work across all dialects
 function query(): { db: any; channels: any } {
   const { db, schema } = getDb();
   return { db, channels: schema.channels };

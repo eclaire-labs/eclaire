@@ -4,10 +4,10 @@
   "private": true,
   "description": "Audio provider abstraction for STT/TTS via mlx-audio",
   "license": "MIT",
-  "type": "module",
   "files": [
     "dist"
   ],
+  "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -24,18 +24,18 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "clean": "rm -rf dist",
-    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
-    "format": "biome format --write ./",
-    "check": "biome check ./",
-    "fix": "biome check --write ./"
+    "lint": "oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "fix": "oxlint --fix --tsconfig ../../tsconfig.oxlint.json . && oxfmt ."
   },
   "dependencies": {
     "ws": "8.20.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
     "@types/ws": "8.18.1",
+    "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",
     "vitest": "4.1.5"

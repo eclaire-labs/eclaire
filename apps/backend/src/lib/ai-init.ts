@@ -12,6 +12,7 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
+
 import {
   initAI,
   loadModelsConfiguration,
@@ -20,6 +21,7 @@ import {
   registerSkillSource,
   setInlineConfig,
 } from "@eclaire/ai";
+
 import { config } from "../config/index.js";
 import { createChildLogger } from "./logger.js";
 import { initMcpRegistry, loadMcpServersConfig } from "./mcp/index.js";

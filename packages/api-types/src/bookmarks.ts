@@ -1,4 +1,5 @@
 import z from "zod/v4";
+
 import { paginatedResponseSchema, reviewStatusSchema } from "./common.js";
 
 export const BookmarkResponseSchema = z

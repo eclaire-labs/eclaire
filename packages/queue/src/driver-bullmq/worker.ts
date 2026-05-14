@@ -9,6 +9,7 @@ import {
   DelayedError,
   UnrecoverableError,
 } from "bullmq";
+
 import { getErrorMessage } from "../core/error-utils.js";
 import {
   isPermanentError,
@@ -98,7 +99,6 @@ export function createBullMQWorker<T = unknown>(
   function toJob(bullmqJob: BullMQJob<T>): Job<T> {
     const data = bullmqJob.data as ExtendedJobData;
     return {
-      // biome-ignore lint/style/noNonNullAssertion: BullMQ job ID is always defined during processing
       id: bullmqJob.id!,
       // Only set key if user originally provided one (via opts.jobId)
       key: bullmqJob.opts.jobId ? bullmqJob.id : undefined,
@@ -345,7 +345,6 @@ export function createBullMQWorker<T = unknown>(
         if (job) {
           const jobData = job.data as ExtendedJobData;
           eventCallbacks?.onJobFail?.(
-            // biome-ignore lint/style/noNonNullAssertion: BullMQ job ID is always defined during processing
             job.id!,
             error.message,
             jobData.__metadata,

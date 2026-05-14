@@ -2,30 +2,26 @@
   "name": "@eclaire/frontend",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
-  "packageManager": "pnpm@11.0.1",
-  "license": "MIT",
   "description": "Eclaire frontend web application",
+  "homepage": "https://eclaire.co/",
+  "bugs": {
+    "url": "https://github.com/eclaire-labs/eclaire/issues"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/eclaire-labs/eclaire.git",
     "directory": "apps/frontend"
   },
-  "bugs": {
-    "url": "https://github.com/eclaire-labs/eclaire/issues"
-  },
-  "homepage": "https://eclaire.co/",
-  "engines": {
-    "node": "^24.0.0"
-  },
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
-    "format": "biome format --write ./",
-    "check": "biome check ./",
-    "fix": "biome check --write ./",
+    "lint": "oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "fix": "oxlint --fix --tsconfig ../../tsconfig.oxlint.json . && oxfmt .",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsr generate && tsc --project tsconfig.json --noEmit"
@@ -91,7 +87,6 @@
     "zod": "4.4.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@tailwindcss/postcss": "4.2.4",
     "@tailwindcss/typography": "0.5.19",
     "@tanstack/router-cli": "1.166.38",
@@ -106,6 +101,7 @@
     "@types/unist": "3.0.3",
     "@vitejs/plugin-react": "6.0.1",
     "jsdom": "29.1.0",
+    "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "postcss": "8.5.12",
     "tailwindcss": "4.2.4",
@@ -113,5 +109,9 @@
     "vite": "8.0.10",
     "vite-plugin-pwa": "1.2.0",
     "vitest": "4.1.5"
-  }
+  },
+  "engines": {
+    "node": "^24.0.0"
+  },
+  "packageManager": "pnpm@11.0.1"
 }

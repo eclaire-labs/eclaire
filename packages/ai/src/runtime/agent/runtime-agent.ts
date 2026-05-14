@@ -13,6 +13,7 @@
  */
 
 import type { z } from "zod";
+
 import { callAI, callAIStream } from "../../client.js";
 import { createLazyLogger, getErrorMessage } from "../../logger.js";
 import { LLMStreamParser } from "../../stream-parser.js";
@@ -60,7 +61,6 @@ import type {
   RuntimeStreamResult,
 } from "./types.js";
 
-// biome-ignore lint/suspicious/noExplicitAny: intentional — Zod requires any for generic schema type alias
 type AnyZodType = z.ZodType<any, any, any>;
 
 const getLogger = createLazyLogger("runtime-agent");

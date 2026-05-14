@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, Loader2, PartyPopper } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useCompleteOnboarding } from "@/hooks/use-onboarding";
+
 import type { StepProps } from "../SetupWizard";
 
 export function SummaryStep({ state, onBack }: StepProps) {

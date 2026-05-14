@@ -1,5 +1,7 @@
 import https from "node:https";
+
 import { and, eq } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 import {
   decrypt,
@@ -147,7 +149,6 @@ async function refreshXToken(
 
     const response = await new Promise<{
       statusCode: number;
-      // biome-ignore lint/suspicious/noExplicitAny: X API token response shape
       data: any;
     }>((resolve, reject) => {
       const url = new URL(X_TOKEN_ENDPOINT);

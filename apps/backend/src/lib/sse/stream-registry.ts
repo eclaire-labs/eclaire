@@ -22,7 +22,6 @@ export function registerStream(
   if (!activeStreams.has(userId)) {
     activeStreams.set(userId, new Map());
   }
-  // biome-ignore lint/style/noNonNullAssertion: map entry set on preceding line
   activeStreams.get(userId)!.set(clientId, streamRef);
 }
 

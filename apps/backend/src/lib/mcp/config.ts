@@ -8,11 +8,13 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+
 import type {
   McpServerConfig,
   McpServersFileConfig,
   McpTransportType,
 } from "@eclaire/ai";
+
 import { config } from "../../config/index.js";
 import { createChildLogger } from "../logger.js";
 import { listMcpServers } from "../services/ai-config.js";

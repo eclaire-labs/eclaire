@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { decryptConfig, validateAndEncryptConfig } from "../config.js";
 import { setDeps } from "../deps.js";
 

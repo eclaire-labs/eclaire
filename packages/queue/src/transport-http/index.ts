@@ -56,10 +56,7 @@
  */
 
 // Client exports
-export {
-  createHttpClient,
-  type HttpQueueClient,
-} from "./client.js";
+export { createHttpClient, type HttpQueueClient } from "./client.js";
 // Poller exports
 export {
   createHttpWorker,

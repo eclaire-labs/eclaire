@@ -1,4 +1,5 @@
 import type { Message, TextChannel } from "discord.js";
+
 import type { DiscordLogger, StreamEvent } from "./deps.js";
 import { splitMessage } from "./message-utils.js";
 import { withRetry } from "./retry.js";

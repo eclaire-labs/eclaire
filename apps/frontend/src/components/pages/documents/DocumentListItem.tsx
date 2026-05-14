@@ -7,6 +7,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +22,9 @@ import {
 import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Document } from "@/types/document";
-import { getFileIcon } from "./DocumentTileItem";
+
 import { formatFileSize, getDocumentTypeLabel } from "./documents-config";
+import { getFileIcon } from "./DocumentTileItem";
 
 interface DocumentListItemProps {
   entry: Document;
@@ -51,7 +53,6 @@ export function DocumentListItem({
   const docTypeLabel = getDocumentTypeLabel(doc.mimeType);
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
     <div
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="button"
@@ -160,7 +161,6 @@ export function DocumentListItem({
         )}
       </div>
       {/* Pin/Flag Controls & Actions */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler only stops propagation to parent row */}
       <div
         role="presentation"
         className="w-20 flex items-center justify-end gap-1 flex-shrink-0 mr-3"

@@ -14,6 +14,7 @@ import {
   lte,
   type SQL,
 } from "drizzle-orm";
+
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { notes, notesTags, tags } = schema;
@@ -105,7 +106,6 @@ export function validateNoteFileUpload(file: File | undefined): {
  */
 export function parseNoteUploadMetadata(metadataStr: string | undefined): {
   valid: boolean;
-  // biome-ignore lint/suspicious/noExplicitAny: open-ended metadata record
   metadata?: Record<string, any>;
   error?: string;
 } {
@@ -169,7 +169,6 @@ interface CreateNoteData {
     reviewStatus?: "pending" | "accepted" | "rejected";
     flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
     isPinned?: boolean;
-    // biome-ignore lint/suspicious/noExplicitAny: metadata index signature
     [key: string]: any;
   };
   originalMimeType: string;
@@ -372,7 +371,6 @@ export async function updateNoteEntry(
 
     // Prepare the update set
     const updateSet = {
-      // biome-ignore lint/suspicious/noExplicitAny: dynamic update spread
       ...(updateData as any),
       description,
       updatedAt: new Date(),
@@ -701,7 +699,6 @@ export async function findNotes({
     const rankExpr = text?.trim()
       ? buildSearchRank(text, notes.searchVector)
       : null;
-    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: notes.createdAt,
       title: notes.title,
@@ -743,8 +740,7 @@ export async function findNotes({
       .limit(fetchLimit);
     let finalIds: string[] = matched.map((e) => e.id);
     const rankMap = isRelevanceSort
-      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
-        new Map(matched.map((r: any) => [r.id, r.rankScore ?? 0]))
+      ? new Map(matched.map((r: any) => [r.id, r.rankScore ?? 0]))
       : null;
 
     if (finalIds.length === 0)
@@ -790,7 +786,6 @@ export async function findNotes({
 
     // Build cursor from the last item
     const lastItem = items[items.length - 1];
-    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
       if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;

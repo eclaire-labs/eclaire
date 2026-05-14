@@ -108,10 +108,7 @@ export {
   type PollingNotifyConfig,
 } from "./notify.js";
 // Scheduler exports
-export {
-  createDbScheduler,
-  type DbSchedulerConfig,
-} from "./scheduler.js";
+export { createDbScheduler, type DbSchedulerConfig } from "./scheduler.js";
 // Schema exports
 export {
   // Helpers

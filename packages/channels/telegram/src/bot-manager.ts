@@ -1,4 +1,5 @@
 import { type Context, session, Telegraf } from "telegraf";
+
 import {
   type BotContext,
   getCommandList,
@@ -189,7 +190,6 @@ async function createBotInstance(
             const retryPromise = bot.launch();
             const instance = activeBots.get(channelId);
             if (instance) {
-              // biome-ignore lint/suspicious/noExplicitAny: Telegraf instance property not in type definition
               (instance as any).launchPromise = retryPromise;
             }
             await retryPromise;

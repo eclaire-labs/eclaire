@@ -22,6 +22,7 @@ import type {
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+
 import type * as pgSchema from "./schema/postgres.js";
 
 // Re-export domain types from @eclaire/core for convenience
@@ -50,11 +51,8 @@ export type {
  * Database instance types for each supported dialect.
  * Schema type params are `any` because the actual schema differs per dialect.
  */
-// biome-ignore lint/suspicious/noExplicitAny: Drizzle schema type varies by dialect
 export type PostgresDbInstance = PostgresJsDatabase<any>;
-// biome-ignore lint/suspicious/noExplicitAny: Drizzle schema type varies by dialect
 export type PgliteDbInstance = PgliteDatabase<any>;
-// biome-ignore lint/suspicious/noExplicitAny: Drizzle schema type varies by dialect
 export type SqliteDbInstance = BetterSQLite3Database<any>;
 
 /**
@@ -185,7 +183,6 @@ export interface Tx {
   actorCredentials: Repo<typeof pgSchema.actorCredentials>;
   actorGrants: Repo<typeof pgSchema.actorGrants>;
 
-  // biome-ignore lint/suspicious/noExplicitAny: outbox table provided by queue package, optional
   outbox?: BaseRepository<any, any, any>;
 
   /**

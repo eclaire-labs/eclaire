@@ -9,7 +9,6 @@ export interface ToolCallSummary {
   executionTimeMs: number;
   success: boolean;
   error?: string;
-  // biome-ignore lint/suspicious/noExplicitAny: tool call arguments are arbitrary JSON from various AI tools
   arguments?: Record<string, any>;
   resultSummary?: string;
 }

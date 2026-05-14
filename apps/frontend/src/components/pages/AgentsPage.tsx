@@ -1,4 +1,5 @@
 import { getRouteApi } from "@tanstack/react-router";
+
 import AssistantSettings from "@/components/settings/AssistantSettings";
 
 const routeApi = getRouteApi("/_authenticated/agents/$agentId");

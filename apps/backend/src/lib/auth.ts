@@ -4,6 +4,7 @@ import { generateSecurityId, generateUserId } from "@eclaire/core";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { twitter } from "better-auth/social-providers";
+
 import { config } from "../config/index.js";
 import { db, dbType, schema } from "../db/index.js"; // Your drizzle database instance and conditional schema
 import {
@@ -52,7 +53,6 @@ const initializedAdapter = drizzleAdapter(db, {
  * via Twitter — they must have an existing account and link it.
  */
 function buildSocialProviders() {
-  // biome-ignore lint/suspicious/noExplicitAny: Better Auth social provider config is dynamically constructed
   const providers: Record<string, any> = {};
 
   if (process.env.X_CLIENT_ID && process.env.X_CLIENT_SECRET) {
@@ -93,7 +93,6 @@ function encryptAccountTokens<T extends Record<string, unknown>>(
 
   const tokenFields = ["accessToken", "refreshToken", "idToken"] as const;
 
-  // biome-ignore lint/suspicious/noExplicitAny: mutating a generic record
   const out: any = { ...account };
   for (const field of tokenFields) {
     const value = out[field];

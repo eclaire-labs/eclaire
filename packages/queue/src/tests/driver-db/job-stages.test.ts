@@ -7,6 +7,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import type { JobStage, QueueClient, Worker } from "../../core/types.js";
 import { createDbQueueClient, createDbWorker } from "../../driver-db/index.js";
 import {

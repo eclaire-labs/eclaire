@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
+
 import { createChildLogger } from "../lib/logger.js";
 import {
   getProcessingJob,
@@ -156,23 +157,19 @@ processingStatusRoutes.post(
  * Basic heuristic to estimate completion time for processing jobs
  * (No changes to this helper function)
  */
-// biome-ignore lint/suspicious/noExplicitAny: raw formatted job with dynamic stages
 function estimateCompletion(job: any): string | null {
   // ... (code is unchanged)
   if (!job.stages || job.stages.length === 0) return null;
   const completedStages = job.stages.filter(
-    // biome-ignore lint/suspicious/noExplicitAny: raw formatted job with dynamic stages
     (s: any) => s.status === "completed",
   ).length;
   if (completedStages === 0) return null;
   const completedWithTime = job.stages.filter(
-    // biome-ignore lint/suspicious/noExplicitAny: raw formatted job with dynamic stages
     (s: any) => s.status === "completed" && s.startedAt && s.completedAt,
   );
   if (completedWithTime.length === 0) return null;
   const avgTime =
     completedWithTime.reduce(
-      // biome-ignore lint/suspicious/noExplicitAny: raw formatted job with dynamic stages
       (sum: number, s: any) => sum + (s.completedAt - s.startedAt),
       0,
     ) / completedWithTime.length;

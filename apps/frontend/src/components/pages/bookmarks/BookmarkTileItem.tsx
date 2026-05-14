@@ -8,6 +8,7 @@ import {
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
+
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import {
 import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Bookmark } from "@/types/bookmark";
+
 import { getDomainFromUrl } from "./bookmarks-config";
 import { Favicon } from "./Favicon";
 

@@ -1,4 +1,5 @@
 import https from "node:https";
+
 import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("twitter-api-client");
@@ -54,7 +55,6 @@ const MEDIA_FIELDS = [
 
 export interface TwitterApiResponse {
   success: boolean;
-  // biome-ignore lint/suspicious/noExplicitAny: X API v2 response structure varies by endpoint
   data?: any;
   error?: string;
   rateLimitReset?: number;

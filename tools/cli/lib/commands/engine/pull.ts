@@ -5,6 +5,7 @@
  */
 
 import ora from "ora";
+
 import { findModelById, updateModel } from "../../config/models.js";
 import { downloadModel, formatBytes } from "../../engine/download.js";
 import { getModelsDir } from "../../engine/paths.js";
@@ -48,7 +49,6 @@ export async function pullCommand(
 
     // Update model config if --model-id was provided
     if (options.modelId) {
-      // biome-ignore lint/style/noNonNullAssertion: localPath is set when result.success is true
       await updateModelWithLocalPath(options.modelId, result.localPath!);
     } else {
       console.log("");

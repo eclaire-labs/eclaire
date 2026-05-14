@@ -1,4 +1,5 @@
 import z from "zod/v4";
+
 import { getDeps } from "./deps.js";
 
 export const DiscordConfigSchema = z

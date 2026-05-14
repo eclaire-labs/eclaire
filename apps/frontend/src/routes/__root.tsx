@@ -1,4 +1,5 @@
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";

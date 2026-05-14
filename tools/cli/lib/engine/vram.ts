@@ -143,7 +143,6 @@ export async function detectVRAM(): Promise<VRAMStatus> {
 /**
  * Parse system_profiler SPDisplaysDataType JSON output
  */
-// biome-ignore lint/suspicious/noExplicitAny: system_profiler JSON output — untyped
 function parseSystemProfilerData(data: any): GPUInfo[] {
   const gpus: GPUInfo[] = [];
 

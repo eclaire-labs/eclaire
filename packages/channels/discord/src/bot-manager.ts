@@ -4,6 +4,7 @@ import {
   GatewayIntentBits,
   type TextChannel,
 } from "discord.js";
+
 import {
   handleCommandInteraction,
   registerApplicationCommands,

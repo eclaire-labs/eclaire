@@ -11,6 +11,7 @@ import {
   resolvePermissionScopes,
 } from "@eclaire/api-types";
 import { and, desc, eq, gte, isNull, or } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 import {
   formatApiKeyForDisplay,

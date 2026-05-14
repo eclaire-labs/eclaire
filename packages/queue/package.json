@@ -4,10 +4,10 @@
   "private": true,
   "description": "Job queue abstraction - BullMQ and database-backed modes with zero-dependency core",
   "license": "MIT",
-  "type": "module",
   "files": [
     "dist"
   ],
+  "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -51,10 +51,10 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
-    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
-    "format": "biome format --write ./",
-    "check": "biome check ./",
-    "fix": "biome check --write ./",
+    "lint": "oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "fix": "oxlint --fix --tsconfig ../../tsconfig.oxlint.json . && oxfmt .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:sqlite": "DB_TYPE=sqlite vitest run",
@@ -63,19 +63,19 @@
     "test:all": "pnpm test:sqlite && pnpm test:pglite && pnpm test:bullmq"
   },
   "dependencies": {
+    "axios": "1.15.2",
     "bullmq": "5.76.4",
     "cron-parser": "5.5.0",
-    "ioredis": "5.10.1",
-    "axios": "1.15.2",
-    "drizzle-orm": "0.45.2"
+    "drizzle-orm": "0.45.2",
+    "ioredis": "5.10.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@electric-sql/pglite": "0.4.5",
     "@types/better-sqlite3": "7.6.13",
     "@types/node": "catalog:",
     "better-sqlite3": "12.9.0",
     "drizzle-kit": "0.31.10",
+    "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "postgres": "3.4.9",
     "typescript": "catalog:",

@@ -1,7 +1,6 @@
 {
   "name": "@eclaire/desktop",
   "version": "0.0.0",
-  "productName": "Eclaire",
   "private": true,
   "type": "module",
   "main": "dist/main.js",
@@ -14,19 +13,22 @@
     "dist:win": "tsc && electron-builder --win",
     "dist:linux": "tsc && electron-builder --linux",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check src/ && oxlint src/",
-    "format": "biome check --fix src/"
+    "lint": "oxlint src/",
+    "format": "oxfmt src/",
+    "format:check": "oxfmt --check src/",
+    "fix": "oxlint --fix src/ && oxfmt src/"
   },
   "dependencies": {
     "electron-store": "11.0.2",
     "electron-updater": "6.8.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
     "electron": "41.3.0",
     "electron-builder": "26.8.1",
+    "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"
-  }
+  },
+  "productName": "Eclaire"
 }

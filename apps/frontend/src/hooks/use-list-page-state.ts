@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+
 import {
   type PageType,
   useViewPreferences,
   type ViewPreferences,
 } from "@/hooks/use-view-preferences";
 import { setFlagColor, togglePin } from "@/lib/api-content";
+
 import type { ListParams } from "./create-crud-hooks";
 import { useDebouncedValue } from "./use-debounced-value";
 
@@ -392,10 +394,8 @@ export function useListPageState<TItem extends ListableItem>(
     (item: TItem) => {
       if (
         typeof window !== "undefined" &&
-        // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
         (window as any).openAssistantWithAssets
       ) {
-        // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
         (window as any).openAssistantWithAssets([
           {
             type: config.contentType.replace(/s$/, ""), // "bookmarks" -> "bookmark"

@@ -1,4 +1,5 @@
 import z from "zod/v4";
+
 import type { ApiKeyScope } from "./auth.js";
 
 export const DataAccessLevelSchema = z.enum(["read", "read_write"]);

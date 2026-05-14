@@ -1,5 +1,6 @@
 import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { type Channel, useChannels } from "@/hooks/use-channels";
+
 import AddChannelDialog from "./AddChannelDialog";
 import ChannelCard from "./ChannelCard";
 import EditChannelDialog from "./EditChannelDialog";
@@ -88,7 +90,6 @@ export default function ChannelsList() {
           // Loading state
           <div className="space-y-4">
             {Array.from({ length: 2 }).map((_, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
               <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>

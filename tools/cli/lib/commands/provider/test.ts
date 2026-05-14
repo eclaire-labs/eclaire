@@ -1,5 +1,6 @@
 import axios, { type AxiosError } from "axios";
 import ora from "ora";
+
 import { getProviderById } from "../../config/providers.js";
 import { closeDb } from "../../db/index.js";
 import type {
@@ -160,7 +161,6 @@ async function testProviderConnectivity(
 
   // Create a minimal valid request body
   // Most providers accept this and will respond (even if with an error about missing model)
-  // biome-ignore lint/suspicious/noExplicitAny: minimal test payload — shape varies by provider
   const testBody: Record<string, any> = {
     messages: [{ role: "user", content: "test" }],
     max_tokens: 1,

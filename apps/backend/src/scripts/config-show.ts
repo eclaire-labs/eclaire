@@ -10,7 +10,6 @@
 
 // Load environment first (side-effect import from @eclaire/core)
 import "@eclaire/core";
-
 import { config, getConfigSummary } from "../config/index.js";
 
 console.log("");

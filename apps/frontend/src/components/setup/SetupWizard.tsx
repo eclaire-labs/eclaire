@@ -1,11 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { Logo } from "@/components/shared/logo";
 import {
   type OnboardingState,
   useAdvanceStep,
   useOnboardingState,
 } from "@/hooks/use-onboarding";
+
 import { SetupProgress } from "./SetupProgress";
 import { ChoosePresetStep } from "./steps/ChoosePresetStep";
 import { ClaimAdminStep } from "./steps/ClaimAdminStep";

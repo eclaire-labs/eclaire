@@ -11,6 +11,7 @@ import { getErrorMessage } from "@eclaire/queue";
 import type { QueueClient } from "@eclaire/queue/core";
 import type { NotifyEmitter } from "@eclaire/queue/driver-db";
 import { createDbQueueClient, getQueueSchema } from "@eclaire/queue/driver-db";
+
 import { QueueNames } from "../queue-names.js";
 import type {
   AssetType,

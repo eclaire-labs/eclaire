@@ -7,8 +7,10 @@
 
 import fs from "node:fs";
 import path from "node:path";
+
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { Context, Next } from "hono";
+
 import { config } from "../config/index.js";
 
 // Static file extensions to serve directly

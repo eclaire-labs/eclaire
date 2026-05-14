@@ -37,6 +37,7 @@ const routeApi = getRouteApi("/_authenticated/bookmarks/$id");
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
 import { ContentViewer } from "@/components/detail-page/ContentViewer";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";

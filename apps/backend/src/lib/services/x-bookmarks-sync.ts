@@ -1,4 +1,5 @@
 import { and, eq, like, or } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 import { TwitterApiClient } from "../../workers/lib/twitter-api-client.js";
 import { createChildLogger } from "../logger.js";
@@ -20,9 +21,7 @@ export interface XBookmarkSyncResult {
  * The API returns the tweet ID directly in the data object.
  */
 function tweetIdFromApiData(
-  // biome-ignore lint/suspicious/noExplicitAny: X API tweet data shape
   tweet: any,
-  // biome-ignore lint/suspicious/noExplicitAny: X API includes object
   includes: any,
 ): { tweetId: string; username: string } | null {
   const tweetId = tweet?.id;
@@ -31,7 +30,6 @@ function tweetIdFromApiData(
   // Resolve author username from includes.users
   const authorId = tweet.author_id;
   const users = includes?.users || [];
-  // biome-ignore lint/suspicious/noExplicitAny: X API user object
   const author = users.find((u: any) => u.id === authorId);
   const username = author?.username || "i";
 
@@ -75,14 +73,7 @@ async function findExistingTweetIds(
  * specific tweet, avoiding duplicating the full shared payload across every
  * bookmark row.
  */
-function filterIncludesForTweet(
-  // biome-ignore lint/suspicious/noExplicitAny: X API tweet data shape
-  tweet: any,
-  // biome-ignore lint/suspicious/noExplicitAny: X API includes object
-  includes: any,
-  // biome-ignore lint/suspicious/noExplicitAny: X API includes subset
-): any {
-  // biome-ignore lint/suspicious/noExplicitAny: building a filtered includes subset
+function filterIncludesForTweet(tweet: any, includes: any): any {
   const filtered: any = {};
 
   // Collect relevant user IDs: tweet author + referenced tweet authors
@@ -95,28 +86,23 @@ function filterIncludesForTweet(
 
   // Filter referenced tweets and collect their author IDs
   if (includes.tweets) {
-    filtered.tweets = includes.tweets.filter(
-      // biome-ignore lint/suspicious/noExplicitAny: X API tweet object
-      (t: any) => {
-        if (referencedTweetIds.has(t.id)) {
-          if (t.author_id) userIds.add(t.author_id);
-          return true;
-        }
-        return false;
-      },
-    );
+    filtered.tweets = includes.tweets.filter((t: any) => {
+      if (referencedTweetIds.has(t.id)) {
+        if (t.author_id) userIds.add(t.author_id);
+        return true;
+      }
+      return false;
+    });
   }
 
   // Filter users to only relevant author IDs
   if (includes.users) {
-    // biome-ignore lint/suspicious/noExplicitAny: X API user object
     filtered.users = includes.users.filter((u: any) => userIds.has(u.id));
   }
 
   // Filter media to only keys referenced by this tweet's attachments
   const mediaKeys = new Set<string>(tweet.attachments?.media_keys || []);
   if (includes.media && mediaKeys.size > 0) {
-    // biome-ignore lint/suspicious/noExplicitAny: X API media object
     filtered.media = includes.media.filter((m: any) =>
       mediaKeys.has(m.media_key),
     );
@@ -191,7 +177,6 @@ export async function syncXBookmarks(
     result.total += tweets.length;
 
     // Batch dedup check: which tweet IDs already exist?
-    // biome-ignore lint/suspicious/noExplicitAny: X API tweet object
     const tweetIds = tweets.map((t: any) => t.id).filter(Boolean) as string[];
     const existingIds = await findExistingTweetIds(userId, tweetIds);
 

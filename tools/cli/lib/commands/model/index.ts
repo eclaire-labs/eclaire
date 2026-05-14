@@ -3,6 +3,7 @@
  */
 
 import { Command } from "commander";
+
 import { activateCommand, deactivateCommand } from "./activate.js";
 import { importCommand } from "./import.js";
 import { infoCommand } from "./info.js";

@@ -9,6 +9,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+
 import { apiFetch, apiGet, apiPost } from "@/lib/api-client";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 

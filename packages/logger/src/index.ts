@@ -1,4 +1,5 @@
 import pino, { type Logger, type LoggerOptions } from "pino";
+
 import { getRequestId } from "./context.js";
 
 export type { Logger } from "pino";

@@ -4,10 +4,10 @@
   "private": true,
   "description": "Discord channel adapter for Eclaire",
   "license": "MIT",
-  "type": "module",
   "files": [
     "dist"
   ],
+  "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -23,32 +23,32 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "rm -rf dist",
-    "lint": "biome lint ./ && oxlint --tsconfig ../../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
-    "format": "biome format --write ./",
-    "check": "biome check ./",
-    "fix": "biome check --write ./"
+    "lint": "oxlint --tsconfig ../../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "fix": "oxlint --fix --tsconfig ../../../tsconfig.oxlint.json . && oxfmt ."
   },
   "dependencies": {
+    "@discordjs/voice": "0.19.2",
     "@eclaire/channels-core": "workspace:*",
     "@eclaire/core": "workspace:*",
-    "@discordjs/voice": "0.19.2",
     "discord.js": "14.26.3"
   },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "4.1.5",
+    "zod": "4.4.1"
+  },
   "peerDependencies": {
-    "zod": "^4.0.0",
-    "sodium-native": "^4.0.0"
+    "sodium-native": "^4.0.0",
+    "zod": "^4.0.0"
   },
   "peerDependenciesMeta": {
     "sodium-native": {
       "optional": true
     }
-  },
-  "devDependencies": {
-    "@biomejs/biome": "catalog:",
-    "@types/node": "catalog:",
-    "oxlint": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "4.1.5",
-    "zod": "4.4.1"
   }
 }

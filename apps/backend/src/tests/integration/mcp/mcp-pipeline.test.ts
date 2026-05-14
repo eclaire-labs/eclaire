@@ -15,6 +15,7 @@ import {
 } from "@eclaire/ai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+
 import {
   DB_TEST_CONFIGS,
   initTestDatabase,

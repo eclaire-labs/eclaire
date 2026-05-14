@@ -19,6 +19,7 @@ const routeApi = getRouteApi("/_authenticated/documents/$id");
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
 import { ContentViewer } from "@/components/detail-page/ContentViewer";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
@@ -31,7 +32,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";

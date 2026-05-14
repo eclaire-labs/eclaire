@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Cloud, Monitor } from "lucide-react";
 import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { useSetupPresets } from "@/hooks/use-onboarding";
 import { cn } from "@/lib/utils";
+
 import type { StepProps } from "../SetupWizard";
 
 export function ChoosePresetStep({

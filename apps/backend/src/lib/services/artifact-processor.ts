@@ -1,4 +1,5 @@
 import { eq, type sql } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 import type { AssetType } from "../../types/assets.js";
 import { createChildLogger } from "../logger.js";
@@ -49,7 +50,6 @@ export async function setEntityProcessingStatus(
 export async function processArtifacts(
   assetType: AssetType,
   assetId: string,
-  // biome-ignore lint/suspicious/noExplicitAny: generic artifact record
   artifacts: Record<string, any>,
 ): Promise<void> {
   const rawContent = JSON.stringify(artifacts, null, 2);

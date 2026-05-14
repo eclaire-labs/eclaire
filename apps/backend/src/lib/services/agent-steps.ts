@@ -8,6 +8,7 @@
 import type { RuntimeAgentStep } from "@eclaire/ai";
 import { generateAgentStepId } from "@eclaire/core";
 import { and, asc, eq } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 
@@ -50,11 +51,7 @@ function extractContentFromStep(step: RuntimeAgentStep): {
  * Truncate tool execution results that exceed the size limit.
  * Returns a JSON-safe copy with large results replaced by truncated versions.
  */
-function truncateToolExecutions(
-  // biome-ignore lint/suspicious/noExplicitAny: tool execution data from runtime has varying shapes
-  toolExecutions: any[],
-  // biome-ignore lint/suspicious/noExplicitAny: tool execution data from runtime has varying shapes
-): any[] {
+function truncateToolExecutions(toolExecutions: any[]): any[] {
   return toolExecutions.map((exec) => {
     const copy = { ...exec };
 

@@ -29,6 +29,7 @@ import {
   useTransition,
 } from "react";
 import { flushSync } from "react-dom";
+
 import { AssistantOverlay } from "@/components/assistant/assistant-overlay";
 import { ChatPanel } from "@/components/assistant/chat-panel";
 import { GlobalAssistant } from "@/components/assistant/global-assistant";
@@ -1006,7 +1007,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
 
   // Make this function available globally
   if (typeof window !== "undefined") {
-    // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
     (window as any).openAssistantWithAssets = openAssistantWithAssets;
   }
 
@@ -1208,7 +1208,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
             style={{ width: assistantWidth }}
           >
             {/* Resize Handle - spans full height with higher z-index */}
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: resize handle uses mouse drag, not a clickable interactive element */}
             <div
               className={`absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/20 ${
                 isResizing ? "bg-primary/40" : ""

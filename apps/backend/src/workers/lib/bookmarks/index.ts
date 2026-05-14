@@ -1,4 +1,5 @@
 import type { JobContext } from "@eclaire/queue/core";
+
 import { createChildLogger } from "../../../lib/logger.js";
 import { TWITTER_HOSTNAMES } from "../twitter-api-client.js";
 
@@ -39,7 +40,6 @@ export interface BookmarkArtifacts {
   pdfStorageId: string;
   extractedText: string;
   tags: string[];
-  // biome-ignore lint/suspicious/noExplicitAny: dynamic artifact accumulator for various bookmark types
   rawMetadata?: Record<string, any>;
   // Platform-specific optional artifacts
   readmeStorageId?: string;

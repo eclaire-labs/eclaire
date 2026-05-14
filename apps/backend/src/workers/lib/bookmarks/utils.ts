@@ -6,6 +6,7 @@ import { JSDOM } from "jsdom";
 import type { Page } from "patchright";
 import TurndownService from "turndown";
 import { strikethrough, tables } from "turndown-plugin-gfm";
+
 import { createChildLogger } from "../../../lib/logger.js";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
 import type { PrefetchedArticle } from "./lightweight-fetch.js";
@@ -18,13 +19,10 @@ const logger = createChildLogger("bookmark-utils");
  * Extract structured metadata (OpenGraph, JSON-LD, Twitter cards) from an HTML document.
  * This provides rich, pre-structured information that many sites include.
  */
-// biome-ignore lint/suspicious/noExplicitAny: dynamic metadata from various structured data formats
 function extractStructuredMetadata(document: Document): Record<string, any> {
-  // biome-ignore lint/suspicious/noExplicitAny: dynamic metadata from various structured data formats
   const metadata: Record<string, any> = {};
 
   // OpenGraph tags
-  // biome-ignore lint/suspicious/noExplicitAny: dynamic OG metadata
   const og: Record<string, any> = {};
   const ogTags = document.querySelectorAll('meta[property^="og:"]');
   ogTags.forEach((tag) => {
@@ -39,7 +37,6 @@ function extractStructuredMetadata(document: Document): Record<string, any> {
   }
 
   // Twitter card tags
-  // biome-ignore lint/suspicious/noExplicitAny: dynamic Twitter card metadata
   const twitter: Record<string, any> = {};
   const twitterTags = document.querySelectorAll('meta[name^="twitter:"]');
   twitterTags.forEach((tag) => {
@@ -57,7 +54,6 @@ function extractStructuredMetadata(document: Document): Record<string, any> {
   const jsonLdScripts = document.querySelectorAll(
     'script[type="application/ld+json"]',
   );
-  // biome-ignore lint/suspicious/noExplicitAny: JSON-LD can be any valid JSON structure
   const jsonLdItems: any[] = [];
   jsonLdScripts.forEach((script) => {
     try {
@@ -201,11 +197,9 @@ export async function extractContentFromHtml(
   readableStyledHtmlStorageId: string;
   faviconStorageId: string | null;
   extractedText: string;
-  // biome-ignore lint/suspicious/noExplicitAny: dynamic external metadata from various sources
   rawMetadata?: Record<string, any>;
 }> {
   let readableHtml = "";
-  // biome-ignore lint/suspicious/noExplicitAny: Readability parse result, no exported type available
   let article: any = null;
 
   try {
@@ -480,13 +474,10 @@ export async function generateOptimizedPdf(
 
   // Wait for images to load with per-image timeout (5s each)
   await page.evaluate(() => {
-    // biome-ignore lint/suspicious/noExplicitAny: browser-context code, no DOM types available in Node
     const images = Array.from((globalThis as any).document.images);
     return Promise.all(
       images
-        // biome-ignore lint/suspicious/noExplicitAny: browser-context HTMLImageElement, no DOM types available
         .filter((img: any) => !img.complete)
-        // biome-ignore lint/suspicious/noExplicitAny: browser-context HTMLImageElement, no DOM types available
         .map((img: any) =>
           Promise.race([
             new Promise((resolve) => {
@@ -516,7 +507,6 @@ export async function generateBookmarkTags(
   contentText: string,
   title: string,
   isTwitter: boolean = false,
-  // biome-ignore lint/suspicious/noExplicitAny: structured metadata from various sources
   structuredMetadata?: Record<string, any>,
 ): Promise<string[]> {
   try {

@@ -2,6 +2,7 @@ import { filterSlashItems, type SlashItem } from "@eclaire/core";
 import { Box, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { useCallback, useState } from "react";
+
 import { CommandMenu } from "./CommandMenu.js";
 
 interface ChatInputProps {

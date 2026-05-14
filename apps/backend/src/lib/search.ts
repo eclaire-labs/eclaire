@@ -8,6 +8,7 @@
  */
 
 import { type SQL, sql } from "drizzle-orm";
+
 import { dbCapabilities } from "../db/index.js";
 import { flexLike } from "./db-helpers.js";
 
@@ -28,9 +29,7 @@ export const hasFts = dbCapabilities.fts === "builtin";
  */
 export function buildTextSearchCondition(
   searchText: string,
-  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
   searchVectorColumn: any,
-  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
   fallbackColumns: any[],
 ): SQL<unknown> {
   const trimmed = searchText.trim();
@@ -60,7 +59,6 @@ export function buildTextSearchCondition(
  */
 export function buildSearchRank(
   searchText: string,
-  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
   searchVectorColumn: any,
 ): SQL<number> | null {
   if (!hasFts) return null;

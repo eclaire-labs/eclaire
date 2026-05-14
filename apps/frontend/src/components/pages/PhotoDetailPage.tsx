@@ -24,6 +24,7 @@ const routeApi = getRouteApi("/_authenticated/photos/$id");
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
 import { ContentViewer } from "@/components/detail-page/ContentViewer";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
@@ -43,7 +44,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -774,7 +774,6 @@ export function PhotoDetailClient() {
 
         {/* Fullscreen Modal */}
         {showFullscreen && (
-          // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-close overlay
           <div
             role="presentation"
             className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
@@ -788,7 +787,6 @@ export function PhotoDetailClient() {
             >
               <X className="h-4 w-4" />
             </Button>
-            {/* biome-ignore lint/a11y/useKeyWithClickEvents: click handler only stops propagation to backdrop */}
             <img
               src={normalizeApiUrl(photo.imageUrl)}
               alt={photo.title || "Full size view"}

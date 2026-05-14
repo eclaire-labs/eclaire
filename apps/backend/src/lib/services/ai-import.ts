@@ -11,6 +11,7 @@
 import type { InputModality, ModelConfig } from "@eclaire/ai";
 import { interpolateEnvVars } from "@eclaire/ai";
 import axios from "axios";
+
 import { ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import type {
@@ -61,7 +62,6 @@ export function isValidImportUrl(value: string): boolean {
 export function hasVisionSupport(
   tags: string[] = [],
   pipelineTag?: string,
-  // biome-ignore lint/suspicious/noExplicitAny: external API response
   architecture?: any,
 ): boolean {
   if (
@@ -96,7 +96,6 @@ export function extractQuantizationType(filename: string): string {
 /**
  * Extract max tokens / context window from HuggingFace model data.
  */
-// biome-ignore lint/suspicious/noExplicitAny: external API response
 export function extractMaxTokens(huggingFaceData: any): number | undefined {
   if (huggingFaceData.cardData?.max_position_embeddings) {
     return huggingFaceData.cardData.max_position_embeddings;
@@ -174,7 +173,6 @@ async function tryFetchArchitectureFromRepo(
       },
     );
 
-    // biome-ignore lint/suspicious/noExplicitAny: external API response
     const config = response.data as any;
     const textConfig = config.text_config || config;
 
@@ -273,7 +271,6 @@ async function inspectHuggingFaceUrl(url: string): Promise<InspectUrlResult> {
       },
     );
 
-    // biome-ignore lint/suspicious/noExplicitAny: external API response
     const data = response.data as any;
     const baseModelId: string | undefined = data.cardData?.base_model;
     const isVisionModel = hasVisionSupport(data.tags, data.pipeline_tag);
@@ -301,10 +298,8 @@ async function inspectHuggingFaceUrl(url: string): Promise<InspectUrlResult> {
           },
         );
 
-        // biome-ignore lint/suspicious/noExplicitAny: external API response
         const files = (filesResponse.data as any) || [];
         const ggufFiles = files.filter(
-          // biome-ignore lint/suspicious/noExplicitAny: external API response
           (file: any) =>
             file.path?.endsWith(".gguf") && !file.path?.startsWith("mmproj-"),
         );
@@ -312,7 +307,6 @@ async function inspectHuggingFaceUrl(url: string): Promise<InspectUrlResult> {
         if (ggufFiles.length > 0) {
           isGGUF = true;
           quantizations = ggufFiles
-            // biome-ignore lint/suspicious/noExplicitAny: external API response
             .map((file: any) => ({
               id: extractQuantizationType(file.path),
               filename: file.path,
@@ -324,15 +318,12 @@ async function inspectHuggingFaceUrl(url: string): Promise<InspectUrlResult> {
             );
 
           // Detect mmproj files
-          const mmprojFiles = files.filter(
-            // biome-ignore lint/suspicious/noExplicitAny: external API response
-            (file: any) => file.path?.startsWith("mmproj-"),
+          const mmprojFiles = files.filter((file: any) =>
+            file.path?.startsWith("mmproj-"),
           );
           if (mmprojFiles.length > 0) {
             const preferredMmproj =
-              // biome-ignore lint/suspicious/noExplicitAny: external API response
               mmprojFiles.find((f: any) => f.path === "mmproj-F16.gguf") ||
-              // biome-ignore lint/suspicious/noExplicitAny: external API response
               mmprojFiles.find((f: any) => f.path === "mmproj-BF16.gguf") ||
               mmprojFiles[0];
             if (preferredMmproj) {
@@ -424,9 +415,7 @@ async function inspectOpenRouterUrl(url: string): Promise<InspectUrlResult> {
       validateStatus: (status) => status >= 200 && status < 300,
     });
 
-    // biome-ignore lint/suspicious/noExplicitAny: external API response
     const models = (response.data as any).data;
-    // biome-ignore lint/suspicious/noExplicitAny: external API response
     const model = models.find((m: any) => m.id === modelId);
 
     if (!model) {
@@ -536,12 +525,10 @@ export async function fetchProviderCatalog(provider: {
       validateStatus: (status) => status >= 200 && status < 300,
     });
 
-    // biome-ignore lint/suspicious/noExplicitAny: external API response
     const data = response.data as any;
     // OpenAI-compatible APIs return { data: [...] }
     const models = Array.isArray(data) ? data : data.data || [];
 
-    // biome-ignore lint/suspicious/noExplicitAny: external API response
     return models.map((m: any) => {
       const isOpenRouter =
         provider.id === "openrouter" || baseUrl.includes("openrouter.ai");

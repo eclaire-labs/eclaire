@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { transcribe } from "../../services/audio.js";
 import { getMediaBuffer } from "../../services/media.js";
 

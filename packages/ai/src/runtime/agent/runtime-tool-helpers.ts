@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+
 import { getErrorMessage } from "../../logger.js";
 import type { ToolDefinition } from "../../types.js";
 import type {
@@ -17,7 +18,6 @@ import type {
   ToolUpdateCallback,
 } from "../tools/types.js";
 
-// biome-ignore lint/suspicious/noExplicitAny: intentional — Zod requires any for generic schema type alias
 type AnyZodType = z.ZodType<any, any, any>;
 
 /**

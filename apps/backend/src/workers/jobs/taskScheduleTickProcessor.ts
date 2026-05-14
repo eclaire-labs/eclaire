@@ -6,6 +6,7 @@
  */
 
 import { eq } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 import {
   emitOccurrenceQueued,
@@ -22,10 +23,7 @@ import { createTaskOccurrence } from "../../lib/services/task-occurrences.js";
 
 const logger = createChildLogger("task-schedule-tick-processor");
 
-export default async function processTaskScheduleTick(
-  // biome-ignore lint/suspicious/noExplicitAny: job context shape varies by queue driver
-  ctx: any,
-): Promise<void> {
+export default async function processTaskScheduleTick(ctx: any): Promise<void> {
   const data = ctx.job.data as TaskScheduleTickJobData;
   const { taskId, userId } = data;
 

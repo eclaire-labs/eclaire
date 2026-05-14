@@ -2,6 +2,7 @@ import { count, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
+
 import { db, schema } from "../db/index.js";
 import { NotFoundError } from "../lib/errors.js";
 import {
@@ -458,9 +459,8 @@ tasksRoutes.post(
         task.delegateActorId &&
         !["running", "queued"].includes(task.latestExecutionStatus ?? "")
       ) {
-        const { createTaskOccurrence } = await import(
-          "../lib/services/task-occurrences.js"
-        );
+        const { createTaskOccurrence } =
+          await import("../lib/services/task-occurrences.js");
         await createTaskOccurrence({
           taskId,
           userId,

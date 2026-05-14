@@ -9,6 +9,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { ListableItem, ListPageState } from "@/hooks/use-list-page-state";
+
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import {
   type ExtraFilterDef as ExtraFilterProps,
@@ -369,7 +371,6 @@ function LoadingSkeleton() {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
         <Card key={index} className="animate-pulse">
           <CardHeader>
             <div className="h-5 bg-muted rounded-full w-3/4 mb-2" />

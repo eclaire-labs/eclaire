@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
+
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { TagEditor } from "@/components/shared/TagEditor";
@@ -29,10 +30,11 @@ import { useListPageState } from "@/hooks/use-list-page-state";
 import { useNotes } from "@/hooks/use-notes";
 import { useTags } from "@/hooks/use-tags";
 import type { Note } from "@/types/note";
+
 import { CreateNoteDialog } from "./notes/CreateNoteDialog";
 import { NoteListItem } from "./notes/NoteListItem";
-import { NoteTileItem } from "./notes/NoteTileItem";
 import { notesConfig } from "./notes/notes-config";
+import { NoteTileItem } from "./notes/NoteTileItem";
 
 // ---------------------------------------------------------------------------
 // Upload types & constants

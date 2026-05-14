@@ -7,7 +7,6 @@
 import type { z } from "zod";
 
 // Zod v4 type alias for any zod schema
-// biome-ignore lint/suspicious/noExplicitAny: intentional — Zod v4 requires any for generic schema type alias
 export type AnyZodType = z.ZodType<any, any, any>;
 
 import type {

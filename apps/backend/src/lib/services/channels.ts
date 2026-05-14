@@ -1,9 +1,11 @@
 import { and, eq } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 
 const { channels } = schema;
 
 import { formatRequiredTimestamp } from "@eclaire/core";
+
 import type {
   ChannelPlatform,
   CreateChannelRequest,
@@ -300,7 +302,6 @@ export async function updateChannel(
     );
 
     // Prepare update object
-    // biome-ignore lint/suspicious/noExplicitAny: dynamic update object
     const updateValues: any = {
       updatedAt: new Date(),
     };
@@ -495,12 +496,10 @@ export async function deleteChannel(
 export async function getNotificationChannels(
   userId: string,
   targetChannelIds?: string[],
-  // biome-ignore lint/suspicious/noExplicitAny: raw DB row
 ): Promise<any[]> {
   try {
     const { inArray, or } = await import("drizzle-orm");
 
-    // biome-ignore lint/suspicious/noExplicitAny: dynamic query object
     const whereConditions: any[] = [
       eq(channels.userId, userId),
       channels.isActive,

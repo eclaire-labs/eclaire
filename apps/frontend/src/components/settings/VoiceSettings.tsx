@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useStreamingTranscription } from "@/hooks/use-streaming-transcription";
 import { apiGet, apiPatch } from "@/lib/api-client";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
+
 import type { SelectOption } from "./audio-helpers";
 import {
   isTtsSpeedSupported,

@@ -7,6 +7,7 @@
 
 import { type RuntimeToolDefinition, textResult } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { countAllEntries, findAllEntries } from "../../services/all.js";
 
 const inputSchema = z.object({

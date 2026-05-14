@@ -2,6 +2,7 @@
 
 import type { Buffer } from "node:buffer";
 import { Readable } from "node:stream";
+
 import {
   and,
   asc,
@@ -14,6 +15,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
+
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { documentsTags, documents: schemaDocuments, tags } = schema;
@@ -24,6 +26,7 @@ import {
   generateDocumentId,
   generateHistoryId,
 } from "@eclaire/core";
+
 import type { ProcessingStatus } from "../../types/assets.js";
 import {
   batchGetTags,
@@ -63,7 +66,6 @@ interface CreateDocumentData {
     reviewStatus?: "pending" | "accepted" | "rejected";
     flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
     isPinned?: boolean;
-    // biome-ignore lint/suspicious/noExplicitAny: open-ended metadata from upload clients
     [key: string]: any;
   };
   originalMimeType: string;
@@ -448,7 +450,6 @@ export async function updateDocument(
     // Filter out undefined values to avoid overwriting with them
     Object.entries(docUpdateData).forEach(([key, value]) => {
       if (value !== undefined) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic property assignment on Drizzle partial insert type
         (updatePayload as any)[key] = value;
       }
     });
@@ -622,7 +623,6 @@ export async function findDocuments({
     const rankExpr = text?.trim()
       ? buildSearchRank(text, schemaDocuments.searchVector)
       : null;
-    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects of varying types
     const sortColumnMap: Record<string, any> = {
       createdAt: schemaDocuments.createdAt,
       updatedAt: schemaDocuments.updatedAt,
@@ -668,8 +668,7 @@ export async function findDocuments({
       .limit(fetchLimit);
     let finalDocIds: string[] = matchedDocs.map((d) => d.id);
     const rankMap = isRelevanceSort
-      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
-        new Map(matchedDocs.map((r: any) => [r.id, r.rankScore ?? 0]))
+      ? new Map(matchedDocs.map((r: any) => [r.id, r.rankScore ?? 0]))
       : null;
 
     if (finalDocIds.length === 0)
@@ -746,7 +745,6 @@ export async function findDocuments({
 
     // Build cursor from the last item
     const lastItem = items[items.length - 1];
-    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
       if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;

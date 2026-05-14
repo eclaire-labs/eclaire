@@ -35,10 +35,7 @@ export {
   type BookmarksListResponse,
   BookmarksListResponseSchema,
 } from "./bookmarks.js";
-export {
-  PLATFORM_METADATA,
-  type PlatformMetadata,
-} from "./channels.js";
+export { PLATFORM_METADATA, type PlatformMetadata } from "./channels.js";
 export {
   type FlagColor,
   flagColorSchema,

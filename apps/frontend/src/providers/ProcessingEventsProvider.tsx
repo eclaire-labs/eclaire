@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+
 import { normalizeApiUrl } from "@/lib/api-client";
 import { useSession } from "@/lib/auth";
 
@@ -327,15 +328,12 @@ export function ProcessingEventsProvider({
                 // Uses infinite query structure: { pages: [{ items: [...] }, ...] }
                 queryClient.setQueriesData(
                   { queryKey: [assetType] },
-                  // biome-ignore lint/suspicious/noExplicitAny: query cache items have varying shapes per asset type
                   (oldData: any) => {
                     if (!oldData?.pages) return oldData;
                     return {
                       ...oldData,
-                      // biome-ignore lint/suspicious/noExplicitAny: page items have varying shapes per asset type
                       pages: oldData.pages.map((page: any) => ({
                         ...page,
-                        // biome-ignore lint/suspicious/noExplicitAny: list items have varying shapes per asset type
                         items: page.items.map((item: any) =>
                           item.id === assetId
                             ? { ...item, processingStatus: "processing" }
@@ -381,10 +379,8 @@ export function ProcessingEventsProvider({
                   // Also update progress in the processing jobs list (Processing page)
                   queryClient.setQueryData(
                     ["processing-jobs"],
-                    // biome-ignore lint/suspicious/noExplicitAny: processing job items are untyped in this context
                     (oldJobs: any[] | undefined) => {
                       if (!oldJobs) return oldJobs;
-                      // biome-ignore lint/suspicious/noExplicitAny: processing job items are untyped in this context
                       return oldJobs.map((job: any) =>
                         job.assetType === assetType && job.assetId === assetId
                           ? { ...job, overallProgress: progress }
@@ -538,7 +534,6 @@ export function ProcessingEventsProvider({
       if (!refreshCallbacksRef.current.has(assetType)) {
         refreshCallbacksRef.current.set(assetType, new Set());
       }
-      // biome-ignore lint/style/noNonNullAssertion: set created on preceding line
       refreshCallbacksRef.current.get(assetType)!.add(callback);
 
       // Return cleanup function

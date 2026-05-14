@@ -1,5 +1,6 @@
 import { DiscordAPIError } from "discord.js";
 import { describe, expect, it, vi } from "vitest";
+
 import { getRetryAfterMs, isRecoverableError, withRetry } from "../retry.js";
 
 function make429Error(retryAfter?: number): DiscordAPIError {

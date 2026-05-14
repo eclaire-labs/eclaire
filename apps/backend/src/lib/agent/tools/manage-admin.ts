@@ -12,8 +12,8 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { assertInstanceAdmin } from "../../auth-utils.js";
-import { setUserRole } from "../../services/admin.js";
 import {
   createUserByAdmin,
   deleteUserByAdmin,
@@ -23,6 +23,7 @@ import {
   revokeAllUserSessions,
   suspendUser,
 } from "../../services/admin-lifecycle.js";
+import { setUserRole } from "../../services/admin.js";
 import {
   createMcpServer,
   createModel,

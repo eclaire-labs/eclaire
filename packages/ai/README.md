@@ -68,8 +68,16 @@ Pass config objects directly to `initAI()`:
 
 ```typescript
 initAI({
-  providers: { providers: { /* ... */ } },
-  models: { models: { /* ... */ } },
+  providers: {
+    providers: {
+      /* ... */
+    },
+  },
+  models: {
+    models: {
+      /* ... */
+    },
+  },
   selection: { active: { default: "provider:model-id" } },
 });
 ```
@@ -214,14 +222,14 @@ console.log(result.content);
 
 ## Supported Providers
 
-| Provider | Dialect | Example |
-|----------|---------|---------|
-| OpenAI | `openai_compatible` | GPT-4o, GPT-4o-mini |
-| Anthropic | `anthropic_messages` | Claude Sonnet, Opus |
-| OpenRouter | `openai_compatible` | Any model via OpenRouter |
-| Ollama | `openai_compatible` | Local models |
-| LM Studio | `openai_compatible` | Local models |
-| MLX | `mlx_native` | Apple Silicon local models |
+| Provider   | Dialect              | Example                    |
+| ---------- | -------------------- | -------------------------- |
+| OpenAI     | `openai_compatible`  | GPT-4o, GPT-4o-mini        |
+| Anthropic  | `anthropic_messages` | Claude Sonnet, Opus        |
+| OpenRouter | `openai_compatible`  | Any model via OpenRouter   |
+| Ollama     | `openai_compatible`  | Local models               |
+| LM Studio  | `openai_compatible`  | Local models               |
+| MLX        | `mlx_native`         | Apple Silicon local models |
 
 ## Custom Logging
 
@@ -244,42 +252,42 @@ The logger must implement `{ debug, info, warn, error }` — each taking `(obj: 
 
 ### Core
 
-| Export | Description |
-|--------|-------------|
-| `initAI(config)` | Initialize the client (call once at startup) |
-| `resetAI()` | Reset state (for testing) |
-| `callAI(messages, context, options?)` | Non-streaming AI call |
-| `callAIStream(messages, context, options?)` | Streaming AI call |
-| `LLMStreamParser` | Parse SSE streams into structured results |
+| Export                                      | Description                                  |
+| ------------------------------------------- | -------------------------------------------- |
+| `initAI(config)`                            | Initialize the client (call once at startup) |
+| `resetAI()`                                 | Reset state (for testing)                    |
+| `callAI(messages, context, options?)`       | Non-streaming AI call                        |
+| `callAIStream(messages, context, options?)` | Streaming AI call                            |
+| `LLMStreamParser`                           | Parse SSE streams into structured results    |
 
 ### Configuration
 
-| Export | Description |
-|--------|-------------|
-| `getActiveModelForContext(ctx)` | Get active model config for a context |
-| `getModels(filter?)` | List all configured models |
-| `validateAIConfig(ctx)` | Validate config for a context |
-| `resolveProviderForModel(id, config)` | Resolve provider URL and auth |
+| Export                                | Description                           |
+| ------------------------------------- | ------------------------------------- |
+| `getActiveModelForContext(ctx)`       | Get active model config for a context |
+| `getModels(filter?)`                  | List all configured models            |
+| `validateAIConfig(ctx)`               | Validate config for a context         |
+| `resolveProviderForModel(id, config)` | Resolve provider URL and auth         |
 
 ### Validation
 
-| Export | Description |
-|--------|-------------|
-| `modelSupportsTools(model)` | Check tool calling support |
-| `modelSupportsStreaming(model)` | Check streaming support |
+| Export                          | Description                      |
+| ------------------------------- | -------------------------------- |
+| `modelSupportsTools(model)`     | Check tool calling support       |
+| `modelSupportsStreaming(model)` | Check streaming support          |
 | `modelSupportsReasoning(model)` | Check reasoning/thinking support |
-| `estimateTokenCount(messages)` | Estimate input token count |
+| `estimateTokenCount(messages)`  | Estimate input token count       |
 
 ### Agent
 
-| Export | Description |
-|--------|-------------|
-| `RuntimeAgent` | Multi-step agent with tool loops |
-| `createRuntimeContext()` | Create agent execution context |
-| `textResult(text)` | Helper to create tool results |
-| `errorResult(msg)` | Helper to create error tool results |
-| `registerTool(tool)` | Register a tool globally |
-| `registerSkillSource(dir, scope)` | Register a skill directory |
+| Export                            | Description                         |
+| --------------------------------- | ----------------------------------- |
+| `RuntimeAgent`                    | Multi-step agent with tool loops    |
+| `createRuntimeContext()`          | Create agent execution context      |
+| `textResult(text)`                | Helper to create tool results       |
+| `errorResult(msg)`                | Helper to create error tool results |
+| `registerTool(tool)`              | Register a tool globally            |
+| `registerSkillSource(dir, scope)` | Register a skill directory          |
 
 ## License
 

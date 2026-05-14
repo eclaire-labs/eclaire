@@ -1,6 +1,7 @@
 import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
 import { BUILTIN_COMMANDS, generateHelpText } from "@eclaire/core";
 import type { Context, Telegraf } from "telegraf";
+
 import { getDeps } from "./deps.js";
 
 /** Per-chat session state stored by Telegraf's session middleware. */

@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { updateBookmark } from "../../services/bookmarks.js";
 import { updateDocument } from "../../services/documents.js";
 import { updateNoteEntry } from "../../services/notes.js";
@@ -37,13 +38,7 @@ const inputSchema = z.object({
     ),
 });
 
-type UpdateFn = (
-  id: string,
-  // biome-ignore lint/suspicious/noExplicitAny: varies by content type
-  data: any,
-  // biome-ignore lint/suspicious/noExplicitAny: CallerContext
-  caller: any,
-) => Promise<unknown>;
+type UpdateFn = (id: string, data: any, caller: any) => Promise<unknown>;
 
 const updateFns: Record<string, UpdateFn> = {
   bookmarks: updateBookmark,

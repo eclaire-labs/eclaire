@@ -14,12 +14,14 @@
  */
 
 import { EventEmitter } from "node:events";
+
 import type {
   AIMessage,
   ApprovalResponse,
   OnApprovalRequired,
 } from "@eclaire/ai";
 import { convertFromLlm, createRuntimeContext } from "@eclaire/ai";
+
 import { publishProcessingEvent } from "../../routes/processing-events.js";
 import type { Context } from "../../schemas/prompt-params.js";
 import { fetchAssetContents } from "../agent/asset-fetcher.js";
@@ -301,7 +303,6 @@ interface RunExecutionParams {
   sessionId: string;
   userId: string;
   prompt: string;
-  // biome-ignore lint/suspicious/noExplicitAny: runtime stream result type varies
   streamResult: any;
   emitter: EventEmitter;
   abortController: AbortController;

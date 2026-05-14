@@ -34,12 +34,10 @@ function init() {
 
 export function encrypt(text: string): string {
   init();
-  // biome-ignore lint/style/noNonNullAssertion: initialized above
   return _encrypt!(text);
 }
 
 export function decrypt(text: string): string {
   init();
-  // biome-ignore lint/style/noNonNullAssertion: initialized above
   return _decrypt!(text);
 }

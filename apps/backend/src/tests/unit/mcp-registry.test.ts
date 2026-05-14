@@ -26,7 +26,6 @@ vi.mock("@eclaire/ai", async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
-    // biome-ignore lint/complexity/useArrowFunction: Proxy construct target must be a regular function
     McpServerConnection: new Proxy(function () {}, {
       construct(_target, [key, _config]: [string, unknown]) {
         const conn = createMockConn();
@@ -58,6 +57,7 @@ vi.mock("../../config/index.js", () => ({
 }));
 
 import type { McpServerConfig } from "@eclaire/ai";
+
 import { McpRegistry } from "../../lib/mcp/registry.js";
 
 // ---------------------------------------------------------------------------

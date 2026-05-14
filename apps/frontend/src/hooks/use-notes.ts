@@ -1,10 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+
 import { apiFetch } from "@/lib/api-client";
 import type { Note } from "@/types/note";
+
 import { createCrudHooks, type ListParams } from "./create-crud-hooks";
 
-// biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 export const transformNoteData = (raw: any): Note => ({
   id: raw.id,
   title: raw.title,

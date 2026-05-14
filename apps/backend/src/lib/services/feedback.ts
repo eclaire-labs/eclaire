@@ -1,5 +1,6 @@
 import { generateFeedbackId } from "@eclaire/core";
 import { desc, eq, sql } from "drizzle-orm";
+
 import { db, schema, txManager } from "../../db/index.js";
 
 const { feedback } = schema;
@@ -53,7 +54,6 @@ export async function createFeedback(
     // Record history AFTER transaction (not critical for atomicity)
     await recordHistory({
       action: "create",
-      // biome-ignore lint/suspicious/noExplicitAny: feedback not yet in ItemType union
       itemType: "feedback" as any, // Cast since feedback is not in the union yet
       itemId: feedbackId,
       itemName: "Feedback submission",

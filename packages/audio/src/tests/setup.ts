@@ -5,6 +5,7 @@
  */
 
 import { vi } from "vitest";
+
 import type {
   AudioProvider,
   AudioProviderCapabilities,

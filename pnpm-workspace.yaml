@@ -14,8 +14,8 @@ allowBuilds:
   sharp: true
 
 catalog:
-  '@biomejs/biome': '2.4.13'
   '@types/node': '24.10.4'
+  oxfmt: '0.49.0'
   oxlint: '1.62.0'
   typescript: '6.0.3'
 

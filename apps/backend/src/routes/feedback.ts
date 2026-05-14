@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import z from "zod/v4";
+
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import {

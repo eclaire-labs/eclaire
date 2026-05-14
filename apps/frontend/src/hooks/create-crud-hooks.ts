@@ -21,6 +21,7 @@ import {
 } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
+
 import { apiFetch } from "@/lib/api-client";
 
 // ---------------------------------------------------------------------------
@@ -33,7 +34,6 @@ export interface CrudHookConfig<TItem> {
   /** API base path (e.g. "/api/notes"). */
   apiPath: string;
   /** Maps a raw backend object to the frontend type. */
-  // biome-ignore lint/suspicious/noExplicitAny: backend response shape is untyped
   transform: (raw: any) => TItem;
   /** HTTP method for updates. Default "PATCH". */
   updateMethod?: "PUT" | "PATCH";
@@ -79,7 +79,6 @@ export interface ListHookResult<TItem> {
   fetchNextPage: () => void;
   totalCount: number | undefined;
   error: Error | null;
-  // biome-ignore lint/suspicious/noExplicitAny: create input varies per entity
   createItem: (input: any) => Promise<any>;
   updateItem: (id: string, updates: Partial<TItem>) => Promise<unknown>;
   deleteItem: (id: string) => Promise<void>;
@@ -174,7 +173,6 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
     const invalidationKey = [resourceName] as const;
 
     const createMutation = useMutation({
-      // biome-ignore lint/suspicious/noExplicitAny: create input varies per entity
       mutationFn: async (input: any) => {
         const body = input instanceof FormData ? input : JSON.stringify(input);
         const response = await apiFetch(apiPath, {

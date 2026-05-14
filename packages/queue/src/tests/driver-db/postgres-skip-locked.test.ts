@@ -8,6 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import type { QueueClient } from "../../core/types.js";
 import {
   claimJobPostgres,

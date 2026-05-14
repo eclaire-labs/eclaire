@@ -2,6 +2,7 @@ import { DiscordConfigSchema } from "@eclaire/channels-discord";
 import { SlackConfigSchema } from "@eclaire/channels-slack";
 import { TelegramConfigSchema } from "@eclaire/channels-telegram";
 import chalk from "chalk";
+
 import { getChannelRegistry } from "../../db/adapters.js";
 import { createChannel } from "../../db/channels.js";
 import { getDefaultUser } from "../../db/users.js";
@@ -19,7 +20,6 @@ import {
 } from "../../ui/clack.js";
 import { colors, icons } from "../../ui/colors.js";
 
-// biome-ignore lint/suspicious/noExplicitAny: Zod schemas from different packages, using shape at runtime
 const PLATFORM_SCHEMAS: Record<string, any> = {
   telegram: TelegramConfigSchema,
   discord: DiscordConfigSchema,
@@ -122,7 +122,6 @@ export async function addCommand(): Promise<void> {
 
     // 6. Validate and encrypt config via adapter
     const registry = getChannelRegistry();
-    // biome-ignore lint/suspicious/noExplicitAny: platform is validated by selectOne options above
     const adapter = registry.get(platform as any);
     const encryptedConfig = await adapter.validateAndEncryptConfig(rawConfig);
 
@@ -160,15 +159,12 @@ export async function addCommand(): Promise<void> {
 }
 
 async function promptConfigFromSchema(
-  // biome-ignore lint/suspicious/noExplicitAny: Introspecting Zod schema internals at runtime
   schema: any,
 ): Promise<Record<string, unknown>> {
   const config: Record<string, unknown> = {};
-  // biome-ignore lint/suspicious/noExplicitAny: Zod shape is untyped at runtime
   const shape = schema.shape as Record<string, any>;
 
   for (const [fieldName, fieldDef] of Object.entries(shape)) {
-    // biome-ignore lint/suspicious/noExplicitAny: Zod internal structure
     const fd = fieldDef as any;
     const meta = fd?._zod?.bag?.meta as
       | { description?: string; examples?: unknown[] }

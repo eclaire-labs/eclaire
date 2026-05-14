@@ -1,5 +1,6 @@
 // schemas/bookmarks-routes.ts
 import { resolver } from "hono-openapi";
+
 import {
   BookmarkSchema,
   CreateBookmarkSchema,

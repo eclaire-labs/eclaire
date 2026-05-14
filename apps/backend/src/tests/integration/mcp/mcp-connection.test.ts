@@ -12,6 +12,7 @@ import {
   type TestMcpServer,
 } from "@eclaire/ai";
 import { afterEach, describe, expect, it } from "vitest";
+
 import {
   createEchoServer,
   createFilterTestServer,

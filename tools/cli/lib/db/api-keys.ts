@@ -5,6 +5,7 @@
 
 import { generateApiKeyId, generateSecurityId } from "@eclaire/core";
 import { and, eq } from "drizzle-orm";
+
 import {
   formatApiKeyForDisplay,
   generateFullApiKey,
@@ -39,13 +40,9 @@ export interface CreateApiKeyInput {
 }
 
 type DbQuery = {
-  // biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type, queries work across all dialects
   db: any;
-  // biome-ignore lint/suspicious/noExplicitAny: schema table refs are dialect-polymorphic
   actorCredentials: any;
-  // biome-ignore lint/suspicious/noExplicitAny: schema table refs are dialect-polymorphic
   actorGrants: any;
-  // biome-ignore lint/suspicious/noExplicitAny: schema table refs are dialect-polymorphic
   actors: any;
 };
 

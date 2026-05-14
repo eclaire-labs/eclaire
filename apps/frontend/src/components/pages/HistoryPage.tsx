@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, Clock, Filter, Search, User, X } from "lucide-react";
 import { useState } from "react";
+
 import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -59,9 +60,7 @@ interface HistoryItem {
   itemType: HistoryItemType;
   itemId: string;
   itemName: string;
-  // biome-ignore lint/suspicious/noExplicitAny: history data shape varies by action type
   beforeData: any | null;
-  // biome-ignore lint/suspicious/noExplicitAny: history data shape varies by action type
   afterData: any | null;
   actor: HistoryActor;
   timestamp: string;
@@ -284,7 +283,6 @@ export default function HistoryPage() {
   };
 
   // Adapter function to safely map auth user to UserAvatar expected format
-  // biome-ignore lint/suspicious/noExplicitAny: auth user type varies across providers
   const adaptUserForAvatar = (user: any) => {
     if (!user) {
       return {
@@ -538,7 +536,6 @@ export default function HistoryPage() {
       {isLoading ? (
         <div className="grid gap-4 grid-cols-1">
           {Array.from({ length: 5 }).map((_, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
             <Card key={index} className="animate-pulse">
               <CardHeader className="pb-2">
                 <div className="h-5 bg-muted rounded w-1/4 mb-2"></div>
@@ -604,9 +601,7 @@ export default function HistoryPage() {
                       )}
                       {item.actor === "human"
                         ? auth?.user
-                          ? // biome-ignore lint/suspicious/noExplicitAny: auth user type lacks displayName/name
-                            (auth.user as any).displayName ||
-                            // biome-ignore lint/suspicious/noExplicitAny: auth user type lacks displayName/name
+                          ? (auth.user as any).displayName ||
                             (auth.user as any).name ||
                             auth.user.email ||
                             "You"

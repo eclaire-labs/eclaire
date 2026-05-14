@@ -10,6 +10,7 @@
  */
 
 import { desc, eq } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 import { channelRegistry } from "../../lib/channels.js";
 import {
@@ -60,7 +61,6 @@ async function updateTaskDenormalized(
   await db.update(schema.tasks).set(fields).where(eq(schema.tasks.id, taskId));
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: job context shape varies by queue driver
 export default async function processTaskOccurrence(ctx: any): Promise<void> {
   const data = ctx.job.data as TaskOccurrenceJobData;
   const { occurrenceId, taskId, userId, kind, prompt } = data;
@@ -295,9 +295,8 @@ async function processAgentExecution(
   if (executorActorId) context.agentActorId = executorActorId;
 
   // Execute via AI agent with timeout
-  const { processPromptRequest } = await import(
-    "../../lib/agent/prompt-service.js"
-  );
+  const { processPromptRequest } =
+    await import("../../lib/agent/prompt-service.js");
 
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(
@@ -326,9 +325,8 @@ async function processAgentExecution(
   // Post output as a task comment (skip if agent produced no text output)
   if (output.trim()) {
     try {
-      const { createTaskComment: createComment } = await import(
-        "../../lib/services/taskComments.js"
-      );
+      const { createTaskComment: createComment } =
+        await import("../../lib/services/taskComments.js");
       // Use a system caller for agent-generated comments
       await createComment(
         { taskId, content: output },

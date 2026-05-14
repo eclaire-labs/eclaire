@@ -4,6 +4,7 @@
  */
 
 import { eq } from "drizzle-orm";
+
 import { getDb } from "./index.js";
 
 export const KNOWN_SETTINGS_KEYS: Record<string, "string" | "boolean"> = {
@@ -13,7 +14,6 @@ export const KNOWN_SETTINGS_KEYS: Record<string, "string" | "boolean"> = {
   "instance.registrationEnabled": "boolean",
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type
 function query(): { db: any; instanceSettings: any } {
   const { db, schema } = getDb();
   return { db, instanceSettings: schema.instanceSettings };

@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { getPhotoById } from "../../services/photos.js";
 
 const inputSchema = z.object({

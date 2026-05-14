@@ -1,4 +1,5 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+
 import { AiSidebar } from "@/components/sidebar/ai-sidebar";
 import { AppRail } from "@/components/sidebar/app-rail";
 import { ContentSidebar } from "@/components/sidebar/content-sidebar";

@@ -7,6 +7,7 @@
  */
 
 import WebSocket from "ws";
+
 import type { RealtimeTranscriptionClient } from "./types.js";
 
 export interface MlxRealtimeConfig {

@@ -7,6 +7,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import {
   Tooltip,
   TooltipContent,
@@ -102,7 +103,6 @@ export function ProcessingStatusIcon({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          {/* biome-ignore lint/a11y/useSemanticElements: icon wrapper not suited for button element */}
           <div
             // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
             role="button"

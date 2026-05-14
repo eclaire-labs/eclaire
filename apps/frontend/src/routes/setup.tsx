@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+
 import { Skeleton } from "@/components/ui/skeleton";
 
 const SetupWizard = lazy(() => import("@/components/setup/SetupWizard"));

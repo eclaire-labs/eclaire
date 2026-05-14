@@ -3,6 +3,7 @@ import type {
   ApiKeyScope,
   ApiKeyScopeCatalogItem,
 } from "@eclaire/api-types";
+
 import { ForbiddenError } from "./errors.js";
 
 export type AuthMethod = "session" | "api_key" | "localhost";

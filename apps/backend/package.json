@@ -1,27 +1,23 @@
 {
   "name": "@eclaire/backend",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
-  "packageManager": "pnpm@11.0.1",
-  "license": "MIT",
   "description": "Eclaire backend API server",
+  "homepage": "https://eclaire.co/",
+  "bugs": {
+    "url": "https://github.com/eclaire-labs/eclaire/issues"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/eclaire-labs/eclaire.git",
     "directory": "apps/backend"
   },
-  "bugs": {
-    "url": "https://github.com/eclaire-labs/eclaire/issues"
-  },
-  "homepage": "https://eclaire.co/",
-  "main": "dist/src/index.js",
   "files": [
     "dist"
   ],
-  "engines": {
-    "node": "^24.0.0"
-  },
+  "type": "module",
+  "main": "dist/src/index.js",
   "scripts": {
     "dev": "ECLAIRE_HOME=../.. ECLAIRE_RUNTIME=local NODE_ENV=development NODE_OPTIONS='--conditions=development' tsx watch src/startup.ts",
     "dev:nowatch": "ECLAIRE_HOME=../.. ECLAIRE_RUNTIME=local NODE_ENV=development NODE_OPTIONS='--conditions=development' tsx src/startup.ts",
@@ -30,10 +26,10 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "start": "NODE_ENV=production node dist/src/index.js",
     "config:show": "ECLAIRE_RUNTIME=local tsx src/scripts/config-show.ts",
-    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
-    "format": "biome format --write ./",
-    "check": "biome check ./",
-    "fix": "biome check --write ./",
+    "lint": "oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "fix": "oxlint --fix --tsconfig ../../tsconfig.oxlint.json . && oxfmt .",
     "db:migrate:apply": "pnpm --filter @eclaire/db db:migrate",
     "db:migrate:status": "pnpm --filter @eclaire/db db:migrate:status",
     "db:seed:test": "NODE_ENV=development tsx scripts/db-seed.ts --demo",
@@ -142,7 +138,6 @@
     "zod": "4.4.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@types/bcrypt": "6.0.0",
     "@types/better-sqlite3": "7.6.13",
     "@types/html-to-text": "9.0.4",
@@ -158,11 +153,16 @@
     "@types/ws": "8.18.1",
     "drizzle-kit": "0.31.10",
     "mime-types": "3.0.2",
+    "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "playwright": "1.59.1",
     "supertest": "7.2.2",
     "tsc-alias": "1.8.16",
     "typescript": "catalog:",
     "vitest": "4.1.5"
-  }
+  },
+  "engines": {
+    "node": "^24.0.0"
+  },
+  "packageManager": "pnpm@11.0.1"
 }

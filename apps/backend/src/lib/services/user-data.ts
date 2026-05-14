@@ -1,8 +1,10 @@
 import path from "node:path";
+
 import { verifyPassword } from "better-auth/crypto";
 import { and, count, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
+
 import { db, dbType, queueJobs, schema, txManager } from "../../db/index.js";
 import { NotFoundError, ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
@@ -551,7 +553,6 @@ export async function getActivityTimeline(userId: string, days: number = 30) {
     ]);
 
     // Create a map of all dates for the specified number of days
-    // biome-ignore lint/suspicious/noExplicitAny: dynamic activity map shape
     const activityMap = new Map<string, any>();
     for (let i = 0; i < days; i++) {
       const date = new Date();

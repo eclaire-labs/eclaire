@@ -4,7 +4,9 @@
  */
 
 import fs from "node:fs";
+
 import { isAIInitialized, validateAIConfigOnStartup } from "@eclaire/ai";
+
 import { config as appConfig } from "../config/index.js";
 import { initializeAI, initializeMcp } from "../lib/ai-init.js";
 import { createChildLogger } from "../lib/logger.js";

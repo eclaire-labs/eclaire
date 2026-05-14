@@ -1,6 +1,7 @@
 import { getCurrentModelConfig } from "@eclaire/ai";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
+
 import { createChildLogger } from "../lib/logger.js";
 import { withAuth } from "../middleware/with-auth.js";
 import { getCurrentModelRouteDescription } from "../schemas/model-routes.js";

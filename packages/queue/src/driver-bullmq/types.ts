@@ -4,6 +4,7 @@
 
 import type { WorkerOptions as BullMQWorkerOptions } from "bullmq";
 import type { Redis, RedisOptions } from "ioredis";
+
 import type {
   BackoffStrategy,
   JobEventCallbacks,

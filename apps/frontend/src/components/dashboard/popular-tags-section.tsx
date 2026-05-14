@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Tag } from "lucide-react";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePopularTags } from "@/hooks/use-popular-tags";
 import { useSidebarPreferences } from "@/hooks/use-sidebar-preferences";

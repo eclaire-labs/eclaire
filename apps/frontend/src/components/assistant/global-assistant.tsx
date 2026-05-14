@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+
 import { ChatPanel } from "@/components/assistant/chat-panel";
 import { ConversationHistoryDialog } from "@/components/assistant/conversation-history-dialog";
 import type { ToolCall } from "@/components/assistant/tool-execution-tracker";

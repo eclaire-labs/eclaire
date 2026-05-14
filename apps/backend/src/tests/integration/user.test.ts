@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+
 import {
   BASE_URL,
   createAuthenticatedFetch,

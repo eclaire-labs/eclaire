@@ -1,5 +1,6 @@
 import { generateConversationId } from "@eclaire/core";
 import { and, count, desc, eq, ne, or } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 
 const { conversations, messages } = schema;
@@ -40,7 +41,6 @@ export interface ConversationWithMessages {
     thinkingContent?: string | null;
     toolCalls?: ToolCallSummary[];
     createdAt: Date;
-    // biome-ignore lint/suspicious/noExplicitAny: JSON metadata blob
     metadata?: any;
   }>;
 }

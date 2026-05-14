@@ -7,6 +7,7 @@
 
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+
 import { PGlite } from "@electric-sql/pglite";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import Database from "better-sqlite3";

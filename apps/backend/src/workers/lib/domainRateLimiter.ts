@@ -469,7 +469,6 @@ export class DomainRateLimiter {
         recentFailures: [],
       });
     }
-    // biome-ignore lint/style/noNonNullAssertion: guarded by .has() check and .set() above
     return this.domainStates.get(domain)!;
   }
 

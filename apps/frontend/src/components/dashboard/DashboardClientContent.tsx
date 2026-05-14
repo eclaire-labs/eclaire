@@ -9,6 +9,7 @@ import {
   StickyNote,
 } from "lucide-react";
 import { useCallback, useState } from "react";
+
 import { ActivityTimelineChart } from "@/components/dashboard/ActivityTimelineChart";
 import { AssetOverviewCards } from "@/components/dashboard/AssetOverviewCards";
 import { ComingUpWidget } from "@/components/dashboard/ComingUpWidget";
@@ -30,15 +31,10 @@ import { apiGet } from "@/lib/api-client";
 // Props passed from the Server Component
 interface DashboardClientContentProps {
   userName: string;
-  // biome-ignore lint/suspicious/noExplicitAny: untyped dashboard API response
   initialStats: any;
-  // biome-ignore lint/suspicious/noExplicitAny: untyped dashboard API response
   initialActivity: any[];
-  // biome-ignore lint/suspicious/noExplicitAny: untyped dashboard API response
   initialTimeline: any[];
-  // biome-ignore lint/suspicious/noExplicitAny: untyped dashboard API response
   initialDueItems: any;
-  // biome-ignore lint/suspicious/noExplicitAny: untyped dashboard API response
   initialQuickStats: any;
 }
 

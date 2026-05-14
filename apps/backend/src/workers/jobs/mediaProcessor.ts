@@ -4,8 +4,10 @@ import { readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
+
 import { type AIMessage, callAI } from "@eclaire/ai";
 import { type JobContext, PermanentError } from "@eclaire/queue/core";
+
 import { createChildLogger } from "../../lib/logger.js";
 import { isAudioAvailable, transcribe } from "../../lib/services/audio.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
@@ -206,14 +208,8 @@ async function extractVideoMetadata(
         const format = data.format || {};
         const streams = data.streams || [];
 
-        const videoStream = streams.find(
-          // biome-ignore lint/suspicious/noExplicitAny: ffprobe stream output is untyped
-          (s: any) => s.codec_type === "video",
-        );
-        const audioStream = streams.find(
-          // biome-ignore lint/suspicious/noExplicitAny: ffprobe stream output is untyped
-          (s: any) => s.codec_type === "audio",
-        );
+        const videoStream = streams.find((s: any) => s.codec_type === "video");
+        const audioStream = streams.find((s: any) => s.codec_type === "audio");
 
         let frameRate: number | undefined;
         if (videoStream?.r_frame_rate) {
@@ -340,11 +336,7 @@ async function generateThumbnail(
 
 // --- AI helpers ---
 
-function parseModelResponse(
-  // biome-ignore lint/suspicious/noExplicitAny: AI model response can be string or pre-parsed object
-  responseText: string | any,
-  // biome-ignore lint/suspicious/noExplicitAny: AI model returns dynamic JSON output
-): any {
+function parseModelResponse(responseText: string | any): any {
   try {
     if (typeof responseText === "object" && responseText !== null) {
       if (
@@ -379,7 +371,6 @@ function parseModelResponse(
 }
 
 function generateMediaContentMarkdown(
-  // biome-ignore lint/suspicious/noExplicitAny: extractedData contains dynamic AI analysis results
   extractedData: Record<string, any>,
 ): string {
   const sections: string[] = [];

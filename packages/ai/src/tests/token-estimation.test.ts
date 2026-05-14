@@ -5,6 +5,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
+
 import { checkContextFit, estimateTokenCount } from "../token-estimation.js";
 import type { AIMessage } from "../types.js";
 import { createMockLoggerFactory } from "./setup.js";

@@ -12,6 +12,7 @@ import { generateTagId } from "@eclaire/core/id";
 import { and, eq, inArray, type SQL } from "drizzle-orm";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+
 import * as schemaModule from "../../schema/postgres.js";
 import {
   type BaseRepository,
@@ -40,17 +41,13 @@ function wrapPgTx(drizzleTx: DrizzlePgTx): Tx {
   // Helper to create a repository for a given table
   function createRepository(
     tableName: TxTableName,
-    // biome-ignore lint/suspicious/noExplicitAny: dynamic table repository — types resolved at runtime
   ): BaseRepository<any, any, any> {
-    // biome-ignore lint/suspicious/noExplicitAny: dynamic table lookup from schema
     const table = schema[tableName] as any;
 
     return {
-      // biome-ignore lint/suspicious/noExplicitAny: dynamic insert values
       async insert(values: any): Promise<void> {
         await drizzleTx.insert(table).values(values);
       },
-      // biome-ignore lint/suspicious/noExplicitAny: dynamic update values
       async update(where: SQL | undefined, values: any): Promise<void> {
         if (!where) return;
         await drizzleTx.update(table).set(values).where(where);
@@ -59,7 +56,6 @@ function wrapPgTx(drizzleTx: DrizzlePgTx): Tx {
         if (!where) return;
         await drizzleTx.delete(table).where(where);
       },
-      // biome-ignore lint/suspicious/noExplicitAny: dynamic select return type
       async findFirst(where: SQL | undefined): Promise<any | undefined> {
         const baseQuery = drizzleTx.select().from(table);
         const results = where
@@ -67,7 +63,6 @@ function wrapPgTx(drizzleTx: DrizzlePgTx): Tx {
           : await baseQuery.limit(1);
         return results[0];
       },
-      // biome-ignore lint/suspicious/noExplicitAny: dynamic select return type
       async findMany(where: SQL | undefined): Promise<any[]> {
         const baseQuery = drizzleTx.select().from(table);
         return where ? await baseQuery.where(where) : await baseQuery;

@@ -10,6 +10,7 @@ import {
   type RuntimeToolDefinition,
   type ToolCallingMode,
 } from "@eclaire/ai";
+
 import type { AgentDefinition, UserContext } from "./types.js";
 
 export type { ToolCallingMode } from "@eclaire/ai";

@@ -9,6 +9,7 @@ import { initDiscordAdapter } from "@eclaire/channels-discord";
 import { initSlackAdapter } from "@eclaire/channels-slack";
 import { initTelegramAdapter } from "@eclaire/channels-telegram";
 import { and, eq } from "drizzle-orm";
+
 import { decrypt, encrypt } from "./encryption.js";
 import { getDb } from "./index.js";
 
@@ -34,7 +35,6 @@ function channelQueryDeps(platform: string) {
       userId: string,
     ): Promise<ChannelRecord | null> => {
       const { db, schema } = getDb();
-      // biome-ignore lint/suspicious/noExplicitAny: CLI db types are loosely typed
       return (db as any).query.channels.findFirst({
         where: and(
           eq(schema.channels.id, channelId),
@@ -46,7 +46,6 @@ function channelQueryDeps(platform: string) {
       channelId: string,
     ): Promise<ChannelRecord | null> => {
       const { db, schema } = getDb();
-      // biome-ignore lint/suspicious/noExplicitAny: CLI db types are loosely typed
       return (db as any).query.channels.findFirst({
         where: and(
           eq(schema.channels.id, channelId),
@@ -57,7 +56,6 @@ function channelQueryDeps(platform: string) {
     },
     findActiveChannels: async (): Promise<ChannelRecord[]> => {
       const { db, schema } = getDb();
-      // biome-ignore lint/suspicious/noExplicitAny: CLI db types are loosely typed
       return (db as any).query.channels.findMany({
         where: and(
           eq(schema.channels.platform, platform as never),

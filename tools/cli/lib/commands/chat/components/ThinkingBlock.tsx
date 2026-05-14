@@ -1,4 +1,5 @@
 import { Box, Text } from "ink";
+
 import type { DisplayOptions } from "../types.js";
 import { Spinner } from "./Spinner.js";
 

@@ -3,6 +3,7 @@
  */
 
 import { Command } from "commander";
+
 import { addCommand } from "./add.js";
 import { disableCommand } from "./disable.js";
 import { editCommand } from "./edit.js";

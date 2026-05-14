@@ -6,6 +6,7 @@
  */
 
 import { beforeAll, describe, expect, it } from "vitest";
+
 import { PocketTtsClient } from "../../pocket-tts-client.js";
 import { PocketTtsProvider } from "../../pocket-tts-provider.js";
 import { hasWavHeader } from "../setup.js";

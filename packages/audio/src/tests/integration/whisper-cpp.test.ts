@@ -6,6 +6,7 @@
  */
 
 import { beforeAll, describe, expect, it } from "vitest";
+
 import { WhisperCppClient } from "../../whisper-cpp-client.js";
 import { WhisperCppProvider } from "../../whisper-cpp-provider.js";
 import { generateSilenceWav } from "../setup.js";

@@ -1,8 +1,8 @@
 import { normalizeApiUrl } from "@/lib/api-client";
 import type { Media } from "@/types/media";
+
 import { createCrudHooks, type ListParams } from "./create-crud-hooks";
 
-// biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 export const transformMediaData = (raw: any): Media => ({
   id: raw.id,
   title: raw.title,

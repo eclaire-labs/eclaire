@@ -14,6 +14,7 @@
 
 import { beforeAll, describe, expect, it } from "vitest";
 import WebSocket from "ws";
+
 import {
   BASE_URL,
   createAuthenticatedFetch,
@@ -206,73 +207,85 @@ describe("Audio Service Integration Tests", { timeout: 60_000 }, () => {
       expect(body.error).toContain("file");
     });
 
-    it("transcribes audio using default provider (mlx-audio)", {
-      timeout: 30_000,
-    }, async ({ skip }) => {
-      if (!mlxAvailable) skip();
+    it(
+      "transcribes audio using default provider (mlx-audio)",
+      {
+        timeout: 30_000,
+      },
+      async ({ skip }) => {
+        if (!mlxAvailable) skip();
 
-      const wav = generateSilenceWav(1);
-      const formData = new FormData();
-      formData.append(
-        "file",
-        new Blob([new Uint8Array(wav)], { type: "audio/wav" }),
-        "silence.wav",
-      );
+        const wav = generateSilenceWav(1);
+        const formData = new FormData();
+        formData.append(
+          "file",
+          new Blob([new Uint8Array(wav)], { type: "audio/wav" }),
+          "silence.wav",
+        );
 
-      const res = await authenticatedFetch(
-        `${BASE_URL}/speech/transcriptions`,
-        { method: "POST", body: formData },
-      );
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as { text: string };
-      expect(typeof body.text).toBe("string");
-    });
+        const res = await authenticatedFetch(
+          `${BASE_URL}/speech/transcriptions`,
+          { method: "POST", body: formData },
+        );
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as { text: string };
+        expect(typeof body.text).toBe("string");
+      },
+    );
 
-    it("transcribes audio with explicit provider=mlx-audio", {
-      timeout: 30_000,
-    }, async ({ skip }) => {
-      if (!mlxAvailable) skip();
+    it(
+      "transcribes audio with explicit provider=mlx-audio",
+      {
+        timeout: 30_000,
+      },
+      async ({ skip }) => {
+        if (!mlxAvailable) skip();
 
-      const wav = generateSilenceWav(1);
-      const formData = new FormData();
-      formData.append(
-        "file",
-        new Blob([new Uint8Array(wav)], { type: "audio/wav" }),
-        "silence.wav",
-      );
-      formData.append("provider", "mlx-audio");
+        const wav = generateSilenceWav(1);
+        const formData = new FormData();
+        formData.append(
+          "file",
+          new Blob([new Uint8Array(wav)], { type: "audio/wav" }),
+          "silence.wav",
+        );
+        formData.append("provider", "mlx-audio");
 
-      const res = await authenticatedFetch(
-        `${BASE_URL}/speech/transcriptions`,
-        { method: "POST", body: formData },
-      );
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as { text: string };
-      expect(typeof body.text).toBe("string");
-    });
+        const res = await authenticatedFetch(
+          `${BASE_URL}/speech/transcriptions`,
+          { method: "POST", body: formData },
+        );
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as { text: string };
+        expect(typeof body.text).toBe("string");
+      },
+    );
 
-    it("transcribes audio with explicit provider=whisper-cpp", {
-      timeout: 30_000,
-    }, async ({ skip }) => {
-      if (!whisperCppAvailable) skip();
+    it(
+      "transcribes audio with explicit provider=whisper-cpp",
+      {
+        timeout: 30_000,
+      },
+      async ({ skip }) => {
+        if (!whisperCppAvailable) skip();
 
-      const wav = generateSilenceWav(1);
-      const formData = new FormData();
-      formData.append(
-        "file",
-        new Blob([new Uint8Array(wav)], { type: "audio/wav" }),
-        "silence.wav",
-      );
-      formData.append("provider", "whisper-cpp");
+        const wav = generateSilenceWav(1);
+        const formData = new FormData();
+        formData.append(
+          "file",
+          new Blob([new Uint8Array(wav)], { type: "audio/wav" }),
+          "silence.wav",
+        );
+        formData.append("provider", "whisper-cpp");
 
-      const res = await authenticatedFetch(
-        `${BASE_URL}/speech/transcriptions`,
-        { method: "POST", body: formData },
-      );
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as { text: string };
-      expect(typeof body.text).toBe("string");
-    });
+        const res = await authenticatedFetch(
+          `${BASE_URL}/speech/transcriptions`,
+          { method: "POST", body: formData },
+        );
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as { text: string };
+        expect(typeof body.text).toBe("string");
+      },
+    );
   });
 
   // -----------------------------------------------------------------------
@@ -329,85 +342,95 @@ describe("Audio Service Integration Tests", { timeout: 60_000 }, () => {
       expect(res.status).toBe(401);
     });
 
-    it("synthesizes mp3 with valid header", { timeout: 30_000 }, async ({
-      skip,
-    }) => {
-      if (!mlxAvailable) skip();
+    it(
+      "synthesizes mp3 with valid header",
+      { timeout: 30_000 },
+      async ({ skip }) => {
+        if (!mlxAvailable) skip();
 
-      const res = await authenticatedFetch(`${BASE_URL}/speech/synthesis`, {
-        method: "POST",
-        body: JSON.stringify({
-          text: "Hello world",
-          format: "mp3",
-        }),
-      });
-      expect(res.status).toBe(200);
-      expect(res.headers.get("content-type")).toBe("audio/mpeg");
+        const res = await authenticatedFetch(`${BASE_URL}/speech/synthesis`, {
+          method: "POST",
+          body: JSON.stringify({
+            text: "Hello world",
+            format: "mp3",
+          }),
+        });
+        expect(res.status).toBe(200);
+        expect(res.headers.get("content-type")).toBe("audio/mpeg");
 
-      const buf = Buffer.from(await res.arrayBuffer());
-      expect(buf.length).toBeGreaterThan(1000);
-      expect(hasMp3Header(buf)).toBe(true);
-    });
+        const buf = Buffer.from(await res.arrayBuffer());
+        expect(buf.length).toBeGreaterThan(1000);
+        expect(hasMp3Header(buf)).toBe(true);
+      },
+    );
 
-    it("synthesizes wav with valid RIFF header", { timeout: 30_000 }, async ({
-      skip,
-    }) => {
-      if (!mlxAvailable) skip();
+    it(
+      "synthesizes wav with valid RIFF header",
+      { timeout: 30_000 },
+      async ({ skip }) => {
+        if (!mlxAvailable) skip();
 
-      const res = await authenticatedFetch(`${BASE_URL}/speech/synthesis`, {
-        method: "POST",
-        body: JSON.stringify({
-          text: "Hello world",
-          format: "wav",
-        }),
-      });
-      expect(res.status).toBe(200);
-      expect(res.headers.get("content-type")).toBe("audio/wav");
+        const res = await authenticatedFetch(`${BASE_URL}/speech/synthesis`, {
+          method: "POST",
+          body: JSON.stringify({
+            text: "Hello world",
+            format: "wav",
+          }),
+        });
+        expect(res.status).toBe(200);
+        expect(res.headers.get("content-type")).toBe("audio/wav");
 
-      const buf = Buffer.from(await res.arrayBuffer());
-      expect(buf.length).toBeGreaterThan(1000);
-      expect(hasWavHeader(buf)).toBe(true);
-    });
+        const buf = Buffer.from(await res.arrayBuffer());
+        expect(buf.length).toBeGreaterThan(1000);
+        expect(hasWavHeader(buf)).toBe(true);
+      },
+    );
 
-    it("streams audio when stream=true", { timeout: 30_000 }, async ({
-      skip,
-    }) => {
-      if (!mlxAvailable) skip();
+    it(
+      "streams audio when stream=true",
+      { timeout: 30_000 },
+      async ({ skip }) => {
+        if (!mlxAvailable) skip();
 
-      const res = await authenticatedFetch(`${BASE_URL}/speech/synthesis`, {
-        method: "POST",
-        body: JSON.stringify({
-          text: "Hello world",
-          format: "mp3",
-          stream: true,
-        }),
-      });
-      expect(res.status).toBe(200);
-      expect(res.headers.get("content-type")).toBe("audio/mpeg");
-      expect(res.headers.get("transfer-encoding")).toBe("chunked");
+        const res = await authenticatedFetch(`${BASE_URL}/speech/synthesis`, {
+          method: "POST",
+          body: JSON.stringify({
+            text: "Hello world",
+            format: "mp3",
+            stream: true,
+          }),
+        });
+        expect(res.status).toBe(200);
+        expect(res.headers.get("content-type")).toBe("audio/mpeg");
+        expect(res.headers.get("transfer-encoding")).toBe("chunked");
 
-      // Consume the stream to verify it's readable
-      const buf = Buffer.from(await res.arrayBuffer());
-      expect(buf.length).toBeGreaterThan(0);
-    });
+        // Consume the stream to verify it's readable
+        const buf = Buffer.from(await res.arrayBuffer());
+        expect(buf.length).toBeGreaterThan(0);
+      },
+    );
 
-    it("routes to explicit provider via body.provider", {
-      timeout: 30_000,
-    }, async ({ skip }) => {
-      if (!mlxAvailable) skip();
+    it(
+      "routes to explicit provider via body.provider",
+      {
+        timeout: 30_000,
+      },
+      async ({ skip }) => {
+        if (!mlxAvailable) skip();
 
-      const res = await authenticatedFetch(`${BASE_URL}/speech/synthesis`, {
-        method: "POST",
-        body: JSON.stringify({
-          text: "Hello",
-          provider: "mlx-audio",
-        }),
-      });
-      expect(res.status).toBe(200);
+        const res = await authenticatedFetch(`${BASE_URL}/speech/synthesis`, {
+          method: "POST",
+          body: JSON.stringify({
+            text: "Hello",
+            provider: "mlx-audio",
+          }),
+        });
+        expect(res.status).toBe(200);
 
-      const buf = Buffer.from(await res.arrayBuffer());
-      expect(buf.length).toBeGreaterThan(0);
-    });
+        const buf = Buffer.from(await res.arrayBuffer());
+        expect(buf.length).toBeGreaterThan(0);
+      },
+    );
   });
 
   // -----------------------------------------------------------------------
@@ -444,103 +467,109 @@ describe("Audio Service Integration Tests", { timeout: 60_000 }, () => {
       });
     });
 
-    it("upgrades and receives connected event", { timeout: 15_000 }, async ({
-      skip,
-    }) => {
-      if (!mlxAvailable) skip();
+    it(
+      "upgrades and receives connected event",
+      { timeout: 15_000 },
+      async ({ skip }) => {
+        if (!mlxAvailable) skip();
 
-      const url = buildWsUrl("/transcriptions/stream");
-      const ws = new WebSocket(url, {
-        headers: { Authorization: `Bearer ${TEST_API_KEY}` },
-      });
+        const url = buildWsUrl("/transcriptions/stream");
+        const ws = new WebSocket(url, {
+          headers: { Authorization: `Bearer ${TEST_API_KEY}` },
+        });
 
-      try {
-        const msg = await new Promise<Record<string, unknown>>(
-          (resolve, reject) => {
-            const timer = setTimeout(
-              () => reject(new Error("Timeout")),
-              10_000,
-            );
+        try {
+          const msg = await new Promise<Record<string, unknown>>(
+            (resolve, reject) => {
+              const timer = setTimeout(
+                () => reject(new Error("Timeout")),
+                10_000,
+              );
 
-            ws.on("message", (data) => {
-              clearTimeout(timer);
-              resolve(JSON.parse(data.toString()) as Record<string, unknown>);
-            });
-
-            ws.on("error", (err) => {
-              clearTimeout(timer);
-              reject(err);
-            });
-
-            ws.on("unexpected-response", (_req, res) => {
-              clearTimeout(timer);
-              reject(new Error(`Unexpected HTTP ${res.statusCode}`));
-            });
-          },
-        );
-
-        expect(msg.type).toBe("connected");
-      } finally {
-        ws.close();
-      }
-    });
-
-    it("receives error for provider without streaming STT support", {
-      timeout: 15_000,
-    }, async ({ skip }) => {
-      if (!audioAvailable) skip();
-
-      // whisper-cpp does not support streaming STT
-      const url = buildWsUrl("/transcriptions/stream", {
-        provider: "whisper-cpp",
-      });
-      const ws = new WebSocket(url, {
-        headers: { Authorization: `Bearer ${TEST_API_KEY}` },
-      });
-
-      try {
-        const msg = await new Promise<Record<string, unknown>>(
-          (resolve, reject) => {
-            const timer = setTimeout(
-              () => reject(new Error("Timeout")),
-              10_000,
-            );
-
-            ws.on("message", (data) => {
-              const parsed = JSON.parse(data.toString()) as Record<
-                string,
-                unknown
-              >;
-              if (parsed.type === "error") {
+              ws.on("message", (data) => {
                 clearTimeout(timer);
-                resolve(parsed);
-              }
-            });
+                resolve(JSON.parse(data.toString()) as Record<string, unknown>);
+              });
 
-            ws.on("close", () => {
-              clearTimeout(timer);
-              // Server may close before sending error in some cases
-              resolve({ type: "error", error: "closed" });
-            });
+              ws.on("error", (err) => {
+                clearTimeout(timer);
+                reject(err);
+              });
 
-            ws.on("error", (err) => {
-              clearTimeout(timer);
-              reject(err);
-            });
+              ws.on("unexpected-response", (_req, res) => {
+                clearTimeout(timer);
+                reject(new Error(`Unexpected HTTP ${res.statusCode}`));
+              });
+            },
+          );
 
-            ws.on("unexpected-response", (_req, res) => {
-              clearTimeout(timer);
-              reject(new Error(`Unexpected HTTP ${res.statusCode}`));
-            });
-          },
-        );
+          expect(msg.type).toBe("connected");
+        } finally {
+          ws.close();
+        }
+      },
+    );
 
-        expect(msg.type).toBe("error");
-        expect(typeof msg.error).toBe("string");
-      } finally {
-        ws.close();
-      }
-    });
+    it(
+      "receives error for provider without streaming STT support",
+      {
+        timeout: 15_000,
+      },
+      async ({ skip }) => {
+        if (!audioAvailable) skip();
+
+        // whisper-cpp does not support streaming STT
+        const url = buildWsUrl("/transcriptions/stream", {
+          provider: "whisper-cpp",
+        });
+        const ws = new WebSocket(url, {
+          headers: { Authorization: `Bearer ${TEST_API_KEY}` },
+        });
+
+        try {
+          const msg = await new Promise<Record<string, unknown>>(
+            (resolve, reject) => {
+              const timer = setTimeout(
+                () => reject(new Error("Timeout")),
+                10_000,
+              );
+
+              ws.on("message", (data) => {
+                const parsed = JSON.parse(data.toString()) as Record<
+                  string,
+                  unknown
+                >;
+                if (parsed.type === "error") {
+                  clearTimeout(timer);
+                  resolve(parsed);
+                }
+              });
+
+              ws.on("close", () => {
+                clearTimeout(timer);
+                // Server may close before sending error in some cases
+                resolve({ type: "error", error: "closed" });
+              });
+
+              ws.on("error", (err) => {
+                clearTimeout(timer);
+                reject(err);
+              });
+
+              ws.on("unexpected-response", (_req, res) => {
+                clearTimeout(timer);
+                reject(new Error(`Unexpected HTTP ${res.statusCode}`));
+              });
+            },
+          );
+
+          expect(msg.type).toBe("error");
+          expect(typeof msg.error).toBe("string");
+        } finally {
+          ws.close();
+        }
+      },
+    );
   });
 
   // -----------------------------------------------------------------------
@@ -548,96 +577,102 @@ describe("Audio Service Integration Tests", { timeout: 60_000 }, () => {
   // -----------------------------------------------------------------------
 
   describe("Cross-provider round-trip", () => {
-    it("synthesize → transcribe → fuzzy match", { timeout: 30_000 }, async ({
-      skip,
-    }) => {
-      if (!mlxAvailable) skip();
+    it(
+      "synthesize → transcribe → fuzzy match",
+      { timeout: 30_000 },
+      async ({ skip }) => {
+        if (!mlxAvailable) skip();
 
-      // 1. Synthesize "Hello world" to WAV
-      const synthRes = await authenticatedFetch(
-        `${BASE_URL}/speech/synthesis`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            text: "Hello world",
-            format: "wav",
-          }),
-        },
-      );
-      expect(synthRes.status).toBe(200);
-      const audioBuffer = Buffer.from(await synthRes.arrayBuffer());
-      expect(hasWavHeader(audioBuffer)).toBe(true);
-      expect(audioBuffer.length).toBeGreaterThan(1000);
+        // 1. Synthesize "Hello world" to WAV
+        const synthRes = await authenticatedFetch(
+          `${BASE_URL}/speech/synthesis`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              text: "Hello world",
+              format: "wav",
+            }),
+          },
+        );
+        expect(synthRes.status).toBe(200);
+        const audioBuffer = Buffer.from(await synthRes.arrayBuffer());
+        expect(hasWavHeader(audioBuffer)).toBe(true);
+        expect(audioBuffer.length).toBeGreaterThan(1000);
 
-      // 2. Transcribe the synthesized audio
-      const formData = new FormData();
-      formData.append(
-        "file",
-        new Blob([audioBuffer], { type: "audio/wav" }),
-        "round-trip.wav",
-      );
+        // 2. Transcribe the synthesized audio
+        const formData = new FormData();
+        formData.append(
+          "file",
+          new Blob([audioBuffer], { type: "audio/wav" }),
+          "round-trip.wav",
+        );
 
-      let transcribeRes: Response;
-      try {
-        transcribeRes = await authenticatedFetch(
+        let transcribeRes: Response;
+        try {
+          transcribeRes = await authenticatedFetch(
+            `${BASE_URL}/speech/transcriptions`,
+            { method: "POST", body: formData },
+          );
+        } catch (err) {
+          console.log(
+            `  STT unavailable: ${err instanceof Error ? err.message : err}`,
+          );
+          skip();
+          return;
+        }
+
+        expect(transcribeRes.status).toBe(200);
+        const result = (await transcribeRes.json()) as { text: string };
+
+        // 3. Fuzzy match
+        console.log(`  mlx→mlx round-trip transcription: "${result.text}"`);
+        expect(containsAnyWord(result.text, ["hello", "world"])).toBe(true);
+      },
+    );
+
+    it(
+      "mlx-audio TTS → whisper-cpp STT → fuzzy match",
+      {
+        timeout: 30_000,
+      },
+      async ({ skip }) => {
+        if (!mlxAvailable || !whisperCppAvailable) skip();
+
+        // 1. Synthesize with mlx-audio
+        const synthRes = await authenticatedFetch(
+          `${BASE_URL}/speech/synthesis`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              text: "Hello world",
+              format: "wav",
+              provider: "mlx-audio",
+            }),
+          },
+        );
+        expect(synthRes.status).toBe(200);
+        const audioBuffer = Buffer.from(await synthRes.arrayBuffer());
+
+        // 2. Transcribe with whisper-cpp
+        const formData = new FormData();
+        formData.append(
+          "file",
+          new Blob([audioBuffer], { type: "audio/wav" }),
+          "cross-provider.wav",
+        );
+        formData.append("provider", "whisper-cpp");
+
+        const transcribeRes = await authenticatedFetch(
           `${BASE_URL}/speech/transcriptions`,
           { method: "POST", body: formData },
         );
-      } catch (err) {
-        console.log(
-          `  STT unavailable: ${err instanceof Error ? err.message : err}`,
-        );
-        skip();
-        return;
-      }
+        expect(transcribeRes.status).toBe(200);
+        const result = (await transcribeRes.json()) as { text: string };
 
-      expect(transcribeRes.status).toBe(200);
-      const result = (await transcribeRes.json()) as { text: string };
-
-      // 3. Fuzzy match
-      console.log(`  mlx→mlx round-trip transcription: "${result.text}"`);
-      expect(containsAnyWord(result.text, ["hello", "world"])).toBe(true);
-    });
-
-    it("mlx-audio TTS → whisper-cpp STT → fuzzy match", {
-      timeout: 30_000,
-    }, async ({ skip }) => {
-      if (!mlxAvailable || !whisperCppAvailable) skip();
-
-      // 1. Synthesize with mlx-audio
-      const synthRes = await authenticatedFetch(
-        `${BASE_URL}/speech/synthesis`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            text: "Hello world",
-            format: "wav",
-            provider: "mlx-audio",
-          }),
-        },
-      );
-      expect(synthRes.status).toBe(200);
-      const audioBuffer = Buffer.from(await synthRes.arrayBuffer());
-
-      // 2. Transcribe with whisper-cpp
-      const formData = new FormData();
-      formData.append(
-        "file",
-        new Blob([audioBuffer], { type: "audio/wav" }),
-        "cross-provider.wav",
-      );
-      formData.append("provider", "whisper-cpp");
-
-      const transcribeRes = await authenticatedFetch(
-        `${BASE_URL}/speech/transcriptions`,
-        { method: "POST", body: formData },
-      );
-      expect(transcribeRes.status).toBe(200);
-      const result = (await transcribeRes.json()) as { text: string };
-
-      // 3. Fuzzy match
-      console.log(`  mlx→whisper round-trip transcription: "${result.text}"`);
-      expect(containsAnyWord(result.text, ["hello", "world"])).toBe(true);
-    });
+        // 3. Fuzzy match
+        console.log(`  mlx→whisper round-trip transcription: "${result.text}"`);
+        expect(containsAnyWord(result.text, ["hello", "world"])).toBe(true);
+      },
+    );
   });
 });

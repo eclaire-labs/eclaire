@@ -2,6 +2,7 @@ import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { PLATFORM_METADATA } from "@eclaire/api-types/channels";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+
 import { ActorPicker } from "@/components/shared/ActorPicker";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ import {
   type TelegramConfig,
   useChannels,
 } from "@/hooks/use-channels";
+
 import SlackChannelForm from "./SlackChannelForm";
 import TelegramChannelForm from "./TelegramChannelForm";
 

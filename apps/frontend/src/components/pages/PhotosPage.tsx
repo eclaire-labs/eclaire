@@ -13,6 +13,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
+
 import type { ViewModeDef } from "@/components/list-page";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
@@ -41,9 +42,7 @@ import { useTags } from "@/hooks/use-tags";
 import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/list-page-utils";
 import type { EditPhotoState, Photo } from "@/types/photo";
-import { PhotoGalleryView } from "./photos/PhotoGalleryView";
-import { PhotoListItem } from "./photos/PhotoListItem";
-import { PhotoTileItem } from "./photos/PhotoTileItem";
+
 import {
   formatDimensions,
   formatExposureTime,
@@ -51,7 +50,10 @@ import {
   formatFNumber,
   formatLocation,
 } from "./photos/photo-utils";
+import { PhotoGalleryView } from "./photos/PhotoGalleryView";
+import { PhotoListItem } from "./photos/PhotoListItem";
 import { photosConfig } from "./photos/photos-config";
+import { PhotoTileItem } from "./photos/PhotoTileItem";
 
 // ---------------------------------------------------------------------------
 // Upload constants

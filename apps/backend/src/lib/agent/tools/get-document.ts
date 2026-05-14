@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { getDocumentById } from "../../services/documents.js";
 
 const inputSchema = z.object({

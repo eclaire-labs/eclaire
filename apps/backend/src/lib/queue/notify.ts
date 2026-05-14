@@ -13,6 +13,7 @@ import {
   type NotifyEmitter,
   type NotifyListener,
 } from "@eclaire/queue/driver-db";
+
 import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("queue-notify");

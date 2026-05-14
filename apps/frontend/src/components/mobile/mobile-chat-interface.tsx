@@ -2,6 +2,7 @@ import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import type { SlashItem } from "@eclaire/core/slash";
 import { Bot, Edit2, History, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import { ChatPanel } from "@/components/assistant/chat-panel";
 import type { ToolCall } from "@/components/assistant/tool-execution-tracker";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

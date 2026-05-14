@@ -1,5 +1,6 @@
 // schemas/all-responses.ts
 import z from "zod/v4";
+
 import { paginatedResponseSchema } from "./common.js";
 
 // Base item schema - represents any content type in search results

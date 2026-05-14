@@ -5,6 +5,7 @@
  */
 
 import { Queue } from "bullmq";
+
 import { getErrorMessage } from "../core/error-utils.js";
 import type { ScheduleConfig, Scheduler } from "../core/types.js";
 import { closeRedisConnection, createRedisConnection } from "./connection.js";

@@ -1,6 +1,5 @@
 // Load environment variables before anything else
 import "@eclaire/core";
-
 import {
   createPgliteClient,
   createPostgresClient,
@@ -26,6 +25,7 @@ import {
   drizzle as drizzlePostgres,
   type PostgresJsDatabase,
 } from "drizzle-orm/postgres-js";
+
 import { config } from "../src/config/index.js";
 import { hmacBase64 } from "../src/lib/api-key-security.js";
 
@@ -193,7 +193,6 @@ async function main() {
       },
     ];
 
-    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
     await (db as any)
       .insert(schema.users)
       .values(demoUsersData)
@@ -230,7 +229,6 @@ async function main() {
       },
     ];
 
-    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
     await (db as any)
       .insert(schema.accounts)
       .values(demoAccountsData)
@@ -262,7 +260,6 @@ async function main() {
       },
     ];
 
-    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
     await (db as any)
       .insert(schema.actors)
       .values(demoActorsData)
@@ -279,7 +276,6 @@ async function main() {
       },
     ];
 
-    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
     await (db as any)
       .insert(schema.humanActors)
       .values(demoHumanActorsData)
@@ -308,7 +304,6 @@ async function main() {
       },
     ];
 
-    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
     await (db as any)
       .insert(schema.actorGrants)
       .values(demoGrantsData)
@@ -341,7 +336,6 @@ async function main() {
       },
     ];
 
-    // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
     await (db as any)
       .insert(schema.actorCredentials)
       .values(demoApiKeysData)

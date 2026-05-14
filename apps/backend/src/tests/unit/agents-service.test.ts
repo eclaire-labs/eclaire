@@ -143,7 +143,6 @@ function createChain(rows: () => Record<string, unknown>[]) {
     yield* rows();
   };
   // Make the chain thenable so `await db.select().from()...` works
-  // biome-ignore lint/suspicious/noThenProperty: required for Drizzle-style promise chain mock
   chain.then = (
     resolve: (v: unknown) => void,
     _reject?: (e: unknown) => void,

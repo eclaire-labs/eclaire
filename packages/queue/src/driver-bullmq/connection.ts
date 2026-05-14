@@ -3,6 +3,7 @@
  */
 
 import { Redis, type RedisOptions } from "ioredis";
+
 import { getErrorMessage } from "../core/error-utils.js";
 import type { QueueLogger } from "../core/types.js";
 import type { RedisConfig } from "./types.js";

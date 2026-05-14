@@ -1,5 +1,6 @@
 import { generateMessageId } from "@eclaire/core";
 import { and, asc, count, desc, eq } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 
 const { messages } = schema;
@@ -16,7 +17,6 @@ export interface CreateMessageParams {
   content: string;
   thinkingContent?: string | null;
   toolCalls?: ToolCallSummary[];
-  // biome-ignore lint/suspicious/noExplicitAny: JSON metadata blob from database
   metadata?: any;
 }
 
@@ -29,7 +29,6 @@ export interface MessageEntry {
   thinkingContent?: string | null;
   toolCalls?: ToolCallSummary[];
   createdAt: Date;
-  // biome-ignore lint/suspicious/noExplicitAny: JSON metadata blob from database
   metadata?: any;
 }
 

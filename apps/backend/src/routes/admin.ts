@@ -1,9 +1,9 @@
 import type { ModelConfig, ProviderAuth, ProviderConfig } from "@eclaire/ai";
 import { Hono } from "hono";
 import z from "zod/v4";
+
 import { assertInstanceAdmin } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";
-import { setUserRole } from "../lib/services/admin.js";
 import {
   createUserByAdmin,
   deleteUserByAdmin,
@@ -13,6 +13,7 @@ import {
   revokeAllUserSessions,
   suspendUser,
 } from "../lib/services/admin-lifecycle.js";
+import { setUserRole } from "../lib/services/admin.js";
 import {
   createMcpServer,
   createModel,
@@ -36,12 +37,12 @@ import {
   updateModel,
   updateProvider,
 } from "../lib/services/ai-config.js";
+import type { ImportModelsRequest } from "../lib/services/ai-import-types.js";
 import {
   fetchProviderCatalog,
   inspectImportUrl,
   normalizeImportedModel,
 } from "../lib/services/ai-import.js";
-import type { ImportModelsRequest } from "../lib/services/ai-import-types.js";
 import { listProviderPresets } from "../lib/services/ai-provider-presets.js";
 import {
   getAllInstanceSettings,

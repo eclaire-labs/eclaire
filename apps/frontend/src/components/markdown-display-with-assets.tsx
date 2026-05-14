@@ -4,6 +4,7 @@ import rehypeStringify from "rehype-stringify";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
+
 import { ContentLinkPreview } from "@/components/assistant/content-link-preview";
 import {
   detectContentLinks,
@@ -127,7 +128,6 @@ export function MarkdownDisplayWithAssets({
 
           className,
         )}
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized markdown rendering
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
 

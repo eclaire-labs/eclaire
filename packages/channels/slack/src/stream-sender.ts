@@ -1,4 +1,5 @@
 import type { WebClient } from "@slack/web-api";
+
 import type { SlackLogger, StreamEvent } from "./deps.js";
 import { splitMessage } from "./message-utils.js";
 import { withRetry } from "./retry.js";

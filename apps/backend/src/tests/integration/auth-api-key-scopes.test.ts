@@ -8,6 +8,7 @@
  * Requires a running server at BASE_URL.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
 import {
   BASE_URL,
   createAuthenticatedFetch,

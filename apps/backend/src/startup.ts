@@ -23,7 +23,6 @@ process.on("uncaughtException", (error) => {
 
 // Load environment variables FIRST
 import "@eclaire/core";
-
 // Import config module (buildConfig runs on import, we don't call initConfig here
 // because index.ts will call it - avoid duplicate log output)
 import "./config/index.js";

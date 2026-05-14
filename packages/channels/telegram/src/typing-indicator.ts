@@ -1,4 +1,5 @@
 import type { Telegram } from "telegraf";
+
 import type { TelegramLogger } from "./deps.js";
 
 const MAX_CONSECUTIVE_FAILURES = 10;

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef } from "react";
+
 import { PushToTalkButton } from "@/components/assistant/push-to-talk-button";
 import { SlashPalette } from "@/components/assistant/slash-palette";
 import { Badge } from "@/components/ui/badge";
@@ -57,7 +58,6 @@ export function MessageInput({
   const baseTextRef = useRef<string | null>(null);
 
   // Auto-grow textarea based on content
-  // biome-ignore lint/correctness/useExhaustiveDependencies: value triggers resize recalculation
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {

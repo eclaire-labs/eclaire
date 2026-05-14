@@ -4,12 +4,12 @@ Connect your AI to messaging platforms. Each adapter handles bot lifecycle, stre
 
 ## Packages
 
-| Package | Platform | Install |
-|---|---|---|
-| `@eclaire/channels-core` | Core types & registry | `pnpm add @eclaire/channels-core` |
-| `@eclaire/channels-discord` | Discord | `pnpm add @eclaire/channels-discord discord.js` |
-| `@eclaire/channels-slack` | Slack | `pnpm add @eclaire/channels-slack @slack/bolt @slack/web-api` |
-| `@eclaire/channels-telegram` | Telegram | `pnpm add @eclaire/channels-telegram telegraf` |
+| Package                      | Platform              | Install                                                       |
+| ---------------------------- | --------------------- | ------------------------------------------------------------- |
+| `@eclaire/channels-core`     | Core types & registry | `pnpm add @eclaire/channels-core`                             |
+| `@eclaire/channels-discord`  | Discord               | `pnpm add @eclaire/channels-discord discord.js`               |
+| `@eclaire/channels-slack`    | Slack                 | `pnpm add @eclaire/channels-slack @slack/bolt @slack/web-api` |
+| `@eclaire/channels-telegram` | Telegram              | `pnpm add @eclaire/channels-telegram telegraf`                |
 
 Install only the adapters you need. Each adapter depends on `@eclaire/channels-core` automatically.
 
@@ -24,8 +24,10 @@ const registry = new ChannelRegistry();
 const telegram = initTelegramAdapter({
   // Data access — bring your own database
   findChannel: (id, userId) => db.channels.findOne({ id, userId }),
-  findChannelById: (id) => db.channels.findOne({ id, platform: "telegram", isActive: true }),
-  findActiveChannels: () => db.channels.find({ platform: "telegram", isActive: true }),
+  findChannelById: (id) =>
+    db.channels.findOne({ id, platform: "telegram", isActive: true }),
+  findActiveChannels: () =>
+    db.channels.find({ platform: "telegram", isActive: true }),
 
   // AI — plug in any LLM
   processPromptRequest: async ({ userId, prompt }) => {
@@ -57,25 +59,25 @@ await registry.startAll();
 
 Each adapter uses **dependency injection** — no hard dependencies on any database, ORM, or AI library. You provide callbacks for:
 
-| Dependency | Purpose |
-|---|---|
-| `findChannel` / `findChannelById` / `findActiveChannels` | Load channel records from your database |
-| `processPromptRequest` | Send a user message to your AI and get a response |
-| `processPromptRequestStream` | *(optional)* Streaming variant for real-time responses |
-| `encrypt` / `decrypt` | Protect bot tokens and secrets at rest |
-| `recordHistory` | Log activity (can be a no-op) |
-| `logger` | Any logger with `info`, `warn`, `error`, `debug` methods |
+| Dependency                                               | Purpose                                                  |
+| -------------------------------------------------------- | -------------------------------------------------------- |
+| `findChannel` / `findChannelById` / `findActiveChannels` | Load channel records from your database                  |
+| `processPromptRequest`                                   | Send a user message to your AI and get a response        |
+| `processPromptRequestStream`                             | _(optional)_ Streaming variant for real-time responses   |
+| `encrypt` / `decrypt`                                    | Protect bot tokens and secrets at rest                   |
+| `recordHistory`                                          | Log activity (can be a no-op)                            |
+| `logger`                                                 | Any logger with `info`, `warn`, `error`, `debug` methods |
 
 ### Optional session deps
 
 For slash command support (`/new`, `/history`, `/clear`, `/settings`):
 
-| Dependency | Purpose |
-|---|---|
-| `createSession` | Start a new conversation |
-| `listSessions` | List recent conversations |
-| `deleteSession` | Delete a conversation |
-| `getModelInfo` | Show current model info |
+| Dependency      | Purpose                   |
+| --------------- | ------------------------- |
+| `createSession` | Start a new conversation  |
+| `listSessions`  | List recent conversations |
+| `deleteSession` | Delete a conversation     |
+| `getModelInfo`  | Show current model info   |
 
 ## Channel Record
 

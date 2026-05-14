@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
+
 import { channelRegistry } from "../lib/channels.js";
 import { createChildLogger } from "../lib/logger.js";
 // Import services
@@ -109,7 +110,6 @@ notificationsRoutes.post(
         return {
           channelId: "unknown",
           channelName: "unknown",
-          // biome-ignore lint/suspicious/noExplicitAny: platform union fallback value
           platform: "unknown" as any,
           success: false,
           error:

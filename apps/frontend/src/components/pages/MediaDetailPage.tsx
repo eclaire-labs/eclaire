@@ -19,6 +19,7 @@ const routeApi = getRouteApi("/_authenticated/media/$id");
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
@@ -37,6 +38,7 @@ import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useMediaItem } from "@/hooks/use-media";
 import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import { formatDate } from "@/lib/date-utils";
+
 import {
   formatBitrate,
   formatChannels,

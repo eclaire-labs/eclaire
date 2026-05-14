@@ -2,6 +2,7 @@ import type { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
 import type { Logger } from "pino";
 import z from "zod/v4";
+
 import { NotFoundError } from "../lib/errors.js";
 import { type CallerContext, principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
@@ -20,10 +21,8 @@ type AppRouter = Hono<{ Variables: RouteVariables }>;
 
 type UpdateFn = (
   id: string,
-  // biome-ignore lint/suspicious/noExplicitAny: update functions have varying return types per resource
   data: Record<string, any>,
   caller: CallerContext,
-  // biome-ignore lint/suspicious/noExplicitAny: update functions have varying return types per resource
 ) => Promise<any>;
 type ReprocessFn = (
   id: string,
@@ -32,7 +31,6 @@ type ReprocessFn = (
   caller: CallerContext,
 ) => Promise<{ success: boolean; error?: string }>;
 
-// biome-ignore lint/suspicious/noExplicitAny: route description objects are untyped OpenAPI specs
 type RouteDescription = any;
 
 export function registerReviewEndpoint(

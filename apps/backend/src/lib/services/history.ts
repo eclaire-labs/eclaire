@@ -4,6 +4,7 @@ import type {
   HistoryActor,
   HistoryItemType,
 } from "@eclaire/core/types";
+
 import { db, schema } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 import { humanCaller } from "./types.js";
@@ -19,22 +20,18 @@ export interface RecordHistoryParams {
   itemType: HistoryItemType;
   itemId: string;
   itemName?: string; // Made optional to match schema
-  // biome-ignore lint/suspicious/noExplicitAny: JSON blob for audit trail
   beforeData?: Record<string, any> | null; // More specific type for JSON objects
-  // biome-ignore lint/suspicious/noExplicitAny: JSON blob for audit trail
   afterData?: Record<string, any> | null; // More specific type for JSON objects
   actor: HistoryActor;
   actorId?: string; // The specific user/agent who performed the action
   authorizedByActorId?: string | null;
   grantId?: string | null;
   userId?: string; // The resource owner (whose data was affected)
-  // biome-ignore lint/suspicious/noExplicitAny: JSON blob for audit trail
   metadata?: Record<string, any> | null; // Additional metadata for events
   /** Link to the conversation that triggered this action (if any) */
   conversationId?: string | null;
   /** Link to the specific message that triggered this action (if any) */
   messageId?: string | null;
-  // biome-ignore lint/suspicious/noExplicitAny: optional transaction parameter
   tx?: any; // Optional transaction parameter
 }
 

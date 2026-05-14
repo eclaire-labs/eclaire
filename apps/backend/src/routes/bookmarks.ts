@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
+
 import { NotFoundError } from "../lib/errors.js";
 import { createChildLogger } from "../lib/logger.js";
 import { parseDeleteStorage, parseSearchFields } from "../lib/search-params.js";
@@ -117,7 +118,6 @@ bookmarksRoutes.post(
     // 3. Call the service to create the DB entries and queue the job
     const result = await createBookmarkAndQueueJob(
       {
-        // biome-ignore lint/style/noNonNullAssertion: guarded by validation check above
         url: urlValidation.normalizedUrl!,
         userId: userId,
         rawMetadata: enrichedMetadata,

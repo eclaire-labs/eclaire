@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute, validator as zValidator } from "hono-openapi";
+
 import { createChildLogger } from "../lib/logger.js";
 // Import services
 import {
@@ -11,7 +12,6 @@ import {
 } from "../lib/services/channels.js";
 import { principalCaller } from "../lib/services/types.js";
 import { withAuth } from "../middleware/with-auth.js";
-
 // Import schemas
 import {
   ChannelIdParamSchema,

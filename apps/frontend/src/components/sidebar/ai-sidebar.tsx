@@ -2,6 +2,7 @@ import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Bot, MessageSquare, Plus } from "lucide-react";
 import { useState } from "react";
+
 import { AgentStatusDot } from "@/components/assistant/agent-status-dot";
 import { AiActivityFeed } from "@/components/sidebar/ai-activity-feed";
 import { AiConversationList } from "@/components/sidebar/ai-conversation-list";

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { browseChromeTool } from "../../lib/agent/tools/browse-chrome.js";
 
 const browserRuntimeMock = vi.hoisted(() => ({

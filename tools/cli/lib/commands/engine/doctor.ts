@@ -5,6 +5,7 @@
  */
 
 import chalk from "chalk";
+
 import { runDoctorChecks } from "../../engine/health.js";
 import type { DoctorCheck } from "../../types/engines.js";
 import { colors, icons } from "../../ui/colors.js";

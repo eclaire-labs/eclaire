@@ -12,9 +12,9 @@ import { dirname, resolve } from "node:path";
 
 // Load environment variables so route modules behave the same as in production
 import "@eclaire/core";
-
 import { Hono } from "hono";
 import { generateSpecs } from "hono-openapi";
+
 import { openAPIDocumentation } from "../src/lib/openapi-config.js";
 import { registerApiRoutes } from "../src/routes/registry.js";
 

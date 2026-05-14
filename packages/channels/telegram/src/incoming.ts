@@ -3,6 +3,7 @@ import {
   DEFAULT_CHANNEL_AGENT_ACTOR_ID,
 } from "@eclaire/channels-core";
 import { Input } from "telegraf";
+
 import { stopBot } from "./bot-manager.js";
 import type { BotContext } from "./commands.js";
 import { getDeps } from "./deps.js";
@@ -30,7 +31,6 @@ export async function handleIncomingMessage(
     routeChannelPrompt,
   } = getDeps();
 
-  // biome-ignore lint/style/noNonNullAssertion: Telegraf text handler guarantees message
   if (!("text" in ctx.message!) || !ctx.message.text) {
     return;
   }
@@ -270,7 +270,6 @@ export async function handleIncomingVoiceMessage(
     return;
   }
 
-  // biome-ignore lint/style/noNonNullAssertion: Telegraf voice handler guarantees message
   const voice = (ctx.message as {
     voice?: { file_id: string; duration: number };
   })!.voice;

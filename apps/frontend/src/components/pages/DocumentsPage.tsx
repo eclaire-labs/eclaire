@@ -13,6 +13,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
+
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
 import type { UploadingFile } from "@/components/shared/UploadProgressList";
@@ -40,13 +41,14 @@ import { useTags } from "@/hooks/use-tags";
 import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Document } from "@/types/document";
+
 import { DocumentListItem } from "./documents/DocumentListItem";
-import { DocumentTileItem } from "./documents/DocumentTileItem";
 import {
   documentsConfig,
   formatFileSize,
   getDocumentTypeLabel,
 } from "./documents/documents-config";
+import { DocumentTileItem } from "./documents/DocumentTileItem";
 
 // ---------------------------------------------------------------------------
 // Upload types & constants

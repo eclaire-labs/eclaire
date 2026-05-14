@@ -6,6 +6,7 @@ import {
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
+
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
 import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Bookmark } from "@/types/bookmark";
+
 import { getDomainFromUrl } from "./bookmarks-config";
 import { Favicon } from "./Favicon";
 
@@ -47,7 +49,6 @@ export function BookmarkListItem({
   onChatClick,
 }: BookmarkListItemProps) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
     <div
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="button"
@@ -110,7 +111,6 @@ export function BookmarkListItem({
         )}
       </div>
       {/* Pin/Flag Controls */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler only stops propagation to parent row */}
       <div
         role="presentation"
         className="w-20 flex-shrink-0 mr-3 flex items-center justify-center gap-1"

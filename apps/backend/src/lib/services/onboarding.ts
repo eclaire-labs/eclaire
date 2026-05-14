@@ -8,6 +8,7 @@
 
 import type { Dialect, ProviderConfig } from "@eclaire/ai";
 import { count, eq } from "drizzle-orm";
+
 import { config as appConfig } from "../../config/index.js";
 import { db, schema } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";

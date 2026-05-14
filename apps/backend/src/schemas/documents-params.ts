@@ -1,5 +1,6 @@
 // schemas/documents-params.ts
 import z from "zod/v4";
+
 import {
   flagColorUpdateSchema,
   isPinnedUpdateSchema,

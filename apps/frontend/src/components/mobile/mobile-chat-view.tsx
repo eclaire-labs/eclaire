@@ -1,8 +1,10 @@
 import type { SlashItem } from "@eclaire/core/slash";
 import type { RefObject } from "react";
+
 import type { ToolCall } from "@/components/assistant/tool-execution-tracker";
 import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
+
 import { MobileChatInterface } from "./mobile-chat-interface";
 
 interface MobileChatViewProps {

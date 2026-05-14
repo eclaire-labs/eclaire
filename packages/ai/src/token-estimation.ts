@@ -5,6 +5,7 @@
  */
 
 import { encoding_for_model, get_encoding } from "tiktoken";
+
 import { createLazyLogger, getErrorMessage } from "./logger.js";
 import type { AIMessage } from "./types.js";
 

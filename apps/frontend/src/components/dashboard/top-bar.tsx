@@ -7,6 +7,7 @@ import {
   Minimize2,
   Settings,
 } from "lucide-react";
+
 import { ModeToggle } from "@/components/mode-toggle";
 import { Logo } from "@/components/shared/logo";
 import { UserAvatar } from "@/components/shared/user-avatar";

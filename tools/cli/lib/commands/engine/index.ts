@@ -6,6 +6,7 @@
  */
 
 import { Command } from "commander";
+
 import { doctorCommand } from "./doctor.js";
 import { downCommand } from "./down.js";
 import { logsCommand } from "./logs.js";

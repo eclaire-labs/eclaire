@@ -5,6 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import { initAI, isAIInitialized, resetAI } from "../index.js";
 import { createMockLoggerFactory, getFixturesPath } from "./setup.js";
 

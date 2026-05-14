@@ -25,10 +25,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Biome
-        run: pnpm lint:biome
-      - name: Oxlint
-        run: pnpm lint:oxlint
+      - name: Lint
+        run: pnpm lint
+      - name: Format check
+        run: pnpm format:check
 
   typecheck:
     runs-on: ubuntu-latest

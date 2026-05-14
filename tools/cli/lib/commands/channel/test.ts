@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import ora from "ora";
+
 import { getChannelRegistry } from "../../db/adapters.js";
 import { getChannel } from "../../db/channels.js";
 import { colors, icons } from "../../ui/colors.js";

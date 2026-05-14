@@ -62,7 +62,9 @@ function getDirectoryStats(dirPath) {
 
 // Show what will be deleted
 function showCleanupPreview() {
-  console.log(`${colors.bright}${colors.red}⚠️  CLEANUP PREVIEW${colors.reset}`);
+  console.log(
+    `${colors.bright}${colors.red}⚠️  CLEANUP PREVIEW${colors.reset}`,
+  );
   console.log(
     `${colors.red}The following will be PERMANENTLY DELETED:${colors.reset}\n`,
   );

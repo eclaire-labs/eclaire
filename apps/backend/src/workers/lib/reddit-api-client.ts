@@ -1,4 +1,5 @@
 import https from "node:https";
+
 import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("reddit-api-client");
@@ -60,7 +61,6 @@ export interface RedditMediaInfo {
 
 export interface RedditApiResponse {
   success: boolean;
-  // biome-ignore lint/suspicious/noExplicitAny: Reddit API returns variable response structures
   data?: any;
   error?: string;
 }
@@ -148,7 +148,6 @@ export class RedditApiClient {
     });
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: raw Reddit API JSON response
   private async apiRequest(path: string): Promise<any> {
     if (!this.accessToken) {
       await this.authenticate();
@@ -216,7 +215,6 @@ export class RedditApiClient {
     return null;
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: raw Reddit post data object
   extractMediaInfo(postData: any): RedditMediaInfo {
     const media: RedditMediaInfo = {
       type: "none",
@@ -296,12 +294,9 @@ export class RedditApiClient {
   }
 
   private collectMoreObjects(
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree with kind/data discriminated union
     comments: any[],
     depth = 0,
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree with kind/data discriminated union
     moreObjects: any[] = [],
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree with kind/data discriminated union
   ): any[] {
     for (const comment of comments) {
       if (comment.kind === "t1") {
@@ -329,7 +324,6 @@ export class RedditApiClient {
     _subreddit: string,
     postId: string,
     commentIds: string[],
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API 'things' response
   ): Promise<any[]> {
     if (!commentIds || commentIds.length === 0) return [];
 
@@ -353,11 +347,9 @@ export class RedditApiClient {
   }
 
   private async fetchAllMoreComments(
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
     comments: any[],
     subreddit: string,
     postId: string,
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
   ): Promise<any[]> {
     let allComments = [...comments];
     let moreCalls = 0;
@@ -382,7 +374,6 @@ export class RedditApiClient {
       }
 
       const batchIds: string[] = [];
-      // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
       const selectedObjects: any[] = [];
 
       for (const moreObj of moreObjects) {
@@ -457,13 +448,9 @@ export class RedditApiClient {
   }
 
   private insertMoreComments(
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
     comments: any[],
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
     newComments: any[],
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
     selectedObjects: any[],
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
   ): any[] {
     const newCommentMap = new Map();
     newComments.forEach((comment) => {
@@ -476,13 +463,9 @@ export class RedditApiClient {
   }
 
   private replaceMoreInTree(
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
     comments: any[],
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
     newCommentMap: Map<string, any>,
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
     selectedObjects: any[],
-    // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
   ): any[] {
     const result = [];
 
@@ -532,13 +515,11 @@ export class RedditApiClient {
     return result;
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: Reddit API comment tree
   private processComments(comments: any[], depth = 0): any[] {
     const processed = [];
 
     for (const comment of comments) {
       if (comment.kind === "t1") {
-        // biome-ignore lint/suspicious/noExplicitAny: built incrementally, matches RedditCommentData shape
         const processedComment: any = {
           id: comment.data.id,
           author: comment.data.author,
@@ -564,7 +545,6 @@ export class RedditApiClient {
     return processed;
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: processed Reddit comment tree
   private countComments(comments: any[]): number {
     let count = 0;
     for (const comment of comments) {

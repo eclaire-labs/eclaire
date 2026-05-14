@@ -1,11 +1,11 @@
 import { afterAll, describe, expect, it } from "vitest";
+
 import type {
   ChannelCapability,
   ChannelPlatform,
   CreateChannelRequest,
   UpdateChannelRequest,
 } from "../../schemas/channels-params.js";
-
 // Import types from actual schema files
 import type {
   ChannelErrorResponse,

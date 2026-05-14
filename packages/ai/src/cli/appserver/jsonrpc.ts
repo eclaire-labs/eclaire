@@ -6,6 +6,7 @@
  */
 
 import type { ChildProcess } from "node:child_process";
+
 import { createLazyLogger, getErrorMessage } from "../../logger.js";
 import type {
   JsonRpcError,

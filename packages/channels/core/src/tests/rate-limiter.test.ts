@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+
 import { ChannelRateLimiter } from "../rate-limiter.js";
 
 describe("ChannelRateLimiter", () => {

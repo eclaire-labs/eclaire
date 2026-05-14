@@ -68,10 +68,7 @@
 export { createBullMQClient } from "./client.js";
 
 // Connection exports
-export {
-  closeRedisConnection,
-  createRedisConnection,
-} from "./connection.js";
+export { closeRedisConnection, createRedisConnection } from "./connection.js";
 // Queue manager exports
 export {
   createQueueManager,

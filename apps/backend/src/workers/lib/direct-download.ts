@@ -5,7 +5,9 @@ import { basename, extname, join } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
+
 import { fileTypeFromFile } from "file-type";
+
 import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("direct-download");

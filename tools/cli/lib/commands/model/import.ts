@@ -1,4 +1,5 @@
 import ora from "ora";
+
 import {
   type InspectUrlCandidate,
   importModelsViaApi,
@@ -139,12 +140,9 @@ export async function importCommand(
         if (!canEstimateMemory || !arch) return "-";
         const estimate = estimateModelMemory(
           size,
-          // biome-ignore lint/style/noNonNullAssertion: checked via canEstimateMemory guard
           candidate.capabilities.contextWindow!,
           {
-            // biome-ignore lint/style/noNonNullAssertion: checked via canEstimateMemory guard
             layers: arch.layers!,
-            // biome-ignore lint/style/noNonNullAssertion: checked via canEstimateMemory guard
             kvHeads: arch.kvHeads!,
             headDim: arch.headDim,
             slidingWindow: arch.slidingWindow,

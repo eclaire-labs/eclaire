@@ -4,10 +4,10 @@
   "private": true,
   "description": "Unified AI client for Eclaire - multi-provider support with adapters",
   "license": "MIT",
-  "type": "module",
   "files": [
     "dist"
   ],
+  "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -21,10 +21,10 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
-    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
-    "format": "biome format --write ./",
-    "check": "biome check ./",
-    "fix": "biome check --write ./",
+    "lint": "oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "fix": "oxlint --fix --tsconfig ../../tsconfig.oxlint.json . && oxfmt .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -38,15 +38,15 @@
     "async-mutex": "0.5.0",
     "tiktoken": "1.0.22"
   },
-  "peerDependencies": {
-    "zod": "^4.0.0"
-  },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
+    "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",
     "vitest": "4.1.5",
     "zod": "4.4.1"
+  },
+  "peerDependencies": {
+    "zod": "^4.0.0"
   }
 }

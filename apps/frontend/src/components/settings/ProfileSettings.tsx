@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+
 import { AvatarColorPicker } from "@/components/shared/avatar-color-picker";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import {
@@ -473,7 +474,6 @@ export default function ProfileSettings() {
                 </div>
 
                 {/* Upload Area */}
-                {/* biome-ignore lint/a11y/useSemanticElements: drag-and-drop upload area not suited for button element */}
                 <div
                   // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
                   role="button"

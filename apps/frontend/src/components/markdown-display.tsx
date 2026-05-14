@@ -4,6 +4,7 @@ import rehypeStringify from "rehype-stringify";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
+
 import { ContentLinkPreview } from "@/components/assistant/content-link-preview";
 import {
   detectContentLinks,
@@ -130,7 +131,6 @@ export function MarkdownDisplay({
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   // Inject copy buttons into code blocks after render
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when HTML content changes to inject buttons
   React.useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -180,7 +180,6 @@ export function MarkdownDisplay({
       {/* Render the markdown content normally */}
       <div
         className={cn(proseClasses, className)}
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized markdown rendering
         dangerouslySetInnerHTML={{ __html: processedContent.htmlContent }}
       />
 

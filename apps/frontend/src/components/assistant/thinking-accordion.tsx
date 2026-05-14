@@ -1,6 +1,7 @@
 // components/chat/thinking-accordion.tsx
 
 import { Brain } from "lucide-react";
+
 import {
   Accordion,
   AccordionContent,

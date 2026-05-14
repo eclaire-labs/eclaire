@@ -1,10 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+
 import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import type { Bookmark } from "@/types/bookmark";
+
 import { createCrudHooks, type ListParams } from "./create-crud-hooks";
 
-// biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 export const transformBookmarkData = (raw: any): Bookmark => ({
   id: raw.id,
   title: raw.title,

@@ -11,14 +11,15 @@
 // Load environment FIRST - uses shared loader from @eclaire/core
 // Importing @eclaire/core triggers env loading as a side effect
 import "@eclaire/core";
-
 import { resolve } from "node:path";
+
 import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
 import { migrate as migrateSqlite } from "drizzle-orm/better-sqlite3/migrator";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import { migrate as migratePostgres } from "drizzle-orm/postgres-js/migrator";
+
 import {
   createPgliteClient,
   createPostgresClient,

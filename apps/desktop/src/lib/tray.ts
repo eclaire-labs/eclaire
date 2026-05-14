@@ -1,5 +1,7 @@
 import path from "node:path";
+
 import { app, Menu, nativeImage, Tray } from "electron";
+
 import { store } from "./store.js";
 import { getMainWindow } from "./window.js";
 

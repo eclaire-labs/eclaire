@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { deleteBookmark } from "../../services/bookmarks.js";
 import { agentToolCaller } from "./caller.js";
 

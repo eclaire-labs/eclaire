@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
+
 import {
   DEFAULT_AGENT_ACTOR_ID,
   globalTestCleanup,
@@ -164,9 +165,8 @@ describe("Task Edge Cases", { timeout: 120000 }, () => {
       taskIds.push(cancelledTask.id);
 
       // Import and call the overdue checker directly
-      const { default: processTaskOverdueChecker } = await import(
-        "../../workers/jobs/taskOverdueCheckerProcessor.js"
-      );
+      const { default: processTaskOverdueChecker } =
+        await import("../../workers/jobs/taskOverdueCheckerProcessor.js");
       await processTaskOverdueChecker({ job: { data: {} } });
 
       // Verify: only "none" and "needs_triage" should become "urgent"

@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 import type { Hono, MiddlewareHandler } from "hono";
 import { type GenerateSpecOptions, generateSpecs } from "hono-openapi";
 import z from "zod/v4";
+
 import { config } from "../config/index.js";
 
 // Read version from build-info.json (generated during build) or fallback to package.json
@@ -177,7 +179,6 @@ You can authenticate using either:
   ],
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: accepts Hono app with any env type
 export const getOpenAPIDocument = (app: Hono<any>) => {
   const handler: MiddlewareHandler = async (c) => {
     const specs = await generateSpecs(app, {

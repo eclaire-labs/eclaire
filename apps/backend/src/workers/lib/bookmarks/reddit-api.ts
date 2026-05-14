@@ -1,4 +1,5 @@
 import type { JobContext } from "@eclaire/queue/core";
+
 import { createChildLogger } from "../../../lib/logger.js";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
 import { createRedditApiClient } from "../reddit-api-client.js";
@@ -28,7 +29,6 @@ export async function processRedditApiBookmark(
   const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with REDDIT-API handler");
 
-  // biome-ignore lint/suspicious/noExplicitAny: dynamic artifact accumulator populated across processing stages
   const allArtifacts: Record<string, any> = {};
 
   const pipeline = new BrowserPipeline({ bookmarkId, userId, logger });

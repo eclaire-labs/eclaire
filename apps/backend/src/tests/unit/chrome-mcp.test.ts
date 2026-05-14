@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+
 import { ChromeMcpSessionManager } from "../../lib/browser/chrome-mcp.js";
 
 function createMockConnection() {

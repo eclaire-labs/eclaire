@@ -5,6 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { callAIStream, initAI, resetAI } from "../index.js";
 import { LLMStreamParser } from "../stream-parser.js";
 import type { AICallTrace } from "../types.js";

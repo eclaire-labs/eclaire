@@ -5,6 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { callAI, initAI, resetAI } from "../index.js";
 import type { AICallTrace } from "../types.js";
 import {

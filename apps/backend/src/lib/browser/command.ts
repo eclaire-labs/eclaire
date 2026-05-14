@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { config } from "../../config/index.js";
 
 const PACKAGE_ROOT = path.resolve(

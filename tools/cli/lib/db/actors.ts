@@ -5,6 +5,7 @@
 
 import { generateActorId } from "@eclaire/core";
 import { and, eq } from "drizzle-orm";
+
 import { getDb } from "./index.js";
 
 export interface ActorRow {
@@ -15,7 +16,6 @@ export interface ActorRow {
   createdAt: Date | number;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type, queries work across all dialects
 function query(): { db: any; actors: any } {
   const { db, schema } = getDb();
   return { db, actors: schema.actors };

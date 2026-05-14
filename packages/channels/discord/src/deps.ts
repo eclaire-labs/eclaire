@@ -55,11 +55,9 @@ export interface DiscordDeps {
     error?: string;
   }>;
   processPromptRequest: (
-    // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
     ...args: any[]
   ) => Promise<{ response?: string; type?: string; requestId?: string }>;
   processPromptRequestStream?: (
-    // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
     ...args: any[]
   ) => Promise<ReadableStream<StreamEvent>>;
   /** Optional handler for audio/voice messages. If not provided, voice messages are handled as attachments. */
@@ -68,7 +66,6 @@ export interface DiscordDeps {
     audioBuffer: Buffer,
     metadata: Record<string, unknown>,
   ) => Promise<{ response?: string; audioResponse?: Buffer }>;
-  // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   recordHistory: (entry: any) => Promise<void>;
   logger: DiscordLogger;
 

@@ -238,7 +238,6 @@ function renderBlock(token: Token, index: number): React.ReactNode {
         }
         if ("text" in t) {
           return (
-            // biome-ignore lint/suspicious/noArrayIndexKey: blockquote tokens have no natural ID
             <Text key={`bq-text-${index}-${i}`}>
               {(t as { text: string }).text}
             </Text>
@@ -319,7 +318,6 @@ function renderBlock(token: Token, index: number): React.ReactNode {
           <Text>{headerLine}</Text>
           <Text dimColor>{separator}</Text>
           {rows.map((row, ri) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: table rows have no natural ID
             <Text key={`row-${ri}`}>
               {row
                 .map((cell, ci) => padCell(cell, colWidths[ci] ?? 0))

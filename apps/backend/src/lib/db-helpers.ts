@@ -1,5 +1,6 @@
 import { formatToISO8601 } from "@eclaire/core";
 import { and, eq, ilike, inArray, like, type SQL, sql } from "drizzle-orm";
+
 import { db, dbType, schema, txManager } from "../db/index.js";
 
 const { tags } = schema;
@@ -19,15 +20,11 @@ export const flexLike = dbType === "sqlite" ? like : ilike;
  *   entityIdCol IN (SELECT ... FROM junction JOIN tags WHERE ... GROUP BY ... HAVING COUNT = N)
  */
 export function buildTagFilterCondition(
-  // biome-ignore lint/suspicious/noExplicitAny: junction table type varies per entity
   junctionTable: any,
-  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
   junctionEntityIdCol: any,
-  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
   tagIdCol: any,
   tagsList: string[],
   userId: string,
-  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
   outerEntityIdCol?: any,
 ): SQL {
   const outerCol = outerEntityIdCol ?? junctionEntityIdCol;
@@ -72,11 +69,8 @@ export async function getOrCreateTags(
  * @returns Map from entity ID to array of tag names
  */
 export async function batchGetTags(
-  // biome-ignore lint/suspicious/noExplicitAny: junction table type varies per entity
   junctionTable: any,
-  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
   entityIdColumn: any,
-  // biome-ignore lint/suspicious/noExplicitAny: column type varies per entity
   tagIdColumn: any,
   entityIds: string[],
 ): Promise<Map<string, string[]>> {
@@ -106,7 +100,6 @@ export async function batchGetTags(
 /**
  * Format item data with formatted date and tags
  */
-// biome-ignore lint/suspicious/noExplicitAny: generic item formatter
 export function formatItemData(item: any, itemTags: { name: string }[]) {
   // First create a new object without the old date fields
   const { createdAt, updatedAt, ...rest } = item;

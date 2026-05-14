@@ -1,5 +1,6 @@
 import { getDatabaseType } from "@eclaire/db";
 import ora from "ora";
+
 import { closeDb, getDb } from "../../db/index.js";
 import { colors, icons } from "../../ui/colors.js";
 import { createInfoTable } from "../../ui/tables.js";

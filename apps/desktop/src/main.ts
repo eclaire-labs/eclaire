@@ -1,5 +1,7 @@
 import path from "node:path";
+
 import { app, globalShortcut, ipcMain } from "electron";
+
 import { handleDeepLink, registerDeepLinks } from "./lib/deep-links.js";
 import { store } from "./lib/store.js";
 import { createTray, destroyTray } from "./lib/tray.js";

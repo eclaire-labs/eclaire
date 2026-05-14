@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { AlertCircle, Home, RefreshCw } from "lucide-react";
 import { Suspense, useEffect } from "react";
+
 import { AuthLoadingSkeleton } from "@/components/auth/AuthLoadingSkeleton";
 import { MainLayoutClient } from "@/components/dashboard/main-layout-client";
 import { Button } from "@/components/ui/button";

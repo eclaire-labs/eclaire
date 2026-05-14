@@ -26,10 +26,7 @@ export type {
   TokenizerConfig,
 } from "@eclaire/ai";
 // Re-export utility types for engine commands
-export type {
-  DoctorCheck,
-  DownloadResult,
-} from "./engines.js";
+export type { DoctorCheck, DownloadResult } from "./engines.js";
 
 // ============================================================================
 // CLI-specific types

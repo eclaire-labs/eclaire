@@ -19,13 +19,9 @@ import type {
  * This is compatible with drizzle-orm's database instance.
  */
 export interface DbInstance {
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM method signature — must accept any table/column types
   select: (...args: any[]) => any;
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM method signature — must accept any table/column types
   insert: (...args: any[]) => any;
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM method signature — must accept any table/column types
   update: (...args: any[]) => any;
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM method signature — must accept any table/column types
   delete: (...args: any[]) => any;
 }
 
@@ -59,9 +55,7 @@ export interface DbQueueClientConfig {
 
   /** Queue schema (queueJobs, queueSchedules tables) */
   schema: {
-    // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
     queueJobs: any;
-    // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
     queueSchedules: any;
   };
 
@@ -90,9 +84,7 @@ export interface DbWorkerConfig {
 
   /** Queue schema */
   schema: {
-    // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
     queueJobs: any;
-    // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
     queueSchedules: any;
   };
 

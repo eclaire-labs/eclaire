@@ -7,6 +7,7 @@
  */
 
 import { and, inArray, lte, ne } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 import { emitTasksOverdue } from "../../lib/events/task-events.js";
 import { createChildLogger } from "../../lib/logger.js";
@@ -14,7 +15,6 @@ import { createChildLogger } from "../../lib/logger.js";
 const logger = createChildLogger("task-overdue-checker");
 
 export default async function processTaskOverdueChecker(
-  // biome-ignore lint/suspicious/noExplicitAny: job context shape varies by queue driver
   _ctx: any,
 ): Promise<void> {
   const now = new Date();

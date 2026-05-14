@@ -9,6 +9,7 @@
  */
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+
 import { callAI } from "../../index.js";
 import {
   createCalculatorTool,

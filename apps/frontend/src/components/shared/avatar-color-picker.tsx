@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+
 import { AVATAR_COLORS } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

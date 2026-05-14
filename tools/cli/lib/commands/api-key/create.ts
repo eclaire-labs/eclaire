@@ -3,6 +3,7 @@
  */
 
 import chalk from "chalk";
+
 import { getOrCreateHumanActor, listActors } from "../../db/actors.js";
 import { createApiKey } from "../../db/api-keys.js";
 import { closeDb } from "../../db/index.js";

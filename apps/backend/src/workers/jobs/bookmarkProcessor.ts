@@ -3,6 +3,7 @@ import {
   PermanentError,
   RateLimitError,
 } from "@eclaire/queue/core";
+
 import { createChildLogger } from "../../lib/logger.js";
 import { BrowserPipeline } from "../lib/bookmarks/browser-pipeline.js";
 import {
@@ -35,7 +36,6 @@ async function processRegularBookmarkJob(ctx: JobContext<BookmarkJobData>) {
   const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with REGULAR handler");
 
-  // biome-ignore lint/suspicious/noExplicitAny: dynamic artifact accumulator populated across processing stages
   const allArtifacts: Record<string, any> = {};
   let currentStage = "initialization";
 

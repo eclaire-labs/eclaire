@@ -556,11 +556,7 @@ export {
 // CLI PROVIDERS
 // =============================================================================
 
-export type {
-  CliEvent,
-  CliJsonlDecoder,
-  CliSpawnConfig,
-} from "./cli/index.js";
+export type { CliEvent, CliJsonlDecoder, CliSpawnConfig } from "./cli/index.js";
 export {
   CliSubprocessRunner,
   callAICli,

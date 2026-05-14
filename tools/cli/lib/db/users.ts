@@ -4,6 +4,7 @@
  */
 
 import { count, eq, sql } from "drizzle-orm";
+
 import { selectOne } from "../ui/clack.js";
 import { getDb } from "./index.js";
 
@@ -23,7 +24,6 @@ export interface UserAdminRow {
 
 export async function getDefaultUser(): Promise<UserRow> {
   const { db, schema } = getDb();
-  // biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type
   const d = db as any;
   const users: UserRow[] = await d
     .select({
@@ -55,7 +55,6 @@ export async function getDefaultUser(): Promise<UserRow> {
   return users[Number.parseInt(selectedIndex, 10)] as UserRow;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type
 function query(): { db: any; users: any } {
   const { db, schema } = getDb();
   return { db, users: schema.users };

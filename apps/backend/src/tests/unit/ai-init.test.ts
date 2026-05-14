@@ -1,5 +1,7 @@
 import path from "node:path";
+
 import { describe, expect, it } from "vitest";
+
 import { resolveAISkillSources } from "../../lib/ai-init.js";
 
 describe("resolveAISkillSources", () => {

@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { toast } from "sonner";
+
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { ActorPicker } from "@/components/shared/ActorPicker";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
@@ -50,15 +51,16 @@ import { useListPageState } from "@/hooks/use-list-page-state";
 import { useTags } from "@/hooks/use-tags";
 import { useTasks } from "@/hooks/use-tasks";
 import type { Task, TaskStatus } from "@/types/task";
+
 import { CreateTaskDialog } from "./tasks/CreateTaskDialog";
-import { TaskListItem } from "./tasks/TaskListItem";
-import { TaskTileItem } from "./tasks/TaskTileItem";
 import {
   getNextStatus,
   PRIORITY_OPTIONS,
   STATUS_OPTIONS,
 } from "./tasks/task-utils";
+import { TaskListItem } from "./tasks/TaskListItem";
 import { tasksConfig } from "./tasks/tasks-config";
+import { TaskTileItem } from "./tasks/TaskTileItem";
 
 const routeApi = getRouteApi("/_authenticated/tasks/");
 

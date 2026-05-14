@@ -57,7 +57,6 @@ export async function selectOne<T>(opts: {
   message: string;
   options: { value: T; label: string; hint?: string }[];
 }): Promise<T> {
-  // biome-ignore lint/suspicious/noExplicitAny: Option type conditional generics are hard to satisfy
   const result = await p.select(opts as any);
   return assertNotCancelled(result) as T;
 }
@@ -68,7 +67,6 @@ export async function selectMany<T>(opts: {
   required?: boolean;
   initialValues?: T[];
 }): Promise<T[]> {
-  // biome-ignore lint/suspicious/noExplicitAny: Option type conditional generics are hard to satisfy
   const result = await p.multiselect(opts as any);
   return assertNotCancelled(result) as T[];
 }
@@ -86,7 +84,6 @@ export async function autocompleteSelect<T>(opts: {
   maxItems?: number;
   placeholder?: string;
 }): Promise<T> {
-  // biome-ignore lint/suspicious/noExplicitAny: AutocompleteOptions generics are hard to satisfy
   const result = await p.autocomplete(opts as any);
   return assertNotCancelled(result) as T;
 }

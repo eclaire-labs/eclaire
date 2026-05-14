@@ -7,18 +7,20 @@
  */
 
 import { createRequire } from "node:module";
+
 import { PGlite } from "@electric-sql/pglite";
 import Database from "better-sqlite3";
 import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
-import * as postgresSchema from "../../driver-db/schema/postgres.js";
-import * as sqliteSchema from "../../driver-db/schema/sqlite.js";
+
 import {
   queueJobsPg,
   queueJobsSqlite,
   queueSchedulesPg,
   queueSchedulesSqlite,
 } from "../../driver-db/schema.js";
+import * as postgresSchema from "../../driver-db/schema/postgres.js";
+import * as sqliteSchema from "../../driver-db/schema/sqlite.js";
 import type { DbCapabilities } from "../../driver-db/types.js";
 import type { TestDbType } from "./config.js";
 

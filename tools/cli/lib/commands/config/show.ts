@@ -3,6 +3,7 @@ import {
   loadProvidersConfiguration,
   loadSelectionConfiguration,
 } from "@eclaire/ai";
+
 import { colors, icons } from "../../ui/colors.js";
 import {
   createActiveModelsTable,

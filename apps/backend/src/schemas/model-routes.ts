@@ -1,4 +1,5 @@
 import { resolver } from "hono-openapi";
+
 import { error500Response } from "./common.js";
 import { CurrentModelResponseSchema } from "./model-responses.js";
 

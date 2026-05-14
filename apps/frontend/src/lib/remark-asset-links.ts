@@ -1,5 +1,6 @@
 import type { Root, Text } from "mdast";
 import { visit } from "unist-util-visit";
+
 import type { ContentLink } from "@/types/message";
 
 export interface AssetLinkData {
@@ -11,7 +12,6 @@ export interface AssetLinkData {
  * Instead of splitting the content, we mark asset links for later processing
  */
 export function remarkAssetLinks() {
-  // biome-ignore lint/suspicious/noExplicitAny: unified/remark VFile type is loosely typed with dynamic data properties
   return function transformer(tree: Root, file: any) {
     const contentLinks: ContentLink[] = [];
 

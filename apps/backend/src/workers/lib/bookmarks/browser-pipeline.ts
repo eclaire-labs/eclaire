@@ -8,6 +8,7 @@
 import { type BrowserContext, chromium, type Page } from "patchright";
 import type { Logger } from "pino";
 import sharp from "sharp";
+
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
 import { config } from "../../config.js";
 import { TimeoutError, withTimeout } from "../utils/timeout.js";
@@ -45,7 +46,6 @@ export class BrowserPipeline {
   private bookmarkId: string;
   private userId: string;
   private logger: Logger;
-  // biome-ignore lint/suspicious/noExplicitAny: Patchright Browser instance, no exported type available
   private browser: any = null;
   private context: BrowserContext | null = null;
   private _page: Page | null = null;
@@ -108,7 +108,6 @@ export class BrowserPipeline {
   async navigateTo(url: string): Promise<NavigationResult> {
     const page = this.page;
 
-    // biome-ignore lint/suspicious/noImplicitAnyLet: type inferred from page.goto
     let response;
     try {
       this.logger.debug(

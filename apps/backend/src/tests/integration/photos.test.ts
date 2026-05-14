@@ -1,6 +1,8 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
 import {
   BASE_URL,
   createAuthenticatedFetch,
@@ -299,55 +301,51 @@ describe("Photo API - Real File Uploads", () => {
     },
   ];
 
-  it.each(
-    testFiles,
-  )("POST /api/photos - should upload $filename successfully", async ({
-    filename,
-    mimeType,
-    titleSuffix,
-    tags,
-  }) => {
-    const filePath = path.join(
-      process.cwd(),
-      "src",
-      "tests",
-      "fixtures",
-      "photos",
-      filename,
-    );
-    const fileBuffer = await fs.readFile(filePath);
-    const fileSize = fileBuffer.length;
-    const fileBlob = new Blob([fileBuffer as BlobPart], { type: mimeType });
+  it.each(testFiles)(
+    "POST /api/photos - should upload $filename successfully",
+    async ({ filename, mimeType, titleSuffix, tags }) => {
+      const filePath = path.join(
+        process.cwd(),
+        "src",
+        "tests",
+        "fixtures",
+        "photos",
+        filename,
+      );
+      const fileBuffer = await fs.readFile(filePath);
+      const fileSize = fileBuffer.length;
+      const fileBlob = new Blob([fileBuffer as BlobPart], { type: mimeType });
 
-    const formData = new FormData();
-    const title = `Real Upload ${titleSuffix} ${Date.now()}`;
-    const metadata = {
-      title,
-      description: `Uploaded file: ${filename}`,
-      tags,
-      deviceId: "Vitest Real File Test",
-      originalFilename: filename,
-    };
-    formData.append("metadata", JSON.stringify(metadata));
-    formData.append("content", fileBlob, filename);
+      const formData = new FormData();
+      const title = `Real Upload ${titleSuffix} ${Date.now()}`;
+      const metadata = {
+        title,
+        description: `Uploaded file: ${filename}`,
+        tags,
+        deviceId: "Vitest Real File Test",
+        originalFilename: filename,
+      };
+      formData.append("metadata", JSON.stringify(metadata));
+      formData.append("content", fileBlob, filename);
 
-    const response = await loggedFetch(`${BASE_URL}/photos`, {
-      method: "POST",
-      body: formData,
-    });
+      const response = await loggedFetch(`${BASE_URL}/photos`, {
+        method: "POST",
+        body: formData,
+      });
 
-    expect(response.status, `POST failed for ${filename}`).toBe(201);
-    const data = (await response.json()) as Photo;
-    createdPhotoIds.push(data.id);
+      expect(response.status, `POST failed for ${filename}`).toBe(201);
+      const data = (await response.json()) as Photo;
+      createdPhotoIds.push(data.id);
 
-    expect(data.id).toMatch(/^photo-[A-Za-z0-9]{15}$/);
-    expect(data.title).toBe(title);
-    expect(data.originalFilename).toBe(filename);
-    expect(data.mimeType).toBe(mimeType);
-    expect(data.fileSize).toBe(fileSize);
-    expect(hasSameElements(data.tags, tags)).toBe(true);
-    expect(data.deviceId).toBe("Vitest Real File Test");
-  });
+      expect(data.id).toMatch(/^photo-[A-Za-z0-9]{15}$/);
+      expect(data.title).toBe(title);
+      expect(data.originalFilename).toBe(filename);
+      expect(data.mimeType).toBe(mimeType);
+      expect(data.fileSize).toBe(fileSize);
+      expect(hasSameElements(data.tags, tags)).toBe(true);
+      expect(data.deviceId).toBe("Vitest Real File Test");
+    },
+  );
 
   it("should have extracted EXIF data from JPEG fixtures", async () => {
     // photo1.jpg and photo2.JPEG are real JPEG files with EXIF data

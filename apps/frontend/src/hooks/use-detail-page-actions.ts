@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+
 import { apiFetch } from "@/lib/api-client";
 import { setFlagColor, togglePin } from "@/lib/api-content";
 import { isJobStuck } from "@/lib/date-utils";
@@ -110,10 +111,8 @@ export function useDetailPageActions(options: UseDetailPageActionsOptions) {
     if (!item) return;
     if (
       typeof window !== "undefined" &&
-      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets
     ) {
-      // biome-ignore lint/suspicious/noExplicitAny: global window extension for assistant
       (window as any).openAssistantWithAssets([
         { type: singular, id: item.id, title: item.title },
       ]);

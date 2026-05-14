@@ -15,6 +15,7 @@ import type {
 } from "@eclaire/ai";
 import { setInlineConfig } from "@eclaire/ai";
 import { eq } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 import {
   decrypt,

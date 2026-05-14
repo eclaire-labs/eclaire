@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { deleteDocument } from "../../services/documents.js";
 import { agentToolCaller } from "./caller.js";
 

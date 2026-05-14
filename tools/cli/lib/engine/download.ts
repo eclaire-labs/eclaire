@@ -8,7 +8,9 @@ import { exec, spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { promisify } from "node:util";
+
 import axios from "axios";
+
 import type { DownloadResult } from "../types/engines.js";
 import { ensureDirectories, getModelsDir } from "./paths.js";
 
@@ -286,7 +288,6 @@ function parseModelRef(ref: string): ParsedModelRef | null {
   // Handle path-style references: "org/repo/filename.gguf"
   const parts = ref.split("/");
   if (parts.length >= 3) {
-    // biome-ignore lint/style/noNonNullAssertion: parts.length >= 3 guarantees pop() is non-null
     const filename = parts.pop()!;
     const repoId = parts.join("/");
     return { repoId, filename };

@@ -6,6 +6,7 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
+
 import type { JobWaitlistInterface } from "../../core/types.js";
 // Tests use plain strings as queue names (e.g. "bookmarks", "photos") — the
 // waitlist is now generic and accepts any string key.

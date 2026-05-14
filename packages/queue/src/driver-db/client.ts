@@ -3,6 +3,7 @@
  */
 
 import { and, count, eq, or, sql } from "drizzle-orm";
+
 import { getErrorMessage } from "../core/error-utils.js";
 import {
   isPermanentError,
@@ -118,7 +119,6 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
 
         if (!key) {
           // No key - simple insert (ignore replace option)
-          // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
           await (db as any).insert(queueJobs).values(jobValues);
           actualId = id;
 
@@ -135,7 +135,6 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
           );
         } else {
           // Default: blind upsert (backward compatible)
-          // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
           const [result] = await (db as any)
             .insert(queueJobs)
             .values(jobValues)
@@ -195,7 +194,6 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
     async cancel(jobIdOrKey: string): Promise<boolean> {
       try {
         // Try to find by ID first, then by key
-        // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
         const result = await (db as any)
           .update(queueJobs)
           .set({
@@ -245,7 +243,6 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
      */
     async retry(jobIdOrKey: string): Promise<boolean> {
       try {
-        // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
         const result = await (db as any)
           .update(queueJobs)
           .set({
@@ -277,7 +274,6 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
           // Notify waiting workers
           if (notifyEmitter) {
             // Get the queue name to notify the right queue
-            // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
             const [job] = await (db as any)
               .select({ queue: queueJobs.queue })
               .from(queueJobs)
@@ -310,7 +306,6 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
      */
     async getJob(jobIdOrKey: string): Promise<Job | null> {
       try {
-        // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
         const [row] = await (db as any)
           .select()
           .from(queueJobs)
@@ -343,7 +338,6 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
       try {
         const conditions = queue ? eq(queueJobs.queue, queue) : undefined;
 
-        // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM query builder requires cast for polymorphic db
         const results = await (db as any)
           .select({
             status: queueJobs.status,
@@ -418,14 +412,11 @@ export function createDbQueueClient(config: DbQueueClientConfig): QueueClient {
  * @returns true if the job was marked completed, false if lock was lost
  */
 export async function markJobCompleted(
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM instance — generic across Postgres/SQLite dialects
   db: any,
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
   queueJobs: any,
   jobId: string,
   workerId: string,
   lockToken: string,
-  // biome-ignore lint/suspicious/noExplicitAny: logger instance — generic across implementations
   logger: any,
 ): Promise<boolean> {
   const result = await db
@@ -484,15 +475,12 @@ function buildErrorDetails(error: Error): Record<string, unknown> {
 }
 
 export async function markJobFailed(
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM instance — generic across Postgres/SQLite dialects
   db: any,
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
   queueJobs: any,
   jobId: string,
   workerId: string,
   lockToken: string,
   error: Error,
-  // biome-ignore lint/suspicious/noExplicitAny: logger instance — generic across implementations
   logger: any,
 ): Promise<boolean> {
   // Build ownership WHERE clause
@@ -666,15 +654,12 @@ export async function markJobFailed(
  * @returns true if the lock was extended, false if lock was lost
  */
 export async function extendJobLock(
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM instance — generic across Postgres/SQLite dialects
   db: any,
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
   queueJobs: any,
   jobId: string,
   workerId: string,
   lockToken: string,
   lockDuration: number,
-  // biome-ignore lint/suspicious/noExplicitAny: logger instance — generic across implementations
   logger: any,
 ): Promise<boolean> {
   const now = new Date();
@@ -710,7 +695,6 @@ export async function extendJobLock(
 /**
  * Format database row to Job interface
  */
-// biome-ignore lint/suspicious/noExplicitAny: raw database row type varies by dialect
 function formatJob(row: any): Job {
   // Parse stages if stored as JSON string (SQLite) or already an array (PostgreSQL)
   let stages: JobStage[] | undefined;
@@ -719,7 +703,6 @@ function formatJob(row: any): Job {
       typeof row.stages === "string" ? JSON.parse(row.stages) : row.stages;
     // Convert date strings to Date objects in stages
     if (Array.isArray(parsedStages)) {
-      // biome-ignore lint/suspicious/noExplicitAny: raw JSON-parsed stage object — shape varies by storage format
       stages = parsedStages.map((stage: any) => ({
         ...stage,
         startedAt: stage.startedAt ? new Date(stage.startedAt) : undefined,
@@ -777,15 +760,11 @@ function formatJob(row: any): Job {
  *    - If nothing → INSERT new job
  */
 async function enqueueIfNotActive(
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM instance — generic across Postgres/SQLite dialects
   db: any,
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
   queueJobs: any,
   queue: string,
   key: string,
-  // biome-ignore lint/suspicious/noExplicitAny: job values object — shape varies by caller
   jobValues: any,
-  // biome-ignore lint/suspicious/noExplicitAny: logger instance — generic across implementations
   logger: any,
 ): Promise<string> {
   const now = new Date();
@@ -876,16 +855,13 @@ async function enqueueIfNotActive(
  * @returns true if stages were updated, false if lock was lost
  */
 export async function updateJobStages(
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM instance — generic across Postgres/SQLite dialects
   db: any,
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
   queueJobs: any,
   jobId: string,
   workerId: string,
   lockToken: string,
   stages: JobStage[],
   currentStage: string | null,
-  // biome-ignore lint/suspicious/noExplicitAny: logger instance — generic across implementations
   logger: any,
 ): Promise<boolean> {
   const overallProgress = calculateOverallProgress(stages);
@@ -926,9 +902,7 @@ export async function updateJobStages(
  * @returns Current stages array or null if job not found
  */
 export async function getJobStages(
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM instance — generic across Postgres/SQLite dialects
   db: any,
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle ORM table reference — schema varies by dialect
   queueJobs: any,
   jobId: string,
 ): Promise<JobStage[] | null> {
@@ -946,7 +920,6 @@ export async function getJobStages(
     typeof row.stages === "string" ? JSON.parse(row.stages) : row.stages;
 
   // Convert date strings to Date objects
-  // biome-ignore lint/suspicious/noExplicitAny: raw JSON-parsed stage object — shape varies by storage format
   return stages.map((stage: any) => ({
     ...stage,
     startedAt: stage.startedAt ? new Date(stage.startedAt) : undefined,

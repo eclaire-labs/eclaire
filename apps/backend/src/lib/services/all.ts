@@ -1,6 +1,7 @@
 // lib/services/all.ts
 import { fileTypeFromBuffer } from "file-type";
 import isUrl from "is-url";
+
 import { ASSET_TYPE } from "../../types/assets.js";
 import {
   BOOKMARK_MIMES,
@@ -105,7 +106,6 @@ export function isLaxUrl(str: string): boolean {
 interface CreateContentPayload {
   contentBuffer: Buffer;
   mimeType: string;
-  // biome-ignore lint/suspicious/noExplicitAny: metadata record from mixed item types
   metadata: Record<string, any>;
   filename?: string;
   userId: string;
@@ -114,7 +114,6 @@ interface CreateContentPayload {
 }
 
 type CreateContentResult =
-  // biome-ignore lint/suspicious/noExplicitAny: union result from polymorphic query
   | { success: true; result: any; assetType: string }
   | { success: false; error: string; statusCode: number };
 
@@ -471,7 +470,6 @@ interface FindAllParams {
   reviewStatus?: string;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: items from heterogeneous entity queries
 type AllItem = Record<string, any> & { type: string };
 
 interface CursorPaginatedAll {

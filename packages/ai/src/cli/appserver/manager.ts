@@ -7,7 +7,9 @@
  */
 
 import { type ChildProcess, spawn } from "node:child_process";
+
 import { Mutex } from "async-mutex";
+
 import { interpolateEnvVars } from "../../config.js";
 import { createLazyLogger, getErrorMessage } from "../../logger.js";
 import type { AppServerConfig, CliConfig } from "../../types.js";

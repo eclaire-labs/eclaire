@@ -8,6 +8,7 @@
 import { generateUserId } from "@eclaire/core";
 import { hashPassword } from "better-auth/crypto";
 import { count, eq, sql } from "drizzle-orm";
+
 import { db, schema, txManager } from "../../db/index.js";
 import { ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
@@ -257,7 +258,6 @@ export async function createUserByAdmin(
   const hashed = await hashPassword(password);
 
   // Insert user row
-  // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
   await (db as any).insert(users).values({
     id: userId,
     email,
@@ -271,7 +271,6 @@ export async function createUserByAdmin(
   });
 
   // Insert credential account (matches Better Auth's email+password provider)
-  // biome-ignore lint/suspicious/noExplicitAny: union type has incompatible insert signatures
   await (db as any).insert(accounts).values({
     accountId: email,
     providerId: "credential",

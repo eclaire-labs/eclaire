@@ -5,6 +5,7 @@
  */
 
 import ora from "ora";
+
 import {
   checkMemoryRequirements,
   formatMemorySize,
@@ -78,7 +79,6 @@ export async function upCommand(options: UpOptions = {}): Promise<void> {
       .join("\n");
     console.log(colors.dim(`Models to preload:\n${modelList}\n`));
 
-    // biome-ignore lint/style/noNonNullAssertion: providerConfig is set when resolution.status is "ok"
     const settings = getEngineSettings(resolution.providerConfig!);
     const spinner = ora({
       text: `Starting llama-server on port ${settings.port}...`,
@@ -89,7 +89,6 @@ export async function upCommand(options: UpOptions = {}): Promise<void> {
       const hfModels = resolution.modelsToPreload.map((m) => m.providerModel);
       const pid = await startLlamaServer({
         hfModels,
-        // biome-ignore lint/style/noNonNullAssertion: providerConfig is set when resolution.status is "ok"
         providerConfig: resolution.providerConfig!,
         foreground: options.foreground ?? false,
       });

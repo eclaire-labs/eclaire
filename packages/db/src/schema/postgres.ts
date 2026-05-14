@@ -1758,7 +1758,9 @@ export const aiProviders = pgTable("ai_providers", {
     ],
   }).notNull(),
   baseUrl: text("base_url"),
-  auth: jsonb("auth").notNull().default(sql`'{"type":"none"}'::jsonb`),
+  auth: jsonb("auth")
+    .notNull()
+    .default(sql`'{"type":"none"}'::jsonb`),
   headers: jsonb("headers"),
   engine: jsonb("engine"),
   overrides: jsonb("overrides"),
@@ -1783,7 +1785,9 @@ export const aiModels = pgTable(
       .notNull()
       .references(() => aiProviders.id, { onDelete: "cascade" }),
     providerModel: text("provider_model").notNull(),
-    capabilities: jsonb("capabilities").notNull().default(sql`'{}'::jsonb`),
+    capabilities: jsonb("capabilities")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     tokenizer: jsonb("tokenizer"),
     source: jsonb("source"),
     pricing: jsonb("pricing"),

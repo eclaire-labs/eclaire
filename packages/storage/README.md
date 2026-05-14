@@ -21,7 +21,8 @@ await storage.writeBuffer("uploads/avatar.png", buffer, {
 });
 
 // Read it back
-const { buffer: data, metadata } = await storage.readBuffer("uploads/avatar.png");
+const { buffer: data, metadata } =
+  await storage.readBuffer("uploads/avatar.png");
 console.log(metadata.contentType); // "image/png"
 console.log(metadata.size); // byte count
 
@@ -31,7 +32,10 @@ if (await storage.exists("uploads/avatar.png")) {
 }
 
 // List objects by prefix (with pagination)
-const { keys, nextCursor } = await storage.list({ prefix: "uploads/", limit: 50 });
+const { keys, nextCursor } = await storage.list({
+  prefix: "uploads/",
+  limit: 50,
+});
 
 // Delete
 await storage.delete("uploads/avatar.png");
@@ -51,9 +55,9 @@ import { LocalStorage } from "@eclaire/storage/local";
 
 const storage = new LocalStorage({
   baseDir: "/var/data/storage", // required — root directory for all objects
-  logger: myLogger,             // optional — any object with debug/info/warn/error methods
-  fileMode: 0o644,              // optional — Unix file permissions
-  dirMode: 0o755,               // optional — Unix directory permissions
+  logger: myLogger, // optional — any object with debug/info/warn/error methods
+  fileMode: 0o644, // optional — Unix file permissions
+  dirMode: 0o755, // optional — Unix directory permissions
 });
 ```
 
@@ -69,7 +73,7 @@ const storage = new MemoryStorage();
 // Run your code against `storage` exactly like LocalStorage...
 
 // Test helpers
-storage.size;    // number of stored objects
+storage.size; // number of stored objects
 storage.clear(); // wipe everything
 ```
 
@@ -122,12 +126,12 @@ try {
 }
 ```
 
-| Error | When |
-|---|---|
-| `StorageNotFoundError` | `read()` or `readBuffer()` on a missing key |
-| `StorageInvalidKeyError` | Path traversal attempt or malformed key |
-| `StorageAccessDeniedError` | Permission denied on the filesystem |
-| `StorageQuotaExceededError` | Storage limit exceeded |
+| Error                       | When                                        |
+| --------------------------- | ------------------------------------------- |
+| `StorageNotFoundError`      | `read()` or `readBuffer()` on a missing key |
+| `StorageInvalidKeyError`    | Path traversal attempt or malformed key     |
+| `StorageAccessDeniedError`  | Permission denied on the filesystem         |
+| `StorageQuotaExceededError` | Storage limit exceeded                      |
 
 Note: `head()` and `exists()` return `null`/`false` for missing keys instead of throwing.
 
@@ -166,13 +170,13 @@ These are entirely optional — the `Storage` interface works with any string ke
 
 ## Entry points
 
-| Path | What's in it |
-|---|---|
-| `@eclaire/storage` | Everything below, re-exported for convenience |
-| `@eclaire/storage/core` | `Storage` interface, types, errors, key safety validators |
-| `@eclaire/storage/keys` | Opinionated key builders/parsers (optional) |
-| `@eclaire/storage/local` | `LocalStorage` adapter |
-| `@eclaire/storage/memory` | `MemoryStorage` adapter |
+| Path                      | What's in it                                              |
+| ------------------------- | --------------------------------------------------------- |
+| `@eclaire/storage`        | Everything below, re-exported for convenience             |
+| `@eclaire/storage/core`   | `Storage` interface, types, errors, key safety validators |
+| `@eclaire/storage/keys`   | Opinionated key builders/parsers (optional)               |
+| `@eclaire/storage/local`  | `LocalStorage` adapter                                    |
+| `@eclaire/storage/memory` | `MemoryStorage` adapter                                   |
 
 ## License
 

@@ -1,5 +1,6 @@
 import type { JobContext } from "@eclaire/queue/core";
 import { eq } from "drizzle-orm";
+
 import { db, schema } from "../../../db/index.js";
 import { createChildLogger } from "../../../lib/logger.js";
 import { buildKey, getStorage } from "../../../lib/storage/index.js";
@@ -32,7 +33,6 @@ export async function processTwitterApiBookmark(
   const { bookmarkId, url: originalUrl, userId } = ctx.job.data;
   logger.info({ bookmarkId, userId }, "Processing with TWITTER-API handler");
 
-  // biome-ignore lint/suspicious/noExplicitAny: dynamic artifact accumulator populated across processing stages
   const allArtifacts: Record<string, any> = {};
 
   const pipeline = new BrowserPipeline({ bookmarkId, userId, logger });
@@ -49,7 +49,6 @@ export async function processTwitterApiBookmark(
 
     // Stage 1: Get tweet data — use pre-fetched data from bookmarks sync if available,
     // otherwise fetch via X API v2 (app-only Bearer Token).
-    // biome-ignore lint/suspicious/noExplicitAny: raw X API response
     let tweetApiData: any;
 
     const [bookmarkRecord] = await db
@@ -62,8 +61,7 @@ export async function processTwitterApiBookmark(
       bookmarkRecord?.rawMetadata &&
       typeof bookmarkRecord.rawMetadata === "object" &&
       "twitterApiData" in bookmarkRecord.rawMetadata
-        ? // biome-ignore lint/suspicious/noExplicitAny: pre-fetched API data stored in rawMetadata
-          (bookmarkRecord.rawMetadata as any).twitterApiData
+        ? (bookmarkRecord.rawMetadata as any).twitterApiData
         : null;
 
     if (prefetched?.data) {

@@ -6,6 +6,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import { JobAlreadyActiveError, PermanentError } from "../../core/errors.js";
 import type { QueueClient, Worker } from "../../core/types.js";
 import {

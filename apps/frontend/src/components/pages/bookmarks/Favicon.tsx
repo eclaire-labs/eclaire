@@ -1,5 +1,6 @@
 import { Link as LinkIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import { normalizeApiUrl } from "@/lib/api-client";
 import type { Bookmark } from "@/types/bookmark";
 

@@ -1,4 +1,5 @@
 import type { WebClient } from "@slack/web-api";
+
 import type { SlackLogger } from "./deps.js";
 
 const MAX_CONSECUTIVE_FAILURES = 10;

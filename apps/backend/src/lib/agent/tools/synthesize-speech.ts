@@ -12,6 +12,7 @@ import {
 } from "@eclaire/ai";
 import { generateCleanId } from "@eclaire/core/id";
 import z from "zod/v4";
+
 import { synthesize } from "../../services/audio.js";
 import { getStorage } from "../../storage/index.js";
 

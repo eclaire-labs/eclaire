@@ -3,6 +3,7 @@
  */
 
 import { type JobsOptions, Queue } from "bullmq";
+
 import { getErrorMessage } from "../core/error-utils.js";
 import type { QueueLogger } from "../core/types.js";
 import {

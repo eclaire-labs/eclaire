@@ -17,6 +17,7 @@ import {
   ne,
   type SQL,
 } from "drizzle-orm";
+
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { tags, taskComments, tasks, tasksTags } = schema;
@@ -209,11 +210,9 @@ export type { TaskStatus };
  * and adding properly formatted date fields.
  */
 function cleanTaskForResponse(
-  // biome-ignore lint/suspicious/noExplicitAny: raw DB row formatter
   task: any,
   tags: string[],
   processingStatus?: string | null,
-  // biome-ignore lint/suspicious/noExplicitAny: raw DB row formatter
   comments: any[] = [],
 ) {
   const dueDate = task.dueDate != null ? formatToISO8601(task.dueDate) : null;
@@ -597,7 +596,6 @@ export async function updateTask(
     }
 
     // Build the update set additively
-    // biome-ignore lint/suspicious/noExplicitAny: dynamic update object
     const updateSet: { [key: string]: any } = {
       updatedAt: new Date(),
     };
@@ -820,7 +818,6 @@ export async function updateTaskStatusAsAssistant(
       completedAt: task.completedAt,
     };
 
-    // biome-ignore lint/suspicious/noExplicitAny: dynamic update object
     const updateData: any = {
       taskStatus: status,
       updatedAt: new Date(),
@@ -1241,7 +1238,6 @@ export async function findTasks({
     const rankExpr = text?.trim()
       ? buildSearchRank(text, tasks.searchVector)
       : null;
-    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: tasks.createdAt,
       dueDate: tasks.dueDate,
@@ -1287,8 +1283,7 @@ export async function findTasks({
       .limit(fetchLimit);
     let finalIds: string[] = matched.map((e) => e.id);
     const rankMap = isRelevanceSort
-      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
-        new Map(matched.map((r: any) => [r.id, r.rankScore ?? 0]))
+      ? new Map(matched.map((r: any) => [r.id, r.rankScore ?? 0]))
       : null;
 
     if (finalIds.length === 0)
@@ -1315,7 +1310,6 @@ export async function findTasks({
     });
 
     const lastItem = items[items.length - 1];
-    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
       if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;

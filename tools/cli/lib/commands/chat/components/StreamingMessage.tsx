@@ -1,4 +1,5 @@
 import { Box, Text } from "ink";
+
 import type { DisplayOptions } from "../types.js";
 import { Markdown } from "./Markdown.js";
 import { ThinkingBlock } from "./ThinkingBlock.js";

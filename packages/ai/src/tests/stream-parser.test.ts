@@ -5,6 +5,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { LLMStreamParser } from "../stream-parser.js";
 import {
   createMockLoggerFactory,

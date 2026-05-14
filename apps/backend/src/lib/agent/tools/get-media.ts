@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { getMediaById } from "../../services/media.js";
 
 const inputSchema = z.object({

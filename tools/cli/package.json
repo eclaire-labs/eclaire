@@ -3,46 +3,45 @@
   "version": "0.0.0",
   "private": true,
   "description": "Eclaire CLI - Manage providers, models, channels, and chat with AI",
-  "main": "dist/main.js",
-  "type": "module",
-  "packageManager": "pnpm@11.0.1",
+  "keywords": [
+    "admin",
+    "ai",
+    "cli",
+    "huggingface",
+    "management",
+    "models",
+    "openrouter",
+    "providers"
+  ],
+  "homepage": "https://eclaire.co/",
+  "bugs": {
+    "url": "https://github.com/eclaire-labs/eclaire/issues"
+  },
+  "license": "MIT",
+  "author": "Eclaire Labs",
   "repository": {
     "type": "git",
     "url": "https://github.com/eclaire-labs/eclaire.git",
     "directory": "tools/cli"
   },
-  "bugs": {
-    "url": "https://github.com/eclaire-labs/eclaire/issues"
-  },
-  "homepage": "https://eclaire.co/",
   "bin": {
-    "eclaire": "./dist/main.js",
-    "cli": "./dist/main.js"
+    "cli": "./dist/main.js",
+    "eclaire": "./dist/main.js"
   },
+  "type": "module",
+  "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
     "dev": "tsx main.ts",
-    "lint": "biome lint ./ && oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
-    "format": "biome format --write ./",
-    "check": "biome check ./",
-    "fix": "biome check --write ./",
+    "lint": "oxlint --tsconfig ../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "fix": "oxlint --fix --tsconfig ../../tsconfig.oxlint.json . && oxfmt .",
     "test": "node test.js",
     "link": "pnpm link",
     "unlink": "pnpm unlink -g @eclaire/cli",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": [
-    "ai",
-    "models",
-    "providers",
-    "cli",
-    "admin",
-    "huggingface",
-    "openrouter",
-    "management"
-  ],
-  "author": "Eclaire Labs",
-  "license": "MIT",
   "dependencies": {
     "@clack/prompts": "1.3.0",
     "@eclaire/ai": "workspace:*",
@@ -68,14 +67,15 @@
     "react": "19.2.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "19.2.14",
+    "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "tsx": "4.21.0",
     "typescript": "catalog:"
   },
   "engines": {
     "node": "^24.0.0"
-  }
+  },
+  "packageManager": "pnpm@11.0.1"
 }

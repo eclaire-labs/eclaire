@@ -5,6 +5,7 @@
 
 import chalk from "chalk";
 import Table from "cli-table3";
+
 import { colors, icons } from "./colors.js";
 
 // =============================================================================

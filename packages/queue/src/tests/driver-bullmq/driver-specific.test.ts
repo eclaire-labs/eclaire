@@ -6,6 +6,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import type { QueueClient, Worker } from "../../core/types.js";
 import {
   createBullMQTestHarness,
@@ -381,9 +382,8 @@ describe("BullMQ: Driver-Specific Features", () => {
       const redisUrl = harness.getRedisUrl!();
 
       // Import createBullMQClient to create a second client
-      const { createBullMQClient } = await import(
-        "../../driver-bullmq/index.js"
-      );
+      const { createBullMQClient } =
+        await import("../../driver-bullmq/index.js");
       const { createTestLogger } = await import("../testkit/utils.js");
 
       const client2 = createBullMQClient({

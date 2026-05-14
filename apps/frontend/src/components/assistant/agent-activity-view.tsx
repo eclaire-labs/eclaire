@@ -17,6 +17,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useCallback, useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/collapsible";
 import { useAgentSteps } from "@/hooks/use-agent-steps";
 import type { AgentExecutionSummary, AgentStep } from "@/types/message";
+
 import type { ToolCall } from "./tool-execution-tracker";
 
 // =============================================================================

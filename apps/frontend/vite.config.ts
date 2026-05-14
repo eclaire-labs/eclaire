@@ -1,4 +1,5 @@
 import path from "node:path";
+
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -100,9 +101,15 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules/react-dom") || id.includes("node_modules/react/")) return "vendor-react";
-          if (id.includes("node_modules/@tanstack/react-router")) return "vendor-router";
-          if (id.includes("node_modules/@tanstack/react-query")) return "vendor-query";
+          if (
+            id.includes("node_modules/react-dom") ||
+            id.includes("node_modules/react/")
+          )
+            return "vendor-react";
+          if (id.includes("node_modules/@tanstack/react-router"))
+            return "vendor-router";
+          if (id.includes("node_modules/@tanstack/react-query"))
+            return "vendor-query";
         },
       },
     },

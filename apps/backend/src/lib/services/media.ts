@@ -1,5 +1,6 @@
 import type { Buffer } from "node:buffer";
 import { Readable } from "node:stream";
+
 import {
   and,
   asc,
@@ -11,6 +12,7 @@ import {
   lte,
   type SQL,
 } from "drizzle-orm";
+
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 import {
   batchGetTags,
@@ -26,6 +28,7 @@ import {
   generateHistoryId,
   generateMediaId,
 } from "@eclaire/core";
+
 import { MEDIA_AUDIO_MIMES } from "../../types/mime-types.js";
 import { ForbiddenError, NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
@@ -119,7 +122,6 @@ export interface CreateMediaData {
     reviewStatus?: "pending" | "accepted" | "rejected";
     flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
     isPinned?: boolean;
-    // biome-ignore lint/suspicious/noExplicitAny: open-ended metadata from upload clients
     [key: string]: any;
   };
   originalMimeType: string;
@@ -947,7 +949,6 @@ export async function findMedia({
     const rankExpr = text?.trim()
       ? buildSearchRank(text, media.searchVector)
       : null;
-    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: media.createdAt,
       title: media.title,
@@ -988,8 +989,7 @@ export async function findMedia({
       .limit(fetchLimit);
     let finalMediaIds: string[] = matchedMedia.map((m) => m.id);
     const rankMap = isRelevanceSort
-      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
-        new Map(matchedMedia.map((r: any) => [r.id, r.rankScore ?? 0]))
+      ? new Map(matchedMedia.map((r: any) => [r.id, r.rankScore ?? 0]))
       : null;
 
     if (finalMediaIds.length === 0)
@@ -1066,7 +1066,6 @@ export async function findMedia({
     });
 
     const lastItem = items[items.length - 1];
-    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
       if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;

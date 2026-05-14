@@ -11,7 +11,6 @@ export type { AssetType };
 export interface JobData {
   /** Request ID for tracing - propagated from HTTP request that triggered the job */
   requestId?: string;
-  // biome-ignore lint/suspicious/noExplicitAny: job data is user-defined and can contain any value
   [key: string]: any;
 }
 

@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { getNoteEntryById } from "../../services/notes.js";
 
 const inputSchema = z.object({

@@ -59,7 +59,6 @@ export const config = {
         delaySeconds?: number;
         maxConcurrent?: number;
         handler?: string;
-        // biome-ignore lint/suspicious/noExplicitAny: allow handler-specific nested config rules
         [handlerName: string]: any;
       }
     >,

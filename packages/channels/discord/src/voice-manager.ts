@@ -1,4 +1,5 @@
 import { Readable } from "node:stream";
+
 import {
   type AudioPlayer,
   AudioPlayerStatus,
@@ -12,6 +13,7 @@ import {
   VoiceConnectionStatus,
 } from "@discordjs/voice";
 import type { Client, VoiceBasedChannel } from "discord.js";
+
 import type { DiscordLogger } from "./deps.js";
 
 interface VoiceSession {

@@ -1,9 +1,11 @@
 import { Link, Outlet, useParams } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft } from "lucide-react";
 import { Suspense } from "react";
+
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
+
 import { SettingsMobileMenu } from "./SettingsMobileMenu";
 import { SettingsNav } from "./SettingsNav";
 

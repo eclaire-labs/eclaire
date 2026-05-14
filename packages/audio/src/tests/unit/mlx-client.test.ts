@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { MlxAudioClient } from "../../mlx-client.js";
 import { createMockFetch, type MockFetchInstance } from "../setup.js";
 

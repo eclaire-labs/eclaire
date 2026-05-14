@@ -1,4 +1,5 @@
 import { createEncryption, parseEncryptionKey } from "@eclaire/core";
+
 import { config } from "../config/index.js";
 import { createChildLogger } from "./logger.js";
 

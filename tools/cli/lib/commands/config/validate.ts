@@ -3,6 +3,7 @@ import type {
   ProvidersConfiguration,
   SelectionConfiguration,
 } from "@eclaire/ai";
+
 import {
   isModelSuitableForBackend,
   isModelSuitableForWorkers,
@@ -425,7 +426,6 @@ function validateModel(
     // Validate boolean flags
     const boolFlags = ["streaming", "tools", "jsonSchema", "structuredOutputs"];
     for (const flag of boolFlags) {
-      // biome-ignore lint/suspicious/noExplicitAny: dynamic capability flag check by name
       if (typeof (model.capabilities as any)[flag] !== "boolean") {
         issues.push({
           type: "warning",

@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { CheckSquare, Maximize2, MessageCircle, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import { cn } from "@/lib/utils";
 
 interface AssistantOverlayProps {
@@ -46,7 +47,6 @@ export function AssistantOverlay({
   ];
 
   // Calculate positions dynamically using trigonometry (same as original prototype)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: geometry only depends on count, not action content
   const actionPositions = useMemo(() => {
     const radius = 75;
     const startAngle = 90; // degrees
@@ -107,7 +107,6 @@ export function AssistantOverlay({
         className,
       )}
     >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: hover detection wrapper for assistant menu, not a clickable element */}
       <div
         className="relative w-full h-full flex justify-end items-end pointer-events-auto"
         onMouseEnter={handleMouseEnter}
@@ -212,7 +211,6 @@ export function AssistantOverlay({
           const position = actionPositions[index];
           if (!position) return null;
           return (
-            // biome-ignore lint/a11y/useSemanticElements: positioned action item not suited for button element
             <div
               key={action.name}
               // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role

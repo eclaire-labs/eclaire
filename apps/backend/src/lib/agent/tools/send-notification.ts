@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { channelRegistry } from "../../channels.js";
 import { getNotificationChannels } from "../../services/channels.js";
 

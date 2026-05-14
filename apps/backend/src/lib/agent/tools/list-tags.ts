@@ -6,6 +6,7 @@
 
 import { type RuntimeToolDefinition, textResult } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { findPopularTags, findUserTags } from "../../services/tags.js";
 
 const inputSchema = z.object({

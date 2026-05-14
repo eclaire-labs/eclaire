@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+
 import {
   isSeparator,
   SETTINGS_NAV,

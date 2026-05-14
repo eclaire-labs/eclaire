@@ -1,4 +1,5 @@
 import chalk from "chalk";
+
 import { listChannels } from "../../db/channels.js";
 import { colors, icons } from "../../ui/colors.js";
 import { createChannelsTable } from "../../ui/tables.js";

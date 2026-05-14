@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+
 import { signOut } from "@/lib/auth";
 
 export default function LogoutPage() {

@@ -28,6 +28,7 @@ import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { showRoutes } from "hono/dev";
+
 import { initializeAI, initializeMcp } from "./lib/ai-init.js";
 import { auth } from "./lib/auth.js";
 import { channelRegistry } from "./lib/channels.js";
@@ -39,7 +40,6 @@ import { getScheduler } from "./lib/queue/scheduler.js";
 import { getInjectWebSocket, initWebSocket } from "./lib/websocket.js";
 import { createSpaMiddleware } from "./middleware/static-spa.js";
 import { registerApiRoutes } from "./routes/registry.js";
-
 import type { RouteVariables } from "./types/route-variables.js";
 
 type Variables = RouteVariables;
@@ -47,7 +47,6 @@ type Variables = RouteVariables;
 const app = new Hono<{ Variables: Variables }>();
 
 // Initialize WebSocket support (must happen before routes are registered)
-// biome-ignore lint/suspicious/noExplicitAny: Hono generic variance mismatch
 initWebSocket(app as any);
 
 // Smart Pino logger middleware - logs all HTTP requests with protection against large content
@@ -164,15 +163,13 @@ const start = async () => {
     await ensureInstanceAdmin();
 
     // Auto-complete onboarding for pre-configured instances (upgrade path)
-    const { autoCompleteOnboardingIfConfigured } = await import(
-      "./lib/services/onboarding.js"
-    );
+    const { autoCompleteOnboardingIfConfigured } =
+      await import("./lib/services/onboarding.js");
     await autoCompleteOnboardingIfConfigured();
 
     // Reset any stale "running" session executions from a previous crash/restart
-    const { resetStaleExecutions } = await import(
-      "./lib/services/conversations.js"
-    );
+    const { resetStaleExecutions } =
+      await import("./lib/services/conversations.js");
     await resetStaleExecutions();
 
     // Only start HTTP server if role includes API functionality
@@ -352,9 +349,8 @@ const shutdown = async (signal: string) => {
 
   try {
     // Close processing events
-    const { closeProcessingEvents } = await import(
-      "./routes/processing-events.js"
-    );
+    const { closeProcessingEvents } =
+      await import("./routes/processing-events.js");
     await closeProcessingEvents();
     logger.info("Processing events closed");
   } catch (error) {

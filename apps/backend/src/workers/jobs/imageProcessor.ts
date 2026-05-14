@@ -1,7 +1,9 @@
 import { Buffer } from "node:buffer";
+
 import { type AIMessage, callAI } from "@eclaire/ai";
 import { type JobContext, PermanentError } from "@eclaire/queue/core";
 import sharp from "sharp";
+
 import { createChildLogger } from "../../lib/logger.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
 import { config } from "../config.js";
@@ -231,7 +233,6 @@ async function executeAIWorkflowStep(
   mediaMime: string,
   photoId: string,
   ctx: JobContext<ImageJobData>,
-  // biome-ignore lint/suspicious/noExplicitAny: AI model returns dynamic JSON output
 ): Promise<any> {
   await ctx.startStage(stageName);
   await ctx.updateStageProgress(stageName, 10);
@@ -432,7 +433,6 @@ function detectRepetition(text: string): boolean {
  * Handles both string responses and AIResponse objects from callAI().
  * Strips markdown code blocks if present.
  */
-// biome-ignore lint/suspicious/noExplicitAny: AI model response can be string or pre-parsed object
 function parseModelResponse(responseText: string | any): any {
   try {
     // Handle AIResponse objects from callAI()
@@ -513,7 +513,6 @@ async function prepareImageForAI(
  * analogous to extractedMd for documents.
  */
 function generatePhotoContentMarkdown(
-  // biome-ignore lint/suspicious/noExplicitAny: extractedData contains dynamic AI analysis results
   extractedData: Record<string, any>,
 ): string {
   const analysis = extractedData.aiAnalysis || {};

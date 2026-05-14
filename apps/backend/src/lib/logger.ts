@@ -1,5 +1,6 @@
 import { createLoggerFactory, runWithRequestId } from "@eclaire/logger";
 import type { Context, Next } from "hono";
+
 import { config } from "../config/index.js";
 
 // Re-export Logger type for convenience

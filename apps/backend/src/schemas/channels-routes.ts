@@ -1,6 +1,7 @@
 // schemas/channels-routes.ts
 
 import { resolver } from "hono-openapi";
+
 import { CreateChannelSchema, UpdateChannelSchema } from "./channels-params.js";
 import {
   ChannelNotFoundSchema,

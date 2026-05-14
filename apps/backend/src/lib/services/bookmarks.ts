@@ -16,11 +16,13 @@ import {
   lte,
   type SQL,
 } from "drizzle-orm";
+
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 
 const { bookmarks, bookmarksTags, tags } = schema;
 
 import isUrl from "is-url";
+
 import {
   batchGetTags,
   buildTagFilterCondition,
@@ -90,7 +92,6 @@ export function validateAndNormalizeBookmarkUrl(
 interface CreateBookmarkPayload {
   url: string;
   userId: string;
-  // biome-ignore lint/suspicious/noExplicitAny: open-ended metadata from external APIs
   rawMetadata: Record<string, any>;
   userAgent: string;
 }
@@ -558,7 +559,6 @@ export async function deleteBookmark(
  * - normalizedUrl -> normalizedUrl (separate field, only if exists)
  * - timestamps converted to ISO strings
  */
-// biome-ignore lint/suspicious/noExplicitAny: raw DB row with variable shape
 export function mapBookmarkToApiResponse(dbBookmark: any) {
   const {
     originalUrl,
@@ -637,7 +637,6 @@ export function mapBookmarkToApiResponse(dbBookmark: any) {
  * Maps API request fields to database fields for updates
  * - url -> originalUrl (but preserve normalizedUrl if it exists)
  */
-// biome-ignore lint/suspicious/noExplicitAny: dynamic field remapping from API request
 export function mapApiRequestToDbFields(apiData: any) {
   const { url, ...rest } = apiData;
 
@@ -722,7 +721,6 @@ export async function getBookmarkById(bookmarkId: string, userId: string) {
  */
 export async function updateBookmarkArtifacts(
   bookmarkId: string,
-  // biome-ignore lint/suspicious/noExplicitAny: generic artifact record from processors
   artifacts: Record<string, any>, // Use a generic Record type now
 ): Promise<void> {
   // Changed to void for cleaner try/catch
@@ -880,7 +878,6 @@ export async function findBookmarks({
     const rankExpr = text?.trim()
       ? buildSearchRank(text, bookmarks.searchVector)
       : null;
-    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: bookmarks.createdAt,
       title: bookmarks.title,
@@ -922,8 +919,7 @@ export async function findBookmarks({
       .limit(fetchLimit);
     let finalIds: string[] = matched.map((e) => e.id);
     const rankMap = isRelevanceSort
-      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
-        new Map(matched.map((r: any) => [r.id, r.rankScore ?? 0]))
+      ? new Map(matched.map((r: any) => [r.id, r.rankScore ?? 0]))
       : null;
 
     if (finalIds.length === 0)
@@ -984,7 +980,6 @@ export async function findBookmarks({
 
     // Build cursor from the last item
     const lastItem = items[items.length - 1];
-    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
       if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;
@@ -1204,7 +1199,6 @@ export function extractBookmarksFromFolder(
  */
 export async function importBookmarkFile(
   userId: string,
-  // biome-ignore lint/suspicious/noExplicitAny: Chrome/Brave bookmark JSON import data
   bookmarkData: any,
   caller: CallerContext,
 ): Promise<BookmarkImportResult> {

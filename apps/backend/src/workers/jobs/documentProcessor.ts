@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
+
 import { type AIMessage, callAI } from "@eclaire/ai";
 import { type JobContext, PermanentError } from "@eclaire/queue/core";
 import { Readability } from "@mozilla/readability";
@@ -17,6 +18,7 @@ import { JSDOM } from "jsdom";
 import { marked } from "marked";
 import { type Browser, chromium } from "patchright";
 import sharp from "sharp";
+
 import { createChildLogger } from "../../lib/logger.js";
 import { buildKey, getStorage } from "../../lib/storage/index.js";
 import { config } from "../config.js";
@@ -998,7 +1000,6 @@ async function processWithDoclingServer(
   documentBuffer: Buffer,
   mimeType: string,
   originalFilename: string,
-  // biome-ignore lint/suspicious/noExplicitAny: Docling API response has variable structure
 ): Promise<any> {
   // Docling API documentation: https://github.com/docling-project/docling-serve/blob/main/docs/usage.md
   const formData = new FormData();
@@ -1405,7 +1406,6 @@ function extractTextFromJson(jsonString: string): string {
     const lines: string[] = [];
     const MAX_DEPTH = 50;
 
-    // biome-ignore lint/suspicious/noExplicitAny: recursive JSON traversal handles arbitrary nested structures
     function traverse(value: any, key?: string, depth = 0) {
       if (depth > MAX_DEPTH) return;
       if (typeof value === "string") {

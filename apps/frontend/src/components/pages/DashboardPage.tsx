@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { useEffect } from "react";
+
 import { DashboardClientContent } from "@/components/dashboard/DashboardClientContent";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -11,15 +12,10 @@ import { useOnboardingState } from "@/hooks/use-onboarding";
 import { apiFetch } from "@/lib/api-client";
 
 interface DashboardData {
-  // biome-ignore lint/suspicious/noExplicitAny: untyped API response
   stats: any;
-  // biome-ignore lint/suspicious/noExplicitAny: untyped API response
   recentActivities: any[];
-  // biome-ignore lint/suspicious/noExplicitAny: untyped API response
   activityTimeline: any[];
-  // biome-ignore lint/suspicious/noExplicitAny: untyped API response
   dueItems: any;
-  // biome-ignore lint/suspicious/noExplicitAny: untyped API response
   quickStats: any;
 }
 
@@ -87,7 +83,6 @@ export default function DashboardPage() {
 
   const userName =
     session.user.name ||
-    // biome-ignore lint/suspicious/noExplicitAny: auth user type lacks displayName
     (session.user as any).displayName ||
     session.user.email;
 

@@ -6,12 +6,12 @@ settings:
 
 catalogs:
   default:
-    '@biomejs/biome':
-      specifier: 2.4.13
-      version: 2.4.13
     '@types/node':
       specifier: 24.10.4
       version: 24.10.4
+    oxfmt:
+      specifier: 0.49.0
+      version: 0.49.0
     oxlint:
       specifier: 1.62.0
       version: 1.62.0
@@ -25,9 +25,6 @@ importers:
 
   .:
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -37,6 +34,9 @@ importers:
       node-gyp:
         specifier: 12.3.0
         version: 12.3.0
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -221,9 +221,6 @@ importers:
         specifier: 4.4.1
         version: 4.4.1
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/bcrypt':
         specifier: 6.0.0
         version: 6.0.0
@@ -269,6 +266,9 @@ importers:
       mime-types:
         specifier: 3.0.2
         version: 3.0.2
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -297,9 +297,6 @@ importers:
         specifier: 6.8.3
         version: 6.8.3
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
@@ -309,6 +306,9 @@ importers:
       electron-builder:
         specifier: 26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -493,9 +493,6 @@ importers:
         specifier: 4.4.1
         version: 4.4.1
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@tailwindcss/postcss':
         specifier: 4.2.4
         version: 4.2.4
@@ -538,6 +535,9 @@ importers:
       jsdom:
         specifier: 29.1.0
         version: 29.1.0(@noble/hashes@2.0.1)
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -572,12 +572,12 @@ importers:
         specifier: 1.0.22
         version: 1.0.22
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -600,12 +600,12 @@ importers:
         specifier: 4.4.1
         version: 4.4.1
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -619,15 +619,15 @@ importers:
         specifier: 8.20.0
         version: 8.20.0
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
       '@types/ws':
         specifier: 8.18.1
         version: 8.18.1
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -640,12 +640,12 @@ importers:
 
   packages/channels/core:
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -674,12 +674,12 @@ importers:
         specifier: ^4.0.0
         version: 4.3.3
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -708,12 +708,12 @@ importers:
         specifier: 7.15.1
         version: 7.15.1
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -739,12 +739,12 @@ importers:
         specifier: 4.16.3
         version: 4.16.3(encoding@0.1.13)
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -767,12 +767,12 @@ importers:
         specifier: 5.1.9
         version: 5.1.9
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -810,9 +810,6 @@ importers:
         specifier: 3.4.9
         version: 3.4.9
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/better-sqlite3':
         specifier: 7.6.13
         version: 7.6.13
@@ -822,6 +819,9 @@ importers:
       drizzle-kit:
         specifier: 0.31.10
         version: 0.31.10
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -838,12 +838,12 @@ importers:
         specifier: 10.3.1
         version: 10.3.1
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -872,9 +872,6 @@ importers:
         specifier: 5.10.1
         version: 5.10.1
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@electric-sql/pglite':
         specifier: 0.4.5
         version: 0.4.5
@@ -890,6 +887,9 @@ importers:
       drizzle-kit:
         specifier: 0.31.10
         version: 0.31.10
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -905,12 +905,12 @@ importers:
 
   packages/storage:
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -992,15 +992,15 @@ importers:
         specifier: 19.2.5
         version: 19.2.5
     devDependencies:
-      '@biomejs/biome':
-        specifier: 'catalog:'
-        version: 2.4.13
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.4
       '@types/react':
         specifier: 19.2.14
         version: 19.2.14
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.49.0
       oxlint:
         specifier: 'catalog:'
         version: 1.62.0
@@ -1637,63 +1637,6 @@ packages:
 
   '@better-fetch/fetch@1.1.21':
     resolution: {integrity: sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A==}
-
-  '@biomejs/biome@2.4.13':
-    resolution: {integrity: sha512-gLXOwkOBBg0tr7bDsqlkIh4uFeKuMjxvqsrb1Tukww1iDmHcfr4Uu8MoQxp0Rcte+69+osRNWXwHsu/zxT6XqA==}
-    engines: {node: '>=14.21.3'}
-    hasBin: true
-
-  '@biomejs/cli-darwin-arm64@2.4.13':
-    resolution: {integrity: sha512-2KImO1jhNFBa2oWConyr0x6flxbQpGKv6902uGXpYM62Xyem8U80j441SyUJ8KyngsmKbQjeIv1q2CQfDkNnYg==}
-    engines: {node: '>=14.21.3'}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@biomejs/cli-darwin-x64@2.4.13':
-    resolution: {integrity: sha512-BKrJklbaFN4p1Ts4kPBczo+PkbsHQg57kmJ+vON9u2t6uN5okYHaSr7h/MutPCWQgg2lglaWoSmm+zhYW+oOkg==}
-    engines: {node: '>=14.21.3'}
-    cpu: [x64]
-    os: [darwin]
-
-  '@biomejs/cli-linux-arm64-musl@2.4.13':
-    resolution: {integrity: sha512-U5MsuBQW25dXaYtqWWSPM3P96H6Y+fHuja3TQpMNnylocHW0tEbtFTDlUj6oM+YJLntvEkQy4grBvQNUD4+RCg==}
-    engines: {node: '>=14.21.3'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [musl]
-
-  '@biomejs/cli-linux-arm64@2.4.13':
-    resolution: {integrity: sha512-NzkUDSqfvMBrPplKgVr3aXLHZ2NEELvvF4vZxXulEylKWIGqlvNEcwUcj9OLrn75TD3lJ/GIqCVlBwd1MZCuYQ==}
-    engines: {node: '>=14.21.3'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [glibc]
-
-  '@biomejs/cli-linux-x64-musl@2.4.13':
-    resolution: {integrity: sha512-Z601MienRgTBDza/+u2CH3RSrWoXo9rtr8NK6A4KJzqGgfxx+H3VlyLgTJ4sRo40T3pIsqpTmiOQEvYzQvBRvQ==}
-    engines: {node: '>=14.21.3'}
-    cpu: [x64]
-    os: [linux]
-    libc: [musl]
-
-  '@biomejs/cli-linux-x64@2.4.13':
-    resolution: {integrity: sha512-Az3ZZedYRBo9EQzNnD9SxFcR1G5QsGo6VEc2hIyVPZ1rdKwee/7E9oeBBZFpE8Z44ekxsDQBqbiWGW5ShOhUSQ==}
-    engines: {node: '>=14.21.3'}
-    cpu: [x64]
-    os: [linux]
-    libc: [glibc]
-
-  '@biomejs/cli-win32-arm64@2.4.13':
-    resolution: {integrity: sha512-Px9PS2B5/Q183bUwy/5VHqp3J2lzdOCeVGzMpphYfl8oSa7VDCqenBdqWpy6DCy/en4Rbf/Y1RieZF6dJPcc9A==}
-    engines: {node: '>=14.21.3'}
-    cpu: [arm64]
-    os: [win32]
-
-  '@biomejs/cli-win32-x64@2.4.13':
-    resolution: {integrity: sha512-tTcMkXyBrmHi9BfrD2VNHs/5rYIUKETqsBlYOvSAABwBkJhSDVb5e7wPukftsQbO3WzQkXe6kaztC6WtUOXSoQ==}
-    engines: {node: '>=14.21.3'}
-    cpu: [x64]
-    os: [win32]
 
   '@borewit/text-codec@0.2.1':
     resolution: {integrity: sha512-k7vvKPbf7J2fZ5klGRD9AeKfUvojuZIQ3BT5u7Jfv+puwXkUBUT5PVyMDfJZpy30CBDXGMgw7fguK/lpOMBvgw==}
@@ -2849,6 +2792,128 @@ packages:
 
   '@oxc-project/types@0.127.0':
     resolution: {integrity: sha512-aIYXQBo4lCbO4z0R3FHeucQHpF46l2LbMdxRvqvuRuW2OxdnSkcng5B8+K12spgLDj93rtN3+J2Vac/TIO+ciQ==}
+
+  '@oxfmt/binding-android-arm-eabi@0.49.0':
+    resolution: {integrity: sha512-HbifJ84prIh9+55CTPAU35JdRQrwg47y16cGerCC+iejSKOuHXYo2WDql6l7cQlzrYVtc3f4UWY+dBj2lRmOeA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [android]
+
+  '@oxfmt/binding-android-arm64@0.49.0':
+    resolution: {integrity: sha512-Ef7SKJqAaH2d7E6eXZZa2OffIShbhFMxnGK0zd93p4qiyTJr75B0qf7lrPD+qQOwcf04BrjYJ0JUxq8d5+yZwg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [android]
+
+  '@oxfmt/binding-darwin-arm64@0.49.0':
+    resolution: {integrity: sha512-8x5DN9CsFfb432sHa9NyqX5XisGUdA53LPEGSdv/VniS+v4uEOR8Orv7A9QSB98Xxgp0t6r31DzQA/wpIobGqQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oxfmt/binding-darwin-x64@0.49.0':
+    resolution: {integrity: sha512-e0+DSVzk4ewhMVKNYDaRTmP81jNMBWR1X9al0cVKWS+hDM/dElNqD5zjTOCuLOZc4oOdp2Gx2ldrVL+yYo9TZQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oxfmt/binding-freebsd-x64@0.49.0':
+    resolution: {integrity: sha512-W+mjtYtrQvFbXT/uNT+221OBhGRZ8UqNsLxjTWsjZ4GsQnRdvRC/N2NCK86BcamWr7lsTxwpwN3PULnr78sgcQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@oxfmt/binding-linux-arm-gnueabihf@0.49.0':
+    resolution: {integrity: sha512-Rtv6UevV7czDlLqil+NZUe4d8gs8jQo/zScSpumwyf7I+fSdLc+hc8AF3MQC7ymxSMMD9+vfiqQlsIf7wOAzXA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [linux]
+
+  '@oxfmt/binding-linux-arm-musleabihf@0.49.0':
+    resolution: {integrity: sha512-sBi+8C/Q/MdKa5FL8ibAUCdhFBGFH7HFN/Qoyd5xQbZ/0ky3NMPpKfIBpaH0lhK2dXkGLczVQUoZ+xuNSerCdQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [linux]
+
+  '@oxfmt/binding-linux-arm64-gnu@0.49.0':
+    resolution: {integrity: sha512-JIfWenFhlzx+O8YygyZhoHFzTsdgDhxhbDRnE2iJLnnM5pWKScFvPECO2vOlA7JqJ/9S1g3uzEKuRCkHFwTjvA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxfmt/binding-linux-arm64-musl@0.49.0':
+    resolution: {integrity: sha512-iNzkMPG18jPkwBOZ4/HEjwqfzAjq4RrUQ0CgId/fC1ENvYD5jLVAaU/gWgpiqP1ys07kxSsSggDd1fp3E7mQHw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@oxfmt/binding-linux-ppc64-gnu@0.49.0':
+    resolution: {integrity: sha512-BPHA/NN3LvoIXiid+iz3BHt5V0Rzx0tXAqRUovwE1NsbDaLG9e8mtv7evDGRIkVQacqTDBv0XL25THHsxSJosQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [ppc64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxfmt/binding-linux-riscv64-gnu@0.49.0':
+    resolution: {integrity: sha512-3Eroshe+s69htC9JIL0+zLGQczLtRKezkMhwqQC21VC5Z/fuLvzLfbAOLgJLUq601H8gDYjy7deYycfOBjCvWg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [riscv64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxfmt/binding-linux-riscv64-musl@0.49.0':
+    resolution: {integrity: sha512-fnaERGgsxGm0lKAmO72EYR4BA3qBnzBTJBTi6EtUMq1D4R7EexRBMU4voXnx4TXla3SEDl9x4uNp/18SbkPjGg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [riscv64]
+    os: [linux]
+    libc: [musl]
+
+  '@oxfmt/binding-linux-s390x-gnu@0.49.0':
+    resolution: {integrity: sha512-rBwasMl1Uul1MCCeTGEFKnOTL7VUxHf+634jWStrQAbzpBJgd5Yz5m4F7exVCsoI8PHn57dNjssXagXLCLB5yA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [s390x]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxfmt/binding-linux-x64-gnu@0.49.0':
+    resolution: {integrity: sha512-BoC/F9xHe2y/deuBGA5Aw7bes07OD2gcL2wlpzTrfImR92vPP7S/k3LBTyspQZCNIVNdagkELcqKELwMLGIfAg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxfmt/binding-linux-x64-musl@0.49.0':
+    resolution: {integrity: sha512-umY6jFADAo/oztFKl8D/S6vSrG6oBpEskcentiRuz42kZVU2kfDXMWCYavxyZR2bwPjqkHpcHZ6EZFiH3Qj9ZA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@oxfmt/binding-openharmony-arm64@0.49.0':
+    resolution: {integrity: sha512-J85zQMiw2pXiGPK+OusmDvSnJ/dgpgN7VgmB2zOBtgS8F+nsOUfSg9ZEBrwbQscjZ7tkPbm38CG4VF5f53MsiA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [openharmony]
+
+  '@oxfmt/binding-win32-arm64-msvc@0.49.0':
+    resolution: {integrity: sha512-38K67XR++CoFFORDd4sMFwUVAnD6msYBdGTei+qvKGrRPO6S2PbrYPNL/eQQ1RgnnxOegNba0YQwg6uRkNcw6A==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oxfmt/binding-win32-ia32-msvc@0.49.0':
+    resolution: {integrity: sha512-rXVe0HICwQF0dBgbQtBCoYf8x/SidPIdhyQl+iPuJlV7suV+qDv7yUEB3wQ4qC3nOeNxz287SwFXKzyr0kWgEg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [ia32]
+    os: [win32]
+
+  '@oxfmt/binding-win32-x64-msvc@0.49.0':
+    resolution: {integrity: sha512-gwWLwSEmBBfIK/Wh7GGd658161o4RKAvHWRaRQbJm571iQXGKfyr7UKsI1vsWvDlNLc30CxJDc8mMmCvJ/kczQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [win32]
 
   '@oxlint/binding-android-arm-eabi@1.62.0':
     resolution: {integrity: sha512-pKsthNECyvJh8lPTICz6VcwVy2jOqdhhsp1rlxCkhgZR47aKvXPmaRWQDv+zlXpRae4qm1MaaTnutkaOk5aofg==}
@@ -7180,6 +7245,16 @@ packages:
     resolution: {integrity: sha512-qFOyK5PjiWZd+QQIh+1jhdb9LpxTF0qs7Pm8o5QHYZ0M3vKqSqzsZaEB6oWlxZ+q2sJBMI/Ktgd2N5ZwQoRHfg==}
     engines: {node: '>= 0.4'}
 
+  oxfmt@0.49.0:
+    resolution: {integrity: sha512-IAHFMdlJSWe+oAr65dx22UvjCtV9DBMisAuLnKpDqMQrctzCkGnj3QRwNHm0d+uwSWPalsDF8ZYLz9rh6nH2IQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    hasBin: true
+    peerDependencies:
+      svelte: ^5.0.0
+    peerDependenciesMeta:
+      svelte:
+        optional: true
+
   oxlint@1.62.0:
     resolution: {integrity: sha512-1uFkg6HakjsGIpW9wNdeW4/2LOHW9MEkoWjZUTUfQtIHyLIZPYt00w3Sg+H3lH+206FgBPHBbW5dVE5l2ExECQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -8266,6 +8341,10 @@ packages:
   tinyglobby@0.2.16:
     resolution: {integrity: sha512-pn99VhoACYR8nFHhxqix+uvsbXineAasWm5ojXoN8xEwK5Kd3/TrhNn1wByuD52UxWRLy8pu+kRMniEi6Eq9Zg==}
     engines: {node: '>=12.0.0'}
+
+  tinypool@2.1.0:
+    resolution: {integrity: sha512-Pugqs6M0m7Lv1I7FtxN4aoyToKg1C4tu+/381vH35y8oENM/Ai7f7C4StcoK4/+BSw9ebcS8jRiVrORFKCALLw==}
+    engines: {node: ^20.0.0 || >=22.0.0}
 
   tinyrainbow@3.1.0:
     resolution: {integrity: sha512-Bf+ILmBgretUrdJxzXM0SgXLZ3XfiaUuOj/IKQHuTXip+05Xn+uyEYdVg0kYDipTBcLrCVyUzAPz7QmArb0mmw==}
@@ -9673,41 +9752,6 @@ snapshots:
 
   '@better-fetch/fetch@1.1.21': {}
 
-  '@biomejs/biome@2.4.13':
-    optionalDependencies:
-      '@biomejs/cli-darwin-arm64': 2.4.13
-      '@biomejs/cli-darwin-x64': 2.4.13
-      '@biomejs/cli-linux-arm64': 2.4.13
-      '@biomejs/cli-linux-arm64-musl': 2.4.13
-      '@biomejs/cli-linux-x64': 2.4.13
-      '@biomejs/cli-linux-x64-musl': 2.4.13
-      '@biomejs/cli-win32-arm64': 2.4.13
-      '@biomejs/cli-win32-x64': 2.4.13
-
-  '@biomejs/cli-darwin-arm64@2.4.13':
-    optional: true
-
-  '@biomejs/cli-darwin-x64@2.4.13':
-    optional: true
-
-  '@biomejs/cli-linux-arm64-musl@2.4.13':
-    optional: true
-
-  '@biomejs/cli-linux-arm64@2.4.13':
-    optional: true
-
-  '@biomejs/cli-linux-x64-musl@2.4.13':
-    optional: true
-
-  '@biomejs/cli-linux-x64@2.4.13':
-    optional: true
-
-  '@biomejs/cli-win32-arm64@2.4.13':
-    optional: true
-
-  '@biomejs/cli-win32-x64@2.4.13':
-    optional: true
-
   '@borewit/text-codec@0.2.1': {}
 
   '@bramus/specificity@2.4.2':
@@ -10633,6 +10677,63 @@ snapshots:
   '@opentelemetry/semantic-conventions@1.40.0': {}
 
   '@oxc-project/types@0.127.0': {}
+
+  '@oxfmt/binding-android-arm-eabi@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-android-arm64@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-darwin-arm64@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-darwin-x64@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-freebsd-x64@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-linux-arm-gnueabihf@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-linux-arm-musleabihf@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-linux-arm64-gnu@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-linux-arm64-musl@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-linux-ppc64-gnu@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-linux-riscv64-gnu@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-linux-riscv64-musl@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-linux-s390x-gnu@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-linux-x64-gnu@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-linux-x64-musl@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-openharmony-arm64@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-win32-arm64-msvc@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-win32-ia32-msvc@0.49.0':
+    optional: true
+
+  '@oxfmt/binding-win32-x64-msvc@0.49.0':
+    optional: true
 
   '@oxlint/binding-android-arm-eabi@1.62.0':
     optional: true
@@ -15240,6 +15341,30 @@ snapshots:
       object-keys: 1.1.1
       safe-push-apply: 1.0.0
 
+  oxfmt@0.49.0:
+    dependencies:
+      tinypool: 2.1.0
+    optionalDependencies:
+      '@oxfmt/binding-android-arm-eabi': 0.49.0
+      '@oxfmt/binding-android-arm64': 0.49.0
+      '@oxfmt/binding-darwin-arm64': 0.49.0
+      '@oxfmt/binding-darwin-x64': 0.49.0
+      '@oxfmt/binding-freebsd-x64': 0.49.0
+      '@oxfmt/binding-linux-arm-gnueabihf': 0.49.0
+      '@oxfmt/binding-linux-arm-musleabihf': 0.49.0
+      '@oxfmt/binding-linux-arm64-gnu': 0.49.0
+      '@oxfmt/binding-linux-arm64-musl': 0.49.0
+      '@oxfmt/binding-linux-ppc64-gnu': 0.49.0
+      '@oxfmt/binding-linux-riscv64-gnu': 0.49.0
+      '@oxfmt/binding-linux-riscv64-musl': 0.49.0
+      '@oxfmt/binding-linux-s390x-gnu': 0.49.0
+      '@oxfmt/binding-linux-x64-gnu': 0.49.0
+      '@oxfmt/binding-linux-x64-musl': 0.49.0
+      '@oxfmt/binding-openharmony-arm64': 0.49.0
+      '@oxfmt/binding-win32-arm64-msvc': 0.49.0
+      '@oxfmt/binding-win32-ia32-msvc': 0.49.0
+      '@oxfmt/binding-win32-x64-msvc': 0.49.0
+
   oxlint@1.62.0:
     optionalDependencies:
       '@oxlint/binding-android-arm-eabi': 1.62.0
@@ -16487,6 +16612,8 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
+
+  tinypool@2.1.0: {}
 
   tinyrainbow@3.1.0: {}
 

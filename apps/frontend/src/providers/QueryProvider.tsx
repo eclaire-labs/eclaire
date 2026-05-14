@@ -1,6 +1,8 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
+
 import { createQueryClient } from "@/lib/queryClient";
+
 import { ProcessingEventsProvider } from "./ProcessingEventsProvider";
 
 type QueryProviderProps = {

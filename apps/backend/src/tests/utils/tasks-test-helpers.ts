@@ -1,4 +1,5 @@
 import { expect } from "vitest";
+
 import {
   BASE_URL,
   createAuthenticatedFetch,

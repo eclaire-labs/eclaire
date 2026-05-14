@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import { cn } from "@/lib/utils";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -43,13 +44,11 @@ export function SlashPalette({
   const listRef = useRef<HTMLDivElement>(null);
 
   // Reset selection when items change
-  // biome-ignore lint/correctness/useExhaustiveDependencies: items identity change triggers reset
   useEffect(() => {
     setSelectedIndex(0);
   }, [items]);
 
   // Scroll selected item into view
-  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedIndex triggers scroll
   useEffect(() => {
     if (!listRef.current) return;
     const selected = listRef.current.querySelector("[data-selected=true]");

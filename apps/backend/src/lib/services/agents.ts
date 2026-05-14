@@ -9,6 +9,7 @@ import {
 } from "@eclaire/ai";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
+
 import { db, schema } from "../../db/index.js";
 import { getBackendTools } from "../agent/tools/index.js";
 import type { AgentCatalogItem, AgentDefinition } from "../agent/types.js";

@@ -11,6 +11,7 @@
 
 import { Hono } from "hono";
 import { validator as zValidator } from "hono-openapi";
+
 import { assertPrincipalScopes } from "../lib/auth-principal.js";
 import { getAuthenticatedPrincipal } from "../lib/auth-utils.js";
 import { ForbiddenError } from "../lib/errors.js";

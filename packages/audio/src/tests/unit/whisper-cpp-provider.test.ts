@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { WhisperCppProvider } from "../../whisper-cpp-provider.js";
 import { TEST_WHISPER_CPP_CONFIG } from "../setup.js";
 

@@ -4,6 +4,7 @@
  */
 
 import { and, eq } from "drizzle-orm";
+
 import { getDb } from "./index.js";
 
 export interface AgentRow {
@@ -29,7 +30,6 @@ export interface CreateAgentInput {
   modelId?: string | null;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type, queries work across all dialects
 function query(): { db: any; agents: any } {
   const { db, schema } = getDb();
   return { db, agents: schema.agents };

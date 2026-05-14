@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+
 import type { ContentLink } from "@/types/message";
 
 vi.mock("@/lib/api-client", () => ({

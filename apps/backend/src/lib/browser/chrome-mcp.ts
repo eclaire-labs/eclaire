@@ -7,6 +7,7 @@
  */
 
 import type { McpServerConnection } from "@eclaire/ai";
+
 import type { BrowserState, BrowserTabSummary } from "./types.js";
 
 function normalizeTextContent(result: unknown): string {

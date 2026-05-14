@@ -5,6 +5,7 @@ import {
   type Client,
   SlashCommandBuilder,
 } from "discord.js";
+
 import { getDeps } from "./deps.js";
 
 /** Per-channel session state (in-memory, resets on bot restart). */

@@ -1,7 +1,9 @@
 import type { Media as ApiMedia } from "@eclaire/api-types";
 
-export interface Media
-  extends Omit<ApiMedia, "storageId" | "thumbnailStorageId"> {
+export interface Media extends Omit<
+  ApiMedia,
+  "storageId" | "thumbnailStorageId"
+> {
   mediaUrl: string;
 }
 

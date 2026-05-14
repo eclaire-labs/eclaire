@@ -1,5 +1,6 @@
 // schemas/photos-routes.ts
 import { resolver } from "hono-openapi";
+
 import {
   commonErrors,
   commonErrorsWithValidation,

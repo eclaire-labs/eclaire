@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+
 import { decodeAppServerNotification } from "../cli/appserver/decoder.js";
 
 describe("decodeAppServerNotification", () => {

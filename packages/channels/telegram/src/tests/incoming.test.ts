@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { setDeps } from "../deps.js";
 
 vi.mock("../bot-manager.js", () => ({ stopBot: vi.fn() }));

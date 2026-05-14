@@ -4,6 +4,7 @@ import { type AILogger, setInlineConfig, setLoggerFactory } from "@eclaire/ai";
 import boxen from "boxen";
 import chalk from "chalk";
 import { Command } from "commander";
+
 import { registerAgentCommands } from "./lib/commands/agent/index.js";
 import { registerApiKeyCommands } from "./lib/commands/api-key/index.js";
 import { registerChannelCommands } from "./lib/commands/channel/index.js";

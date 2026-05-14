@@ -94,7 +94,6 @@ export function isPinnedUpdateSchema(resourceName: string, ref?: string) {
  * - Strips .default() values (so absent fields stay undefined, not defaulted)
  * - Makes all fields optional while preserving nullable/validation semantics
  */
-// biome-ignore lint/suspicious/noExplicitAny: generic Zod object type
 export function makePartial<T extends z.ZodObject<any>>(
   objSchema: T,
 ): ReturnType<T["partial"]> {
@@ -105,9 +104,7 @@ export function makePartial<T extends z.ZodObject<any>>(
     // Unwrap through optional/default/nullable wrappers to find the core type
     let core = field as z.ZodType;
     let isNullable = false;
-    // biome-ignore lint/suspicious/noExplicitAny: accessing internal Zod structure
     while ((core as any)._zod?.def?.innerType) {
-      // biome-ignore lint/suspicious/noExplicitAny: accessing internal Zod structure
       const def = (core as any)._zod.def;
       if (def.type === "nullable") isNullable = true;
       core = def.innerType;
@@ -121,7 +118,6 @@ export function makePartial<T extends z.ZodObject<any>>(
 
     newShape[key] = newField;
   }
-  // biome-ignore lint/suspicious/noExplicitAny: cast to match .partial() return type — runtime behavior is equivalent
   return z.object(newShape) as any;
 }
 
@@ -172,7 +168,6 @@ export const toolArgumentsSchema = z.record(z.string(), jsonValueSchema);
  */
 export function requestBodyResolver(
   schema: Parameters<typeof resolver>[0],
-  // biome-ignore lint/suspicious/noExplicitAny: resolver() returns ResolverReturnType but requestBody.schema expects SchemaObject
 ): any {
   return resolver(schema);
 }

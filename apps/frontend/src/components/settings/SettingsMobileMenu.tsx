@@ -1,8 +1,10 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
+
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+
 import {
   isSeparator,
   SETTINGS_NAV,

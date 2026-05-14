@@ -3,6 +3,7 @@
  */
 
 import { Command } from "commander";
+
 import { demoteCommand } from "./demote.js";
 import { listCommand } from "./list.js";
 import { promoteCommand } from "./promote.js";

@@ -25,6 +25,7 @@ import {
   WhisperCppProvider,
   type WhisperCppProviderConfig,
 } from "@eclaire/audio";
+
 import { createChildLogger } from "../logger.js";
 
 const logger = createChildLogger("services:audio");
@@ -241,9 +242,7 @@ export function createRealtimeClient(
  * to create before the audio provider is initialized.
  */
 export function createProcessAudioMessage(deps: {
-  // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   processPromptRequest: (...args: any[]) => Promise<{ response?: string }>;
-  // biome-ignore lint/suspicious/noExplicitAny: signature varies by backend version
   recordHistory: (entry: any) => Promise<void>;
 }): (
   userId: string,

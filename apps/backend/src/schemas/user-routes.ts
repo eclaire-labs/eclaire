@@ -1,4 +1,5 @@
 import { resolver } from "hono-openapi";
+
 import { ErrorResponseSchema } from "./all-responses.js";
 import {
   commonErrors,

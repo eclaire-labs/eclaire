@@ -7,7 +7,6 @@ const logger = createAILogger("text-parser");
  */
 export interface ToolCall {
   functionName: string;
-  // biome-ignore lint/suspicious/noExplicitAny: tool arguments are dynamically typed JSON from AI model
   arguments: Record<string, any>;
 }
 

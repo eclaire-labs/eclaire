@@ -326,7 +326,6 @@ export async function promptProviderFields(
               : currentConfig.engine?.name || "",
         });
         if (engine) {
-          // biome-ignore lint/suspicious/noExplicitAny: engine field accepts string or object
           updates.engine = engine as any;
         }
         break;

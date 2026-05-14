@@ -6,12 +6,14 @@ import { exec } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import { promisify } from "node:util";
+
 import {
   getActiveModelIdForContext,
   getModelConfigById,
   parsePort,
 } from "@eclaire/ai";
 import axios from "axios";
+
 import type { DoctorCheck } from "../types/engines.js";
 import { estimateModelMemory } from "./memory.js";
 import { getServerStatus, resolveSelectionEngine } from "./process.js";

@@ -20,6 +20,7 @@ const routeApi = getRouteApi("/_authenticated/tasks/$id");
 
 import { createElement, useEffect, useState } from "react";
 import { toast } from "sonner";
+
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
@@ -59,7 +60,7 @@ import {
 } from "@/lib/api-comments";
 import { formatDate } from "@/lib/date-utils";
 import type { TaskComment, TaskStatus } from "@/types/task";
-import { TaskExecutionHistory } from "./tasks/TaskExecutionHistory";
+
 import {
   getEffectiveStatusDisplay,
   getPriorityIcon,
@@ -68,6 +69,7 @@ import {
   PRIORITY_OPTIONS,
   STATUS_OPTIONS,
 } from "./tasks/task-utils";
+import { TaskExecutionHistory } from "./tasks/TaskExecutionHistory";
 
 export function TaskDetailClient() {
   const { id: taskId } = routeApi.useParams();

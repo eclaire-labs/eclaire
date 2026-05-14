@@ -9,6 +9,7 @@
 
 import { eq, or } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import {
   PermanentError,
   RateLimitError,
@@ -26,573 +27,574 @@ import {
   TEST_TIMEOUTS,
 } from "../testkit/index.js";
 
-describe.each(DB_TEST_CONFIGS)("A8-A10: Error Handling ($label)", ({
-  dbType,
-}) => {
-  let testDb: QueueTestDatabase;
-  let client: QueueClient;
-  let worker: Worker | null = null;
-  const logger = createTestLogger();
+describe.each(DB_TEST_CONFIGS)(
+  "A8-A10: Error Handling ($label)",
+  ({ dbType }) => {
+    let testDb: QueueTestDatabase;
+    let client: QueueClient;
+    let worker: Worker | null = null;
+    const logger = createTestLogger();
 
-  beforeEach(async () => {
-    testDb = await createQueueTestDatabase(dbType);
+    beforeEach(async () => {
+      testDb = await createQueueTestDatabase(dbType);
 
-    client = createDbQueueClient({
-      db: testDb.db,
-      schema: testDb.schema,
-      capabilities: testDb.capabilities,
-      logger,
+      client = createDbQueueClient({
+        db: testDb.db,
+        schema: testDb.schema,
+        capabilities: testDb.capabilities,
+        logger,
+      });
     });
-  });
 
-  afterEach(async () => {
-    if (worker) {
-      await worker.stop();
-      worker = null;
-    }
-    await client.close();
-    await testDb.cleanup();
-  });
+    afterEach(async () => {
+      if (worker) {
+        await worker.stop();
+        worker = null;
+      }
+      await client.close();
+      await testDb.cleanup();
+    });
 
-  // =========================================================================
-  // A8: RetryableError Tests
-  // =========================================================================
+    // =========================================================================
+    // A8: RetryableError Tests
+    // =========================================================================
 
-  describe("A8: RetryableError", () => {
-    it("should set job to retry_pending when RetryableError thrown", async () => {
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 3 },
-      );
+    describe("A8: RetryableError", () => {
+      it("should set job to retry_pending when RetryableError thrown", async () => {
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 3 },
+        );
 
-      let attemptCount = 0;
+        let attemptCount = 0;
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          attemptCount++;
-          throw new RetryableError("Transient failure");
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            attemptCount++;
+            throw new RetryableError("Transient failure");
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      await worker.start();
+        await worker.start();
 
-      // Wait for first attempt to complete
-      await eventually(async () => {
+        // Wait for first attempt to complete
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "retry_pending";
+        });
+
+        // Stop worker to prevent further attempts
+        await worker.stop();
+        worker = null;
+
         const job = await client.getJob(jobId);
-        return job?.status === "retry_pending";
+        expect(job?.status).toBe("retry_pending");
+        expect(job?.attempts).toBe(1);
+        expect(attemptCount).toBe(1);
       });
 
-      // Stop worker to prevent further attempts
-      await worker.stop();
-      worker = null;
+      it("should fail job when RetryableError exhausts all retries", async () => {
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 2 },
+        );
 
-      const job = await client.getJob(jobId);
-      expect(job?.status).toBe("retry_pending");
-      expect(job?.attempts).toBe(1);
-      expect(attemptCount).toBe(1);
-    });
+        let attemptCount = 0;
 
-    it("should fail job when RetryableError exhausts all retries", async () => {
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 2 },
-      );
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            attemptCount++;
+            throw new RetryableError("Transient failure");
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      let attemptCount = 0;
+        await worker.start();
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          attemptCount++;
-          throw new RetryableError("Transient failure");
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+        // Wait for job to fail after exhausting retries
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "failed";
+        });
 
-      await worker.start();
-
-      // Wait for job to fail after exhausting retries
-      await eventually(async () => {
         const job = await client.getJob(jobId);
-        return job?.status === "failed";
+        expect(job?.status).toBe("failed");
+        expect(job?.attempts).toBe(2);
+        expect(attemptCount).toBe(2);
       });
 
-      const job = await client.getJob(jobId);
-      expect(job?.status).toBe("failed");
-      expect(job?.attempts).toBe(2);
-      expect(attemptCount).toBe(2);
-    });
+      it("should apply exponential backoff on retry", async () => {
+        const backoffDelay = 100;
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          {
+            attempts: 3,
+            backoff: { type: "exponential", delay: backoffDelay },
+          },
+        );
 
-    it("should apply exponential backoff on retry", async () => {
-      const backoffDelay = 100;
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        {
-          attempts: 3,
-          backoff: { type: "exponential", delay: backoffDelay },
-        },
-      );
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            throw new RetryableError("Transient failure");
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          throw new RetryableError("Transient failure");
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+        const _beforeRetry = Date.now();
+        await worker.start();
 
-      const _beforeRetry = Date.now();
-      await worker.start();
+        // Wait for first attempt to set retry_pending
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "retry_pending";
+        });
 
-      // Wait for first attempt to set retry_pending
-      await eventually(async () => {
+        // Stop worker
+        await worker.stop();
+        worker = null;
+
+        // Verify nextRetryAt is set with exponential backoff
+        // For attempt 1, exponential backoff = delay * 2^0 = 100ms
         const job = await client.getJob(jobId);
-        return job?.status === "retry_pending";
+        expect(job?.status).toBe("retry_pending");
       });
-
-      // Stop worker
-      await worker.stop();
-      worker = null;
-
-      // Verify nextRetryAt is set with exponential backoff
-      // For attempt 1, exponential backoff = delay * 2^0 = 100ms
-      const job = await client.getJob(jobId);
-      expect(job?.status).toBe("retry_pending");
     });
-  });
 
-  // =========================================================================
-  // A9: PermanentError Tests
-  // =========================================================================
+    // =========================================================================
+    // A9: PermanentError Tests
+    // =========================================================================
 
-  describe("A9: PermanentError", () => {
-    it("should fail immediately on PermanentError", async () => {
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 5 },
-      );
+    describe("A9: PermanentError", () => {
+      it("should fail immediately on PermanentError", async () => {
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 5 },
+        );
 
-      let attemptCount = 0;
+        let attemptCount = 0;
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          attemptCount++;
-          throw new PermanentError("Resource not found");
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            attemptCount++;
+            throw new PermanentError("Resource not found");
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      await worker.start();
+        await worker.start();
 
-      // Wait for job to fail
-      await eventually(async () => {
+        // Wait for job to fail
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "failed";
+        });
+
         const job = await client.getJob(jobId);
-        return job?.status === "failed";
+        expect(job?.status).toBe("failed");
+        expect(job?.attempts).toBe(1); // Only one attempt, no retries
+        expect(attemptCount).toBe(1);
       });
 
-      const job = await client.getJob(jobId);
-      expect(job?.status).toBe("failed");
-      expect(job?.attempts).toBe(1); // Only one attempt, no retries
-      expect(attemptCount).toBe(1);
-    });
+      it("should not retry PermanentError even with attempts remaining", async () => {
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 10 },
+        );
 
-    it("should not retry PermanentError even with attempts remaining", async () => {
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 10 },
-      );
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            throw new PermanentError("Invalid input data");
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          throw new PermanentError("Invalid input data");
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+        await worker.start();
 
-      await worker.start();
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "failed";
+        });
 
-      await eventually(async () => {
         const job = await client.getJob(jobId);
-        return job?.status === "failed";
+        expect(job?.status).toBe("failed");
+        expect(job?.attempts).toBe(1);
+        // Wait a bit to ensure no more processing happens
+        await sleep(100);
+        const jobAfter = await client.getJob(jobId);
+        expect(jobAfter?.attempts).toBe(1);
       });
-
-      const job = await client.getJob(jobId);
-      expect(job?.status).toBe("failed");
-      expect(job?.attempts).toBe(1);
-      // Wait a bit to ensure no more processing happens
-      await sleep(100);
-      const jobAfter = await client.getJob(jobId);
-      expect(jobAfter?.attempts).toBe(1);
     });
-  });
 
-  // =========================================================================
-  // A10: RateLimitError Tests
-  // =========================================================================
+    // =========================================================================
+    // A10: RateLimitError Tests
+    // =========================================================================
 
-  describe("A10: RateLimitError", () => {
-    it("should reschedule without counting attempt on RateLimitError", async () => {
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 2 },
-      );
+    describe("A10: RateLimitError", () => {
+      it("should reschedule without counting attempt on RateLimitError", async () => {
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 2 },
+        );
 
-      let attemptCount = 0;
+        let attemptCount = 0;
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          attemptCount++;
-          if (attemptCount === 1) {
-            // First attempt: rate limited
-            throw new RateLimitError(50); // Very short delay for testing
-          }
-          // Second attempt: success
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            attemptCount++;
+            if (attemptCount === 1) {
+              // First attempt: rate limited
+              throw new RateLimitError(50); // Very short delay for testing
+            }
+            // Second attempt: success
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      await worker.start();
+        await worker.start();
 
-      // Wait for job to complete
-      await eventually(async () => {
+        // Wait for job to complete
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "completed";
+        });
+
         const job = await client.getJob(jobId);
-        return job?.status === "completed";
+        expect(job?.status).toBe("completed");
+        // Rate limit doesn't count as attempt, so should be 1 (the successful one)
+        expect(job?.attempts).toBe(1);
+        expect(attemptCount).toBe(2);
       });
 
-      const job = await client.getJob(jobId);
-      expect(job?.status).toBe("completed");
-      // Rate limit doesn't count as attempt, so should be 1 (the successful one)
-      expect(job?.attempts).toBe(1);
-      expect(attemptCount).toBe(2);
-    });
+      it("should set scheduledFor in future on RateLimitError", async () => {
+        const retryAfterMs = 5000;
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 2 },
+        );
 
-    it("should set scheduledFor in future on RateLimitError", async () => {
-      const retryAfterMs = 5000;
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 2 },
-      );
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            throw new RateLimitError(retryAfterMs);
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          throw new RateLimitError(retryAfterMs);
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+        const beforeRateLimit = Date.now();
+        await worker.start();
 
-      const beforeRateLimit = Date.now();
-      await worker.start();
+        // Wait for job to be rescheduled (back to pending with scheduledFor)
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "pending" && job?.scheduledFor !== undefined;
+        });
 
-      // Wait for job to be rescheduled (back to pending with scheduledFor)
-      await eventually(async () => {
+        // Stop worker before it picks up again
+        await worker.stop();
+        worker = null;
+
         const job = await client.getJob(jobId);
-        return job?.status === "pending" && job?.scheduledFor !== undefined;
+        expect(job?.status).toBe("pending");
+        expect(job?.scheduledFor).toBeDefined();
+
+        // scheduledFor should be approximately retryAfterMs in the future
+        const scheduledFor = job!.scheduledFor!.getTime();
+        const expectedTime = beforeRateLimit + retryAfterMs;
+        // Allow 1 second tolerance for test execution time
+        expect(scheduledFor).toBeGreaterThanOrEqual(expectedTime - 1000);
+        expect(scheduledFor).toBeLessThanOrEqual(expectedTime + 1000);
       });
 
-      // Stop worker before it picks up again
-      await worker.stop();
-      worker = null;
+      it("should preserve job data through rate limit reschedule", async () => {
+        const jobData = { value: 42, nested: { key: "preserved" } };
+        const jobId = await client.enqueue("test-queue", jobData, {
+          attempts: 2,
+        });
 
-      const job = await client.getJob(jobId);
-      expect(job?.status).toBe("pending");
-      expect(job?.scheduledFor).toBeDefined();
+        let attemptCount = 0;
+        let receivedData: any = null;
 
-      // scheduledFor should be approximately retryAfterMs in the future
-      const scheduledFor = job!.scheduledFor!.getTime();
-      const expectedTime = beforeRateLimit + retryAfterMs;
-      // Allow 1 second tolerance for test execution time
-      expect(scheduledFor).toBeGreaterThanOrEqual(expectedTime - 1000);
-      expect(scheduledFor).toBeLessThanOrEqual(expectedTime + 1000);
+        worker = createDbWorker(
+          "test-queue",
+          async (ctx) => {
+            attemptCount++;
+            receivedData = ctx.job.data;
+            if (attemptCount === 1) {
+              throw new RateLimitError(50);
+            }
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
+
+        await worker.start();
+
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "completed";
+        });
+
+        expect(receivedData).toEqual(jobData);
+      });
     });
 
-    it("should preserve job data through rate limit reschedule", async () => {
-      const jobData = { value: 42, nested: { key: "preserved" } };
-      const jobId = await client.enqueue("test-queue", jobData, {
-        attempts: 2,
-      });
+    // =========================================================================
+    // A11: Generic Error (plain Error treated as retryable)
+    // =========================================================================
 
-      let attemptCount = 0;
-      let receivedData: any = null;
+    describe("A11: Generic Error handling", () => {
+      it("should treat plain Error as retryable", async () => {
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 3 },
+        );
 
-      worker = createDbWorker(
-        "test-queue",
-        async (ctx) => {
-          attemptCount++;
-          receivedData = ctx.job.data;
-          if (attemptCount === 1) {
-            throw new RateLimitError(50);
-          }
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+        let attemptCount = 0;
 
-      await worker.start();
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            attemptCount++;
+            throw new Error("Generic failure");
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      await eventually(async () => {
+        await worker.start();
+
+        // Wait for first attempt to set retry_pending
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "retry_pending";
+        });
+
+        // Stop worker to prevent further attempts
+        await worker.stop();
+        worker = null;
+
         const job = await client.getJob(jobId);
-        return job?.status === "completed";
+        expect(job?.status).toBe("retry_pending");
+        expect(job?.attempts).toBe(1);
+        expect(attemptCount).toBe(1);
       });
 
-      expect(receivedData).toEqual(jobData);
-    });
-  });
+      it("should fail after exhausting retries with plain Error", async () => {
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 2 },
+        );
 
-  // =========================================================================
-  // A11: Generic Error (plain Error treated as retryable)
-  // =========================================================================
+        let attemptCount = 0;
 
-  describe("A11: Generic Error handling", () => {
-    it("should treat plain Error as retryable", async () => {
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 3 },
-      );
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            attemptCount++;
+            throw new Error("Keeps failing");
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      let attemptCount = 0;
+        await worker.start();
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          attemptCount++;
-          throw new Error("Generic failure");
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "failed";
+        });
 
-      await worker.start();
-
-      // Wait for first attempt to set retry_pending
-      await eventually(async () => {
         const job = await client.getJob(jobId);
-        return job?.status === "retry_pending";
+        expect(job?.status).toBe("failed");
+        expect(job?.attempts).toBe(2);
+        expect(attemptCount).toBe(2);
       });
-
-      // Stop worker to prevent further attempts
-      await worker.stop();
-      worker = null;
-
-      const job = await client.getJob(jobId);
-      expect(job?.status).toBe("retry_pending");
-      expect(job?.attempts).toBe(1);
-      expect(attemptCount).toBe(1);
     });
 
-    it("should fail after exhausting retries with plain Error", async () => {
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 2 },
-      );
+    // =========================================================================
+    // Error Message Persistence (verifies errorMessage stored in DB)
+    // =========================================================================
 
-      let attemptCount = 0;
+    describe("Error message persistence", () => {
+      /** Helper to read raw job row from database */
+      async function getRawJob(jobId: string): Promise<any> {
+        const { queueJobs } = testDb.schema;
+        const [row] = await testDb.db
+          .select()
+          .from(queueJobs)
+          .where(or(eq(queueJobs.id, jobId), eq(queueJobs.key, jobId)))
+          .limit(1);
+        return row;
+      }
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          attemptCount++;
-          throw new Error("Keeps failing");
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+      it("should persist PermanentError message in database", async () => {
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 3 },
+        );
 
-      await worker.start();
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            throw new PermanentError("Document not found in storage");
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "failed";
+        await worker.start();
+
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "failed";
+        });
+
+        const raw = await getRawJob(jobId);
+        expect(raw.errorMessage).toBe("Document not found in storage");
       });
 
-      const job = await client.getJob(jobId);
-      expect(job?.status).toBe("failed");
-      expect(job?.attempts).toBe(2);
-      expect(attemptCount).toBe(2);
-    });
-  });
+      it("should persist RetryableError message on final failure", async () => {
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 1 },
+        );
 
-  // =========================================================================
-  // Error Message Persistence (verifies errorMessage stored in DB)
-  // =========================================================================
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            throw new RetryableError("Connection timed out");
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-  describe("Error message persistence", () => {
-    /** Helper to read raw job row from database */
-    async function getRawJob(jobId: string): Promise<any> {
-      const { queueJobs } = testDb.schema;
-      const [row] = await testDb.db
-        .select()
-        .from(queueJobs)
-        .where(or(eq(queueJobs.id, jobId), eq(queueJobs.key, jobId)))
-        .limit(1);
-      return row;
-    }
+        await worker.start();
 
-    it("should persist PermanentError message in database", async () => {
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 3 },
-      );
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "failed";
+        });
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          throw new PermanentError("Document not found in storage");
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
-
-      await worker.start();
-
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "failed";
+        const raw = await getRawJob(jobId);
+        expect(raw.errorMessage).toBe("Connection timed out");
       });
 
-      const raw = await getRawJob(jobId);
-      expect(raw.errorMessage).toBe("Document not found in storage");
-    });
+      it("should persist plain Error message on final failure", async () => {
+        const jobId = await client.enqueue(
+          "test-queue",
+          { value: 42 },
+          { attempts: 1 },
+        );
 
-    it("should persist RetryableError message on final failure", async () => {
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 1 },
-      );
+        worker = createDbWorker(
+          "test-queue",
+          async () => {
+            throw new Error("Unexpected null reference");
+          },
+          {
+            db: testDb.db,
+            schema: testDb.schema,
+            capabilities: testDb.capabilities,
+            logger,
+            pollInterval: TEST_TIMEOUTS.pollInterval,
+          },
+        );
 
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          throw new RetryableError("Connection timed out");
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
+        await worker.start();
 
-      await worker.start();
+        await eventually(async () => {
+          const job = await client.getJob(jobId);
+          return job?.status === "failed";
+        });
 
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "failed";
+        const raw = await getRawJob(jobId);
+        expect(raw.errorMessage).toBe("Unexpected null reference");
       });
-
-      const raw = await getRawJob(jobId);
-      expect(raw.errorMessage).toBe("Connection timed out");
     });
-
-    it("should persist plain Error message on final failure", async () => {
-      const jobId = await client.enqueue(
-        "test-queue",
-        { value: 42 },
-        { attempts: 1 },
-      );
-
-      worker = createDbWorker(
-        "test-queue",
-        async () => {
-          throw new Error("Unexpected null reference");
-        },
-        {
-          db: testDb.db,
-          schema: testDb.schema,
-          capabilities: testDb.capabilities,
-          logger,
-          pollInterval: TEST_TIMEOUTS.pollInterval,
-        },
-      );
-
-      await worker.start();
-
-      await eventually(async () => {
-        const job = await client.getJob(jobId);
-        return job?.status === "failed";
-      });
-
-      const raw = await getRawJob(jobId);
-      expect(raw.errorMessage).toBe("Unexpected null reference");
-    });
-  });
-});
+  },
+);

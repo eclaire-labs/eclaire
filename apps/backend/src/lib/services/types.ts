@@ -1,4 +1,5 @@
 import type { HistoryActor } from "@eclaire/core/types";
+
 import type { AuthPrincipal } from "../auth-principal.js";
 
 /**

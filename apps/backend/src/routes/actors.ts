@@ -1,6 +1,7 @@
 import { ADMIN_ACCESS_INFO, DATA_ACCESS_INFO } from "@eclaire/api-types";
 import { Hono } from "hono";
 import { validator as zValidator } from "hono-openapi";
+
 import { getApiKeyScopeCatalog } from "../lib/auth-principal.js";
 import { assertInstanceAdmin } from "../lib/auth-utils.js";
 import { createChildLogger } from "../lib/logger.js";

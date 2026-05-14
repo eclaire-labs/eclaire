@@ -21,9 +21,9 @@ npm install @eclaire/queue
 
 Peer dependencies vary by driver:
 
-| Driver | Peer dependencies |
-|---|---|
-| BullMQ | `bullmq`, `ioredis` |
+| Driver   | Peer dependencies                                                         |
+| -------- | ------------------------------------------------------------------------- |
+| BullMQ   | `bullmq`, `ioredis`                                                       |
 | Database | `drizzle-orm` + your database driver (`postgres`, `better-sqlite3`, etc.) |
 
 ## Quick Start
@@ -91,7 +91,12 @@ const emitter = createPgNotifyEmitter(pgClient, { logger });
 const listener = createPgNotifyListener(pgClient, { logger });
 
 const schema = { queueJobs: queueJobsPg, queueSchedules: queueSchedulesPg };
-const capabilities = { skipLocked: true, notify: true, jsonb: true, type: "postgres" as const };
+const capabilities = {
+  skipLocked: true,
+  notify: true,
+  jsonb: true,
+  type: "postgres" as const,
+};
 
 // Create client
 const client = createDbQueueClient({
@@ -135,42 +140,63 @@ const sqlite = new Database("queue.db");
 const db = drizzle(sqlite);
 const { emitter, listener } = createInMemoryNotify({ logger });
 
-const schema = { queueJobs: queueJobsSqlite, queueSchedules: queueSchedulesSqlite };
-const capabilities = { skipLocked: false, notify: false, jsonb: false, type: "sqlite" as const };
+const schema = {
+  queueJobs: queueJobsSqlite,
+  queueSchedules: queueSchedulesSqlite,
+};
+const capabilities = {
+  skipLocked: false,
+  notify: false,
+  jsonb: false,
+  type: "sqlite" as const,
+};
 
-const client = createDbQueueClient({ db, schema, capabilities, logger, notifyEmitter: emitter });
-const worker = createDbWorker("tasks", handler, { db, schema, capabilities, logger, notifyListener: listener });
+const client = createDbQueueClient({
+  db,
+  schema,
+  capabilities,
+  logger,
+  notifyEmitter: emitter,
+});
+const worker = createDbWorker("tasks", handler, {
+  db,
+  schema,
+  capabilities,
+  logger,
+  notifyListener: listener,
+});
 
 await worker.start();
 ```
 
 ## Subpath Exports
 
-| Import | Description |
-|---|---|
-| `@eclaire/queue` | Core types, utilities, and Redis connection helpers |
-| `@eclaire/queue/core` | Zero-dependency types and error classes |
-| `@eclaire/queue/driver-bullmq` | Redis/BullMQ driver |
-| `@eclaire/queue/driver-db` | PostgreSQL and SQLite driver |
-| `@eclaire/queue/driver-db/schema/postgres` | PostgreSQL Drizzle table schemas |
-| `@eclaire/queue/driver-db/schema/sqlite` | SQLite Drizzle table schemas |
-| `@eclaire/queue/transport-http` | HTTP transport for remote workers |
+| Import                                     | Description                                         |
+| ------------------------------------------ | --------------------------------------------------- |
+| `@eclaire/queue`                           | Core types, utilities, and Redis connection helpers |
+| `@eclaire/queue/core`                      | Zero-dependency types and error classes             |
+| `@eclaire/queue/driver-bullmq`             | Redis/BullMQ driver                                 |
+| `@eclaire/queue/driver-db`                 | PostgreSQL and SQLite driver                        |
+| `@eclaire/queue/driver-db/schema/postgres` | PostgreSQL Drizzle table schemas                    |
+| `@eclaire/queue/driver-db/schema/sqlite`   | SQLite Drizzle table schemas                        |
+| `@eclaire/queue/transport-http`            | HTTP transport for remote workers                   |
 
 ## Job Options
 
 ```typescript
 await client.enqueue("queue-name", payload, {
-  key: "unique-key",           // Idempotency key
-  priority: 10,                // Higher = processed first (default: 0)
-  delay: 5000,                 // Delay in ms before job becomes available
+  key: "unique-key", // Idempotency key
+  priority: 10, // Higher = processed first (default: 0)
+  delay: 5000, // Delay in ms before job becomes available
   runAt: new Date("2025-01-01"), // Run at specific time
-  attempts: 5,                 // Max retry attempts (default: 3)
-  backoff: {                   // Retry backoff strategy
-    type: "exponential",       // "exponential" | "linear" | "fixed"
-    delay: 1000,               // Base delay in ms
-    maxDelay: 300_000,         // Cap for exponential backoff
+  attempts: 5, // Max retry attempts (default: 3)
+  backoff: {
+    // Retry backoff strategy
+    type: "exponential", // "exponential" | "linear" | "fixed"
+    delay: 1000, // Base delay in ms
+    maxDelay: 300_000, // Cap for exponential backoff
   },
-  replace: "if_not_active",    // Don't replace jobs currently processing
+  replace: "if_not_active", // Don't replace jobs currently processing
   initialStages: ["validate", "process", "store"], // Multi-stage setup
   metadata: { userId: "u_1" }, // Application metadata (for routing, etc.)
 });
@@ -208,23 +234,27 @@ Type guards are available: `isRateLimitError()`, `isRetryableError()`, `isPerman
 Track granular progress through named stages:
 
 ```typescript
-const worker = createBullMQWorker("process", async (ctx) => {
-  await ctx.initStages(["validate", "extract", "tag"]);
+const worker = createBullMQWorker(
+  "process",
+  async (ctx) => {
+    await ctx.initStages(["validate", "extract", "tag"]);
 
-  await ctx.startStage("validate");
-  await validate(ctx.job.data);
-  await ctx.completeStage("validate");
+    await ctx.startStage("validate");
+    await validate(ctx.job.data);
+    await ctx.completeStage("validate");
 
-  await ctx.startStage("extract");
-  const content = await extract(ctx.job.data);
-  await ctx.updateStageProgress("extract", 50);
-  const metadata = await parseMetadata(content);
-  await ctx.completeStage("extract", { wordCount: content.length });
+    await ctx.startStage("extract");
+    const content = await extract(ctx.job.data);
+    await ctx.updateStageProgress("extract", 50);
+    const metadata = await parseMetadata(content);
+    await ctx.completeStage("extract", { wordCount: content.length });
 
-  await ctx.startStage("tag");
-  await tagContent(content, metadata);
-  await ctx.completeStage("tag");
-}, workerConfig);
+    await ctx.startStage("tag");
+    await tagContent(content, metadata);
+    await ctx.completeStage("tag");
+  },
+  workerConfig,
+);
 ```
 
 Wire up real-time updates via `eventCallbacks` in worker config:
@@ -265,8 +295,8 @@ await scheduler.start();
 
 // Manage schedules
 await scheduler.setEnabled("daily-cleanup", false); // pause
-await scheduler.remove("daily-cleanup");             // delete
-const schedules = await scheduler.list();            // list all
+await scheduler.remove("daily-cleanup"); // delete
+const schedules = await scheduler.list(); // list all
 ```
 
 ## Worker Options
@@ -274,10 +304,10 @@ const schedules = await scheduler.list();            // list all
 ```typescript
 const worker = createBullMQWorker("queue", handler, {
   ...driverConfig,
-  concurrency: 3,            // Process 3 jobs at once (default: 1)
-  lockDuration: 600_000,     // 10 min lock (default: 5 min)
+  concurrency: 3, // Process 3 jobs at once (default: 1)
+  lockDuration: 600_000, // 10 min lock (default: 5 min)
   heartbeatInterval: 30_000, // Heartbeat every 30s (default: 60s)
-  stalledInterval: 15_000,   // Check stalled jobs every 15s (default: 30s)
+  stalledInterval: 15_000, // Check stalled jobs every 15s (default: 30s)
 });
 ```
 

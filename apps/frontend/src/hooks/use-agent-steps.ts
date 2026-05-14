@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+
 import { getAgentSteps } from "@/lib/api-sessions";
 
 /**
@@ -12,7 +13,6 @@ export function useAgentSteps(
 ) {
   return useQuery({
     queryKey: ["agent-steps", sessionId, messageId],
-    // biome-ignore lint/style/noNonNullAssertion: guarded by enabled check below
     queryFn: () => getAgentSteps(sessionId!, messageId!),
     enabled: enabled && !!sessionId && !!messageId,
     staleTime: 60_000, // Steps don't change after execution

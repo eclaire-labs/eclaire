@@ -9,6 +9,7 @@ import {
   Trash2,
   User as UserIcon,
 } from "lucide-react";
+
 import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
@@ -34,6 +35,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Task, TaskStatus, User } from "@/types/task";
+
 import {
   getEffectiveStatusDisplay,
   getNextStatus,

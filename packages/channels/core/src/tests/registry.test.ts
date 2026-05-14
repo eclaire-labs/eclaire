@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+
 import { ChannelRegistry } from "../registry.js";
 import type { ChannelAdapter } from "../types.js";
 

@@ -6,6 +6,7 @@
 
 import { type RuntimeToolDefinition, textResult } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { updateNoteEntry } from "../../services/notes.js";
 import { agentToolCaller } from "./caller.js";
 

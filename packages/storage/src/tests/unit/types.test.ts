@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { buildObjectMetadata, noopLogger } from "../../core/types.js";
 
 describe("buildObjectMetadata", () => {

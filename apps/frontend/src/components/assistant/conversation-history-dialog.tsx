@@ -1,6 +1,7 @@
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
 import { History, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -114,7 +115,6 @@ export const ConversationHistoryDialog = ({
             <ScrollArea className="h-full">
               <div className="space-y-2 pr-4">
                 {conversations.map((conversation) => (
-                  // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
                   <div
                     key={conversation.id}
                     // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role

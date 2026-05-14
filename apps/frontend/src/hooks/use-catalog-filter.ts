@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+
 import { useDebouncedValue } from "./use-debounced-value";
 
 export interface CatalogSortOption<T> {

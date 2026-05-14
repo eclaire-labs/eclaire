@@ -1,5 +1,7 @@
 import path from "node:path";
+
 import { BrowserWindow, nativeImage, shell } from "electron";
+
 import { store } from "./store.js";
 
 let mainWindow: BrowserWindow | null = null;

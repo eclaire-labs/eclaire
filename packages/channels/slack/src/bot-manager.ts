@@ -1,4 +1,5 @@
 import { App } from "@slack/bolt";
+
 import { registerCommands } from "./commands.js";
 import { decryptConfig, type SlackConfig } from "./config.js";
 import { getDeps } from "./deps.js";

@@ -1,7 +1,9 @@
 import { Link, useParams } from "@tanstack/react-router";
+
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+
 import {
   isSeparator,
   SETTINGS_NAV,

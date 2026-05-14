@@ -9,6 +9,7 @@
 
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import type { QueueClient, Scheduler } from "../../core/types.js";
 import {
   createDbQueueClient,
@@ -23,441 +24,444 @@ import {
   sleep,
 } from "../testkit/index.js";
 
-describe.each(DB_TEST_CONFIGS)("D1, D2, D6: Scheduler ($label)", ({
-  dbType,
-}) => {
-  let testDb: QueueTestDatabase;
-  let client: QueueClient;
-  let scheduler: Scheduler | null = null;
-  const logger = createTestLogger();
+describe.each(DB_TEST_CONFIGS)(
+  "D1, D2, D6: Scheduler ($label)",
+  ({ dbType }) => {
+    let testDb: QueueTestDatabase;
+    let client: QueueClient;
+    let scheduler: Scheduler | null = null;
+    const logger = createTestLogger();
 
-  // Short check interval for fast tests
-  const checkInterval = 50;
+    // Short check interval for fast tests
+    const checkInterval = 50;
 
-  beforeEach(async () => {
-    testDb = await createQueueTestDatabase(dbType);
+    beforeEach(async () => {
+      testDb = await createQueueTestDatabase(dbType);
 
-    client = createDbQueueClient({
-      db: testDb.db,
-      schema: testDb.schema,
-      capabilities: testDb.capabilities,
-      logger,
+      client = createDbQueueClient({
+        db: testDb.db,
+        schema: testDb.schema,
+        capabilities: testDb.capabilities,
+        logger,
+      });
     });
-  });
 
-  afterEach(async () => {
-    if (scheduler) {
-      await scheduler.stop();
-      scheduler = null;
+    afterEach(async () => {
+      if (scheduler) {
+        await scheduler.stop();
+        scheduler = null;
+      }
+      await client.close();
+      await testDb.cleanup();
+    });
+
+    /**
+     * Helper to create a scheduler with short check interval
+     */
+    function createTestScheduler(): Scheduler {
+      return createDbScheduler({
+        db: testDb.db,
+        queueSchedules: testDb.schema.queueSchedules,
+        queueClient: client,
+        logger,
+        checkInterval,
+      });
     }
-    await client.close();
-    await testDb.cleanup();
-  });
 
-  /**
-   * Helper to create a scheduler with short check interval
-   */
-  function createTestScheduler(): Scheduler {
-    return createDbScheduler({
-      db: testDb.db,
-      queueSchedules: testDb.schema.queueSchedules,
-      queueClient: client,
-      logger,
-      checkInterval,
-    });
-  }
+    // =========================================================================
+    // D1: Schedule Creation/Management Tests
+    // =========================================================================
 
-  // =========================================================================
-  // D1: Schedule Creation/Management Tests
-  // =========================================================================
+    describe("D1: Schedule Management", () => {
+      it("should create a schedule with upsert", async () => {
+        scheduler = createTestScheduler();
 
-  describe("D1: Schedule Management", () => {
-    it("should create a schedule with upsert", async () => {
-      scheduler = createTestScheduler();
+        const key = await scheduler.upsert({
+          key: "daily-cleanup",
+          queue: "cleanup-queue",
+          cron: "0 0 * * *", // Daily at midnight
+          data: { type: "cleanup" },
+        });
 
-      const key = await scheduler.upsert({
-        key: "daily-cleanup",
-        queue: "cleanup-queue",
-        cron: "0 0 * * *", // Daily at midnight
-        data: { type: "cleanup" },
+        expect(key).toBe("daily-cleanup");
+
+        const schedules = await scheduler.list();
+        expect(schedules).toHaveLength(1);
+        expect(schedules[0]!.key).toBe("daily-cleanup");
+        expect(schedules[0]!.queue).toBe("cleanup-queue");
+        expect(schedules[0]!.cron).toBe("0 0 * * *");
+        expect(schedules[0]!.data).toEqual({ type: "cleanup" });
       });
 
-      expect(key).toBe("daily-cleanup");
+      it("should update existing schedule with same key", async () => {
+        scheduler = createTestScheduler();
 
-      const schedules = await scheduler.list();
-      expect(schedules).toHaveLength(1);
-      expect(schedules[0]!.key).toBe("daily-cleanup");
-      expect(schedules[0]!.queue).toBe("cleanup-queue");
-      expect(schedules[0]!.cron).toBe("0 0 * * *");
-      expect(schedules[0]!.data).toEqual({ type: "cleanup" });
-    });
+        // Create initial schedule
+        await scheduler.upsert({
+          key: "my-schedule",
+          queue: "queue-a",
+          cron: "0 * * * *", // Hourly
+          data: { version: 1 },
+        });
 
-    it("should update existing schedule with same key", async () => {
-      scheduler = createTestScheduler();
+        // Update with same key
+        await scheduler.upsert({
+          key: "my-schedule",
+          queue: "queue-b", // Changed
+          cron: "*/5 * * * *", // Changed to every 5 minutes
+          data: { version: 2 }, // Changed
+        });
 
-      // Create initial schedule
-      await scheduler.upsert({
-        key: "my-schedule",
-        queue: "queue-a",
-        cron: "0 * * * *", // Hourly
-        data: { version: 1 },
+        const schedules = await scheduler.list();
+        expect(schedules).toHaveLength(1); // Not duplicated
+        expect(schedules[0]!.key).toBe("my-schedule");
+        expect(schedules[0]!.queue).toBe("queue-b");
+        expect(schedules[0]!.cron).toBe("*/5 * * * *");
+        expect(schedules[0]!.data).toEqual({ version: 2 });
       });
 
-      // Update with same key
-      await scheduler.upsert({
-        key: "my-schedule",
-        queue: "queue-b", // Changed
-        cron: "*/5 * * * *", // Changed to every 5 minutes
-        data: { version: 2 }, // Changed
+      it("should remove a schedule", async () => {
+        scheduler = createTestScheduler();
+
+        await scheduler.upsert({
+          key: "to-remove",
+          queue: "test-queue",
+          cron: "* * * * *",
+          data: {},
+        });
+
+        let schedules = await scheduler.list();
+        expect(schedules).toHaveLength(1);
+
+        const removed = await scheduler.remove("to-remove");
+        expect(removed).toBe(true);
+
+        schedules = await scheduler.list();
+        expect(schedules).toHaveLength(0);
+
+        // Removing again returns false
+        const removedAgain = await scheduler.remove("to-remove");
+        expect(removedAgain).toBe(false);
       });
 
-      const schedules = await scheduler.list();
-      expect(schedules).toHaveLength(1); // Not duplicated
-      expect(schedules[0]!.key).toBe("my-schedule");
-      expect(schedules[0]!.queue).toBe("queue-b");
-      expect(schedules[0]!.cron).toBe("*/5 * * * *");
-      expect(schedules[0]!.data).toEqual({ version: 2 });
-    });
+      it("should list schedules filtered by queue name", async () => {
+        scheduler = createTestScheduler();
 
-    it("should remove a schedule", async () => {
-      scheduler = createTestScheduler();
+        await scheduler.upsert({
+          key: "schedule-a",
+          queue: "queue-a",
+          cron: "* * * * *",
+          data: { queue: "a" },
+        });
 
-      await scheduler.upsert({
-        key: "to-remove",
-        queue: "test-queue",
-        cron: "* * * * *",
-        data: {},
+        await scheduler.upsert({
+          key: "schedule-b",
+          queue: "queue-b",
+          cron: "* * * * *",
+          data: { queue: "b" },
+        });
+
+        await scheduler.upsert({
+          key: "schedule-a2",
+          queue: "queue-a",
+          cron: "*/5 * * * *",
+          data: { queue: "a2" },
+        });
+
+        // List all
+        const all = await scheduler.list();
+        expect(all).toHaveLength(3);
+
+        // Filter by queue-a
+        const queueA = await scheduler.list("queue-a");
+        expect(queueA).toHaveLength(2);
+        expect(queueA.every((s) => s.queue === "queue-a")).toBe(true);
+
+        // Filter by queue-b
+        const queueB = await scheduler.list("queue-b");
+        expect(queueB).toHaveLength(1);
+        expect(queueB[0]!.key).toBe("schedule-b");
       });
-
-      let schedules = await scheduler.list();
-      expect(schedules).toHaveLength(1);
-
-      const removed = await scheduler.remove("to-remove");
-      expect(removed).toBe(true);
-
-      schedules = await scheduler.list();
-      expect(schedules).toHaveLength(0);
-
-      // Removing again returns false
-      const removedAgain = await scheduler.remove("to-remove");
-      expect(removedAgain).toBe(false);
-    });
-
-    it("should list schedules filtered by queue name", async () => {
-      scheduler = createTestScheduler();
-
-      await scheduler.upsert({
-        key: "schedule-a",
-        queue: "queue-a",
-        cron: "* * * * *",
-        data: { queue: "a" },
-      });
-
-      await scheduler.upsert({
-        key: "schedule-b",
-        queue: "queue-b",
-        cron: "* * * * *",
-        data: { queue: "b" },
-      });
-
-      await scheduler.upsert({
-        key: "schedule-a2",
-        queue: "queue-a",
-        cron: "*/5 * * * *",
-        data: { queue: "a2" },
-      });
-
-      // List all
-      const all = await scheduler.list();
-      expect(all).toHaveLength(3);
-
-      // Filter by queue-a
-      const queueA = await scheduler.list("queue-a");
-      expect(queueA).toHaveLength(2);
-      expect(queueA.every((s) => s.queue === "queue-a")).toBe(true);
-
-      // Filter by queue-b
-      const queueB = await scheduler.list("queue-b");
-      expect(queueB).toHaveLength(1);
-      expect(queueB[0]!.key).toBe("schedule-b");
-    });
-  });
-
-  // =========================================================================
-  // get() Tests
-  // =========================================================================
-
-  describe("get()", () => {
-    it("should return schedule by key", async () => {
-      scheduler = createTestScheduler();
-
-      await scheduler.upsert({
-        key: "get-test",
-        queue: "test-queue",
-        cron: "0 * * * *",
-        data: { version: 1 },
-      });
-
-      const schedule = await scheduler.get("get-test");
-      expect(schedule).not.toBeNull();
-      expect(schedule?.key).toBe("get-test");
-      expect(schedule?.queue).toBe("test-queue");
-      expect(schedule?.cron).toBe("0 * * * *");
-      expect(schedule?.data).toEqual({ version: 1 });
-      expect(schedule?.enabled).toBe(true);
     });
 
-    it("should return null for non-existent key", async () => {
-      scheduler = createTestScheduler();
-      const schedule = await scheduler.get("non-existent");
-      expect(schedule).toBeNull();
+    // =========================================================================
+    // get() Tests
+    // =========================================================================
+
+    describe("get()", () => {
+      it("should return schedule by key", async () => {
+        scheduler = createTestScheduler();
+
+        await scheduler.upsert({
+          key: "get-test",
+          queue: "test-queue",
+          cron: "0 * * * *",
+          data: { version: 1 },
+        });
+
+        const schedule = await scheduler.get("get-test");
+        expect(schedule).not.toBeNull();
+        expect(schedule?.key).toBe("get-test");
+        expect(schedule?.queue).toBe("test-queue");
+        expect(schedule?.cron).toBe("0 * * * *");
+        expect(schedule?.data).toEqual({ version: 1 });
+        expect(schedule?.enabled).toBe(true);
+      });
+
+      it("should return null for non-existent key", async () => {
+        scheduler = createTestScheduler();
+        const schedule = await scheduler.get("non-existent");
+        expect(schedule).toBeNull();
+      });
+
+      it("should return updated data after upsert", async () => {
+        scheduler = createTestScheduler();
+
+        await scheduler.upsert({
+          key: "update-test",
+          queue: "test-queue",
+          cron: "0 * * * *",
+          data: { version: 1 },
+        });
+
+        await scheduler.upsert({
+          key: "update-test",
+          queue: "test-queue",
+          cron: "0 0 * * *",
+          data: { version: 2 },
+        });
+
+        const schedule = await scheduler.get("update-test");
+        expect(schedule?.cron).toBe("0 0 * * *");
+        expect(schedule?.data).toEqual({ version: 2 });
+      });
+
+      it("should return disabled schedules with enabled: false", async () => {
+        scheduler = createTestScheduler();
+
+        await scheduler.upsert({
+          key: "disabled-test",
+          queue: "test-queue",
+          cron: "0 * * * *",
+          data: {},
+          enabled: false,
+        });
+
+        const schedule = await scheduler.get("disabled-test");
+        expect(schedule?.enabled).toBe(false);
+      });
+
+      it("should return optional fields when set", async () => {
+        scheduler = createTestScheduler();
+        const endDate = new Date("2025-12-31");
+
+        await scheduler.upsert({
+          key: "full-test",
+          queue: "test-queue",
+          cron: "0 * * * *",
+          data: {},
+          limit: 10,
+          endDate,
+        });
+
+        const schedule = await scheduler.get("full-test");
+        expect(schedule?.limit).toBe(10);
+        expect(schedule?.endDate).toEqual(endDate);
+      });
+
+      it("should return null after schedule is removed", async () => {
+        scheduler = createTestScheduler();
+
+        await scheduler.upsert({
+          key: "remove-test",
+          queue: "test-queue",
+          cron: "0 * * * *",
+          data: {},
+        });
+
+        expect(await scheduler.get("remove-test")).not.toBeNull();
+
+        await scheduler.remove("remove-test");
+
+        expect(await scheduler.get("remove-test")).toBeNull();
+      });
     });
 
-    it("should return updated data after upsert", async () => {
-      scheduler = createTestScheduler();
+    // =========================================================================
+    // D2: Schedule Recurrence Tests
+    // =========================================================================
 
-      await scheduler.upsert({
-        key: "update-test",
-        queue: "test-queue",
-        cron: "0 * * * *",
-        data: { version: 1 },
-      });
+    describe("D2: Schedule Recurrence", () => {
+      it("should enqueue job when schedule is due (immediately)", async () => {
+        scheduler = createTestScheduler();
 
-      await scheduler.upsert({
-        key: "update-test",
-        queue: "test-queue",
-        cron: "0 0 * * *",
-        data: { version: 2 },
-      });
+        // Create schedule that runs immediately
+        await scheduler.upsert({
+          key: "immediate-job",
+          queue: "test-queue",
+          cron: "* * * * *", // Every minute
+          data: { scheduled: true },
+          immediately: true,
+        });
 
-      const schedule = await scheduler.get("update-test");
-      expect(schedule?.cron).toBe("0 0 * * *");
-      expect(schedule?.data).toEqual({ version: 2 });
-    });
+        await scheduler.start();
 
-    it("should return disabled schedules with enabled: false", async () => {
-      scheduler = createTestScheduler();
+        // Wait for job to be enqueued
+        await eventually(async () => {
+          const stats = await client.stats("test-queue");
+          return stats.pending > 0;
+        });
 
-      await scheduler.upsert({
-        key: "disabled-test",
-        queue: "test-queue",
-        cron: "0 * * * *",
-        data: {},
-        enabled: false,
-      });
-
-      const schedule = await scheduler.get("disabled-test");
-      expect(schedule?.enabled).toBe(false);
-    });
-
-    it("should return optional fields when set", async () => {
-      scheduler = createTestScheduler();
-      const endDate = new Date("2025-12-31");
-
-      await scheduler.upsert({
-        key: "full-test",
-        queue: "test-queue",
-        cron: "0 * * * *",
-        data: {},
-        limit: 10,
-        endDate,
-      });
-
-      const schedule = await scheduler.get("full-test");
-      expect(schedule?.limit).toBe(10);
-      expect(schedule?.endDate).toEqual(endDate);
-    });
-
-    it("should return null after schedule is removed", async () => {
-      scheduler = createTestScheduler();
-
-      await scheduler.upsert({
-        key: "remove-test",
-        queue: "test-queue",
-        cron: "0 * * * *",
-        data: {},
-      });
-
-      expect(await scheduler.get("remove-test")).not.toBeNull();
-
-      await scheduler.remove("remove-test");
-
-      expect(await scheduler.get("remove-test")).toBeNull();
-    });
-  });
-
-  // =========================================================================
-  // D2: Schedule Recurrence Tests
-  // =========================================================================
-
-  describe("D2: Schedule Recurrence", () => {
-    it("should enqueue job when schedule is due (immediately)", async () => {
-      scheduler = createTestScheduler();
-
-      // Create schedule that runs immediately
-      await scheduler.upsert({
-        key: "immediate-job",
-        queue: "test-queue",
-        cron: "* * * * *", // Every minute
-        data: { scheduled: true },
-        immediately: true,
-      });
-
-      await scheduler.start();
-
-      // Wait for job to be enqueued
-      await eventually(async () => {
         const stats = await client.stats("test-queue");
-        return stats.pending > 0;
+        expect(stats.pending).toBeGreaterThanOrEqual(1);
       });
 
-      const stats = await client.stats("test-queue");
-      expect(stats.pending).toBeGreaterThanOrEqual(1);
-    });
+      it("should respect runLimit and auto-disable", async () => {
+        scheduler = createTestScheduler();
+        const { queueSchedules } = testDb.schema;
 
-    it("should respect runLimit and auto-disable", async () => {
-      scheduler = createTestScheduler();
-      const { queueSchedules } = testDb.schema;
+        // Create schedule with limit of 1 run, starting immediately
+        // This way it will disable after the very first run
+        await scheduler.upsert({
+          key: "limited-schedule",
+          queue: "test-queue",
+          cron: "* * * * *",
+          data: { run: true },
+          limit: 1,
+          immediately: true,
+        });
 
-      // Create schedule with limit of 1 run, starting immediately
-      // This way it will disable after the very first run
-      await scheduler.upsert({
-        key: "limited-schedule",
-        queue: "test-queue",
-        cron: "* * * * *",
-        data: { run: true },
-        limit: 1,
-        immediately: true,
-      });
+        await scheduler.start();
 
-      await scheduler.start();
+        // Wait for first job to be enqueued
+        await eventually(async () => {
+          const stats = await client.stats("test-queue");
+          return stats.pending >= 1;
+        });
 
-      // Wait for first job to be enqueued
-      await eventually(async () => {
+        // After first run, runCount becomes 1 which equals limit
+        // The scheduler should disable it on the next check when it sees runCount >= runLimit
+        // Manually set nextRunAt to past to trigger the check immediately
+        await testDb.db
+          .update(queueSchedules)
+          .set({
+            nextRunAt: new Date(Date.now() - 1000),
+          })
+          .where(eq(queueSchedules.key, "limited-schedule"));
+
+        // Wait for schedule to be disabled
+        await eventually(
+          async () => {
+            const schedules = await scheduler!.list();
+            const schedule = schedules.find(
+              (s) => s.key === "limited-schedule",
+            );
+            return schedule?.enabled === false;
+          },
+          { timeout: 2000 },
+        );
+
+        const schedules = await scheduler.list();
+        const schedule = schedules.find((s) => s.key === "limited-schedule");
+        expect(schedule?.enabled).toBe(false);
+
+        // Should have created exactly 1 job
         const stats = await client.stats("test-queue");
-        return stats.pending >= 1;
+        expect(stats.pending).toBe(1);
       });
-
-      // After first run, runCount becomes 1 which equals limit
-      // The scheduler should disable it on the next check when it sees runCount >= runLimit
-      // Manually set nextRunAt to past to trigger the check immediately
-      await testDb.db
-        .update(queueSchedules)
-        .set({
-          nextRunAt: new Date(Date.now() - 1000),
-        })
-        .where(eq(queueSchedules.key, "limited-schedule"));
-
-      // Wait for schedule to be disabled
-      await eventually(
-        async () => {
-          const schedules = await scheduler!.list();
-          const schedule = schedules.find((s) => s.key === "limited-schedule");
-          return schedule?.enabled === false;
-        },
-        { timeout: 2000 },
-      );
-
-      const schedules = await scheduler.list();
-      const schedule = schedules.find((s) => s.key === "limited-schedule");
-      expect(schedule?.enabled).toBe(false);
-
-      // Should have created exactly 1 job
-      const stats = await client.stats("test-queue");
-      expect(stats.pending).toBe(1);
-    });
-  });
-
-  // =========================================================================
-  // D6: Enable/Disable Tests
-  // =========================================================================
-
-  describe("D6: Enable/Disable", () => {
-    it("should not enqueue jobs for disabled schedules", async () => {
-      scheduler = createTestScheduler();
-
-      // Create disabled schedule
-      await scheduler.upsert({
-        key: "disabled-schedule",
-        queue: "test-queue",
-        cron: "* * * * *",
-        data: { disabled: true },
-        enabled: false,
-        immediately: true, // Would run immediately if enabled
-      });
-
-      await scheduler.start();
-
-      // Wait a bit for scheduler to run
-      await sleep(checkInterval * 3);
-
-      // No jobs should be enqueued
-      const stats = await client.stats("test-queue");
-      expect(stats.pending).toBe(0);
     });
 
-    it("should enable/disable via setEnabled()", async () => {
-      scheduler = createTestScheduler();
+    // =========================================================================
+    // D6: Enable/Disable Tests
+    // =========================================================================
 
-      // Create enabled schedule
-      await scheduler.upsert({
-        key: "toggle-schedule",
-        queue: "test-queue",
-        cron: "* * * * *",
-        data: { toggle: true },
-        enabled: true,
-        immediately: true,
+    describe("D6: Enable/Disable", () => {
+      it("should not enqueue jobs for disabled schedules", async () => {
+        scheduler = createTestScheduler();
+
+        // Create disabled schedule
+        await scheduler.upsert({
+          key: "disabled-schedule",
+          queue: "test-queue",
+          cron: "* * * * *",
+          data: { disabled: true },
+          enabled: false,
+          immediately: true, // Would run immediately if enabled
+        });
+
+        await scheduler.start();
+
+        // Wait a bit for scheduler to run
+        await sleep(checkInterval * 3);
+
+        // No jobs should be enqueued
+        const stats = await client.stats("test-queue");
+        expect(stats.pending).toBe(0);
       });
 
-      // Disable before starting scheduler
-      await scheduler.setEnabled("toggle-schedule", false);
+      it("should enable/disable via setEnabled()", async () => {
+        scheduler = createTestScheduler();
 
-      await scheduler.start();
+        // Create enabled schedule
+        await scheduler.upsert({
+          key: "toggle-schedule",
+          queue: "test-queue",
+          cron: "* * * * *",
+          data: { toggle: true },
+          enabled: true,
+          immediately: true,
+        });
 
-      // Wait for scheduler to run
-      await sleep(checkInterval * 3);
+        // Disable before starting scheduler
+        await scheduler.setEnabled("toggle-schedule", false);
 
-      // Should not have enqueued because we disabled it
-      const stats = await client.stats("test-queue");
-      expect(stats.pending).toBe(0);
+        await scheduler.start();
 
-      // Verify it's disabled in the list
-      const schedules = await scheduler.list();
-      const schedule = schedules.find((s) => s.key === "toggle-schedule");
-      expect(schedule?.enabled).toBe(false);
+        // Wait for scheduler to run
+        await sleep(checkInterval * 3);
+
+        // Should not have enqueued because we disabled it
+        const stats = await client.stats("test-queue");
+        expect(stats.pending).toBe(0);
+
+        // Verify it's disabled in the list
+        const schedules = await scheduler.list();
+        const schedule = schedules.find((s) => s.key === "toggle-schedule");
+        expect(schedule?.enabled).toBe(false);
+      });
+
+      it("should resume processing when re-enabled", async () => {
+        scheduler = createTestScheduler();
+
+        // Create disabled schedule
+        await scheduler.upsert({
+          key: "resume-schedule",
+          queue: "test-queue",
+          cron: "* * * * *",
+          data: { resume: true },
+          enabled: false,
+          immediately: true,
+        });
+
+        await scheduler.start();
+
+        // Wait and verify no jobs
+        await sleep(checkInterval * 2);
+        let stats = await client.stats("test-queue");
+        expect(stats.pending).toBe(0);
+
+        // Re-enable the schedule
+        await scheduler.setEnabled("resume-schedule", true);
+
+        // Wait for job to be enqueued
+        await eventually(async () => {
+          const s = await client.stats("test-queue");
+          return s.pending > 0;
+        });
+
+        stats = await client.stats("test-queue");
+        expect(stats.pending).toBeGreaterThanOrEqual(1);
+      });
     });
-
-    it("should resume processing when re-enabled", async () => {
-      scheduler = createTestScheduler();
-
-      // Create disabled schedule
-      await scheduler.upsert({
-        key: "resume-schedule",
-        queue: "test-queue",
-        cron: "* * * * *",
-        data: { resume: true },
-        enabled: false,
-        immediately: true,
-      });
-
-      await scheduler.start();
-
-      // Wait and verify no jobs
-      await sleep(checkInterval * 2);
-      let stats = await client.stats("test-queue");
-      expect(stats.pending).toBe(0);
-
-      // Re-enable the schedule
-      await scheduler.setEnabled("resume-schedule", true);
-
-      // Wait for job to be enqueued
-      await eventually(async () => {
-        const s = await client.stats("test-queue");
-        return s.pending > 0;
-      });
-
-      stats = await client.stats("test-queue");
-      expect(stats.pending).toBeGreaterThanOrEqual(1);
-    });
-  });
-});
+  },
+);

@@ -5,6 +5,7 @@
  */
 
 import type { z } from "zod";
+
 import type { ToolCallSummaryOutput } from "../../tools/types.js";
 import type { AICallOptions, AIContext } from "../../types.js";
 import type { RuntimeMessage, RuntimeStreamEvent } from "../messages.js";
@@ -14,7 +15,6 @@ import type {
   ToolContext,
 } from "../tools/types.js";
 
-// biome-ignore lint/suspicious/noExplicitAny: intentional — Zod requires any for generic schema type alias
 type AnyZodType = z.ZodType<any, any, any>;
 
 // =============================================================================

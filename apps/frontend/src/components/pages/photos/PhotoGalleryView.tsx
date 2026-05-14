@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import type { Photo } from "@/types/photo";
 
@@ -135,7 +136,6 @@ export function PhotoGalleryView({
   const thumbIndices = getThumbIndices();
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-close overlay, keyboard navigation handled by useEffect
     <div
       role="presentation"
       className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4"
@@ -186,7 +186,6 @@ export function PhotoGalleryView({
       </div>
 
       {/* Main Image Area */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler only stops propagation to backdrop */}
       <div
         role="presentation"
         className="relative flex-1 flex items-center justify-center w-full max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-150px)]"
@@ -238,7 +237,6 @@ export function PhotoGalleryView({
       </div>
 
       {/* Info Overlay & Thumbnail Strip */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler only stops propagation to backdrop */}
       <div
         role="presentation"
         className="w-full max-w-4xl mt-2 md:mt-4 text-center text-white/80 px-2"
@@ -258,7 +256,6 @@ export function PhotoGalleryView({
               const thumbPhoto = photos[idx];
               if (!thumbPhoto) return null;
               return (
-                // biome-ignore lint/a11y/useSemanticElements: thumbnail with image content not suited for button element
                 <div
                   key={thumbPhoto.id}
                   // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role

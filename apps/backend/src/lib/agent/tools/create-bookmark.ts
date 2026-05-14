@@ -10,6 +10,7 @@ import {
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import {
   createBookmarkAndQueueJob,
   validateAndNormalizeBookmarkUrl,
@@ -39,7 +40,6 @@ export const createBookmarkTool: RuntimeToolDefinition<typeof inputSchema> = {
 
     const result = await createBookmarkAndQueueJob(
       {
-        // biome-ignore lint/style/noNonNullAssertion: guarded by validation above
         url: urlValidation.normalizedUrl!,
         userId: ctx.userId,
         rawMetadata: {

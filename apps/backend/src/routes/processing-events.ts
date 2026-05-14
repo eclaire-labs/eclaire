@@ -6,6 +6,7 @@ import {
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import type postgres from "postgres";
+
 import { config } from "../config/index.js";
 import { createChildLogger } from "../lib/logger.js";
 import {
@@ -256,7 +257,6 @@ export async function publishProcessingEvent(
     stage?: string;
     progress?: number;
     error?: string;
-    // biome-ignore lint/suspicious/noExplicitAny: event index signature
     [key: string]: any;
   },
 ): Promise<void> {
@@ -284,7 +284,6 @@ export async function publishDirectSSEEvent(
     progress?: number;
     error?: string;
     timestamp?: number;
-    // biome-ignore lint/suspicious/noExplicitAny: event index signature
     [key: string]: any;
   },
 ): Promise<void> {

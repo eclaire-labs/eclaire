@@ -1,4 +1,5 @@
 import { Eye, Pencil, ShieldCheck, Wrench } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import type { AgentCatalogItem } from "@/types/agent";
 

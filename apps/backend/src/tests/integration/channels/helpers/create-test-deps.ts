@@ -9,6 +9,7 @@ import type { ChannelPlatform } from "@eclaire/channels-core";
 import { createEncryption, parseEncryptionKey } from "@eclaire/core";
 import { and, desc, eq } from "drizzle-orm";
 import { vi } from "vitest";
+
 import {
   buildAgentHandleCandidates,
   parseAddressedPrompt,

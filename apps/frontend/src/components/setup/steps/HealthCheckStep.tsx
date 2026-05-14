@@ -8,6 +8,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,6 +21,7 @@ import {
   type HealthCheckResult,
   useRunHealthCheck,
 } from "@/hooks/use-onboarding";
+
 import type { StepProps } from "../SetupWizard";
 
 function StatusIcon({ ok }: { ok: boolean | undefined }) {

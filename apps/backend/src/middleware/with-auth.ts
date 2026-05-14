@@ -2,6 +2,7 @@ import type { ApiKeyScope } from "@eclaire/api-types";
 import type { Context } from "hono";
 import type { Logger } from "pino";
 import z from "zod/v4";
+
 import {
   type AuthPrincipal,
   assertPrincipalScopes,
@@ -18,11 +19,9 @@ import type { RouteVariables } from "../types/route-variables.js";
 type HonoContext = Context<{ Variables: RouteVariables }>;
 
 type AuthHandler = (
-  // biome-ignore lint/suspicious/noExplicitAny: validator middleware enriches the context at call sites; keeping the handler context open preserves those validated types
   c: any,
   userId: string,
   principal: AuthPrincipal,
-  // biome-ignore lint/suspicious/noExplicitAny: Hono handlers return typed responses that don't share a clean common generic here
 ) => Promise<any> | any;
 
 interface WithAuthOptions {

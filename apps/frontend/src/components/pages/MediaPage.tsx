@@ -13,6 +13,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
+
 import type { ViewModeDef } from "@/components/list-page";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
@@ -39,10 +40,11 @@ import { useMedia } from "@/hooks/use-media";
 import { useTags } from "@/hooks/use-tags";
 import { apiFetch } from "@/lib/api-client";
 import type { EditMediaState, Media } from "@/types/media";
+
 import { ImportUrlDialog } from "./media/ImportUrlDialog";
+import { mediaConfig } from "./media/media-config";
 import { MediaListItem } from "./media/MediaListItem";
 import { MediaTileItem } from "./media/MediaTileItem";
-import { mediaConfig } from "./media/media-config";
 
 // ---------------------------------------------------------------------------
 // Upload constants

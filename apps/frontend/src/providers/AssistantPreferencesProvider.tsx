@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { apiGet, apiPatch } from "@/lib/api-client";
 import { useSession } from "@/lib/auth";

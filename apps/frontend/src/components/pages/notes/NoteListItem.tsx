@@ -5,6 +5,7 @@ import {
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
+
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
@@ -47,7 +48,6 @@ export function NoteListItem({
   const contentLength = `${(entry.content || "").length} chars`;
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: complex flex layout not suited for button element
     <div
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="button"
@@ -116,7 +116,6 @@ export function NoteListItem({
         )}
       </div>
       {/* Pin/Flag Controls */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: click handler only stops propagation to parent row */}
       <div
         role="presentation"
         className="w-20 flex-shrink-0 mr-3 flex items-center justify-center gap-1"

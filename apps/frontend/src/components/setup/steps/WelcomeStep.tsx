@@ -1,4 +1,5 @@
 import { ArrowRight, Globe, Server } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -7,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
 import type { StepProps } from "../SetupWizard";
 
 export function WelcomeStep({ state, onNext, isAdvancing }: StepProps) {

@@ -1,4 +1,5 @@
 import type { ToolContext } from "@eclaire/ai";
+
 import { agentCaller, type CallerContext } from "../../services/types.js";
 
 /**

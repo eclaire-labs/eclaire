@@ -7,6 +7,7 @@ import {
 } from "@eclaire/core";
 import { Box, render, Text, useApp, useInput } from "ink";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import {
   type AgentSummary,
   abortSession,

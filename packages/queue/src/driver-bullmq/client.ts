@@ -3,6 +3,7 @@
  */
 
 import { type JobsOptions, Queue } from "bullmq";
+
 import { getErrorMessage } from "../core/error-utils.js";
 import { JobAlreadyActiveError } from "../core/errors.js";
 import { initializeStages } from "../core/progress.js";
@@ -147,7 +148,6 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           if (existing) {
             const state = await existing.getState();
             if (state === "active") {
-              // biome-ignore lint/style/noNonNullAssertion: BullMQ job ID is always defined after retrieval
               throw new JobAlreadyActiveError(queue, options.key, existing.id!);
             }
             // Remove non-active jobs so we can recreate with new data.
@@ -174,7 +174,6 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
                   throw new JobAlreadyActiveError(
                     queue,
                     options.key,
-                    // biome-ignore lint/style/noNonNullAssertion: BullMQ job ID is always defined after retrieval
                     existing.id!,
                   );
                 }
@@ -201,7 +200,6 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
           { queue, jobId: job.id, key: options.key },
           "Job enqueued",
         );
-        // biome-ignore lint/style/noNonNullAssertion: BullMQ job ID is always defined after add()
         return job.id!;
       } catch (error) {
         // Re-throw JobAlreadyActiveError as-is
@@ -226,7 +224,6 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
                 throw new JobAlreadyActiveError(
                   queue,
                   options.key,
-                  // biome-ignore lint/style/noNonNullAssertion: BullMQ job ID is always defined after retrieval
                   racedJob.id!,
                 );
               }
@@ -353,7 +350,6 @@ export function createBullMQClient(config: BullMQClientConfig): QueueClient {
                 : bullmqJob.attemptsMade + 1;
 
             return {
-              // biome-ignore lint/style/noNonNullAssertion: BullMQ job ID is always defined after retrieval
               id: bullmqJob.id!,
               // Only set key if user originally provided one (via opts.jobId)
               key: bullmqJob.opts.jobId ? bullmqJob.id : undefined,

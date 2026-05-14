@@ -2,12 +2,14 @@
 
 import type { SlashItem } from "@eclaire/core/slash";
 import { useEffect, useRef } from "react";
+
 import type { ToolCall } from "@/components/assistant/tool-execution-tracker";
 import { Card } from "@/components/ui/card";
 import { useStreamingPlayback } from "@/hooks/use-streaming-playback";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 import type { ConversationSummary } from "@/types/conversation";
 import type { AssetReference, Message } from "@/types/message";
+
 import { MessageInput } from "./message-input";
 import { MessageList } from "./message-list";
 

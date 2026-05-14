@@ -7,6 +7,7 @@
 
 import { generateTaskOccurrenceId } from "@eclaire/core/id";
 import { and, desc, eq } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 import { createChildLogger } from "../logger.js";
 import { getQueueAdapter } from "../queue/adapter.js";

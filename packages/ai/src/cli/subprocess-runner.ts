@@ -6,6 +6,7 @@
  */
 
 import { type ChildProcess, spawn } from "node:child_process";
+
 import { createLazyLogger, getErrorMessage } from "../logger.js";
 import type { AIResponse, AIStreamResponse } from "../types.js";
 import { buildAIResponse, cliEventsToSSEStream } from "./sse-encoder.js";

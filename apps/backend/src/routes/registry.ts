@@ -6,6 +6,7 @@
  */
 
 import type { Hono } from "hono";
+
 import { actorsRoutes } from "./actors.js";
 import { adminRoutes } from "./admin.js";
 import { agentsRoutes } from "./agents.js";
@@ -33,7 +34,6 @@ import { tagsRoutes } from "./tags.js";
 import { tasksRoutes } from "./tasks.js";
 import { userRoutes } from "./user.js";
 
-// biome-ignore lint/suspicious/noExplicitAny: accepts Hono app with any env type
 export function registerApiRoutes(app: Hono<any>): void {
   app.route("/api/admin", adminRoutes);
   app.route("/api/auth", authRoutes);

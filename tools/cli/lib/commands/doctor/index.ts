@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import type { Command } from "commander";
+
 import {
   backendFetch,
   runOnboardingHealthCheck,

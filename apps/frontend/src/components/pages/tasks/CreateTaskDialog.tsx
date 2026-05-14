@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+
 import { ActorPicker } from "@/components/shared/ActorPicker";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
 import { TagEditor } from "@/components/shared/TagEditor";
@@ -25,6 +26,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { ActorOption } from "@/hooks/use-actors";
 import type { Task, TaskStatus } from "@/types/task";
+
 import { CREATE_STATUS_OPTIONS, PRIORITY_OPTIONS } from "./task-utils";
 
 const INITIAL_TASK: Omit<Task, "id"> = {

@@ -1,8 +1,8 @@
 import { normalizeApiUrl } from "@/lib/api-client";
 import type { Document } from "@/types/document";
+
 import { createCrudHooks, type ListParams } from "./create-crud-hooks";
 
-// biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 export const transformDocumentData = (raw: any): Document => ({
   id: raw.id,
   userId: raw.userId || "",

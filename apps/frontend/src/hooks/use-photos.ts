@@ -1,8 +1,8 @@
 import { normalizeApiUrl } from "@/lib/api-client";
 import type { Photo } from "@/types/photo";
+
 import { createCrudHooks, type ListParams } from "./create-crud-hooks";
 
-// biome-ignore lint/suspicious/noExplicitAny: backend API response shape is not statically typed
 export const transformPhotoData = (raw: any): Photo => ({
   id: raw.id,
   title: raw.title,

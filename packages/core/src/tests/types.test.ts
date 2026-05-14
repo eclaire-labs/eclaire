@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import {
   ASSET_TYPES,
   CHANNEL_CAPABILITIES,

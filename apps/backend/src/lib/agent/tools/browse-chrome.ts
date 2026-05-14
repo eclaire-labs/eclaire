@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
+
 import {
   errorResult,
   type RuntimeToolDefinition,
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { browserRuntime } from "../../browser/index.js";
 import { createPhoto } from "../../services/photos.js";
 import { agentToolCaller } from "./caller.js";

@@ -1,5 +1,6 @@
 // schemas/documents-routes.ts
 import { resolver } from "hono-openapi";
+
 import {
   commonErrors,
   commonErrorsWithValidation,

@@ -19,6 +19,7 @@ import {
   getQueueSchema,
   type DbCapabilities as QueueDbCapabilities,
 } from "@eclaire/queue/driver-db";
+
 import { db, dbCapabilities, dbType } from "../../db/index.js";
 import { createChildLogger } from "../../lib/logger.js";
 import { getNotifyListener } from "../../lib/queue/notify.js";

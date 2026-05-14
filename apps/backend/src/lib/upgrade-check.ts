@@ -7,9 +7,11 @@
  */
 
 import { readFileSync } from "node:fs";
+
 import { executeQuery } from "@eclaire/db";
 import { sql } from "drizzle-orm";
 import * as semver from "semver";
+
 import {
   findMigrationJournal,
   getAppVersion,

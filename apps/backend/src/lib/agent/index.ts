@@ -5,10 +5,7 @@
  */
 
 // Asset fetching
-export {
-  fetchAssetContent,
-  fetchAssetContents,
-} from "./asset-fetcher.js";
+export { fetchAssetContent, fetchAssetContents } from "./asset-fetcher.js";
 // Conversation handling
 export {
   ConversationNotFoundError,

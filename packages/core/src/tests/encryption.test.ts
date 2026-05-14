@@ -1,5 +1,7 @@
 import * as crypto from "node:crypto";
+
 import { describe, expect, it, vi } from "vitest";
+
 import { createEncryption, parseEncryptionKey } from "../encryption.js";
 
 const VALID_KEY = crypto.randomBytes(32);

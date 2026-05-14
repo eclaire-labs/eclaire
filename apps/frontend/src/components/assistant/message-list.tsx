@@ -2,6 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { StreamingMessage } from "@/components/assistant/streaming-message";
 import { ThinkingIndicator } from "@/components/assistant/thinking-indicator";
@@ -11,6 +12,7 @@ import {
 } from "@/components/assistant/tool-execution-tracker";
 import { Button } from "@/components/ui/button";
 import type { Message } from "@/types/message";
+
 import { MessageItem } from "./message-item";
 import { TypingIndicator } from "./typing-indicator";
 
@@ -66,7 +68,6 @@ export function MessageList({
   const [showScrollButton, setShowScrollButton] = useState(false);
 
   // Scroll to bottom when messages change or streaming updates
-  // biome-ignore lint/correctness/useExhaustiveDependencies: these deps intentionally trigger scroll on content changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, isStreaming, streamingText]);

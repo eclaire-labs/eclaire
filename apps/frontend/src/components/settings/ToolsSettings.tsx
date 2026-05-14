@@ -1,5 +1,6 @@
 import { Wrench } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+
 import {
   Card,
   CardContent,
@@ -15,6 +16,7 @@ import {
 } from "@/hooks/use-catalog-filter";
 import { getAgentCatalog } from "@/lib/api-agents";
 import type { AgentCatalogItem } from "@/types/agent";
+
 import { CatalogSearchBar } from "./CatalogSearchBar";
 import { ToolCard } from "./ToolCard";
 import { ToolDetailSheet } from "./ToolDetailSheet";

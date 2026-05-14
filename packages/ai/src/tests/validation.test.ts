@@ -5,6 +5,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
+
 import type { AICallOptions, AIMessage, ModelCapabilities } from "../types.js";
 import {
   CapabilityError,

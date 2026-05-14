@@ -16,9 +16,7 @@ export interface StreamEvent {
   id?: string;
   name?: string;
   status?: "starting" | "executing" | "completed" | "error";
-  // biome-ignore lint/suspicious/noExplicitAny: tool call arguments are arbitrary JSON from AI tools
   arguments?: Record<string, any>;
-  // biome-ignore lint/suspicious/noExplicitAny: tool call results vary by tool type
   result?: any;
   error?: string;
   requestId?: string;
@@ -54,9 +52,7 @@ export interface StreamEventHandlers {
     id: string | undefined,
     name: string,
     status: "starting" | "executing" | "completed" | "error",
-    // biome-ignore lint/suspicious/noExplicitAny: tool call arguments are arbitrary JSON from AI tools
     args?: Record<string, any>,
-    // biome-ignore lint/suspicious/noExplicitAny: tool call results vary by tool type
     result?: any,
     error?: string,
   ) => void;
@@ -64,7 +60,6 @@ export interface StreamEventHandlers {
     id: string,
     name: string,
     label: string,
-    // biome-ignore lint/suspicious/noExplicitAny: tool call arguments are arbitrary JSON from AI tools
     args: Record<string, any>,
   ) => void;
   onApprovalResolved?: (

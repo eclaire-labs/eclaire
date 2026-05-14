@@ -7,6 +7,7 @@
 import { Readability } from "@mozilla/readability";
 import axios from "axios";
 import { JSDOM } from "jsdom";
+
 import { createChildLogger } from "../../../lib/logger.js";
 
 const logger = createChildLogger("lightweight-fetch");

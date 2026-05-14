@@ -1,5 +1,6 @@
 import { type ThrottlingOptions, throttling } from "@octokit/plugin-throttling";
 import { Octokit } from "@octokit/rest";
+
 import { createChildLogger } from "../../lib/logger.js";
 
 const logger = createChildLogger("github-api");
@@ -38,7 +39,6 @@ export interface GitHubRepoInfo {
   readmeContent: string | null;
   created_at: string;
   updated_at: string;
-  // biome-ignore lint/suspicious/noExplicitAny: full Octokit response stored for rawMetadata
   repositoryData: any;
 }
 
@@ -49,9 +49,7 @@ const octokit = new ThrottledOctokit({
   throttle: {
     onRateLimit: (
       retryAfter: number,
-      // biome-ignore lint/suspicious/noExplicitAny: Octokit throttling plugin callback parameter
       options: any,
-      // biome-ignore lint/suspicious/noExplicitAny: Octokit throttling plugin callback parameter
       _octokitInstance: any,
       retryCount: number,
     ) => {
@@ -64,9 +62,7 @@ const octokit = new ThrottledOctokit({
     },
     onSecondaryRateLimit: (
       retryAfter: number,
-      // biome-ignore lint/suspicious/noExplicitAny: Octokit throttling plugin callback parameter
       options: any,
-      // biome-ignore lint/suspicious/noExplicitAny: Octokit throttling plugin callback parameter
       _octokitInstance: any,
     ) => {
       const authStatus = GITHUB_API_TOKEN ? "authenticated" : "unauthenticated";

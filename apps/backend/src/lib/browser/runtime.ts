@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+
 import type { McpServerConnection } from "@eclaire/ai";
+
 import { config } from "../../config/index.js";
 import { ValidationError } from "../errors.js";
 import { createChildLogger } from "../logger.js";

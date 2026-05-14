@@ -1,4 +1,5 @@
 import chalk from "chalk";
+
 import { closeDb } from "../../db/index.js";
 import { getMcpServer, updateMcpServer } from "../../db/mcp-servers.js";
 import { colors, icons } from "../../ui/colors.js";

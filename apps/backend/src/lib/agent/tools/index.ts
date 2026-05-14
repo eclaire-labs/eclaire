@@ -6,6 +6,7 @@
  */
 
 import type { RuntimeToolDefinition } from "@eclaire/ai";
+
 import { getMcpRegistry } from "../../mcp/index.js";
 import { isAudioAvailable } from "../../services/audio.js";
 // Task comment tools
@@ -31,14 +32,14 @@ import { getBookmarkTool } from "./get-bookmark.js";
 import { getDocumentTool } from "./get-document.js";
 import { getDueItemsTool } from "./get-due-items.js";
 import { getHistoryTool } from "./get-history.js";
-import { getMediaTool } from "./get-media.js";
 import { getMediaInfoTool } from "./get-media-info.js";
+import { getMediaTool } from "./get-media.js";
 import { getNoteTool } from "./get-note.js";
 import { getPhotoTool } from "./get-photo.js";
 // Processing status tools
 import { getProcessingStatusTool } from "./get-processing-status.js";
-import { getTaskTool } from "./get-task.js";
 import { getTaskCommentsTool } from "./get-task-comments.js";
+import { getTaskTool } from "./get-task.js";
 // User settings tools
 import { getUserSettingsTool } from "./get-user-settings.js";
 // Media tools

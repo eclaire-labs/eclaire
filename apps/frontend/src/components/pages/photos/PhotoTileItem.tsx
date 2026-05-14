@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+
 import { SimpleProcessingStatusIcon } from "@/components/processing/SimpleProcessingStatusIcon";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ import {
 import type { FlagColor } from "@/hooks/use-list-page-state";
 import { formatDate } from "@/lib/list-page-utils";
 import type { Photo } from "@/types/photo";
+
 import { formatLocation } from "./photo-utils";
 
 interface PhotoTileItemProps {

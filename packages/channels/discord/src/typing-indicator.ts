@@ -1,4 +1,5 @@
 import type { TextChannel } from "discord.js";
+
 import type { DiscordLogger } from "./deps.js";
 
 const MAX_CONSECUTIVE_FAILURES = 10;

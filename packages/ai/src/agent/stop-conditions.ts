@@ -55,7 +55,6 @@ export function hasToolCall(toolName: string): StopCondition {
 export function noToolCalls(): StopCondition {
   return (steps: AgentStep[]): boolean => {
     if (steps.length === 0) return false;
-    // biome-ignore lint/style/noNonNullAssertion: length check guarantees element exists
     const lastStep = steps[steps.length - 1]!;
     return (
       !lastStep.aiResponse.toolCalls ||
@@ -70,7 +69,6 @@ export function noToolCalls(): StopCondition {
 export function finishReasonStop(): StopCondition {
   return (steps: AgentStep[]): boolean => {
     if (steps.length === 0) return false;
-    // biome-ignore lint/style/noNonNullAssertion: length check guarantees element exists
     const lastStep = steps[steps.length - 1]!;
     return lastStep.aiResponse.finishReason === "stop";
   };
@@ -156,9 +154,7 @@ export function maxTokens(threshold: number): StopCondition {
 export function maxDuration(thresholdMs: number): StopCondition {
   return (steps: AgentStep[]): boolean => {
     if (steps.length === 0) return false;
-    // biome-ignore lint/style/noNonNullAssertion: length check guarantees element exists
     const firstStep = steps[0]!;
-    // biome-ignore lint/style/noNonNullAssertion: length check guarantees element exists
     const lastStep = steps[steps.length - 1]!;
     const startTime = new Date(firstStep.timestamp).getTime();
     const endTime = new Date(lastStep.timestamp).getTime();

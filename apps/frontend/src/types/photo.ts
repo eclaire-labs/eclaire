@@ -1,11 +1,10 @@
 import type { Photo as ApiPhoto } from "@eclaire/api-types";
 
 // Extend the API Photo type, excluding storage-internal fields the frontend doesn't use
-export interface Photo
-  extends Omit<
-    ApiPhoto,
-    "storageId" | "thumbnailStorageId" | "convertedJpgStorageId"
-  > {
+export interface Photo extends Omit<
+  ApiPhoto,
+  "storageId" | "thumbnailStorageId" | "convertedJpgStorageId"
+> {
   originalUrl: string;
   convertedJpgUrl: string | null;
 }

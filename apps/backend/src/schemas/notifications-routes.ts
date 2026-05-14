@@ -1,6 +1,7 @@
 // schemas/notifications-routes.ts
 
 import { resolver } from "hono-openapi";
+
 import { SendNotificationSchema } from "./channels-params.js";
 import { SendNotificationResponseSchema } from "./channels-responses.js";
 import { commonErrorsWithValidation, requestBodyResolver } from "./common.js";

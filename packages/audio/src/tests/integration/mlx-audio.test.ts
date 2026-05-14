@@ -6,6 +6,7 @@
  */
 
 import { beforeAll, describe, expect, it } from "vitest";
+
 import { MlxAudioClient } from "../../mlx-client.js";
 import { MlxAudioProvider } from "../../mlx-provider.js";
 import { generateSilenceWav, hasMp3Header, hasWavHeader } from "../setup.js";

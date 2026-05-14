@@ -1,6 +1,7 @@
 // components/chat/message-item.tsx
 
 import { User } from "lucide-react";
+
 import { AgentActivityView } from "@/components/assistant/agent-activity-view";
 import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { AudioPlaybackButton } from "@/components/assistant/audio-playback-button";
@@ -11,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/message";
 import { convertToToolCall } from "@/types/message";
+
 import { ThinkingAccordion } from "./thinking-accordion";
 
 interface MessageItemProps {

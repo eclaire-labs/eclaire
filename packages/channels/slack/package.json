@@ -4,10 +4,10 @@
   "private": true,
   "description": "Slack channel adapter for Eclaire",
   "license": "MIT",
-  "type": "module",
   "files": [
     "dist"
   ],
+  "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
@@ -23,10 +23,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "rm -rf dist",
-    "lint": "biome lint ./ && oxlint --tsconfig ../../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
-    "format": "biome format --write ./",
-    "check": "biome check ./",
-    "fix": "biome check --write ./"
+    "lint": "oxlint --tsconfig ../../../tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "fix": "oxlint --fix --tsconfig ../../../tsconfig.oxlint.json . && oxfmt ."
   },
   "dependencies": {
     "@eclaire/channels-core": "workspace:*",
@@ -34,15 +34,15 @@
     "@slack/bolt": "4.7.1",
     "@slack/web-api": "7.15.1"
   },
-  "peerDependencies": {
-    "zod": "^4.0.0"
-  },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
+    "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",
     "vitest": "4.1.5",
     "zod": "4.4.1"
+  },
+  "peerDependencies": {
+    "zod": "^4.0.0"
   }
 }

@@ -1,12 +1,14 @@
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
+
 import {
   errorResult,
   type RuntimeToolDefinition,
   textResult,
 } from "@eclaire/ai";
 import z from "zod/v4";
+
 import { config } from "../../../config/index.js";
 import { createChildLogger } from "../../logger.js";
 import { CliExecutionError, runAllowedCliCommand } from "./cli-runner.js";

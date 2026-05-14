@@ -35,6 +35,7 @@ import {
 } from "@eclaire/ai";
 import type { pgSchema } from "@eclaire/db";
 import { eq } from "drizzle-orm";
+
 import { getDb } from "../db/index.js";
 
 type Schema = typeof pgSchema;

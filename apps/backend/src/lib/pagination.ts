@@ -74,9 +74,7 @@ export interface CursorPaginatedResponse<T> {
  * PostgreSQL and SQLite.
  */
 export function buildCursorCondition(
-  // biome-ignore lint/suspicious/noExplicitAny: column type varies
   sortColumn: any,
-  // biome-ignore lint/suspicious/noExplicitAny: column type varies
   idColumn: any,
   cursor: string,
   sortDir: "asc" | "desc",
@@ -101,7 +99,6 @@ export function buildCursorCondition(
 export function buildPageResult<T extends { id: string }>(
   rows: T[],
   limit: number,
-  // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
   getSortValue: (item: T) => any,
   totalCount?: number,
 ): CursorPaginatedResponse<T> {

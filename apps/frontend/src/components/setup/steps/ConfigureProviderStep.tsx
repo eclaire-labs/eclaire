@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSetupPresets } from "@/hooks/use-onboarding";
 import { apiPost } from "@/lib/api-client";
+
 import type { StepProps } from "../SetupWizard";
 
 export function ConfigureProviderStep({

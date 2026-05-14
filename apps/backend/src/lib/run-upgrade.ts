@@ -5,8 +5,10 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 import { eq } from "drizzle-orm";
 import * as semver from "semver";
+
 import {
   findMigrationJournal,
   getAppVersion,
@@ -75,9 +77,7 @@ export async function runUpgrade(
 
     // After successful import, these are guaranteed to be defined
     // Check current state
-    // biome-ignore lint/style/noNonNullAssertion: guaranteed defined after dynamic import on line 72
     const migrationStatus = await checkMigrations(db!, dbType!);
-    // biome-ignore lint/style/noNonNullAssertion: guaranteed defined after dynamic import on line 72
     const installedVersion = await getInstalledVersion(db!, schema!);
 
     if (verbose) {
@@ -128,7 +128,6 @@ export async function runUpgrade(
       for (const step of steps) {
         if (step.run) {
           log(`  → ${step.version}: ${step.description}`);
-          // biome-ignore lint/style/noNonNullAssertion: guaranteed defined after dynamic import on line 72
           await step.run(db! as Parameters<typeof step.run>[0]);
           upgradeStepsRun++;
         }
@@ -136,7 +135,6 @@ export async function runUpgrade(
     }
 
     // Update installed version
-    // biome-ignore lint/style/noNonNullAssertion: guaranteed defined after dynamic import on line 72
     await setInstalledVersion(db!, schema!, appVersion);
 
     if (closeDb) {

@@ -1,4 +1,5 @@
 import { Box, Text } from "ink";
+
 import type { DisplayMessage, DisplayOptions } from "../types.js";
 import { Markdown } from "./Markdown.js";
 import { ThinkingBlock } from "./ThinkingBlock.js";
@@ -29,7 +30,6 @@ export function MessageList({ messages, options }: MessageListProps) {
           !isFirst && msg.role !== "tool" && prevMsg?.role !== "tool";
 
         return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: messages have no natural ID
           <Box key={`msg-${i}`} flexDirection="column">
             {showSeparator && <Box marginTop={1} />}
             {msg.role === "tool" ? (

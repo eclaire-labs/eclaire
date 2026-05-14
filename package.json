@@ -28,10 +28,10 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "catalog:",
     "@playwright/test": "1.59.1",
     "node-addon-api": "8.7.0",
     "node-gyp": "12.3.0",
+    "oxfmt": "catalog:",
     "oxlint": "catalog:"
   },
   "scripts": {
@@ -55,12 +55,10 @@
     "test:integration:ai:openrouter": "pnpm --filter @eclaire/ai test:integration:openrouter",
     "test:e2e": "playwright test --config tests/e2e/playwright.config.ts",
     "test:e2e:ui": "playwright test --config tests/e2e/playwright.config.ts --ui",
-    "lint": "pnpm lint:biome && pnpm lint:oxlint",
-    "lint:biome": "biome lint ./",
-    "lint:oxlint": "oxlint --tsconfig tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives apps packages tools scripts",
-    "format": "biome format --write ./",
-    "check": "biome check ./",
-    "fix": "biome check --write ./",
+    "lint": "oxlint --tsconfig tsconfig.oxlint.json --max-warnings=0 --report-unused-disable-directives apps packages tools scripts",
+    "format": "oxfmt apps packages tools scripts",
+    "format:check": "oxfmt --check apps packages tools scripts",
+    "fix": "oxlint --fix --tsconfig tsconfig.oxlint.json apps packages tools scripts && oxfmt apps packages tools scripts",
     "typecheck": "pnpm -r typecheck",
     "typecheck:backend": "pnpm --filter @eclaire/backend typecheck",
     "typecheck:frontend": "pnpm --filter @eclaire/frontend typecheck",

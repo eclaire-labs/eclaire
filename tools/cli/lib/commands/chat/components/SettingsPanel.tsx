@@ -1,5 +1,6 @@
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
+
 import type { DisplayOptions } from "../types.js";
 
 interface SettingsPanelProps {

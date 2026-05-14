@@ -4,7 +4,6 @@
  */
 
 import "@eclaire/core/env-loader";
-
 import {
   closeDatabase,
   type DatabaseInitResult,

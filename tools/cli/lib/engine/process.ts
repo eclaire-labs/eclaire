@@ -7,6 +7,7 @@
 
 import { type ChildProcess, spawn } from "node:child_process";
 import * as fs from "node:fs";
+
 import {
   getModelConfigById,
   getProviderConfig,
@@ -16,6 +17,7 @@ import {
   parsePort,
 } from "@eclaire/ai";
 import axios from "axios";
+
 import {
   ensureDirectories,
   getLogFilePath,
@@ -132,7 +134,6 @@ export function resolveSelectionEngine(): ManagedEngineResolution {
 
   // Return OK result with models to preload
   // We know managedModels has at least one element because we checked length === 0 above
-  // biome-ignore lint/style/noNonNullAssertion: checked via managedModels.length === 0 guard above
   const primary = managedModels[0]!;
   return {
     status: "ok",
@@ -164,7 +165,6 @@ export function getEngineSettings(provider: ProviderConfig): {
   flashAttention?: boolean;
   extraArgs: string[];
 } {
-  // biome-ignore lint/style/noNonNullAssertion: callers validate provider has engine config
   const engine = provider.engine!;
   return {
     port: parsePort(provider.baseUrl),

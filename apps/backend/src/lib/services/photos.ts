@@ -1,4 +1,5 @@
 import type { Buffer } from "node:buffer"; // Node.js Buffer
+
 import {
   and,
   asc,
@@ -14,6 +15,7 @@ import {
 import exifr from "exifr"; // <-- Import exifr
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
+
 import { db, queueJobs, schema, txManager } from "../../db/index.js";
 import {
   batchGetTags,
@@ -29,6 +31,7 @@ import {
   generateHistoryId,
   generatePhotoId,
 } from "@eclaire/core";
+
 import { ForbiddenError, NotFoundError } from "../errors.js";
 import { createChildLogger } from "../logger.js";
 import {
@@ -148,7 +151,6 @@ export interface FileInfo {
 
 // Interface for extracted metadata (internal use)
 interface ExtractedMetadata {
-  // biome-ignore lint/suspicious/noExplicitAny: raw EXIF data structure varies per image
   exif?: Record<string, any>;
   location?: {
     cityName?: string;
@@ -170,7 +172,6 @@ export interface CreatePhotoData {
     reviewStatus?: "pending" | "accepted" | "rejected";
     flagColor?: "red" | "yellow" | "orange" | "green" | "blue" | null;
     isPinned?: boolean;
-    // biome-ignore lint/suspicious/noExplicitAny: open-ended metadata from EXIF/upload clients
     [key: string]: any;
   };
   originalMimeType: string;
@@ -210,7 +211,6 @@ export interface PhotoStreamDetails {
  * @param originalFilename - The original filename
  */
 async function queuePhotoBackgroundJobs(
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle insert return type
   photoData: any,
   userId: string,
   originalMimeType: string,
@@ -1027,7 +1027,6 @@ export async function findPhotos({
     const rankExpr = text?.trim()
       ? buildSearchRank(text, photos.searchVector)
       : null;
-    // biome-ignore lint/suspicious/noExplicitAny: maps sort keys to Drizzle column objects
     const sortColumnMap: Record<string, any> = {
       createdAt: photos.createdAt,
       dateTaken: sql`COALESCE(${photos.dateTaken}, ${photos.createdAt})`,
@@ -1070,8 +1069,7 @@ export async function findPhotos({
       .limit(fetchLimit);
     let finalPhotoIds: string[] = matchedPhotos.map((p) => p.id);
     const rankMap = isRelevanceSort
-      ? // biome-ignore lint/suspicious/noExplicitAny: rank score type varies by query shape
-        new Map(matchedPhotos.map((r: any) => [r.id, r.rankScore ?? 0]))
+      ? new Map(matchedPhotos.map((r: any) => [r.id, r.rankScore ?? 0]))
       : null;
 
     if (finalPhotoIds.length === 0)
@@ -1179,7 +1177,6 @@ export async function findPhotos({
 
     // Build cursor from the last item
     const lastItem = items[items.length - 1];
-    // biome-ignore lint/suspicious/noExplicitAny: sort value type varies
     const getSortVal = (item: any) => {
       if (sortBy === "relevance") return rankMap?.get(item.id) ?? 0;
       if (sortBy === "title") return item.title;
@@ -1329,7 +1326,6 @@ function handleServiceError(error: unknown, defaultMessage: string): never {
 export async function extractAndGeocode(
   fileBuffer: Buffer,
 ): Promise<ExtractedMetadata> {
-  // biome-ignore lint/suspicious/noExplicitAny: raw EXIF data structure varies per image
   let exifData: Record<string, any> | undefined;
   let locationData: ExtractedMetadata["location"] | undefined;
 

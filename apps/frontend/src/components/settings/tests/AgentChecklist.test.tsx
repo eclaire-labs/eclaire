@@ -2,6 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
 import { AgentChecklist } from "@/components/settings/AssistantSettings";
 
 vi.mock("@tanstack/react-router", () => ({

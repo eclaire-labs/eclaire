@@ -99,13 +99,9 @@ export interface TwitterExtractedData {
 /**
  * Resolve an author_id to a full user object from the includes.users array.
  */
-// biome-ignore lint/suspicious/noExplicitAny: X API v2 user object structure
 function resolveAuthor(authorId: string, includes: any): TwitterAuthor {
   const users = includes?.users || [];
-  const user = users.find(
-    // biome-ignore lint/suspicious/noExplicitAny: X API v2 user object
-    (u: any) => u.id === authorId,
-  );
+  const user = users.find((u: any) => u.id === authorId);
 
   if (!user) {
     return {
@@ -132,7 +128,6 @@ function resolveAuthor(authorId: string, includes: any): TwitterAuthor {
 /**
  * Resolve media_keys to full media objects from the includes.media array.
  */
-// biome-ignore lint/suspicious/noExplicitAny: X API v2 includes structure
 function resolveMedia(attachments: any, includes: any): TwitterMedia[] {
   const mediaKeys = attachments?.media_keys || [];
   if (mediaKeys.length === 0) return [];
@@ -158,24 +153,17 @@ function resolveMedia(attachments: any, includes: any): TwitterMedia[] {
 /**
  * Extract URL entities from the tweet data.
  */
-// biome-ignore lint/suspicious/noExplicitAny: X API v2 entities structure
 function extractLinks(entities: any): TwitterLink[] {
   const urls = entities?.urls || [];
-  return (
-    urls
-      // biome-ignore lint/suspicious/noExplicitAny: X API v2 URL entity
-      .filter((u: any) => !u.expanded_url?.includes("pic.x.com"))
-      .map(
-        // biome-ignore lint/suspicious/noExplicitAny: X API v2 URL entity
-        (u: any) => ({
-          url: u.url,
-          expandedUrl: u.expanded_url || u.url,
-          displayUrl: u.display_url || u.expanded_url || u.url,
-          start: u.start || 0,
-          end: u.end || 0,
-        }),
-      )
-  );
+  return urls
+    .filter((u: any) => !u.expanded_url?.includes("pic.x.com"))
+    .map((u: any) => ({
+      url: u.url,
+      expandedUrl: u.expanded_url || u.url,
+      displayUrl: u.display_url || u.expanded_url || u.url,
+      start: u.start || 0,
+      end: u.end || 0,
+    }));
 }
 
 /**
@@ -217,7 +205,6 @@ function getAgeCategory(createdAt: string): "fresh" | "recent" | "older" {
  *   includes: { users: [...], media: [...] }
  * }
  */
-// biome-ignore lint/suspicious/noExplicitAny: raw X API v2 response
 export function extractTwitterData(rawResponse: any): TwitterExtractedData {
   const tweetData = rawResponse.data;
   const includes = rawResponse.includes || {};

@@ -1,5 +1,6 @@
 import { PermissionFlagsBits } from "discord.js";
 import { describe, expect, it } from "vitest";
+
 import { checkBotPermissions } from "../permissions.js";
 
 const ALL_REQUIRED = new Set([

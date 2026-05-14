@@ -1,5 +1,6 @@
 import { formatToISO8601 } from "@eclaire/core";
 import { and, desc, eq } from "drizzle-orm";
+
 import { db, schema } from "../../db/index.js";
 
 const { taskComments, tasks, users } = schema;
@@ -25,7 +26,6 @@ export interface UpdateTaskCommentParams {
   content: string;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: raw DB row parameter
 function cleanTaskCommentForResponse(comment: any) {
   const { createdAt, updatedAt, userId: _userId, ...cleanedComment } = comment;
 
@@ -76,7 +76,6 @@ async function resolveCommentActorMetadata(
 }
 
 export async function formatTaskCommentForResponse(
-  // biome-ignore lint/suspicious/noExplicitAny: raw DB row parameter
   comment: any,
   taskOwnerUserId: string,
 ) {

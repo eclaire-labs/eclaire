@@ -7,6 +7,7 @@ import type {
 } from "@eclaire/channels-core";
 import { generateChannelId } from "@eclaire/core/id";
 import { eq } from "drizzle-orm";
+
 import type { TestDatabase } from "../../../db/setup.js";
 import { createTestUser } from "../../../db/setup.js";
 

@@ -51,15 +51,9 @@
  */
 
 // Configuration
-export {
-  DB_TEST_CONFIGS,
-  TEST_TIMEOUTS,
-} from "./config.js";
+export { DB_TEST_CONFIGS, TEST_TIMEOUTS } from "./config.js";
 // Database setup (for DB-only tests)
-export {
-  createQueueTestDatabase,
-  type QueueTestDatabase,
-} from "./db-setup.js";
+export { createQueueTestDatabase, type QueueTestDatabase } from "./db-setup.js";
 // Test harnesses
 export {
   createBullMQTestHarness,

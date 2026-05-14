@@ -37,6 +37,7 @@ vi.mock("node:fs", () => ({
 }));
 
 import { existsSync, readFileSync } from "node:fs";
+
 import { loadMcpServersConfig } from "../../lib/mcp/config.js";
 
 // ---------------------------------------------------------------------------

@@ -101,7 +101,6 @@ export async function getAvailableTools(): Promise<
   // Try to add MCP-sourced tools
   try {
     const { db, schema } = getDb();
-    // biome-ignore lint/suspicious/noExplicitAny: DbInstance is a union type
     const servers = await (db as any).select().from(schema.mcpServers);
     for (const server of servers) {
       if (server.enabled) {

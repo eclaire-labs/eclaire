@@ -3,6 +3,7 @@ import { AlertCircle, Globe, Loader2, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
+
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Button } from "@/components/ui/button";
@@ -25,9 +26,10 @@ import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation"
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useTags } from "@/hooks/use-tags";
 import type { Bookmark } from "@/types/bookmark";
+
 import { BookmarkListItem } from "./bookmarks/BookmarkListItem";
-import { BookmarkTileItem } from "./bookmarks/BookmarkTileItem";
 import { bookmarksConfig } from "./bookmarks/bookmarks-config";
+import { BookmarkTileItem } from "./bookmarks/BookmarkTileItem";
 import { CreateBookmarkDialog } from "./bookmarks/CreateBookmarkDialog";
 import { Favicon } from "./bookmarks/Favicon";
 

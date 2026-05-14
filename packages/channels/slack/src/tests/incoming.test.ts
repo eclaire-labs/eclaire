@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { setDeps } from "../deps.js";
 
 vi.mock("../bot-manager.js", () => ({ stopBot: vi.fn() }));
@@ -30,14 +31,12 @@ vi.mock("@eclaire/channels-core", () => ({
 
 // Must import after mocks are declared
 const { stopBot } = await import("../bot-manager.js");
-const { addThinkingReaction, removeThinkingReaction } = await import(
-  "../typing-indicator.js"
-);
+const { addThinkingReaction, removeThinkingReaction } =
+  await import("../typing-indicator.js");
 const { sendStreamingResponse } = await import("../stream-sender.js");
 const { getSession } = await import("../commands.js");
-const { handleIncomingMessage, handleIncomingAudioFile } = await import(
-  "../incoming.js"
-);
+const { handleIncomingMessage, handleIncomingAudioFile } =
+  await import("../incoming.js");
 
 const mockLogger = {
   info: vi.fn(),
