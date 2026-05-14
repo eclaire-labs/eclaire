@@ -16,6 +16,8 @@ import {
   type ElevenLabsProviderConfig,
   MlxAudioProvider,
   MlxRealtimeClient,
+  OmlxAudioProvider,
+  type OmlxAudioProviderConfig,
   PocketTtsProvider,
   type PocketTtsProviderConfig,
   type RealtimeTranscriptionClient,
@@ -44,6 +46,7 @@ export interface AudioServiceConfig {
   elevenLabs?: ElevenLabsProviderConfig;
   whisperCpp?: WhisperCppProviderConfig;
   pocketTts?: PocketTtsProviderConfig;
+  omlx?: OmlxAudioProviderConfig;
 }
 
 /**
@@ -78,6 +81,11 @@ export function initAudioProviders(cfg: AudioServiceConfig): void {
       { baseUrl: cfg.pocketTts.baseUrl },
       "pocket-tts provider created",
     );
+  }
+  if (cfg.omlx) {
+    providers.set("omlx", new OmlxAudioProvider(cfg.omlx));
+    configs.set("omlx", cfg.omlx);
+    logger.info({ baseUrl: cfg.omlx.baseUrl }, "omlx provider created");
   }
 }
 

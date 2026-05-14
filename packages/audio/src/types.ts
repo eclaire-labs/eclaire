@@ -12,6 +12,7 @@
 /** Unique identifier for an audio provider */
 export type AudioProviderId =
   | "mlx-audio"
+  | "omlx"
   | "elevenlabs"
   | "whisper-cpp"
   | "pocket-tts";
@@ -31,6 +32,20 @@ export interface AudioProviderCapabilities {
 /** Config for the mlx-audio provider (also used as legacy AudioProviderConfig) */
 export interface AudioProviderConfig {
   /** Base URL of the audio server (e.g. "http://127.0.0.1:9100") */
+  baseUrl: string;
+  /** Request timeout in milliseconds (default: 30000) */
+  requestTimeoutMs: number;
+  /** Default STT model identifier */
+  defaultSttModel: string;
+  /** Default TTS model identifier */
+  defaultTtsModel: string;
+  /** Default TTS voice identifier */
+  defaultTtsVoice: string;
+}
+
+/** Config for the oMLX provider (unified STT + TTS via oMLX server) */
+export interface OmlxAudioProviderConfig {
+  /** Base URL of the oMLX server (e.g. "http://127.0.0.1:8000") */
   baseUrl: string;
   /** Request timeout in milliseconds (default: 30000) */
   requestTimeoutMs: number;

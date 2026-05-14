@@ -187,6 +187,7 @@ const start = async () => {
         elevenLabs: config.audio.elevenLabs ?? undefined,
         whisperCpp: config.audio.whisperCpp ?? undefined,
         pocketTts: config.audio.pocketTts ?? undefined,
+        omlx: config.audio.omlx ?? undefined,
       });
       logger.info(
         {
@@ -197,6 +198,9 @@ const start = async () => {
             : "not configured",
           pocketTts: config.audio.pocketTts
             ? config.audio.pocketTts.baseUrl
+            : "not configured",
+          omlx: config.audio.omlx
+            ? config.audio.omlx.baseUrl
             : "not configured",
         },
         "Audio providers initialized",
