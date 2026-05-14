@@ -66,6 +66,8 @@ docker-compose.local.yml
 compose.local.yaml
 setup-local.sh
 
+snippets/
+
 backups/
 
 # Local working directory
