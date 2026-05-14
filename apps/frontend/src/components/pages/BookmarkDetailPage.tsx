@@ -13,7 +13,6 @@ import {
   Eye,
   FileText,
   GitFork,
-  Github,
   Globe,
   Heart,
   Languages,
@@ -603,7 +602,7 @@ export function BookmarkDetailClient() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Github className="h-4 w-4" />
+                    <ExternalLink className="h-4 w-4" />
                     GitHub Repository
                   </CardTitle>
                 </CardHeader>
@@ -626,7 +625,7 @@ export function BookmarkDetailClient() {
                           rel="noopener noreferrer"
                           className="flex items-center gap-2"
                         >
-                          <Github className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4" />
                           {bookmark.rawMetadata.github.owner}/
                           {bookmark.rawMetadata.github.repo}
                           <ExternalLink className="h-3 w-3 ml-auto" />

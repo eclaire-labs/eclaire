@@ -4,10 +4,6 @@
     "allowJs": true,
     "incremental": true,
     "inlineSources": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    },
     "noEmit": true
   },
   "include": [

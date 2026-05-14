@@ -18,7 +18,7 @@
     "format": "biome check --fix src/"
   },
   "dependencies": {
-    "electron-store": "10.1.0",
+    "electron-store": "11.0.2",
     "electron-updater": "6.8.3"
   },
   "devDependencies": {

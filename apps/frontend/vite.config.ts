@@ -99,10 +99,10 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom"],
-          "vendor-router": ["@tanstack/react-router"],
-          "vendor-query": ["@tanstack/react-query"],
+        manualChunks(id) {
+          if (id.includes("node_modules/react-dom") || id.includes("node_modules/react/")) return "vendor-react";
+          if (id.includes("node_modules/@tanstack/react-router")) return "vendor-router";
+          if (id.includes("node_modules/@tanstack/react-query")) return "vendor-query";
         },
       },
     },

@@ -4,32 +4,34 @@ packages:
   - 'packages/*'
   - 'packages/channels/*'
   - 'snippets/*'
+allowBuilds:
+  bcrypt: true
+  better-sqlite3: true
+  electron: true
+  electron-winstaller: false
+  esbuild: true
+  msgpackr-extract: false
+  sharp: true
+
+catalog:
+  '@biomejs/biome': '2.4.13'
+  '@types/node': '25.6.0'
+  oxlint: '1.62.0'
+  typescript: '6.0.3'
 
 minimumReleaseAge: 20160
 minimumReleaseAgeExclude: []
 
-catalog:
-  '@biomejs/biome': '2.4.13'
-  '@types/node': '24.10.4'
-  oxlint: '1.62.0'
-  typescript: '5.9.3'
-
-onlyBuiltDependencies:
-  - better-sqlite3
-  - sharp
-  - bcrypt
-  - electron
-
 packageExtensions:
-  sharp:
-    dependencies:
-      node-addon-api: '*'
-      node-gyp: '*'
   bcrypt:
     dependencies:
       node-addon-api: '*'
       node-gyp: '*'
   better-sqlite3:
+    dependencies:
+      node-addon-api: '*'
+      node-gyp: '*'
+  sharp:
     dependencies:
       node-addon-api: '*'
       node-gyp: '*'

@@ -1,4 +1,4 @@
-import { Chrome, Loader2, RefreshCw, ShieldAlert } from "lucide-react";
+import { Globe, Loader2, RefreshCw, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -93,7 +93,7 @@ export default function ChromeBrowserControlCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Chrome className="h-5 w-5" />
+          <Globe className="h-5 w-5" />
           Chrome Browser Control
         </CardTitle>
         <CardDescription>

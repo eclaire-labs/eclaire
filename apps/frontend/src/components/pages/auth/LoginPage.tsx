@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useSearch } from "@tanstack/react-router";
-import { Github, Globe, Twitter } from "lucide-react";
+import { ExternalLink, Globe } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -124,7 +124,7 @@ export default function LoginPage() {
                 className="text-white/60 hover:text-white transition-colors"
                 aria-label="X (Twitter)"
               >
-                <Twitter className="h-5 w-5" />
+                <ExternalLink className="h-5 w-5" />
               </a>
               <a
                 href="https://github.com/eclaire-labs/eclaire"
@@ -133,7 +133,7 @@ export default function LoginPage() {
                 className="text-white/60 hover:text-white transition-colors"
                 aria-label="GitHub"
               >
-                <Github className="h-5 w-5" />
+                <ExternalLink className="h-5 w-5" />
               </a>
             </div>
           </div>
