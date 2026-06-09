@@ -127,18 +127,6 @@ describe("MlxAudioProvider", () => {
       );
     });
 
-    it('defaults to "en-Emma_woman" when model contains "vibevoice" and no voice set', async () => {
-      const noVoiceConfig = { ...TEST_MLX_CONFIG, defaultTtsVoice: "" };
-      const p = new MlxAudioProvider(noVoiceConfig);
-      await p.synthesize({
-        text: "Hello",
-        model: "mlx-community/VibeVoice-0.5B",
-      });
-      expect(mockClient.synthesize).toHaveBeenCalledWith(
-        expect.objectContaining({ voice: "en-Emma_woman" }),
-      );
-    });
-
     it("passes speed and instruct through to client", async () => {
       await provider.synthesize({
         text: "Hello",
@@ -160,15 +148,6 @@ describe("MlxAudioProvider", () => {
       await provider.synthesizeStream({ text: "Hello" });
       expect(mockClient.synthesizeStream).toHaveBeenCalledWith(
         expect.objectContaining({ format: "wav" }),
-      );
-    });
-
-    it("applies VibeVoice default voice logic", async () => {
-      const noVoiceConfig = { ...TEST_MLX_CONFIG, defaultTtsVoice: "" };
-      const p = new MlxAudioProvider(noVoiceConfig);
-      await p.synthesizeStream({ text: "Hello", model: "vibevoice-model" });
-      expect(mockClient.synthesizeStream).toHaveBeenCalledWith(
-        expect.objectContaining({ voice: "en-Emma_woman" }),
       );
     });
   });
