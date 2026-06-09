@@ -130,7 +130,7 @@
     "semver": "7.7.4",
     "sharp": "0.34.5",
     "tmp-promise": "3.0.3",
-    "tsx": "4.21.0",
+    "tsx": "catalog:",
     "turndown": "7.2.4",
     "turndown-plugin-gfm": "1.0.2",
     "uuid": "14.0.0",
@@ -159,7 +159,7 @@
     "supertest": "7.2.2",
     "tsc-alias": "1.8.16",
     "typescript": "catalog:",
-    "vitest": "4.1.5"
+    "vitest": "catalog:"
   },
   "engines": {
     "node": "^24.0.0"

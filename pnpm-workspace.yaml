@@ -3,7 +3,6 @@ packages:
   - 'tools/*'
   - 'packages/*'
   - 'packages/channels/*'
-  - 'snippets/*'
 allowBuilds:
   bcrypt: true
   better-sqlite3: true
@@ -17,7 +16,9 @@ catalog:
   '@types/node': '24.10.4'
   oxfmt: '0.49.0'
   oxlint: '1.62.0'
+  tsx: '4.21.0'
   typescript: '6.0.3'
+  vitest: '4.1.5'
 
 minimumReleaseAge: 20160
 minimumReleaseAgeExclude: []

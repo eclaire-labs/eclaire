@@ -61,15 +61,11 @@ interface UseAudioReturn {
   isStreamingSttEnabled: boolean;
   /** Whether the selected TTS provider supports streaming. */
   isStreamingTtsEnabled: boolean;
-  /** @deprecated Use isStreamingSttEnabled. Kept for backwards compat. */
-  isStreamingEnabled: boolean;
 
   /** Defaults for the selected STT provider. */
   sttDefaults: AudioHealthDefaults | null;
   /** Defaults for the selected TTS provider. */
   ttsDefaults: AudioHealthDefaults | null;
-  /** @deprecated Use sttDefaults/ttsDefaults. */
-  defaults: AudioHealthDefaults | null;
 
   /** Currently loaded models on the audio server. */
   models: Array<{ id: string }>;
@@ -190,12 +186,9 @@ export function useAudio(): UseAudioReturn {
     sttProviderHealth?.capabilities.streamingStt === true;
   const isStreamingTtsEnabled =
     ttsProviderHealth?.capabilities.streamingTts === true;
-  // Legacy compat
-  const isStreamingEnabled = isStreamingSttEnabled;
 
   const sttDefaults = sttProviderHealth?.defaults ?? null;
   const ttsDefaults = ttsProviderHealth?.defaults ?? null;
-  const defaults = health?.defaults ?? sttDefaults;
   const models = health?.models ?? [];
 
   const checkConnection = useCallback(async () => {
@@ -308,10 +301,8 @@ export function useAudio(): UseAudioReturn {
     isCheckingAvailability,
     isStreamingSttEnabled,
     isStreamingTtsEnabled,
-    isStreamingEnabled,
     sttDefaults,
     ttsDefaults,
-    defaults,
     models,
     providers: providersList,
     checkConnection,

@@ -13,7 +13,7 @@
  */
 
 import { beforeAll, describe, expect, it } from "vitest";
-import WebSocket from "ws";
+import { WebSocket } from "ws";
 
 import {
   BASE_URL,

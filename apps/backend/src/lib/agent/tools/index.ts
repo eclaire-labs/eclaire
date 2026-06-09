@@ -151,12 +151,6 @@ export function getBackendTools(): Record<string, RuntimeToolDefinition> {
   return tools;
 }
 
-/**
- * @deprecated Use getBackendTools() instead. Kept for backward compatibility
- * during migration — only includes static tools, not MCP-sourced tools.
- */
-export const backendTools: Record<string, RuntimeToolDefinition> = staticTools;
-
 // Re-export individual tools for direct imports
 export { addTaskCommentTool } from "./add-task-comment.js";
 export { browseChromeTool } from "./browse-chrome.js";

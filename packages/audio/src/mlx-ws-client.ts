@@ -6,7 +6,7 @@
  * audio chunks and returns streaming transcription events.
  */
 
-import WebSocket from "ws";
+import { type RawData, WebSocket } from "ws";
 
 import type { RealtimeTranscriptionClient } from "./types.js";
 
@@ -86,7 +86,7 @@ export class MlxRealtimeClient implements RealtimeTranscriptionClient {
         resolve();
       });
 
-      ws.on("message", (data: WebSocket.RawData) => {
+      ws.on("message", (data: RawData) => {
         try {
           const msg = JSON.parse(data.toString()) as {
             type: string;

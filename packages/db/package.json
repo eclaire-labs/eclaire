@@ -91,7 +91,7 @@
     "drizzle-kit": "0.31.10",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
-    "tsx": "4.21.0",
+    "tsx": "catalog:",
     "typescript": "catalog:"
   }
 }

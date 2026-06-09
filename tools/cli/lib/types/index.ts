@@ -1,5 +1,5 @@
 /**
- * Type definitions for admin-cli
+ * Type definitions for the CLI
  *
  * Re-exports types from @eclaire/ai with CLI-specific aliases and additions.
  */

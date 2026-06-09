@@ -231,7 +231,6 @@ export function ProcessingEventsProvider({
           isConnectedRef.current = true;
           setIsConnected(true);
           reconnectAttemptsRef.current = 0; // Reset counter on successful connection
-          console.log("Global processing events connected");
 
           // Catch up on events missed during disconnection
           if (wasDisconnected) {
@@ -473,7 +472,7 @@ export function ProcessingEventsProvider({
               1000 * 2 ** reconnectAttemptsRef.current,
               30000,
             ); // Exponential backoff, max 30s
-            console.log(
+            console.warn(
               `SSE reconnection attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts} in ${delay}ms`,
             );
 

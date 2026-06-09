@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Database, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -71,12 +71,6 @@ export default function AccountSettings() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleteAllDataDialogOpen, setIsDeleteAllDataDialogOpen] =
     useState(false);
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // Handle hydration to prevent SSR/client mismatches
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   const user = session?.user;
 
@@ -192,8 +186,7 @@ export default function AccountSettings() {
     deleteAllDataMutation.mutate(values);
   }
 
-  // Show loading state until hydration is complete and during auth loading
-  if (!isHydrated || isLoading) {
+  if (isLoading) {
     return (
       <div className="space-y-8">
         <Card>

@@ -68,12 +68,6 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export default function ProfileSettings() {
   const queryClient = useQueryClient();
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // Handle hydration to prevent SSR/client mismatches
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   // Direct query to /api/user for user profile data
   const {
@@ -317,8 +311,7 @@ export default function ProfileSettings() {
 
   // --- Guards for loading, error, and undefined user ---
 
-  // Show loading state until hydration is complete and during auth loading
-  if (!isHydrated || isLoading) {
+  if (isLoading) {
     return (
       <Card>
         <CardHeader>

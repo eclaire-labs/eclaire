@@ -67,6 +67,6 @@
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",
-    "vitest": "4.1.5"
+    "vitest": "catalog:"
   }
 }
