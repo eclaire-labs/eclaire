@@ -1,6 +1,5 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
-  AlertCircle,
   ArrowLeft,
   Calendar,
   Download,
@@ -8,7 +7,6 @@ import {
   File,
   FileText,
   Image as ImageIcon,
-  Loader2,
   MessageCircle,
   Save,
   Trash2,
@@ -25,6 +23,7 @@ import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialo
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
+import { PageError, PageLoading } from "@/components/shared/page-state";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
@@ -38,15 +37,16 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useDocument } from "@/hooks/use-documents";
 import { useProcessingEvents } from "@/hooks/use-processing-status";
-import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
+import { normalizeApiUrl } from "@/lib/api-client";
 import { formatDate, formatFileSize } from "@/lib/date-utils";
 import type { Document } from "@/types/document";
 
 export function DocumentDetailClient() {
   const { id: documentId } = routeApi.useParams();
   const navigate = useNavigate();
-  // Use React Query hook for data fetching
-  const { document, isLoading, error, refresh } = useDocument(documentId);
+  // Use React Query hook for data fetching and mutations
+  const { document, isLoading, error, refresh, update, isUpdating } =
+    useDocument(documentId);
 
   // Initialize SSE for real-time updates
   useProcessingEvents();
@@ -61,7 +61,6 @@ export function DocumentDetailClient() {
 
   const [activeTab, setActiveTab] = useState("preview");
   const [isEditing, setIsEditing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editDueDate, setEditDueDate] = useState(""); // This will hold ISO string
@@ -97,34 +96,18 @@ export function DocumentDetailClient() {
     if (!document) return;
 
     try {
-      setIsSubmitting(true);
-      const response = await apiFetch(`/api/documents/${documentId}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          title: editTitle,
-          description: editDescription || null,
-          dueDate: editDueDate ? new Date(editDueDate).toISOString() : null,
-          tags: editTags,
-        }),
+      await update({
+        title: editTitle,
+        description: editDescription || null,
+        dueDate: editDueDate ? new Date(editDueDate).toISOString() : null,
+        tags: editTags,
       });
-
-      if (response.ok) {
-        setIsEditing(false);
-        // Refresh to get the latest data from server
-        refresh();
-        toast.success("Document updated", {
-          description: "Your changes have been saved successfully.",
-        });
-      } else {
-        throw new Error("Failed to update document");
-      }
-    } catch (error) {
-      console.error("Error updating document:", error);
-      toast.error("Error", {
-        description: "Failed to save changes.",
+      setIsEditing(false);
+      toast.success("Document updated", {
+        description: "Your changes have been saved successfully.",
       });
-    } finally {
-      setIsSubmitting(false);
+    } catch {
+      // Error toast is handled by the hook
     }
   };
 
@@ -139,64 +122,23 @@ export function DocumentDetailClient() {
   };
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate({ to: "/documents" })}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
-          </div>
-        </div>
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
+    return <PageLoading variant="detail" backTo="/documents" />;
   }
 
-  if (error || (!isLoading && !document)) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Document not found";
+  if (error || !document) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate({ to: "/documents" })}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">Document not found</h1>
-        </div>
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <AlertCircle className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">{errorMessage}</h2>
-          <p className="text-muted-foreground mb-4">
-            The document you're looking for doesn't exist or couldn't be loaded.
-          </p>
-          <Button onClick={() => navigate({ to: "/documents" })}>
-            Go to Documents
-          </Button>
-        </div>
-      </div>
+      <PageError
+        title="Document not found"
+        message={
+          error instanceof Error
+            ? error.message
+            : "The document you're looking for doesn't exist or couldn't be loaded."
+        }
+        backTo="/documents"
+        backLabel="Go to Documents"
+      />
     );
   }
-
-  // At this point document should be defined since we checked for loading/error above
-  if (!document) return null;
 
   return (
     <TooltipProvider>
@@ -254,14 +196,14 @@ export function DocumentDetailClient() {
                 <Button
                   variant="outline"
                   onClick={handleCancel}
-                  disabled={isSubmitting}
+                  disabled={isUpdating}
                 >
                   <X className="mr-2 h-4 w-4" />
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={isSubmitting}>
+                <Button onClick={handleSave} disabled={isUpdating}>
                   <Save className="mr-2 h-4 w-4" />
-                  {isSubmitting ? "Saving..." : "Save"}
+                  {isUpdating ? "Saving..." : "Save"}
                 </Button>
               </>
             ) : (

@@ -1,4 +1,7 @@
-import { normalizeApiUrl } from "@/lib/api-client";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+
+import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
 import type { Media } from "@/types/media";
 
 import { createCrudHooks, type ListParams } from "./create-crud-hooks";
@@ -46,11 +49,31 @@ const { useList, useSingle } = createCrudHooks<Media>({
 export function useMedia(params: ListParams = {}) {
   const {
     items: media,
+    queryKey,
+    queryClient,
     createItem,
     updateItem,
     deleteItem,
     ...rest
   } = useList(params);
+
+  const importMutation = useMutation({
+    mutationFn: async (data: {
+      url: string;
+      title?: string;
+      description?: string;
+      tags: string[];
+    }) => {
+      const response = await apiFetch("/api/media/import", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      return (await response.json()) as Media;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (error: Error) =>
+      toast.error("Import Error", { description: error.message }),
+  });
 
   return {
     media,
@@ -58,6 +81,8 @@ export function useMedia(params: ListParams = {}) {
     createMedia: (formData: FormData) => createItem(formData),
     updateMedia: updateItem,
     deleteMedia: deleteItem,
+    importMedia: importMutation.mutateAsync,
+    isImporting: importMutation.isPending,
   };
 }
 

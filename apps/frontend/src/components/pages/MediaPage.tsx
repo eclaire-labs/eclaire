@@ -8,7 +8,6 @@ import {
   Loader2,
   UploadCloud,
 } from "lucide-react";
-import { nanoid } from "nanoid";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -17,7 +16,6 @@ import { toast } from "sonner";
 import type { ViewModeDef } from "@/components/list-page";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
 import { TagEditor } from "@/components/shared/TagEditor";
-import type { UploadingFile } from "@/components/shared/UploadProgressList";
 import { UploadProgressList } from "@/components/shared/UploadProgressList";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,41 +35,19 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
 import { useMedia } from "@/hooks/use-media";
+import {
+  ALLOWED_UPLOAD_TYPES,
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILE_SIZE_MB,
+  useMediaUpload,
+} from "@/hooks/use-media-upload";
 import { useTags } from "@/hooks/use-tags";
-import { apiFetch } from "@/lib/api-client";
 import type { EditMediaState, Media } from "@/types/media";
 
 import { ImportUrlDialog } from "./media/ImportUrlDialog";
 import { mediaConfig } from "./media/media-config";
 import { MediaListItem } from "./media/MediaListItem";
 import { MediaTileItem } from "./media/MediaTileItem";
-
-// ---------------------------------------------------------------------------
-// Upload constants
-// ---------------------------------------------------------------------------
-
-const MAX_FILE_SIZE_MB = 500;
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const ALLOWED_UPLOAD_TYPES = {
-  // Audio
-  "audio/mpeg": [".mp3"],
-  "audio/wav": [".wav"],
-  "audio/flac": [".flac"],
-  "audio/ogg": [".ogg"],
-  "audio/aac": [".aac"],
-  "audio/mp4": [".m4a"],
-  "audio/x-m4a": [".m4a"],
-  "audio/webm": [".webm"],
-  "audio/aiff": [".aiff", ".aif"],
-  // Video
-  "video/mp4": [".mp4"],
-  "video/quicktime": [".mov"],
-  "video/x-msvideo": [".avi"],
-  "video/x-matroska": [".mkv"],
-  "video/webm": [".webm"],
-  "video/ogg": [".ogv"],
-  "video/mpeg": [".mpeg", ".mpg"],
-};
 
 // ---------------------------------------------------------------------------
 // View mode definitions (Media has 2 modes: tile + list)
@@ -97,6 +73,8 @@ export default function MediaPage() {
     error,
     updateMedia,
     deleteMedia,
+    importMedia,
+    isImporting,
     refresh,
     isUpdating,
     isDeleting,
@@ -127,10 +105,12 @@ export default function MediaPage() {
   // Page-specific state
   const [isEditMediaDialogOpen, setIsEditMediaDialogOpen] = useState(false);
   const [editingMedia, setEditingMedia] = useState<EditMediaState | null>(null);
-  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+
+  const { uploadingFiles, handleUpload, clearCompleted } = useMediaUpload({
+    refresh,
+  });
 
   const [isImportUrlDialogOpen, setIsImportUrlDialogOpen] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   const [importUrlDefault, setImportUrlDefault] = useState<string | undefined>(
     undefined,
   );
@@ -214,93 +194,6 @@ export default function MediaPage() {
     }
   };
 
-  // --- Upload Handling ---
-  const handleUpload = useCallback(
-    async (acceptedFiles: File[]) => {
-      const newUploads: UploadingFile[] = acceptedFiles.map((file) => ({
-        id: nanoid(),
-        file,
-        progress: 0,
-        status: "pending",
-      }));
-
-      setUploadingFiles((prev) => [...newUploads, ...prev]);
-
-      for (const upload of newUploads) {
-        setUploadingFiles((prev) =>
-          prev.map((f) =>
-            f.id === upload.id ? { ...f, status: "uploading" } : f,
-          ),
-        );
-
-        const formData = new FormData();
-        const metadata = {
-          title: upload.file.name.replace(/\.[^/.]+$/, ""),
-          description: "",
-          tags: [],
-          originalFilename: upload.file.name,
-        };
-        formData.append("metadata", JSON.stringify(metadata));
-        formData.append("content", upload.file);
-
-        try {
-          setUploadingFiles((prev) =>
-            prev.map((f) => (f.id === upload.id ? { ...f, progress: 50 } : f)),
-          );
-
-          const response = await apiFetch("/api/media", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!response.ok) {
-            const errorData = await response
-              .json()
-              .catch(() => ({ error: `Upload failed (${response.status})` }));
-            throw new Error(
-              errorData.error || `Failed to upload ${upload.file.name}`,
-            );
-          }
-
-          const createdMedia = (await response.json()) as Media;
-          refresh();
-
-          setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.id === upload.id
-                ? {
-                    ...f,
-                    status: "success",
-                    progress: 100,
-                    mediaId: createdMedia.id,
-                  }
-                : f,
-            ),
-          );
-
-          toast.success("Upload Successful", {
-            description: `"${createdMedia.title}" added.`,
-          });
-        } catch (err) {
-          console.error("Error uploading file:", upload.file.name, err);
-          const message =
-            err instanceof Error ? err.message : "An unknown error occurred.";
-          setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.id === upload.id
-                ? { ...f, status: "error", error: message, progress: 0 }
-                : f,
-            ),
-          );
-          toast.error("Upload Error", {
-            description: `Failed to upload ${upload.file.name}: ${message}`,
-          });
-        }
-      }
-    },
-    [refresh],
-  );
-
   const handleImportUrl = useCallback(
     async (data: {
       url: string;
@@ -308,34 +201,17 @@ export default function MediaPage() {
       description?: string;
       tags: string[];
     }) => {
-      setIsImporting(true);
       try {
-        const response = await apiFetch("/api/media/import", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          const errorData = await response
-            .json()
-            .catch(() => ({ error: "Import failed" }));
-          throw new Error(errorData.error || "Failed to import media from URL");
-        }
-        const createdMedia = (await response.json()) as Media;
-        refresh();
+        const createdMedia = await importMedia(data);
         setIsImportUrlDialogOpen(false);
         toast.success("Import Started", {
           description: `"${createdMedia.title}" is being downloaded and processed.`,
         });
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "An unknown error occurred.";
-        toast.error("Import Error", { description: message });
-      } finally {
-        setIsImporting(false);
+      } catch {
+        // Error toast is handled by the hook
       }
     },
-    [refresh],
+    [importMedia],
   );
 
   const {
@@ -470,13 +346,7 @@ export default function MediaPage() {
         uploadingFiles.length > 0 ? (
           <UploadProgressList
             uploads={uploadingFiles}
-            onClearComplete={() =>
-              setUploadingFiles((prev) =>
-                prev.filter(
-                  (f) => f.status !== "success" && f.status !== "error",
-                ),
-              )
-            }
+            onClearComplete={clearCompleted}
           />
         ) : undefined
       }
