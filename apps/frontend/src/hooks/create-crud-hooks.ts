@@ -97,6 +97,12 @@ export interface SingleHookResult<TItem> {
   isLoading: boolean;
   error: Error | null;
   refresh: () => void;
+  /** Update this item; resolves with the transformed result. Error toast built in. */
+  update: (updates: Partial<TItem>) => Promise<TItem>;
+  /** Delete this item. Error toast built in. */
+  deleteItem: () => Promise<void>;
+  isUpdating: boolean;
+  isDeleting: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -235,8 +241,10 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
     };
   }
 
-  /** Hook for a single item by ID. */
+  /** Hook for a single item by ID, with update / delete mutations. */
   function useSingle(id: string): SingleHookResult<TItem> {
+    const queryClient = useQueryClient();
+
     const {
       data: item,
       isLoading,
@@ -253,7 +261,42 @@ export function createCrudHooks<TItem>(config: CrudHookConfig<TItem>) {
       staleTime: 30_000,
     });
 
-    return { item, isLoading, error, refresh: refetch };
+    const updateMutation = useMutation({
+      mutationFn: async (updates: Partial<TItem>) => {
+        const response = await apiFetch(`${apiPath}/${id}`, {
+          method: updateMethod,
+          body: JSON.stringify(updates),
+        });
+        return transform(await response.json());
+      },
+      onSuccess: (updated) => {
+        queryClient.setQueryData([resourceName, id], updated);
+        queryClient.invalidateQueries({ queryKey: [resourceName] });
+      },
+      onError: (error: Error) => toast.error(`Update failed: ${error.message}`),
+    });
+
+    const deleteMutation = useMutation({
+      mutationFn: async () => {
+        await apiFetch(`${apiPath}/${id}`, { method: "DELETE" });
+      },
+      onSuccess: () => {
+        queryClient.removeQueries({ queryKey: [resourceName, id] });
+        queryClient.invalidateQueries({ queryKey: [resourceName] });
+      },
+      onError: (error: Error) => toast.error(`Delete failed: ${error.message}`),
+    });
+
+    return {
+      item,
+      isLoading,
+      error,
+      refresh: refetch,
+      update: updateMutation.mutateAsync,
+      deleteItem: deleteMutation.mutateAsync,
+      isUpdating: updateMutation.isPending,
+      isDeleting: deleteMutation.isPending,
+    };
   }
 
   return { useList, useSingle };

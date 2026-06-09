@@ -217,4 +217,61 @@ describe("useSingle", () => {
     expect(result.current.item).toBeUndefined();
     expect(result.current.isLoading).toBe(false);
   });
+
+  it("update PATCHes the item and returns the transformed result", async () => {
+    mockApiFetch.mockResolvedValueOnce(
+      mockJsonResponse({ id: "1", title: "Single Item" }),
+    );
+
+    const { result } = renderHook(() => useSingle("1"), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    mockApiFetch.mockResolvedValueOnce(
+      mockJsonResponse({ id: "1", title: "Updated" }),
+    );
+    const updated = await result.current.update({ title: "Updated" });
+
+    expect(mockApiFetch).toHaveBeenCalledWith("/api/test-items/1", {
+      method: "PATCH",
+      body: JSON.stringify({ title: "Updated" }),
+    });
+    expect(updated).toEqual({ id: "1", title: "Updated" });
+    await waitFor(() =>
+      expect(result.current.item).toEqual({ id: "1", title: "Updated" }),
+    );
+  });
+
+  it("deleteItem DELETEs the item", async () => {
+    mockApiFetch.mockResolvedValueOnce(
+      mockJsonResponse({ id: "1", title: "Single Item" }),
+    );
+
+    const { result } = renderHook(() => useSingle("1"), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    mockApiFetch.mockResolvedValueOnce(mockJsonResponse({}));
+    await result.current.deleteItem();
+
+    expect(mockApiFetch).toHaveBeenCalledWith("/api/test-items/1", {
+      method: "DELETE",
+    });
+  });
+
+  it("update surfaces an error toast and rejects on failure", async () => {
+    mockApiFetch.mockResolvedValueOnce(
+      mockJsonResponse({ id: "1", title: "Single Item" }),
+    );
+
+    const { result } = renderHook(() => useSingle("1"), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    mockApiFetch.mockRejectedValueOnce(new Error("boom"));
+    await expect(result.current.update({ title: "x" })).rejects.toThrow("boom");
+  });
 });
